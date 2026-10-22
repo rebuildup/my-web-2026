@@ -80,19 +80,38 @@ the same verdict is produced by `pnpm run dep-audit:check` locally. That
 divergence is a stated open decision, recorded in
 `quality/profile.yaml#security_gates.dependency_review`.
 
+Because the declaration is `block` ([§6](#6-the-live-state--block)),
+this step is now a hard gate in CI: a `critical` / `high` advisory that
+no approved exception covers fails the `validate` job, and unreadable
+advisory data fails it with exit `3`.
+
 ## 3. The declaration
 
 [`quality/dependency-advisory-gate.json`](../../quality/dependency-advisory-gate.json):
 
 ```json
 {
-  "enforcement": "audit",
+  "enforcement": "block",
   "blockingSeverities": ["critical", "high"],
   "reportedSeverities": ["moderate", "low", "info"],
   "dataUnavailable": "fail",
-  "exceptions": []
+  "exceptions": [
+    {
+      "advisoryId": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "severity": "high",
+      "reason": "…",
+      "approvedBy": "repository owner (Issue #645)",
+      "trackingIssue": 669,
+      "expiresOn": "2027-01-31"
+    }
+  ]
 }
 ```
+
+That is the shape the repository ships today: the gate is **blocking**
+(Issue #645) and it carries exactly one exception, the one advisory
+whose patched version does not exist ([§6](#6-the-live-state--block)).
 
 - `blockingSeverities` / `reportedSeverities` — the severity policy. A
   severity has exactly one meaning; listing it in both is rejected. An
@@ -103,6 +122,7 @@ divergence is a stated open decision, recorded in
   non-blocking list.
 - `enforcement` — `block` stops the build on a blocking finding; `audit`
   records it and exits `0`. It never changes what counts as blocking.
+  The repository runs `block` ([§6](#6-the-live-state--block)).
 - `dataUnavailable` — only `fail` is accepted. A policy that tolerates
   unreadable data would reintroduce the false green this gate exists to
   prevent.
@@ -266,35 +286,85 @@ node scripts/check-dependency-advisories.mjs --input /nope        # exit 2, ENOE
 node scripts/check-dependency-advisories.mjs --now garbage        # exit 2, YYYY-MM-DD expected
 ```
 
-## 6. Escalation: `audit` → `block`
+## 6. The live state: `block`
 
-The declaration ships with `"enforcement": "audit"` while the lockfile
-still carries blocking advisories. `audit` records them on every run
-and still fails closed on unreadable data; it does **not** make the tree
-clean, and the CI log says so on every run.
+The escalation happened in Issue #645. The declaration now ships
+`"enforcement": "block"`, so the `Dependency advisory audit` step of the
+`validate` job **fails the build** on any `critical` / `high` advisory
+that no approved exception covers. `audit` remains available as a
+declaration value (and as the `--enforce` preview switch in the other
+direction), but it is no longer what the repository runs.
 
-To escalate, either
+### What was remediated
 
-1. **Remediate.** Upgrade the direct dependencies that pull the
-   vulnerable versions (`pnpm why <pkg>`), refresh the lockfile, and let
-   the gate report the result; or
-2. **Approve an exception** with a reason, an approver, a tracking issue
-   and an `expiresOn` date that is close enough to force a review —
-   one record **per affected package**, because the ledger is keyed by
-   `(advisoryId, package)`; or
+| advisory                                            | package         | remediation                                                              |
+| --------------------------------------------------- | --------------- | ------------------------------------------------------------------------ |
+| `GHSA-f2ph-cmg5-wxc8` (critical)                    | `storybook`, `@storybook/core` | the whole `@storybook/*` set moved to `8.6.19` (patched `>=8.6.19`)     |
+| `GHSA-587h-7wmj-h5pm` (high)                        | `vite`          | `7.3.6` → `7.3.7` (patched `>=7.3.7`), inside the `7.x` line the tree already runs |
+
+### The one exception that remains
+
+`braces@3.0.3` (`GHSA-vfj7-8cjw-p6xm`, high) has **no published
+patched version** — npm reports `patched_versions_unpublished` — so
+there is nothing to upgrade to. It is accepted by exactly one reviewed
+record in the declaration:
+
+| field          | value                                                                                     |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `advisoryId`  | `GHSA-vfj7-8cjw-p6xm`                                                                      |
+| `package`      | `braces`                                                                                  |
+| `severity`     | `high`                                                                                    |
+| `approvedBy`   | `repository owner (Issue #645)`                                                            |
+| `trackingIssue`| `669`                                                                                     |
+| `expiresOn`    | `2027-01-31`                                                                              |
+
+The grounds are in the record itself: the only dependency paths are
+`.>@pandacss/dev>@pandacss/node>fast-glob>micromatch>braces` and
+`.>@pandacss/dev>@pandacss/postcss>@pandacss/node>fast-glob>micromatch>braces`,
+both `dev: true`, and `braces` / `micromatch` / `fast-glob` are absent
+from the Worker runtime bundle — the stack-exhaustion denial of service
+(CWE-674) has no production path. The follow-up is tracked in
+[#669](https://github.com/rebuildup/my-web-2026/issues/669).
+
+The record is retired when a patched `braces` is published, when the
+dependency path changes, or when the dependency is dropped. Until then
+the finding stays **visible** in every run: the gate prints it under
+`approved exceptions in force`, with the reason, the approver, the
+expiry and the remaining days.
+
+### When an exception expires
+
+An expired record is not an exception any more. On the evaluation date
+past `expiresOn` the gate reports the finding under `expired exceptions
+treated as blocking`, counts it in `blocking after exceptions`, and
+**exits `1`** — the build is red. The operator's options, in order:
+
+1. **Remediate.** Upgrade or drop the dependency (`pnpm why <pkg>`),
+   refresh the lockfile, and delete the record. A stale record is not a
+   free pass: the gate also lists a record that matches no advisory
+   under `exception records with no matching advisory`.
+2. **Renew, with a decision.** If the risk is still knowingly accepted,
+   update `expiresOn` to a new date **and** re-state the grounds, and
+   renew the tracking issue. A silent date extension is exactly what
+   the expiry is there to prevent.
 3. **Narrow the policy** by editing `blockingSeverities` in review — a
    reviewable one-line diff, not a code change.
 
-Once either path leaves zero blocking findings, flip
-`"enforcement": "block"` in the declaration and the CI step starts
-failing on any new `critical`/`high` advisory. Nothing else in the
-workflow changes; `pnpm run dep-audit:check -- --enforce` previews the
-exact verdict without editing the reviewed file.
+Renewing an exception is an **owner decision**, not a code one: this
+repository writes no approval on the owner's behalf, and the gate never
+creates a record by itself.
 
-Choosing between the paths, and whether to leave the gate at `audit` at
-all while 18 blocking advisories (3 critical) are outstanding, is an
-**owner decision**, not a code one: this gate ships `exceptions: []`
-and writes no approval on the owner's behalf.
+### If a new blocking advisory appears
+
+Under `block` enforcement the gate simply fails. The repair path is the
+one above: remediate, or record an exception with grounds, an approver,
+a tracking issue and an expiry date — one record **per affected
+package**, because the ledger is keyed by `(advisoryId, package)`.
+
+`pnpm run dep-audit:check -- --enforce` previews the `block` verdict
+without editing the reviewed file; with the declaration already at
+`block`, the plain `pnpm run dep-audit:check` produces the same
+verdict.
 
 ## 7. Secret posture
 

@@ -46,12 +46,23 @@ const imagesLogger = createAuditLogger('reactions.images');
  * Read:
  *   - `getImageStream(db, media, id)` — public read by image id,
  *     used by `GET /api/v1/reaction-images/:id`. Streams from R2
- *     with `Cache-Control: public, max-age=31536000, immutable`.
- *     The read is gated by the R2 visibility boundary (#459): a row
- *     whose `r2_key` is outside a declared public namespace resolves
- *     to `null` (HTTP 404), so an object left behind in a private
- *     namespace is not served just because a row still names it.
+ *     with `Cache-Control: public, max-age=31536000, immutable`
+ *     (`REACTION_IMAGE_CACHE_CONTROL`). The read is gated by the R2
+ *     visibility boundary (#459): a row whose `r2_key` is outside a
+ *     declared public namespace resolves to `null` (HTTP 404), so an
+ *     object left behind in a private namespace is not served just
+ *     because a row still names it. */
+
+/**
+ * The one cache policy for reaction images (Issue #484).
+ *
+ * Declared once because it is written in two places — the R2 object
+ * metadata at upload time and the response header at read time — and
+ * the matrix in `scripts/_cache-policy.mjs` is checked against this
+ * constant. Two literals that must agree are a drift risk; one
+ * constant plus a test is a contract.
  */
+export const REACTION_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 const EXT_BY_CONTENT_TYPE: Record<AllowedImageContentType, string> = {
 	'image/png': 'png',
@@ -280,7 +291,7 @@ export async function uploadImage(
 	const id = crypto.randomUUID();
 	const r2Key = buildR2Key(hash, contentType);
 	await media.put(r2Key, input.bytes, {
-		httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' },
+		httpMetadata: { contentType, cacheControl: REACTION_IMAGE_CACHE_CONTROL },
 	});
 	const now = input.now ?? Date.now();
 	await db
@@ -352,6 +363,26 @@ export async function listImages(db: D1Database): Promise<readonly ReactionImage
 	return rows.results ?? [];
 }
 
+/**
+ * Is this particular `reactions/…` key approved for public delivery?
+ *
+ * Issue #634 adds a key-addressed delivery path (`/media/<key>`) next
+ * to the id-addressed one above. A reaction image is public by design
+ * — the row exists because an operator uploaded it to be shown — so
+ * for this namespace the row itself is the approval, exactly as the
+ * visibility contract states. The namespace gate still runs first in
+ * the delivery adapter, so a row naming a `private/…` key can never
+ * be served through either path.
+ */
+export async function isPublicReactionImageKey(db: D1Database, key: string): Promise<boolean> {
+	if (!key.startsWith('reactions/')) return false;
+	const row = await db
+		.prepare('SELECT 1 AS one FROM reaction_images WHERE r2_key = ?1 LIMIT 1')
+		.bind(key)
+		.first<{ one: number }>();
+	return row?.one === 1;
+}
+
 export async function getImageStream(
 	db: D1Database,
 	media: R2Bucket,
@@ -377,6 +408,6 @@ export async function getImageStream(
 	return {
 		body: object.body,
 		contentType: row.content_type,
-		cacheControl: 'public, max-age=31536000, immutable',
+		cacheControl: REACTION_IMAGE_CACHE_CONTROL,
 	};
 }

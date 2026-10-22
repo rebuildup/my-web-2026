@@ -65,16 +65,37 @@ below remain literal records.
    - Independent ticket: PR merge into `release-x-y-z`.
    - Stacked ticket: stack landing from the bottom of the stack.
 7. Reconcile Issue / Project state after landing.
-8. Run `pnpm run validate:release` on `release-x-y-z`.
-9. Open / update the Draft release PR (`release-x-y-z -> main`) once
-   the branch has any meaningful integrated difference.
-10. Merge the release PR (only after `main` protection / ruleset
+8. Run `pnpm run validate:release` on `release-x-y-z`. Its `fast`
+   half includes the Cloudflare configuration drift gate (Issue #480,
+   `pnpm run cf:config:drift:check`), which fails the release on one
+   differing binding / route / header-coverage / build-command item
+   against `quality/cloudflare-config-drift.json`; see
+   [`docs/runbook/cloudflare-config-drift.md`](runbook/cloudflare-config-drift.md).
+9. Run the operator-side release gate that CI cannot run:
+   `CLOUDFLARE_R2_API_TOKEN=… pnpm run r2:media:audit` (Issue #577,
+   read-only R2 key-set audit — it fails when a key outside
+   `PUBLIC_MEDIA_PREFIXES` exists in the `MEDIA` bucket, and fails
+   closed when the bucket cannot be read). GitHub Actions holds no
+   Cloudflare credential, so this step is deliberately outside the
+   three `validate:*` entry points; procedure in
+   [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
+   The same reasoning applies to the environment half of the secret
+   status gate (Issue #477): `pnpm run infisical:check:cf -- --execute
+   --environment=prod | tee .tmp/cf-secrets-prod.txt` followed by
+   `pnpm run secrets:status:check -- --observation=.tmp/cf-secrets-prod.txt`
+   records and classifies the Infisical name parity from its status-only
+   output. The repository half of that gate is offline and runs inside
+   `validate:fast`; procedure in
+   [`docs/runbook/secret-rotation-status.md`](runbook/secret-rotation-status.md).
+10. Open / update the Draft release PR (`release-x-y-z -> main`) once
+    the branch has any meaningful integrated difference.
+11. Merge the release PR (only after `main` protection / ruleset
     allows it AND the repository owner has given explicit human
     approval in the current interaction — see the Release PR
     merge human gate above).
-11. Tag the merged commit with `v<version>` (also gated by the
+12. Tag the merged commit with `v<version>` (also gated by the
     human approval rule above).
-12. Re-plan any unfinished tickets for the next sprint.
+13. Re-plan any unfinished tickets for the next sprint.
 
 ## Repository visibility
 
@@ -237,6 +258,53 @@ production domain to be wired (Issue #43 / ADR-0014):
 
    See [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 
+9. The artifact attestation manifest (Issue #476) has been produced for
+   the release branch head. `pnpm run artifact:attestation:check` runs at
+   the end of `validate:integration`, hashes the exact
+   `.cloudflare/output/v0` Build Output produced by the GitHub Actions
+   `validate` job in production mode, and records its source commit,
+   `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
+   digest and resolved package count. CI retains it as the
+   `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
+   does **not** attest the artifact Cloudflare Workers Builds deploys.
+   That comparison is out of scope by owner decision (2026-10-19): the
+   attested scope of this Issue is the GitHub Actions production-mode
+   Build Output, the manifest declares it through
+   `coverage.artifact_origin` / `coverage.deployed_bytes_attested`, and a
+   separate Issue owns any change to the deploy path
+   ([attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)).
+
+   - The manifest is an integrity record, not a signature: no signing
+     key exists, so `signature.status` is `unsigned` and every signature
+     field is `null`. A document claiming an unverifiable signature
+     fails closed.
+   - The manifest states its own attested scope: `coverage.artifact_origin`
+     names the hashed GitHub Actions production-mode Build Output and
+     `coverage.deployed_bytes_attested` is `false`. A manifest claiming
+     coverage this tool cannot back fails closed
+     (`COVERAGE_UNSUPPORTED` / `COVERAGE_UNDECLARED`), so a `PASS`
+     never reads as "the deployed bytes were hashed".
+   - A Cloudflare deploy id is recorded only when an operator supplies
+     one (`--deploy-id`). It is not fetched with a production credential
+     and is not authenticated by this tool.
+   - Attaching the manifest to the GitHub Release is a release-owner
+     action under the same human gate as the release merge / tag /
+     Release publish (the `Release PR merge human gate` rule in
+     `AGENTS.md` §6, not a step of this pre-merge checklist). The
+     release-tag comparison is that owner's command too, and an
+     unexecuted comparison is reported as "not executed" in the release
+     report — never as a PASS.
+   - Verify a published manifest against the artifact you hold and the
+     release tag itself with
+     `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
+     The tag must resolve to the manifest's `source.commit` and name the
+     manifest's package version, otherwise the check fails
+     (`RELEASE_TAG_COMMIT_MISMATCH` / `RELEASE_TAG_VERSION_MISMATCH`).
+     Generation never accepts `--source-sha` or `--release-tag`: it
+     always attests the checked-out HEAD.
+
+   See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
+
 ## 0.1.0 Foundation backlog
 
 | Issue | Title                                                       | Depends on | Priority |
@@ -301,6 +369,16 @@ updated directly.
   the file, then stop. The document is derived from tracked files only
   and carries no credential — see
   [`docs/runbook/sbom.md`](runbook/sbom.md) §3.
+- Attach the matching
+  `release-assets/supply-chain/<version>/artifact-attestation.json`
+  (download it from the `artifact-attestation-<sha>` workflow artifact)
+  to the same GitHub Release under the same human gate. Verify it first
+  with `--release-tag="v<version>"`, so the published manifest names the
+  commit the tag points at. It records the CI production-mode Build
+  Output, is `unsigned`, and carries no credential; the Cloudflare-deployed
+  bytes stay outside the attested scope by owner decision (2026-10-19,
+  [attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)); see
+  [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md) §7.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.
 - Archive the release branch once the next sprint starts (the

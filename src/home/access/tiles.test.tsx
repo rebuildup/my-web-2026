@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { css } from '../../../styled-system/css';
 import digit0Url from '../digits/0.webp?url';
 import digit1Url from '../digits/1.webp?url';
 import digit2Url from '../digits/2.webp?url';
@@ -192,5 +193,118 @@ describe('CounterTile — locale rendering (Issue #430)', () => {
 		expect(html).toContain(`src="${digit2Url}"`);
 		expect(html).toContain(`src="${digit3Url}"`);
 		expect(html).toContain(`src="${digit4Url}"`);
+	});
+});
+
+describe('CounterTile — reduced motion (Issue #403)', () => {
+	const data: HomeCounterData = {
+		key: 'home-page',
+		count: 1234,
+		first_hit: Date.UTC(2026, 0, 1, 0, 0, 0),
+		last_hit: Date.UTC(2026, 0, 5, 8, 55, 0),
+		enabled: true,
+	};
+	const now = Date.UTC(2026, 0, 5, 9, 0, 0);
+
+	it('emits the animation utility class only when motion is allowed', () => {
+		// The opt-out is a render-time branch, not a stylesheet override:
+		// with motion reduced the document carries no `animation-name`,
+		// so there is nothing for CSS to neutralise and nothing to regress
+		// if the stylesheet changes.
+		//
+		// The classes are recomputed here with `css()` rather than pasted
+		// out of the component, so the assertion is "this render carries
+		// the class Panda generates for these declarations" — which is the
+		// claim that actually matters in the browser.
+		const base = {
+			display: 'inline-block',
+			height: { base: '48px', lg: '56px' },
+			width: 'auto',
+			verticalAlign: 'baseline',
+		} as const;
+		const restingClass = css(base);
+		const rollingClass = css({
+			...base,
+			animationName: 'counterDigitRoll',
+			animationDuration: '320ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+			animationDelay: 'calc(var(--counter-stagger, 0ms) + 0ms)',
+		});
+		expect(restingClass).not.toEqual(rollingClass);
+
+		const reduced = renderToStaticMarkup(<CounterTile data={data} now={() => now} reducedMotion />);
+		const animated = renderToStaticMarkup(
+			<CounterTile data={data} now={() => now} reducedMotion={false} />,
+		);
+		expect(reduced).toContain(restingClass);
+		expect(reduced).not.toContain(rollingClass);
+		expect(animated).toContain(rollingClass);
+	});
+
+	it('marks the applied motion state on the element the stylesheet pairs with', () => {
+		const reduced = renderToStaticMarkup(<CounterTile data={data} now={() => now} reducedMotion />);
+		const animated = renderToStaticMarkup(
+			<CounterTile data={data} now={() => now} reducedMotion={false} />,
+		);
+		expect(reduced).toContain('data-motion="counter-roll"');
+		expect(reduced).toContain('data-motion-state="reduced"');
+		expect(animated).toContain('data-motion-state="animated"');
+		// The two renders are genuinely different documents (the Panda
+		// class differs), which is what makes the state attribute a fact
+		// rather than a label.
+		expect(reduced).not.toEqual(animated);
+	});
+
+	it('loses no value when motion is reduced', () => {
+		const reduced = renderToStaticMarkup(<CounterTile data={data} now={() => now} reducedMotion />);
+		const animated = renderToStaticMarkup(
+			<CounterTile data={data} now={() => now} reducedMotion={false} />,
+		);
+		// Same slots, same glyphs, same accessible name, same metadata.
+		expect(reduced.match(/<img/g)?.length).toBe(SLOT_COUNT);
+		expect(reduced).toContain(`src="${digit0Url}"`);
+		expect(reduced).toContain(`src="${digit4Url}"`);
+		expect(reduced).toContain('aria-label="1,234 page views"');
+		expect(reduced).toContain('since');
+		expect(reduced).toContain('last hit:');
+		// Everything except the animation class and the state attribute is
+		// byte-identical: same slots, same glyphs, same label, same
+		// metadata. That is the Issue #403 claim — turning motion off
+		// removes movement, not information.
+		const withoutMotion = (html: string) =>
+			html.replace(/class="[^"]*"/g, 'class=""').replace(/ data-motion-state="[^"]*"/g, '');
+		expect(withoutMotion(reduced)).toEqual(withoutMotion(animated));
+	});
+
+	it('keeps the disabled state readable without motion', () => {
+		const disabled = {
+			key: 'home-page',
+			count: 0,
+			first_hit: null,
+			last_hit: null,
+			enabled: false,
+		};
+		const reduced = renderToStaticMarkup(
+			<CounterTile data={disabled} now={() => now} reducedMotion />,
+		);
+		// The disabled state is text, so there is no digit strip to
+		// animate — and the reason the counter is unavailable still reads.
+		expect(reduced).not.toContain('<img');
+		expect(reduced).toContain('counter disabled');
+		expect(reduced).toContain('consumer API key not configured');
+	});
+
+	it('keeps the empty state (count 0, no hits yet) readable without motion', () => {
+		const empty = { key: 'home-page', count: 0, first_hit: null, last_hit: null, enabled: true };
+		const reduced = renderToStaticMarkup(
+			<CounterTile data={empty} now={() => now} reducedMotion />,
+		);
+		expect(reduced).toContain('aria-label="0 page views"');
+		expect(reduced.match(/<img/g)?.length).toBe(SLOT_COUNT);
+		// No period label and no last-hit span: the values that do not
+		// exist are still absent rather than shown as motion.
+		expect(reduced).not.toContain('since');
+		expect(reduced).not.toContain('last hit:');
 	});
 });

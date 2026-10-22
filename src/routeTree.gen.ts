@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as KeyboardRouteImport } from './routes/keyboard'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminEmojiCatalogRouteImport } from './routes/admin.emoji-catalog'
 import { Route as AdminImagesRouteImport } from './routes/admin.images'
@@ -22,6 +23,7 @@ import { Route as AdminKeysRouteImport } from './routes/admin.keys'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as PortfolioIndexRouteImport } from './routes/portfolio/index'
 import { Route as PortfolioSlugRouteImport } from './routes/portfolio/$slug'
+import { Route as ProjectsDotfilesRouteImport } from './routes/projects.dotfiles'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsSlugRouteImport } from './routes/tools.$slug'
 import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations_.accept'
@@ -49,6 +51,11 @@ const ContactRoute = ContactRouteImport.update({
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeyboardRoute = KeyboardRouteImport.update({
+  id: '/keyboard',
+  path: '/keyboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -91,6 +98,11 @@ const PortfolioSlugRoute = PortfolioSlugRouteImport.update({
   path: '/portfolio/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsDotfilesRoute = ProjectsDotfilesRouteImport.update({
+  id: '/projects/dotfiles',
+  path: '/projects/dotfiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsIndexRoute = ToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
@@ -113,12 +125,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
+  '/keyboard': typeof KeyboardRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/projects/dotfiles': typeof ProjectsDotfilesRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
@@ -130,12 +144,14 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
+  '/keyboard': typeof KeyboardRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/projects/dotfiles': typeof ProjectsDotfilesRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/admin': typeof AdminIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
@@ -149,12 +165,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
+  '/keyboard': typeof KeyboardRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/projects/dotfiles': typeof ProjectsDotfilesRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
@@ -169,12 +187,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/contact'
     | '/design-system'
+    | '/keyboard'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
+    | '/projects/dotfiles'
     | '/tools/$slug'
     | '/admin/'
     | '/portfolio/'
@@ -186,12 +206,14 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/design-system'
+    | '/keyboard'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
+    | '/projects/dotfiles'
     | '/tools/$slug'
     | '/admin'
     | '/portfolio'
@@ -204,12 +226,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/contact'
     | '/design-system'
+    | '/keyboard'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
+    | '/projects/dotfiles'
     | '/tools/$slug'
     | '/admin/'
     | '/portfolio/'
@@ -223,7 +247,9 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   ContactRoute: typeof ContactRoute
   DesignSystemRoute: typeof DesignSystemRoute
+  KeyboardRoute: typeof KeyboardRoute
   PortfolioSlugRoute: typeof PortfolioSlugRoute
+  ProjectsDotfilesRoute: typeof ProjectsDotfilesRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
   PortfolioIndexRoute: typeof PortfolioIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
@@ -264,6 +290,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/keyboard': {
+      id: '/keyboard'
+      path: '/keyboard'
+      fullPath: '/keyboard'
+      preLoaderRoute: typeof KeyboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -322,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfolioSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/dotfiles': {
+      id: '/projects/dotfiles'
+      path: '/projects/dotfiles'
+      fullPath: '/projects/dotfiles'
+      preLoaderRoute: typeof ProjectsDotfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/': {
       id: '/tools/'
       path: '/tools'
@@ -374,7 +414,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   ContactRoute: ContactRoute,
   DesignSystemRoute: DesignSystemRoute,
+  KeyboardRoute: KeyboardRoute,
   PortfolioSlugRoute: PortfolioSlugRoute,
+  ProjectsDotfilesRoute: ProjectsDotfilesRoute,
   ToolsSlugRoute: ToolsSlugRoute,
   PortfolioIndexRoute: PortfolioIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,

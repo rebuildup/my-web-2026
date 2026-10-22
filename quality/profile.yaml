@@ -16,6 +16,40 @@
 # entry points: `routes:quality:check` keeps the published route
 # roster and its quality-gate coverage in sync. See the
 # `route_quality_coverage` block below.
+#
+# Issue #403 adds `a11y:reduced-motion:check` to `gates.fast`: the
+# reduced-motion opt-out pairing is a property of the shipped source,
+# so it is decided on every `validate:fast` run rather than only when
+# someone remembers to capture the verification artefact.
+#
+# Issue #407 adds `a11y:table:code:check` to `gates.fast` for the same
+# reason: whether a shipped table keeps its caption and a scoped header,
+# and whether a shipped code block keeps a keyboard-reachable scroll
+# box, is a property of the source that every fast run should see.
+#
+# Issue #566 makes this file the EXECUTION order, not only its record.
+# `pnpm run validate:fast` is one line —
+#   "validate:fast": "node scripts/run-quality-gates.mjs fast"
+# — and that runner reads `gates.<name>.components` from HERE and runs
+# the entries in the order written, one command per line, stopping at
+# the first failure with that failure's exit code. The component lists
+# used to be one `&&`-joined line inside package.json, which every
+# ticket PR that added a gate had to rewrite (in a trial merge of 20
+# concurrent tickets, 17 conflicted on it); here a new gate is
+# one appended line, so concurrent tickets stop colliding.
+#
+# Rules the runner enforces (scripts/_quality-gate-plan.mjs):
+#   - one list entry is exactly one command (no `&&`, `|`, `;`), so a
+#     line stays one reviewable step;
+#   - a bare `fast` / `integration` / `release` entry expands that
+#     gate's own components in place;
+#   - a repeated component stays repeated on purpose;
+#   - every `pnpm run <script>` must name a script that exists, so a
+#     renamed script fails the plan instead of failing later;
+#   - anything the reader does not understand is an error (exit 2),
+#     never a silently shorter gate list.
+# Adding a gate therefore means: append a line under the right gate,
+# keep the comment that explains it, and add nothing to workflow YAML.
 
 schema_version: 1
 
@@ -32,6 +66,7 @@ stack:
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
   package_manager: pnpm@12.3.4
+  unused_code: knip@6.42.x
 
 gates:
   fast:
@@ -40,13 +75,81 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
-      - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428): untranslated keys, fallback integrity, preservation + typography
       # Issue #467: log surface gate. `src/**` may only reach `console`
       # through the `src/logging/` redacting logger, and an operator
       # script may not print a secret-named value. Without this, a new
       # log call site silently opts out of redaction.
       - 'pnpm run log:redaction:check'
-      - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #422: structured-data route coverage — every
+      # visitor-facing route declares which schema.org types it emits.
+      - 'pnpm run structured-data:check'
+      # Issue #621: the project-introduction snapshot. Offline and
+      # read-only: it re-validates the committed snapshot's shape,
+      # digest, pinned SHA, sanitized link set and publication boundary,
+      # and reports freshness as an advisory. A hand-edited snapshot
+      # that claims it is current cannot pass this gate.
+      - 'pnpm run projects:check'
+      # Issue #421: the Open Graph / Twitter card contract. Cheap by
+      # design (pure Node): it proves every route the router serves has
+      # a declared card state, that the declared fallback card is a real
+      # committed asset, and that a surface Issue #421 names but the
+      # repository does not have (記事) stays an explicit declaration
+      # rather than a silent gap. The document side of the same engine is
+      # `test/integration/ogp-card.test.ts`, inside the `test` component.
+      - 'pnpm run ogp:card:check'
+      # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
+      # agree with the generated route inventory. Runs as a fast gate
+      # because it is a pure Node script (no worker, no build).
+      - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      # Issue #80: the Tool Registry manifest — manifest pin == gitlink
+      # == checked-out commit, read from `src/tools/manifest.json`.
+      - 'pnpm run tools:check'
+      # Issue #474: the dependency install-lifecycle audit. The reviewed
+      # policy is `quality/install-scripts.json`; the runbook is
+      # docs/runbook/install-script-audit.md.
+      - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
+      # Issue #247: the converted production scripts must load with
+      # `wrangler` genuinely unresolvable, so no operator path depends
+      # on a CLI that the Worker does not ship.
+      - 'pnpm run wrangler:independence:check'
+      # Issue #247: the non-secret Cloudflare contract check. This is the
+      # static half (no build); the `--build` half runs in
+      # `gates.integration` against a freshly built artifact.
+      - 'pnpm run cloudflare:contract:check'
+      # Issue #480: Cloudflare configuration drift. The production Worker
+      # surface (bindings, routes), the development surface, the Workers
+      # Builds build / deploy commands and the static-asset `_headers`
+      # coverage are compared against the recorded contract in
+      # `quality/cloudflare-config-drift.json`. ONE differing item is ONE
+      # red gate. Offline and read-only: it evaluates
+      # `cloudflare.config.ts` for two modes and reads repository files, so
+      # it needs no credential and issues no Cloudflare API call.
+      - 'pnpm run cf:config:drift:check'
+      # Issue #566: every `scripts/*.test.mjs` must be reachable from a
+      # test entry point. `pnpm run test` below reaches them by
+      # convention (scripts/run-script-tests.mjs discovers the
+      # directory), so adding a test no longer edits this list.
+      - 'pnpm run test:wiring:check'
+      # Issue #308: release-asset staging runs BEFORE `version:check` so
+      # the absent staged path prints first, instead of surfacing as a
+      # cascade of downstream test failures.
+      - 'pnpm run release:assets:check'
+      - 'pnpm run version:check' # package.json#version vs the release branch (AGENTS.md section 6)
+      - 'pnpm run typecheck' # tsc --noEmit
+      # ADR-0015 tier 1 / tier 2: the Infisical inventory and the Worker
+      # binding list are two tiers of one secret contract, declared in one
+      # module. Never prints a secret value (AGENTS.md section 4).
+      - 'pnpm run infisical:check:coverage'
+      # Issue #477: the secret drift / rotation-deadline status gate.
+      # Offline, read-only and credential-free by construction — the
+      # environment half arrives as a status-only recording, and no
+      # value is read, so it belongs in the fast chain next to the
+      # static secret contract check above. The DASHBOARD is not here:
+      # a visualisation is never a release condition (see
+      # disallowed_patterns / diagnostic_entry_points).
+      - 'pnpm run secrets:status:check' # drift + rotation deadline from status-only inputs (#477)
+      - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
+      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       # Issue #414: the Web feature adoption gate. Offline and vendored
       # (quality/browser-baseline.json pins the web-features Baseline
       # snapshot), so it costs a directory walk and never a network call.
@@ -55,26 +158,89 @@ gates:
       # still matches the working tree; an adoption without a fallback
       # fails.
       - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
-      # Issue #433: the Unicode / URL-slug policy is enforced on the
-      # shipped surface, and the gate prints the shared decision table
-      # classified with the real owner grammars.
-      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
-      # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
-      # agree with the generated route inventory. Runs as a fast gate
-      # because it is a pure Node script (no worker, no build).
-      - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
-      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
-      - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
-      - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       # Issue #473: Tool submodule supply-chain provenance. Offline,
       # status-only: proves manifest pin == gitlink == checked-out commit
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
-      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
+      # Issue #509: a Storybook story is feature-local UI, so its runtime
+      # import closure must stay inside the owning obligation — routes,
+      # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
+      # module are foreign boundaries for a browser preview. Kept separate
+      # from check-architecture.mjs because that gate judges the OWNERS'
+      # dependency direction, while this one judges what a preview may load.
+      - 'pnpm run storybook:ownership:check' # story -> foreign boundary walk
+      # Issue #428: the UI copy locale contract — untranslated keys,
+      # fallback integrity, preservation + typography. Locale coverage is
+      # opt-in per feature, so an unopted locale is information, not a
+      # failure.
+      - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428)
+      # Issue #437: the owner review-date gate for the time-sensitive
+      # public copy. A public sentence that points at *now* decays, so
+      # every such expression must carry a record saying when the owner
+      # last read it (quality/stale-content-review.json). The gate only
+      # reports: it never removes a sentence from the publication, never
+      # proposes a replacement wording and never declares an expression
+      # to be untrue. A text edit invalidates the record, so the edited
+      # sentence waits for a review again. Offline, read-only and
+      # credential-free, so it belongs in the fast chain; the shipped
+      # registry is complete, so the gate is green on day one and turns
+      # red only when a review is genuinely pending — which the owner
+      # clears by re-reading the expressions and recording new dates.
+      - 'pnpm run copy:stale:check' # owner review date for time-sensitive public copy (Issue #437)
+      # Issue #505: the committed publication snapshot must match the
+      # surface the repository actually ships; a publicly reachable URL
+      # may not disappear without a recorded transition.
+      - 'pnpm run publication:check'
+      # Issue #434: pre-publication link and image gate. Internal 404,
+      # unsafe schemes and missing image alt stop the release; external
+      # links are not dereferenced in CI, and their live failures are
+      # warnings in the explicit `--external` mode.
+      - 'pnpm run content:links:check'
+      # Issue #494: migrated text / images (Miro boards, the
+      # my-web-2025 site, Notion pages) are reviewed for personal data
+      # BEFORE they can become public content. The detector extracts
+      # candidates (address, contact channel, third-party name, image
+      # metadata / personal camera filename); only an owner decision
+      # with a stated basis may publish a record, and a withheld
+      # record's own content must not appear in a published file. Cheap
+      # by construction: a corpus read plus a text scan of the declared
+      # published-content roots. No network, no Worker, no secret, no
+      # OCR, no third-party validator.
+      - 'pnpm run publication:redaction:check' # personal-data candidates + owner publication decision (Issue #494)
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
-      - 'pnpm run typecheck' # tsc --noEmit
+      - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #478: the vulnerability-report -> fix -> publication-decision
+      # flow. Offline and read-only: it reads docs/runbook/security-disclosure.md,
+      # quality/security-disclosure.json, the committed fixtures and
+      # package.json#scripts, and runs the committed fixtures through the
+      # same pure evaluator. A stage heading that left the runbook, an
+      # unregistered `pnpm run` command, an unresolvable reference, a duty
+      # without evidence, a probe that does not reproduce its expectation,
+      # or a fixture carrying a credential-shaped value all fail here. It
+      # reads no secret, contacts no production origin and merges nothing,
+      # so it costs a directory walk and belongs in the fast chain.
+      - 'pnpm run security:disclosure:check' # disclosure flow: runbook/ledger agreement + simulated reports
+      # Issue #507: the ASVS 5.0 coverage ledger. It does not claim
+      # certification. Every selected applicable requirement resolves to
+      # a test/doc/gate, or is printed as `not run` (unverified) with the
+      # future manual work; an evidence path or gate that does not exist
+      # is `fail`. Offline text scan, so it belongs in the fast chain.
+      - 'pnpm run asvs:check' # selected ASVS 5.0 requirements vs. repository evidence
+      # Issue #412: the SSR documents every published route renders are
+      # validated by an offline, Nu-Validator-compatible engine
+      # (scripts/html-standards-contract.mjs). The fast half re-runs the
+      # committed invalid/valid fixtures, the route roster and the rule
+      # ledger; the live half runs in the workerd pool
+      # (test/integration/html-standards.test.ts) over the real SSR
+      # output, inside `pnpm run test`. Nothing is sent to an external
+      # validator.
+      - 'pnpm run html:standards:check' # HTML conformance of the rendered documents (Issue #412)
+      # Issue #433: the Unicode / URL-slug policy is enforced on the
+      # shipped surface, and the gate prints the shared decision table
+      # classified with the real owner grammars.
+      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
       # `pnpm run test` also carries the Issue #491 D1 statement-count
       # budget (src/portfolio/load.query-budget.test.ts): the portfolio
       # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
@@ -82,7 +248,119 @@ gates:
       # `test` component, not a new gate: statement counts are
       # deterministic, whereas wall-clock time is reported as an
       # observation only (Lighthouse / Web Vitals budgets are #384-#386).
-      - 'pnpm run test' # vitest run (unit + integration SELF)
+      #
+      # Issue #566: this one step is now `vitest run` plus the discovered
+      # `scripts/*.test.mjs` suite (scripts/run-script-tests.mjs), so a new
+      # script test needs no edit to this list.
+      - 'pnpm run test' # vitest run (unit + integration SELF) + scripts/*.test.mjs
+      # Issue #419: the SEO HTTP STATUS contract. Offline and
+      # read-only like the index boundary above, but it answers a
+      # different question: what STATUS the Worker must answer with for
+      # each request class (404 for an unpublished / unmatched URL, a
+      # redirect for an anonymous admin request, 500 for a dependency
+      # failure), and that every shipped route owns a row whose proof
+      # file actually cites it. A route with no row fails here instead of
+      # being nobody's job.
+      - 'pnpm run seo:status:check' # 404 / 500 / redirect / noindex status contract
+      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
+      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
+      # Issue #475: credential-shaped strings / forbidden secret-file paths
+      # in the tracked tree (and in untracked-but-not-ignored files, filtered
+      # by .gitignore itself). Status-only findings; a matched value is never
+      # rendered (AGENTS.md section 4).
+      - 'pnpm run secret:scan'
+      # Issue #403: the shipped reduced-motion contract. Every motion
+      # surface in `src/**` must carry the `data-motion` hook, must read
+      # (or receive and branch on) the shared preference, and must be
+      # nameable by a reduced-motion selector in `src/styles.css`; the
+      # universal reduced-motion floor has to exist. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the
+      # same evidence is `pnpm run capture:a11y-reduced-motion`, which
+      # is an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
+      # Issue #407: the shipped table / code-block readability contract.
+      # Every table in `src/**` carries a caption and a scoped header
+      # cell, every horizontal scroll box is a focusable named region,
+      # and both come from `src/editorial/table-code.tsx` rather than an
+      # ad-hoc element. Pure Node text analysis, so it costs a source
+      # walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y:table-code`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:table:code:check' # table / code readability contract (Issue #407)
+      # Issue #409: the shipped language-of-parts contract (WCAG 2.2
+      # 3.1.2 Language of Parts, level A). A `lang` may be written only
+      # on a passage whose language differs from the document language:
+      # no tag on a code identifier, a loanword or a document-language
+      # run, no tag this policy cannot canonicalise outside the failure
+      # fixture, and the document language the policy compares against
+      # has to be the one `src/routes/__root.tsx` declares. Pure Node
+      # over the shipped fixture plus two source reads. The browser half
+      # of the same evidence is `pnpm run capture:a11y-language-of-parts`,
+      # which is an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:language-of-parts:check' # partial `lang` contract (Issue #409)
+      # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
+      # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
+      # stylesheet under `src/`, and fails an unknown property / at-rule /
+      # value function, a broken block or a keyword outside a property
+      # grammar. Vendor prefixes and specification-permitted extensions are
+      # accepted only through an explicit, in-use allowlist entry
+      # (quality/css-standards.json). Offline; no network, no secret.
+      - 'pnpm run css:check' # CSS syntax / unknown-property gate
+      # Issue #504: the published app-icon contract. Its own test
+      # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
+      # above, by the same discovery rule as every other script test —
+      # Issue #566 removed the hand-written `node --test` step that used
+      # to sit beside this gate.
+      - 'pnpm run app:icons:check'
+      # Issue #479: the per-capability threat model ledger. Every feature
+      # unit records its assets, trust zones, boundaries, STRIDE threats
+      # and review questions, and the gate refuses any claim that does
+      # not point at something real — a path that exists on disk, a
+      # binding NAME, or a `pnpm run` command a release executes. It is
+      # also the machine half of "a threat model never carries a value":
+      # every string is shape-scanned and the refusal never prints what
+      # it refused. Pure text scan (no Worker, no binding, no network,
+      # no secret), so it belongs in the fast chain like #507 and #508.
+      - 'pnpm run threat:model:check'
+      # Issue #508: the release-gate check ledger. Every inspection the
+      # release report claims is resolved against the commands this
+      # chain really runs, so a required check that stopped running is
+      # a release failure instead of a silent green.
+      - 'pnpm run release:gate:check'
+      # Issue #464: the third-party connection scope / retention ledger.
+      # Every candidate in `docs/domain/integrations.md` declares the
+      # least-privilege scope set it may hold, the token retention
+      # ceiling, and the revocation procedure; the gate then RUNS each
+      # reviewed connection through the real adapter
+      # (`src/http/integrations/scope-review.ts`) and fails when the
+      # measurement disagrees with the claim. It also fails when a
+      # candidate is published, or an integration secret is provisioned,
+      # while the owner allowlist is empty — the entry point stays
+      # unmounted until the owner records a decision. Offline text
+      # analysis plus pure function calls: no Worker, no network, no
+      # clock read, no secret.
+      - 'pnpm run integration:scope:check' # least-privilege connection ledger (Issue #464)
+      # Issue #466: Tool artefact license + dependency inventory. Offline,
+      # status-only: the manifest's `license` claim is checked against the
+      # license file in the pinned checkout, the dependency evidence against
+      # the reviewed record in quality/tool-artifact-inventory.json, and the
+      # collected artefact's outbound hosts against the reviewed set. A
+      # shipped Tool with unverified evidence is an error, and
+      # `scripts/build-tools.mjs` refuses to publish it. Kept in its
+      # merge-base position (the last `validate:fast` step, after
+      # `release:gate:check`) so Issue #566 does not change the failure
+      # path of the historical chain.
+      - 'pnpm run tools:artifact:check'
+      # Issue #497: asset rights / attribution / licence review for every
+      # byte this repository publishes. Offline, status-only: each file in
+      # the audited scope (`public/**`) must be claimed by exactly one
+      # record in quality/asset-license-inventory.json, licence evidence is
+      # verified by digest rather than trusted, and the publication
+      # decision is derived from the evidence so an unrecorded asset
+      # cannot read as cleared. An asset the contract holds but that is
+      # still published is a warning, because unpublishing it is an owner
+      # publication decision this gate records rather than takes.
+      - 'pnpm run assets:license:check'
     cost_class: cheap
     trigger: local + every CI run
 
@@ -90,18 +368,30 @@ gates:
     command: 'pnpm run validate:integration'
     components:
       - fast
-      - 'pnpm run build' # vite build -> dist/, Tool artifacts, Build Output sync
+      # `build:production` is the three build steps this gate needs in
+      # order: `build` (vite build -> dist/, Tool artifacts, Build Output
+      # sync) + `build:cf:production` (cf build -> .cloudflare/output/v0/)
+      # + `build:cf:verify` (Build Output completeness: Worker bundle +
+      # Tool artifacts + mode).
+      - 'pnpm run build:production'
+      # Issue #475: a credential can reach the deploy artifact through
+      # build-time inlining even when no source file matches, so the freshly
+      # built bundle is a second scan surface.
+      - 'pnpm run secret:scan:bundle'
       # Issue #482. The budget reads the client bundle graph that
-      # `vite build` writes (dist/client/bundle-graph.json). `pnpm run
-      # validate:integration` actually invokes it after `pnpm run
-      # build:production` (build + build:cf:production + build:cf:verify), so
-      # the Tool build output it aggregates separately is already on disk —
-      # and before `pnpm run build-storybook` merges vite.config.ts and
-      # rewrites the same graph path. See the `bundle_budget` section below.
+      # `vite build` writes (dist/client/bundle-graph.json). It runs after
+      # `build:production` above — so the Tool build output it aggregates
+      # separately is already on disk — and before `pnpm run
+      # build-storybook` merges vite.config.ts and rewrites the same graph
+      # path. See the `bundle_budget` section below.
       - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
-      - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
-      - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
-      - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
+      # Issue #247: the same non-secret Cloudflare contract, re-proved
+      # against the artifact `build:production` just wrote.
+      - 'pnpm run cloudflare:contract:check:build'
+      # cf deploy --prebuilt --mode production --dry-run, preceded by the
+      # Build Output verification it depends on
+      # (scripts/cf-prebuilt-dry-run.mjs runs after verify-cf-build-output).
+      - 'pnpm run deploy:cf:prebuilt:selftest'
       - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
       - 'pnpm run build-storybook' # static storybook build -> storybook-static/
@@ -124,6 +414,11 @@ gates:
       # build order here should not depend on it.
       - 'pnpm run build:cf:production' # rebuild Build Output after Storybook
       - 'pnpm run cloudflare:contract:check:build' # re-prove the contract against the fresh artifact
+      # Issue #476: hash the FINAL Build Output and record its source
+      # commit, package version, declared dependency ranges and lockfile
+      # digest. Runs last so the manifest describes the artifact that
+      # would ship, not an intermediate build.
+      - 'pnpm run artifact:attestation:check' # artifact sha-256 / source / dependency manifest
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 
@@ -151,6 +446,9 @@ change_risk_mapping:
   architecture_boundary:
     gate: fast
     note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
+  storybook_story_change:
+    gate: fast
+    note: 'scripts/check-storybook-ownership.mjs walks every story the .storybook/main.ts stories globs match; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, an unresolvable in-src specifier or an unreadable subject set exits 2 (not run) instead of passing, and comments/strings are masked so a documented import example is not read as an edge'
   copy_locale_contract:
     gate: fast
     note: 'copy/resources.json declares which locale each capability is published in; scripts/check-copy-i18n.mjs rejects untranslated keys, keys a resource names but the feature never registered, fallback chains that cannot reach the source locale, and drift in numbers / placeholders / negation / permissions / typography. Locale coverage is opt-in per feature, so an unopted locale is information, not a failure.'
@@ -172,6 +470,23 @@ change_risk_mapping:
   release_branch:
     gate: release
 
+# Issue #484 — cache-header contract: NO new gate component.
+#
+# The response cache-header contract (Cache-Control / ETag / Vary across
+# Static Assets, SSR HTML and the external API) is enforced by tests
+# that ride the EXISTING `pnpm run test` entry point:
+#
+#   node --test scripts/cache-policy.test.mjs          (public/_headers)
+#   node --test scripts/cache-header-matrix.test.mjs    (the measurement tool)
+#   test/integration/cache-policy-matrix.test.ts         (vitest, SELF.fetch)
+#
+# `pnpm run cache:headers:measure` is deliberately OPT-IN and is called
+# by no gate: it needs a running production-equivalent server, it is a
+# measurement rather than a threshold, and wiring it into a gate would
+# turn a header contract into the performance gate that Issues #384 /
+# #385 / #386 own. The declared table lives in
+# `scripts/_cache-policy.mjs`; the operator-facing documentation is
+# `docs/verification/perf/cache-headers-matrix.md`.
 # Issue #482 — per-route initial JS/CSS byte budget.
 #
 # This is a SHIPPED-BYTES gate, not a performance gate. It is deliberately
@@ -211,6 +526,58 @@ bundle_budget:
     - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
     - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'
+# Issue #494 - personal-data review of the migrated corpus. Two axes,
+# in this order: MECHANICAL DETECTION (scripts/personal-data-review.mjs
+# extracts every personal-data candidate from a record's text and from
+# its image descriptors) and OWNER DECISION (only `decided_by: "owner"`
+# plus a stated `basis` may publish a record; everything else stays
+# `review_required` and is withheld whole).
+#
+# This is a GATE, not a report: the committed markdown review is
+# byte-compared against a fresh run, so a corpus or published-content
+# change that nobody re-reviewed fails.
+personal_data_review:
+  corpus: 'docs/migration/personal-data-review/corpus.json (synthetic fixtures only)'
+  library: 'scripts/personal-data-review.mjs (pure, zero npm dependency)'
+  command: 'pnpm run publication:redaction:check'
+  write_command: 'pnpm run publication:redaction:write'
+  report_command: 'pnpm run verify:publication-redaction-screenshot'
+  tests: 'node --test scripts/check-publication-redaction.test.mjs'
+  gate: fast
+  gate_placement: >-
+    gates.fast, after `pnpm run content:links:check` and before
+    `pnpm run routes:quality:check` (the neighbouring steps are named
+    rather than an absolute index, so inserting another gate does not
+    invalidate this note).
+  documentation: 'docs/security/personal-data-redaction.md'
+  artefact: 'docs/verification/privacy/publication-redaction-review.{md,webp}'
+  published_content_roots:
+    - 'copy'
+    - 'public'
+    - 'src/about'
+    - 'src/contact'
+    - 'src/portfolio'
+  published_content_exclusions:
+    - 'public/share/ - the `/share/<slug>/` static document surface is a separate delivery obligation with its own publication decision; this gate reviews migrated content, so it does not re-decide what is already published there.'
+    - 'src/home/, src/editorial/, src/routes/, src/admin/, src/i18n/ - component / route code whose copy is authored in this repository and reviewed in the pull request that added it, not migrated content. The scanned roots are the surfaces that carry migrated or declared identity data, the platform copy resources and the static assets a visitor can fetch. Extending the reverse scan to component copy needs a stated policy for placeholder contact values (a `user@example.com` form placeholder is shaped like a personal address), and that policy is an owner decision, not this gate''s to invent.'
+  statuses:
+    - 'pass - no error finding (a corpus with no pending record)'
+    - 'review - warnings only: records still awaiting the owner decision (W001) or withheld by owner decision (W002)'
+    - 'fail - a withheld record reached published content (E001), an approval lacks owner authority or a basis (E002 / E003), a DECLARED decision value is unknown (E004), published content carries an uncovered candidate (E005), the corpus is malformed or duplicated (E006 / E007), or the detector found nothing at all (E008)'
+  false_pass_guards:
+    - '`review_required` is the default for a missing or unknown decision value; the gate never infers an approval. A missing decision is the pending state (W001); only a DECLARED unknown value is an error (E004)'
+    - 'a record without candidates is still published only through an owner decision, so the clean path and the private path share one gate'
+    - 'E008: a corpus that yields zero candidates fails, and so does a corpus with no record at all, because a detector that never fires proves nothing and an empty corpus is the same failure with the records gone'
+    - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus. The published side of the digest is scoped to the files that carry a candidate, so a copy edit that carries none does not redden the gate'
+    - 'reports and CI output carry only rule id / field / offset / masked shape; a raw candidate value never leaves the gate'
+    - 'the published-content declaration is complete: every surface is either a scanned root or a declared exclusion with a reason, and the gate refuses to run (exit 2) when the declaration contradicts the walk — a scanned root inside a declared not-scanned surface, or a declared not-scanned surface inside a scanned root that no exclude prefix covers. The comparison is on a path boundary, so `src/about-legacy` is not inside `src/about/`'
+    - 'every published file is collected, image included: a file the text scan cannot read is collected by its NAME alone, so a migrated photo that lands in a published root is still scanned by the rule table (`D011`) and by the withheld record own file name (`E001`); the pixels stay an owner judgement (no OCR)'
+    - 'the gate runs only as the process entry point, and the comparison resolves both sides to their real path: a gate started through a symlinked path would otherwise run nothing and exit 0, which is a fail-open'
+  known_limits:
+    - 'no OCR: image PIXELS are not inspected, so a face, a photographed document or a handwritten address stays an owner judgement'
+    - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'
+    - 'the corpus is synthetic; real Miro / legacy-site / Notion imports arrive through the same shape but are not committed here (docs/personal/knowledge-model.md: no private data in the public repository)'
+    - 'the corpus may hold synthetic fixtures only, so E005 has no sanctioned way to pass for a real published contact value: the only coverage is an owner-approved corpus record, and the corpus may not carry private data. The site publishes no e-mail today, so nothing is broken; the tension is an owner decision'
 
 # Issue #492 — the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two
@@ -226,9 +593,10 @@ route_quality_coverage:
   tests: 'node --test scripts/check-route-quality-coverage.test.mjs'
   gate: fast
   gate_placement: >-
-    validate:fast, immediately before `pnpm run test` and after `pnpm run
-    publication:check` (the chain order belongs to release-0-6-3, so
-    this records the neighbouring steps rather than an absolute index).
+    gates.fast, after `pnpm run publication:check` and before `pnpm run
+    test` (the neighbouring steps are named rather than an absolute
+    index, so inserting another gate does not invalidate this note;
+    Issue #566 moved the chain out of package.json into this file).
   documentation: 'docs/verification/quality/route-quality-coverage.md'
   gate_families:
     - 'e2e' # implemented — Playwright spec asserts the rendered surface
@@ -246,6 +614,222 @@ route_quality_coverage:
     A new route file with no manifest entry fails the gate on purpose, so
     a ticket PR must either add the route as a gate target or record an
     exclusion reason for every gate family.
+
+# Issue #493 - Release quality dashboard. ONE HTML page that aggregates the
+# valid outputs this checkout already has for every declared quality
+# signal, and says per signal whether that output exists.
+#
+# It is a VISUALISATION, not a gate and not a measurement: it runs no
+# quality check, invents no number, and adds no line to any `gates.*`
+# components list below. The verdict always comes from someone else's
+# exit code (recorded by `quality:dashboard:record`) or from the presence
+# of a report another script wrote, so the boundary between "gate",
+# "performance measurement" (#384-#387) and "visualisation" stays intact.
+release_quality_dashboard:
+  roster: 'quality/release-dashboard.json'
+  state_source: 'quality/route-coverage.json (gate_families[].state)'
+  run_record: '.tmp/release-quality-runs.json (gitignored; regenerated per capture)'
+  command: 'pnpm run quality:dashboard:check'
+  record_command: 'pnpm run quality:dashboard:record'
+  report_command: 'pnpm run quality:dashboard:report'
+  screenshot_command: 'pnpm run verify:quality-dashboard-screenshot'
+  tests:
+    - 'node --test scripts/release-quality-dashboard.test.mjs'
+    - 'node --test scripts/record-release-quality-runs.test.mjs'
+  gate: none
+  gate_decision: >-
+    Deliberately absent from gates.fast / gates.integration / gates.release.
+    A visualisation that could fail a build would make its own PASS column
+    self-referential, and the roster it reads is malformed only in a way
+    the report command already reports as exit 1. Nothing about the
+    shipped product depends on this page.
+  states:
+    - 'PASS — a run record exists for this source SHA, the command exited 0, and every declared artefact is on disk'
+    - 'FAIL — a run record exists for this source SHA and the command exited non-zero'
+    - 'NOT RUN — no record / another SHA / skipped (build, network, browser, Worker) / report missing'
+    - 'N/A — the family is `planned` in quality/route-coverage.json (no runner exists yet)'
+  false_pass_guard: >-
+    `classifySignal` is pure and every branch without a positive signal
+    returns NOT RUN, so a missing report cannot read as PASS. A run record
+    from a different source SHA invalidates every row it covers.
+  documentation: 'docs/verification/quality/release-quality-dashboard.md'
+  artefact: 'docs/verification/quality/release-quality-dashboard.webp'
+
+# Issue #412 - HTML standards gate. An offline, Nu-Validator-compatible
+# engine checks the SSR documents for the three defect classes the
+# Issue names: invalid markup, duplicate ids and attribute errors. The
+# engine is deliberately NOT the public validator.nu endpoint: that
+# would upload every rendered document (including /admin pages and
+# their copy) to a third party, which the repository never does.
+# Issue #508 - the release gate must not turn an inspection that did not
+# run into a pass. `quality/release-gate.json` is the inventory of the
+# checks a release is expected to execute; the gate resolves every row
+# against the three `package.json` entry points and the CI `validate`
+# job and classifies it as pass / fail / not run / not applicable. It is
+# cheap by construction (a text scan of package.json, this profile and
+# the workflow), so it belongs in `validate:fast` and therefore in every
+# release. Paired with #492, which owns the same "the report may not
+# drift from reality" concern one level down, on routes.
+release_gate_coverage:
+  manifest: 'quality/release-gate.json'
+  fixtures: 'quality/fixtures/release-gate/{pass,missing-required-check,unregistered-command}.json'
+  command: 'pnpm run release:gate:check'
+  report_command: 'pnpm run release:gate:report'
+  screenshot_command: 'pnpm run verify:release-gate-screenshot'
+  tests: 'node --test scripts/check-release-gate-coverage.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, after `pnpm run app:icons:check` and before the trailing `pnpm run tools:artifact:check`'
+  documentation: 'docs/verification/security/release-gate-coverage.md'
+  surfaces:
+    - 'fast / integration / release — the `gates.<level>.components` plan executed by `scripts/run-quality-gates.mjs`, counted only when the entry point is exactly `node scripts/run-quality-gates.mjs <gate>` (run mode)'
+    - 'ci — the `run:` steps of .github/workflows/ci.yml jobs.validate, with the declared plan of a referenced `validate:<gate>` expanded'
+  statuses:
+    - 'pass — the command is reachable on every surface the row declares and its runner file exists'
+    - 'fail — the claim is contradicted (unregistered command, missing runner) or a required check is not run'
+    - 'not_run — the command exists but no declared release surface runs it; never counted as a pass'
+    - 'not_applicable — the inspection is not introduced, with a recorded reason; never counted as a pass'
+  silent_pass_guards:
+    - 'a required row whose declared surface no longer reaches it is an error, not a warning'
+    - 'deleting a `protected_checks` row, or flipping its `required` flag, fails (the intentional-omission guard)'
+    - 'an empty `protected_checks` list fails closed, so the guard cannot be disabled by emptying it'
+    - 'a `quality/profile.yaml` component with no `package.json` script (phantom step), or unreachable from its own entry point, is an error; the profile is treated as executed only when the entry point is exactly the one-line runner in run mode (a `--list` or chained body is not)'
+    - 'a security-family command on the release surface with no ledger row is reported as unaccounted'
+  known_limits:
+    - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
+    - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 44 `validate:fast` components'
+
+# Issue #464 - the connection scope / retention ledger. `docs/domain/
+# integrations.md` lists the candidate services and promotes none of
+# them, so nothing in the repository says what a connection would be
+# allowed to hold. The first ticket that asks for a token inherits that
+# gap, so the least-privilege set, the retention ceiling and the
+# revocation procedure are written down BEFORE any token exists, and a
+# cheap gate keeps the declaration honest three ways: structure (no
+# placeholder, no contradiction), consistency (the roster and the
+# status come from the domain document, not from this ledger), and
+# measurement (every reviewed connection is executed through the real
+# adapter and compared with what the ledger claims).
+integration_scope_ledger:
+  manifest: 'quality/integration-scope.json'
+  candidate_roster_source_of_truth: 'docs/domain/integrations.md (Current state table)'
+  adapter: 'src/http/integrations/scope-review.ts (reviewConnection — pure; no binding, network, storage or clock read)'
+  fixtures: 'src/http/integrations/fixtures.ts (local, synthetic requirements; frozen clock)'
+  probe_fixtures: 'quality/fixtures/integration-scope/{pass,published-without-allowlist,missing-revocation,false-green-approval,roster-drift,deferred-with-requirement}.json'
+  command: 'pnpm run integration:scope:check'
+  screenshot_command: 'pnpm run verify:integration-scope-screenshot'
+  tests: 'node --test scripts/check-integration-scope.test.mjs && node --test scripts/make-integration-scope-report.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, immediately after `pnpm run release:gate:check`'
+  documentation: 'docs/security/integration-token-scope.md'
+  verification_artifact: 'docs/verification/security/integration-scope-review.webp'
+  surfaces:
+    - 'fast / integration / release — the `gates.<level>.components` plan executed by `scripts/run-quality-gates.mjs`, counted only when the entry point is exactly `node scripts/run-quality-gates.mjs <gate>` (run mode)'
+  statuses:
+    - 'pass — the ledger is structurally complete, agrees with the domain roster, and every measured verdict equals the declared one'
+    - 'fail — a required field is missing, a reason is a placeholder, a candidate drifts from `docs/domain/integrations.md`, or a measurement contradicts the declaration'
+    - 'fail — a candidate declares a published surface, or an integration secret name is provisioned, while `allowlist.entries` is empty'
+  silent_pass_guards:
+    - 'a reviewed connection whose measured verdict differs from its `expected` verdict is an error, not a warning (false-green probe `false-green-approval.json`)'
+    - 'a probe fixture that no longer fails the gate fails the gate (the probes are re-run by the same command that prints the ledger)'
+    - '`/integrations/*` mounted with an empty owner allowlist is an error; the runtime side of the same claim is `src/http/integrations/boundary.test.ts`'
+    - 'a rendered cell that matches credential-shaped material is refused before a row is written; the ledger stores scope NAMES, never values'
+  known_limits:
+    - 'the ledger states what a vendor scope MEANS as of `source.verified_on`; a vendor-side change is not tracked automatically and must be re-verified in the promoting ticket'
+    - 'a candidate with no capability to scope yet is recorded as `review: deferred` with a reason; the adapter knows no requirement for it, so a grant naming it answers `unknown_integration`, and the gate errors when such a row grows a requirement'
+
+# Issue #479 - assets and threat model per feature unit. `docs/security/*.md`
+# describes the shipped controls one page at a time; nothing compared a
+# control with the asset it protects or the boundary it sits on, so the model
+# of the platform could drift away from the platform while every control
+# stayed green. `quality/threat-model.json` records the assets, trust zones,
+# boundaries, STRIDE threats, mitigations and review questions of each
+# feature unit, and the gate refuses any row that does not point at something
+# the repository contains. Fabricated attack surface is therefore a gate
+# failure, not a documentation style: an asset must name a real path or a
+# binding NAME, a node must name the file it claims to be, and every control
+# and mitigation must be a file on disk or a command a release runs.
+threat_model_coverage:
+  manifest: 'quality/threat-model.json'
+  fixtures: 'quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal,fabricated-binding}.json'
+  command: 'pnpm run threat:model:check'
+  report_command: 'pnpm run threat:model:report'
+  screenshot_command: 'pnpm run verify:threat-model-screenshot'
+  tests: 'node --test scripts/check-threat-model.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, before `pnpm run release:gate:check`'
+  documentation: 'docs/verification/security/threat-model.md'
+  diagram_capability: 'external-http-boundary (Issue #479 names "one independent feature unit")'
+  statuses:
+    - 'covered — the threat has at least one `implemented` mitigation and every mitigation `ref` exists on disk'
+    - 'uncovered — every mitigation is still `planned`; an error on a `live` capability, reported (never hidden) on a `planned` / `deferred` one'
+  silent_pass_guards:
+    - 'a threat whose mitigation or control cites a file that does not exist is `fail` — an unbuilt mitigation is not a mitigation'
+    - 'a node that names a `source` which does not exist is `fail`, so a diagram can never be drawn of a place the repository does not contain'
+    - 'an asset whose `source_of_truth` is neither an existing path nor the NAME of a runtime secret the Worker really binds is `fail`; a name nobody binds — an invented one or an audit-only one — is `fail` too, because it points a reviewer at a binding that is not there'
+    - 'a `live` capability may not carry an `uncovered` threat'
+    - 'a `planned` mitigation without the threat''s `follow_up` sentence is `fail` — unwritten hand-work is not tracked work'
+    - 'a review item that is not a question (`?`) is `fail`, so the model always carries something a reviewer can ask out loud'
+    - 'a control registry row whose claimant set disagrees with the capabilities that cite it, in either direction, is `fail`'
+    - 'deleting a `protected_capabilities` row, or demoting it to `planned` / `deferred`, is `fail`; an empty list fails closed'
+    - 'every manifest string is shape-scanned by `scripts/_secret-scan.mjs`; a credential-shaped value is `fail` and the error prints the JSON pointer only, never the value'
+    - 'an unknown key on any manifest object is `fail`, so an asset cannot quietly grow a `value` field'
+  secret_handling: >-
+    The ledger names assets and their source. It records a binding NAME (for
+    example `MY_WEB_2026_CONSUMER_API_KEY`, a name the Worker really binds)
+    and a path, never a value: no credential, no `.dev.vars` line and no
+    production secret may appear in `quality/threat-model.json`, in the
+    report, or in the committed artefact. The gate's own rejection fixture
+    is the single waiver added to `scripts/_secret-scan.mjs#ALLOWLIST`, and
+    it is a fixture the gate needs in order to prove it refuses.
+  known_limits:
+    - 'the gate proves a claim points at a real artefact; it does not re-run a control, and it cannot decide whether a mitigation is sufficient — that stays with the control''s own script and with review'
+    - 'a control file that exists but is disabled (a commented-out gate, a fixture-only test) is a review item, not something a text scan can decide'
+    - 'trust zones and node labels are declared, not derived; the diagram places a node by its declared zone and never invents one'
+    - 'a security-family command the release executes with no threat claiming it is a warning (`unaccounted`), not a release failure'
+    - 'the registry is a curated set of gates this model claims; it is not a copy of every `validate:fast` component'
+
+html_standards:
+  manifest: 'quality/html-standards.json'
+  engine: 'scripts/html-standards-contract.mjs'
+  gate: 'scripts/check-html-standards.mjs'
+  command: 'pnpm run html:standards:check'
+  report_command: 'pnpm run verify:html-nu-validator-screenshot'
+  live_command: 'node scripts/check-html-standards.mjs --live <baseUrl>'
+  tests:
+    - 'node --test scripts/check-html-standards.test.mjs'
+    - 'test/integration/html-standards.test.ts (workerd SELF, SSR half)'
+  gate_placement: 'validate:fast, beside the other pure-Node policy gates'
+  fixture_suite:
+    valid: 'test/fixtures/html-standards/valid-page.html'
+    invalid: 'test/fixtures/html-standards/invalid-page.html'
+    note: >-
+      The Issue's first acceptance condition is enforced structurally:
+      the invalid fixture MUST fail and the valid fixture MUST pass on
+      every run, and the invalid fixture must produce every rule listed
+      in `fixtures.expect` (a rule that stops firing fails) while
+      producing none of `fixtures.forbidden` (an engine false positive
+      fails).
+  silent_pass_guards:
+    - 'a published route id (src/routes/** + src/routeTree.gen.ts) with no manifest entry fails'
+    - 'a manifest route id no route publishes fails'
+    - 'a declared renderable route with no observation fails (route.unobserved)'
+    - 'a request that failed, a non-2xx, or a non-text/html response fails'
+    - 'a manifest rule the engine does not implement fails, and an engine rule the manifest omits fails'
+    - 'a waiver that suppresses no finding fails'
+  artefacts:
+    - path: 'docs/verification/standards/html-nu-validator.md'
+      source: 'the gate contract and its reproduction commands'
+    - path: 'docs/verification/standards/html-nu-validator.webp'
+      source: 'scripts/make-html-nu-validator-report.mjs (Playwright chromium + sharp)'
+  known_limits:
+    - 'subset of HTML5: the rule table covers the elements this repository renders, and an element name outside the table is not a finding'
+    - 'a `<` that does not open a tag is literal text (HTML5 text), and parsing continues after it'
+    - 'end tags HTML5 makes optional (p, li, dt, dd, td, th, ...) plus html/head/body are not unclosed-element at EOF, because HTML5 closes them for you; a required end tag at EOF is still reported'
+    - 'foreign content (<svg>/<math>) is not checked for attributes or nesting; id uniqueness still is'
+    - 'the SSR half validates the workerd documents as they render without HOME_API_KEY, so the home counter and reaction blocks are in their failure-fallback state there; the success state is what `--live <baseUrl>` covers'
+    - 'no external schema, no CSS, no ARIA role/attribute value vocabulary beyond the referenced-id graph'
+    - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>…</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, …) is still reported.'
 
 ci:
   workflow: .github/workflows/ci.yml
@@ -345,6 +929,57 @@ compat:
       differential is recorded in docs/development.md.
   cost_class: medium
 
+# Issue #413 — the shipped CSS is validated the way a specification
+# validator validates it, offline: a CSS-Syntax tokenizer + parser answers
+# "does this parse", and a reviewed vocabulary answers "does this name
+# exist". A syntax error in generated CSS is otherwise invisible — the
+# bundle builds, the declaration is dropped by the browser, and the page
+# renders with less styling than it reads. Compatibility (does it RUN in
+# the target browsers) stays with the Issue #414 gate above; this gate
+# answers a different question and never reads a Baseline snapshot.
+css_syntax:
+  manifest: 'quality/css-standards.json'
+  tool: 'scripts/check-css-syntax.mjs'
+  fixture_suite: 'node --test scripts/check-css-syntax.test.mjs'
+  command: 'pnpm run css:check'
+  report_command: 'pnpm run verify:css-screenshot'
+  documentation: 'docs/verification/standards/css-validated.md'
+  surfaces:
+    - id: panda-generated
+      kind: 'panda-cssgen → .tmp/css-syntax/panda-generated.css (gitignored)'
+      covers: 'preflight + tokens + recipes + utilities generated from panda.config.ts and src/**'
+    - id: src-css
+      kind: 'files (src/**/*.css)'
+      covers: 'hand-written sheets — src/styles.css @font-face descriptors, @layer order, reduced-motion override'
+  rules:
+    syntax:
+      - 'unclosed_block / stray_close_brace'
+      - 'missing_colon / missing_semicolon / empty_value'
+      - 'declaration_at_top_level / empty_selector / unclosed_rule'
+      - 'unterminated_comment / unterminated_string / bad_url'
+      - 'invalid_important / invalid_keyframe_selector'
+      - 'invalid_at_rule_prelude / nonempty_at_rule_prelude'
+    vocabulary:
+      - 'unknown_property / unknown_at_rule / unknown_function'
+      - 'invalid_enum_value (closed keyword grammars only; var() and CSS-wide keywords are excluded, as a validator must)'
+      - 'descriptor_outside_font_face / property_not_allowed_in_font_face'
+    allowlist:
+      - 'vendor prefixes are accepted only when the unprefixed property is in the vocabulary (require_known_unprefixed)'
+      - 'engine-specific and specification-permitted extensions are waived by name, with reason + basis URL + surface scope'
+      - 'every allowlist entry must still be in use (allow_unused)'
+    silent_pass_guards:
+      - 'a declared surface that yields no declarations fails (surface_empty)'
+      - 'a stylesheet under the coverage root owned by no surface fails (surface_uncovered)'
+      - 'a total declaration count below policy.min_declarations fails (vocabulary_underfloor)'
+      - 'an artifact that cannot be generated at all fails rather than reporting an empty sheet'
+      - 'a vendor prefix whose unprefixed counterpart is not in the vocabulary fails (vendor_prefix_unresolved)'
+      - 'a stylesheet the parser could not finish to eof fails instead of reporting the part it read as clean (parse_truncated)'
+    known_limits:
+      - 'value grammars are only checked for properties whose CSS grammar is a closed keyword list; a length, colour or url value is not parsed'
+      - 'selectors are tokenized (balanced parens/brackets, escapes) but their specificity and validity are not checked'
+      - 'the gate validates the CSS Panda generates, not a minified build artefact; point `--artifact <file>` at a built stylesheet to validate that instead'
+      - 'a declaration that is syntactically valid but overridden later is not reported — this gate answers validity, not effect'
+
 coverage_policy:
   enabled: false
   rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
@@ -381,6 +1016,75 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  secret_rotation_status:
+    enabled: true
+    issue: '#477'
+    command: 'pnpm run secrets:status:check'
+    report_command: 'pnpm run secrets:status:report'
+    gate: fast
+    implementation: 'scripts/check-secret-rotation-status.mjs (gate) + scripts/_secret-rotation-status.mjs (pure policy seam)'
+    tests: 'scripts/check-secret-rotation-status.test.mjs (discovered by scripts/run-script-tests.mjs, Issue #566)'
+    fixtures: 'quality/fixtures/secret-rotation-status/*.json'
+    policy_source_of_truth: 'scripts/_cloudflare-contract.mjs REQUIRED_RUNTIME_SECRETS / AUDIT_ONLY_SECRETS (injected, never re-declared in a script) + docs/runbook/infisical-secrets.md section 2.1 cadence column, projected into quality/secret-rotation-ledger.json'
+    operator_input: 'a recorded status-only observation (a check-cf-secrets transcript or a {environment, captured_at, missing, extra} record) passed with --observation; the gate never reads Infisical itself'
+    output_contract: >-
+      status-only (AGENTS.md section 4): names, verdicts, statuses, counts and
+      dates. No secret value is read, fetched, stored or printed. Enforced
+      rather than promised: an observation entry that is not a runbook section
+      3.2 name is refused before anything is rendered (the name grammar is the
+      enforcing gate), the ledger schema rejects unknown keys, and the rendered
+      text passes the leak guard before a byte is written.
+    failure_policy:
+      - 'MISSING / MISSING_ROW / EXTRA_ROW is DRIFT (exit 1)'
+      - 'a rotation past its cadence is OVERDUE (exit 1)'
+      - 'an unreadable or malformed ledger / observation, an unusable clock and a usage error are UNDECIDABLE (exit 2) — "could not read" is never a pass'
+      - 'UNEXPECTED / UNRECORDED / DUE_SOON / NOT_OBSERVED are advisories (exit 0): operational approval is a separate step (AGENTS.md section 6 human gate)'
+      - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+      - '--now is refused without --case, so the gate cannot be green-washed with a pinned clock'
+    open_owner_decision: >-
+      Every ledger row ships last_rotated_at: null, because this repository
+      cannot know when an operator rotated a production secret. UNRECORDED is
+      therefore an advisory today; whether it becomes blocking after the owner
+      records the dates, and whether the DUE_SOON window stays a gate default,
+      are owner calls recorded in docs/runbook/secret-rotation-status.md section 10.
+    runbook: 'docs/runbook/secret-rotation-status.md'
+    verification_artifact: 'docs/verification/security/secrets-status-only.webp'
+  security_disclosure:
+    enabled: true
+    issue: '#478'
+    tool: scripts/check-security-disclosure.mjs
+    ledger: quality/security-disclosure.json
+    runbook: docs/runbook/security-disclosure.md
+    fixtures: quality/fixtures/security-disclosure
+    gate: fast
+    check_command: 'pnpm run security:disclosure:check'
+    report_command: 'pnpm run security:disclosure:report'
+    verification_command: 'pnpm run verify:security-disclosure-screenshot'
+    mode: offline_status_only_simulation
+    output: 'verdict / priority / duty id / count / reason code only; never a reported value, payload, production URL or credential (AGENTS.md section 4)'
+    exit_codes:
+      0: 'the runbook, the ledger and every committed probe agree'
+      1: 'drift, a missing duty, an unregistered command, an unresolvable reference, or a probe that does not reproduce its expectation'
+      2: 'usage error (unreadable manifest / fixture)'
+    note: >-
+      Issue #478. The flow from a vulnerability report to the publication
+      decision, in two halves: docs/runbook/security-disclosure.md is the
+      operator procedure and quality/security-disclosure.json is its
+      machine-readable half (stages, ordered P0-P3 derivation, required
+      operator duties, forbidden operations). The gate proves the two
+      halves still describe each other and that the simulated flow
+      discriminates: the committed fixtures are run through the same pure
+      evaluator, so a missing duty and a public detail published before
+      the fix are INCOMPLETE rather than a pass, and a report carrying a
+      credential-shaped value is LEAK_REFUSED with a reason code instead
+      of the value. Hostile fixtures store a recipe, never a literal,
+      because a committed credential shape would fail pnpm run secret:scan.
+      It reads the working tree only — no Worker, no network, no D1/R2, no
+      environment credential, no .dev.vars, no Infisical call, and it
+      merges nothing. This gate does NOT decide the publication: the
+      reporting channel (Issue #468) and the release merge remain owner
+      decisions (AGENTS.md section 6). Open owner decision recorded in the
+      runbook section 11.
   log_redaction:
     enabled: true
     command: 'pnpm run log:redaction:check'
@@ -389,6 +1093,19 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  repository_static_secret_scan:
+    # Issue #475: the deterministic, pre-merge counterpart to the
+    # asynchronous host-side scan above. Same obligation (a credential must
+    # not be committed), earlier boundary (before merge, inside `validate`).
+    enabled: true
+    command: 'pnpm run secret:scan'
+    bundle_command: 'pnpm run secret:scan:bundle'
+    self_test_command: 'pnpm run secret:scan:self-test'
+    implementation: 'scripts/scan-secrets.mjs'
+    scope: 'tracked files + untracked-not-ignored files (source mode), build artifacts when present (bundle mode)'
+    output: 'status-only findings (path, line, detector, length, SHA-256 prefix); never a matched value (AGENTS.md section 4)'
+    runbook: 'docs/security/supply-chain-secret-scan.md'
+    note: 'Shape-based detection; complements, and does not replace, the asynchronous host-side scan.'
   sbom:
     enabled: true
     issue: '#471'
@@ -420,6 +1137,39 @@ security_gates:
       moved to a version the record never reviewed. It warns when an
       allow-list entry buys no build. Status-only output; no secret value
       is read or printed. Runbook: docs/runbook/install-script-audit.md
+  artifact_attestation:
+    enabled: true
+    issue: '#476'
+    tool: 'scripts/check-artifact-attestation.mjs'
+    gate: integration
+    command: 'pnpm run artifact:attestation:check'
+    report_command: 'pnpm run artifact:attestation:report'
+    manifest: 'release-assets/supply-chain/<version>/artifact-attestation.json (generated, gitignored)'
+    ci_artifact: 'artifact-attestation-<sha> (actions/upload-artifact@v4, 90 day retention)'
+    inputs:
+      - '.cloudflare/output/v0 (the final production-mode Build Output)'
+      - 'git HEAD (generation) / --source-sha, --release-tag or WORKERS_CI_COMMIT_SHA (verification)'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+    note: >-
+      Issue #476. Hashes every file in the GitHub Actions production-mode
+      Build Output (sha-256 aggregate) and records the source commit, package version,
+      declared dependency ranges, lockfile digest and resolved package
+      count. Fails closed on artifact drift, a source-commit mismatch, a
+      dirty tree, lockfile / dependency drift and an empty artifact. It
+      is an integrity manifest, not a signature: the document states
+      `unsigned` and every signature field is null, and a manifest that
+      claims an unverifiable signature fails. Generation refuses a
+      caller-supplied --source-sha / --release-tag and attests only the
+      checked-out HEAD. Verification can name the release tag instead of
+      a commit (`--release-tag=v<version>`): the tag must resolve to the
+      manifest's source commit and name its version, so a published
+      manifest can be gated on the release it claims. The artifact
+      Cloudflare Workers Builds actually deploys is still not attested
+      (open owner decision). A Cloudflare build UUID / deploy id is
+      recorded only when supplied, and is never fetched or authenticated
+      with a production credential. See
+      docs/security/supply-chain-artifact-attestation.md.
   submodule_provenance:
     enabled: true
     tool: 'scripts/check-submodule-provenance.mjs'
@@ -451,9 +1201,9 @@ security_gates:
     check_command: 'pnpm run dep-audit:check'
     report_command: 'pnpm run dep-audit:report'
     declaration: 'quality/dependency-advisory-gate.json'
-    enforcement: audit
+    enforcement: block
     blocking_severities: ['critical', 'high']
-    open_owner_decision: '`enforcement: audit` with 18 outstanding blocking advisories (3 critical) is the shipped state. Remediation, narrowing blocking_severities and per-package exception approval are owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
+    open_owner_decision: 'The gate runs `enforcement: block` (Issue #645): every critical/high advisory is remediated, except `braces` (GHSA-vfj7-8cjw-p6xm), which has no published patched version and is covered by one dated, tracked exception record (tracking Issue #669, expires 2027-01-31) whose grounds are dev-only build-tooling reachability. Renewing that record, narrowing blocking_severities and any further per-package exception approval remain owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
     ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
     entry_points: 'CI only — the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
     exit_codes:
@@ -478,6 +1228,7 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'knip baseline (quality/knip-baseline.json) hand-edited to silence findings instead of fixing the cause via pnpm run knip:update'
   - 'a performance/visualisation report wired into validate:fast / validate:integration / validate:release (see diagnostic_entry_points; budgets are Issue #383 / #385)'
 
 # Deterministic entry points that produce EVIDENCE without gating.
@@ -514,3 +1265,294 @@ diagnostic_entry_points:
     gates: none
     owner_issue: '#483'
     prerequisites: 'a built client output (pnpm exec vite build; scripts/build-tools.mjs + scripts/sync-cf-build-output.mjs for Tool artefacts) and, for the route matrix, a preview server'
+
+# Issue #577 — the R2 key-set audit. A gate that is deliberately in
+# NEITHER of the three entry points, and is operator-run rather than
+# CI-run.
+#
+# Unlike the dependency-advisory gate (#470), which is a CI step because
+# it only needs a public advisory endpoint, this gate reads a
+# PRODUCTION bucket. No workflow under .github/workflows/ holds a
+# Cloudflare credential (`grep 'secrets\.' .github/workflows/` is empty),
+# so CI has nothing to authenticate the read with; adding the production
+# R2 token to the Actions secret store would duplicate the Infisical SoT
+# that docs/runbook/cloudflare-workers-builds.md defines. The gate is
+# therefore a release step run by an operator holding the R2-scoped
+# credential, documented in docs/runbook/r2-media-key-set-audit.md and
+# listed in docs/release.md's sprint cycle.
+# Issue #480 - the Cloudflare configuration drift gate. Unlike the two
+# operator-run gates above (Issue #470 dependency advisories, Issue #577
+# the R2 key set) this one reads NOTHING remote: it evaluates
+# `cloudflare.config.ts` in development and production mode, compares the
+# result with the recorded contract, and checks the build / deploy
+# commands the Cloudflare dashboard runs against the `package.json`
+# scripts they name. That is why it belongs in `validate:fast` and
+# therefore in every release, and why it needs no credential at all: the
+# separation that keeps credentials out of CI costs this gate nothing.
+#
+# What it deliberately does NOT claim is written down in
+# `docs/runbook/cloudflare-config-drift.md`: the built artifact
+# (`cloudflare:contract:check:build`), the live Worker binding state, and
+# the Cloudflare Dashboard settings no local tool can read.
+cloudflare_config_drift:
+  command: 'pnpm run cf:config:drift:check'
+  report_command: 'pnpm run cf:config:drift:report'
+  implementation: 'scripts/check-cloudflare-config-drift.mjs (gate) + scripts/_cloudflare-drift.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-cloudflare-config-drift.test.mjs'
+  fixtures: 'quality/fixtures/cloudflare-config-drift/*.json (single-item mutation recipes, replayed against the live surface)'
+  contract_record: 'quality/cloudflare-config-drift.json (the recorded production surface; names and non-secret identifiers only)'
+  dimensions: 'bindings, routes, headers, build_commands, mode'
+  gate: 'validate:fast (and therefore validate:integration, validate:release and the CI validate job)'
+  trigger: 'local + every CI run'
+  credential: 'none. No Cloudflare API call, no token, no network, no mutation.'
+  output_contract: >-
+    status-only (AGENTS.md section 4): verdict, per-dimension finding
+    counts and reason codes. A secret binding is reduced to its NAME
+    during normalization, and a text var value that differs from the
+    record is printed as `<redacted len=N>` because an unexpected value is
+    where a credential would hide. The rendered report is checked by the
+    repository's own credential-shape detector before it is written.
+  failure_policy:
+    - 'one differing item FAILS the release gate (exit 1) - there is no tolerance band and no percentage threshold'
+    - 'an unreadable record / surface / `_headers` file, a record that cannot state the contract, or a report that would not be status-only are UNDECIDABLE (exit 2); an undecidable run is never a pass'
+    - 'a record whose SECTION exists but whose INNER contract is broken (a missing `static_asset_headers.required_paths`, an empty `build_commands`, a missing `development.routes`, ...) is UNDECIDABLE (exit 2) as well: the matching dimension would otherwise inspect NOTHING while the gate still reported MATCH'
+    - 'a record whose binding omits the comparison field its TYPE needs (`text` -> `value`, `d1` -> `name` + `id`, `r2` -> `name`, `rate-limit` -> `namespace` + `simple`) is UNDECIDABLE (exit 2) as well: that binding comparison would otherwise be skipped while the gate still reported MATCH'
+    - 'the recorded `static_asset_headers.required_paths` set is compared with the `public/_headers` rule paths in BOTH directions, and `baseline_rule` must be one of the declared paths: a rule the record does not declare, and a baseline no rule carries, are findings rather than a skipped comparison'
+    - 'a record that stores a value under a `secret` binding is refused as UNDECIDABLE instead of being compared, so a credential cannot enter the record'
+    - 'a `--case` run is a demonstration: its output says source=fixture and it is never a release verdict'
+  mutation: 'none - the gate reads repository files and evaluates the configuration in-process'
+  documentation: 'docs/runbook/cloudflare-config-drift.md'
+  verification_artifact: 'docs/verification/security/cloudflare-config-drift.webp'
+  owner_issue: '#480'
+r2_media_key_set_audit:
+  command: 'pnpm run r2:media:audit'
+  report_command: 'pnpm run r2:media:audit:report'
+  local_command: 'pnpm run r2:media:audit:local'
+  implementation: 'scripts/check-r2-media-key-set.mjs (gate) + scripts/_r2-media-key-set.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-r2-media-key-set.test.mjs'
+  fixtures: 'quality/fixtures/r2-media-key-set/*.json'
+  driver: 'scripts/_r2.mjs#listObjectKeysPage (read-only; no write path is reachable from the gate)'
+  policy_source_of_truth: 'src/cloudflare/media-visibility.ts PUBLIC_MEDIA_PREFIXES (injected, never re-declared in a script)'
+  gate: none
+  gate_placement: >-
+    deliberately outside validate:fast / validate:integration /
+    validate:release: it needs a remote read and an R2-scoped credential
+    that CI does not have, and validate:fast is offline and read-only by
+    contract. It runs as step 9 of the docs/release.md sprint cycle.
+  trigger: 'operator-run before a release PR is opened or merged'
+  credential: 'CLOUDFLARE_R2_API_TOKEN only (R2-scoped read). CLOUDFLARE_API_TOKEN (Worker deploy) and CLOUDFLARE_D1_API_TOKEN are never accepted as a fallback.'
+  output_contract: >-
+    status-only (AGENTS.md §4): verdict, counts and reason codes. No
+    object key, no key fragment, no credential, no raw CLI error text —
+    the rendered report is checked against the keys it audited before it
+    is written.
+  failure_policy:
+    - 'one key outside PUBLIC_MEDIA_PREFIXES FAILS the release gate (exit 1)'
+    - 'a missing credential, an API failure, an unrecognised listing shape, an empty production key set and a full page are UNDECIDABLE (exit 2) — an unread bucket is never a pass'
+    - 'a usage error also exits 2 and prints no verdict'
+    - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+    - 'a bucket of 1000 keys or more cannot be enumerated by this driver (no pagination cursor is exposed by the CLI), so a full page is reported as listing_incomplete rather than read as a whole bucket'
+  mutation: 'none — the gate issues one read (`cf r2 objects list`) and cannot reach a production write path'
+  documentation: 'docs/runbook/r2-media-key-set-audit.md + docs/security/r2-media-visibility.md'
+  verification_artifact: 'docs/verification/security/r2-media-key-set-audit.webp'
+  owner_issue: '#577'
+
+operator_mfa_audit:
+  command: 'pnpm run check:operator-mfa'
+  report_command: 'pnpm run verify:operator-mfa-checklist-screenshot'
+  implementation: 'scripts/check-operator-mfa.mjs (gate) + scripts/_operator-mfa-audit.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-operator-mfa.test.mjs && node --test scripts/make-operator-mfa-checklist-report.test.mjs'
+  fixtures: 'quality/fixtures/operator-mfa/*.json'
+  ledger: 'quality/operator-mfa-ledger.json (operator-declared; the repository holds no provider state)'
+  driver: 'none — no adapter, no network call, no binding. The four account states are not observable from a Worker, so the gate audits the operator-declared record instead.'
+  policy_source_of_truth: 'the ledger policy block (status / min_factors / require_phishing_resistant / max_confirmation_age_days) plus the SERVICE / FACTOR_KIND vocabularies in scripts/_operator-mfa-audit.mjs. Both vocabularies are null-prototype objects and membership is tested with Object.hasOwn, so a prototype key such as "toString" or "constructor" is an unknown member rather than an inherited one.'
+  gate: none
+  gate_placement: >-
+    deliberately outside validate:fast / validate:integration /
+    validate:release, for the same two reasons as r2_media_key_set_audit
+    plus one more: the shipped ledger is unconfirmed by design (no agent
+    can read a provider console, so no date this repository cannot verify
+    may be recorded), which means a CI step would be permanently red for a
+    condition only the owner can resolve. It is an operator-run gate over a
+    local file, with no credential and no remote read at all.
+  trigger: 'operator-run on the MFA review cadence, and before a release PR is opened'
+  credential: 'none — the gate reads one local JSON file and cannot reach a provider, a binding or a credential store'
+  output_contract: >-
+    status-only (AGENTS.md §4): service id, state, ISO confirmation date,
+    factor kind and reason code. No account identifier, enrolment list,
+    recovery code, credential or raw error text. The ledger schema has no
+    field in which an identifier can be written, identifier-shaped keys are
+    rejected with ledger_forbidden_field, and both the ledger file and the
+    rendered report go through the anonymization guard — a finding fails
+    the command instead of producing output or a page.
+  failure_policy:
+    - 'one unconfirmed / stale / missing service is OUTSTANDING (exit 1); a green tick is only reachable when all four rows are confirmed'
+    - 'an unreadable, unreconcilable, undatable or identifier-bearing ledger is UNDECIDABLE (exit 2) with no rows — an unread checklist is never a pass, and a partial reading is never rendered as a result'
+    - 'a confirmation date in the future, or older than a factor the same row lists, is UNDECIDABLE rather than confirmed'
+    - 'a service id or factor kind outside the enum — including an Object.prototype key such as "toString" or "constructor" — is UNDECIDABLE rather than counted toward min_factors'
+    - 'a recorded fixture must declare `now`; without it the fixture is rejected (fixture_clock_missing) instead of ageing against the wall clock'
+    - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+    - 'the report refuses to be written when a fixture drifted from its declared verdict, so the page cannot disagree with the assertions in scripts/check-operator-mfa.test.mjs'
+  mutation: 'none — the gate reads one local file and has no write path'
+  documentation: 'docs/runbook/operator-mfa-verification.md'
+  verification_artifact: 'docs/verification/security/operator-mfa-checklist.webp'
+  open_owner_decision: 'policy.status is "proposed": min_factors=2, require_phishing_resistant=true and max_confirmation_age_days=180 are Issue #469 defaults awaiting owner ratification. A pass while the status is proposed prints a note saying so.'
+  open_owner_decisions:
+    - 'factor counting: two entries of the same kind currently count as two factors (the schema cannot express factor identity). Counting distinct kinds, rejecting a duplicated kind, or adding an identity-free ordinal is a policy change, recorded in docs/runbook/operator-mfa-verification.md §5.1 and left undecided.'
+    - 'freshness window: ageing is computed on the row confirmed_at only, so a row written today is confirmed even when its factor dates are older than max_confirmation_age_days. Ageing on the older of the two, or declaring that only the row date expires, is a policy change recorded in the same section.'
+    - 'release checklist: docs/release.md step 9 still lists only r2:media:audit, so this gate has no durable enforcement point in the repository. Adding it beside the R2 audit is an owner decision; until then the trigger above is operational guidance, not an enforced step.'
+  owner_issue: '#469'
+
+# Issue #506 - the public Japanese copy editorial approval gate. A change
+# to the Japanese text a visitor reads is an editorial change, so the
+# change set is extracted from the pull request diff and matched against
+# an owner approval record. The editing aid (yomiyasu or a comparable
+# tool) is evidence; only an owner decision approves.
+#
+# It is deliberately NOT one of the three entry points: the gate judges
+# a DIFF, and a diff only exists against a base branch. `validate:fast`
+# is an offline, repository-state gate by contract, so the gate runs as
+# a step of the CI `validate` job instead - the same split as the
+# dependency advisory gate, which needs the registry.
+copy_editorial_approval:
+  surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs and no excludeGlobs)'
+  ledger: 'quality/copy-editorial-approvals.json (owner approval records, matched to a change set by fingerprint)'
+  command: 'pnpm run copy:approval:check'
+  screenshot_command: 'pnpm run verify:copy-editorial-approval-screenshot'
+  tests: 'node --test scripts/check-copy-editorial-approval.test.mjs'
+  fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,rejected,stale-approval,not-applicable}.json'
+  gate: ci
+  gate_placement: >-
+    the `Copy editorial approval gate` step of the CI `validate` job
+    (.github/workflows/ci.yml), before `validate:integration`. It runs
+    on `pull_request` events only: a push to a release branch has no
+    pull request diff to judge.
+  gate_placement_reason: >-
+    the gate needs the base branch, and actions/checkout is a depth-1
+    clone, so the step fetches the base ref explicitly. The step is
+    read-only: it diffs two refs and reads two JSON files.
+  statuses:
+    - 'pass - the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision)'
+    - 'fail - a review was recorded and it says no, or the record contradicts the change set (a stale fingerprint, a rejected decision, a comparison with no verdict)'
+    - 'not run (NEEDS REVIEW) - the review was never recorded; the pull request asks for an owner decision nobody has taken yet'
+    - 'not applicable - the change set changes no Japanese text in a public copy surface'
+  review_dimensions:
+    - 'proposal - the editing aid ran over the changed text and its suggestions were adjudicated (evidence, never approval)'
+    - 'semantic - every changed segment was compared with its original, and the comparison is written down'
+    - 'approval - the owner decided (approved / rejected), and the decision names its reviewer and its date'
+  binding: >-
+    an approval is bound to the fingerprint of the changed text, so it
+    cannot be reused for a different sentence; a pull request that
+    publishes other text does not inherit an earlier approval.
+  scope_note: >-
+    the surfaces are visitor-facing. Internal documents, skills, scripts,
+    tests, Storybook samples, design-system demo routes and the
+    authenticated /admin surfaces are not public copy and are not gated.
+    Extending the list is an owner copy decision.
+  out_of_scope:
+    - 'prose quality itself: register, honorifics, word order. The gate records a human decision; it never grades Japanese.'
+    - 'locale coverage: a capability''s published languages stay an opt-in copy decision in copy/resources.json.'
+    - 'page consolidation and the completion of the other languages - neither is a premise of this gate.'
+  documentation: 'docs/runbook/copy-editorial-approval.md'
+  verification_artifact: 'docs/verification/copy/editorial-approval-gate.webp'
+  owner_issue: '#506'
+
+# Issue #437 - the owner review-date gate for the time-sensitive public
+# copy. A public sentence that points at *now* decays: the set of
+# published works changes, the reachable channels change, the observed
+# status changes. The gate extracts the time-sensitive expressions of
+# the declared public copy surfaces and matches them against an owner
+# registry that records when the owner last read each of them.
+#
+# The gate is a repository-state gate (no diff, no network, no
+# credential), so it joins the fast chain. It is green on day one
+# because the shipped registry is complete; it turns red only when a
+# review is genuinely pending, and the owner clears that by re-reading
+# the expressions and recording new dates. That is the gate's purpose.
+#
+# What it deliberately does NOT do: it never removes a sentence from the
+# publication, never proposes a replacement wording, and never declares
+# an expression to be untrue. Unpublishing is an owner decision.
+stale_content_review:
+  registry: 'quality/stale-content-review.json (owner review dates, matched to the expression text)'
+  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads)'
+  command: 'pnpm run copy:stale:check'
+  screenshot_command: 'pnpm run verify:stale-copy-review-screenshot'
+  tests: 'node --test scripts/check-stale-content-review.test.mjs'
+  fixtures: 'test/fixtures/content/stale-review/{registry,surfaces}.json + src/fixture/page.tsx'
+  freshness_window_days: 90
+  statuses:
+    - 'current - a record exists and its review date is inside the freshness window'
+    - 'stale - a record exists and its review date is outside the freshness window (review pending)'
+    - 'unrecorded - no record covers this expression (review pending); a text edit invalidates the record'
+    - 'not-scanned - the locale is not opted in, so no review date is required for it'
+  review_dimensions:
+    - 'prose - wording, meaning, numbers, negation, permission (the editor''s obligation; docs/domain/i18n.md section 5)'
+    - 'typography - glyph, spacing, line breaking (the font stack''s obligation; docs/domain/i18n.md section 5)'
+  binding: >-
+    a record is bound to the expression TEXT, so editing a sentence
+    invalidates its record and the edited sentence waits for a review
+    again. The registry never travels to another sentence.
+  scope_note: >-
+    the detector reads the words that point at now (今日 / 現在 / 最新 /
+    今 / 現時点 and their Latin counterparts) and nothing else. Precision
+    matters more than recall: a noisy detector would make the registry
+    unreviewable.
+  out_of_scope:
+    - 'prose quality and typography themselves: the gate records a human decision and never grades either.'
+    - 'a duration without a now-word (a 30-day window) - the detector looks for words that point at now, not for time spans.'
+    - 'a Latin raw JSX text - the shared extraction only sees Japanese, so a Latin expression is collected from a string literal.'
+    - 'removing a sentence from the publication - that is an owner decision this repository cannot make for the owner.'
+  documentation: 'docs/domain/content-review.md'
+  runbook: 'docs/runbook/stale-content-review.md'
+  verification_artifact: 'docs/verification/content/stale-copy-review.webp'
+  owner_issue: '#437'
+# Issue #425 - the Japanese copy review-target report. It is the
+# COLLECTION half of the same concern as #506: it lists the Japanese text
+# a pull request changed in article Markdown, About prose and public UI
+# copy, with the original beside it, and surfaces number / negation /
+# permission drift. It approves nothing, rewrites nothing, and reads no
+# approval ledger.
+#
+# It is INFORMATIONAL and intentionally NOT one of the three entry
+# points and not a `validate:fast` component. `clear`, `review` and
+# `attention` all exit 0: un-reviewed prose is the normal state of a copy
+# change. The blocking decision belongs to #506, which asks whether a
+# public copy change carries an owner approval record. Only the explicit
+# local `--strict` flag turns an `attention` finding into exit 1.
+japanese_copy_review:
+  surfaces: 'quality/japanese-copy-review-surfaces.json (article Markdown globs plus a baseDeclaration pointer to quality/copy-editorial-surfaces.json, so public UI copy and About prose have one definition)'
+  command: 'pnpm run copy:diff:report -- --base=<ref>'
+  formats: 'text (default), json, html'
+  screenshot_command: 'pnpm run verify:copy-diff-report-screenshot'
+  tests: 'node --test scripts/collect-japanese-copy-review.test.mjs'
+  fixtures: 'test/fixtures/copy/japanese-diff-review/{article-markdown,meaning-risk,modified-ui,no-change}.json plus a credential fixture generated at run time'
+  gate: none
+  gate_placement: >-
+    the `Japanese copy review targets` step of the CI `validate` job
+    (.github/workflows/ci.yml), after the #506 approval gate. It runs on
+    `pull_request` events only and uploads the JSON / text report as an
+    artifact. It never fails on a review target.
+  gate_placement_reason: >-
+    the report needs the pull request's own diff, so it cannot run in the
+    offline `validate:fast` set. The step is read-only: it diffs two refs
+    and reads two JSON files.
+  statuses:
+    - 'clear - no Japanese text changed in a declared review scope'
+    - 'review - review targets exist; the list is for a human and is not a failure'
+    - 'attention - a number / negation / permission marker changed, or a credential-shaped line was withheld'
+  informational: true
+  strict_mode: '--strict exits 1 on attention; CI does not pass it.'
+  shared_extraction: 'scripts/_copy-japanese-diff.mjs (extractSegments / parseDiff / pairEditSegments), imported by both #425 and #506 so the two reports cannot disagree about the changed text'
+  boundary:
+    - 'approval: Issue #506 owns the blocking owner-approval decision; #425 never reads the ledger.'
+    - 'typography: Issue #428 (copy:i18n:check) owns mechanical line-break / full-width / spacing rules; #425 never grades typography.'
+    - 'prose quality: register, honorifics and word order are human judgments; #425 only lists the text.'
+    - 'locale opt-in: copy/resources.json remains the authority; #425 changes no locale and applies to Japanese only.'
+  known_gap: >-
+    article prose that lives only in D1 or a Notion import is not in the
+    repository and cannot appear in a pull request diff; it is outside
+    the declaration rather than silently skipped.
+  documentation: 'docs/runbook/japanese-copy-review.md'
+  verification_artifact: 'docs/verification/copy/japanese-diff-report.webp'
+  owner_issue: '#425'

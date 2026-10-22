@@ -275,6 +275,27 @@ pnpm run validate:release      # + cf-typegen:check
 `validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
 (下記「UI copy の locale 契約」参照)。
 
+### gate と test の配線先（Issue #566）
+
+`validate:fast` / `:integration` / `:release` の npm script はそれぞれ 1 行で、
+実行順序は [`quality/profile.yaml`](../quality/profile.yaml) の
+`gates.<name>.components`（1 行 1 コマンド）が正:
+
+```bash
+node scripts/run-quality-gates.mjs fast --list  # 直接実行のみ。npm script の body では拒否される
+```
+
+- **gate を追加する**: 適切な gate の `components` に 1 行足す（gate 固有の説明コメントを
+  同行に置く）。`package.json` も workflow YAML も触らない。1 行 1 コマンドのみ受理され、
+  読めない構造・存在しない `pnpm run <script>`・合成サイクルは exit 2 で fail closed。
+- **実行順と exit code**: 宣言順に実行し、最初の失敗で停止してその子プロセスの exit code を
+  そのまま返す（従来の `&&` 連結と同じ意味）。
+- **scripts の test**: `pnpm run test` は `scripts/run-script-tests.mjs` に委譲し、
+  `scripts/*.test.mjs` を規約で発見する。test を追加しても `package.json` は変更しない。
+  到達可能性は `pnpm run test:wiring:check`（`scripts/check-test-wiring.mjs`）が
+  「発見規則がファイルを拾うこと」と「いずれの npm script からも runner が
+  参照されていること」を含めて証明する。
+
 `pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
 判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
 `panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは
@@ -282,6 +303,33 @@ surface に明示しない限り走査されない。バー未満の採用は fa
 evidence が検証できた場合のみ warning、fallback 宣言が無い採用は fail。定義は
 `quality/browser-baseline.json`、詳細は
 [`docs/verification/standards/browser-baseline.md`](verification/standards/browser-baseline.md)。
+
+`pnpm run compat:stress:check` measures a static fixture that mirrors the
+shipped layout language at the narrowest supported viewport (320px) with a
+scrollbar forced into play (Issue #416).
+On a host that paints overlay scrollbars (macOS Chromium, reserved gutter
+0px) the gutter half of the gate degrades to a recorded
+`gutter_not_observable` warning rather than a pass — see
+[`docs/verification/compat/stress-story.md`](verification/compat/stress-story.md).
+It is a standalone static fixture — no Worker, no route, no dev server — and
+every run also measures three deliberately broken variants of the same document
+so the detector has to catch them by name; a surviving control exits 2 rather
+than passing. Chromium is required (`pnpm run e2e:install`), so this gate is
+NOT part of `validate:fast` (offline / read-only / cheap by contract); its pure
+half runs in CI through `scripts/check-layout-stress.test.mjs`, which is wired
+into `pnpm run test`. Details and the last report are in
+[`docs/verification/compat/stress-story.md`](verification/compat/stress-story.md).
+
+`pnpm run css:check` は出荷 CSS（Panda が `panda cssgen` で生成するシートと
+`src/**/*.css`）を CSS Syntax parser とレビュー済み vocabulary で検証する
+gate（Issue #413）。構文エラー・未知 property / at-rule / value function・
+プロパティ文法外の keyword は fail し、vendor prefix は prefix 無し側が仕様定義済みの
+ときだけ、`engine 固有プロパティ` は名前・理由・basis URL・surface スコープを持つ
+allowlist エントリだけを受理する（何も抑止していないエントリも fail）。
+`compat:check` が「対象ブラウザで動くか」を答えるのに対し、こちらは
+「parsable か・名前が存在するか」を答える。定義は `quality/css-standards.json`、
+詳細は
+[`docs/verification/standards/css-validated.md`](verification/standards/css-validated.md)。
 
 CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
@@ -423,6 +471,104 @@ pnpm run build-storybook # static build to ./storybook-static
 `build-storybook` is part of `validate:integration`. The static
 output is gitignored.
 
+### Story ownership gate (#509)
+
+A story is feature-local UI: it renders a component with props, so its
+runtime import closure must stay inside the obligation that owns it.
+`pnpm run storybook:ownership:check` walks every story the `stories`
+globs in `.storybook/main.ts` actually match — the walk starts from
+each glob's non-glob prefix, so a story declared outside `src/` is a
+subject too — and fails when the closure reaches a foreign boundary:
+
+| Boundary | Why it is foreign for a preview |
+| --- | --- |
+| `src/routes/**` | route contract — pulling it in drags the whole app graph |
+| `src/server.ts` | Worker entrypoint |
+| `src/http/**` | external HTTP boundary (Hono) |
+| `src/cloudflare/**` | owns the bindings; a preview has none |
+| `cloudflare:workers` | Workers virtual module — does not resolve in a browser |
+
+Excluded on purpose, and reported as `not applicable` in the output:
+the four boundary *paths* above (they are the rule's targets, not its
+subjects — a story living inside one is listed there too, not counted),
+`import type` and `import { type A } from` edges (both erased by
+`verbatimModuleSyntax`, AGENTS.md §3; a clause that still binds one
+runtime name stays a runtime edge), npm packages, the generated
+`styled-system/` layer and static assets. A *source* file outside
+`src/` is not a leaf — it is walked like any other module, so an
+external story cannot reach a boundary through a sibling helper; an
+unresolvable path outside `src/` is printed as `external`).
+`cloudflare:workers` is not a path, so it appears as a violation and
+under known limitations instead.
+
+The walk reads imports off a masked copy of each module — comments,
+string literals and template text are blanked first — so a story that
+*shows* an import example is not read as an edge, and an import-shaped
+comment is not read as a **server-function seam** that would stop the
+walk. The same mask reads the `stories` globs, so a commented-out
+`stories: [...]` above the real config cannot become the subject set. A
+template literal without an interpolation stays readable as a
+placeholder, because `import(`../x`)` names a real specifier, and a `/`
+that follows a keyword (`return /['"]/.test(x)`) is read as a regular
+expression rather than a division. Inside a server-function seam (a
+module that value-imports `createServerFn`) the walk stops **inside a
+`.handler(…)` body and nowhere else**, because that body is what the
+start compiler plugin removes from the client build. Every other edge
+of the module — a module-level `import { env } from
+'cloudflare:workers'`, a side-effect import, an `export … from`
+re-export — is evaluated when the module loads, so it is walked
+whichever export the story asked for. Narrowing a module-level edge by
+the bindings a story imports is unsound: a module can bind `env` at
+module level, read it only inside the handler, and still be pulled
+into the preview by a story that imports nothing but its export types.
+So server-only bindings are resolved with `await import(…)` **inside**
+the handler body (`src/home/reactions/load.ts`,
+`src/admin/emoji-catalog/load.ts`), and a dynamic `import()` outside
+every handler body is walked even when no export reaches the
+declaration that holds it. The seam edge itself is printed as `seam`,
+not hidden. The factory is found under whatever local name the module
+imports it as (`import { createServerFn as serverFn }`), a
+regular-expression literal is consumed whole including its terminating
+slash and flags, a space or comment between `import` and `(` is
+allowed, and an import shape — an alias, a namespace import, a default
+import, a barrel re-export — is only another hop in the chain the
+report prints.
+
+```bash
+pnpm run storybook:ownership:check
+pnpm run storybook:ownership:check -- --json=.tmp/storybook-ownership.json
+```
+
+`--json=<path>` creates the parent directory, so the documented
+`.tmp/…` path works on a fresh checkout.
+
+Exit codes: `0` every subject passed, `1` at least one foreign-boundary
+reach, `2` a subject could not be fully resolved or the subject set
+could not be read (`not run` — reported as NOT a pass, so an incomplete
+walk, a glob outside the repository and a non-literal `stories` entry
+can never be mistaken for green). When the subject set is empty the
+message says whether no story matched the globs or every match was
+excluded as living inside a foreign boundary. The gate is wired into
+`validate:fast`, and `scripts/check-storybook-ownership.test.mjs` covers
+it with pass / fail / not-run / not-applicable fixtures.
+
+Known limitations are printed with the report. The one to remember
+when adding code: only the `~/` alias is resolved, so an alias-shaped
+specifier (`@/…`) reads as an external package and would hide a
+boundary behind it — add the alias to the checker when it is added to
+the bundler config.
+
+The `docs/verification/platform/storybook-ownership-check.webp`
+screenshot in #576 is a rendering of this gate's text report; re-create
+it from `--json` output, the gate itself needs nothing but the command
+above. Issue #509 names a `.png` for this screenshot; the repository
+ships it as `.webp` at the same path stem under the WebP policy / #452
+precedent, and the intermediate PNG is not committed. Whether the
+Issue path should be amended to `.webp` or a `.png` should also be
+added is an owner decision, recorded as an open item in the PR body
+(the same substitution is already stated for
+`docs/verification/perf/bundle-map.webp` above).
+
 ## Playwright E2E
 
 Playwright 1.63.x covers the deployed Worker smoke. Three surfaces
@@ -512,6 +658,97 @@ node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を�
 
 契約の意味、schema、2 番目の locale を opt-in する手順は
 [`copy/README.md`](../copy/README.md) を参照。
+
+## 公開日本語 copy の編集レビュー承認 (Issue #506)
+
+訪問者が読む日本語の文言を PR で書き換えたとき、その変更に **owner の判断** が
+記録されていることを要求する gate。対象は「公開日本語 copy の surface」
+（`quality/copy-editorial-surfaces.json` の opt-in glob 宣言）と、判断記録
+（`quality/copy-editorial-approvals.json`）の 2 ファイル。gate 自体は
+`src/**` を import せず、差分と 2 つの JSON だけを読む。
+
+```bash
+pnpm run copy:approval:check -- --base=release-0-7-0   # gate（base 必須）
+pnpm run copy:approval:check -- --base=release-0-7-0 --print-fingerprint
+node scripts/check-copy-editorial-approval.mjs --base=release-0-7-0 \
+  --format=html --out=.tmp/copy-editorial-approval.html
+node --test scripts/check-copy-editorial-approval.test.mjs  # 4 状態の fixture
+```
+
+判定は 4 状態: `pass` / `fail`（レビューがあり否定） / `not run`
+（NEEDS REVIEW。レビューが未記録） / `not applicable`（公開日本語の変更なし）。
+編集補助ツールの出力は **evidence** であり approval ではない。
+
+この gate は **差分** を対象にするため、`validate:fast` ではなく CI の
+`validate` ジョブの `Copy editorial approval gate` ステップ（`pull_request`
+イベントのみ）で走る。運用手順は
+[`docs/runbook/copy-editorial-approval.md`](../runbook/copy-editorial-approval.md)、
+検証記録は
+[`docs/verification/copy/editorial-approval-gate.md`](../verification/copy/editorial-approval-gate.md)。
+
+## 公開 copy の review date (Issue #437)
+
+「今」を指す公開 copy（`現在` / `最新` / `今日` / `今` など）は時間とともに古びる。
+その文面ごとに **owner が最後に読んだ日** を記録し、window を越えたら
+**review pending** として列挙する gate。対象は 2 ファイル:
+**公開 copy の surface 宣言**（`quality/copy-editorial-surfaces.json` — #506 と
+同じ宣言を読むので「公開 copy」の定義は 1 つだけ）と、**owner の記録**
+（`quality/stale-content-review.json`）。
+
+```bash
+pnpm run copy:stale:check                          # gate
+node scripts/check-stale-content-review.mjs --format=html \
+  --out=.tmp/stale-content-review.html
+node --test scripts/check-stale-content-review.test.mjs  # 4 状態の fixture
+```
+
+判定は 4 状態: `current` / `stale`（review pending） / `unrecorded`
+（review pending。記録が無い、または文を書き換えて記録が失効した） /
+`not-scanned`（locale が opt-in されていない）。
+
+この gate は **差分ではなくリポジトリの状態** を見るので、`validate:fast` に
+入る（`quality/profile.yaml#gates.fast.components`）。**判断できないときは
+exit 2** で、pass にはしない。gate は `src/**` に書かない・文を消さない・
+置換文案を提案しない・採点しない。公開からの除去は owner の決定である。
+
+契約の本文は [`docs/domain/content-review.md`](../domain/content-review.md)、
+運用手順は
+[`docs/runbook/stale-content-review.md`](../runbook/stale-content-review.md)、
+検証記録は
+[`docs/verification/content/stale-copy-review.md`](../verification/content/stale-copy-review.md)。
+
+## 日本語 copy のレビュー対象レポート (Issue #425)
+
+#506 が「誰が承認したか」を問うのに対し、#425 は「何が変わったか」を集める。
+記事 Markdown、About prose、公開 UI copy の変更された日本語を、原文と変更後を
+並べて review target として出し、数値・否定・権限のマーカーが変わった場合は
+`number-drift` / `negation-drift` / `permission-drift` として明示する。
+
+**このレポートは gate ではない。** `clear` / `review` / `attention` のいずれも
+exit 0 であり、未レビューの文章で CI を落とさない。承認は #506 の owner 記録だけが
+行い、本レポートは文章を書き換えず、draft を公開せず、承認台帳を読まない。
+組版は #428 (`copy:i18n:check`) の責務であり、本レポートは文章そのものを列挙する。
+
+```bash
+pnpm run copy:diff:report -- --base=release-0-7-0          # text
+pnpm run copy:diff:report -- --base=release-0-7-0 --format=json
+pnpm run copy:diff:report -- --base=release-0-7-0 --strict # attention を exit 1
+node --test scripts/collect-japanese-copy-review.test.mjs
+```
+
+対象は `quality/japanese-copy-review-surfaces.json` の opt-in 宣言である。
+公開 UI copy と About の glob は #506 の
+`quality/copy-editorial-surfaces.json` を `baseDeclaration` として参照し、
+記事 Markdown の glob だけを足す。抽出・diff の helper は
+`scripts/_copy-japanese-diff.mjs` に 1 つだけあり、#425 と #506 が共有する。
+
+CI では `validate` ジョブの `Japanese copy review targets` ステップ
+（`pull_request` イベントのみ）が JSON / text を
+`japanese-copy-review-report-<sha>` artifact として残す。`validate:fast` には
+入れない（差分を読むため）。運用手順は
+[`docs/runbook/japanese-copy-review.md`](../runbook/japanese-copy-review.md)、
+検証記録は
+[`docs/verification/copy/japanese-diff-report.md`](../verification/copy/japanese-diff-report.md)。
 
 ## Cross-engine compat matrix
 

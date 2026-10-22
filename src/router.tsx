@@ -6,6 +6,7 @@ import type {
 	ParsedLocation,
 } from '@tanstack/react-router';
 import { NotFoundState, ServiceUnavailableState } from './editorial/error-states';
+import { RoutePendingState } from './editorial/waiting';
 import { routeTree } from './routeTree.gen';
 
 /**
@@ -56,6 +57,20 @@ import { routeTree } from './routeTree.gen';
  * The contract itself (what is published, what is withheld, which
  * surfaces still answer) lives in `src/editorial/error-states/`; this
  * file only binds it to the framework's three resolution points.
+ *
+ * Waiting surface (Issue #489)
+ * ----------------------------
+ * `defaultPendingComponent` is the fourth binding, and it is the one
+ * that covers a request that has NOT failed yet. Without it the
+ * framework renders nothing for a pending match: a client-side
+ * navigation on a slow link left the previous page on screen under a
+ * URL that had already changed — 4.1s of that on a 4s cold route
+ * download, 12.1s on a stall (measured, see
+ * `docs/verification/perf/slow-network-state.md`). It belongs here for
+ * the same reason as the other three: `Match.tsx` resolves
+ * `route.options.pendingComponent ?? router.options.defaultPendingComponent`
+ * per match, so a root-level option would not cover a child route that
+ * is the one waiting.
  */
 export function getRouter() {
 	return createTanStackRouter({
@@ -65,6 +80,7 @@ export function getRouter() {
 		context: {},
 		defaultNotFoundComponent: RouteNotFoundSurface,
 		defaultErrorComponent: RouteFailureSurface,
+		defaultPendingComponent: RoutePendingState,
 	});
 }
 

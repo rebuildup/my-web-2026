@@ -87,14 +87,28 @@ export const ROBOTS_PATH = '/robots.txt';
  * two SEO documents joined the list in Issue #420 — they are routes on
  * the same boundary, and a contract that had never heard of them
  * would call a correct `src/server.ts` drifted.
+ *
+ * `/.well-known` joined it in Issue #468 for the same reason plus one:
+ * RFC 9116's `security.txt` is a `text/plain` document (so Hono owns
+ * delivery, not a route file), AND the whole well-known namespace is
+ * machine-readable by definition — a crawler has no business indexing
+ * any of it, so the namespace is declared once here rather than being
+ * re-classified path by path if a future well-known document lands.
+ *
+ * `/media` joined it in Issue #634: it streams gated R2 objects, not
+ * documents. There is no HTML to index, and the path is deliberately
+ * unguessable-by-design (an unapproved key answers the same 404 as a
+ * missing one), so a sitemap entry would be wrong twice over.
  */
 export const EXTERNAL_BOUNDARY_PREFIXES = Object.freeze([
 	'/api/v1',
 	'/webhooks',
 	'/oauth',
 	'/integrations',
+	'/media',
 	ROBOTS_PATH,
 	SITEMAP_PATH,
+	'/.well-known',
 ]);
 
 /**
@@ -161,11 +175,30 @@ const ROUTE_INTENT = [
 		reason: 'Public profile page.',
 	},
 	{
+		paths: ['/keyboard'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public read-only keyboard reference. Indexable and linked from /about, but not a ' +
+			'public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
 		paths: ['/contact'],
 		zone: 'public',
 		crawl: 'allow',
 		index: 'sitemap',
 		reason: 'Public contact channels.',
+	},
+	{
+		paths: ['/projects/dotfiles'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public project introduction generated from a committed README snapshot. It is not a nav ' +
+			'destination and is deliberately not advertised in the sitemap; crawlers discover it from ' +
+			'the GitHub repository and other external links, never from a generated inventory entry.',
 	},
 	{
 		paths: ['/design-system'],

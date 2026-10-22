@@ -4,8 +4,10 @@
 		"origin": "https://rebuildup.dev",
 		"firstPartyDomain": "rebuildup.dev",
 		"externalBoundaryPrefixes": [
+			"/.well-known",
 			"/api/v1",
 			"/integrations",
+			"/media",
 			"/oauth",
 			"/robots.txt",
 			"/sitemap.xml",
@@ -191,6 +193,20 @@
 				"reason": "Publicly reachable showcase, but it is intentionally outside the editorial IA (SUPPRESS_BREADCRUMB_LEAF_IDS), so it is not a sitemap target."
 			},
 			{
+				"id": "/keyboard",
+				"path": "/keyboard",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/keyboard.tsx"
+				],
+				"urls": [
+					"/keyboard"
+				],
+				"reason": "Read-only keyboard reference; renders the committed source snapshot and is linked from /about, but is not a sitemap target."
+			},
+			{
 				"id": "/portfolio/",
 				"path": "/portfolio",
 				"classification": "public",
@@ -222,6 +238,20 @@
 					"/portfolio/tastile"
 				],
 				"reason": "Per-project detail. Expands from the repo-controlled portfolio seed slugs; the loader serves `visibility = public` rows only."
+			},
+			{
+				"id": "/projects/dotfiles",
+				"path": "/projects/dotfiles",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/projects.dotfiles.tsx"
+				],
+				"urls": [
+					"/projects/dotfiles"
+				],
+				"reason": "Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory."
 			},
 			{
 				"id": "/tools/",
@@ -275,6 +305,7 @@
 			"/admin/login",
 			"/contact",
 			"/design-system",
+			"/keyboard",
 			"/portfolio",
 			"/portfolio/aulymo",
 			"/portfolio/multi-slicer",
@@ -282,12 +313,16 @@
 			"/portfolio/project-init",
 			"/portfolio/sciencearts-optim-internship-2026",
 			"/portfolio/tastile",
+			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
 			"/tools/prototype",
 			"/tools/readmark"
 		],
 		"externalHosts": [
+			"*.analytics.google.com",
+			"*.google-analytics.com",
+			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
 			"design.google",
@@ -298,9 +333,11 @@
 			"github.com",
 			"host.invalid",
 			"json-schema.org",
+			"raw.githubusercontent.com",
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
+			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
 			"www.apache.org",
@@ -397,6 +434,33 @@
 				]
 			},
 			{
+				"url": "https://*.analytics.google.com",
+				"host": "*.analytics.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
+				"url": "https://*.google-analytics.com",
+				"host": "*.google-analytics.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
+				"url": "https://*.googletagmanager.com",
+				"host": "*.googletagmanager.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
 				"url": "https://361do.booth.pm",
 				"host": "361do.booth.pm",
 				"kind": "external",
@@ -475,7 +539,10 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/routes/__root.tsx"
+					"src/http/content-security-policy.ts",
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -503,7 +570,19 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/routes/__root.tsx"
+					"src/http/content-security-policy.ts",
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},
 			{
@@ -535,6 +614,142 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/dotfiles",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/DotfilesIntroductionPage.tsx",
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026",
 				"host": "github.com",
 				"kind": "external",
@@ -547,6 +762,16 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/security-txt/README.md",
+					"src/http/security-txt/policy.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md",
 				"host": "github.com",
 				"kind": "external",
@@ -556,12 +781,32 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/issues",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/status/incidents.ts",
+					"src/home/status/tiles.stories.tsx"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/releases",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/portfolio/components/EmptyState.tsx"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/pc-setup",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/projects/DotfilesIntroductionPage.tsx",
+					"src/projects/snapshots/dotfiles.json"
 				]
 			},
 			{
@@ -709,6 +954,51 @@
 				]
 			},
 			{
+				"url": "https://raw.githubusercontent.com",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/load.ts"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -716,8 +1006,10 @@
 				"files": [
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
+					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
+					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",
@@ -753,6 +1045,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/keyboard",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/keyboard.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/portfolio",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -769,6 +1070,15 @@
 				"identifier": false,
 				"files": [
 					"src/http/seo/README.md"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/projects/dotfiles",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/projects.dotfiles.tsx"
 				]
 			},
 			{
@@ -828,12 +1138,33 @@
 				]
 			},
 			{
+				"url": "https://script.google.com",
+				"host": "script.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://use.typekit.net",
 				"host": "use.typekit.net",
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html"
+					"external/prototype/index.html",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://use.typekit.net/app",
+				"host": "use.typekit.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx"
 				]
 			},
 			{
@@ -843,6 +1174,15 @@
 				"identifier": false,
 				"files": [
 					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.googletagmanager.com",
+				"host": "www.googletagmanager.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
 				]
 			},
 			{
@@ -940,46 +1280,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://example.com",
-			"https://example.com/frame",
-			"https://example.com/safe",
-			"https://www.w3.org/International"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"example.com"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/frame"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/safe"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.w3.org/International"
-			}
-		]
+		"findings": []
 	}
 }

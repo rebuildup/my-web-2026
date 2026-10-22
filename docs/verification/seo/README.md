@@ -1,8 +1,8 @@
 # SEO / structured data verification
 
-> Issue #422 の検証成果物と、その再現手順。
-> 対象は schema.org の `Person` / `CreativeWork` と、本リポジトリが
-> route ごとに宣言した構造化データの契約。
+> Issue #422 / #418 / #421 の検証成果物と、その再現手順。
+> 対象は schema.org の `Person` / `CreativeWork`、公開 route の `<head>`
+> メタデータ、そして link unfurler へ公開する Open Graph / Twitter card。
 
 ## 何が検証されるのか
 
@@ -74,3 +74,39 @@ route ごとの期待値:
   `test/integration/fixtures/structured-data-snapshot.json` から読む。
   同ファイルは integration suite が実 SSR HTML と `toEqual` で照合して
   いるため、画像は CI が検証していない document を描写し得ない。
+## 画像
+
+- `head-metadata-check.webp` — Issue #418 の `<head>` メタデータ gate。
+  詳細は [`head-metadata-check.md`](head-metadata-check.md)。
+- `ogp-preview.webp` — Issue #421 の Open Graph / Twitter card gate
+  （代表 URL の card preview と missing media の fallback 行）。
+  詳細は [`ogp-preview.md`](ogp-preview.md)。
+- `sitemap-browser.webp` — sitemap / robots の検証。
+
+## gate 一覧
+
+| Issue | gate | 入口 |
+| --- | --- | --- |
+| #418 | 公開 route の title / description / canonical | `test/integration/seo-head.test.ts` / `pnpm run seo:head:check -- --live <url>` |
+| #421 | Open Graph / Twitter card（missing media の fallback 含む） | `test/integration/ogp-card.test.ts` / `pnpm run ogp:card:check` |
+| #422 | structured data（JSON-LD） | `test/integration/structured-data.test.ts` / `pnpm run structured-data:check` |
+
+## HTTP status 契約（#419）
+
+このディレクトリの別系統として、**response status** の契約検証を置いて
+います（[`http-status-contract.md`](./http-status-contract.md)）。
+
+| 成果物 | 内容 |
+| --- | --- |
+| `scripts/_seo-status-contract.mjs` | 宣言された契約（26 case / 15 route） |
+| `pnpm run seo:status:check` | route 網羅性と proof の紐付けを検査する `validate:fast` gate |
+| `test/integration/seo-status-contract.test.ts` | workerd で実 SSR 応答を実測 |
+| `e2e/seo-status.spec.ts` | 実ブラウザで document の描画と `robots` meta を実測 |
+| `404-and-500-state.webp` | Issue #419 指定の `.png` の `.webp` 版（実応答 2 枚の撮影 + 契約表 + 実行結果） |
+
+- `head-metadata-check.webp` / `structured-data-report.webp` は `<head>` と
+  構造化データ（宣言内容）の検証、`404-and-500-state.webp` は
+  **status / robots / 描画される surface** の検証。対象が重ならない。
+- sitemap / robots.txt の**内容**そのものは #423 の `index:boundary:check`
+  と `check-structured-data-coverage.mjs` が持ち、本 Issue は
+  「未公開コンテンツが indexable な応答にならないこと」を応答側で固定する。

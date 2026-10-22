@@ -66,6 +66,32 @@ const forbiddenOwnerDependencies = new Map([
 	// open for a promoting capability is an owner decision recorded in
 	// `docs/verification/ops/api-timeout-fallback.md` §7.
 	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `keyboard` (Issue #620) owns the read-only keyboard-layout
+	// reference: the allowlisted source snapshot, its provenance, the
+	// Kanata / hidutil parsers and the key-position display model. It is
+	// a peer surface, not a layer: it composes `editorial` primitives
+	// and may not reach into another peer obligation, the route layer,
+	// the Cloudflare runtime or the inbound HTTP boundary.
+	[
+		'keyboard',
+		new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'server.ts']),
+	],
+	// `projects` (Issue #621) owns the public project-introduction contract:
+	// the committed snapshot shape, its reader-side validation, and the page
+	// that composes it. It is a peer obligation to `home` / `portfolio` /
+	// `about`, so it may not import those owners, the route layer, the
+	// Cloudflare runtime or the inbound HTTP boundary. It composes
+	// `editorial` primitives and reads only its own committed snapshot.
+	['projects', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `legal` (Issue #497) owns the publication-rights review contract for
+	// the assets this repository ships and references: which rights
+	// holder, which licence and which evidence back a shipped byte, and
+	// what a reader is shown. It is a peer obligation, not a layer: it
+	// reads a committed record, composes `editorial` primitives, and
+	// touches no binding, no peer obligation, no route and no boundary.
+	// The gate (`scripts/check-asset-licenses.mjs`) is a consumer, not
+	// an exception: it imports the same rules, so the rules stay in `src/`.
+	['legal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'logging'])],
 ]);
 
 /**
@@ -91,7 +117,7 @@ const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
  * special-cased per file. The RULE the leaf states — "policy depends
  * on nothing" — is still enforced on every implementation module.
  */
-const leafOwners = new Set(['i18n']);
+const leafOwners = new Set(['i18n', 'privacy']);
 
 function isTestFile(path) {
 	return /\.(test|spec)\.tsx?$/.test(relative(srcRoot, path).split(sep).join('/'));

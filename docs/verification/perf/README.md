@@ -11,6 +11,8 @@ rather than merged into one narrative.
 | Lazy media / iframe の遅延ロード契約 | #487 | `lazy-media-waterfall.webp` |
 | Client bundle map | #483 | `bundle-map.webp` (see `bundle-map.md`) |
 | Large-list pagination measurement | #490 | `large-list-pagination.webp` (see `large-list-pagination.md`) |
+| 反復操作時の listener / memory プロファイル | #488 | `interaction-memory-profile.webp` (see `interaction-memory-profile.md`) |
+| 低速回線・CPU 制限で待機 UI が成立するかの測定 | #489 | `slow-network-state.webp` (see `slow-network-state.md`) |
 
 ---
 
@@ -644,6 +646,21 @@ markup」しか見ないので、hydration の後に client コードが挿入�
   コミットはこの README とこの画像ファイルだけで、測定対象のコード
   （`src/**` / `e2e/**` / ビルド出力）には差分が無い。ソース SHA を head に
   合わせる必要はありません。
+- **例外 — Issue #498（PR #651）**: #498 で `e2e/lazy-media.spec.ts` の
+  tool-route leg が「同意ゲートを activate してから測る」契約へ変わり、
+  測る対象 document が activate 前のものになった（`preActivationIframeCount`
+  の行が増えた）。つまり**この画像は測定コードより前に測ったもの**で、
+  tool-route 行の document bytes は現行の契約と一致しない。画像は
+  **counter enabled**（桁ストリップ有効）の環境で測ったものなので、
+  counter disabled（CI の既定状態）で再生成すると別の document shape になり、
+  この README の A/B 表（90,115 → 90,339）と矛盾する。よって画像は据え置き、
+  差分だけを明記する。再生成は counter enabled の環境で
+  `pnpm run e2e -- e2e/lazy-media.spec.ts` → `pnpm run lazy-media:report`
+  （Issue #487 の operator 作業）。
+- 参考 — 現行 head で同じ spec を走らせた実測では、測れる行は変わらない:
+  iframe src は `/tools/prototype/app/index.html`、そして activate 前の iframe
+  は **0 件**（新しい契約の主張）。違うのは「測る対象 document が activate
+  前になった」点だけ。
 - 画像里の surface 行は固定文言ではなく**測定値から導出**する。
   `LAZY_MEDIA_ENV='dev server (vite dev)'` で測った dev SSR document を
   「`pnpm run build` 出力（dev server ではない）」と表示しない。別 document

@@ -827,6 +827,38 @@ function ExternalHandlesFooter({
 							</li>
 						))}
 					</ul>
+					<nav aria-label="サイト内リファレンス">
+						<a
+							href="/keyboard"
+							className={css({
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: '2',
+								paddingBlock: '2',
+								paddingInline: '4',
+								borderRadius: 'full',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.subtle',
+								color: 'text.accent',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+								textDecoration: 'none',
+								_hover: {
+									borderColor: 'border.strong',
+									textDecoration: 'underline',
+								},
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							キーボード配列 / Keyboard
+							<span aria-hidden="true">→</span>
+						</a>
+					</nav>
 				</div>
 			</Container>
 		</footer>

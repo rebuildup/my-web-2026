@@ -8,15 +8,263 @@ of trusting the image.
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
 | [`frame-ancestors-test.webp`](frame-ancestors-test.webp) | #448 | `pnpm run verify:frame-ancestors-screenshot` |
+| [`csp-report.webp`](csp-report.webp) | #447 | `pnpm run verify:csp-report-only-screenshot` |
 | [`ssrf-url-adapter.webp`](ssrf-url-adapter.webp) | #453 | `pnpm run security:ssrf:report` |
 | [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 | [`headers-browser.webp`](headers-browser.webp) | #449 | `node scripts/security-header-report.mjs` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
+| [`integration-scope-review.webp`](integration-scope-review.webp) | #464 | `pnpm run verify:integration-scope-screenshot` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
+| [`tool-artifact-inventory.webp`](tool-artifact-inventory.webp) | #466 | `pnpm run verify:tool-artifact-inventory-screenshot` |
+| [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
+| [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
+| [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
+| [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
+| [`secrets-status-only.webp`](secrets-status-only.webp) | #477 | `pnpm run secrets:status:report` |
+| [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+| [`threat-model-diagram.webp`](threat-model-diagram.webp) | #479 | `pnpm run verify:threat-model-screenshot` |
+| [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
+| [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`d1-backup-restore.webp`](d1-backup-restore.webp) | #461 | `pnpm run verify:d1-backup-restore-screenshot` |
+| [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
+| [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
+| [`r2-public-delivery-gate.webp`](r2-public-delivery-gate.webp) | #634 | `pnpm run r2:public-delivery:report` — see [`## r2-public-delivery-gate.webp`](#r2-public-delivery-gatewebp-issue-634) |
+
+## `anomaly-monitor-fixture.webp` (Issue #481)
+
+Admin と外部 API の 401 / 403 / 429 / 5xx 発生率がしきい値を超えたとき、
+**秘密・IP などの個人情報を含まない**検知イベントが生成されることを、
+記録済み fixture で確認した結果。7 ケース（正常 2 / 異常 4 / 持続 1）を
+`src/http/middleware/anomaly-monitor.ts` に通し、宣言どおりのイベント数か
+を判定する。イベント 0 のケースが pass である点がこの proof の主張で、
+「鳴らないこと」まで検証している。
+
+- status-only 契約どおり、address / e-mail / credential 形状は出力・HTML
+  ともに走査し、1 件でも検出すると非ゼロ終了する（拒否は行番号のみ）。
+- fixture は status と件数だけで、リクエストも credential も発行しない。
+- 画像だけでは proof にならない。しきい値の根拠・正常時の観測・
+  異常時の修復手順は [`docs/security/request-anomaly-monitor.md`](../../security/request-anomaly-monitor.md)。
+
+Regenerate:
+
+```bash
+pnpm run anomaly:fixture:proof             # fixture proof（status-only）
+pnpm run verify:anomaly-monitor-screenshot # -> この画像（WebP）
+```
+
+## `disclosure-runbook.webp` (Issue #478)
+脆弱性報告 → priority 判定 → 修正 → release gate → 公開判断の **模擬フロー**。
+`quality/security-disclosure.json`（ledger）と
+`docs/runbook/security-disclosure.md`（runbook）を同じ純関数が評価し、
+`quality/fixtures/security-disclosure/` の合成 fixture 5 本を通した結果
+（`COMPLETE` / `INCOMPLETE` / `LEAK_REFUSED`）を 1 枚に写したものである。
+画像に写っているのは fixture によるシミュレーションであり、実在の報告・
+実在の攻撃者・本番の実測ではない。credential-shaped な値は fixture に
+保存せず（レシピだけ保存する）、出力は reason code までで止まる。
+判定の権威は exit code と
+`node --test scripts/check-security-disclosure.test.mjs` であり、画像は証拠で
+あって判定の代用ではない。
+```bash
+pnpm run security:disclosure:check             # 判定（exit 0 / 1 / 2）
+pnpm run security:disclosure:report            # .tmp/security-disclosure-report.html
+pnpm run verify:security-disclosure-screenshot # WebP at the path above
+```
+Issue は `disclosure-runbook.png` と書いているが、同ディレクトリの他 artefact
+と同じく WebP で納める（Playwright は WebP を書けないため、メモリ上の capture
+を `sharp` で再エンコードし、途中 PNG は作らない）。手順・異常時の code 一覧・
+scope の外は [`docs/runbook/security-disclosure.md`](../../runbook/security-disclosure.md) に正本がある。
+
+## `r2-restore-proof.webp` (Issue #462)
+公開画像が `MEDIA` から 1 件消えたときの復旧手順を、**credential 不要・本番非接触**
+の fixture proof で実行した結果。`quality/fixtures/r2-media-restore/` の 7 記録ケース
+（復旧成功 / 冪等 / private namespace 拒否 / source 不在 / manifest 不一致 /
+write 欠損 / 判別不能）を `src/cloudflare/media-restore.ts` に通し、
+宣言どおりに振る舞ったかを判定する。実行先は process 内の Map で、
+Cloudflare への read / write コードパスは存在しない。
+判定を左右するのは「成功したか」だけでなく **「write しなかったか」** である。
+`bucketAfter=absent` を宣言した 3 ケース（private 拒否 / source 不在 /
+manifest 不一致）は、書いた瞬間に逸脱として落ちる。
+status-only 契約どおり、画像には object key・key 断片・namespace・
+source path・credential を写していない（生成側が実行前に同じ leak guard を通し、
+1 件でも検出すると非ゼロ終了する）。手順と失敗時挙動は
+[`docs/runbook/r2-media-restore.md`](../../runbook/r2-media-restore.md)、
+実 R2 binding での検証は
+`pnpm exec vitest run test/integration/r2-media-restore.test.ts`。
+Regenerate:
+```bash
+pnpm run r2:restore:proof          # fixture proof（status-only）
+pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
+```
+
+## `d1-backup-restore.webp` (Issue #461)
+
+使い捨ての local workerd D1 binding (`env.DB`) に合成行を seed し、
+export → drop → import → read-back を実行した結果。2 テーブル / 6 行 /
+明示 index を対象に、復元後の schema（`sqlite_master.sql` をそのまま
+再作成）と行集合が元の export と完全に一致することを確認している。
+画像の後半は失敗時の挙動で、truncated JSON / rowCount 不一致 /
+digest 不一致は **import を組み立てる前に拒否**され、制約違反で失敗した
+batch は **全体が rollback** されてテーブルが 1 つも残らないことを示す。
+危険なのは「何もしないこと」ではなく「一部だけ書かれた DB が成功と
+報告されること」なので、この proof は verdict だけでなく実行後の
+DB 状態も判定する。
+
+本番 DB・remote D1・credential・deploy は一切使っていない。fixture の行は
+固定文字列・固定数値・3 byte の BLOB だけで、個人情報も実在の識別子も
+含まない。画像には database id・table 名（fixture 名を除く）・row 値・
+bucket/key 一覧を写していない。
+
+```bash
+pnpm run d1:backup:proof                    # local D1 に対する 7 ケース
+pnpm run verify:d1-backup-restore-screenshot # -> この画像（WebP）
+```
+手順と失敗時の code 一覧、実テスト DB での operator 手順は
+[`docs/runbook/d1-backup-restore.md`](../../runbook/d1-backup-restore.md)
+に正本がある。
+
+## `asvs-coverage-matrix.webp` (Issue #507)
+
+OWASP ASVS 5.0.0 からこの platform が実際に公開している surface に該当する
+項目だけを選んだ coverage ledger。ASVS certification ではない（manifest の
+`standard.certification` は `false` 固定で、`true` にすると gate が error になる）。
+
+4 状態（`pass` / `fail` / `not run`（未検証）/ `N/A`）を区別して表示し、
+`not run` と `N/A` は pass 件数に入れない。適用対象なのに証跡が無い項目は
+「未検証」として、未来の手作業（`follow_up`）ごと一覧される。宣言した
+test / doc / gate が repository に無ければ `not run` ではなく `fail` になる。
+
+下半分は false-green probe。`quality/fixtures/asvs-coverage/` の 4 fixture
+（`pass` / `missing-evidence` / `missing-follow-up` / `unregistered-gate`）を
+同じ評価関数で走らせ、不正な主張が fail に落ちることを見せる。probe と実行手順は
+[`asvs-coverage-probes.webp`](asvs-coverage-probes.webp)（同じコマンドが生成）に分けた。
+画像は証拠であってテストの代用ではない。判定は `pnpm run asvs:check` の終了コードと
+`node --test scripts/check-asvs-coverage.test.mjs` が担保する。
+
+Regenerate:
+
+```bash
+pnpm run asvs:check             # 判定（exit 0 / 1）
+pnpm run asvs:report            # .tmp/asvs-coverage-report.html
+pnpm run verify:asvs-coverage-screenshot # WebP at the path above
+```
+
+Issue は `asvs-coverage-matrix.png` と書いているが、同ディレクトリの他 artefact と同じく
+WebP で納める（Playwright は WebP を書けないため、`sharp` でメモリ上の capture を
+再エンコードし、途中 PNG は作らない）。テキストが対象なので `nearLossless` を優先し、
+300 KB 予算に収まる最高 quality を選ぶ。読む手順と「対象外 / 将来の手作業」の
+一覧は [`docs/verification/security/asvs-coverage.md`](asvs-coverage.md)。
+
+## `threat-model-diagram.webp` (Issue #479)
+
+The per-capability threat model ledger
+([`docs/verification/security/threat-model.md`](threat-model.md))
+as one reviewable page: the SVG trust boundary diagram of the capability
+the Issue asks for (the external HTTP boundary — columns are the trust
+zones, boxes are nodes, arrows are declared boundaries labelled with the
+controls on them), that feature unit's threats in full (STRIDE, scenario,
+asset, mitigation and its state) with its review questions, a compact
+roster of the other eight feature units, the false-green probe, and the
+observation / repair table for each way the gate can fail.
+
+The rows are the shipped code's own verdicts: the diagram geometry, the
+threat statuses and the five probe verdicts are all produced by
+`scripts/check-threat-model.mjs`, the same module
+`node --test scripts/check-threat-model.test.mjs` asserts on. Every
+claim is resolved against the working tree — an asset names a path that
+exists or the name of a runtime secret the Worker really binds, a
+mitigation names a file that exists — so a
+picture of an attack surface the repository does not contain cannot be
+produced. The run refuses to render at all while the ledger has an error,
+so the page can never show a green verdict over a failing tree.
+
+The committed manifest `quality/threat-model.json` stays the complete
+record: the page is the review view of it, not a copy. The per-threat
+scenarios of the eight roster capabilities live in the manifest, and the
+roster carries their STRIDE category, asset and verdict.
+
+The Issue names `threat-model-diagram.png`; the artefact ships as WebP
+for the same reason as the files above — Playwright cannot write WebP, so
+the generator re-encodes the in-memory capture with `sharp` (width ≤
+1600 px), writes no intermediate PNG, and refuses any non-`.webp` target.
+
+Nothing secret is in the picture: the ledger records assets by name and
+source, the gate shape-scans every manifest string and never prints the
+value it refused, and the generator re-reads its own markup to confirm the
+probe credential did not reach the page. The ledger render is a text scan —
+no Worker, no binding, no network call; the capture afterwards drives the
+chromium the E2E suite already installs, locally and offline.
+
+Regenerate:
+
+```bash
+pnpm run threat:model:check             # the verdict (exit 0 / 1)
+pnpm run threat:model:report            # .tmp/threat-model-report.html
+pnpm run verify:threat-model-screenshot # WebP at the path above
+```
+
+## `release-gate-missing-check.webp` (Issue #508)
+
+The release report and the commands the release really runs, as one
+reviewable page: every inspection the project ships gets one row, and the
+row is resolved against the transitive `pnpm run` closure of
+`validate:fast` / `validate:integration` / `validate:release` plus the CI
+`validate` job. The page carries four distinct statuses — `pass` /
+`fail` / `not run` / `N/A` — and the last two are never counted as a
+pass: an inspection that did not run is reported as an inspection that
+did not run.
+
+The lower half is the false-green probe: the same pure evaluator runs on
+`quality/fixtures/release-gate/pass.json` (a complete release) and on
+`missing-required-check.json`, the same world with one required
+inspection removed from the chain. The second verdict is FAIL, which is
+the Issue's first acceptance condition. The image is evidence, not the
+test — `node --test scripts/check-release-gate-coverage.test.mjs` asserts
+the verdicts and reads the same fixtures.
+
+Regenerate:
+
+```bash
+pnpm run release:gate:check             # the verdict (exit 0 / 1)
+pnpm run release:gate:report            # .tmp/release-gate-report.html
+pnpm run verify:release-gate-screenshot # WebP at the path above
+```
+
+The Issue names `release-gate-missing-check.png`; the artefact ships as
+WebP for the same reason as `redirect-validation.webp` below —
+Playwright cannot write WebP, so the generator re-encodes the in-memory
+capture with `sharp` (width ≤ 1600 px, quality 74) and never writes an
+intermediate PNG. Reading guide:
+[`docs/verification/security/release-gate-coverage.md`](release-gate-coverage.md).
+
+## `integration-scope-review.webp` (Issue #464)
+
+OAuth / 外部連携 token の最小権限レビュー（Issue #464）。3 段構成:
+
+1. **候補表** — `quality/integration-scope.json` の宣言（required /
+   optional / never accepted、保管期限、revoke 期限）。roster の SoT は
+   `docs/domain/integrations.md` で、gate は両者の drift を落とす。
+2. **測定表** — ledger の `reviewed_connections` を
+   `src/http/integrations/scope-review.ts` の `reviewConnection()` に
+   通した結果。`approved` だけでなく `unapproved_scope` と
+   `reauth_required` が同じ表に並ぶことが、この report の存在理由。
+   `review: "deferred"` の候補（Stripe）は `unknown_integration` として
+   並ぶ——scope review が存在しないことを「主張」ではなく測定結果として
+   見せるため。宣言と測定が食い違えば gate が fail する。
+3. **false-green probe** — `quality/fixtures/integration-scope/` の 6 件。
+   ledger への patch 形式なので repository から乖離しない。
+
+scope **名**と frozen な時刻だけを描画し、token 値・アカウント email・
+bucket / key 一覧は一切読まない・描かない・保存しない。`/integrations/*` は
+handler 未 mount（完全 consent 済み grant でも 404）で、この report は
+adapter を記録したものであり、公開済み接続を記録したものではない。
+契約の本文は
+[`docs/security/integration-token-scope.md`](../../security/integration-token-scope.md)。
+判定は `pnpm run integration:scope:check`、画像は
+`pnpm run verify:integration-scope-screenshot` が生成する。
 
 ## `webhook-signature-fixture.webp`
 
@@ -108,6 +356,32 @@ was added). Each is rejected by
 "denied" means without reading the source. Nothing secret is in the
 picture: the suite runs against the local workerd pool's dummy bindings
 and the gate reads two static files and the `public/` tree.
+
+## `csp-report.webp` (Issue #447)
+
+The CSP Report-Only observation (Issue #447) as two measured layers:
+the `Content-Security-Policy-Report-Only` value on real Worker
+responses in the local workerd pool, and a Chromium probe against a
+loopback document carrying that exact header. The browser table shows
+the positive case (same-origin image, no event) and the negative case
+(unlisted origin, one `img-src` event with `disposition: report`, not a
+block).
+
+The Issue names `csp-report.png`; the artefact ships as WebP in the same
+directory, following the repository screenshot rule (width ≤ 1600,
+quality 80). `scripts/make-csp-report-only-report.mjs` runs the
+integration suite with Vitest's console output enabled, reads its
+`CSP_REPORT_ONLY_MEASUREMENT` marker, starts a loopback-only HTTP server,
+probes it with the Playwright Chromium already installed for the E2E
+suite, and re-encodes the screenshot in memory with `sharp`. No
+production request, credential, or D1/R2 mutation is involved. The
+matching browser contract is `e2e/csp-report-only.spec.ts`.
+
+Regenerate with:
+
+```bash
+pnpm run verify:csp-report-only-screenshot
+```
 
 ## `log-redaction-test.webp`
 
@@ -378,3 +652,139 @@ The Issue asked for `markdown-xss-fixture.png`. The committed file is
 `markdown-xss-fixture.webp` instead: same pixels, ~10x smaller, so the
 repository does not carry a large binary. The PNG intermediate is
 written to `.tmp/` and is not committed.
+
+## `tool-artifact-inventory.webp` (Issue #466)
+
+The Tool artefact license / dependency / outbound inventory gate's own
+HTML report, rendered in a browser, for the synthetic host repository
+`scripts/make-tool-artifact-fixture.mjs` builds: one Tool whose license
+file contradicts the manifest, one with no license file at all, one whose
+lockfile drifted since it was reviewed, and one whose collected artefact
+references a host outside the reviewed set — next to the healthy entry
+that passes. The picture has to come from a fixture because this
+repository is (correctly) never in a drifted state.
+
+Reading guide: [`docs/tools/runbook.md` §7](../../tools/runbook.md). The
+script exits non-zero unless the gate really failed, and re-reads the
+rendered page to confirm the fixture's credential-shaped URL did not
+survive redaction, so the committed image cannot become the place where a
+credential-shaped string is published.
+
+## `secrets-status-only.webp` (Issue #477)
+
+The secret drift / rotation-deadline gate's own dashboard, rendered from
+`quality/fixtures/secret-rotation-status/*.json`: an inventory that
+matches, a name the recorded observation reports missing, a rotation past
+its cadence, an environment name the Worker does not bind, the state this
+repository is actually in today (no observation, no recorded rotation
+date) and the fail-closed case where a recorded listing carries
+something that is not a name. Section 4 additionally runs the *shipped*
+`quality/secret-rotation-ledger.json` so the page never shows a healthier
+picture than the repository has.
+
+Every number on the page comes from RUNNING the same pure seam the CLI
+uses, and the `expect` block each case declares is what
+`node --test scripts/check-secret-rotation-status.test.mjs` asserts — so
+the page cannot drift from the assertions behind it. No secret value is on
+the page: the fixtures hold names only, and the report is run through the
+same leak guard the CLI applies to its own output before a byte is
+written.
+
+The image is evidence, not the verdict. The verdict is
+`pnpm run secrets:status:check` and the test suite; the observation and
+remediation procedure is
+[`docs/runbook/secret-rotation-status.md`](../../runbook/secret-rotation-status.md).
+
+Regenerate:
+
+```bash
+pnpm run secrets:status:check    # the verdict (exit 0 / 1 / 2)
+pnpm run secrets:status:report   # .tmp/secrets-status-only-report.html
+```
+
+No capture script is committed for this artefact (the same disclosure
+this directory already makes for `markdown-xss-fixture.webp`): the page
+above was screenshotted from the report HTML during Issue #477 and
+committed directly. `pnpm run secrets:status:report` reproduces the page;
+turning it back into this exact file is a manual capture.
+
+### Format note
+
+The Issue asked for `secrets-status-only.png`. The committed file is
+`secrets-status-only.webp` instead, like every other artefact in this
+directory: the PNG intermediate was written to `.tmp/` and re-encoded in
+memory with `sharp`, and is not committed.
+
+The committed file is **1280 x 3643, VP8 (lossy), 490,070 bytes (~479
+KB)** — a long text-dense page, so it is the largest artefact in this
+directory. Re-encoding that file at `quality: 80` (483,706 bytes) or at
+`quality: 80, nearLossless: true` (488,260 bytes) changes nothing, so
+lossy is what is committed and no further compression is claimed.
+
+## `operator-mfa-checklist.webp` (Issue #469)
+
+The operator MFA / Passkey confirmation gate's own report, rendered in a
+browser. The top table runs the shipped operator ledger
+(`quality/operator-mfa-ledger.json`) and seven recorded fixtures through the
+same seam the CLI uses: one `confirmed`, one 未確認 row, a missing service, a
+stale confirmation, a record that contradicts itself, a ledger carrying an
+account identifier, and a factor kind taken off `Object.prototype`. Each row
+shows the verdict, the exit code and the four state counts, so 未確認 can never
+be read as a green tick — and a prototype key cannot be counted as a second
+enrolled factor.
+
+The shipped ledger is shown **unconfirmed on purpose**: no agent can read a
+GitHub / Cloudflare / Infisical / registrar console, and a confirmation date
+this repository cannot verify is not one it may write down. The gate therefore
+exits `1` (`OUTSTANDING`) until the owner fills it in, which is the honest
+reading rather than a green the repository has not earned.
+
+What the page cannot show: the actual MFA state of the four accounts. That is
+operator-side; the gate audits the *record*, not the account, and says so in
+its own output.
+
+Anonymity is asserted, not promised. The ledger schema has no field for an
+account identifier (an identifier-shaped key is `UNDECIDABLE`), and the page
+plus every CLI transcript it embeds pass `assertNoSensitiveInText` before a
+byte is written — an address, an `otpauth://` URI, a base32 seed, a
+recovery-code-shaped digit run or a bearer token fails the command instead of
+producing the artefact.
+
+Regenerate:
+
+```bash
+pnpm run check:operator-mfa                              # verdict (exit 0 / 1 / 2)
+pnpm run verify:operator-mfa-checklist-screenshot       # HTML + WebP at the path above
+node --test scripts/check-operator-mfa.test.mjs         # the assertions behind both
+```
+
+Procedure: [`docs/runbook/operator-mfa-verification.md`](../../runbook/operator-mfa-verification.md).
+Issue asked for `operator-mfa-checklist.png`; like every artefact in this
+directory it is committed as WebP (Playwright writes the capture to memory and
+`sharp` re-encodes it, so no PNG intermediate is written).
+
+## `r2-public-delivery-gate.webp` (Issue #634)
+
+`GET /media/<key>` が公開承認済み key だけを配信することを、Worker entry
+からの実リクエスト（workerd pool の `SELF.fetch`）で示した report。
+
+判定と配線の 2 スイートを同時に走らせ、その JSON reporter 出力をそのまま
+描画する。
+
+```bash
+pnpm exec vitest run src/http/media/router.test.ts
+pnpm exec vitest run test/integration/media-delivery.test.ts
+pnpm run r2:public-delivery:report   # -> docs/verification/security/r2-public-delivery-gate.webp
+```
+
+fixture の bucket には拒否ケースごとに object を置いてあるため、404 は
+「object が無い」偶然ではない。draft project の object、連番の隣、
+private namespace、未宣言 namespace、行の無い reaction object、`text/html`
+の承認済み object — すべて実在し、すべて 404 になる。拒否は空 body +
+`no-store` の同一値で、403 も reason code も返さない。
+
+custom domain の edge 配信は本リポジトリのコードを通らないため対象外で、
+残課題として
+[`docs/security/r2-media-visibility.md`](../../security/r2-media-visibility.md#what-the-code-does-not-do)
+に記載している。詳細とロールバックは
+[`r2-public-delivery-gate.md`](r2-public-delivery-gate.md)。

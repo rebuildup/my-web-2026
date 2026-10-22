@@ -1,6 +1,6 @@
 # Verification — i18n artifacts
 
-This directory holds the committed screenshots for four verification
+This directory holds the committed screenshots for five verification
 tickets:
 
 | Artefact | Issue | What it proves |
@@ -9,6 +9,8 @@ tickets:
 | `cjk-line-break.webp` | #431 | 72 measured CJK line-breaking rows (禁則 / `word-break` / wrap mode) from the shipped editorial recipes |
 | `missing-keys-report.webp` | #428 | copy locale contract gate: opt-in matrix, fixture findings, legend (see [`copy/README.md`](../../../copy/README.md)) |
 | `unicode-slug-validation.webp` | #433 | the 17-row Unicode / URL-slug decision table classified by the shipped `EMOJI_SLUG_GRAMMAR` / `PORTFOLIO_SLUG_GRAMMAR`, plus the counterfactual lossy-slug results |
+| `diacritic-cyrillic-font.webp` | #432 | 16 fr / de / pt / ru heading fixtures rendered with the shipped font stack, plus 53 measured code points (missing glyph, webfont vs platform fallback) and a clipboard round trip |
+| `pseudo-locale-stress.webp` | #429 | 11 pseudo-localised stress rows at 1.5x expansion (a long-form paragraph, long compounds, combining marks, digit systems, Arabic / Hebrew), five of them drawn in a 320 px UI surface before and after expansion, plus the audit verdict table and the list of things the fixture does not prove |
 
 ## Intl locale formatting (Issue #430)
 
@@ -114,12 +116,99 @@ deletes the intermediate PNG. The conflict audit table in the artefact
 is a fixed sample catalog — the shipped reactions/portfolio catalog is
 not audited yet (disclosed in the artefact itself).
 
+## Glyph display — diacritics, combining marks, Cyrillic (Issue #432)
+
+`diacritic-cyrillic-font.webp` is the committed screenshot of the
+heading-glyph measurement report. It renders the 16 rows of
+`src/i18n/glyphs.fixture.ts` (French / German / Portuguese / Russian)
+with the **shipped** font stack, then measures every non-ASCII code
+point the fixture carries: whether it renders as `.notdef` (a missing
+glyph) **in the tier that actually draws it** — a code point that only
+appears in body rows is judged against the body stack, because the
+heading stack never draws it — whether the shipped webfont supplies it,
+and whether a selection plus a system-clipboard round trip preserves
+the author's code points. A column whose tier has no row for a code
+point reads `no row` rather than a verdict: coverage evidence for a
+rendering that does not exist would be worse than no evidence. The report, the measured numbers, the reproduction
+commands and the **out-of-scope list** are in
+[`diacritic-cyrillic-font.md`](diacritic-cyrillic-font.md).
+
+```sh
+# the CI half (no browser, no network)
+pnpm exec vitest run src/i18n/glyphs.test.ts
+
+# the browser half: regenerate the artefact
+pnpm run capture:glyph-coverage
+```
+
+The browser half needs the network (it loads the same webfont the
+product loads, read out of `src/routes/__root.tsx`), so it is not part
+of `pnpm test`; the contract half — the number, the negation, the
+permission, the declared code points and the byte-exact round trips —
+is `src/i18n/glyphs.test.ts` and runs in CI. Storybook shows the same
+fixture as `editorial/Glyph headings`.
+
+The capture exits non-zero when the webfont did not load, when a code
+point renders as `.notdef` in any tier that draws it, when a verdict
+cell could not be filled, or when the copy/paste round trip changed a
+code point — an artefact that measured nothing must not look complete.
+
+## Pseudo-localisation stress — expansion, RTL tolerance (Issue #429)
+
+`pseudo-locale-stress.webp` is the committed screenshot of the
+pseudo-localisation stress report. It renders the 11 rows of
+`src/i18n/pseudo-locale.ts` — a long-form paragraph, an unbreakable
+German compound, decomposed spellings, fullwidth / Arabic-Indic / ASCII
+digits, and an Arabic and a Hebrew paragraph — at a mechanical,
+reversible 1.5x expansion, and draws five of them as real UI surfaces
+(badge, heading, call to action) in a **320 px** frame before and after
+the expansion.
+The report, the measured numbers, the reproduction commands and the
+**out-of-scope list** are in
+[`pseudo-locale-stress.md`](pseudo-locale-stress.md).
+
+```sh
+# the CI half (no browser, no network)
+pnpm exec vitest run src/i18n/pseudo-locale.test.ts
+node --experimental-strip-types --test scripts/capture-pseudo-locale-stress.test.mjs
+
+# the browser half: regenerate the artefact
+pnpm run capture:pseudo-locale
+```
+
+The browser half needs the network (it loads the same webfont the
+product loads, read out of `src/routes/__root.tsx`), so it is not part
+of `pnpm test`; the contract half — reversibility, digit runs,
+whitespace, protected meaning tokens, bidi isolate balance and the
+documented limits — is `src/i18n/pseudo-locale.test.ts` and runs in CI.
+Storybook shows the same fixture as `editorial/Pseudo locale stress`.
+
+The capture exits non-zero when a frame overflows horizontally even with
+the fixture-local `overflow-wrap: anywhere`, when a declared meaning
+token did not reach the rendered heading, when the isolate count the
+browser rendered differs from the one the row declares, when the shipped
+webfont did not load, or when the fixture audit itself reports a failing
+row.
+
+Layout is measured twice, and the difference is reported rather than
+hidden: the frames carry only the breaking rules the product declares
+(`src/styles.css` base rule + `SectionHeading`), and the German compound
+row overflows its 320 px frame under them. Adding `overflow-wrap:
+anywhere` — a **fixture-local mitigation, not an editorial recipe** —
+makes every frame hold. Whether a long heading should be allowed to
+break anywhere is an open `src/editorial/` decision.
+
+This artefact is **not** an RTL preview. It shows that an RTL paragraph
+keeps its embedded Latin and digit runs internally LTR and does not
+break the frame; mirroring, an RTL locale entry and RTL copy remain
+undecided owner decisions, and the report prints that list verbatim.
+
 ## Why a committed binary
 
 The repository's usual convention is that verification screenshots stay
-outside the tree (`scripts/layout-audit-shoot.mjs`). Issues #430 and
-#431 ask for their evidence to be visible in the PR, so the artefacts
-are committed — as WebP rather than the PNG the Issues name, because
-the PNG is several times larger for no gain at documentation scale.
-Both capture scripts fail when the WebP exceeds 300 KB, so an artefact
-cannot silently bloat the repository.
+outside the tree (`scripts/layout-audit-shoot.mjs`). Issues #430, #431
+and #432 ask for their evidence to be visible in the PR, so the
+artefacts are committed — as WebP rather than the PNG the Issues name,
+because the PNG is several times larger for no gain at documentation
+scale. Every capture script fails when the WebP exceeds 300 KB, so an
+artefact cannot silently bloat the repository.

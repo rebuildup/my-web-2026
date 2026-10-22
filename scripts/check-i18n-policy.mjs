@@ -59,9 +59,15 @@
  * Exit codes: 0 = clean, 1 = violations, 2 = bad input.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectSourceFiles, lineAt, stripComments, toRepoPath } from './_source-scan.mjs';
+
+// Re-exported so this gate keeps the surface its unit test already
+// asserts on, while the scanner itself now has one owner shared with
+// `check-reduced-motion.mjs` (Issue #403).
+export { lineAt, stripComments };
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_ROOT = join(REPO_ROOT, 'src');
@@ -130,93 +136,9 @@ export const RULES = [
 	},
 ];
 
-/**
- * Remove comments so a rule cannot fire on prose. `docs/` and source
- * comments are allowed to NAME the forbidden forms — that is how the
- * next reader learns why they are forbidden — while the code itself is
- * what has to obey.
- *
- * A small scanner rather than a regex: `'https://…'` must not be read
- * as a line comment. Newlines inside a block comment are preserved so
- * that a reported line number matches the file. Exported for unit
- * testing.
- */
-export function stripComments(source) {
-	let out = '';
-	let i = 0;
-	/** Last significant character emitted, used to tell regex from division. */
-	let previous = '';
-	while (i < source.length) {
-		const char = source[i];
-		const next = source[i + 1];
-		if (char === '/' && next === '/') {
-			while (i < source.length && source[i] !== '\n') i += 1;
-			continue;
-		}
-		if (char === '/' && next === '*') {
-			i += 2;
-			let newlines = 0;
-			while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
-				if (source[i] === '\n') newlines += 1;
-				i += 1;
-			}
-			i += 2;
-			// Keep the line count so a violation is reported on the line
-			// the developer actually sees in the file.
-			out += '\n'.repeat(newlines);
-			continue;
-		}
-		if (char === '"' || char === "'" || char === '`') {
-			const quote = char;
-			out += char;
-			i += 1;
-			while (i < source.length) {
-				out += source[i];
-				if (source[i] === '\\') {
-					out += source[i + 1] ?? '';
-					i += 2;
-					continue;
-				}
-				if (source[i] === quote) {
-					i += 1;
-					break;
-				}
-				i += 1;
-			}
-			previous = quote;
-			continue;
-		}
-		if (char === '/' && /[(,=:[!&|?{};+\-*%^~<>]/.test(previous)) {
-			// Regex literal: copy to the closing unescaped slash.
-			out += char;
-			i += 1;
-			while (i < source.length) {
-				out += source[i];
-				if (source[i] === '\\') {
-					out += source[i + 1] ?? '';
-					i += 2;
-					continue;
-				}
-				if (source[i] === '/') {
-					i += 1;
-					break;
-				}
-				if (source[i] === '\n') break;
-				i += 1;
-			}
-			previous = '/';
-			continue;
-		}
-		out += char;
-		if (!/\s/.test(char)) previous = char;
-		i += 1;
-	}
-	return out;
-}
-
 /** Repo-relative POSIX path for a scanned file. */
 export function toScanPath(absolutePath) {
-	return relative(REPO_ROOT, absolutePath).split(sep).join('/');
+	return toRepoPath(absolutePath);
 }
 
 /** Whether a repo-relative path is scanned at all. */
@@ -226,15 +148,6 @@ export function isScanned(scanPath) {
 	if (SKIP_SEGMENTS.some((segment) => scanPath.endsWith(segment))) return false;
 	if (EXEMPT_SUFFIXES.some((suffix) => scanPath.endsWith(suffix))) return false;
 	return true;
-}
-
-/** 1-based line number of `index` inside `source`. */
-export function lineAt(source, index) {
-	let line = 1;
-	for (let i = 0; i < index && i < source.length; i += 1) {
-		if (source[i] === '\n') line += 1;
-	}
-	return line;
 }
 
 /** Scan one file's source; returns one violation per match. */
@@ -264,17 +177,7 @@ export function scanSource(scanPath, source) {
 
 /** Every scannable file under `src/`. */
 export function collectScanFiles(directory = SRC_ROOT) {
-	const files = [];
-	for (const entry of readdirSync(directory, { withFileTypes: true })) {
-		const path = join(directory, entry.name);
-		if (entry.isDirectory()) {
-			files.push(...collectScanFiles(path));
-			continue;
-		}
-		if (!['.ts', '.tsx'].includes(path.slice(path.lastIndexOf('.')))) continue;
-		files.push(path);
-	}
-	return files;
+	return collectSourceFiles(directory, (scanPath) => !isScanned(scanPath));
 }
 
 /** One human-readable line per violation. */

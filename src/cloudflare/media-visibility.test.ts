@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	PRIVATE_MEDIA_PREFIXES,
 	PUBLIC_MEDIA_PREFIXES,
+	auditPublicMediaPublication,
 	classifyMediaKey,
 	createPublicMediaDelivery,
 	filterPublicMediaKeys,
@@ -181,6 +182,22 @@ describe('createPublicMediaDelivery — gated fetch', () => {
 		expect(source.reads).toEqual([]);
 	});
 
+	it('refuses a private or unlisted namespace even when the owner approves', async () => {
+		// The namespace gate is independent of the approval check. A
+		// caller that wires `isApproved` to a too-permissive predicate
+		// must still not make `private/` or an undeclared prefix
+		// servable, so the approval check is not what this asserts —
+		// the bucket read count is.
+		const source = countingSource([PRIVATE_KEY, 'wip/aulymo/cover.webp']);
+		const delivery = createPublicMediaDelivery(source, { isApproved: () => true });
+		expect(await delivery.fetch(PRIVATE_KEY)).toEqual({ status: 404, key: PRIVATE_KEY });
+		expect(await delivery.fetch('wip/aulymo/cover.webp')).toEqual({
+			status: 404,
+			key: 'wip/aulymo/cover.webp',
+		});
+		expect(source.reads).toEqual([]);
+	});
+
 	it('answers a missing key and a private key identically', async () => {
 		// 404 with the same observable payload for both: no existence
 		// oracle, not even a reason code a caller could serialise by
@@ -289,5 +306,117 @@ describe('listPublicMediaKeys — enumeration-safe listing', () => {
 		expect(listing.keys).toEqual(['portfolio/a/cover.webp', 'portfolio/b/cover.webp']);
 		expect(listing.truncated).toBe(false);
 		expect(Object.keys(listing).sort()).toEqual(['keys', 'truncated']);
+	});
+});
+
+describe('auditPublicMediaPublication — approval reconciliation', () => {
+	const PUBLISHED = 'portfolio/aulymo/cover.webp';
+	const DRAFT_ONE = 'portfolio/aulymo/cover-3.webp';
+	const DRAFT_TWO = 'portfolio/aulymo/cover-17.webp';
+	const PRIVATE = 'private/draft/secret.webp';
+	const UNLISTED = 'wip/unlisted.webp';
+
+	const lister = (keys: readonly string[]) => ({
+		list: async () => ({ objects: keys.map((key) => ({ key })), truncated: false }),
+	});
+
+	it('reports ok when every in-namespace key is approved', async () => {
+		const result = await auditPublicMediaPublication(lister([PUBLISHED]), () => true);
+		expect(result).toEqual({
+			verdict: 'ok',
+			publicKeys: 1,
+			approvedKeys: 1,
+			unapprovedKeys: 0,
+			enumeration: 'complete',
+		});
+	});
+
+	it('reports a violation without naming the unapproved keys', async () => {
+		// The draft-project case this Issue exists for: the keys look
+		// valid and sit inside `portfolio/`, but no D1 row approves them.
+		const result = await auditPublicMediaPublication(
+			lister([PUBLISHED, DRAFT_ONE, DRAFT_TWO]),
+			(key) => key === PUBLISHED,
+		);
+		expect(result).toEqual({
+			verdict: 'violation',
+			publicKeys: 3,
+			approvedKeys: 1,
+			unapprovedKeys: 2,
+			enumeration: 'complete',
+		});
+		// Counts are the operator's evidence; the key names are the
+		// enumeration surface this audit must not become.
+		const serialised = JSON.stringify(result);
+		expect(serialised).not.toContain('cover-3');
+		expect(serialised).not.toContain('cover-17');
+	});
+
+	it('leaves private and undeclared namespaces to the key-set audit', async () => {
+		// Issue #577 owns "a key outside the allowlist may not exist at
+		// all". Counting it here would give the same rule two owners.
+		const result = await auditPublicMediaPublication(
+			lister([PUBLISHED, PRIVATE, UNLISTED]),
+			() => true,
+		);
+		expect(result.publicKeys).toBe(1);
+		expect(result.verdict).toBe('ok');
+	});
+
+	it('is undecidable for an empty public key set', async () => {
+		// A bucket holding nothing in a public namespace is not
+		// evidence of correct publication; it is an unreadable result.
+		const result = await auditPublicMediaPublication(lister([PRIVATE, UNLISTED]), () => true);
+		expect(result).toEqual({
+			verdict: 'undecidable',
+			publicKeys: 0,
+			approvedKeys: 0,
+			unapprovedKeys: 0,
+			enumeration: 'complete',
+		});
+	});
+
+	it('is undecidable when a truncated page has no cursor', async () => {
+		const partial = {
+			list: async () => ({
+				objects: [{ key: PUBLISHED }],
+				truncated: true,
+			}),
+		};
+		const result = await auditPublicMediaPublication(partial, () => true);
+		expect(result).toEqual({
+			verdict: 'undecidable',
+			publicKeys: 1,
+			approvedKeys: 1,
+			unapprovedKeys: 0,
+			enumeration: 'incomplete',
+		});
+	});
+
+	it('walks every page before deciding', async () => {
+		const pages: Record<string, unknown> = {
+			page2: {
+				objects: [{ key: DRAFT_TWO }, { key: PRIVATE }],
+				truncated: false,
+			},
+		};
+		const paged = {
+			list: async (options?: { cursor?: string }) => {
+				if (options?.cursor === 'page2') return pages.page2 as never;
+				return {
+					objects: [{ key: PUBLISHED }, { key: DRAFT_ONE }],
+					truncated: true,
+					cursor: 'page2',
+				};
+			},
+		};
+		const result = await auditPublicMediaPublication(paged, (key) => key === PUBLISHED);
+		expect(result).toEqual({
+			verdict: 'violation',
+			publicKeys: 3,
+			approvedKeys: 1,
+			unapprovedKeys: 2,
+			enumeration: 'complete',
+		});
 	});
 });

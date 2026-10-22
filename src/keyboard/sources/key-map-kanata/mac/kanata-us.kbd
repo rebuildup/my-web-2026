@@ -1,0 +1,253 @@
+;; ============================================================
+;; macOS / US ANSI / Onishi + Space HUB v1
+;;
+;; hidutil applies the Onishi base layout on the physical keyboard event
+;; service only. Kanata reads those keys at a CGEvent tap that sits above the
+;; HID event driver, so it receives the already converted keys and must carry the
+;; same mapping itself; the base layer below is the Onishi layout, not a pass
+;; through of the US positions in defsrc.
+;;
+;; The mapping must stay off the Karabiner DriverKit virtual keyboard. A mapping
+;; there would convert Kanata's already converted output a second time and
+;; scramble every layer it drives. rebuildup/pc-setup enforces that by clearing
+;; the virtual keyboard across the boot settle window.
+;;
+;; BASE
+;;   F1                  : Onishi <-> QWERTY
+;;   Shift               : normal Shift
+;;   Space tap           : Space
+;;   Space hold          : HUB
+;;
+;; HUB
+;;   H J K L             : Left / Down / Up / Right
+;;   Q                    : Command+F
+;;   R                    : Shift+Enter
+;;   T                    : Shift+Delete
+;;   LShift tap          : Eisu
+;;   RShift tap          : Kana
+;;   LShift hold         : left symbols + right numpad
+;;   RShift hold         : right numpad + left symbols
+;;   hold one Shift, tap the opposite Shift:
+;;                         arm one-shot Automation layer
+;;   M                   : persistent Mouse mode
+;;
+;; MOUSE
+;;   left hand WASD and right hand HJKL both move the pointer
+;;   Shift               : precision (35%)
+;;   Command             : turbo (250%)
+;;   Space / Esc         : return to previous base family
+;;
+;; IMPORTANT
+;;   Every key name emitted from a layer is a final key, not a raw usage that a
+;;   downstream conversion rewrites. hidutil sees only the physical keyboard, so
+;;   symbol and Command+letter actions name the key they intend directly.
+;; ============================================================
+
+(defcfg
+  process-unmapped-keys yes
+  concurrent-tap-hold yes
+  movemouse-inherit-accel-state yes
+  movemouse-smooth-diagonals yes
+)
+
+(defsrc
+  esc   f1    f2    f3    f4    f5    f6    f7    f8    f9    f10   f11   f12
+  grv   1     2     3     4     5     6     7     8     9     0     -     =     bspc
+  tab   q     w     e     r     t     y     u     i     o     p     [     ]     \
+  caps  a     s     d     f     g     h     j     k     l     ;     '     ret
+  lsft  z     x     c     v     b     n     m     ,     .     /     rsft
+  lctl  lalt  lmet              spc               rmet  ralt
+)
+
+(defalias
+  ;; Base mode
+  to-qwerty (layer-switch qwerty)
+  to-onishi (layer-switch onishi)
+
+  ;; Space: tap = Space, hold = HUB.
+  ;; require-prior-idle is omitted deliberately. It cancels the hold when any
+  ;; prior key landed inside the idle window, which in normal typing is every
+  ;; keystroke, so HUB only opened after an unrelated key such as F1.
+  spco (tap-hold-press 170 180 spc (layer-while-held hub-o))
+  spcq (tap-hold-press 170 180 spc (layer-while-held hub-q))
+
+  ;; Inside HUB: tap Shift selects IME, hold Shift opens the side layer.
+  lso (tap-hold-press 150 170 eisu (layer-while-held lhs-o) (require-prior-idle 0))
+  rso (tap-hold-press 150 170 kana (layer-while-held rhs-o) (require-prior-idle 0))
+  lsq (tap-hold-press 150 170 eisu (layer-while-held lhs-q) (require-prior-idle 0))
+  rsq (tap-hold-press 150 170 kana (layer-while-held rhs-q) (require-prior-idle 0))
+
+  ;; Automation leader: while in a side layer, tap the opposite Shift.
+  autoo (one-shot 1500 (layer-while-held auto-o))
+  autoq (one-shot 1500 (layer-while-held auto-q))
+
+  ;; Mouse mode is persistent until Space or Esc.
+  mouse-o (layer-switch mouse-o)
+  mouse-q (layer-switch mouse-q)
+  back-o (layer-switch onishi)
+  back-q (layer-switch qwerty)
+
+  ;; HUB shortcuts.
+  redo M-S-z
+  app-prev M-S-tab
+  app-next M-tab
+  cmdfind M-f
+  select-all M-a
+
+  ;; Symbols: the key that produces the intended symbol on a US layout.
+  lp S-9
+  rp S-0
+  lb [
+  rb ]
+  lc S-[
+  rc S-]
+  lt S-,
+  gt S-.
+  colon S-;
+  semi ;
+  dq S-'
+  pipe S-\
+  minus -
+  plus S-=
+  eq =
+  slash /
+  star S-8
+  squote '
+  bslash \
+  under S--
+  question S-/
+
+  ;; Mouse movement and wheel.
+  ml (movemouse-accel-left 1 700 1 12)
+  mr (movemouse-accel-right 1 700 1 12)
+  mu (movemouse-accel-up 1 700 1 12)
+  md (movemouse-accel-down 1 700 1 12)
+  mwl (mwheel-left 40 120)
+  mwr (mwheel-right 40 120)
+  mwu (mwheel-up 40 120)
+  mwd (mwheel-down 40 120)
+  slow (movemouse-speed 35)
+  fast (movemouse-speed 250)
+
+  ;; Hold to repeatedly click.
+  auto-left (macro-repeat mltp 80)
+  auto-right (macro-repeat mrtp 100)
+
+  ;; macOS screenshots to clipboard.
+  shot-select C-M-S-4
+  shot-full C-M-S-3
+  shot-window (macro C-M-S-4 120 spc)
+
+  ;; Dynamic macro slot 0.
+  dm0 (dynamic-macro-record 0)
+  dms dynamic-macro-record-stop
+  dp0 (dynamic-macro-play 0)
+)
+
+(deflayer onishi
+  esc  @to-qwerty  f2  f3  f4  f5  f6  f7  f8  f9  f10  f11  f12
+  grv  1  2  3  4  5  6  7  8  9  0  /  =  bspc
+  tab  q  l  u  ,  .  f  w  r  y  p  [  ]  \
+  caps  e  i  a  o  -  k  t  n  s  h  '  ret
+  lsft  z  x  c  v  ;  g  d  m  j  b  rsft
+  lctl  lalt  lmet  @spco  rmet  ralt
+)
+
+(deflayer qwerty
+  esc   @to-onishi  f2    f3    f4    f5    f6    f7    f8    f9    f10   f11   f12
+  grv   1     2     3     4     5     6     7     8     9     0     -     =     bspc
+  tab   q     w     e     r     t     y     u     i     o     p     [     ]     \
+  caps  a     s     d     f     g     h     j     k     l     ;     '     ret
+  lsft  z     x     c     v     b     n     m     ,     .     /     rsft
+  lctl  lalt  lmet  @spcq  rmet  ralt
+)
+
+(deflayer hub-o
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  @cmdfind  @app-prev  @app-next  S-ret  S-del  M-lft  A-lft  M-up  A-rght  M-rght  M-[  M-]  _
+  _  esc  tab  bspc  ret  del  lft  down  up  rght  M-down  _  _
+  @lso  M-z  M-x  M-c  M-v  @select-all  home  @mouse-o  pgup  end  pgdn  @rso
+  _  _  _  _  _  _
+)
+
+(deflayer hub-q
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  @cmdfind  @app-prev  @app-next  S-ret  S-del  M-lft  A-lft  M-up  A-rght  M-rght  M-[  M-]  _
+  _  esc  tab  bspc  ret  del  lft  down  up  rght  M-down  _  _
+  @lsq  M-z  M-x  M-c  M-v  @select-all  home  @mouse-q  pgup  end  pgdn  @rsq
+  _  _  _  _  _  _
+)
+
+(deflayer lhs-o
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  XX  @lp  @rp  @lb  @rb  @minus  7  8  9  @plus  @squote  @bslash  @under
+  _  XX  @lc  @rc  @lt  @gt  @eq  4  5  6  @slash  @question  _
+  _  XX  @colon  @semi  @dq  @pipe  0  1  2  3  @star  @autoo
+  _  _  _  _  _  _
+)
+
+(deflayer lhs-q
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+  _  XX  @lp  @rp  @lb  @rb  @minus  7  8  9  @plus  @squote  @bslash  @under
+  _  XX  @lc  @rc  @lt  @gt  @eq  4  5  6  @slash  @question  _
+  _  XX  @colon  @semi  @dq  @pipe  0  1  2  3  @star  @autoq
+  _  _  _  _  _  _
+)
+
+(deflayer rhs-o
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  @under  @question  _  _  _  _  _  _  _  _  _  _  _  _
+  @squote  @minus  7  8  9  @plus  @lp  @rp  @lb  @rb  XX  _  _  _
+  @bslash  @eq  4  5  6  @slash  @lc  @rc  @lt  @gt  XX  _  _
+  @autoo  0  1  2  3  @star  @colon  @semi  @dq  @pipe  XX  _
+  _  _  _  _  _  _
+)
+
+(deflayer rhs-q
+  _  _  _  _  _  _  _  _  _  _  _  _  _
+  @under  @question  _  _  _  _  _  _  _  _  _  _  _  _
+  @squote  @minus  7  8  9  @plus  @lp  @rp  @lb  @rb  XX  _  _  _
+  @bslash  @eq  4  5  6  @slash  @lc  @rc  @lt  @gt  XX  _  _
+  @autoq  0  1  2  3  @star  @colon  @semi  @dq  @pipe  XX  _
+  _  _  _  _  _  _
+)
+
+(deflayer auto-o
+  esc  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  f1  f2  f3  f4  f5  f6  f7  f8  f9  f10  f11  f12  XX
+  XX  @redo  @shot-window  XX  @dm0  XX  XX  XX  XX  XX  @dp0  XX  XX  XX
+  XX  @auto-left  @shot-select  @auto-right  @shot-full  @dms  XX  XX  XX  lrld  XX  XX  XX
+  XX  brdn  brup  vold  volu  mute  prev  @mouse-o  pp  next  XX  XX
+  XX  XX  XX  XX  XX  XX
+)
+
+(deflayer auto-q
+  esc  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  f1  f2  f3  f4  f5  f6  f7  f8  f9  f10  f11  f12  XX
+  XX  @redo  @shot-window  XX  @dm0  XX  XX  XX  XX  XX  @dp0  XX  XX  XX
+  XX  @auto-left  @shot-select  @auto-right  @shot-full  @dms  XX  XX  XX  lrld  XX  XX  XX
+  XX  brdn  brup  vold  volu  mute  prev  @mouse-q  pp  next  XX  XX
+  XX  XX  XX  XX  XX  XX
+)
+
+(deflayer mouse-o
+  @back-o  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  @mwu  @mu  @mwd  mmid  XX  XX  @mwu  mmid  @mwd  XX  XX  XX  XX
+  XX  @ml  @md  @mr  mlft  mrgt  @ml  @md  @mu  @mr  mlft  mrgt  XX
+  @slow  @mwl  @mwr  mmid  @auto-left  @auto-right  @mwl  @mwr  mmid  @auto-left  @auto-right  @slow
+  XX  XX  @fast  @back-o  @fast  XX
+)
+
+(deflayer mouse-q
+  @back-q  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX  XX
+  XX  @mwu  @mu  @mwd  mmid  XX  XX  @mwu  mmid  @mwd  XX  XX  XX  XX
+  XX  @ml  @md  @mr  mlft  mrgt  @ml  @md  @mu  @mr  mlft  mrgt  XX
+  @slow  @mwl  @mwr  mmid  @auto-left  @auto-right  @mwl  @mwr  mmid  @auto-left  @auto-right  @slow
+  XX  XX  @fast  @back-q  @fast  XX
+)

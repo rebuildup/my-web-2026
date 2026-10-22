@@ -1,5 +1,5 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
-import { SELF, applyD1Migrations, env } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
 	__resetCapturedMeasurementIdForTests,
@@ -7,6 +7,10 @@ import {
 	createPageViewRouteState,
 	trackRoutePageView,
 } from '../../src/editorial/analytics/GoogleAnalytics';
+import {
+	__resetDocumentAnalyticsConsentForTests,
+	setDocumentAnalyticsConsent,
+} from '../../src/editorial/analytics/consent';
 import {
 	PRIVATE_OWNER_RECORD,
 	PUBLIC_FALLBACK_PROJECTION,
@@ -20,6 +24,7 @@ import {
 	clearPortfolioTables,
 	seedPortfolioRow,
 } from './fixtures/portfolio-d1';
+import { applyReactionsSchema } from './fixtures/reactions-d1';
 
 /**
  * Owner-unapproved location / schedule data must not reach a public
@@ -60,12 +65,13 @@ import {
  * JSON, and the GA4 analytics payload.
  *
  * D1 bootstrap: `GET /` reads the reactions tables through the home
- * loader. Workerd cannot read `migrations/*.sql`, so the DDL is
- * copied here from `migrations/0003_reactions.sql` /
- * `0004_emoji_catalog.sql` (the same copy `test/integration/d1.test.ts`
- * carries). The catalog seed rows are omitted on purpose: this suite
- * asserts what the public surfaces carry, not what the emoji catalog
- * contains, and an empty catalog still renders the home page.
+ * loader. Workerd cannot read `migrations/*.sql`, so the schema comes
+ * from the shared workerd fixture
+ * (`test/integration/fixtures/reactions-d1.ts`) rather than a third
+ * inline copy. The catalog seed rows are omitted there on purpose:
+ * this suite asserts what the public surfaces carry, not what the
+ * emoji catalog contains, and an empty catalog still renders the home
+ * page.
  *
  * The portfolio tables come from the shared workerd fixture
  * (`test/integration/fixtures/portfolio-d1.ts`, Issue #422) instead
@@ -91,39 +97,6 @@ import {
  * more DDL here; the production-equality of these tables is owned by
  * the D1 integration suites, not by this one.
  */
-const MIGRATIONS = [
-	{
-		name: '0003_reactions',
-		queries: [
-			`CREATE TABLE IF NOT EXISTS reactions (
-        id TEXT PRIMARY KEY,
-        target_key TEXT NOT NULL,
-        actor_id TEXT NOT NULL,
-        principal TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ('emoji', 'image')),
-        value TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        UNIQUE (target_key, principal, actor_id, kind, value)
-    )`,
-			'CREATE INDEX IF NOT EXISTS idx_reactions_target ON reactions(target_key)',
-			'CREATE INDEX IF NOT EXISTS idx_reactions_target_kind ON reactions(target_key, kind)',
-		],
-	},
-	{
-		name: '0004_emoji_catalog',
-		queries: [
-			`CREATE TABLE IF NOT EXISTS reaction_emoji_catalog (
-        slug         TEXT    PRIMARY KEY,
-        codepoint    TEXT    NOT NULL,
-        enabled      INTEGER NOT NULL DEFAULT 1,
-        created_by   TEXT,
-        created_at   INTEGER NOT NULL,
-        updated_at   INTEGER NOT NULL
-    )`,
-			'CREATE INDEX IF NOT EXISTS idx_reaction_emoji_catalog_enabled ON reaction_emoji_catalog(enabled)',
-		],
-	},
-];
 
 /**
  * Fixtures for the one publication boundary that ships today.
@@ -155,8 +128,9 @@ const PRIVATE_EVENT = PRIVATE_OWNER_RECORD.events[0];
  * `/tools/text-counter` and `/tools/prototype` are two samples of the
  * same `$slug` loader (build-time Tool registry, not D1) because both
  * are public nav entries. `/design-system` has no loader and is in the
- * public nav. `/about` and `/portfolio` render here because the
- * portfolio schema is bootstrapped below.
+ * public nav. `/keyboard` reads the committed snapshot only. `/about`
+ * and `/portfolio` render here because the portfolio schema is
+ * bootstrapped below.
  *
  * Nothing is excluded: a public surface this list does not name is a
  * coverage hole, so adding a public route means adding its path here.
@@ -171,6 +145,7 @@ const PUBLIC_SSR_PATHS = [
 	'/tools/text-counter',
 	'/tools/prototype',
 	'/design-system',
+	'/keyboard',
 ] as const;
 
 /**
@@ -184,7 +159,7 @@ const PUBLIC_SSR_PATHS = [
 const PUBLIC_JSON_PATHS = ['/api/v1/health', '/api/v1/db/ping', '/api/v1/media/ping'] as const;
 
 beforeAll(async () => {
-	await applyD1Migrations(env.DB, MIGRATIONS);
+	await applyReactionsSchema(env.DB);
 	await applyPortfolioSchema(env.DB);
 	await clearPortfolioTables(env.DB);
 	await seedPortfolioRow(env.DB, PUBLIC_FIXTURE_SLUG, {
@@ -363,49 +338,89 @@ describe('public JSON surfaces carry no owner-unapproved data', () => {
 	});
 });
 
+/**
+ * Records every `gtag(...)` call for one test and restores the two
+ * globals the tracker writes through.
+ *
+ * `gtag('event', 'page_view', params)` — the params object is the
+ * last argument, so the fake records every argument rather than
+ * assuming a position.
+ */
+function captureGtagCalls(): { calls: unknown[][]; restore(): void } {
+	const calls: unknown[][] = [];
+	const globals = globalThis as unknown as {
+		gtag?: (command: string, ...params: unknown[]) => void;
+		dataLayer?: unknown[];
+	};
+	globals.dataLayer = [];
+	globals.gtag = (command: string, ...params: unknown[]) => {
+		calls.push([command, ...params]);
+	};
+	return {
+		calls,
+		restore() {
+			globals.gtag = undefined;
+			globals.dataLayer = undefined;
+		},
+	};
+}
+
 describe('the analytics payload carries no owner-unapproved data', () => {
-	it('the SSR analytics bootstrap sends the measurement ID and nothing else', async () => {
+	it('the default SSR document carries no analytics bootstrap at all', async () => {
+		// Issue #495 moved the measurement decision into the browser:
+		// a first visit (no stored decision, which is what this request
+		// is) renders no loader and no inline `config`. That is
+		// strictly stronger than the pre-#495 claim that the bootstrap
+		// "carries only the property id" — there is no bootstrap to
+		// carry anything, so the privacy surface starts empty.
 		const html = await (await SELF.fetch('https://example.com/')).text();
-		const scripts = html.match(/<script[^>]*>[^<]*gtag\([^<]*<\/script>/g) ?? [];
-		expect(scripts.length).toBeGreaterThan(0);
-		for (const script of scripts) {
-			expect(findTextLeaks(script)).toEqual([]);
-		}
-		// The only value the inline init carries is the GA4
-		// property id; a visitor property, a position or an event
-		// name would all have to appear in this script.
-		expect(html).toMatch(/gtag\('config', 'G-[A-Z0-9]+'\)/);
+		expect(html).not.toContain('googletagmanager');
+		expect(html).not.toContain('gtag(');
+		expect(formatLeaks(findTextLeaks(html))).toBe('no owner-unapproved data found');
 	}, 30_000);
 
-	it('a route-change page_view reports the route and nothing else', () => {
+	it('a route-change page_view sends nothing while the decision is unset or denied', () => {
+		// The gate fails toward silence: `unset` is a first-class state
+		// meaning "no measurement", not an error to be defaulted to a
+		// grant. A fresh route state per iteration proves the silence
+		// comes from the decision and not from the tracker thinking the
+		// path never changed.
+		const cap = captureGtagCalls();
+		try {
+			for (const state of ['unset', 'denied'] as const) {
+				__resetCapturedMeasurementIdForTests();
+				__resetDocumentAnalyticsConsentForTests();
+				captureMeasurementId('G-DUMMYTEST00');
+				setDocumentAnalyticsConsent(state);
+				trackRoutePageView(createPageViewRouteState('/'), '/portfolio');
+			}
+			expect(cap.calls).toHaveLength(0);
+		} finally {
+			cap.restore();
+			__resetCapturedMeasurementIdForTests();
+			__resetDocumentAnalyticsConsentForTests();
+		}
+	});
+
+	it('a granted route-change page_view reports the route and nothing else', () => {
 		// Deliberately overlaps GoogleAnalytics.client.test.tsx, which
 		// owns the analytics contract. This case re-asserts the same
 		// payload through the privacy vocabulary so the allowlist
 		// cannot drift into a field name this contract would reject;
 		// it is the one test here that does not read a public surface,
 		// and it stays for that reason.
-		__resetCapturedMeasurementIdForTests();
-		captureMeasurementId('G-DUMMYTEST00');
-
-		// `gtag('event', 'page_view', params)` — the params object is
-		// the last argument, so the fake records every argument
-		// rather than assuming a position.
-		const calls: unknown[][] = [];
-		const globals = globalThis as unknown as {
-			gtag?: (command: string, ...params: unknown[]) => void;
-			dataLayer?: unknown[];
-		};
-		globals.dataLayer = [];
-		globals.gtag = (command: string, ...params: unknown[]) => {
-			calls.push([command, ...params]);
-		};
-
+		const cap = captureGtagCalls();
 		try {
+			__resetCapturedMeasurementIdForTests();
+			__resetDocumentAnalyticsConsentForTests();
+			captureMeasurementId('G-DUMMYTEST00');
+			setDocumentAnalyticsConsent('granted');
+
 			trackRoutePageView(createPageViewRouteState('/'), '/portfolio');
-			expect(calls).toHaveLength(1);
-			expect(calls[0][0]).toBe('event');
-			expect(calls[0][1]).toBe('page_view');
-			const params = calls[0][2] as Record<string, unknown>;
+			expect(cap.calls).toHaveLength(1);
+			expect(cap.calls[0][0]).toBe('event');
+			expect(cap.calls[0][1]).toBe('page_view');
+			const params = cap.calls[0][2] as Record<string, unknown>;
 			// page_path / page_location / page_title are the whole
 			// GA4 contract this project publishes. `page_location`
 			// and `page_title` exist only where the host exposes
@@ -417,9 +432,9 @@ describe('the analytics payload carries no owner-unapproved data', () => {
 			}
 			expect(formatLeaks(findJsonLeaks(params))).toBe('no owner-unapproved data found');
 		} finally {
-			globals.gtag = undefined;
-			globals.dataLayer = undefined;
+			cap.restore();
 			__resetCapturedMeasurementIdForTests();
+			__resetDocumentAnalyticsConsentForTests();
 		}
 	});
 });

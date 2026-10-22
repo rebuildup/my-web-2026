@@ -1,0 +1,411 @@
+{
+	"version": 1,
+	"policy": "A release may only be reported as verified for inspections it actually executes. Every check the project already ships gets one row here, and the row is resolved against the commands the release really runs (the three package.json entry points and the CI validate job). pass / fail / not run / not applicable are four distinct statuses; not run and not applicable are never counted as a pass. Authority: Issue #508.",
+	"surfaces": {
+		"fast": "transitive `pnpm run` closure of package.json#scripts[\"validate:fast\"]",
+		"integration": "transitive closure of package.json#scripts[\"validate:integration\"] (includes fast)",
+		"release": "transitive closure of package.json#scripts[\"validate:release\"] (includes integration)",
+		"ci": "transitive closure of every `pnpm run` in the `run:` steps of .github/workflows/ci.yml jobs.validate"
+	},
+	"protected_checks": [
+		"architecture-boundary",
+		"secret-scan-source",
+		"secret-scan-bundle",
+		"log-redaction",
+		"security-headers",
+		"asvs-coverage",
+		"security-disclosure",
+		"threat-model-ledger",
+		"csrf-contract",
+		"dependency-advisory",
+		"install-script-audit",
+		"tools-provenance",
+		"workflow-pinning",
+		"sbom-inventory",
+		"wrangler-independence",
+		"cloudflare-binding-contract",
+		"cloudflare-build-contract",
+		"cloudflare-config-drift",
+		"infisical-secret-coverage",
+		"cf-typegen",
+		"playwright-e2e",
+		"release-gate-ledger",
+		"integration-scope-ledger"
+	],
+	"profile_equivalences": [
+		{
+			"surface": "integration",
+			"component": "pnpm run deploy:cf:prebuilt:dry-run",
+			"reached_via": "deploy:cf:prebuilt:selftest",
+			"reason": "validate:integration calls `node scripts/cf-prebuilt-dry-run.mjs` through deploy:cf:prebuilt:selftest instead of by script name; the dry run is the same work on the same head."
+		}
+	],
+	"checks": [
+		{
+			"id": "architecture-boundary",
+			"contract": "The obligation dependency direction in AGENTS.md section 3 still holds, so a release cannot ship a boundary violation that only a later audit would find.",
+			"command": "pnpm run architecture:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "secret-scan-source",
+			"contract": "No committed secret-shaped literal exists in the tracked tree, so a release cannot ship a credential that was only meant to be local.",
+			"command": "pnpm run secret:scan",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/supply-chain-secret-scan.md"
+		},
+		{
+			"id": "secret-scan-bundle",
+			"contract": "The production build output carries no secret either, which source scanning alone cannot prove because bundling can inline a value into an asset.",
+			"command": "pnpm run secret:scan:bundle",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["integration", "release"],
+			"documentation": "docs/security/supply-chain-secret-scan.md"
+		},
+		{
+			"id": "log-redaction",
+			"contract": "Only the redacting logger may reach console from src/**, so no request path can start writing a raw secret into an operator-visible stream.",
+			"command": "pnpm run log:redaction:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/log-redaction.md"
+		},
+		{
+			"id": "security-headers",
+			"contract": "The published security-header policy (nosniff, Referrer-Policy, Permissions-Policy, CSP) is still declared for every shipped route and remains enforced at the boundary.",
+			"command": "pnpm run security:headers:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/security-headers.md"
+		},
+		{
+			"id": "csrf-contract",
+			"contract": "The dual CSRF contract still holds: TanStack Start keeps its default middleware (no custom startInstance) and the Hono boundary keeps csrfGuard on /api/v1/* unsafe methods.",
+			"command": "pnpm run csrf:contract:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security.md"
+		},
+		{
+			"id": "dependency-advisory",
+			"contract": "npm advisories for the locked dependency tree are reviewed against quality/dependency-advisory-gate.json, and unreadable advisory data fails closed instead of reporting a clean tree.",
+			"command": "pnpm run dep-audit:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["ci"],
+			"documentation": "docs/runbook/dependency-advisories.md"
+		},
+		{
+			"id": "install-script-audit",
+			"contract": "The installed dependency tree has only the reviewed install lifecycles, so a new transitive postinstall script cannot reach a developer machine unreviewed.",
+			"command": "pnpm run install:scripts:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/install-script-audit.md"
+		},
+		{
+			"id": "tools-provenance",
+			"contract": "The Tools submodule content still matches the commit the repository pins, so a release cannot ship tool code of unknown provenance.",
+			"command": "pnpm run tools:provenance:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/tools.md"
+		},
+		{
+			"id": "workflow-pinning",
+			"contract": "Every GitHub Actions reference is pinned to a full commit SHA with the reviewed token scope, so the release pipeline itself is not the mutable supply-chain link.",
+			"command": "pnpm run ci:pins:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/supply-chain-actions-pinning.md"
+		},
+		{
+			"id": "sbom-inventory",
+			"contract": "The committed SBOM still describes the installed tree, so the release has the inventory its incident response depends on.",
+			"command": "pnpm run sbom:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/sbom.md"
+		},
+		{
+			"id": "wrangler-independence",
+			"contract": "No Cloudflare deployment path depends on the tools submodule's Wrangler resolution, so a pinned tool version cannot change how production is built.",
+			"command": "pnpm run wrangler:independence:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "cloudflare-binding-contract",
+			"contract": "Every Cloudflare binding the Worker reads is declared in the Wrangler configuration and probed through the documented DI seam, so a release cannot deploy with a missing binding.",
+			"command": "pnpm run cloudflare:contract:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "cloudflare-config-drift",
+			"contract": "The production Worker surface, the development surface, the Workers Builds build / deploy commands and the static-asset header surface still match the recorded production contract, so a single unintended configuration difference cannot ship inside a green release.",
+			"command": "pnpm run cf:config:drift:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/cloudflare-config-drift.md"
+		},
+		{
+			"id": "cloudflare-build-contract",
+			"contract": "The same binding contract is re-checked against the built Cloudflare bundle, so a binding that only exists in source configuration cannot pass as deployed.",
+			"command": "pnpm run cloudflare:contract:check:build",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["integration", "release"],
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "infisical-secret-coverage",
+			"contract": "Every runtime secret name the Wrangler configuration declares is covered by the Infisical coverage review, so a release cannot deploy a secret that exists in no environment.",
+			"command": "pnpm run infisical:check:coverage",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/infisical-secrets.md"
+		},
+		{
+			"id": "secret-rotation-status",
+			"contract": "The rotation policy the repository ships is decidable offline: every runtime secret name has a cadence, a ledger row that cannot hold a value, and a status that separates a matching inventory, a name the environment is reported to lack, and a rotation past its deadline, without reading a secret value.",
+			"command": "pnpm run secrets:status:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/secret-rotation-status.md"
+		},
+		{
+			"id": "route-quality-coverage",
+			"contract": "Every published route still has a quality-gate decision (covered with evidence, or excluded with a reason), so a new page cannot reach a release ungated.",
+			"command": "pnpm run routes:quality:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/quality/route-quality-coverage.md"
+		},
+		{
+			"id": "personal-data-review",
+			"contract": "Personal-data candidates (addresses, contact channels, third-party names, image metadata) in the migrated corpus are extracted mechanically and only an owner decision can publish a record, so a release cannot ship a migration record nobody approved.",
+			"command": "pnpm run publication:redaction:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/personal-data-redaction.md"
+		},
+		{
+			"id": "index-boundary",
+			"contract": "The server index boundary still re-exports only the allowed application operations, so a release cannot widen the server-function surface by accident.",
+			"command": "pnpm run index:boundary:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "test-wiring",
+			"contract": "Every scripts/*.test.mjs file is reachable from a test entry point, so a passing suite cannot be an empty one.",
+			"command": "pnpm run test:wiring:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/development.md"
+		},
+		{
+			"id": "release-version",
+			"contract": "The release version still comes from package.json#version and matches the release branch, so the released artefact is not labelled with a stale number.",
+			"command": "pnpm run version:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/release.md"
+		},
+		{
+			"id": "knip-unused-code",
+			"contract": "Unused exports, files and dependencies stay at the reviewed baseline, so dead code is a visible release decision rather than an accident.",
+			"command": "pnpm run knip:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "quality/knip.md"
+		},
+		{
+			"id": "browser-baseline",
+			"contract": "Adopted web platform features stay inside the pinned Baseline snapshot with a declared fallback, so a release cannot ship a browser-only feature silently.",
+			"command": "pnpm run compat:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/standards/browser-baseline.md"
+		},
+		{
+			"id": "html-standards",
+			"contract": "The SSR documents still satisfy the offline HTML5 engine's rule table (invalid markup, duplicate ids, attribute errors), so a release cannot ship a document a validator rejects.",
+			"command": "pnpm run html:standards:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/standards/html-nu-validator.md"
+		},
+		{
+			"id": "reduced-motion",
+			"contract": "Every motion surface carries the data-motion hook and honours the shared reduced-motion preference, so a release cannot ship motion that ignores the OS setting.",
+			"command": "pnpm run a11y:reduced-motion:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/a11y/README.md"
+		},
+		{
+			"id": "seo-status",
+			"contract": "Every shipped route still owns a status row (200 / 404 / 500 / redirect / noindex) with a proof file, so a release cannot publish an unreviewed request class.",
+			"command": "pnpm run seo:status:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/seo/http-status-contract.md"
+		},
+		{
+			"id": "cf-typegen",
+			"contract": "The generated Cloudflare types still match the Worker configuration, so a release cannot ship a call site typed against bindings that do not exist.",
+			"command": "pnpm run cf-typegen:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["release", "ci"],
+			"documentation": "docs/development.md"
+		},
+		{
+			"id": "asvs-coverage",
+			"contract": "The selected ASVS 5.0 requirements still resolve every applicable row to repository evidence, and an applicable row with no evidence is reported as not run rather than as a pass.",
+			"command": "pnpm run asvs:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/security/asvs-coverage.md"
+		},
+		{
+			"id": "security-disclosure",
+			"contract": "The vulnerability-report to publication-decision flow still has one record on both sides — the runbook and the ledger — and the committed probes still report a missing duty and a premature public detail as INCOMPLETE rather than as a pass.",
+			"command": "pnpm run security:disclosure:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/security-disclosure.md"
+		},
+		{
+			"id": "release-gate-ledger",
+			"contract": "This ledger itself is executed on every release, so the report that says which inspections ran cannot itself stop running unnoticed.",
+			"command": "pnpm run release:gate:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/security/release-gate-coverage.md"
+		},
+		{
+			"id": "integration-scope-ledger",
+			"contract": "Every third-party connection candidate still declares its least-privilege scope set, token retention ceiling and revocation procedure, every reviewed connection still reaches the verdict the ledger claims when the real adapter runs it, and no candidate is published while the owner allowlist is empty.",
+			"command": "pnpm run integration:scope:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/integration-token-scope.md"
+		},
+		{
+			"id": "threat-model-ledger",
+			"contract": "Every feature unit's assets, trust boundaries, threats and review questions resolve to repository artefacts that exist, and no secret value is recorded in the model, so a release cannot ship a security model describing a platform this repository does not contain.",
+			"command": "pnpm run threat:model:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/security/threat-model.md"
+		},
+		{
+			"id": "playwright-e2e",
+			"contract": "The critical user journeys still pass in a real browser against the built Worker, which no static gate can stand in for.",
+			"command": "pnpm run e2e",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["ci"],
+			"documentation": "e2e/README.md"
+		},
+		{
+			"id": "production-smoke",
+			"contract": "After the Cloudflare Workers Builds deploy, the representative routes are smoke-tested on the canonical origin by the operator.",
+			"command": "pnpm run e2e:prod",
+			"state": "implemented",
+			"required": false,
+			"surfaces": [],
+			"documentation": "docs/runbook/cloudflare-workers-builds.md",
+			"note": "not run by the pre-merge release chain by contract: AGENTS.md section 5 keeps the production smoke a separate manual CI step, and docs/release.md assigns Smoke #2 / #3 to the post-deploy window. It is listed here so the release report shows it as not run rather than passing."
+		},
+		{
+			"id": "ssrf-url-adapter-evidence",
+			"contract": "The outbound fetch adapter keeps its SSRF evidence (blocked hosts, redirect handling, DNS answers) as a regenerable artefact.",
+			"command": "pnpm run security:ssrf:report",
+			"state": "implemented",
+			"required": false,
+			"surfaces": [],
+			"documentation": "docs/security.md",
+			"note": "not run by any release surface: the contract is asserted by the suite on every run, and the picture is regenerated on demand (pnpm run security:ssrf:report) rather than being a release gate."
+		},
+		{
+			"id": "dynamic-security-scanning",
+			"contract": "An authenticated dynamic scan of a running deployment would prove the assembled Worker, not just its contracts.",
+			"state": "not_applicable",
+			"required": false,
+			"reason": "No scan target exists: ADR-0014 fixes one canonical production origin and this repository has no staging or preview origin, and AGENTS.md section 4 requires a ticket plus an ADR before any new service or outbound integration is added. This Issue introduces none, so the check is recorded as not applicable instead of as passed.",
+			"documentation": "docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md"
+		},
+		{
+			"id": "static-security-scanning",
+			"contract": "A security-focused static analyser would catch taint flows that the current lint rules do not model.",
+			"state": "not_applicable",
+			"required": false,
+			"reason": "The adopted toolchain is Biome, which AGENTS.md section 2 fixes as the single formatter and linter and section 11 keeps ESLint / Oxlint out of scope for this line of work. Biome is not a taint analyser, and adding a second static analyser is a stack decision that needs its own ADR rather than a release-report row.",
+			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "runtime-waf-policy",
+			"contract": "A managed WAF policy in front of the Worker would add a request-class decision layer above the application boundary.",
+			"state": "not_applicable",
+			"required": false,
+			"reason": "WAF rulesets are Cloudflare dashboard configuration owned outside the repository, and AGENTS.md section 4 requires a ticket plus an ADR for every added Cloudflare service. The application boundary (CSP, headers, rate limits, CSRF) is verified in-repository instead, so this row is not applicable rather than passed.",
+			"documentation": "docs/security.md"
+		},
+		{
+			"id": "signed-provenance",
+			"contract": "A signed attestation would bind the SBOM and the build inputs to an identity the release can verify independently of the pipeline.",
+			"state": "not_applicable",
+			"required": false,
+			"reason": "The SBOM inventory itself is produced and checked, but publishing a signature needs a release signing identity whose custody is an owner decision (Infisical and the Workers Builds runbook) that this Issue must not invent. It is recorded as future manual work in docs/verification/security/release-gate-coverage.md.",
+			"documentation": "docs/runbook/sbom.md"
+		},
+		{
+			"id": "independent-penetration-test",
+			"contract": "An independent report would test assumptions the repository cannot test about itself.",
+			"state": "not_applicable",
+			"required": false,
+			"reason": "No external tester or report is contracted, and none may be fabricated for a release report. The in-repository security verification set (docs/security.md) is the current evidence, and third-party assessment stays future manual work.",
+			"documentation": "docs/security.md"
+		}
+	]
+}

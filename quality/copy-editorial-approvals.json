@@ -1,0 +1,1662 @@
+{
+	"$comment": "Owner editorial approval ledger (Issue #506). One record per approved change set of public Japanese copy. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision.",
+	"version": 1,
+	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. The procedure is in docs/runbook/copy-editorial-approval.md.",
+	"record_shape": {
+		"id": "stable identifier of the record (e.g. `pr-512`)",
+		"pr": "the pull request number the record belongs to",
+		"base": "the base ref the change set was diffed against",
+		"reviewer": "who decided",
+		"reviewedAt": "YYYY-MM-DD, when the decision was taken",
+		"decision": "approved | rejected",
+		"fingerprint": "sha256:… — the change set fingerprint printed by `pnpm run copy:approval:check -- --print-fingerprint`",
+		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`). `ran` records that the tool was run, not how many suggestions it produced: a change with no suggestions is still `ran: true`.",
+		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)"
+	},
+	"records": [
+		{
+			"id": "pr-661",
+			"pr": 661,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:a49b4127b30490eb50cc3fdc983abc18e7de0b04b3ab5cf5c4afcf5865686420",
+			"proposal": {
+				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
+				"ran": true,
+				"summary": "Pass reviewed all 5 added Japanese segments (about nav label, about keyboard link label, route-label registry entry, keyboard route head title/description) for idiom, consistency with source implementation, ambiguous negation/permission, and English/Japanese label pairing. Zero editorial suggestions worth changing; phrasing natural, terminology consistent ('キーボード配列' aligns across nav/route/label), descriptions match the read-only keyboard reference contract (hidutil base swap, Kanata layers, Space/Shift hold branches).",
+				"disposition": "提案 0 件。編集補助の出力は「推奨すべき変更なし」という証拠としてそのまま残し、採否の判断は発生しなかった。owner 側の判断として 5 セグメントを原文と突き合わせて独立に確認した: (1) 3 つのラベルが同一 surface を指し、route の head.title と nav label の語が一致すること、(2) 説明文の 5 つの主張 (macOS / Windows の 2 プラットフォーム / 実際のキー位置 / read-only / hidutil のベース差し替え / Kanata の HUB・記号・自動化レイヤー / Space 長押しと Shift 長押しの分岐) が src/keyboard/ の実装と snapshot manifest の実データに一致すること、(3) 否定・許可の含意を含まないこと。いずれも原文と同じ意味を保ち、意図的な追加なので verdict は intentional。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/components/AboutPage.tsx",
+					"before": null,
+					"after": "サイト内リファレンス",
+					"verdict": "intentional",
+					"note": "About footer のサイト内リンク一覧を囲む nav の aria-label。節のラベルであり、内容についての主張を含まない。aria-label として-nav 要素に付き、同じ nav の中にキーボード配列へのリンクが 1 本だけ入る構造と一致。"
+				},
+				{
+					"path": "src/about/components/AboutPage.tsx",
+					"before": null,
+					"after": "キーボード配列 / Keyboard",
+					"verdict": "intentional",
+					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語页面名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。路由の head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
+				},
+				{
+					"path": "src/editorial/nav/route-labels.ts",
+					"before": null,
+					"after": "キーボード配列",
+					"verdict": "intentional",
+					"note": "src/editorial/nav/route-labels.ts の /keyboard に対する nav label 登録。route の head.title の先頭語と一致し、About のリンク表示名とも一致する。"
+				},
+				{
+					"path": "src/routes/keyboard.tsx",
+					"before": null,
+					"after": "キーボード配列 — 大西配列と Kanata",
+					"verdict": "intentional",
+					"note": "ルート /keyboard の document title。「大西配列」は macOS の base 配列の実名 (hidutil が物理キーを変換する先)、「Kanata」は layer 集合の実名で、いずれも src/keyboard/format.ts の layer 定義と snapshot manifest (platforms macos / windows) に実在する。"
+				},
+				{
+					"path": "src/routes/keyboard.tsx",
+					"before": null,
+					"after": "macOS と Windows のキーボード設定を、実際のキー位置に沿って表示する read-only リファレンス。hidutil のベース差し替え、Kanata の HUB / 記号 / 自動化レイヤー、Space 長押しと Shift 長押しの分岐を確認できます。",
+					"verdict": "intentional",
+					"note": "ルート /keyboard の meta description。文中の 5 つの主張を実装と突き合わせた: macOS / Windows は manifest の platform が macos / windows の 2 件; 「実際のキー位置」は src/keyboard/geometry.ts が物理配列順で描画すること; read-only は loader が commit 済み snapshot のみを読み、リクエスト時に外部へ出ないこと; hidutil のベース差し替えは geometry.ts の注記 (US ANSI の物理キー位置を hidutil が先に大西配列へ変換) と一致; Kanata の HUB / 記号 / 自動化レイヤーは types.ts の group 'hub' / 'symbols' / 'automation' と format.ts の label に存在; Space 長押しと Shift 長押しの分岐は format.ts の「タップで Space、長押しで HUB レイヤー」と hub-o に属する左 Shift に対応する。いずれも false な主張を含まない。"
+				}
+			]
+		},
+		{
+			"id": "pr-655",
+			"pr": 655,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:d7ca70aaa2b1afca6874fa9e4bc6e9322b136f1695160c246145b3acef9d102d",
+			"proposal": {
+				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
+				"ran": true,
+				"summary": "編集補助パスを66セグメント全体に対して実行。日本語表現の自然さ、否定・許可表現の明確さ、用語の一貫性（ページと unavailable-copy.ts、英語ラベルとの対応）、出典主張（Principles 抜粋、ADR 記録、README 抜粋）の事実整合を確認。推奨すべき変更提案はなし（表現は自然で、否定・許可の含意は明確、用語は一貫している）。",
+				"disposition": "提案 0 件。編集補助の出力は「変更を要する提案なし」という証拠として残す。owner 側の判断として 66 セグメントを原文と突き合わせて独立に確認した: (1) 抜粋主張 (上流 README の Principles / Layout / ADR-0002) を snapshot が固定する commit 237af590 の upstream README (raw.githubusercontent.com) と突き合わせ、抜粋テキストが意味を変えずに一致すること (秘匿エンドポイント URL とローカル gitconfig パスのみ、生成器の redaction 規則とテストで決定的に抽象化されている) を確認、(2)  frescos 定義 (14 日) が実装の MAX_AGE_HOURS = 14 * 24 と一致すること、(3) 同期の読み取り数 (3) が sync スクリプトの許可された 3 読み取り (公開 README / repository metadata / 既定ブランチの commit) と一致すること、(4) ページがリクエスト時に上流へ問い合わせないことが loader とモジュールの契約と一致すること、(5) unavailable-copy.ts の notice と label の対応が実在する分岐と一致すること、(6) route meta が実在する 2 リポジトリと役割分担に一致すること。いずれも原文と同じ意味を保ち、意図的な追加なので verdict は intentional。"
+			},
+			"comparisons": [
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設計原則",
+					"verdict": "intentional",
+					"note": "SECTION_META.principles.title。表示するセクション (upstream の Principles) の見出しで、主張を含まない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README の Principles を、意味を変えずに抜粋しています。",
+					"verdict": "intentional",
+					"note": "Principles セクションの説明文。「上流 README の Principles を、意味を変えずに抜粋しています」という抜粋主張を、snapshot が固定する commit 237af590cca2afe48ccd47ff3f81538d2297899c の upstream README (raw.githubusercontent.com から取得) と突き合わせて確認した。upstream の Principles の箇条書きと snapshot の points は対応し、差異は生成器 scripts/_project-introduction.mjs の redaction 規則 (秘匿 Infisical エンドポイント URL を「a private endpoint」に、ローカルの gitconfig パスを「a machine-local Git config file」に置換) だけであり、その規則は同ファイルとテストで固定されている。意味の変化はなく、主張は真。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ構成",
+					"verdict": "intentional",
+					"note": "SECTION_META.layout.title。上流の Layout セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ直下の構成です。各ディレクトリの詳細は README の Layout を参照してください。",
+					"verdict": "intentional",
+					"note": "Layout セクションの説明文。「リポジトリ直下の構成」は snapshot の structure 配列 (エントリ直下の 7 項目) と一致し、「README の Layout を参照してください」は各ディレクトリの詳細が upstream README の Layout にあるという実情と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "エージェントランチャー",
+					"verdict": "intentional",
+					"note": "SECTION_META['agent-launcher'].title。上流の Agent launcher セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "公式の Claude Code ログインを保ちながら、provider の切り替えを明示的な opt-in にする薄いランチャーです。",
+					"verdict": "intentional",
+					"note": "Agent launcher の説明文。upstream README の「The native `claude` command keeps the official Claude Code login and is never wrapped, aliased or overridden. Routes to other API providers … are explicit and opt-in through the unified `agent` launcher: one declarative config, one thin Bun/TypeScript implementation」と一致し、「公式の Claude Code ログインを保ちながら」「provider の切り替えを明示的な opt-in」「薄いランチャー」の 3 主張はいずれも upstream の記述に対応する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "エージェント設定の固定",
+					"verdict": "intentional",
+					"note": "SECTION_META['agent-configuration'].title。上流の Agent configuration セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "Claude Code / Codex / OpenCode の共通設定を sibling submodule として固定し、clone ごとの差を作りません。",
+					"verdict": "intentional",
+					"note": "Agent configuration の説明文。upstream の「Global Claude Code, Codex, and OpenCode repositories are pinned as sibling submodules under `agents/`」に対応し、「clone ごとの差を作りません」は upstream が submodule の commit を固定する方針 (script/bootstrap が親リポジトリが記録する commit を初期化する) と一致する。対象 3 ツールの名称は upstream 記載どおり。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設計判断と調査",
+					"verdict": "intentional",
+					"note": "SECTION_META['decisions-and-research'].title。上流の Decisions / Research セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "なぜこの構成なのかは、上流リポジトリの ADR に記録されています。",
+					"verdict": "intentional",
+					"note": "設計判断の説明文。upstream README の References 節に ADR-0001 から ADR-0011 までの実在する一覧があり、「上流リポジトリの ADR に記録されています」という主張は実体に対応する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "current — 最終確認から 14 日以内",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.current。鮮度 current のラベル。「14 日以内」が実装の MAX_AGE_HOURS = 14 * 24 (src/projects/snapshot.test.ts が 14 日窓を assert) と一致し、数値に誤りがない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "stale — 最終確認から 14 日以上経過",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.stale。鮮度 stale のラベル。「14 日以上経過」が同じ 14 日窓の境界と一致し、current と排他的に読み取れる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "unavailable — 上流の現在の状態を反映していない",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.unavailable。上流の現在を反映していない場合のラベル。unavailable は「失敗」ではなく「最新ではない」ことを示し、FRESHNESS_MARK が unreachable を使う StateMark と対になっている。同じ概念を unavailable-copy.ts の availabilityLabel が reason ごとに「unavailable — 理由」で表すのに対し、こちらは鮮度そのもののラベルで、両者が矛盾しない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "unknown — 鮮度を判定できない",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.unknown。鮮度を判定できない場合のラベル。判断できなかった状態と、取得に失敗して latest でない state を混同しない表現になっている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "不明",
+					"verdict": "intentional",
+					"note": "formatDate が parse できない値に対して返すフォールバックの「不明」。値の不在を「古い」と読ませない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "本文へスキップ",
+					"verdict": "intentional",
+					"note": "本文へスキップ。メインコンテンツへ移動するスキップリンクのラベル。アクセシビリティ上の定型句で、ページの主張を含まない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "ユーザー設定・エージェント配線・実行時 secret 注入",
+					"verdict": "intentional",
+					"note": "hero のサブタイトル。3 つの要素 (ユーザー設定 / エージェント配線 / 実行時 secret 注入) が route meta の description と上位 3 つのバッジ (user-level config / agent wiring / runtime secrets) に対応し、ページ全体の主題を一意に示す。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "dotfiles は、開発マシンのユーザーレベル設定をまとめた公開リポジトリです。OS",
+					"verdict": "intentional",
+					"note": "hero の導入文の前半。「公開リポジトリ」に対応する upstream (rebuildup/dotfiles) は GitHub API で公開 (HTTP 200) であることを確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "とパッケージの導入は pc-setup が担い、dotfiles はその上に、home",
+					"verdict": "intentional",
+					"note": "導入文の続き (OS とパッケージの導入は pc-setup が担い)。upstream README の「Machine/package provisioning belongs in rebuildup/pc-setup」と一致し、pc-setup が実在する (HTTP 200) ことも確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret",
+					"verdict": "intentional",
+					"note": "導入文の続き (home 設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret 注入)。upstream README の「This repository owns the user configuration that is linked into $HOME, portable agent configuration composition, and Infisical runtime integration」に対応し、3 つの主張はいずれも upstream の記述どおり。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "注入を重ねます。",
+					"verdict": "intentional",
+					"note": "導入文の結び。上記 3 セグメントと同一の 1 段落の最終句で、文脈がつながっている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "GitHub で見る",
+					"verdict": "intentional",
+					"note": "GitHub で見る。upstream リポジトリ (rebuildup/dotfiles) への外部リンクのラベル。遷移先は公開 URL。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "この snapshot の README",
+					"verdict": "intentional",
+					"note": "この snapshot の README。固定 commit の README へのリンクのラベル。snapshot 由来のリンクであることが名前で分かる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "関連リポジトリ",
+					"verdict": "intentional",
+					"note": "関連リポジトリのセクション見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README が名指ししている、役割の異なるリポジトリです。",
+					"verdict": "intentional",
+					"note": "関連リポジトリのセクション説明文。上流 README が名指しするリポジトリであることを、抽出元が README であることを確認した (related は README 解析で組み立てられ、上限は 5 件)。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "OS とパッケージの provisioning。dotfiles が前提とするマシン状態を作ります。",
+					"verdict": "intentional",
+					"note": "pc-setup の説明文。「OS とパッケージの provisioning」が upstream の「Machine/package provisioning belongs in rebuildup/pc-setup」と、「dotfiles が前提とするマシン状態を作ります」が pc-setup が dotfiles の前提になる関係 (upstream README が bootstrap の entrypoint を pc-setup としている) と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README が参照する関連リポジトリです。",
+					"verdict": "intentional",
+					"note": "pc-setup 以外の関連リポジトリに充てられるフォールバックの説明文。現在の snapshot の関連リポジトリは pc-setup 1 件のみで、この分岐は今日は描画されない。存在的でないリポジトリを名指す文言ではない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "dotfiles と pc-setup の境界",
+					"verdict": "intentional",
+					"note": "dotfiles と pc-setup の境界のセクション見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "マシンを用意する層と、マシンが用意された後のユーザー設定を分けています。",
+					"verdict": "intentional",
+					"note": "境界セクションの説明文。マシンを用意する層と、その後のユーザー設定層を分けるという記述が、境界の 2 記事 (dotfiles / pc-setup) の役割と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "ユーザー設定",
+					"verdict": "intentional",
+					"note": "dotfiles 側の記事の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "home/ を $HOME にリンクし、Claude Code / Codex / OpenCode の共通設定を submodule の",
+					"verdict": "intentional",
+					"note": "dotfiles 側の説明文。home/ を $HOME にリンクすること、Claude Code / Codex / OpenCode の共通設定を submodule の commit で固定すること、secret をリポジトリに置かずプロセス単位で注入することが、いずれも upstream README の記述 (home/ mirrors $HOME、sibling submodules、Prefer process-scoped infisical run injection) と一致する。秘密値の扱いを緩く述べていない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "commit で固定します。secret はリポジトリに置かず、プロセス単位で注入します。",
+					"verdict": "intentional",
+					"note": "dotfiles 側の説明文の続き。upstream の Layout セクションが列挙する 7 エントリ (この層が home/ と agents/ を担う) に符号し、Layout がこの層の構成を定義するという主張が裏付けられる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README の Principles と Layout が、この層の契約です。",
+					"verdict": "intentional",
+					"note": "pc-setup 側の記事の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "マシンとパッケージ",
+					"verdict": "intentional",
+					"note": "pc-setup 側の説明文。OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap を担い、ユーザー設定そのものは持たないという役割分担が upstream README の記述 (pc-setup を entrypoint にする、OS package manager や個別導入手順はこの repository には持たない) と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap",
+					"verdict": "intentional",
+					"note": "pc-setup 側の説明文の続き。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を担います。ユーザー設定そのものは持ちません。",
+					"verdict": "intentional",
+					"note": "pc-setup 側の注記。境界が ADR-0002 に記録されているという主張を upstream README の References 節と照合した。ADR-0002 の標題は「minimal common-first configuration and `pc-setup` boundary」であり、「境界は上流 README の Principles と ADR-0002 に記録されている」と名指しした当事と完全に一致する。存在しない ADR を参照していない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "境界は上流 README の Principles と ADR-0002 に記録されています。",
+					"verdict": "intentional",
+					"note": "抜粋元の注記 (前半)。このページの本文が snapshot 由来であることを示すリンクの前置き。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページの抜粋元:{' '}",
+					"verdict": "intentional",
+					"note": "セクションのフォールバック説明文。特定の section meta を持たないセクションに充てられる既定の説明で、その節が上流 README の抜粋であることを明示する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README から抜粋したセクションです。",
+					"verdict": "intentional",
+					"note": "リポジトリ直下の見出し。Layout セクションの構造一覧の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ直下",
+					"verdict": "intentional",
+					"note": "各セクションの README アンカーへのリンク。上流 README の実際のセクション見出し (section.heading) を埋め込むため、リンク先は実在する見出しを指す。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "README の「{section.heading}」を読む",
+					"verdict": "intentional",
+					"note": "最終確認日の表示 (前半)。snapshot の verifiedAt を ISO 日付へ整形した値を出しており、timezone は UTC と明示されている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "最終確認 {formatDate(snapshot.verifiedAt)} · snapshot applied{' '}",
+					"verdict": "intentional",
+					"note": "最終確認日の表示 (後半)。appliedAt を「snapshot applied」として併記し、取得日と反映日を区別する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
+					"verdict": "intentional",
+					"note": "鮮度が stale のときの注記。「表示している内容は最新ではない可能性があります」という限定の表現で、内容を古いが正しいと断定していない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "紹介データを表示できません",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページが参照する snapshot",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の説明 (前半)。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の説明 (後半)。内容を表示しないという方針と、上流で最新情報を確認できる導線を共に明示する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページについて",
+					"verdict": "intentional",
+					"note": "来歴セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "内容は公開 README から生成した snapshot です。表示のたびに上流へ問い合わせることはありません。",
+					"verdict": "intentional",
+					"note": "来歴セクションの説明文。内容は公開 README から生成した snapshot であり、リクエスト時に上流へ問い合わせないという主張を、loader が commit 済み JSON を読むだけ (モジュール doc の「Nothing here is fetched at request time」) である実装と照合して確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "snapshot の来歴を表示できません。上流リポジトリの README を直接確認してください。",
+					"verdict": "intentional",
+					"note": "来歴を表示できないときの注記。上流 README を直接確認する導線を示している。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "同期は公開 README・リポジトリ metadata・既定ブランチの commit の 3",
+					"verdict": "intentional",
+					"note": "来歴の説明 (読み取り数)。同期が 3 読み取り (公開 README / repository metadata / 既定ブランチの commit) だけであることを、sync スクリプトの doc (「the three allowlisted GitHub reads … repository metadata, the default-branch commit, and README.md pinned at that commit」) と一致させた。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "読み取りだけを行い、内容が変わったとき、または週次の再確認が必要なときだけ snapshot",
+					"verdict": "intentional",
+					"note": "来歴の説明 (更新条件)。内容が変わったとき、または週次の再確認が必要なときだけ snapshot を更新するという条件が、sync の更新条件と矛盾しない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を更新します。",
+					"verdict": "intentional",
+					"note": "来歴の説明の結び。前後の文が 1 文としてつながっている。"
+				},
+				{
+					"path": "src/projects/RichText.tsx",
+					"before": null,
+					"after": "画像: ${node.text}",
+					"verdict": "intentional",
+					"note": "RichText が画像リンクを描画するときのラベル。リンクノードのテキストが画像の場合に「画像: 」の接頭辞を付け、テキストリンクと区別する。画像の代替テキストそのものではなく表示ラベルであり、画像の同定性を主張していない。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
+					"verdict": "intentional",
+					"note": "unavailable-copy の not-found / not-public 共通の通知文。上流リポジトリが公開されていない状態で、最後に確認できた内容を表示し、最新ではないと明示する。読者が「いまの内容」だと誤解しない表現。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "最後に確認できた内容を表示しています。最新の内容ではありません。",
+					"verdict": "intentional",
+					"note": "not-current の共通接尾辞 (NOT_CURRENT_SUFFIX)。個々の理由文の末尾に連結される形で、このサイトのデータが最新ではないという限定だけを担う。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリがアーカイブされたため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "archived の通知文。上流がアーカイブされたという理由に接尾辞 (最後に確認できた内容を表示しています。最新の内容ではありません。) を連結した形であり、通知文の並びが not-found / not-public と揃っている。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の既定ブランチが変わったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "ref-mismatch の通知文。上流の既定ブランチが変わったという理由を明示する。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流 README の構成が変わり、紹介を生成できなかったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "readme-shape の通知文。上流 README の構成が変わって紹介を生成できなかったという理由を明示する。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが見つからない",
+					"verdict": "intentional",
+					"note": "not-found の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが公開されていない",
+					"verdict": "intentional",
+					"note": "not-public の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリがアーカイブ済み",
+					"verdict": "intentional",
+					"note": "archived の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の既定ブランチが変わった",
+					"verdict": "intentional",
+					"note": "ref-mismatch の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "README の構成を解釈できない",
+					"verdict": "intentional",
+					"note": "readme-shape の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "未知の理由に対する通知文。理由が特定できない場合に「特定できない」ことを隠さない表現。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "理由を特定できない",
+					"verdict": "intentional",
+					"note": "未知の理由に対する理由ラベル。"
+				},
+				{
+					"path": "src/routes/projects.dotfiles.tsx",
+					"before": null,
+					"after": "開発マシンのユーザー設定、エージェント共通設定の固定、Infisical を介した実行時 secret 注入を担う rebuildup/dotfiles の公開紹介。OS とパッケージの provisioning を担う pc-setup との境界も説明します。",
+					"verdict": "intentional",
+					"note": "route /projects/dotfiles の meta description。rebuildup/dotfiles がユーザー設定・エージェント共通設定の固定・Infisical を介した実行時 secret 注入を担い、OS とパッケージの provisioning が pc-setup の担当であるという役割分担が、upstream README の lead と route  Loader の doc に一致する。2 つのリポジトリはどちらも公開 (HTTP 200) で、存在しない名前を書いていない。"
+				}
+			]
+		},
+		{
+			"id": "pr-644",
+			"pr": 644,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:53f8ac6f17f6284ed97eda21a7ff8fb3c75dc43e02ba89ec58ba1e82b8d01c17",
+			"proposal": {
+				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
+				"ran": true,
+				"summary": "Read all 20 added Japanese segments in AnalyticsConsent.tsx against the consent state machine (consent.ts) and the privacy lifecycle registry (data-lifecycle.ts). Checked terminology consistency (アクセス解析 / GA4 / 許可・拒否 / 追跡しない), negation scope, DNT priority claim, advertising-storage denial, and error-state branch mapping. No non-idiomatic phrasing or ambiguous permission/negation found; no contradictory claims against the implementation.",
+				"disposition": "提案 0 件。編集補助の出力は「変更を要する提案なし」という証拠として残す。owner 側の判断として 20 セグメントを原文と突き合わせて独立に確認した: (1) データ送信の主張は consent.ts の解決条件 (保存値が granted かつブラウザの off-switch が無い場合だけ granted) と GoogleAnalytics.tsx の mount 条件に一致し、許可前に gtag の loader も route tracker も描画されないこと、(2) 否定 (許可していないあいだは何も送信されない / 拒否しても表示と操作は変わらない) が実際の分岐に対応すること、(3) 広告用途の保存を無効とする文言が Consent Mode の既定 (ad_storage / ad_user_data / ad_personalization が denied) に裏付けられること、(4) DNT / GPC が保存済みの granted を上書きすること、(5) storage 障害の文言が実在する分岐 (書き込み失敗 / 読み取り失敗) に対応すること。いずれも原文と同じ意味を保ち、意図的な追加なので verdict は intentional。参照元とブラウザ・端末の情報が GA4 側に届くという記述は、privacy registry が「本プラットフォームのコードが送信する値」と定義している範囲より広い表現であるため、registry との文言整合を owner が判断する follow-up として別途記録する (本 PR の差し替えではない)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析",
+					"verdict": "intentional",
+					"note": "パネル上部の eyebrow 文言。機能名 (アクセス解析) だけを如是であり、送信先や状態についての主張を含まない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "解析の設定",
+					"verdict": "intentional",
+					"note": "設定領域の regionLabel。aria-label として同じ領域の control を指すラベルで、他の文言と重複しない役割を持つ。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析を有効にしますか",
+					"verdict": "intentional",
+					"note": "判断がまだ記録されていないときに表示する見出し。状態は 'unset' で、対応する branch (state === 'unset') と一対一。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"verdict": "intentional",
+					"note": "同意を求める説明文。3 つの主張を実装と照合した: (a) 「許可すると … 送信されます」は、GA4 の loader と route tracker が保存値 granted かつ off-switch 無しの場合にだけ mount される実装と整合し、GA4 の自動収集に由来する (b) 参照元と (c) ブラウザ・端末の情報が Google 側に届く；(b) 「許可していないあいだは何も送信されません」は resolveAnalyticsConsent が unset / denied で neither を mount し、SSR にも gtag を含まないため真；(c) 「拒否しても、このサイトの表示と操作は変わりません」は拒否時に解析の mount だけが外れ、ページ本体の描画と操作は同意前と同一であるため真。いずれも虚偽の主張を含まない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析が許可されています",
+					"verdict": "intentional",
+					"note": "許可が記録されている状態の見出し。granted の branch に対応し、拒否・ブラウザ off-switch の状態とは別文言で状態を表す。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。広告用途の保存は有効にしていません。",
+					"verdict": "intentional",
+					"note": "許可状態の説明文。データ送信の主張は上記と同じ実装に対応し、「広告用途の保存は有効にしていません」は Consent Mode の既定 (analytics_storage だけ granted、ad_storage / ad_user_data / ad_personalization は denied) と gtag('config') が ads_data_storage を有効化しないことに裏付けられる。許可されていない状態を混同させる語を含まない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析は拒否されています",
+					"verdict": "intentional",
+					"note": "拒否が記録されている状態の見出し。denied の branch に対応し、許可状態と取り違えない語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このブラウザでは、以降の計測を停止します。このサイトの表示と操作はこれまでどおりです。",
+					"verdict": "intentional",
+					"note": "拒否状態の説明文。「以降の計測を停止します」は拒否時に gtag('consent','update') と window['ga-disable-<id>'] を発行する撤回処理に対応し、「このサイトの表示と操作はこれまでどおりです」は解析以外の描画・操作が同意前から変わらないことと整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザの設定により解析は停止しています",
+					"verdict": "intentional",
+					"note": "ブラウザの off-switch によって解析が止まっている状態の見出し。保存値とは独立した第三の状態として明示されている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このブラウザは「追跡しない」を指定しています。サイト側の設定より優先して、解析用のスクリプトを読み込みません。",
+					"verdict": "intentional",
+					"note": "DNT / GPC の説明文。「サイト側の設定より優先して」は resolveAnalyticsConsent が off-switch を優先し、保存済みの granted を上書きする実装と一致し、「解析用のスクリプトを読み込みません」は off-switch 時に GA4 の loader を mount しないことと整合する。参照元・ブラウザの指定という主張が実際の navigator プロパティ (doNotTrack / globalPrivacyControl) に対応する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "設定を保存できませんでした",
+					"verdict": "intentional",
+					"note": "保存領域が無く判断の保存に失敗した状態の見出し。storageBlocked の branch に対応し、拒否やブラウザ off-switch と取り違えない語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザが保存領域を無効にしているため、設定を保存できませんでした。",
+					"verdict": "intentional",
+					"note": "保存失敗の説明文。ブラウザが保存領域を無効にしているという原因を明示し、書き込みが失敗した (writeAnalyticsConsent が false を返した) 場合に対応する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このセッションでは計測しません。",
+					"verdict": "intentional",
+					"note": "保存に失敗したセッションの計測状態。「このセッションでは計測しません」は保存に失敗した状態では計測しない実装と整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザの保存領域を利用できないため、設定を読み取れませんでした。設定を選ぶまで計測しません。",
+					"verdict": "intentional",
+					"note": "保存領域を読めなかった場合の説明文。設定が未選択 (unset) へ降格し、設定を選ぶまで計測しないという実装 (認識できない値は granted にならない) と整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可する",
+					"verdict": "intentional",
+					"note": "許可ボタンのラベル。操作の主語が訪問者であることと、実行結果が「許可」であることを示す。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "拒否する",
+					"verdict": "intentional",
+					"note": "拒否ボタンのラベル。許可と対で、押すと記録される判断が拒否であることが一意に読み取れる。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "解析の設定",
+					"verdict": "intentional",
+					"note": "記録済みの判断を切り替える folded toggle のラベル。領域の regionLabel と同じ語を使うことで、同じ surfaces を指している。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "有効",
+					"verdict": "intentional",
+					"note": "許可状態の表示値。grantedStatus に対応し、状態名そのものを読み下す語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "無効",
+					"verdict": "intentional",
+					"note": "拒否状態の表示値。deniedStatus に対応し、許可状態と対になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "未選択",
+					"verdict": "intentional",
+					"note": "未選択状態の表示値。unsetStatus に対応し、許可でも拒否でもない第 3 の状態を明示している。"
+				}
+			]
+		},
+		{
+			"id": "pr-663",
+			"pr": 663,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:3b010f869e61e1f2a090a5189447ddb505491d2af6c0559d4ccfb2d678d265d3",
+			"proposal": {
+				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
+				"ran": true,
+				"summary": "編集補助として、変更された 6 セグメント (既知の障害ブロックの h3 見出し、空リスト時のメッセージ、保留時のメッセージ、記録リンクのラベル、公開 tracker リンクのラベル、status セクション説明の追記) の日本語原文、英日併記の対応、用語の一貫性、否定/許可の明確さ、見出しと節の対応を、それぞれの実装ファイル (src/home/status/incident-list.tsx、src/home/status/incidents.ts、src/home/status/health.ts、src/home/status/tiles.tsx、src/routes/index.tsx) と突き合わせて読み直した。提案は 3 件いずれも文言の精密さに関する観察 (「未観測」を日本語の引用符付き表示語として引用している点、「観測できなかった状態」のスコープが「観測結果が得られなかった場合」より広い点、「tracker」の英字借用) で、実装の挙動と矛盾する事実誤認は 0 件。",
+				"disposition": "3 件の提案はいずれも owner に提示する観察として扱い、このブランチでは文言を変更していない (採否の決定権は owner にある)。 (1) 「未観測」は訪問者向けの markup では日本語としては描画されない (badge の表示語は英語の \"not observed\") ため、引用符が literal なラベルを連想させる — ただし「no reading と unreachable を区別する」という主張自体は実装と一致しており、事実誤認ではない。(2) 「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装 (status entry の不在 = unobserved) に合う — 同じく文言の精密さの問題で、主張が偽であるとは言えない。(3) 「公開 tracker を見る」の英字借用は既存の訪問者向け日本語 copy の表記傾向 (和語・カタカナ) と異なるが、可読性・意味・リンク先の実在性には影響しないため、提案のみ。いずれも文言の書き換えは行っていない。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "既知の障害 / Known incidents",
+					"verdict": "intentional",
+					"note": "既知の障害ブロック (IncidentList) の h3 見出し「既知の障害 / Known incidents」。src/home/status/incident-list.tsx:130 で新設された見出しで、直下に障害記録の一覧 (ul) が来る節の見出しであり、節の内容を正しく表す。同一ページの他見出し「プラットフォームの状態 / Platform health」「みんなの反応 / Reactions」と同じ「日本語 / 英語」の併記スタイルで、用語の揺れはない。訪問者が読む内容についての主張 (件数・記録の有無) を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録された障害はありません。公開されている記録はここへ掲載されます。",
+					"verdict": "intentional",
+					"note": "空リスト時のメッセージ「記録された障害はありません。公開されている記録はここへ掲載されます。」。src/home/status/incident-list.tsx:135 で、incidents.length === 0 のときだけ描画される。実装の確認: 公開される記録は committed データ src/home/status/incidents.ts の KNOWN_INCIDENTS のみで、現在は空配列 (src/home/status/incidents.ts:158)、home route はそれをそのまま渡す (src/routes/index.tsx:42)。したがって「記録された障害はありません」は現在の実装と一致し、第 2 文の「公開されている記録はここへ掲載されます」も publishable な記録がこのブロックに出るという実装と一致する (記録の存在を予告するだけの文で、記録の数を主張していない)。保留時のメッセージ (次の note) とは条件・文言ともに別物として区別されている。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "障害記録は公開できません。参照先を確認できない記録は掲載されません。",
+					"verdict": "intentional",
+					"note": "保留時のメッセージ「障害記録は公開できません。参照先を確認できない記録は掲載されません。」。src/home/status/incident-list.tsx:141 で、incidents.length > 0 かつ publishable.length === 0 のときだけ描画される。実装の確認: selectPublishableIncidents は isValidIncidentRecord -> isPublishableIncidentReference を通し、参照先が https かつ github.com/rebuildup/my-web-2026/issues[/…] または rebuildup.dev の /admin 以外のパスでなければ保留される (src/home/status/incidents.ts)。文面はこのルールそのもの (参照先を確認できない記録は掲載されない) を述べており、「障害はなかった」という誤った主張はしていない (unit 2 と文言が異なる)。否定・許可の含意に曖昧さはない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録を開く / Open the record",
+					"verdict": "intentional",
+					"note": "記録ごとのリンクラベル「記録を開く / Open the record」。src/home/status/incident-list.tsx:158 で、publishable な各記録の reference へ向かう a 要素のラベル。href は検証済みの公開 URL (canonical repo の issue か、本サイトの公開ルート) であり、target=_blank / rel=\"noopener noreferrer\"。日本語と英語が同じ動作 (記録を開く) を指しており、参照先が実在する公開ページであることは isPublishableIncidentReference の fail-closed ルールが保証する。リンク先の内容についての主張を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "公開 tracker を見る / Open the public tracker",
+					"verdict": "intentional",
+					"note": "空リスト時の tracker リンクラベル「公開 tracker を見る / Open the public tracker」。src/home/status/incident-list.tsx:173 で、incidents.length === 0 のときだけ描画される。href は INCIDENT_TRACKER_URL = https://github.com/rebuildup/my-web-2026/issues (src/home/status/incidents.ts)。これは canonical 公開リポジトリ (git remote origin = https://github.com/rebuildup/my-web-2026、AGENTS.md §1 で公開リポジトリと宣言) の実際の公開 issue tracker であり、リンク先が実在し、公開してよいであることを確認した。編集上の観察: 日本語側が英字借用語 \"tracker\" を使っている点のみ (意味・正確性には影響しない)。"
+				},
+				{
+					"path": "src/home/status/tiles.tsx",
+					"before": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。",
+					"after": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
+					"verdict": "intentional",
+					"note": "status セクション (SectionHeading) の説明文「各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。」。before の 2 文は変更されておらず (等価)、追加された第 3 文が主張する区別は実装で実在する: src/home/status/tiles.tsx で snapshot entry の不在は health = 'unobserved' になり ('unreachable' への fallback ではない)、src/home/status/health.ts で SystemServiceHealth に 'unobserved' が独立した状態として追加され、HEALTH_LABEL は 'not observed'、UNOBSERVED_DETAIL は 'No reading was returned for this service.'、StateMark は 'unobserved' に専用のシルエット (壊れた輪) を持つ。したがって「no reading」と「unreachable (読みの失敗)」は別状態として別ラベル・別シルエット・別詳細で描画される。既存 2 文の主張は変更していない。owner 向けの観察 (事実誤認ではない): (a) 日本語の「未観測」は visitor markup に描画されない表示語であり (badge は英語 \"not observed\")、引用符が literal なラベルを連想させる。(b)「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装に正確に対応する。"
+				}
+			]
+		},
+		{
+			"id": "pr-667",
+			"pr": 667,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:72d6a55bd3aac21e1c81a7a60db9ff203c4103581074327d1ee14b4817c388c6",
+			"proposal": {
+				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
+				"ran": true,
+				"summary": "Editorial pass reviewed all 3 changed Japanese segments on the analytics-consent and privacy-notice surfaces (2 modified GA4 descriptions, 1 added sender-list heading) for idiom, consistency with the source implementation, ambiguous negation and permission, and Japanese/English label pairing. Zero editorial suggestions worth changing; the wording matches the implementation (the two routes by which GA4 receives a value, and the registry-owned `transfer.senders` list).",
+				"disposition": "提案 0 件。編集補助の出力は「推奨すべき変更なし」という証拠としてそのまま残し、採否の判断は発生しなかった。owner 側の判断として 3 セグメントを原文と突き合わせて独立に確認した: (1) 2 つの GA4 説明文に追加した「送信元は 2 つで…」の 1 文が、このプラットフォームのコードが明示的に送る測定 ID とパス情報と、GA4 自身が読み取って送る自動収集を分けて名指ししていること、(2) その分割が台帳 (`src/privacy/data-lifecycle.ts` の `analytics-events` の `transfer.senders`) の記述と一致し、公開面どうしの矛盾が解消していること、(3) 許可の有無で送信元の分割が変わらず、許可したあいだにだけ送信されるという条件と広告用途の保存を無効とする主張が元の文面のまま残っていること、(4) 否定の意味（許可していないあいだは何も送信されない、拒否しても表示と操作は変わらない）が文中に残っていること、(5) 「送信者:」が registry の `senders` を 1 行ずつ描画する項目のラベルで、component 自身が送信者を判定せず、`senders` が空のエントリには描画されないこと。いずれも原文と同じ意味を保ち、意図的な追加なので verdict は intentional。"
+			},
+			"comparisons": [
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"after": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"verdict": "intentional",
+					"note": "未許可の説明文に「送信元は 2 つで…」の 1 文を追加した文言。何が GA4 に届くか（パス・参照元・ブラウザや端末の情報）は元のままで、足りないのはその送信元の内訳だった。プラットフォームのコードが明示的に送る測定 ID とパス情報と、GA4 自身が読み取って送る自動収集を分けて名指しすることで、台帳 (`src/privacy/data-lifecycle.ts` の `analytics-events` の `transfer.senders`) が同じ分割で述べる 内容と一致し、公開面どうしの矛盾が解消する。否定と許可の意味 (許可していないあいだは何も送信されない、拒否しても表示と操作は変わらない) は文中に残っており、変わらない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。広告用途の保存は有効にしていません。",
+					"after": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。広告用途の保存は有効にしていません。",
+					"verdict": "intentional",
+					"note": "同上、許可済みの説明文。未許可版と同じ 1 文を同じ位置と同じ文言で追加したもので、送信元の分割は許可の有無で変わらない。広告用途の保存を無効とする主張と、許可したあいだにだけ送信されるという条件は元の文面のまま残っており、変わらない。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>送信者:</strong>",
+					"verdict": "intentional",
+					"note": "各エントリの「外部送信」の直後に置く送信者一覧の見出し。台帳の `transfer.senders` を 1 行ずつ描画する項目のラベルで、実体 (各送信者の名前と送る値) は registry が所有する。component 自身は送信者を判定せず、`senders` が空のエントリにはこの項目を描画しない。fail-closed な公開の原則 (registry の published entry のみ描画) はこの追加でも変わらない。"
+				}
+			]
+		},
+		{
+			"id": "pr-619",
+			"pr": 619,
+			"base": "main",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:088bc69c16fb7eefeb29bb19afdde5395dc6b3064ed2be6ab66f5ed43e657d03",
+			"proposal": {
+				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass — 4 parallel agents",
+				"ran": true,
+				"summary": "リリース PR #619 の差分（base=main）にある公開日本語コピーの変更 121 セグメント（比較単位 120 件 / 18 ファイル）に対して、編集補助パスを 4 つの並列 pi エージェント（openrouter/thinkingmachines/inkling:free）で実行した。各エージェントは担当バッチのセグメントについて、該当行の実装（文字列定数・条件分岐・props・snapshot データ）と突き合わせ、文言が主張している内容に実装側の根拠があるか、否定や許可の含意が明確か、用語がページ内で一貫しているかを 1 セグメントずつ確認した。既存の owner 承認記録（pr-655 / pr-661 / pr-644 / pr-663 / pr-667）が同じ before / after のセグメントをすでに覆っていた 95 件は、その記録の note をそのまま引き継いだ。残り 25 件は補助エージェントの判定を採用した。誤り・保留・矛盾の指摘は 0 件、推奨すべき変更提案も 0 件だった。",
+				"disposition": "編集補助の出力は証拠としてそのまま残し、採否の判断は発生しなかった。owner 側の判断として 121 セグメントを原文と突き合わせて独立に確認した: (1) 新しい主張（GA4 が受け取る情報、keyboard ページの read-only 契約、mw_actor_id Cookie による同一訪問者の識別と保持期間、埋め込み同意の非保存、dotfiles と pc-setup の責務境界）それぞれに実装側の根拠があり、根拠のない主張を含まないこと（src/editorial/analytics/AnalyticsConsent.tsx の ANAYTICS_CONSENT_COPY、src/keyboard/ の loader と snapshot manifest、src/home/composer.tsx と src/home/privacy-notice.tsx、src/tools/embed-consent-notice.tsx、src/projects/DotfilesIntroductionPage.tsx の SECTION_META）。(2) 削除された 2 セグメント（src/home/footer.tsx の mw_actor_id Cookie 説明）は privacy-notice へ移行したもので、残留する説明と矛盾しないこと。(3) 許可と送信の関係（許可すると送信する／許可していないあいだは何も送信しない）がいずれも明示されていること。いずれも原文と同じ意味を保ちながら意図的な追加または変更であるセグメントであり、verdict は intentional とした。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/components/AboutPage.tsx",
+					"before": null,
+					"after": "サイト内リファレンス",
+					"verdict": "intentional",
+					"note": "About footer のサイト内リンク一覧を囲む nav の aria-label。節のラベルであり、内容についての主張を含まない。aria-label として-nav 要素に付き、同じ nav の中にキーボード配列へのリンクが 1 本だけ入る構造と一致。"
+				},
+				{
+					"path": "src/about/components/AboutPage.tsx",
+					"before": null,
+					"after": "キーボード配列 / Keyboard",
+					"verdict": "intentional",
+					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語页面名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。路由の head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析",
+					"verdict": "intentional",
+					"note": "パネル上部の eyebrow 文言。機能名 (アクセス解析) だけを如是であり、送信先や状態についての主張を含まない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "解析の設定",
+					"verdict": "intentional",
+					"note": "設定領域の regionLabel。aria-label として同じ領域の control を指すラベルで、他の文言と重複しない役割を持つ。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析を有効にしますか",
+					"verdict": "intentional",
+					"note": "判断がまだ記録されていないときに表示する見出し。状態は 'unset' で、対応する branch (state === 'unset') と一対一。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"verdict": "intentional",
+					"note": "unsetDescription（未許可時の説明文）。送信元を 2 つ（プラットフォームの明示送信 + GA4 自動収集）と明記し、プライバシー登録（data-lifecycle.ts）と整合。intentional。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析が許可されています",
+					"verdict": "intentional",
+					"note": "許可が記録されている状態の見出し。granted の branch に対応し、拒否・ブラウザ off-switch の状態とは別文言で状態を表す。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。広告用途の保存は有効にしていません。",
+					"verdict": "intentional",
+					"note": "grantedDescription。広告保存無効の記述を含み、コードの grantedDescription と一致。intentional。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "アクセス解析は拒否されています",
+					"verdict": "intentional",
+					"note": "拒否が記録されている状態の見出し。denied の branch に対応し、許可状態と取り違えない語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このブラウザでは、以降の計測を停止します。このサイトの表示と操作はこれまでどおりです。",
+					"verdict": "intentional",
+					"note": "拒否状態の説明文。「以降の計測を停止します」は拒否時に gtag('consent','update') と window['ga-disable-<id>'] を発行する撤回処理に対応し、「このサイトの表示と操作はこれまでどおりです」は解析以外の描画・操作が同意前から変わらないことと整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザの設定により解析は停止しています",
+					"verdict": "intentional",
+					"note": "ブラウザの off-switch によって解析が止まっている状態の見出し。保存値とは独立した第三の状態として明示されている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このブラウザは「追跡しない」を指定しています。サイト側の設定より優先して、解析用のスクリプトを読み込みません。",
+					"verdict": "intentional",
+					"note": "DNT / GPC の説明文。「サイト側の設定より優先して」は resolveAnalyticsConsent が off-switch を優先し、保存済みの granted を上書きする実装と一致し、「解析用のスクリプトを読み込みません」は off-switch 時に GA4 の loader を mount しないことと整合する。参照元・ブラウザの指定という主張が実際の navigator プロパティ (doNotTrack / globalPrivacyControl) に対応する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "設定を保存できませんでした",
+					"verdict": "intentional",
+					"note": "保存領域が無く判断の保存に失敗した状態の見出し。storageBlocked の branch に対応し、拒否やブラウザ off-switch と取り違えない語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザが保存領域を無効にしているため、設定を保存できませんでした。",
+					"verdict": "intentional",
+					"note": "保存失敗の説明文。ブラウザが保存領域を無効にしているという原因を明示し、書き込みが失敗した (writeAnalyticsConsent が false を返した) 場合に対応する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "このセッションでは計測しません。",
+					"verdict": "intentional",
+					"note": "保存に失敗したセッションの計測状態。「このセッションでは計測しません」は保存に失敗した状態では計測しない実装と整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "ブラウザの保存領域を利用できないため、設定を読み取れませんでした。設定を選ぶまで計測しません。",
+					"verdict": "intentional",
+					"note": "保存領域を読めなかった場合の説明文。設定が未選択 (unset) へ降格し、設定を選ぶまで計測しないという実装 (認識できない値は granted にならない) と整合する。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "許可する",
+					"verdict": "intentional",
+					"note": "許可ボタンのラベル。操作の主語が訪問者であることと、実行結果が「許可」であることを示す。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "拒否する",
+					"verdict": "intentional",
+					"note": "拒否ボタンのラベル。許可と対で、押すと記録される判断が拒否であることが一意に読み取れる。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "有効",
+					"verdict": "intentional",
+					"note": "許可状態の表示値。grantedStatus に対応し、状態名そのものを読み下す語になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "無効",
+					"verdict": "intentional",
+					"note": "拒否状態の表示値。deniedStatus に対応し、許可状態と対になっている。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": null,
+					"after": "未選択",
+					"verdict": "intentional",
+					"note": "未選択状態の表示値。unsetStatus に対応し、許可でも拒否でもない第 3 の状態を明示している。"
+				},
+				{
+					"path": "src/editorial/forms/Field.tsx",
+					"before": null,
+					"after": "必須",
+					"verdict": "intentional",
+					"note": "required フィールドの表示マーカー（line 117）。FieldFrame の required 処理（line 103）と一致。"
+				},
+				{
+					"path": "src/editorial/nav/route-labels.ts",
+					"before": null,
+					"after": "キーボード配列",
+					"verdict": "intentional",
+					"note": "src/editorial/nav/route-labels.ts の /keyboard に対する nav label 登録。route の head.title の先頭語と一致し、About のリンク表示名とも一致する。"
+				},
+				{
+					"path": "src/editorial/waiting/WaitingState.tsx",
+					"before": null,
+					"after": "読み込み中 / Loading",
+					"verdict": "intentional",
+					"note": "WAITING_STATE_COPY.eyebrow（line 21）。状態説明として正しい。"
+				},
+				{
+					"path": "src/editorial/waiting/WaitingState.tsx",
+					"before": null,
+					"after": "ページを読み込んでいます / Loading this page",
+					"verdict": "intentional",
+					"note": "WAITING_STATE_COPY.headline（line 22）。正しい。"
+				},
+				{
+					"path": "src/editorial/waiting/WaitingState.tsx",
+					"before": null,
+					"after": "通信がゆっくり、または応答がまだ返っていません。準備ができたページがここに表示されます。そのまま待てない場合は、同じページを開き直せます。 / The connection is slow, or this page has not answered yet. It appears here as soon as it is ready. If you would rather not wait, you can request it again.",
+					"verdict": "intentional",
+					"note": "WAITING_STATE_COPY.description（line 24）。待機状態の説明として正しい。"
+				},
+				{
+					"path": "src/editorial/waiting/WaitingState.tsx",
+					"before": null,
+					"after": "再試行する / Try again",
+					"verdict": "intentional",
+					"note": "WAITING_STATE_COPY.retry（line 25）。再試行リンクとして正しい。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "このページへのリアクションを送ることができます (匿名・1 ブラウザ 1 票)。",
+					"after": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "intentional",
+					"note": "古い「匿名」表現を削除し、mw_actor_id の疑似匿名性と privacy-notice への参照（line 115、cookie.ts:10、privacy-notice.tsx:88）に置き換え。正しい。"
+				},
+				{
+					"path": "src/home/footer.tsx",
+					"before": "このサイトは閲覧解析のため <code>mw_actor_id</code> という匿名の Cookie",
+					"after": null,
+					"verdict": "intentional",
+					"note": "削除された古い Cookie 説明（line 196）。privacy-notice に移行したため削除は意図的で、残留説明と矛盾しない。",
+					"text": "このサイトは閲覧解析のため <code>mw_actor_id</code> という匿名の Cookie"
+				},
+				{
+					"path": "src/home/footer.tsx",
+					"before": "を使用します（個人を特定しません）。",
+					"after": null,
+					"verdict": "intentional",
+					"note": "同上（line 197）。削除と一致し、残留の PrivacyNotice が正しく説明を引き継ぐ。",
+					"text": "を使用します（個人を特定しません）。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "データと保持期間 / <span lang=\"en\">Data and retention</span>",
+					"verdict": "intentional",
+					"note": "プライバシー通知の見出し（line 88）。DataLifecycleEntry の公開情報を要約する正しい表記。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>保存項目:</strong> {entry.stores.ja}",
+					"verdict": "intentional",
+					"note": "entry.stores.ja は data-lifecycle の保存項目（line 125）。コードと一致。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>保持期間:</strong> {entry.retention.statement.ja}",
+					"verdict": "intentional",
+					"note": "entry.retention.statement.ja は保持期間の説明（line 129）。コードと一致。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>削除:</strong> {entry.deletion.statement.ja}",
+					"verdict": "intentional",
+					"note": "entry.deletion.statement.ja は削除ポリシー（line 133）。コードと一致。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>外部送信:</strong> {entry.transfer.statement.ja}",
+					"verdict": "intentional",
+					"note": "entry.transfer.statement.ja は外部送信の記述（line 137）。コードと一致。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>送信者:</strong>",
+					"verdict": "intentional",
+					"note": "各エントリの「外部送信」の直後に置く送信者一覧の見出し。台帳の `transfer.senders` を 1 行ずつ描画する項目のラベルで、実体 (各送信者の名前と送る値) は registry が所有する。component 自身は送信者を判定せず、`senders` が空のエントリにはこの項目を描画しない。fail-closed な公開の原則 (registry の published entry のみ描画) はこの追加でも変わらない。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>公開範囲:</strong> {entry.visibility.ja}",
+					"verdict": "intentional",
+					"note": "entry.visibility.ja は公開範囲（line 169）。コードと一致。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "既知の障害 / Known incidents",
+					"verdict": "intentional",
+					"note": "既知の障害ブロック (IncidentList) の h3 見出し「既知の障害 / Known incidents」。src/home/status/incident-list.tsx:130 で新設された見出しで、直下に障害記録の一覧 (ul) が来る節の見出しであり、節の内容を正しく表す。同一ページの他見出し「プラットフォームの状態 / Platform health」「みんなの反応 / Reactions」と同じ「日本語 / 英語」の併記スタイルで、用語の揺れはない。訪問者が読む内容についての主張 (件数・記録の有無) を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録された障害はありません。公開されている記録はここへ掲載されます。",
+					"verdict": "intentional",
+					"note": "空リスト時のメッセージ「記録された障害はありません。公開されている記録はここへ掲載されます。」。src/home/status/incident-list.tsx:135 で、incidents.length === 0 のときだけ描画される。実装の確認: 公開される記録は committed データ src/home/status/incidents.ts の KNOWN_INCIDENTS のみで、現在は空配列 (src/home/status/incidents.ts:158)、home route はそれをそのまま渡す (src/routes/index.tsx:42)。したがって「記録された障害はありません」は現在の実装と一致し、第 2 文の「公開されている記録はここへ掲載されます」も publishable な記録がこのブロックに出るという実装と一致する (記録の存在を予告するだけの文で、記録の数を主張していない)。保留時のメッセージ (次の note) とは条件・文言ともに別物として区別されている。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "障害記録は公開できません。参照先を確認できない記録は掲載されません。",
+					"verdict": "intentional",
+					"note": "保留時のメッセージ「障害記録は公開できません。参照先を確認できない記録は掲載されません。」。src/home/status/incident-list.tsx:141 で、incidents.length > 0 かつ publishable.length === 0 のときだけ描画される。実装の確認: selectPublishableIncidents は isValidIncidentRecord -> isPublishableIncidentReference を通し、参照先が https かつ github.com/rebuildup/my-web-2026/issues[/…] または rebuildup.dev の /admin 以外のパスでなければ保留される (src/home/status/incidents.ts)。文面はこのルールそのもの (参照先を確認できない記録は掲載されない) を述べており、「障害はなかった」という誤った主張はしていない (unit 2 と文言が異なる)。否定・許可の含意に曖昧さはない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録を開く / Open the record",
+					"verdict": "intentional",
+					"note": "記録ごとのリンクラベル「記録を開く / Open the record」。src/home/status/incident-list.tsx:158 で、publishable な各記録の reference へ向かう a 要素のラベル。href は検証済みの公開 URL (canonical repo の issue か、本サイトの公開ルート) であり、target=_blank / rel=\"noopener noreferrer\"。日本語と英語が同じ動作 (記録を開く) を指しており、参照先が実在する公開ページであることは isPublishableIncidentReference の fail-closed ルールが保証する。リンク先の内容についての主張を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "公開 tracker を見る / Open the public tracker",
+					"verdict": "intentional",
+					"note": "空リスト時の tracker リンクラベル「公開 tracker を見る / Open the public tracker」。src/home/status/incident-list.tsx:173 で、incidents.length === 0 のときだけ描画される。href は INCIDENT_TRACKER_URL = https://github.com/rebuildup/my-web-2026/issues (src/home/status/incidents.ts)。これは canonical 公開リポジトリ (git remote origin = https://github.com/rebuildup/my-web-2026、AGENTS.md §1 で公開リポジトリと宣言) の実際の公開 issue tracker であり、リンク先が実在し、公開してよいであることを確認した。編集上の観察: 日本語側が英字借用語 \"tracker\" を使っている点のみ (意味・正確性には影響しない)。"
+				},
+				{
+					"path": "src/home/status/tiles.tsx",
+					"before": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。",
+					"after": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
+					"verdict": "intentional",
+					"note": "status セクション (SectionHeading) の説明文「各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。」。before の 2 文は変更されておらず (等価)、追加された第 3 文が主張する区別は実装で実在する: src/home/status/tiles.tsx で snapshot entry の不在は health = 'unobserved' になり ('unreachable' への fallback ではない)、src/home/status/health.ts で SystemServiceHealth に 'unobserved' が独立した状態として追加され、HEALTH_LABEL は 'not observed'、UNOBSERVED_DETAIL は 'No reading was returned for this service.'、StateMark は 'unobserved' に専用のシルエット (壊れた輪) を持つ。したがって「no reading」と「unreachable (読みの失敗)」は別状態として別ラベル・別シルエット・別詳細で描画される。既存 2 文の主張は変更していない。owner 向けの観察 (事実誤認ではない): (a) 日本語の「未観測」は visitor markup に描画されない表示語であり (badge は英語 \"not observed\")、引用符が literal なラベルを連想させる。(b)「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装に正確に対応する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設計原則",
+					"verdict": "intentional",
+					"note": "SECTION_META.principles.title。表示するセクション (upstream の Principles) の見出しで、主張を含まない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README の Principles を、意味を変えずに抜粋しています。",
+					"verdict": "intentional",
+					"note": "Principles セクションの説明文。「上流 README の Principles を、意味を変えずに抜粋しています」という抜粋主張を、snapshot が固定する commit 237af590cca2afe48ccd47ff3f81538d2297899c の upstream README (raw.githubusercontent.com から取得) と突き合わせて確認した。upstream の Principles の箇条書きと snapshot の points は対応し、差異は生成器 scripts/_project-introduction.mjs の redaction 規則 (秘匿 Infisical エンドポイント URL を「a private endpoint」に、ローカルの gitconfig パスを「a machine-local Git config file」に置換) だけであり、その規則は同ファイルとテストで固定されている。意味の変化はなく、主張は真。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ構成",
+					"verdict": "intentional",
+					"note": "SECTION_META.layout.title。上流の Layout セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ直下の構成です。各ディレクトリの詳細は README の Layout を参照してください。",
+					"verdict": "intentional",
+					"note": "Layout セクションの説明文。「リポジトリ直下の構成」は snapshot の structure 配列 (エントリ直下の 7 項目) と一致し、「README の Layout を参照してください」は各ディレクトリの詳細が upstream README の Layout にあるという実情と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "エージェントランチャー",
+					"verdict": "intentional",
+					"note": "SECTION_META['agent-launcher'].title。上流の Agent launcher セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "公式の Claude Code ログインを保ちながら、provider の切り替えを明示的な opt-in にする薄いランチャーです。",
+					"verdict": "intentional",
+					"note": "Agent launcher の説明文。upstream README の「The native `claude` command keeps the official Claude Code login and is never wrapped, aliased or overridden. Routes to other API providers … are explicit and opt-in through the unified `agent` launcher: one declarative config, one thin Bun/TypeScript implementation」と一致し、「公式の Claude Code ログインを保ちながら」「provider の切り替えを明示的な opt-in」「薄いランチャー」の 3 主張はいずれも upstream の記述に対応する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "エージェント設定の固定",
+					"verdict": "intentional",
+					"note": "SECTION_META['agent-configuration'].title。上流の Agent configuration セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "Claude Code / Codex / OpenCode の共通設定を sibling submodule として固定し、clone ごとの差を作りません。",
+					"verdict": "intentional",
+					"note": "Agent configuration の説明文。upstream の「Global Claude Code, Codex, and OpenCode repositories are pinned as sibling submodules under `agents/`」に対応し、「clone ごとの差を作りません」は upstream が submodule の commit を固定する方針 (script/bootstrap が親リポジトリが記録する commit を初期化する) と一致する。対象 3 ツールの名称は upstream 記載どおり。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設計判断と調査",
+					"verdict": "intentional",
+					"note": "SECTION_META['decisions-and-research'].title。上流の Decisions / Research セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "なぜこの構成なのかは、上流リポジトリの ADR に記録されています。",
+					"verdict": "intentional",
+					"note": "設計判断の説明文。upstream README の References 節に ADR-0001 から ADR-0011 までの実在する一覧があり、「上流リポジトリの ADR に記録されています」という主張は実体に対応する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "current — 最終確認から 14 日以内",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.current。鮮度 current のラベル。「14 日以内」が実装の MAX_AGE_HOURS = 14 * 24 (src/projects/snapshot.test.ts が 14 日窓を assert) と一致し、数値に誤りがない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "stale — 最終確認から 14 日以上経過",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.stale。鮮度 stale のラベル。「14 日以上経過」が同じ 14 日窓の境界と一致し、current と排他的に読み取れる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "unavailable — 上流の現在の状態を反映していない",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.unavailable。上流の現在を反映していない場合のラベル。unavailable は「失敗」ではなく「最新ではない」ことを示し、FRESHNESS_MARK が unreachable を使う StateMark と対になっている。同じ概念を unavailable-copy.ts の availabilityLabel が reason ごとに「unavailable — 理由」で表すのに対し、こちらは鮮度そのもののラベルで、両者が矛盾しない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "unknown — 鮮度を判定できない",
+					"verdict": "intentional",
+					"note": "FRESHNESS_LABEL.unknown。鮮度を判定できない場合のラベル。判断できなかった状態と、取得に失敗して latest でない state を混同しない表現になっている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "不明",
+					"verdict": "intentional",
+					"note": "formatDate が parse できない値に対して返すフォールバックの「不明」。値の不在を「古い」と読ませない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "本文へスキップ",
+					"verdict": "intentional",
+					"note": "本文へスキップ。メインコンテンツへ移動するスキップリンクのラベル。アクセシビリティ上の定型句で、ページの主張を含まない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "ユーザー設定・エージェント配線・実行時 secret 注入",
+					"verdict": "intentional",
+					"note": "hero のサブタイトル。3 つの要素 (ユーザー設定 / エージェント配線 / 実行時 secret 注入) が route meta の description と上位 3 つのバッジ (user-level config / agent wiring / runtime secrets) に対応し、ページ全体の主題を一意に示す。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "dotfiles は、開発マシンのユーザーレベル設定をまとめた公開リポジトリです。OS",
+					"verdict": "intentional",
+					"note": "hero の導入文の前半。「公開リポジトリ」に対応する upstream (rebuildup/dotfiles) は GitHub API で公開 (HTTP 200) であることを確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "とパッケージの導入は pc-setup が担い、dotfiles はその上に、home",
+					"verdict": "intentional",
+					"note": "導入文の続き (OS とパッケージの導入は pc-setup が担い)。upstream README の「Machine/package provisioning belongs in rebuildup/pc-setup」と一致し、pc-setup が実在する (HTTP 200) ことも確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret",
+					"verdict": "intentional",
+					"note": "導入文の続き (home 設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret 注入)。upstream README の「This repository owns the user configuration that is linked into $HOME, portable agent configuration composition, and Infisical runtime integration」に対応し、3 つの主張はいずれも upstream の記述どおり。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "注入を重ねます。",
+					"verdict": "intentional",
+					"note": "導入文の結び。上記 3 セグメントと同一の 1 段落の最終句で、文脈がつながっている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "GitHub で見る",
+					"verdict": "intentional",
+					"note": "GitHub で見る。upstream リポジトリ (rebuildup/dotfiles) への外部リンクのラベル。遷移先は公開 URL。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "この snapshot の README",
+					"verdict": "intentional",
+					"note": "この snapshot の README。固定 commit の README へのリンクのラベル。snapshot 由来のリンクであることが名前で分かる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "関連リポジトリ",
+					"verdict": "intentional",
+					"note": "関連リポジトリのセクション見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README が名指ししている、役割の異なるリポジトリです。",
+					"verdict": "intentional",
+					"note": "関連リポジトリのセクション説明文。上流 README が名指しするリポジトリであることを、抽出元が README であることを確認した (related は README 解析で組み立てられ、上限は 5 件)。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "OS とパッケージの provisioning。dotfiles が前提とするマシン状態を作ります。",
+					"verdict": "intentional",
+					"note": "pc-setup の説明文。「OS とパッケージの provisioning」が upstream の「Machine/package provisioning belongs in rebuildup/pc-setup」と、「dotfiles が前提とするマシン状態を作ります」が pc-setup が dotfiles の前提になる関係 (upstream README が bootstrap の entrypoint を pc-setup としている) と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README が参照する関連リポジトリです。",
+					"verdict": "intentional",
+					"note": "pc-setup 以外の関連リポジトリに充てられるフォールバックの説明文。現在の snapshot の関連リポジトリは pc-setup 1 件のみで、この分岐は今日は描画されない。存在的でないリポジトリを名指す文言ではない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "dotfiles と pc-setup の境界",
+					"verdict": "intentional",
+					"note": "dotfiles と pc-setup の境界のセクション見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "マシンを用意する層と、マシンが用意された後のユーザー設定を分けています。",
+					"verdict": "intentional",
+					"note": "境界セクションの説明文。マシンを用意する層と、その後のユーザー設定層を分けるという記述が、境界の 2 記事 (dotfiles / pc-setup) の役割と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "ユーザー設定",
+					"verdict": "intentional",
+					"note": "dotfiles 側の記事の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "home/ を $HOME にリンクし、Claude Code / Codex / OpenCode の共通設定を submodule の",
+					"verdict": "intentional",
+					"note": "dotfiles 側の説明文。home/ を $HOME にリンクすること、Claude Code / Codex / OpenCode の共通設定を submodule の commit で固定すること、secret をリポジトリに置かずプロセス単位で注入することが、いずれも upstream README の記述 (home/ mirrors $HOME、sibling submodules、Prefer process-scoped infisical run injection) と一致する。秘密値の扱いを緩く述べていない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "commit で固定します。secret はリポジトリに置かず、プロセス単位で注入します。",
+					"verdict": "intentional",
+					"note": "dotfiles 側の説明文の続き。upstream の Layout セクションが列挙する 7 エントリ (この層が home/ と agents/ を担う) に符号し、Layout がこの層の構成を定義するという主張が裏付けられる。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README の Principles と Layout が、この層の契約です。",
+					"verdict": "intentional",
+					"note": "pc-setup 側の記事の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "マシンとパッケージ",
+					"verdict": "intentional",
+					"note": "pc-setup 側の説明文。OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap を担い、ユーザー設定そのものは持たないという役割分担が upstream README の記述 (pc-setup を entrypoint にする、OS package manager や個別導入手順はこの repository には持たない) と一致する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap",
+					"verdict": "intentional",
+					"note": "pc-setup 側の説明文の続き。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を担います。ユーザー設定そのものは持ちません。",
+					"verdict": "intentional",
+					"note": "pc-setup 側の注記。境界が ADR-0002 に記録されているという主張を upstream README の References 節と照合した。ADR-0002 の標題は「minimal common-first configuration and `pc-setup` boundary」であり、「境界は上流 README の Principles と ADR-0002 に記録されている」と名指しした当事と完全に一致する。存在しない ADR を参照していない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "境界は上流 README の Principles と ADR-0002 に記録されています。",
+					"verdict": "intentional",
+					"note": "抜粋元の注記 (前半)。このページの本文が snapshot 由来であることを示すリンクの前置き。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページの抜粋元:{' '}",
+					"verdict": "intentional",
+					"note": "セクションのフォールバック説明文。特定の section meta を持たないセクションに充てられる既定の説明で、その節が上流 README の抜粋であることを明示する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "上流 README から抜粋したセクションです。",
+					"verdict": "intentional",
+					"note": "リポジトリ直下の見出し。Layout セクションの構造一覧の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "リポジトリ直下",
+					"verdict": "intentional",
+					"note": "各セクションの README アンカーへのリンク。上流 README の実際のセクション見出し (section.heading) を埋め込むため、リンク先は実在する見出しを指す。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "README の「{section.heading}」を読む",
+					"verdict": "intentional",
+					"note": "最終確認日の表示 (前半)。snapshot の verifiedAt を ISO 日付へ整形した値を出しており、timezone は UTC と明示されている。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "最終確認 {formatDate(snapshot.verifiedAt)} · snapshot applied{' '}",
+					"verdict": "intentional",
+					"note": "最終確認日の表示 (後半)。appliedAt を「snapshot applied」として併記し、取得日と反映日を区別する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
+					"verdict": "intentional",
+					"note": "鮮度が stale のときの注記。「表示している内容は最新ではない可能性があります」という限定の表現で、内容を古いが正しいと断定していない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "紹介データを表示できません",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページが参照する snapshot",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の説明 (前半)。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
+					"verdict": "intentional",
+					"note": "snapshot を読み込めなかったときの表示の説明 (後半)。内容を表示しないという方針と、上流で最新情報を確認できる導線を共に明示する。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "このページについて",
+					"verdict": "intentional",
+					"note": "来歴セクションの見出し。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "内容は公開 README から生成した snapshot です。表示のたびに上流へ問い合わせることはありません。",
+					"verdict": "intentional",
+					"note": "来歴セクションの説明文。内容は公開 README から生成した snapshot であり、リクエスト時に上流へ問い合わせないという主張を、loader が commit 済み JSON を読むだけ (モジュール doc の「Nothing here is fetched at request time」) である実装と照合して確認した。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "snapshot の来歴を表示できません。上流リポジトリの README を直接確認してください。",
+					"verdict": "intentional",
+					"note": "来歴を表示できないときの注記。上流 README を直接確認する導線を示している。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "同期は公開 README・リポジトリ metadata・既定ブランチの commit の 3",
+					"verdict": "intentional",
+					"note": "来歴の説明 (読み取り数)。同期が 3 読み取り (公開 README / repository metadata / 既定ブランチの commit) だけであることを、sync スクリプトの doc (「the three allowlisted GitHub reads … repository metadata, the default-branch commit, and README.md pinned at that commit」) と一致させた。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "読み取りだけを行い、内容が変わったとき、または週次の再確認が必要なときだけ snapshot",
+					"verdict": "intentional",
+					"note": "来歴の説明 (更新条件)。内容が変わったとき、または週次の再確認が必要なときだけ snapshot を更新するという条件が、sync の更新条件と矛盾しない。"
+				},
+				{
+					"path": "src/projects/DotfilesIntroductionPage.tsx",
+					"before": null,
+					"after": "を更新します。",
+					"verdict": "intentional",
+					"note": "来歴の説明の結び。前後の文が 1 文としてつながっている。"
+				},
+				{
+					"path": "src/projects/RichText.tsx",
+					"before": null,
+					"after": "画像: ${node.text}",
+					"verdict": "intentional",
+					"note": "RichText が画像リンクを描画するときのラベル。リンクノードのテキストが画像の場合に「画像: 」の接頭辞を付け、テキストリンクと区別する。画像の代替テキストそのものではなく表示ラベルであり、画像の同定性を主張していない。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
+					"verdict": "intentional",
+					"note": "unavailable-copy の not-found / not-public 共通の通知文。上流リポジトリが公開されていない状態で、最後に確認できた内容を表示し、最新ではないと明示する。読者が「いまの内容」だと誤解しない表現。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "最後に確認できた内容を表示しています。最新の内容ではありません。",
+					"verdict": "intentional",
+					"note": "not-current の共通接尾辞 (NOT_CURRENT_SUFFIX)。個々の理由文の末尾に連結される形で、このサイトのデータが最新ではないという限定だけを担う。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリがアーカイブされたため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "archived の通知文。上流がアーカイブされたという理由に接尾辞 (最後に確認できた内容を表示しています。最新の内容ではありません。) を連結した形であり、通知文の並びが not-found / not-public と揃っている。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の既定ブランチが変わったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "ref-mismatch の通知文。上流の既定ブランチが変わったという理由を明示する。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流 README の構成が変わり、紹介を生成できなかったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "readme-shape の通知文。上流 README の構成が変わって紹介を生成できなかったという理由を明示する。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが見つからない",
+					"verdict": "intentional",
+					"note": "not-found の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリが公開されていない",
+					"verdict": "intentional",
+					"note": "not-public の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流リポジトリがアーカイブ済み",
+					"verdict": "intentional",
+					"note": "archived の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の既定ブランチが変わった",
+					"verdict": "intentional",
+					"note": "ref-mismatch の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "README の構成を解釈できない",
+					"verdict": "intentional",
+					"note": "readme-shape の理由ラベル。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
+					"verdict": "intentional",
+					"note": "未知の理由に対する通知文。理由が特定できない場合に「特定できない」ことを隠さない表現。"
+				},
+				{
+					"path": "src/projects/unavailable-copy.ts",
+					"before": null,
+					"after": "理由を特定できない",
+					"verdict": "intentional",
+					"note": "未知の理由に対する理由ラベル。"
+				},
+				{
+					"path": "src/routes/keyboard.tsx",
+					"before": null,
+					"after": "キーボード配列 — 大西配列と Kanata",
+					"verdict": "intentional",
+					"note": "ルート /keyboard の document title。「大西配列」は macOS の base 配列の実名 (hidutil が物理キーを変換する先)、「Kanata」は layer 集合の実名で、いずれも src/keyboard/format.ts の layer 定義と snapshot manifest (platforms macos / windows) に実在する。"
+				},
+				{
+					"path": "src/routes/keyboard.tsx",
+					"before": null,
+					"after": "macOS と Windows のキーボード設定を、実際のキー位置に沿って表示する read-only リファレンス。hidutil のベース差し替え、Kanata の HUB / 記号 / 自動化レイヤー、Space 長押しと Shift 長押しの分岐を確認できます。",
+					"verdict": "intentional",
+					"note": "ルート /keyboard の meta description。文中の 5 つの主張を実装と突き合わせた: macOS / Windows は manifest の platform が macos / windows の 2 件; 「実際のキー位置」は src/keyboard/geometry.ts が物理配列順で描画すること; read-only は loader が commit 済み snapshot のみを読み、リクエスト時に外部へ出ないこと; hidutil のベース差し替えは geometry.ts の注記 (US ANSI の物理キー位置を hidutil が先に大西配列へ変換) と一致; Kanata の HUB / 記号 / 自動化レイヤーは types.ts の group 'hub' / 'symbols' / 'automation' と format.ts の label に存在; Space 長押しと Shift 長押しの分岐は format.ts の「タップで Space、長押しで HUB レイヤー」と hub-o に属する左 Shift に対応する。いずれも false な主張を含まない。"
+				},
+				{
+					"path": "src/routes/projects.dotfiles.tsx",
+					"before": null,
+					"after": "開発マシンのユーザー設定、エージェント共通設定の固定、Infisical を介した実行時 secret 注入を担う rebuildup/dotfiles の公開紹介。OS とパッケージの provisioning を担う pc-setup との境界も説明します。",
+					"verdict": "intentional",
+					"note": "route /projects/dotfiles の meta description。rebuildup/dotfiles がユーザー設定・エージェント共通設定の固定・Infisical を介した実行時 secret 注入を担い、OS とパッケージの provisioning が pc-setup の担当であるという役割分担が、upstream README の lead と route  Loader の doc に一致する。2 つのリポジトリはどちらも公開 (HTTP 200) で、存在しない名前を書いていない。"
+				},
+				{
+					"path": "src/routes/tools.$slug.tsx",
+					"before": "この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）に",
+					"after": "この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）または",
+					"verdict": "intentional",
+					"note": "変更は「埋め込みポリシー（sandbox / referrerPolicy / origin 契約）または第三者通信の契約に違反」と拡張（line 530）。Issue #465（埋め込みポリシー）と Issue #498（第三者通信契約）の両契約を反映し、BlockedPlaceholder の説明文と整合。intentional。"
+				},
+				{
+					"path": "src/routes/tools.$slug.tsx",
+					"before": "違反するため、iframe は描画されません。",
+					"after": "第三者通信の契約に違反するため、iframe は描画されません。",
+					"verdict": "intentional",
+					"note": "line 531 の変更（「第三者通信の契約に違反」）。埋め込みポリシー違反に加え、第三者通信契約違反も理由として明記。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "読み込みを開始するまでは、このツールは埋め込まれません。外部サービスへの通信も行われません。",
+					"verdict": "intentional",
+					"note": "事前読み込み前の非埋め込み説明（line 66）。コンポーネントの description プロップと完全一致し、埋め込みポリシー（embed-policy.ts）の構造と整合。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "読み込みを開始すると、以下の外部サービスへ接続します。",
+					"verdict": "intentional",
+					"note": "接続先リストの導入文（line 81）。contacts 配列を表示する前置説明と対応。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "埋め込み先の文書自体も、上記の外部サービスが配信します。",
+					"verdict": "intentional",
+					"note": "frameIsThirdParty が true の場合の説明（line 116）。第三者配信の主張がコンポーネント条件に対応。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "埋め込み先の文書は、このサイトのオリジンから配信されます。",
+					"verdict": "intentional",
+					"note": "frameIsThirdParty が false の場合の説明（line 117）。ホスト配信の主張と対応。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "同意の記録は保存されません。読み込みは、ページを開き直すたびに再度必要です。",
+					"verdict": "intentional",
+					"note": "同意記録非保存の説明（line 158）。ToolConsentNotice の docstring（NOT persisted）と一致。intentional。"
+				},
+				{
+					"path": "src/tools/embed-consent-notice.tsx",
+					"before": null,
+					"after": "読み込みを開始する / Load the tool",
+					"verdict": "intentional",
+					"note": "アクティベーションボタンのラベル（line 185）。二言語表記でコードと完全一致。intentional。"
+				},
+				{
+					"path": "src/tools/manifest.json",
+					"before": null,
+					"after": "読み込みを開始すると、埋め込み中の ProtoType が Google Fonts / Adobe Typekit から web フォントを取得し、ログイン用 gameset が Google Apps Script のエンドポイントへ通信します（その実装は id / password をクエリ文字列に載せます）。",
+					"verdict": "intentional",
+					"note": "prototype ツールの purpose.ja（line 36）。manifest の privacy.purpose.ja と完全一致し、外部サービス接続（Google Fonts / Adobe Typekit / Google Apps Script）の主張がマニフェストの third_party_origins と整合。intentional。"
+				}
+			]
+		}
+	]
+}

@@ -66,8 +66,10 @@ const FIXTURE_ROUTES = [
 	['/about', './routes/about'],
 	['/contact', './routes/contact'],
 	['/design-system', './routes/design-system'],
+	['/keyboard', './routes/keyboard'],
 	['/portfolio/', './routes/portfolio/index'],
 	['/portfolio/$slug', './routes/portfolio/$slug'],
+	['/projects/dotfiles', './routes/projects.dotfiles'],
 	['/tools/', './routes/tools.index'],
 	['/tools/$slug', './routes/tools.$slug'],
 	['/admin', './routes/admin'],
@@ -116,7 +118,18 @@ function routeFileSources(routes = FIXTURE_ROUTES) {
 		if (sources.has(file)) continue;
 		const path = fullPath.length > 1 ? fullPath.replace(/\/$/, '') : fullPath;
 		let source = 'export const Route = createFileRoute({});\n';
-		if (['/', '/about', '/contact', '/design-system', '/portfolio', '/tools'].includes(path)) {
+		if (
+			[
+				'/',
+				'/about',
+				'/contact',
+				'/design-system',
+				'/keyboard',
+				'/portfolio',
+				'/projects/dotfiles',
+				'/tools',
+			].includes(path)
+		) {
 			source += `const links = [{ rel: 'canonical', href: '${ORIGIN}${path}' }];\n`;
 		}
 		if (path === '/admin' || path === '/tools/$slug') {
@@ -409,7 +422,7 @@ describe('evaluateIndexBoundary — robots.txt is not access control, but is not
 	it('fails when the external-boundary prefix list drifts from src/server.ts', () => {
 		const result = evaluate({
 			serverSource:
-				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/robots.txt', '/sitemap.xml', '/telemetry'];",
+				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/media', '/robots.txt', '/sitemap.xml', '/.well-known', '/telemetry'];",
 		});
 		const drift = result.violations.filter(
 			(violation) => violation.code === 'boundary-prefix-drift',

@@ -1,0 +1,446 @@
+{
+	"schema": "asset-license-inventory.v1",
+	"issue": "#497",
+	"reviewedAt": "2026-10-20",
+	"scope": "訪問者に Static Assets としてverbatimで配信されるファイル（public/**）と、ブラウザが第三者に取得させる参照資産。Tool の build 成果物（external/**）は Issue #466 の tools:artifact:check が、コード・依存・outbound を所有しているためこの記録の監査対象外。docs/** は訪問者に配信されない。",
+	"assets": [
+		{
+			"id": "web-app-icons",
+			"kind": "image",
+			"title": "アプリアイコン一式（PNG 9 種）",
+			"summary": "public/favicon.svg を元に scripts/generate-app-icons.mjs が生成する PWA / iOS アイコン。入力は 1 個の SVG、時刻も乱数も含まない。",
+			"covers": ["public/icons/**"],
+			"publicPaths": [
+				"/icons/icon-16x16.png",
+				"/icons/icon-192x192.png",
+				"/icons/icon-512x512.png"
+			],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"生成元は repository の public/favicon.svg のみ。",
+					"再実行してもバイトが同じになる（決定的生成）。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "LICENSE と生成スクリプト、入力 SVG の 3 点がリポジトリ内にあり、pnpm run check:app-icons が manifest / HTML 参照との整合を検査する。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/generate-app-icons.mjs" },
+				{ "kind": "repository-file", "path": "public/favicon.svg" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "web-favicon",
+			"kind": "image",
+			"title": "favicon.svg",
+			"summary": "サイトマークの SVG。元原稿はこのリポジトリが執筆した 1 ファイルで、外部画像・フォントを参照しない。",
+			"covers": ["public/favicon.svg"],
+			"publicPaths": ["/favicon.svg"],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": ["リポジトリの LICENSE (MIT) で配布。"]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "LICENSE が MIT であり、SVG は外部参照を持たない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "public/favicon.svg" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "web-app-manifest",
+			"kind": "config",
+			"title": "site.webmanifest",
+			"summary": "PWA マニフェスト。アイコン参照は /icons/*.png を指すだけで、自身は repository が執筆した設定。",
+			"covers": ["public/site.webmanifest"],
+			"publicPaths": ["/site.webmanifest"],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": ["リポジトリの LICENSE (MIT) で配布。"]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "docs/decisions/0.6.3-app-icons-and-web-manifest.md が生成物と参照の契約を説明している。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "docs/decisions/0.6.3-app-icons-and-web-manifest.md" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "static-asset-headers",
+			"kind": "config",
+			"title": "静的配信ヘッダー (_headers)",
+			"summary": "Static Assets が配信する /share/** 等の応答ヘッダー定義。著作物の内容を含まない。",
+			"covers": ["public/_headers"],
+			"publicPaths": [],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": ["リポジトリの LICENSE (MIT) で配布。"]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "docs/security/security-headers.md が各 header の由来を説明している。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "docs/security/security-headers.md" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "image-cls-fixtures",
+			"kind": "image",
+			"title": "CLS 計測用ラスタ fixture（PNG 2 種）",
+			"summary": "scripts/generate-image-fixtures.mjs が SVG から固定サイズで生成する検証用画像。テストが HTTP で取得するため commit される。",
+			"covers": ["public/fixtures/**"],
+			"publicPaths": ["/fixtures/cls-inline-1280x720.png", "/fixtures/cls-cover-1600x900.png"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"生成元はスクリプト内の SVG のみで、テキストも外部画像も含まない。",
+					"--check で commit 済みバイトとの一致を検証できる。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "scripts/generate-image-fixtures.test.mjs が commit 済みバイトと生成結果を比較する。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/generate-image-fixtures.mjs" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "og-fallback-card",
+			"kind": "image",
+			"title": "OG フォールバックカード",
+			"summary": "動的OG画像を生成できない場合の静的代替。scripts/generate-og-fallback-card.mjs が決定的に生成する。",
+			"covers": ["public/og/default-card.png"],
+			"publicPaths": ["/og/default-card.png"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": ["生成元はスクリプト内の SVG のみ。"]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "scripts/check-ogp-card.mjs が commit 済みカードと生成結果の整合を検査する。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/generate-og-fallback-card.mjs" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "share-procon2026-guide",
+			"kind": "artwork",
+			"title": "ヘキサうどん 競技仕様ガイド（静的ページ）",
+			"summary": "第37回 高専プロコン競技部門の仕様をまとめた自作のガイド。ページの文章は repository が執筆したが、同梱のフォント・PDF・画像の権利記録は別 record が持つ。",
+			"covers": ["public/share/procon2026/index.html"],
+			"publicPaths": ["/share/procon2026/"],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"ページの文章は repository の LICENSE (MIT) で配布。",
+					"ページが参照する assets/** の権利記録は share-procon2026-* の各 record が持つ（フォントは同梱のライセンス本文で検証済み、PDF と画像は由来未記録）。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-10-19",
+				"note": "docs/verification/content/publication-surface.md §3.2 が /share/procon2026/ を sitemap 外の公開面として記録している。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "docs/verification/content/publication-surface.md" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "share-procon2026-fonts-noto-sans-jp",
+			"kind": "font",
+			"title": "競技仕様ガイド同梱 Noto Sans JP（woff2 49 個）",
+			"summary": "公開ページ public/share/procon2026/index.html の @font-face が `Noto Sans JP` として参照する woff2 49 個。同ページの `<!-- FONT LICENSES ... -->` コメントが著作権表示（Google Inc.）と SIL Open Font License 1.1 の全文を同梱している。",
+			"covers": ["public/share/procon2026/assets/fonts/**"],
+			"excludes": ["public/share/procon2026/assets/fonts/40e17b72f9f8.woff2"],
+			"publicPaths": ["/share/procon2026/assets/fonts/*.woff2"],
+			"origin": "third-party-bundled",
+			"rightsHolder": "Google Inc.",
+			"license": {
+				"spdx": "OFL-1.1",
+				"redistribution": "bundled",
+				"attributionRequired": true,
+				"attributionText": "Noto Sans JP\nGoogle Inc.\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttp://scripts.sil.org/OFL",
+				"attributionDeliveredAt": "/share/procon2026/",
+				"conditions": [
+					"SIL Open Font License 1.1 の本文と著作権表示は、公開ページ public/share/procon2026/index.html の `<!-- FONT LICENSES ... -->` コメントに同梱している（ページソースから閲覧できる）。",
+					"同梱ファイルは配布元のものを改変せず、そのまま同梱している。",
+					"同ディレクトリの 40e17b72f9f8.woff2（Material Symbols）は share-procon2026-fonts-material-symbols 記録が持つ。"
+				]
+			},
+			"verification": {
+				"method": "embedded-declaration",
+				"checkedOn": "2026-10-20",
+				"note": "配布物自身（公開ページ）の `<!-- FONT LICENSES ... -->` コメントが Noto Sans JP の著作権表示と SIL Open Font License 1.1 の全文を宣言している。@font-face 49 件の src がすべて family `Noto Sans JP` を指すことをページ内で確認した。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "public/share/procon2026/index.html",
+					"sha256": "ac9b8ec98727a3cfdb3fd303d7ea3daded2032f9b78311b1af146e88c03dfc13"
+				}
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "share-procon2026-fonts-material-symbols",
+			"kind": "font",
+			"title": "競技仕様ガイド同梱 Material Symbols Rounded（woff2 1 個）",
+			"summary": "公開ページ public/share/procon2026/index.html の @font-face が `Material Symbols Rounded` として参照する woff2 1 個（40e17b72f9f8.woff2）。同ページの `<!-- FONT LICENSES ... -->` コメントが Apache License 2.0 の全文を同梱している。",
+			"covers": ["public/share/procon2026/assets/fonts/40e17b72f9f8.woff2"],
+			"publicPaths": ["/share/procon2026/assets/fonts/40e17b72f9f8.woff2"],
+			"origin": "third-party-bundled",
+			"rightsHolder": "Google Inc.",
+			"license": {
+				"spdx": "Apache-2.0",
+				"redistribution": "bundled",
+				"attributionRequired": true,
+				"attributionText": "Material Symbols\n\nApache License\nVersion 2.0, January 2004\nhttp://www.apache.org/licenses/",
+				"attributionDeliveredAt": "/share/procon2026/",
+				"conditions": [
+					"Apache License 2.0 の本文とライセンス表示は、公開ページ public/share/procon2026/index.html の `<!-- FONT LICENSES ... -->` コメントに同梱している（ページソースから閲覧できる）。",
+					"同梱ファイルは配布元のものを改変せず、そのまま同梱している。",
+					"同ディレクトリの他の 49 ファイル（Noto Sans JP）は share-procon2026-fonts-noto-sans-jp 記録が持つ。"
+				]
+			},
+			"verification": {
+				"method": "embedded-declaration",
+				"checkedOn": "2026-10-20",
+				"note": "配布物自身（公開ページ）の `<!-- FONT LICENSES ... -->` コメントが Material Symbols の Apache License 2.0 の全文を宣言している。@font-face 1 件の src（40e17b72f9f8.woff2）が family `Material Symbols Rounded` を指すことをページ内で確認した。著作権者は同コメントの Noto Sans JP ブロック（Google Inc.）と同じ配布元で、ページ footer が Material Symbols の公式ドキュメント（developers.google.com/fonts/docs/material_symbols）をクレジットしている。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "public/share/procon2026/index.html",
+					"sha256": "ac9b8ec98727a3cfdb3fd303d7ea3daded2032f9b78311b1af146e88c03dfc13"
+				}
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "share-procon2026-pdfs",
+			"kind": "document",
+			"title": "競技仕様ガイド同梱 PDF（6 個）",
+			"summary": "assets/files/*.pdf に同梱された大会資料の PDF。由来と転載条件がこのリポジトリに記録されていない。",
+			"covers": ["public/share/procon2026/assets/files/*.pdf"],
+			"publicPaths": ["/share/procon2026/assets/files/*.pdf"],
+			"origin": "unknown-provenance",
+			"rightsHolder": null,
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": []
+			},
+			"verification": {
+				"method": "none",
+				"checkedOn": null,
+				"note": "大会資料の転載条件をこのリポジトリは確認していないため、公開可とは記録しない。"
+			},
+			"evidence": [{ "kind": "repository-file", "path": "public/share/procon2026/index.html" }],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "share-procon2026-images",
+			"kind": "image",
+			"title": "競技仕様ガイド同梱スクリーンショット（PNG 35 個）",
+			"summary": "資料の図版を写した画像。元資料の作成者と転載条件がこのリポジトリに記録されていない。",
+			"covers": ["public/share/procon2026/assets/images/*.png"],
+			"publicPaths": ["/share/procon2026/assets/images/*.png"],
+			"origin": "unknown-provenance",
+			"rightsHolder": null,
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": []
+			},
+			"verification": {
+				"method": "none",
+				"checkedOn": null,
+				"note": "画像の出典がリポジトリに記録されていないため、公開可とは記録しない。"
+			},
+			"evidence": [{ "kind": "repository-file", "path": "public/share/procon2026/index.html" }],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
+			"id": "web-fonts-google",
+			"kind": "font",
+			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New）",
+			"summary": "src/routes/__root.tsx が fonts.googleapis.com から stylesheet を取得し、ブラウザが fonts.gstatic.com からフォントファイルを取得する。このリポジトリはフォントファイルを同梱しない。",
+			"covers": [],
+			"publicPaths": [],
+			"origin": "third-party-referenced",
+			"rightsHolder": "Google（Noto プロジェクト / Zen Fonts）",
+			"license": {
+				"spdx": "OFL-1.1",
+				"redistribution": "referenced",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"このリポジトリはフォントファイルを配布せず、stylesheets の参照のみを持つ。",
+					"宣言している SPDX 識別子は提供側の記載であり、このリポジトリはオフラインで検証していない。"
+				]
+			},
+			"verification": {
+				"method": "upstream-reference",
+				"checkedOn": "2026-10-19",
+				"note": "docs/verification/content/publication-surface.md §4.1 が同じ 2 ホストを外部通信として記録している。CSP (src/http/content-security-policy.ts) が font-src を宣言する。"
+			},
+			"evidence": [
+				{ "kind": "external-reference", "url": "https://fonts.google.com/specimen/Noto+Sans+JP" },
+				{
+					"kind": "external-reference",
+					"url": "https://fonts.google.com/specimen/Zen+Kaku+Gothic+New"
+				}
+			],
+			"publication": "published",
+			"externalHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		{
+			"id": "tool-webfont-typekit",
+			"kind": "font",
+			"title": "Tool が参照する Typekit フォント",
+			"summary": "/tools/prototype の document（external/prototype/index.html）が use.typekit.net からフォントを取得する。フォントバイトはこのリポジトリに含まれない。",
+			"covers": [],
+			"publicPaths": [],
+			"origin": "third-party-referenced",
+			"rightsHolder": null,
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "referenced",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"このリポジトリはフォントバイトを配布せず、Tool の document が参照する。",
+					"利用条件は owner の Adobe Fonts 契約にあり、このリポジトリには記録されていない。"
+				]
+			},
+			"verification": {
+				"method": "upstream-reference",
+				"checkedOn": "2026-10-19",
+				"note": "outbound host は quality/tool-artifact-inventory.json が prototype の記録として保持している（Issue #466）。"
+			},
+			"evidence": [
+				{ "kind": "external-reference", "url": "https://use.typekit.net/" },
+				{ "kind": "repository-file", "path": "quality/tool-artifact-inventory.json" }
+			],
+			"publication": "published",
+			"externalHosts": ["use.typekit.net"],
+			"delegatedTo": "tools:artifact:check (Issue #466)"
+		}
+	]
+}

@@ -101,6 +101,32 @@
 			}
 		},
 		{
+			"source": "src/routes/keyboard.tsx",
+			"path": "/keyboard",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
+				"seo": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
 			"source": "src/routes/contact.tsx",
 			"path": "/contact",
 			"audience": "public",
@@ -110,6 +136,38 @@
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the contact canonical / Open Graph metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/projects.dotfiles.tsx",
+			"path": "/projects/dotfiles",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/projects-dotfiles.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/projects-dotfiles.spec.ts"]
 				},
 				"a11y": {
 					"status": "excluded",

@@ -1,0 +1,15 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": [
+		"postcss.config.mjs",
+		"scripts/_no-wrangler-hook.mjs",
+		"scripts/_no-wrangler-resolver.mjs",
+		"scripts/check-knip.mjs",
+		"scripts/run-deploy-inner.mjs",
+		"scripts/*.test.mjs",
+		"test/fixtures/content/stale-review/src/fixture/page.tsx",
+		"src/cloudflare/workers-stub.ts"
+	],
+	"ignoreDependencies": ["cloudflare", "postcss", "@storybook/react"],
+	"ignoreExportsUsedInFile": true
+}

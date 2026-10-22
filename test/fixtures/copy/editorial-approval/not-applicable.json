@@ -1,0 +1,26 @@
+{
+	"$comment": "Fixture: a pull request that changes no public Japanese copy — an authenticated /admin string and a non-Japanese string in a public file. Expected verdict: not applicable. A pull request whose text does not change owes no editorial review; the Issue says so explicitly.",
+	"name": "not-applicable",
+	"expect": "not applicable",
+	"pr": 512,
+	"diff": [
+		"diff --git a/src/routes/admin.login.tsx b/src/routes/admin.login.tsx",
+		"index 1111111..2222222 100644",
+		"--- a/src/routes/admin.login.tsx",
+		"+++ b/src/routes/admin.login.tsx",
+		"@@ -30,1 +30,1 @@",
+		"-\t\t\tlabel=\"管理画面へログイン\"",
+		"+\t\t\tlabel=\"管理画面にログイン\"",
+		"diff --git a/src/home/hero.tsx b/src/home/hero.tsx",
+		"index 3333333..4444444 100644",
+		"--- a/src/home/hero.tsx",
+		"+++ b/src/home/hero.tsx",
+		"@@ -20,1 +20,1 @@",
+		"-\t\t\tdata-testid=\"hero-lede\"",
+		"+\t\t\tdata-testid=\"hero-lede-block\""
+	],
+	"ledger": {
+		"version": 1,
+		"records": []
+	}
+}

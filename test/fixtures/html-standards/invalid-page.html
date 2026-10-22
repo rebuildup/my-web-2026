@@ -1,0 +1,28 @@
+<html>
+	<head>
+		<title>HTML standards gate — invalid fixture</title>
+		<meta charset="ISO-8859-1" />
+	</head>
+	<body>
+		<!-- Every defect class Issue #412 names, one per line, so a reader
+		     can see which rule fires on which markup. -->
+		<h1>Invalid fixture</h1>
+		<h3>Skipped heading level</h3>
+		<p id="dup">A paragraph with phrasing content only.</p>
+		<h2><div>a block inside a heading</div></h2>
+		<a href="/" aria-labelledby="does-not-exist">link with a dangling label</a>
+		<a href="/"><button type="button">interactive inside a link</button></a>
+		<img src="/assets/broken.webp" />
+		<form method="put" action="/api/v1/reactions/home-page">
+			<label for="no-such-field">label without a control</label>
+			<input id="dup" name="note" type="text" class="a" class="b" />
+			<input name="flag" type="checkbox" checked="maybe" />
+		</form>
+		<ul>
+			<span>not a list item</span>
+		</ul>
+		<div id="dup" href="/not-a-link">duplicate id and an attribute this element does not take</div>
+		<b><i>misnested</b></i>
+		</section>
+	</body>
+</html>

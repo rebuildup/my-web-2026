@@ -78,6 +78,15 @@ export const SURFACE_DECLARATIONS = [
 		reason: 'Public narrative surface; renders repo-controlled copy only.',
 	},
 	{
+		id: '/keyboard',
+		path: '/keyboard',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/keyboard.tsx'],
+		reason:
+			'Read-only keyboard reference; renders the committed source snapshot and is linked from /about, but is not a sitemap target.',
+	},
+	{
 		id: '/contact',
 		path: '/contact',
 		classification: 'public',
@@ -85,6 +94,15 @@ export const SURFACE_DECLARATIONS = [
 		files: ['src/routes/contact.tsx'],
 		reason:
 			'Public contact surface; renders only channels that pass the fail-closed freshness gate.',
+	},
+	{
+		id: '/projects/dotfiles',
+		path: '/projects/dotfiles',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/projects.dotfiles.tsx'],
+		reason:
+			'Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory.',
 	},
 	{
 		id: '/portfolio/',
@@ -216,6 +234,7 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/SpacingRuler.tsx',
 	'src/routes/design-system/sections/StatusAccents.tsx',
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',
+	'src/routes/design-system/sections/TableCode.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
 ];
 
@@ -249,6 +268,26 @@ const PRIVATE_HOST_SUFFIXES = ['.local', '.localdomain', '.internal', '.home.arp
 const stripIpv6Brackets = (host) =>
 	host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1).split('%')[0] : host;
 
+/**
+ * Canonicalize the spellings a browser accepts for the same host before
+ * the privacy check runs. A trailing dot is part of the DNS root, an
+ * IPv6 literal can carry brackets / a zone / a port, and `new URL()`
+ * leaves IPv4-mapped IPv6 addresses in their hex form.
+ */
+function canonicalPrivateHost(host) {
+	let bare = String(host ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/\.+$/, '');
+	if (bare.startsWith('[')) {
+		const close = bare.indexOf(']');
+		bare = close === -1 ? bare.slice(1) : bare.slice(1, close);
+	} else if (/^[^:]+:\d+$/.test(bare)) {
+		bare = bare.replace(/:\d+$/, '');
+	}
+	return bare.split('%')[0];
+}
+
 /** RFC 1918 / loopback / link-local / CGNAT / reserved IPv4. */
 function isPrivateIpv4(host) {
 	const parts = host.split('.');
@@ -266,17 +305,47 @@ function isPrivateIpv4(host) {
 	return false;
 }
 
-/** fc00::/7 unique-local, fe80::/10 link-local, ff00::/8 multicast, ::1, ::. */
+/**
+ * fc00::/7 unique-local, fe80::/10 link-local, ff00::/8 multicast, ::1, ::.
+ * IPv4-mapped (`::ffff:0:0/96`) and IPv4-compatible (`::/96`) addresses are
+ * reduced to their embedded IPv4 address, because a browser connects to the
+ * IPv4 host: `http://[::ffff:169.254.169.254]/` reaches cloud metadata even
+ * though the literal does not spell an RFC 1918 / link-local string.
+ */
 function isPrivateIpv6(host) {
-	const bare = stripIpv6Brackets(host);
+	let bare = stripIpv6Brackets(host);
 	if (!bare.includes(':')) return false;
 	if (bare === '::' || bare === '::1') return true;
+
+	// A dotted tail (`::ffff:127.0.0.1`) is valid input; expand it into
+	// the two hex groups it represents before the general parser.
+	const lastColon = bare.lastIndexOf(':');
+	if (bare.slice(lastColon + 1).includes('.')) {
+		const octets = bare.slice(lastColon + 1).split('.');
+		if (octets.length === 4 && octets.every((part) => /^\d{1,3}$/.test(part))) {
+			const [a, b, c, d] = octets.map(Number);
+			if ([a, b, c, d].every((octet) => octet <= 255)) {
+				bare = `${bare.slice(0, lastColon + 1)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+			}
+		}
+	}
+
 	const [headText, tailText] = bare.split('::');
 	const head = headText ? headText.split(':') : [];
 	const tail = tailText ? tailText.split(':') : [];
 	const parts = [...head, ...new Array(8 - head.length - tail.length).fill('0'), ...tail];
 	if (parts.length !== 8) return false;
 	if (!parts.every((part) => /^[0-9a-f]{1,4}$/.test(part))) return false;
+
+	if (
+		parts.slice(0, 5).every((part) => part === '0') &&
+		(parts[5] === 'ffff' || parts[5] === '0')
+	) {
+		const high = Number.parseInt(parts[6], 16);
+		const low = Number.parseInt(parts[7], 16);
+		if (isPrivateIpv4(`${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`)) return true;
+	}
+
 	const first = Number.parseInt(parts[0], 16);
 	if ((first & 0xfe00) === 0xfc00) return true;
 	if ((first & 0xffc0) === 0xfe80) return true;
@@ -292,9 +361,7 @@ function isPrivateIpv6(host) {
  * asserted.
  */
 export function isPrivateHost(host) {
-	const bare = String(host ?? '')
-		.toLowerCase()
-		.replace(/:\d+$/, '');
+	const bare = canonicalPrivateHost(host);
 	if (bare.length === 0) return false;
 	if (LOOPBACK_HOSTNAMES.has(bare)) return true;
 	if (PRIVATE_HOST_SUFFIXES.some((suffix) => bare.endsWith(suffix))) return true;

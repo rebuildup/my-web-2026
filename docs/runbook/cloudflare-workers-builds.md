@@ -108,6 +108,46 @@ path, D1, and the secrets/preflight are all cf-native.** Until then
 the build command stays `pnpm run build` and the deploy command keeps
 its current form.
 
+### The two commands above are gated (Issue #480)
+
+The table above is the only place the Workers Builds commands are written
+down outside the Cloudflare Dashboard, so renaming `build` or
+`deploy:production:prepared` in `package.json` would leave production
+running a command that no longer exists — silently, because CI never reads
+the dashboard. `pnpm run cf:config:drift:check` closes that: it asserts the
+commands recorded in `quality/cloudflare-config-drift.json` still name a
+real `package.json` script AND still match the rows in the table above. A
+script rename therefore fails `validate:fast` and forces the dashboard
+change and this table to move together. Full procedure:
+[`docs/runbook/cloudflare-config-drift.md`](cloudflare-config-drift.md).
+
+### Artifact attestation (Issue #476)
+
+`pnpm run artifact:attestation:check` hashes the production-mode Build
+Output and records the source commit, `package.json` dependency ranges,
+`pnpm-lock.yaml` digest and resolved package count in
+`release-assets/supply-chain/<version>/artifact-attestation.json`. It
+runs at the end of `validate:integration`; CI retains the document as
+`artifact-attestation-<sha>`. It does **not** change the deploy
+authority: Cloudflare Workers Builds still deploys, no credential is
+read by the attestation tool, and no Cloudflare API is called.
+
+When a Cloudflare build UUID / deploy id is actually available, pass it
+with `--build-uuid` / `--deploy-id`. The value is recorded verbatim and
+is not authenticated against the Cloudflare API. A build run inside the
+Cloudflare environment may pass `WORKERS_CI_COMMIT_SHA` as the expected
+source commit; wiring that into the Workers Builds command is out of
+scope by owner decision (2026-10-19). Before attaching a manifest to
+a GitHub Release, verify it against the release tag itself with
+`pnpm run artifact:attestation:check -- --manifest=<path>
+--release-tag="v<version>"`: the tag must resolve to the manifest's
+source commit and name its version. Hashing the artifact Cloudflare
+Workers Builds actually deploys, and comparing it to that manifest, stays
+outside the attested scope by owner decision (2026-10-19,
+attestation §8-3) — this step does not change the deploy authority, and
+no credential is read by the tool. See
+[`docs/security/supply-chain-artifact-attestation.md`](../security/supply-chain-artifact-attestation.md).
+
 ## Runtime secrets — source of truth
 
 Infisical `prod` environment is the **single source of truth** for

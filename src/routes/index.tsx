@@ -3,6 +3,7 @@ import {
 	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
 	HomePage,
+	KNOWN_INCIDENTS,
 	SYSTEM_SERVICES,
 	getHomeCounter,
 	getHomeReactions,
@@ -35,6 +36,10 @@ export const Route = createFileRoute('/')({
 			services: SYSTEM_SERVICES,
 			statuses,
 			observedAt: new Date().toISOString(),
+			// Issue #502: the committed incident records. There is no
+			// runtime fetch here on purpose — the published list is
+			// exactly what the repository holds.
+			incidents: KNOWN_INCIDENTS,
 			reactions,
 			counter,
 		};

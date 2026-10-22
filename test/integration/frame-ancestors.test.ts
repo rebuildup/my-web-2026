@@ -60,12 +60,21 @@ describe('CSP frame-ancestors — public surfaces (Issue #448)', () => {
 		// The shell is a public document: same-origin framing is allowed,
 		// third-party framing is not.
 		expect(csp).toBe(SELF_ONLY);
-		// The Tool embed chain itself is unchanged: the shell still mounts
-		// the artefact the static `_headers` rule covers, on the same
-		// origin — which is why `frame-ancestors 'self'` (not `'none'`)
-		// is the value that keeps existing Tools working.
+		// The Tool embed chain itself is unchanged: once the visitor
+		// activates the load, the shell mounts the artefact the static
+		// `_headers` rule covers, on the same origin — which is why
+		// `frame-ancestors 'self'` (not `'none'`) is the value that keeps
+		// existing Tools working.
+		//
+		// Issue #498: the SSR document is the PRE-activation one, so the
+		// frame itself is not in it (the gate is what keeps the Tool's
+		// third-party contacts from being paid for before anyone acts).
+		// The resolved frame src still travels with the document, and the
+		// activated half of the contract is asserted in a browser
+		// (`e2e/tools-prototype.spec.ts`).
 		expect(body).toContain('/tools/prototype/app/index.html');
-		expect(body).toContain('<iframe');
+		expect(body).toContain('data-testid="tool-embed-consent"');
+		expect(body).not.toContain('<iframe');
 	});
 
 	it('keeps the Tool index document framable by self only', async () => {
@@ -99,6 +108,17 @@ describe('CSP frame-ancestors — Admin denial (Issue #448)', () => {
 		const { status, csp } = await fetchHeaders('/admin/keys');
 		expect(status).toBeGreaterThanOrEqual(300);
 		expect(status).toBeLessThan(400);
+		expect(csp).toBe(NONE);
+	});
+
+	it('denies framing of a mixed-case Admin path (Issue #654)', async () => {
+		// TanStack Router matches static segments case-insensitively, so
+		// `/Admin/Login` is the same Admin document as `/admin/login`.
+		// Keeping a raw prefix check here would give the identical
+		// lower-case URL `'none'` and this one `'self'`.
+		const { status, csp, contentType } = await fetchHeaders('/Admin/Login');
+		expect(status).toBe(200);
+		expect(contentType).toContain('text/html');
 		expect(csp).toBe(NONE);
 	});
 

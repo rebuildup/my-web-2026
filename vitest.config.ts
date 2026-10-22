@@ -1,3 +1,5 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { defineConfig } from 'vitest/config';
@@ -10,6 +12,8 @@ import {
 	WORKER_RUNTIME_SECRET,
 } from './scripts/_cloudflare-contract.mjs';
 import { D1_DATABASE_ID, R2_BUCKET_NAME } from './scripts/_cloudflare-identity.mjs';
+import { discoverAuthSchemaTestFiles } from './scripts/_vitest-auth-schema-scan.mjs';
+import { AUTH_SCHEMA_ENV_VAR, encodeAuthSchemaTestFiles } from './scripts/_vitest-setup-needs.mjs';
 
 /**
  * Vitest configuration for my-web-2026.
@@ -50,7 +54,22 @@ import { D1_DATABASE_ID, R2_BUCKET_NAME } from './scripts/_cloudflare-identity.m
  *   - `test/integration/**\/*.{test,spec}.{ts,tsx}` — D1 / R2 SELF smoke
  *
  * Both kinds run inside workerd; bindings are real (D1 / R2 / ASSETS).
+ *
+ * Setup-file scope (Issue #618)
+ * -----------------------------
+ * `Better Auth schema` setup imports `cloudflare:test` to reach `env.DB`,
+ * and that import connects the file to the Workers pool (~2.4s per test
+ * FILE). The DDL is only needed by files whose import graph can reach a
+ * binding (`cloudflare:test`) or the `env` accessor (`cloudflare:workers`);
+ * `test.env[AUTH_SCHEMA_ENV_VAR]` carries the absolute paths of those
+ * files, and the setup applies the schema only for them. Every other
+ * file keeps running in the same workerd pool but never opens a pool
+ * connection. The check fails safe: when the setup cannot decide, it
+ * applies the schema.
  */
+const repoRoot = dirname(fileURLToPath(import.meta.url));
+const authSchemaTestFiles = discoverAuthSchemaTestFiles(repoRoot);
+
 export default defineConfig({
 	plugins: [
 		tanstackStart(),
@@ -102,6 +121,9 @@ export default defineConfig({
 		}),
 	],
 	test: {
+		env: {
+			[AUTH_SCHEMA_ENV_VAR]: encodeAuthSchemaTestFiles(authSchemaTestFiles),
+		},
 		include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/integration/**/*.{test,spec}.{ts,tsx}'],
 		exclude: [
 			'node_modules',

@@ -52,6 +52,12 @@ const INTENTIONALLY_UNCLASSIFIED: Readonly<Record<string, string>> = Object.free
 		'crawler-facing text document (Issue #420) — read by crawlers, which do not read CORS headers, and same-origin by construction',
 	'GET /sitemap.xml':
 		'crawler-facing XML document (Issue #420) — a wildcard read would hand the whole site map to any origin, and no consumer needs it cross-origin',
+	'GET /.well-known/security.txt':
+		'RFC 9116 vulnerability-reporting document (Issue #468) — the same reasoning as robots.txt: a machine-readable document read by scanners, and a wildcard read would hand the reporting posture of the origin to any site',
+	'GET /media/:key{.+}':
+		'public media delivery (Issue #634) — an image/video subresource consumed same-origin; a wildcard read would let any origin pull the bytes as a CORS-enabled fetch, and no consumer needs that',
+	'HEAD /media/:key{.+}':
+		'public media delivery (Issue #634) — HEAD of the same route, so it carries the same decision',
 });
 
 interface Probe {

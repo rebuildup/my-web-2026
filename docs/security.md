@@ -10,12 +10,31 @@
 - Run `pnpm run validate:release`.
 - Land via the canonical release PR flow.
 
+The full procedure — intake, P0-P3 triage, fixture-only reproduction,
+regression test, release gate, and the publication decision — is
+[`docs/runbook/security-disclosure.md`](runbook/security-disclosure.md),
+and its machine-readable half (stages, priority rules, required operator
+duties, forbidden operations) is
+[`quality/security-disclosure.json`](../quality/security-disclosure.json).
+That gate (`pnpm run security:disclosure:check`) simulates the flow over
+committed fixtures and proves the runbook and the ledger still describe
+each other; it decides nothing about a real report, and it prints
+verdicts and reason codes only, never a reported value.
+
 For urgent / out-of-band reports (live site exploitation, credential
 leaks), contact the maintainer directly via the channel listed in
 `CODEOWNERS` / repository Settings → Code security before opening a
 public Issue. If you find a leaked credential, assume it is
 compromised: revoke and rotate immediately. Do not wait for the
 patch release.
+
+`/.well-known/security.txt` is **not published yet** (Issue #468): the
+endpoint answers `404` until an owner approves a reporting channel this
+project actually monitors, and the repository publishes no address to
+put in it. The delivery mechanism, the RFC 9116 validation and the
+expiry gate are complete — see
+[`docs/security/security-txt.md`](security/security-txt.md) for the
+approval procedure and the rules a published document must satisfy.
 
 ## CSRF
 
@@ -351,6 +370,35 @@ the client mapping, the drift guard between the retry window and
 `RATE_LIMITS`, and what the local workerd suite does *not* prove —
 lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
 
+## Request anomaly monitor (Issue #481)
+
+Two request surfaces are watched for **rates**, not for callers:
+`/admin*` (`admin`) and `/api/v1/*` (`external-api`). The 401 / 403 /
+429 / 5xx share of a five-minute fixed window is compared against a
+per-signal threshold, and a crossing produces one status-only detection
+event — latched to one announcement per window per signal.
+
+Three properties are the contract:
+
+- **no identity dimension.** The aggregation key is `(surface, window)`
+  and the observation type has no slot for an IP, key id, cookie, path
+  or user agent, so the counter cannot become a tracking surface by
+  accident; the event's field list is closed and asserted.
+- **no delivery.** The shipped sink writes one audit record through
+  `src/logging`. No e-mail, webhook, alert or third-party call exists,
+  because a destination outside the platform needs an owner decision and
+  its own ADR (AGENTS.md §4).
+- **per-isolate counts.** A Workers isolate sees only what it served, so
+  this is a detection decision and a reproducible proof, not a durable
+  global rate.
+
+The contract, the thresholds, and the observation / remediation
+procedure live in
+[`security/request-anomaly-monitor.md`](security/request-anomaly-monitor.md).
+The threshold crossings are reproduced from recorded fixtures
+(`quality/fixtures/request-anomaly-monitor/`, no credential and no
+production binding involved) by `pnpm run anomaly:fixture:proof`.
+
 ## CORS
 
 The external boundary splits its routes into three origin classes
@@ -582,6 +630,102 @@ This change adds no service, no binding, and no secret. Specifically:
   the static gate locally, renders the report, and encodes it as WebP.
   The Issue names a `.png`; the `.webp` extension is a deliberate
   substitution (the same one Issue #452 made for its report).
+## CSP Report-Only
+
+> The observation policy for subresource origins. Issue #447. It is
+> deliberately **not** an enforcing CSP: a violation is reported to the
+> browser, and the page behaves exactly as before. Moving a directive to
+> enforcement is a separate decision.
+
+### What is emitted
+
+`src/http/content-security-policy.ts` builds one
+`Content-Security-Policy-Report-Only` value and
+`src/server.ts` attaches it at the same choke point as the enforcing
+security headers — after the Hono / TanStack Start dispatch, so SSR
+documents, redirects, server-function payloads and `/api/v1/*` responses
+all carry it. An existing Report-Only header is left untouched.
+
+The enforcing `Content-Security-Policy: frame-ancestors` header from
+Issue #448 remains separate. `frame-ancestors` is ignored in Report-Only
+mode, so it is not repeated there.
+
+### Measured origins
+
+| Origin | Directive | Source of the measurement |
+| --- | --- | --- |
+| `'self'` | `default-src`, `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src` | TanStack Start SSR document and hydration bundle, Panda CSS, favicon, server functions, and the same-origin Tool iframe |
+| `'unsafe-inline'` | `script-src`, `style-src` | Two inline document scripts (GA4 bootstrap, async font-stylesheet flip) and React inline `style` attributes |
+| `https://www.googletagmanager.com` | `script-src` | GA4 loader in `src/editorial/analytics/GoogleAnalytics.tsx` |
+| `https://fonts.googleapis.com` | `style-src` | Font stylesheet linked from `src/routes/__root.tsx` |
+| `https://fonts.gstatic.com` | `font-src` | The `@font-face` binaries that stylesheet references |
+| `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
+| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the Worker media route (`/media/<key>`); the value is read from `env`, never hard-coded |
+
+The first observation run also reported `script-src` violations with
+`blockedURI: eval` from zod's client-side JIT compiler. The response was
+to remove the source rather than widen the policy: `src/client-zod-config.ts`
+is imported first by `src/client.tsx` and calls
+`z.config({ jitless: true })`, so validation keeps its semantics but no
+longer generates code with `new Function`. `'unsafe-eval'` is therefore
+deliberately absent, and the E2E positive case now observes no event.
+
+The policy also carries `object-src 'none'`, `base-uri 'self'` and
+`form-action 'self'`. It carries no `report-uri` / `report-to`: the
+repository has no collector endpoint, and inventing one would send
+visitor data to a destination with no owner or retention contract.
+Detection is the browser's native report surface
+(`securitypolicyviolation`), which the E2E contract observes locally.
+
+### Scope and non-scope
+
+- **In scope:** every response the Worker generates. This is the
+  TanStack UI, its fonts, its analytics, and the Tool iframe element it
+  embeds.
+- **Out of scope:** Static Assets. `/tools/<slug>/app/**` is a
+  Tool-owned document inside a sandboxed frame, and `/share/**` is a
+  self-contained static document. CSP is a per-document policy, and
+  neither document is rendered by this Worker; a host-wide Report-Only
+  rule in `public/_headers` would claim a policy this repository has not
+  measured for those documents.
+- **Not done here:** enforcement. No directive is switched to blocking,
+  and no production origin is used as a breakage test. The local workerd
+  pool, loopback Chromium fixture and static source inventory are the
+  whole verification surface.
+- **No new resource:** no KV, queue, binding, secret, or production
+  request is added. The media origin comes from the existing
+  `MEDIA_PUBLIC_BASE_URL` var.
+
+### Where it is verified
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Unit contract | The emitted value has the measured origins, no unobserved origin, no `'unsafe-eval'`, no blanket `*`, and no invented reporting endpoint; an existing header is not overwritten. | `src/http/content-security-policy.test.ts` |
+| Runtime contract | Real `SELF.fetch` responses carry the header on public, Tool, Admin and API surfaces while the enforcing `frame-ancestors` value is unchanged; the negative case checks that the policy is report-only and does not claim an unmeasured origin. | `test/integration/csp-report-only.test.ts` (workerd pool) |
+| Browser contract | A normal page load emits no violation; an unlisted image origin emits exactly one `img-src` event with `disposition: report` and is not blocked. | `e2e/csp-report-only.spec.ts` |
+| Verification artefact | The measured Worker rows and the loopback browser probe rendered as one report. | `docs/verification/security/csp-report.webp`, generated by `pnpm run verify:csp-report-only-screenshot` |
+
+### Known limitations
+
+- **zod runs in non-JIT mode on the client.** This is a deliberate
+  trade (a small validation-cost increase) made so the policy does not
+  need `'unsafe-eval'`. The server path is unaffected; Workerd already
+  skips the eval probe for Cloudflare user agents.
+- **`'unsafe-inline'` is measured debt, not a permanent grant.** A
+  nonce or hash migration is the condition for removing it. Until then
+  the Report-Only policy would only report the inline scripts the
+  document intentionally emits.
+- **The GA4 origin family is a wildcard.** The exact beacon subdomain is
+  selected by Google at runtime, so pinning one host would produce
+  false reports. The loader itself is pinned to its exact host.
+- **Static Assets and the Tool artefact are not observed.** The workerd
+  pool declares no `assets` binding, and the framed Tool document has
+  its own origin and policy. Their CSP is a Tool / Static Assets
+  decision, not a Worker response header.
+- **Report-Only is not enforcement.** A report is evidence, not a
+  guarantee. The separate enforcement issue must re-measure after the
+  observation window and decide per directive.
+
 ## Outbound fetch (SSRF)
 
 A URL that did not come from this repository — a visitor-supplied
@@ -703,16 +847,20 @@ Exit 1 means one of two things: an interpolated statement, or an
 `SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
 configuration). Adding an entry is a reviewable decision: it must name
 the file, the interpolated identifier, and why the value cannot carry
-user input. The current entries all live in `src/portfolio/load.ts`
-and are **structure, never data**:
+user input. The current entries live in `src/portfolio/load.ts` and
+`src/cloudflare/d1-backup.ts` and are **structure, never data**:
 
-| Identifier | Shape |
-| --- | --- |
-| `cursorPredicate` | a fixed chain of `?` placeholders (or the empty string), chosen by whether a cursor decoded; every cursor component is still bound |
-| `linkPlaceholders` | a `?N` chain whose length is the id chunk size (Issue #491 batched link read); every project id is bound |
-| `mediaPlaceholders` | the same chain for the batched media read |
+| File | Identifier | Shape |
+| --- | --- | --- |
+| `src/portfolio/load.ts` | `cursorPredicate` | a fixed chain of `?` placeholders (or the empty string), chosen by whether a cursor decoded; every cursor component is still bound |
+| `src/portfolio/load.ts` | `linkPlaceholders` | a `?N` chain whose length is the id chunk size (Issue #491 batched link read); every project id is bound |
+| `src/portfolio/load.ts` | `mediaPlaceholders` | the same chain for the batched media read |
+| `src/cloudflare/d1-backup.ts` | `quoteIdentifier(name)` | the export's table name, read from `sqlite_master`; the export refuses a name outside the bare-identifier grammar (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `quoteIdentifier(table.name)` | a restore's table name, validated by `isBareIdentifier` in `parseD1Backup` before any statement is built (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `columns` | the restore's comma-separated column list; each name is a validated `quoteIdentifier` (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `placeholders` | one `?` per exported column; every row value is bound with `.bind(...)` (Issue #461) |
 
-They are **live** only because that file passes its statements to
+They are **live** only because those files pass their statements to
 `prepare()` inline. Write the statement inline; a `const sql = …` in
 front of it hides the interpolation from the gate, and the gate then
 fails on the unreachable entry rather than letting it rot.
@@ -936,8 +1084,9 @@ deploy 前のベースライン取得には
 
 1. **サブドメインごとの HTTPS 到達性の監査**が本ドキュメントに
    記録されていること。zone には現在 `rebuildup.dev` 以外にも
-   `media.rebuildup.dev`（R2 custom domain。`wrangler.production.jsonc`
-   の `MEDIA_PUBLIC_BASE_URL`）が存在する。HTTPS 応答できない
+   `media.rebuildup.dev`（R2 custom domain。Issue #634 以降
+   `MEDIA_PUBLIC_BASE_URL` は `https://rebuildup.dev/media` を指すが、
+   この attachment は撤退作業まで残る）が存在する。HTTPS 応答できない
    サブドメインが 1 つでもあれば、そのホストは `max-age` の間だけ
    到達不能になる。
 2. **zone 設定側で HSTS を有効化**していること。zone の
@@ -1033,39 +1182,117 @@ binding API is reachable in the local workerd pool"**, not
 
 ## R2 object visibility (public keys vs private objects)
 
-Portfolio media is delivered by **a public R2 custom domain**
-(`https://media.rebuildup.dev/<key>`) — a Cloudflare account setting
-this repository cannot verify, recorded as Decision 5's release
-prerequisite. If that custom domain is attached, it bypasses the
-Worker: any key that exists in the `MEDIA` bucket can be fetched by
-anyone who can guess it, and no code of ours runs on that path.
-`src/cloudflare/media-visibility.ts` (Issue #459) therefore owns one
+Portfolio media is delivered by the **Worker** at
+`https://rebuildup.dev/media/<key>` (Issue #634). The R2 custom domain
+(`https://media.rebuildup.dev/<key>`) is a residual: as long as that
+attachment is live in the Cloudflare account, it bypasses the Worker and
+any key that exists in the `MEDIA` bucket can be fetched by anyone who
+can guess it. Retiring it is an operator step recorded in
+[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md);
+pointing `MEDIA_PUBLIC_BASE_URL` back at it is the break-glass rollback.
+`src/cloudflare/media-visibility.ts` (Issue #459) owns one
 rule for the repository — a key is publicly servable only when it is
 well-formed and lives under an explicitly declared **public prefix**
 (`portfolio/`, `reactions/`); private and undeclared namespaces fail
 closed.
 
-The rule is **enforced in production code on the two key-handling
-paths that exist today**: `composeMediaUrl` (returns `null`) and
-`getImageStream` / `GET /api/v1/reaction-images/:id` (404). Refusals
-are 404, never 403, and carry no reason code, so the boundary is not
-an existence oracle. The module's delivery adapter
-(`createPublicMediaDelivery`) and listing walk (`listPublicMediaKeys`)
-model the same boundary for a Worker-side delivery path and for a
-listing surface; **neither has a production caller today**, and they
-are not evidence about the custom-domain path.
+The rule is **enforced in production code on every key-handling path**:
+`composeMediaUrl`, `getImageStream` / `GET /api/v1/reaction-images/:id`,
+and since Issue #634 the delivery adapter `createPublicMediaDelivery`
+reached through `GET|HEAD /media/<key>` (`src/http/media/router.ts`).
+That route additionally asks the owning obligation whether this
+particular object is published (a D1 row), serves only the media types
+the producers write, and answers every refusal with the same bodyless
+404 carrying `no-store` — no 403 and no reason code, so the boundary is
+not an existence oracle. The listing walk (`listPublicMediaKeys`) has no
+production caller and no listing route exists.
 
 Verified against the local workerd R2 fixture only — object enumeration
 and a `cover-<n>` sequential sweep over the published key layout — by
 `test/integration/r2-media-visibility.test.ts`. The bucket-level half
-(unpublished objects must not sit in a custom-domain-served bucket)
-is operator-side, is **not** closed by the repository, and is recorded
-as an open residual with its concrete failure case in
+(unpublished objects must not sit in a custom-domain-served bucket) is
+operator-side; the **key-set** half of it is closed since Issue #577 by
+a read-only audit that classifies every key in the `MEDIA` bucket with
+the same `isPublicMediaKey` predicate the code gates use and fails the
+release gate on one key outside `PUBLIC_MEDIA_PREFIXES`
+(`pnpm run r2:media:audit`, operator-run because CI holds no Cloudflare
+credential; fail-closed and status-only). The residual is now the
+**custom-domain path only**: an unpublished object that lives inside
+`portfolio/` is refused by the Worker route, but the attached custom
+domain would still serve it. Issue #459 must not be closed on repository
+gates alone until that attachment is retired. Full
+scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
-and tracked as Issue
-[#577](https://github.com/rebuildup/my-web-2026/issues/577) (owner
-decision: enforced key-set audit / bucket split / Worker-side
-delivery).
+and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
+
+## Operator account MFA (operational record)
+
+The four control-plane accounts this project depends on — GitHub,
+Cloudflare, Infisical (the runtime-secret SoT, ADR-0015) and the
+registrar — have no MFA state a Worker can read, and reading one would
+mean holding a provider credential this repository refuses to hold
+(AGENTS.md §4). What *is* auditable is the operator's own record of
+having checked them, so Issue #469 makes that record the subject:
+
+- **SoT**: `quality/operator-mfa-ledger.json` — a schema with no field in
+  which an account identifier, a recovery code or a TOTP seed can be
+  written. A row is `{ service, confirmed_at, factors[{ kind,
+  confirmed_at }] }` and nothing else.
+- **Gate**: `pnpm run check:operator-mfa` classifies every required
+  service as `confirmed` / `unconfirmed` / `stale` / `missing`, and the
+  ledger as a whole as `OK` / `OUTSTANDING` / `UNDECIDABLE`
+  (exit 0 / 1 / 2). It is fail-closed, status-only, and deliberately not
+  wired into `validate:*`: the four account states are not observable from
+  CI, and the shipped ledger is unconfirmed until the owner fills it in.
+- **What it does not prove**: that an account actually has two factors
+  enrolled. Only the record is verified; the console is human-side.
+- Policy defaults (`min_factors: 2`, `require_phishing_resistant: true`,
+  `max_confirmation_age_days: 180`) ship as `policy.status: "proposed"`
+  and await owner ratification.
+
+Scope and procedure:
+[`docs/runbook/operator-mfa-verification.md`](runbook/operator-mfa-verification.md).
+
+## R2 media restore (deleted public image)
+
+The other half of the storage story is what happens when an object is
+**gone**, not when it is visible. Nothing in this repository
+re-creates a portfolio image: `portfolio_media` points at an R2 key,
+the bucket holds the bytes, and the only thing that can put a deleted
+object back is a **retained source captured before the deletion**.
+`src/cloudflare/media-restore.ts` (Issue #462) owns that procedure as
+a fail-closed model with three invariants:
+
+1. the visibility gate runs **before any write**, so a restore can
+   never republish a private or undeclared namespace;
+2. the retained bytes must match the manifest (sha256 / byte length /
+   content type) **before** the upload, so the wrong image is never
+   written under a published key;
+3. the object is **read back** and re-compared, so a truncated or
+   mislabelled upload is reported as a failure rather than as a
+   restore.
+
+The states that are *not* a restore are part of the contract:
+`refused_key`, `missing_source` (nothing was retained, and guessing
+would substitute content silently), `metadata_drift`, and
+`undecidable` (exit 2, so "could not check" never shares a signal with
+"checked and fine"). The result object is **status-only by
+construction** — it holds a verdict, a reason code, and the checks
+that ran, and no object key, key fragment, namespace, or source path.
+
+Verified against the local workerd R2 fixture — an object is really
+deleted and then really restored, and delivery returns to 200 — by
+`test/integration/r2-media-restore.test.ts`, plus a credential-free
+fixture proof (`pnpm run r2:restore:proof`, seven recorded cases
+under `quality/fixtures/r2-media-restore/`). **No production write is
+performed by the repository**: a real restore needs an R2-scoped
+credential that no workflow here holds, so it is an operator step.
+Procedure, deletion handling, metadata contract and failure
+behaviour: [`docs/runbook/r2-media-restore.md`](runbook/r2-media-restore.md).
+Residual: `portfolio_media` records `r2_key` and `content_type` but
+**no digest and no byte length** (`migrations/0007_portfolio.sql`), so
+the manifest is an operator-side artefact today; adding those columns
+is a separate schema decision.
 
 ## Session lifecycle (sign-in / sign-out)
 
@@ -1168,6 +1395,38 @@ only the diff that introduced it.
 
 ## Automated checks
 
+- Per-capability threat model ledger (Issue #479):
+  `pnpm run threat:model:check` resolves every feature unit's assets,
+  trust zones, boundaries, STRIDE threats and review questions against
+  the repository, and **fails** on any claim that does not point at
+  something real — an asset whose `source_of_truth` is neither a file
+  that exists nor the name of a runtime secret the Worker really binds
+  (an invented name, or an audit-only one that is never bound, fails
+  too), a node naming a `source` file that does not exist, a control or
+  mitigation pointing at a file nobody shipped, a `live` capability
+  carrying an uncovered threat, or a review item that is not a question. The ledger records assets by name and
+  never by value: every string is shape-scanned with
+  `scripts/_secret-scan.mjs#looksLikeCredentialValue`, and a credential
+  shape fails the gate with a JSON pointer in the message and nothing
+  else. Manifest `quality/threat-model.json`, contract and reading guide
+  [`docs/verification/security/threat-model.md`](verification/security/threat-model.md),
+  verification report
+  `docs/verification/security/threat-model-diagram.webp`. Text scan
+  only: no Worker, no binding, no network, no secret.
+- Cloudflare configuration drift gate (Issue #480):
+  `pnpm run cf:config:drift:check` compares the production Worker
+  surface, the development surface, the Workers Builds build / deploy
+  commands and the static-asset `_headers` coverage against the recorded
+  contract in `quality/cloudflare-config-drift.json`, and fails on a
+  single differing item. It reads no credential, calls no Cloudflare API
+  and mutates nothing, so it is part of `validate:fast` and therefore of
+  every release. A `secret` binding is compared as a NAME, and a text var
+  value that differs from the record is printed as `<redacted len=N>`
+  rather than as text. It does not claim the built artifact
+  (`cloudflare:contract:check:build`), the live Worker binding state, or
+  the Cloudflare Dashboard settings. Runbook:
+  [`docs/runbook/cloudflare-config-drift.md`](runbook/cloudflare-config-drift.md);
+  verification report `docs/verification/security/cloudflare-config-drift.webp`.
 - Log redaction gate (Issue #467): `pnpm run log:redaction:check`
   fails when `src/**` writes to `console.*` outside `src/logging/`, or
   when an operator script prints a secret-named value. The contract,
@@ -1176,7 +1435,13 @@ only the diff that introduced it.
   verification report it produces is committed at
   `docs/verification/security/log-redaction-test.webp`.
 - Secret scanning: enabled as an asynchronous CI job (see
-  `quality/profile.yaml#security_gates.secret_scanning`).
+  `quality/profile.yaml#security_gates.secret_scanning`), plus a
+  deterministic pre-merge gate in this repository — `pnpm run secret:scan`
+  over tracked and untracked-not-ignored files, and `pnpm run
+  secret:scan:bundle` over the built bundle, both inside `validate`.
+  Findings are status-only (path, line, detector, length, SHA-256 prefix)
+  and never render the matched value. Runbook:
+  [`docs/security/supply-chain-secret-scan.md`](security/supply-chain-secret-scan.md).
 - Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
   `package.json`, `pnpm-workspace.yaml` and `src/tools/manifest.json`
   by `pnpm run sbom:build`, verified against the live lockfile by
@@ -1202,9 +1467,11 @@ only the diff that introduced it.
   `validate:fast` because it needs the registry advisory endpoint; the
   decision logic is in `scripts/check-dependency-advisories.mjs` and the
   same verdict is reproducible with `pnpm run dep-audit:check`. It ships
-  with `enforcement: audit` and no approved exceptions, so outstanding
-  findings are recorded rather than blocking; moving to `block` is an
-  owner decision. Runbook:
+  with `enforcement: block` (Issue #645), so a blocking finding that no
+  approved exception covers fails the `validate` job; the single
+  exception on record (`braces`, no published patched version) is dated,
+  grounded and tracked (Issue #669), and an expired record blocks again.
+  Runbook:
   [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).

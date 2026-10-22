@@ -1,0 +1,232 @@
+{
+	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner.",
+	"version": 1,
+	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner.",
+	"freshnessWindowDays": 90,
+	"locales": ["ja"],
+	"excludedPaths": [
+		{
+			"glob": "src/editorial/error-states/**",
+			"reason": "runtime-message"
+		}
+	],
+	"excludedExpressions": [
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"expression": "リアクションは現在記録できません。時間をおいてお試しください。",
+			"reason": "runtime-message"
+		}
+	],
+	"expressions": [
+		{
+			"id": "about-narrative-subset-empty",
+			"path": "src/about/components/AboutPage.tsx",
+			"expression": "現在、narrative subset に該当する公開作品はありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Rendered only when no slug of `experienceSlugs` (src/about/data.ts:73) resolves to a public project (src/about/load.ts, resolveExperience). The three slugs are seeded in src/portfolio/seed.ts, so while those D1 rows stay public this sentence is not the rendered one. Which sentence is rendered cannot be confirmed from the repository alone — the D1 rows are the source of truth."
+		},
+		{
+			"id": "about-current-heading",
+			"path": "src/about/components/AboutPage.tsx",
+			"expression": "現在 / Today",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Heading of the `/about` \"Current\" section (src/about/components/AboutPage.tsx:561). Its content is `ABOUT_DATA.current` (src/about/data.ts:74-80) — the list of what the owner is working on at the time of reading. The wording is the owner's; the mixed Japanese / English label is not a typography question."
+		},
+		{
+			"id": "about-current-description",
+			"path": "src/about/components/AboutPage.tsx",
+			"expression": "今、時間を割いていること。半年程度の freshness を想定。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Description of the same section (src/about/components/AboutPage.tsx:562). The half-year horizon matches the freshness guidance of src/about/data.ts:28-33, where the `current` / `future` rows carry the lowest stability of the three horizons."
+		},
+		{
+			"id": "about-active-parked-legend",
+			"path": "src/about/components/AboutPage.tsx",
+			"expression": "active = 今、方向として進めていること。parked = 意図的に保留しているもの。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Legend under the \"Current\" section (src/about/components/AboutPage.tsx:632). The two lists it explains are `ABOUT_DATA.future.active` and `ABOUT_DATA.future.parked` (src/about/data.ts:81-90)."
+		},
+		{
+			"id": "about-video-commission-parked",
+			"path": "src/about/data.ts",
+			"expression": "依頼制の映像 / デザイン制作を継続的に受ける mode は、現時点では parked。需要と制作余力が見合ったときに再開する。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "First entry of `ABOUT_DATA.future.parked` (src/about/data.ts:88). The state it claims — the commissioned video / design production mode is parked — is a decision record rather than a measurement, and it changes when the owner reopens the mode."
+		},
+		{
+			"id": "contact-intro-current-only",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Intro paragraph of `/contact` (src/contact/page.tsx:107). True against src/contact/channels.json and the freshness gate of src/contact/schema.ts:67 (FRESHNESS_WINDOW_DAYS = 30). On 2026-10-22 the GitHub channels are still inside that window (verified_at 2026-09-27), so the sentence holds until 2026-10-27 unless the channels are re-verified."
+		},
+		{
+			"id": "contact-intro-unpublished-excluded",
+			"path": "src/contact/page.tsx",
+			"expression": "は現在 re-verified されていないため、ここには載せていません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "contact-commission-not-accepted",
+			"path": "src/contact/page.tsx",
+			"expression": "のお問い合わせは、現時点ではこのページでは受け付けていません。 公開されている channel",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Secondary paragraph of `/contact` (src/contact/page.tsx:123). It states a permission: this page does not accept commission requests, and the published channels are the only route it names (src/contact/channels.json). The permission itself is unchanged by the freshness window; only the channel list moves."
+		},
+		{
+			"id": "contact-channels-heading-title",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な channel",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Section title of the channel list (src/contact/page.tsx:139). The list it titles is `getVisibleChannels()` (src/contact/public.ts:52), i.e. the entries that pass the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "contact-empty-no-reverified-channel",
+			"path": "src/contact/page.tsx",
+			"expression": "現在 re-verified されている channel はありません。channel を追加するには、",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Empty state of the channel list (src/contact/page.tsx:330), rendered only when `getVisibleChannels()` returns nothing (src/contact/public.ts:52). On 2026-10-22 the GitHub channels are still inside the 30-day window, so this is not the rendered sentence; it becomes the rendered one on 2026-10-27 unless the channels are re-verified."
+		},
+		{
+			"id": "contact-empty-add-instruction",
+			"path": "src/contact/page.tsx",
+			"expression": "<code>src/contact/channels.json</code> に <code>active: true</code> と現在日付の{' '}",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Continuation of the empty state (src/contact/page.tsx:331). It names the file that holds the channel entries (src/contact/channels.json) and the two fields the schema requires (`active`, `verified_at` — src/contact/schema.ts)."
+		},
+		{
+			"id": "home-composer-channels-current",
+			"path": "src/home/composer.tsx",
+			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途 (採用 / 技術的な議論 / 配布) 別の説明が添えてあります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Description of the home composer section (src/home/composer.tsx:142). The channels it names are the same entries as `/contact` (src/contact/channels.json, filtered by src/contact/public.ts:52); the three purposes are the `purpose` values of src/contact/schema.ts."
+		},
+		{
+			"id": "home-status-latest-reachability",
+			"path": "src/home/status/tiles.tsx",
+			"expression": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "status セクション (SectionHeading) の説明文 (src/home/status/tiles.tsx:129)。各 binding と外部境界の最新到達性を createServerFn で観測したスナップショットとして示し、観測できなかった状態を「未観測」として到達障害と区別して表示することを述べる。実装が保証しているのは観測値が得られない state が unreachable とは別に存在すること (src/home/status/health.ts の health = 'unobserved'、src/home/status/tiles.tsx の 'unobserved' ラベル) で、この文はその区別を人に伝える表現になっている。"
+		},
+		{
+			"id": "portfolio-seed-evidence-current-sale",
+			"path": "src/portfolio/seed.ts",
+			"expression": "累計販売 500 本以上 (as_of: ${new Date(EVIDENCE_AS_OF_2026_01).toISOString().slice(0, 7)})。download 数や現在販売状況は時間で変わるため、site 上で live に出す場合は別途 source を確認する必要がある。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Evidence note of the `my-web-2026` seed entry (src/portfolio/seed.ts:140). The published text interpolates `EVIDENCE_AS_OF_2026_01` (src/portfolio/seed.ts:71), i.e. 2026-01, and the sentence itself says the download count and the current sale status change over time. The recorded expression is the source text, so the interpolation placeholder is part of the match; the rendered month changes with the constant, not with the copy."
+		},
+		{
+			"id": "routes-contact-channels-current",
+			"path": "src/routes/contact.tsx",
+			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途 (採用 / 技術的な議論 / 配布) 別に明示しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "Meta description of the `/contact` route (src/routes/contact.tsx:41). Same evidence as the other contact entries: src/contact/channels.json and the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "projects-dotfiles-freshness-unavailable",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "unavailable — 上流の現在の状態を反映していない",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "鮮度ラベルの unavailable の表示 (src/projects/DotfilesIntroductionPage.tsx:50)。鮮度は evaluateFreshness (src/projects/snapshot.ts:105) が判定し、snapshot の availability が public でない場合に unavailable を返す。このラベルが述べるのは snapshot が上流の現在の状態を反映していないという状態そのものであり、公開されている内容の正誤や件数には言及しない。"
+		},
+		{
+			"id": "projects-dotfiles-stale-notice",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "鮮度が stale のときの注記 (src/projects/DotfilesIntroductionPage.tsx:719)。stale は verify 済みの日時から MAX_AGE_HOURS (src/projects/types.ts:24、336 時間) を超えた場合に判定される (src/projects/snapshot.ts:113)。この文は表示している内容が最新ではない可能性があると述べるだけで、snapshot の中身が誤っているとは述べていない。"
+		},
+		{
+			"id": "projects-dotfiles-missing-snapshot",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "snapshot を読み込めない場合の本文 (src/projects/DotfilesIntroductionPage.tsx:749)。読み込みに失敗したときだけ描画される節で、再同期が終わるまで内容を出さないことと、最新の情報は上流リポジトリで確認できることを述べている。取得の失敗という状態についての説明であり、公開されている内容そのものが古いということではない。"
+		},
+		{
+			"id": "projects-unavailable-not-public",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "reason が not-found / not-public の場合の表示 (src/projects/unavailable-copy.ts:11-12、NOT_PUBLIC)。リポジトリが公開されていないという状態と、表示している内容が最新ではないという状態の 2 つを述べている。公開状態は同期が記録した availability が根拠であり、この文だけからリポジトリの実状態は確認できない。"
+		},
+		{
+			"id": "projects-unavailable-not-current-suffix",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "archived / ref-mismatch / readme-shape の reason と、理由が記録されていない場合の fallback が共通で使う接尾句 (src/projects/unavailable-copy.ts:14、NOT_CURRENT_SUFFIX)。表示している内容が最新ではないという状態だけを述べており、その理由や影響範囲は含まない。"
+		},
+		{
+			"id": "projects-unavailable-fallback-notice",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
+		}
+	]
+}

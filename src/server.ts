@@ -6,9 +6,13 @@
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
 import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
+import { isAdminPath } from './http/admin-path';
+import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
 import { externalBoundary } from './http/hono';
+import { classifySurface, createAnomalyMonitor } from './http/middleware/anomaly-monitor';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
 import { applySecurityHeaders } from './http/security-headers';
+import { createAuditLogger } from './logging/logger';
 import { toolRouteSecurityPolicy } from './tools/registry';
 
 /**
@@ -19,10 +23,16 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  *   /webhooks/*      inbound webhooks from external services
  *   /oauth/*         OAuth callback handlers
  *   /integrations/*  third-party integration adapters
+ *   /media/*         gated R2 object delivery (Issue #634). The object
+ *                    bytes and their cache headers cannot be produced by
+ *                    the TanStack Start document shell, and the
+ *                    namespace + publication gates must run on the
+ *                    request path before any byte is served.
  *   /sitemap.xml     crawler-facing sitemap (Issue #420)
  *   /robots.txt      crawler-facing crawler policy (Issue #420)
+ *   /.well-known     RFC 9116 security.txt (Issue #468)
  *
- * The two SEO documents are the only non-API entries. They are
+ * The three documents above are the only non-API entries. They are
  * documents Hono can answer and the SSR pipeline cannot: TanStack
  * Start 1.168 has no raw-response route primitive, so a route file
  * always renders through the document shell. This is exactly the
@@ -39,13 +49,21 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  * `/robots.txt` have no children, and neither prefix below them can
  * collide with a page route.
  */
+// Issue #468 adds `/.well-known` for RFC 9116 §3's security.txt. The
+// whole well-known namespace is boundary-owned: a `.well-known` document
+// is by definition a machine-readable file rather than a rendered page,
+// so it must never be answered by the SSR shell with a 200 HTML
+// document. The comment lives out here because the boundary contract in
+// `scripts/_index-boundary.mjs` reads this list textually.
 const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/api/v1',
 	'/webhooks',
 	'/oauth',
 	'/integrations',
+	'/media',
 	'/sitemap.xml',
 	'/robots.txt',
+	'/.well-known',
 ] as const;
 
 function matchesExternalBoundary(pathname: string): boolean {
@@ -55,7 +73,30 @@ function matchesExternalBoundary(pathname: string): boolean {
 }
 
 /**
- * Cache policy for Worker-generated HTML (Issue #291).
+ * Attach a `Cache-Control` value unless the response already declares
+ * one, or unless its headers are sealed.
+ *
+ * "Never overwrite" is the whole point: a decision taken closer to the
+ * data (a handler that knows its bytes are content-addressed, a
+ * framework that already answered) always outranks the default set
+ * here. The defaults exist to make the *absence* of a decision
+ * impossible, not to overrule one.
+ */
+function setCacheControl(response: Response, value: string): Response {
+	if (response.headers.has('cache-control')) return response;
+	try {
+		response.headers.set('cache-control', value);
+	} catch {
+		// Sealed headers (immutable guard) — leave the response as-is
+		// rather than fail a request over a cache hint.
+		return response;
+	}
+	return response;
+}
+
+/**
+ * Cache policy for Worker-generated HTML (Issue #291, matrix in Issue
+ * #484).
  *
  * `public/_headers` cannot own this: Cloudflare documents that
  * "Custom headers defined in the `_headers` file are not applied to
@@ -165,13 +206,21 @@ function setCacheHeaders(response: Response, cacheControl: string, vary: boolean
 }
 
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
+	// Same rule as the external boundary: a decision made closer to the
+	// data outranks the default. No current SSR route declares its own
+	// `Cache-Control`, but the invariant is what the docblock above
+	// promises, so keep it enforced here too.
 	if (response.headers.has('cache-control')) return response;
 
 	const { pathname } = new URL(request.url);
-	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
-	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
-	const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
-	if (isAdmin) return setCacheHeaders(response, 'no-store', true);
+	// The Admin decision is the router's (Issue #654): static segments
+	// are case-insensitive and the pathname is percent-decoded before
+	// matching, so `/ADMIN/KEYS` and `/%61dmin/keys` render an Admin
+	// document and must carry the Admin cache policy. `isAdminPath`
+	// keeps the exact-prefix-or-`/` shape, so `/administration` and
+	// `//admin` stay out — the same rule `matchesExternalBoundary`
+	// applies to `/api/v10`.
+	if (isAdminPath(pathname)) return setCacheHeaders(response, 'no-store', true);
 
 	// Server-function payloads (`/_serverFn/*`, Issue #460). These are
 	// per-caller by construction — the handlers read the session
@@ -198,6 +247,46 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 		callerSpecific ? 'private, no-cache' : 'no-cache',
 		callerSpecific,
 	);
+}
+
+/**
+ * Cache policy for the external HTTP boundary (Issue #484).
+ *
+ * Everything the boundary answers is per-caller: the reaction
+ * aggregate is scoped to the calling API key, the access counter is a
+ * live value, `/api/v1/health` is a liveness probe, the error envelope
+ * echoes the requested path. None of that may become a stored entry in
+ * a browser cache or an edge cache — the hazard the checklist this
+ * Issue cites names directly ("responses whose content varies per user
+ * must not be cached in the CDN or the KV").
+ *
+ * Before this Issue the boundary declared no policy at all, so the
+ * storage behaviour of authenticated JSON was an accident of runtime
+ * defaults rather than a decision. `no-store` is now the explicit
+ * default, and it is the strictest option because the cost of guessing
+ * wrong here is another principal's payload, not a slow page.
+ *
+ * Two boundaries are deliberately left alone:
+ *
+ *   - `GET /api/v1/reaction-images/:id` declares
+ *     `public, max-age=31536000, immutable` inside its handler. Those
+ *     bytes are content-addressed in R2, so `setCacheControl` sees the
+ *     header already present and leaves it alone — a handler that knows
+ *     its bytes never change outranks a blanket default.
+ *   - Anything a framework sets on its own keeps its own value, by the
+ *     same rule.
+ *
+ * No `Vary` is added. No boundary response varies on `Cookie` or
+ * `Authorization` in a way a shared cache could act on, and `no-store`
+ * already forbids shared storage. Emitting `Vary: Cookie` here would
+ * only advertise a per-visitor body that must never be reused.
+ *
+ * The complete matrix across SSR HTML, the boundary and Static Assets
+ * is declared in `scripts/_cache-policy.mjs` and documented in
+ * `docs/verification/perf/cache-headers-matrix.md`.
+ */
+function applyExternalCachePolicy(response: Response): Response {
+	return setCacheControl(response, 'no-store');
 }
 
 /**
@@ -271,12 +360,18 @@ const FRAME_ANCESTORS_NONE = "'none'";
 const FRAME_ANCESTORS_SELF = "'self'";
 
 /**
- * Path prefixes (no trailing slash) whose responses may never be
- * framed, by a third party or by us. Exact-prefix-or-`/` matching, so
- * a lookalike route (`/administrator`, `/api/v1/authentication`)
- * does not inherit the denial.
+ * Non-Admin path prefixes (no trailing slash) whose responses may never
+ * be framed, by a third party or by us. Exact-prefix-or-`/` matching, so
+ * a lookalike route (`/api/v1/authentication`) does not inherit the
+ * denial.
+ *
+ * The Admin prefix is deliberately NOT in this list: it is decided by
+ * `isAdminPath` below, the same router-parity classifier the cache
+ * policy and the anomaly monitor use (Issue #654). A raw prefix check
+ * here would let `/Admin/Login` keep `frame-ancestors 'self'` while the
+ * identical lower-case URL gets `'none'`.
  */
-const FRAME_ANCESTORS_DENY_PREFIXES = ['/admin', '/api/v1/auth'] as const;
+const FRAME_ANCESTORS_DENY_PREFIXES = ['/api/v1/auth'] as const;
 
 /**
  * Matches an already-present `frame-ancestors` directive in a CSP
@@ -290,9 +385,11 @@ const FRAME_ANCESTORS_DIRECTIVE = /(?:^|;)\s*frame-ancestors\b/i;
 function frameAncestorsFor(
 	pathname: string,
 ): typeof FRAME_ANCESTORS_NONE | typeof FRAME_ANCESTORS_SELF {
-	const denied = FRAME_ANCESTORS_DENY_PREFIXES.some(
-		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-	);
+	const denied =
+		isAdminPath(pathname) ||
+		FRAME_ANCESTORS_DENY_PREFIXES.some(
+			(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+		);
 	return denied ? FRAME_ANCESTORS_NONE : FRAME_ANCESTORS_SELF;
 }
 
@@ -413,6 +510,65 @@ function applyTransportSecurityPolicy(request: Request, response: Response): Res
 }
 
 /**
+ * Request anomaly observation (Issue #481).
+ *
+ * The entry is the only place where the two watched surfaces are both
+ * visible: `/admin*` is answered by the SSR pipeline and `/api/v1/*` by
+ * the Hono boundary, so a monitor mounted on either one alone would see
+ * half the picture. Counting happens here, right after the dispatch and
+ * after the SSR failure fallback — an SSR 500 that `settleSsrDocument`
+ * turned into a readable document must be counted as the failure it was,
+ * not as the 200 the visitor sees.
+ *
+ * The monitor's counts are per-isolate and approximate by construction
+ * (see `src/http/middleware/anomaly-monitor.ts`): this owns the
+ * DETECTION decision and its status-only record, not a durable global
+ * rate. Where the record is DELIVERED is an owner decision that this
+ * repository has not been given yet, so the shipped sink is the audit
+ * log and nothing else — no webhook, no e-mail, no third-party call. A
+ * destination that leaves the platform needs its own ticket and ADR
+ * (AGENTS.md §4); the seam is `createAnomalyMonitor({ onEvent })`.
+ *
+ * One instance per isolate, so the counts live exactly as long as the
+ * isolate does and never outlive a request.
+ *
+ * The scope stays `boundary`: this is the same boundary record stream
+ * as `src/http/errors.ts`, and the anomaly record is distinguishable
+ * by its event name rather than by a second scope.
+ */
+const anomalyAuditLogger = createAuditLogger('boundary');
+
+const requestAnomalyMonitor = createAnomalyMonitor({
+	onEvent: (event) => {
+		// Fields are listed rather than spread so the record cannot
+		// inherit a new property from the event type without an
+		// explicit decision here.
+		anomalyAuditLogger.audit(event.event, {
+			surface: event.surface,
+			signal: event.signal,
+			status: event.status,
+			windowStart: event.windowStart,
+			samples: event.samples,
+			hits: event.hits,
+			rate: event.rate,
+			threshold: event.threshold,
+			minSamples: event.minSamples,
+		});
+	},
+});
+
+/**
+ * Count one Worker-generated response, if it belongs to a watched
+ * surface. Returns nothing: the caller cannot tell an observed request
+ * from an unobserved one, so observation cannot change a response.
+ */
+function observeRequestAnomaly(pathname: string, status: number): void {
+	const surface = classifySurface(pathname);
+	if (surface === null) return;
+	requestAnomalyMonitor.record({ surface, status });
+}
+
+/**
  * Cloudflare Worker entry for my-web-2026.
  *
  * Default export shape matches the Cloudflare Workers `ExportedHandler`
@@ -435,11 +591,12 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
 		const response = matchesExternalBoundary(url.pathname)
-			? await externalBoundary.fetch(request, env, ctx)
+			? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
 			: applyHtmlCachePolicy(
 					request,
 					await settleSsrDocumentResponse(request, await handler.fetch(request)),
 				);
+		observeRequestAnomaly(url.pathname, response.status);
 		// Issue #449: security headers are applied AFTER the dispatch so
 		// one choke point covers every Worker-generated response — SSR
 		// HTML, redirects, server-function payloads and the Hono
@@ -451,6 +608,15 @@ export default {
 		// choke point, after the #449 baseline, so every Worker response
 		// also carries `frame-ancestors`. HSTS (#446) stays outermost.
 		const framed = applyFrameAncestorsPolicy(request, secured);
-		return applyTransportSecurityPolicy(request, framed);
+		// Issue #447: CSP is added in REPORT-ONLY mode at the same choke
+		// point. It observes script/style/font/image/frame/connect origins
+		// without blocking them, so the shipped UI keeps behaving exactly
+		// as before while the origin inventory is measured. Moving a
+		// directive to enforcement is a separate decision. HSTS (#446)
+		// stays outermost.
+		const observed = applyContentSecurityPolicyReportOnly(framed, {
+			mediaBaseUrl: env.MEDIA_PUBLIC_BASE_URL,
+		});
+		return applyTransportSecurityPolicy(request, observed);
 	},
 } satisfies ExportedHandler<Env>;

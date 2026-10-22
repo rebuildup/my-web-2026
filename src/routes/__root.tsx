@@ -1,11 +1,68 @@
-import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import { env } from 'cloudflare:workers';
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import {
-	GoogleAnalytics,
-	GoogleAnalyticsRouteTracker,
-} from '../editorial/analytics/GoogleAnalytics';
+import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
+import { isAnalyticsMountPath } from '../editorial/analytics/consent';
 import '../styles.css';
+
+/**
+ * Icon family links (Issue #504).
+ *
+ * Every entry is a flat object literal with single-quoted string
+ * values, because `scripts/check-app-icons.mjs` parses this block to
+ * prove the published contract is coherent: every `<link>` here must
+ * point at a file that exists at the declared size, must be named by
+ * `public/site.webmanifest` or by this list, and must leave no orphan in
+ * `public/icons/`. Keep it flat (no spread, no computed values) and keep
+ * the files in sync via `pnpm run generate:app-icons`.
+ *
+ * `rel: 'icon'` (SVG) stays the primary desktop entry from Issue #285 —
+ * the PNG entries sit beside it as a raster fallback, because a handful
+ * of embedders (and older Safari) still look for a PNG.
+ *
+ * `apple-touch-icon` covers the iOS sizes that matter: 180 (iPhone),
+ * 167 and 152 (iPad), 120 (legacy iOS / Spotlight). iOS ignores
+ * `sizes` and picks the largest entry, so each size is a real file
+ * rather than one file relabelled four times.
+ *
+ * The manifest icons (192 / 512 / maskable 512) are deliberately NOT
+ * linked here: `public/site.webmanifest` names them itself, and
+ * duplicating the list in the document head would create a second
+ * place to forget an update.
+ *
+ * Deliberately absent: `apple-touch-startup-image` (no launch-screen
+ * artwork exists) and any offline declaration (see the manifest).
+ */
+const APP_ICON_LINKS = [
+	{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+	{ rel: 'icon', type: 'image/png', sizes: '16x16', href: '/icons/icon-16x16.png' },
+	{ rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icons/icon-32x32.png' },
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '120x120',
+		href: '/icons/apple-touch-icon-120x120.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '152x152',
+		href: '/icons/apple-touch-icon-152x152.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '167x167',
+		href: '/icons/apple-touch-icon-167x167.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '180x180',
+		href: '/icons/apple-touch-icon-180x180.png',
+	},
+	{ rel: 'manifest', href: '/site.webmanifest' },
+];
 
 /**
  * Root route. Defines the document shell shared by every page.
@@ -32,17 +89,24 @@ import '../styles.css';
  * frozen empty stub documented in
  * `src/cloudflare/workers-stub.ts`, so subsequent client-side
  * navigations contribute `undefined`). The value flows into
- * `GoogleAnalytics` only when the current pathname is NOT under
+ * `AnalyticsGate` only when the current pathname is NOT under
  * `/admin/*` — the admin gates are flat siblings under that prefix
  * (`admin.login`, `admin.keys`, `admin.images`,
  * `admin.invitations`, `admin.emoji-catalog`). See
  * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
- * contract and the SSR-capture singleton semantics. SPA route
- * changes are measured by `GoogleAnalyticsRouteTracker` (Issue
- * #286), mounted unconditionally next to the script gate below: the
- * inline `gtag('config', …)` records the initial document load, the
- * tracker pushes one `page_view` per subsequent location change
- * (deduped against the initial location, silent on `/admin/*`).
+ * contract and the SSR-capture singleton semantics.
+ *
+ * Analytics consent (Issue #495). `AnalyticsGate` is also the consent
+ * gate: it mounts the GA4 script AND the SPA route tracker
+ * (`GoogleAnalyticsRouteTracker`, Issue #286) only after a visitor has
+ * recorded an affirmative decision, and renders nothing until then —
+ * including during SSR, which is why no GA4 markup reaches the HTML a
+ * visitor (or a crawler) receives by default. The record is made by
+ * `AnalyticsConsentControl` at the end of `<body>`, also on public
+ * routes only. See `src/editorial/analytics/consent.ts` for the
+ * decision contract and
+ * `docs/verification/privacy/analytics-disabled.md` for the
+ * verification record.
  *
  * Chrome convention (Issue #199). PublicNav and Breadcrumbs are
  * intentionally NOT mounted here. They are regular components in
@@ -94,8 +158,9 @@ export const Route = createRootRoute({
 		// platform fallback stack — the same face `display=swap` already
 		// shows for the first few hundred ms for everyone else.
 		links: [
-			// Default favicon (Issue #285): a pure-blue circle served
-			// from `public/favicon.svg` (relative to the origin root).
+			// Icon family (Issue #285 SVG favicon, Issue #504 PNG +
+			// Apple Touch Icon + Web App Manifest). `APP_ICON_LINKS`
+			// carries the block-level contract; see its docstring.
 			//
 			// Declared in this `head()`, not in the `<head>` JSX of
 			// `RootComponent`, so it flows through TanStack Router's
@@ -112,9 +177,10 @@ export const Route = createRootRoute({
 			// of the tag — so only byte-identical link tags collapse,
 			// while `meta` dedupes by `name`/`property` with the
 			// deepest route winning. Because no route declares an
-			// icon today, this entry renders exactly once on every
-			// route (root, public pages, admin, and the 404 pages).
-			{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+			// icon today, every entry below renders exactly once on
+			// every route (root, public pages, admin, and the 404
+			// pages).
+			...APP_ICON_LINKS,
 			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
 			{
 				rel: 'preconnect',
@@ -144,10 +210,43 @@ export const Route = createRootRoute({
 				// be order-independent with respect to the <link>: if the
 				// sheet is already parsed (`sheet` set) it flips immediately,
 				// otherwise it waits for `load`, and if this script runs
-				// before the <link> exists at all it retries once at
-				// `DOMContentLoaded`.
+				// before the <link> exists at all it retries — once at
+				// `DOMContentLoaded` while the document can still fire it,
+				// otherwise on a bounded `requestAnimationFrame` poll.
+				//
+				// Issue #488 — this script is the ONE element this ticket
+				// fixes. TanStack Router merges the root head into every
+				// route match, so a client-side navigation re-creates BOTH
+				// the `media="print"` <link> and this inline <script>; the
+				// browser re-executes the inline body each time. The
+				// previous revision ended with
+				//
+				//     if (!f()) document.addEventListener('DOMContentLoaded', f)
+				//
+				// so every route change that found no *pending* print link
+				// left one more listener on `document` — and after the
+				// first document load `DOMContentLoaded` can never fire
+				// again, so every one of them was permanently dead. The
+				// measurement in `docs/verification/perf/
+				// interaction-memory-profile.md` records it as +1 leaked
+				// `document` listener per route change, unbounded.
+				//
+				// The fix keeps the contract (flip whatever print-media
+				// stylesheet is currently in the document) and removes the
+				// unbounded part:
+				//
+				//   - the `DOMContentLoaded` fallback is registered ONLY
+				//     while `document.readyState === 'loading'`, i.e. only
+				//     while the event it waits for is still possible;
+				//   - after the document is interactive, a link that is not
+				//     in the DOM yet is resolved by a bounded rAF poll
+				//     (60 frames ≈ 1 s), which cannot accumulate because it
+				//     self-terminates and attaches no listener;
+				//   - the per-<link> `load` binding is `once` and guarded by
+				//     an expando, so re-running the script against the same
+				//     element cannot stack listeners.
 				children:
-					'(function(){var f=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}l.addEventListener("load",function(){l.media="all"});return true};if(!f())document.addEventListener("DOMContentLoaded",f)})();',
+					'(function(){var r=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}if(!l.__myWebFlip){l.__myWebFlip=1;l.addEventListener("load",function(){l.media="all"},{once:true})}return true};if(r())return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",r,{once:true});return}var n=0;var t=function(){if(r()||++n>60)return;requestAnimationFrame(t)};requestAnimationFrame(t)})();',
 			},
 		],
 	}),
@@ -162,24 +261,49 @@ export const Route = createRootRoute({
 function RootComponent() {
 	const { gaMeasurementId } = Route.useLoaderData();
 	const { pathname, searchStr } = useLocation();
-	const isAdminPath = pathname.startsWith('/admin');
+	// The `/admin/*` exclusion rule lives in `editorial/analytics/consent.ts`
+	// so it can be tested without a router — see `isAnalyticsMountPath`.
+	const isAdminPath = !isAnalyticsMountPath(pathname);
 	return (
 		<html lang="ja">
 			<head>
 				<HeadContent />
-				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-				{/* SPA route-change page_view (Issue #286): always mounted;
-				    the tracker itself stays silent on /admin/*. */}
-				<GoogleAnalyticsRouteTracker
-					measurementId={gaMeasurementId}
-					locationKey={`${pathname}${searchStr}`}
-				/>
+				{/* Issue #504 — the browser-chrome tint, one value per
+				    appearance (Issue #290 ships light + dark). Rendered
+				    here rather than declared in `head().meta` because
+				    TanStack Router dedupes `meta` by `name` with the
+				    deepest route winning (see the head-merge note above):
+				    two `theme-color` entries in `head()` collapse into
+				    one, which is exactly the case the two media queries
+				    exist to avoid. The values are the two `bg.canvas`
+				    steps from `src/editorial/semantic-tokens.ts`:
+				    `neutral.0` (light) and `charcoal.950` (dark). The
+				    manifest's single `theme_color` cannot be
+				    appearance-conditional, so it carries the static
+				    accent step (`brand.700`) instead. */}
+				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
+				{/* Measurement (Issue #171) behind the consent gate
+				    (Issue #495). `AnalyticsGate` renders nothing — no
+				    loader script, no route tracker, no identifier read —
+				    until this document carries a granted decision, so the
+				    HTML below is the non-tracking default for every public
+				    route. The `/admin/*` exclusion stays here, where the
+				    router context lives. */}
+				{!isAdminPath ? (
+					<AnalyticsGate measurementId={gaMeasurementId} locationKey={`${pathname}${searchStr}`} />
+				) : null}
 			</head>
 			<body>
 				<RootLayout>
 					<Outlet />
 				</RootLayout>
 				<Scripts />
+				{/* Consent control (Issue #495): public routes only — see
+				    the comment above. It renders nothing on the server and
+				    nothing before hydration, so it can never delay or
+				    change the page it sits on. */}
+				{!isAdminPath ? <AnalyticsConsentControl /> : null}
 			</body>
 		</html>
 	);

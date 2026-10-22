@@ -157,6 +157,7 @@ describe('publication-surface — URL normalisation and classification', () => {
 	it('flags loopback hosts', () => {
 		assert.equal(classifyUrl('http://127.0.0.1:3000/x', CTX).privateHost, true);
 		assert.equal(classifyUrl('http://localhost:8787/x', CTX).privateHost, true);
+		assert.equal(classifyUrl('http://localhost./x', CTX).privateHost, true);
 	});
 
 	it('flags RFC 1918, CGNAT and link-local hosts over https', () => {
@@ -181,6 +182,19 @@ describe('publication-surface — URL normalisation and classification', () => {
 		assert.equal(classifyUrl('https://[fd00::1]/x', CTX).privateHost, true);
 		assert.equal(classifyUrl('https://[fe80::1]/x', CTX).privateHost, true);
 		assert.equal(classifyUrl('https://[::1]:8787/x', CTX).privateHost, true);
+	});
+
+	it('reduces IPv4-mapped IPv6 and trailing-dot hostnames before the check', () => {
+		for (const host of [
+			'[::ffff:169.254.169.254]',
+			'[::ffff:a9fe:a9fe]',
+			'::ffff:127.0.0.1',
+			'127.0.0.1.',
+			'localhost.',
+		]) {
+			assert.equal(isPrivateHost(host), true, host);
+		}
+		assert.equal(isPrivateHost('[::ffff:8.8.8.8]'), false);
 	});
 
 	it('does not flag a routable address or host', () => {
@@ -691,7 +705,10 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
 		assert.equal(surface.sitemap.length, 5 + 4000 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
-		assert.equal(surface.publicUrls.length, surface.sitemap.length + 3);
+		// The five public surfaces outside the sitemap: `/design-system`,
+		// `/admin/login`, `/admin/invitations/accept`, `/keyboard` (Issue
+		// #620) and `/projects/dotfiles` (Issue #621).
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 5);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

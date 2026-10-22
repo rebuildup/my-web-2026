@@ -1,0 +1,5 @@
+{
+	"note": "a row with no revocation procedure: the connection can be requested but never taken back",
+	"expect_error": "revocation.procedure",
+	"ops": [{ "op": "remove", "path": "integrations.0.revocation.procedure" }]
+}

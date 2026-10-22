@@ -8,6 +8,7 @@ import { InteractiveStates } from './sections/InteractiveStates';
 import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
+import { TableCode } from './sections/TableCode';
 import { Typography } from './sections/Typography';
 
 /**
@@ -40,6 +41,10 @@ import { Typography } from './sections/Typography';
  *   - 08 CJK line-break      ja / zh-Hans / zh-Hant / ko headings and body
  *                            in three opt-in levels, so 禁則処理 and 折り返し
  *                            can be read at narrow widths (Issue #431).
+ *   - 09 Table / code        the Issue #407 readability fixture: caption,
+ *                            scoped header cells, a keyboard-reachable
+ *                            scroll box, in the normal / empty / failure /
+ *                            compact states.
  *
  * Section 07 is the only one that composes an obligation other than
  * editorial: it imports the portfolio media component, which is the
@@ -69,6 +74,7 @@ export function DesignSystemPage() {
 				<StatusSection />
 				<ImageSection />
 				<CjkSection />
+				<TableCodeSection />
 			</main>
 		</>
 	);
@@ -342,6 +348,24 @@ function CjkSection() {
 					variant="spread"
 				>
 					<CjkLineBreak />
+				</SectionHeading>
+			</Container>
+		</section>
+	);
+}
+
+function TableCodeSection() {
+	return (
+		<section aria-labelledby="design-system-table-code" className={sectionStyle}>
+			<Container>
+				<SectionHeading
+					id="design-system-table-code"
+					eyebrow="09 — table & code"
+					title="表とコードブロックの読みやすさ"
+					description="Issue #407 の fixture です。caption と scope 付きヘッダーセルで表構造を伝え、横スクロールはコンポーネント内部に閉じ込め、スクロール領域はキーボードから到達できます。正常 / 空 / 失敗 / 縮小表示の 4 状態をそのまま再現します。"
+					variant="spread"
+				>
+					<TableCode />
 				</SectionHeading>
 			</Container>
 		</section>

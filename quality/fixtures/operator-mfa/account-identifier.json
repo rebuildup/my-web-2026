@@ -1,0 +1,55 @@
+{
+	"case": "ledger にアカウント識別子（account キー）が混ざっている",
+	"note": "この schema にはアカウントを名指しする欄が存在しない。識別子キーを持つファイルは丸ごと拒否される（値を出さずに reason code だけを出す）。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "infisical",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-13" }
+				]
+			},
+			{
+				"service": "registrar",
+				"account": "example-ops",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "security_key", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "UNDECIDABLE",
+		"exitCode": 2,
+		"reason": "ledger_forbidden_field",
+		"counts": { "confirmed": 0, "unconfirmed": 0, "stale": 0, "missing": 0 }
+	}
+}

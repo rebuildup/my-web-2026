@@ -126,8 +126,22 @@ describe('parseGateDeclaration — the reviewed declaration', () => {
 	it('accepts the declaration committed to the repository', () => {
 		assert.equal(repositoryGate.schemaVersion, 1);
 		assert.deepEqual(repositoryGate.blockingSeverities, ['critical', 'high']);
-		assert.deepEqual(repositoryGate.exceptions, []);
+		assert.equal(repositoryGate.enforcement, 'block');
 		assert.equal(repositoryGate.dataUnavailable, 'fail');
+	});
+
+	it('ships exactly one exception, and it is dated and tracked', () => {
+		// The committed gate is `block`, so the only blocking finding it
+		// tolerates is the one record below. The record must carry an
+		// expiry and a tracking Issue: an undated exception would be a
+		// silent pass, and an untracked one would be nobody's job.
+		assert.equal(repositoryGate.exceptions.length, 1);
+		const [exception] = repositoryGate.exceptions;
+		assert.equal(exception.advisoryId, 'GHSA-vfj7-8cjw-p6xm');
+		assert.equal(exception.package, 'braces');
+		assert.equal(exception.severity, 'high');
+		assert.match(exception.expiresOn, /^\d{4}-\d{2}-\d{2}$/);
+		assert.ok(Number.isInteger(exception.trackingIssue));
 	});
 
 	it('rejects an unknown key, which would otherwise silently empty the blocking set', () => {
@@ -268,7 +282,7 @@ describe('evaluateAdvisories — severity policy', () => {
 	it('records rather than blocks when enforcement is audit, and never calls that clean', () => {
 		const result = evaluateAdvisories({
 			findings: blockingFixture,
-			gate: { ...repositoryGate },
+			gate: { ...repositoryGate, enforcement: 'audit' },
 			now: asOf(NOW),
 		});
 		assert.equal(result.status, STATUS.AUDIT_FINDINGS);

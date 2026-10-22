@@ -1,0 +1,52 @@
+{
+	"case": "overdue — rotation 期限を超過した name がある",
+	"note": "異常系（deadline）。観測は一致しているのに、BETTER_AUTH_SECRETS の最後の rotation が 2026-01-05 のまま 90 日 cadence を超えている。期限は runbook の cadence 列から計算される。",
+	"now": "2026-10-19",
+	"expect": {
+		"verdict": "OVERDUE",
+		"exit_code": 1,
+		"advisory": 0,
+		"drift_failures": 0,
+		"overdue": 1
+	},
+	"ledger": {
+		"version": 1,
+		"policy": "fixture ledger (Issue #477)",
+		"secrets": [
+			{
+				"name": "BETTER_AUTH_SECRETS",
+				"cadence": { "kind": "calendar", "days": 90, "label": "quarterly review" },
+				"last_rotated_at": "2026-01-05",
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "BETTER_AUTH_SECRET",
+				"cadence": { "kind": "event_driven", "label": "envelope rotation only" },
+				"last_rotated_at": "2026-01-05",
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "MY_WEB_2026_CONSUMER_API_KEY",
+				"cadence": { "kind": "event_driven", "label": "on suspected compromise or as needed" },
+				"last_rotated_at": "2026-06-01",
+				"driver": "scripts/rotate-home-api-key.mjs",
+				"runbook": "docs/runbook/consumer-api-key-rotation.md"
+			},
+			{
+				"name": "GOOGLE_ANALYTICS_MEASUREMENT_ID",
+				"cadence": { "kind": "event_driven", "label": "rare (property migration or leak-driven)" },
+				"last_rotated_at": "2026-05-01",
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/analytics.md)",
+				"runbook": "docs/runbook/analytics.md"
+			}
+		]
+	},
+	"observation": {
+		"environment": "prod",
+		"captured_at": "2026-10-18",
+		"missing": [],
+		"extra": []
+	}
+}

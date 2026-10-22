@@ -1,0 +1,39 @@
+{
+	"$comment": "Fixture owner registry for the stale-content-review gate (Issue #437). The dates are absolute so the suite is deterministic: the test passes --today=2026-10-22, which puts the `current` record (2026-10-12) and the typography record (2026-10-01) inside the 90-day window and the `stale` record (2026-01-01) outside it. The unrecorded expression is deliberately absent from this list.",
+	"version": 1,
+	"policy": "Fixture only.",
+	"freshnessWindowDays": 90,
+	"locales": ["ja"],
+	"expressions": [
+		{
+			"id": "fixture-current",
+			"path": "src/fixture/page.tsx",
+			"expression": "現在、公開されている作品はありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-12",
+			"reviewedBy": "owner",
+			"note": "Fixture: a record inside the freshness window."
+		},
+		{
+			"id": "fixture-stale",
+			"path": "src/fixture/page.tsx",
+			"expression": "最新の到達性を示しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-01-01",
+			"reviewedBy": "owner",
+			"note": "Fixture: a record outside the freshness window."
+		},
+		{
+			"id": "fixture-typography",
+			"path": "src/fixture/page.tsx",
+			"expression": "今日の font stack はそのままです。",
+			"locale": "ja",
+			"dimension": "typography",
+			"reviewedAt": "2026-10-01",
+			"reviewedBy": "owner",
+			"note": "Fixture: a typography-dimension record, reported separately from prose."
+		}
+	]
+}

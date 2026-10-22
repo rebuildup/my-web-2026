@@ -151,3 +151,60 @@ fixture の finding が gate を赤くすることはない（`--include-fixture
   gate はこれを「未翻訳 0 件」と表示する。coverage を無いまま green にするのは
   「公開言語が 1 つ」という観測であり、10 言語対応 progress ではない。
 - 実行時 locale 選択（visitor ごとに言語を選ぶ経路）は本 ticket の scope 外。
+
+## 公開日本語の編集レビュー承認 (Issue #506)
+
+`copy:i18n:check` が **機械で決められること**（未翻訳キー・fallback 連鎖・
+数値/否定/権限の保持・禁則）を検査するのに対し、Issue #506 の gate は
+**誰が決めたか** を検査する。訪問者が読む日本語の文言を PR で書き換えたとき、
+その変更には owner の判断が記録されていることを要求する。
+
+| file | 責務 |
+| --- | --- |
+| `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイルの opt-in glob 宣言 |
+| `quality/copy-editorial-approvals.json` | owner の承認記録（推敲の採否 / 原文との意味比較 / 採否の決定） |
+| `scripts/check-copy-editorial-approval.mjs` | PR の差分から変更された日本語だけを抜き出し、記録と突き合わせる |
+
+判定は 4 状態: `pass` / `fail`（レビューがあり否定） / `not run`
+（NEEDS REVIEW。レビューが未記録） / `not applicable`（公開日本語の変更なし）。
+**編集補助ツールの出力は evidence であり approval ではない** — `proposal` だけ
+がそろっても owner の `decision` がなければ通らない。承認は変更文面の
+fingerprint に紐づくので、別の文面へ流用できない。
+
+```bash
+pnpm run copy:approval:check -- --base=release-0-7-0   # gate（base 必須）
+```
+
+この gate は差分を対象にするため `validate:fast` ではなく CI の `validate`
+ジョブで走る。運用手順は
+[`docs/runbook/copy-editorial-approval.md`](../docs/runbook/copy-editorial-approval.md)。
+
+## 日本語 copy のレビュー対象レポート (Issue #425)
+
+#506 が **誰が承認したか** を問うのに対し、#425 は **何が変わったか** を集める。
+記事 Markdown、About prose、公開 UI copy の変更された日本語を、原文と変更後を
+並べて review target として出す。数値・否定・権限のマーカーが変わった場合は
+`number-drift` / `negation-drift` / `permission-drift` として明示する。
+
+**このレポートは gate ではない。** `clear` / `review` / `attention` のいずれも
+exit 0 であり、未レビューの文章で CI を落とさない。承認の判断は #506 の
+owner 記録だけが行う。レポートは文章を書き換えず、draft を公開せず、承認台帳を
+読まない。組版は #428 (`copy:i18n:check`) の責務であり、本レポートは文章そのものを
+列挙する。
+
+| file | 責務 |
+| --- | --- |
+| `quality/japanese-copy-review-surfaces.json` | 記事 Markdown の glob と、#506 surface 宣言への参照 |
+| `scripts/collect-japanese-copy-review.mjs` | 差分から日本語 prose を抜き、原文と意味マーカーを比較する |
+| `scripts/_copy-japanese-diff.mjs` | #425 と #506 が共有する抽出・diff helper |
+
+```bash
+pnpm run copy:diff:report -- --base=release-0-7-0            # text
+pnpm run copy:diff:report -- --base=release-0-7-0 --format=json
+pnpm run copy:diff:report -- --base=release-0-7-0 --strict   # attention を exit 1
+```
+
+CI では `validate` ジョブの `Japanese copy review targets` ステップが
+`pull_request` イベントでのみ実行され、JSON / text を artifact として残す。
+運用手順は
+[`docs/runbook/japanese-copy-review.md`](../docs/runbook/japanese-copy-review.md)。

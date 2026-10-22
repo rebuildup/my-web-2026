@@ -157,6 +157,32 @@ test.describe('public nav — Tools exclusion (Issue #288)', () => {
 		expect(res?.status()).toBe(200);
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
 		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+		// Issue #498: ProtoType declares third-party contacts, so the shell
+		// opens on the consent notice. This assertion is about the NAV — the
+		// Tool frame must not drag the public nav back — and the frame is what
+		// the visitor asked for by activating the load.
+		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+		await page.waitForLoadState('networkidle');
+		// The notice is server-rendered: the button exists before React
+		// attaches the handler, so a click that lands before hydration is
+		// swallowed. Re-click until the frame appears (bounded), the
+		// same pattern the prototype spec uses.
+		const frame = page.locator('iframe[title="ProtoType Tool"]');
+		let mounted = false;
+		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
+			await page
+				.getByTestId('tool-embed-consent-activate')
+				.click({ timeout: 2_000 })
+				.catch(() => undefined);
+			mounted = await frame
+				.waitFor({ state: 'attached', timeout: 2_000 })
+				.then(() => true)
+				.catch(() => false);
+		}
+		expect(
+			mounted,
+			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
+		).toBe(true);
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 

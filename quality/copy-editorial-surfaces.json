@@ -1,0 +1,32 @@
+{
+	"$comment": "Public copy surface declaration (Issue #506). A changed file is public copy only when it matches a publicCopyGlobs entry and no excludeGlobs entry. The gate extracts the Japanese text a pull request changed in those files and asks for an owner approval record (quality/copy-editorial-approvals.json). The list is opt-in: a file that is not listed here is out of scope, and the report says so per file, so a missing entry is visible rather than silent.",
+	"version": 1,
+	"policy": "The surfaces are visitor-facing: the Japanese text a reader of https://rebuildup.dev sees. Internal documents, skills, scripts, tests, Storybook samples, design-system demo routes and the authenticated /admin surfaces are not public copy and are not gated here. Extending this list is an owner copy decision, not a mechanical one.",
+	"publicCopyGlobs": [
+		"src/home/**",
+		"src/portfolio/**",
+		"src/about/**",
+		"src/contact/**",
+		"src/projects/**",
+		"src/tools/**",
+		"src/routes/**",
+		"src/editorial/**",
+		"copy/resources.json"
+	],
+	"excludeGlobs": [
+		"**/*.stories.tsx",
+		"**/*.test.ts",
+		"**/*.test.tsx",
+		"**/*.md",
+		"**/fixtures/**",
+		"src/projects/snapshots/**",
+		"src/routes/admin.*",
+		"src/routes/design-system/**",
+		"src/editorial/cjk-line-break.tsx",
+		"src/editorial/language-of-parts.tsx",
+		"src/editorial/table-code.tsx",
+		"src/editorial/table-code.fixture.ts",
+		"src/editorial/social-card/contract.json",
+		"src/editorial/structured-data/contract.json"
+	]
+}

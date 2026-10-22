@@ -1,0 +1,25 @@
+{
+	"case": "refused-private-namespace",
+	"note": "private namespace の key への復旧要求。key gate が write 前に停止し、object は作られない",
+	"entry": {
+		"key": "private/draft/restore-fixture.png",
+		"sha256": "eeb5c1e598c97b522f1fcf31d12c7a1852f5426d6d0879fa8bf341a94bcfef8f",
+		"sizeBytes": 90,
+		"contentType": "image/png"
+	},
+	"bucket": {
+		"state": "absent"
+	},
+	"source": {
+		"state": "retained",
+		"contentType": "image/png",
+		"bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWNQcEgAAAFEAMFekLv0AAAAAElFTkSuQmCC"
+	},
+	"faults": [],
+	"expect": {
+		"verdict": "refused_key",
+		"reason": "key_not_publicly_servable",
+		"exitCode": 1,
+		"bucketAfter": "absent"
+	}
+}

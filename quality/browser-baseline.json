@@ -684,6 +684,12 @@
 			"role": "Portfolio surface and media composition"
 		},
 		{
+			"id": "projects",
+			"root": "src/projects",
+			"min_files": 1,
+			"role": "Project introduction surface: the committed snapshot reader, freshness states and the `/projects/dotfiles` page (Issue #621)"
+		},
+		{
 			"id": "admin",
 			"root": "src/admin",
 			"min_files": 1,
@@ -700,6 +706,12 @@
 			"root": "src/about",
 			"min_files": 1,
 			"role": "About surface"
+		},
+		{
+			"id": "keyboard",
+			"root": "src/keyboard",
+			"min_files": 1,
+			"role": "Read-only keyboard layout reference (parsers, geometry and diagram)"
 		},
 		{
 			"id": "tools",
@@ -744,17 +756,30 @@
 			"role": "Runtime log-redaction contract: what may appear in a console record, and the only module allowed to reach `console`"
 		},
 		{
+			"id": "legal",
+			"root": "src/legal",
+			"min_files": 1,
+			"role": "Publication-rights review contract for the assets this platform ships and references, plus the surface that shows one asset's rights"
+		},
+		{
+			"id": "privacy",
+			"root": "src/privacy",
+			"min_files": 1,
+			"role": "Published data lifecycle leaf obligation: the registry (stored items, retention, deletion path, external transfer) the public wording renders from"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",
+				"src/client-zod-config.ts",
 				"src/router.tsx",
 				"src/server.ts",
 				"src/routeTree.gen.ts",
 				"src/styles.css",
 				"panda.config.ts"
 			],
-			"min_files": 6,
-			"role": "App shell: client entry, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
+			"min_files": 7,
+			"role": "App shell: client entry, its zod non-JIT CSP configuration, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
 		}
 	],
 	"features": [

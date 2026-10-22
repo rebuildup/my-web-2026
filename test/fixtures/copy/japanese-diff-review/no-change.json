@@ -1,0 +1,17 @@
+{
+	"$comment": "Issue #425 fixture. A changed public surface whose diff contains only English string values, a Japanese comment and a Japanese code identifier. None is visitor-visible prose, so the correct output is `clear` — not an empty-looking `review`.",
+	"name": "no-change",
+	"expect": "clear",
+	"note": "English values, a code comment and a Japanese identifier are not visitor-visible prose.",
+	"diff": [
+		"diff --git a/src/home/metrics.ts b/src/home/metrics.ts",
+		"--- a/src/home/metrics.ts",
+		"+++ b/src/home/metrics.ts",
+		"@@ -3,2 +3,3 @@",
+		"-const label = 'Dashboard';",
+		"-// 日本語のコメント",
+		"+const label = 'Metrics';",
+		"+// 日本語のコメントを更新",
+		"+const 見出し = 1;"
+	]
+}

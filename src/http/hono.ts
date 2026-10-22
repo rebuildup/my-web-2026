@@ -5,11 +5,13 @@ import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { corsMiddleware } from './cors/middleware';
 import { publicErrorResponse } from './errors';
+import { mediaRouter } from './media/router';
 import { sharedCacheIsolation } from './middleware/cache-policy';
 import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
+import { securityTxtRouter } from './security-txt/router';
 import { seoRouter } from './seo/router';
 
 /**
@@ -22,6 +24,10 @@ import { seoRouter } from './seo/router';
  *   - `/webhooks/*`     inbound webhooks from external services
  *   - `/oauth/*`        OAuth callback handlers
  *   - `/integrations/*` third-party integration adapters
+ *   - `/media/*`        gated R2 object delivery (Issue #634). A binary
+ *                       stream cannot be produced by the SSR document
+ *                       shell, and the namespace + publication gates
+ *                       must run before an object is served.
  *   - `/sitemap.xml`,   crawler-facing SEO documents. These are not
  *     `/robots.txt`     HTML and cannot be produced by the SSR
  *                        pipeline (TanStack Start 1.168 has no
@@ -30,6 +36,11 @@ import { seoRouter } from './seo/router';
  *                        served here and registered in the
  *                        `EXTERNAL_BOUNDARY_PREFIXES` list in
  *                        `src/server.ts`.
+ *   - `/.well-known/*`  RFC 9116 `security.txt` (Issue #468). Same
+ *                        reason — a `text/plain` document, served as
+ *                        part of the RFC 9116 §3 well-known
+ *                        namespace, published only once an owner
+ *                        approves the reporting channel.
  *
  * Internal application operations invoked from the UI are TanStack
  * Start server functions and **must not** be exposed through Hono.
@@ -111,8 +122,10 @@ externalBoundary.use('/api/v1/*', requestIdMiddleware);
 // cross-site write is rejected before authentication, rate limiting,
 // or D1 are touched.
 externalBoundary.use('/api/v1/*', csrfGuard);
+externalBoundary.route('/', mediaRouter);
 externalBoundary.route('/', authRouter);
 externalBoundary.route('/', seoRouter);
+externalBoundary.route('/', securityTxtRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);

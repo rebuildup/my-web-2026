@@ -84,6 +84,7 @@ export interface RouteLabel {
  */
 export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/about': { label: 'About' },
+	'/keyboard': { label: 'キーボード配列' },
 	'/contact': { label: 'Contact' },
 	'/portfolio/': { label: 'Portfolio' },
 	'/portfolio/$slug': {

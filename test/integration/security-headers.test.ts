@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 
 /**
  * Security headers on real Worker responses (Issue #449).
@@ -35,6 +35,10 @@ async function headersOf(
 const DENIED_BASELINE = expect.stringContaining('microphone=()');
 
 describe('security headers — host documents (Issue #449)', () => {
+	beforeAll(async () => {
+		await SELF.fetch('https://rebuildup.dev/contact', { redirect: 'manual' });
+	});
+
 	it('serves nosniff + referrer + permissions on a public page', async () => {
 		// `/contact` rather than `/`: the home loader needs the reactions
 		// tables and this file does not bootstrap them (see

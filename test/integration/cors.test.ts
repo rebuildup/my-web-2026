@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import {
 	CORS_REQUEST_HEADERS,
 	type CorsClass,
@@ -381,6 +381,13 @@ async function runProbe(probe: Probe): Promise<Record<string, unknown>> {
 }
 
 describe('boundary CORS policy (Issue #455)', () => {
+	// Issue #261: warm-up the workerd pool so the first SELF.fetch
+	// cold-start (~2.3-2.6s SSR bundle render) does not fall inside
+	// a timed test budget (5000ms).
+	beforeAll(async () => {
+		await SELF.fetch('https://example.com/api/v1/health', { redirect: 'manual' });
+	});
+
 	it('answers every probe in the matrix as the policy demands', async () => {
 		const measured: Array<Record<string, unknown>> = [];
 		for (const probe of PROBES) {

@@ -56,6 +56,23 @@ const BATCHED_STATEMENTS = [
 
 const BATCHED_LINES = [...BATCHED_DECLS, ...BATCHED_STATEMENTS];
 
+/**
+ * The allowlisted structure `src/cloudflare/d1-backup.ts` restores with
+ * (Issue #461). A fixture tree that checks reachability has to stage
+ * these too, for the same reason as `BATCHED_LINES`: the allowlist is
+ * global, so an unseen real entry would be reported as dead
+ * configuration.
+ */
+const D1_BACKUP_LINES = [
+	'const columns = table.columns.map(quoteIdentifier).join(", ");',
+	'const placeholders = table.columns.map(() => "?").join(", ");',
+	'return db.prepare(`SELECT * FROM ${quoteIdentifier(name)}`).all();',
+	'return db.batch([',
+	'  db.prepare(`DROP TABLE IF EXISTS ${quoteIdentifier(table.name)}`),',
+	'  db.prepare(`INSERT INTO ${quoteIdentifier(table.name)} (${columns}) VALUES (${placeholders})`).bind(...row),',
+	']);',
+].join('\n');
+
 describe('check-d1-sql-binding — argument reader', () => {
 	it('keeps parentheses that belong to the argument', () => {
 		const source = "db.prepare('SELECT * FROM t WHERE a = ?1 AND b IN (SELECT 1)').run()";
@@ -156,6 +173,7 @@ describe('check-d1-sql-binding — fixture tree', () => {
 				'return db.prepare(sql).bind(value).all();',
 				...BATCHED_LINES,
 			].join('\n'),
+			'src/cloudflare/d1-backup.ts': D1_BACKUP_LINES,
 		});
 		try {
 			const unused = unusedAllowlistEntries({ root });
@@ -175,6 +193,7 @@ describe('check-d1-sql-binding — fixture tree', () => {
 				'return db.prepare(`SELECT * FROM portfolio_project${cursorPredicate}`).bind(value).all();',
 				...BATCHED_LINES,
 			].join('\n'),
+			'src/cloudflare/d1-backup.ts': D1_BACKUP_LINES,
 		});
 		try {
 			assert.deepEqual(unusedAllowlistEntries({ root }), []);

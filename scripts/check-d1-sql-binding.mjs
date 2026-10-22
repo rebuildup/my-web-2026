@@ -106,6 +106,38 @@ export const SQL_STRUCTURE_ALLOWLIST = [
 			'media read). It is derived from `chunk.length` alone and every project id is bound ' +
 			'with `.bind(...chunk)`, so no user value reaches the statement text.',
 	},
+	{
+		file: 'src/cloudflare/d1-backup.ts',
+		identifier: 'quoteIdentifier(name)',
+		reason:
+			'the table name read from `sqlite_master` for an export (Issue #461). The same loop ' +
+			'refuses a name outside the bare-identifier grammar with `unsupported_identifier`, ' +
+			'so the interpolation is a validated identifier, never a value.',
+	},
+	{
+		file: 'src/cloudflare/d1-backup.ts',
+		identifier: 'quoteIdentifier(table.name)',
+		reason:
+			'the table name of a backup being restored (Issue #461). `parseD1Backup` validates ' +
+			'every table name with `isBareIdentifier` before a statement is built, so a ' +
+			'restored name is structure that already passed the parser.',
+	},
+	{
+		file: 'src/cloudflare/d1-backup.ts',
+		identifier: 'columns',
+		reason:
+			'a comma-separated list of `quoteIdentifier`-wrapped column names (Issue #461). The ' +
+			'parser validates each column with `isBareIdentifier`, and the export refuses a ' +
+			'column it cannot represent, so no row value reaches the column list.',
+	},
+	{
+		file: 'src/cloudflare/d1-backup.ts',
+		identifier: 'placeholders',
+		reason:
+			'one `?` per exported column (Issue #461). It is derived from `table.columns.length` ' +
+			'alone and every row value is passed through `.bind(...row.map(decodeValue))`, so ' +
+			'the row content is never spliced into the statement.',
+	},
 ];
 
 /**

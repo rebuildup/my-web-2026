@@ -202,6 +202,8 @@
 		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production",
 		"r2:restore:proof": "node scripts/r2-media-restore-proof.mjs",
 		"r2:restore:proof:report": "node scripts/r2-media-restore-proof.mjs --html=.tmp/r2-restore-proof.html",
+		"d1:backup:proof": "vitest run test/integration/d1-backup-restore.test.ts",
+		"verify:d1-backup-restore-screenshot": "node scripts/make-d1-backup-restore-report.mjs",
 		"artifact:attestation:report": "node scripts/artifact-attestation-report.mjs",
 		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
 		"compat:stress:check": "node scripts/check-layout-stress.mjs",

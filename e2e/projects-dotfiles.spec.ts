@@ -50,7 +50,7 @@ test.describe('projects/dotfiles — committed snapshot rendering (#621)', () =>
 
 		// Provenance is part of the page: a reader can name the commit the
 		// excerpt came from and when it was verified.
-		await expect(page.getByText('source commit')).toBeVisible();
+		await expect(page.getByText('README commit')).toBeVisible();
 		await expect(page.getByText('last verified')).toBeVisible();
 		await expect(
 			page.getByRole('link', { name: /README\.md @ [0-9a-f]{7}/ }).first(),

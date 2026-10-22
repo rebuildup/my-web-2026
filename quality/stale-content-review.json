@@ -167,6 +167,66 @@
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
 			"note": "Meta description of the `/contact` route (src/routes/contact.tsx:41). Same evidence as the other contact entries: src/contact/channels.json and the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "projects-dotfiles-freshness-unavailable",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "unavailable — 上流の現在の状態を反映していない",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "鮮度ラベルの unavailable の表示 (src/projects/DotfilesIntroductionPage.tsx:50)。鮮度は evaluateFreshness (src/projects/snapshot.ts:105) が判定し、snapshot の availability が public でない場合に unavailable を返す。このラベルが述べるのは snapshot が上流の現在の状態を反映していないという状態そのものであり、公開されている内容の正誤や件数には言及しない。"
+		},
+		{
+			"id": "projects-dotfiles-stale-notice",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "鮮度が stale のときの注記 (src/projects/DotfilesIntroductionPage.tsx:719)。stale は verify 済みの日時から MAX_AGE_HOURS (src/projects/types.ts:24、336 時間) を超えた場合に判定される (src/projects/snapshot.ts:113)。この文は表示している内容が最新ではない可能性があると述べるだけで、snapshot の中身が誤っているとは述べていない。"
+		},
+		{
+			"id": "projects-dotfiles-missing-snapshot",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "snapshot を読み込めない場合の本文 (src/projects/DotfilesIntroductionPage.tsx:749)。読み込みに失敗したときだけ描画される節で、再同期が終わるまで内容を出さないことと、最新の情報は上流リポジトリで確認できることを述べている。取得の失敗という状態についての説明であり、公開されている内容そのものが古いということではない。"
+		},
+		{
+			"id": "projects-unavailable-not-public",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "reason が not-found / not-public の場合の表示 (src/projects/unavailable-copy.ts:11-12、NOT_PUBLIC)。リポジトリが公開されていないという状態と、表示している内容が最新ではないという状態の 2 つを述べている。公開状態は同期が記録した availability が根拠であり、この文だけからリポジトリの実状態は確認できない。"
+		},
+		{
+			"id": "projects-unavailable-not-current-suffix",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "archived / ref-mismatch / readme-shape の reason と、理由が記録されていない場合の fallback が共通で使う接尾句 (src/projects/unavailable-copy.ts:14、NOT_CURRENT_SUFFIX)。表示している内容が最新ではないという状態だけを述べており、その理由や影響範囲は含まない。"
+		},
+		{
+			"id": "projects-unavailable-fallback-notice",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "owner",
+			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
 		}
 	]
 }

@@ -35,7 +35,7 @@ merge の可否ではない。
 
 | 受け入れ条件 | 実装 | どこで確かめるか |
 | --- | --- | --- |
-| 日本語テキスト変更が検出され、コード識別子や機密情報は対象外 | `extractSegments` / `visibleSegments` / `markdownSegments` が prose だけを返し、`secretShape` が credential 形の行を丸ごと伏せる | `no-change.json`（識別子・コメント・英語値は `clear`）、`secret-redaction`（runtime fixture、値はどの renderer にも出ない） |
+| 日本語テキスト変更が検出され、コード識別子や機密情報は対象外 | `extractSegments` / `visibleSegments` / `markdownSegments` が prose だけを返し、`secretShape` が credential 形の行を丸ごと伏せる。宣言行・return 行は JSX のテキスト（`return <p>古い本文</p>`）を対象にし、識別子だけの宣言（`const 見出し = 1;`）は対象外にする | `no-change.json`（識別子・コメント・英語値は `clear`）、`secret-redaction`（runtime fixture、値はどの renderer にも出ない）、`scripts/collect-japanese-copy-review.test.mjs`（宣言行の JSX テキストと fence 終端規則） |
 | 元の意味・数値・否定・権限を守り、未確定な推敲を勝手に公開しない | 数値は集合差分、否定・権限はマーカー集合差分。レポートは列挙のみで、本文を書き換える経路を持たない | `modified-ui.json`（`number-drift`）、`meaning-risk.json`（`のみ` の削除を `permission-drift`）、`scripts/collect-japanese-copy-review.test.mjs` |
 | 文章品質とタイポグラフィの違いを明示し、locale は必要な機能で opt-in | レポート本文と runbook §1/§10 が #428（組版）と prose quality（人）を分離。`copy/resources.json` は読まない・変更しない | `pnpm run copy:i18n:check` と本レポートの責務表、`quality/profile.yaml#japanese_copy_review.boundary` |
 | 1 Issue / 1 PR。Storybook / プレビュー / CI fixture で他 Issue の完成を待たず検証 | 本 PR は収集スクリプト・宣言・fixture・CI レポート・runbook・検証画像だけを追加する。検証は CI fixture と本画像で閉じる | 本 PR の diff、`node --test scripts/collect-japanese-copy-review.test.mjs` |
@@ -108,7 +108,8 @@ CI ログとレポートの読み方を読者へ示すためのものである�
 
 - **抽出は行単位のテキスト走査である。** 構文解析はせず、Markdown の
   fenced code 状態だけをファイル全体から復元する。曖昧な行は非 prose 側に
-  倒す（誤検出より取りこぼしを選ぶ）。
+  倒す（誤検出より取りこぼしを選ぶ）。フェンスの終端だけは CommonMark と同じ
+  規則（開始と同じ文字・開始以上の長さ・末尾は空白だけ）で判定する。
 - **removed / added の対応は位置対応である。** 1 文の書き換えでは正しいが、
   複数 segment の一括差し替えでは対応がずれる可能性がある（segment 自体は
   列挙される）。

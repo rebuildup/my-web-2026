@@ -54,9 +54,11 @@
  * ----------------
  * Code identifiers and secret-shaped values are not review targets:
  *
- *   - a TS/TSX segment comes from a string literal (or a JSX text node
- *     with its tags stripped); a comment, an import/declaration line and
- *     a template interpolation expression are not prose;
+ *   - a TS/TSX segment comes from a string literal or a JSX text node;
+ *     a comment, a code identifier and a template interpolation
+ *     expression are not prose. A declaration or return line is code,
+ *     but the JSX text it carries is read by a visitor, so it is
+ *     collected;
  *   - a Markdown line inside a fenced or indented code block, an inline
  *     code span, a link destination, a raw HTML tag or an HTML comment is
  *     not prose;
@@ -183,6 +185,42 @@ const FENCE_OPEN = /^\s*(`{3,}|~{3,})/;
 const INDENTED_CODE = /^( {4}|\t)/;
 
 /**
+ * The fence delimiter a line opens, or null.
+ *
+ * The delimiter keeps its character **and** its length: a block opened
+ * with four backticks is closed by four backticks, not by three. A
+ * backtick fence's info string may not contain a backtick, so such a
+ * line is a paragraph rather than a fence opener and must not mask the
+ * prose that follows it.
+ */
+function fenceOpener(line) {
+	const match = FENCE_OPEN.exec(line);
+	if (!match) return null;
+	const delimiter = match[1];
+	if (delimiter[0] === '`' && line.slice(match[0].length).includes('`')) return null;
+	return delimiter;
+}
+
+/**
+ * Does this line close the fence opened with `delimiter`?
+ *
+ * The terminator is a run of the same character, at least as long as
+ * the opening run, with nothing but whitespace after it. A shorter run
+ * (three backticks inside a four-backtick block) or a longer run with
+ * trailing text (` `````not-a-close `) is code, not a terminator: the
+ * block stays open, so the Japanese code inside it never reaches the
+ * report as if it were article prose.
+ */
+function closesFence(line, delimiter) {
+	const trimmed = line.trim();
+	if (!trimmed.startsWith(delimiter[0])) return false;
+	let run = 0;
+	while (run < trimmed.length && trimmed[run] === delimiter[0]) run += 1;
+	if (run < delimiter.length) return false;
+	return trimmed.slice(run).trim().length === 0;
+}
+
+/**
  * Which lines of a Markdown document are prose?
  *
  * Returns one boolean per line: `true` = a line a visitor reads,
@@ -203,12 +241,12 @@ export function markdownProseMask(text) {
 	for (const line of text.split('\n')) {
 		if (fence) {
 			mask.push(false);
-			if (line.trim().startsWith(fence)) fence = null;
+			if (closesFence(line, fence)) fence = null;
 			continue;
 		}
-		const opener = FENCE_OPEN.exec(line);
+		const opener = fenceOpener(line);
 		if (opener) {
-			fence = opener[1][0].repeat(3);
+			fence = opener;
 			mask.push(false);
 			continue;
 		}
@@ -280,12 +318,85 @@ function replaceInterpolations(segment) {
 }
 
 /**
+ * A declaration or a return statement: code, not prose.
+ *
+ * The line is still worth reading, because the text it carries is what
+ * a visitor sees: a Japanese string literal and the JSX text nodes
+ * beside it. The identifiers around them are not copy.
+ */
+const DECLARATION_LINE =
+	/^\s*(?:import|export|const|let|var|function|class|interface|type|enum|declare|return)\b/;
+
+/**
+ * The index of the `>` that closes the tag opened at `open`, or -1.
+ *
+ * A tag may hold an expression container (`onClick={() => go()}`), so
+ * a `>` inside braces or inside a quoted attribute value does not end
+ * the tag.
+ */
+function findTagEnd(line, open) {
+	let depth = 0;
+	let quote = null;
+	for (let index = open + 1; index < line.length; index += 1) {
+		const char = line[index];
+		if (quote !== null) {
+			if (char === quote) quote = null;
+			continue;
+		}
+		if (char === '"' || char === "'") {
+			quote = char;
+			continue;
+		}
+		if (char === '{') {
+			depth += 1;
+			continue;
+		}
+		if (char === '}') {
+			depth -= 1;
+			continue;
+		}
+		if (char === '>' && depth === 0) return index;
+	}
+	return -1;
+}
+
+/**
+ * The JSX text nodes of one line.
+ *
+ * A text node is the text between an element's tags — what a visitor
+ * reads. The code around it (the keyword, the variable name, the
+ * attribute expressions) is not text, so only the node content is
+ * returned. An expression container (`{value}`) splits a node: the
+ * expression is code, the words beside it are copy.
+ */
+export function jsxTextNodes(line) {
+	const nodes = [];
+	let index = 0;
+	while (index < line.length) {
+		const open = line.indexOf('<', index);
+		if (open === -1) break;
+		const close = findTagEnd(line, open);
+		if (close === -1) break;
+		let textEnd = line.indexOf('<', close + 1);
+		if (textEnd === -1) textEnd = line.length;
+		for (const part of line.slice(close + 1, textEnd).split(/\{[^{}]*\}/)) {
+			const text = part.replace(/\s+/g, ' ').trim();
+			if (hasJapanese(text)) nodes.push(text);
+		}
+		index = close + 1;
+	}
+	return nodes;
+}
+
+/**
  * The visitor-visible segments of one TS / TSX / JSON object line.
  *
  * This is the Issue #506 extraction rule with two extra filters for the
  * collector: a string literal is used as-is (it is what a reader sees),
- * a raw JSX line keeps only its text nodes, and a declaration line with
- * no Japanese literal is a code identifier, not copy.
+ * a raw JSX line keeps only its text nodes, and a declaration or return
+ * line contributes its Japanese literal and its JSX text nodes —
+ * `return <p>古い本文</p>` is copy — while a declaration that holds
+ * nothing but code identifiers (`const 見出し = 1;`) is not.
  */
 export function visibleSegments(line) {
 	if (isCommentLine(line)) return [];
@@ -293,14 +404,13 @@ export function visibleSegments(line) {
 		.filter((literal) => hasJapanese(literal))
 		.map((literal) => replaceInterpolations(literal.trim()))
 		.filter((literal) => literal.length > 0);
-	if (literals.length > 0) return literals;
-	if (
-		/^\s*(?:import|export|const|let|var|function|class|interface|type|enum|declare|return)\b/.test(
-			line,
-		)
-	) {
-		return [];
+	if (DECLARATION_LINE.test(line)) {
+		// A declaration or a return statement is code — but the text it
+		// carries is what a visitor reads: a Japanese string literal and
+		// the JSX text nodes beside it. The identifiers are not copy.
+		return [...literals, ...jsxTextNodes(line)];
 	}
+	if (literals.length > 0) return literals;
 	const text = line
 		.replace(/<[^>]*>/g, ' ')
 		.replace(/[{}]/g, ' ')

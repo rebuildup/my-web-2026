@@ -220,6 +220,23 @@ describe('markdown extraction', () => {
 		assert.equal(markdownProseMask(undefined), null);
 	});
 
+	it('closes a fence only on a terminator of the same character and length', () => {
+		// A four-backtick block is not closed by three backticks, and a
+		// longer run with trailing text is code, not a terminator. The
+		// Japanese code after it must not read as article prose.
+		const text = ['````md', '```', '`````not-a-close', 'これはコードです', '````', '本文です'].join(
+			'\n',
+		);
+		assert.deepEqual(markdownProseMask(text), [false, false, false, false, false, true]);
+		assert.deepEqual(markdownSegments('これはコードです', { inCode: true }), []);
+		assert.deepEqual(markdownSegments('本文です', { inCode: false }), ['本文です']);
+	});
+
+	it('keeps a tilde fence open for a backtick run and closes it with tildes', () => {
+		const text = ['~~~', '```', 'コード', '~~~', '本文'].join('\n');
+		assert.deepEqual(markdownProseMask(text), [false, false, false, false, true]);
+	});
+
 	it('strips heading, list, quote, emphasis and link syntax from prose', () => {
 		assert.deepEqual(markdownSegments('# 見出し'), ['見出し']);
 		assert.deepEqual(markdownSegments('- 箇条書き'), ['箇条書き']);
@@ -246,12 +263,39 @@ describe('markdown extraction', () => {
 });
 
 describe('TS/TSX extraction', () => {
-	it('keeps visitor text and drops comments and declarations', () => {
+	it('keeps visitor text and drops comments and identifier-only declarations', () => {
 		assert.deepEqual(visibleSegments("const title = 'はじめに';"), ['はじめに']);
 		assert.deepEqual(visibleSegments('// 日本語のコメント'), []);
 		assert.deepEqual(visibleSegments('/* 日本語のコメント */'), []);
 		assert.deepEqual(visibleSegments('const 見出し = 1;'), []);
 		assert.deepEqual(visibleSegments('<p>本文です</p>'), ['本文です']);
+	});
+
+	it('collects the JSX text a declaration or return line carries', () => {
+		assert.deepEqual(visibleSegments('return <p>古い本文</p>'), ['古い本文']);
+		assert.deepEqual(visibleSegments('const node = <span>日本語</span>'), ['日本語']);
+		assert.deepEqual(visibleSegments('return <button onClick={() => go()}>押す</button>'), [
+			'押す',
+		]);
+		assert.deepEqual(visibleSegments('return <p>古い本文{value}です</p>'), ['古い本文', 'です']);
+	});
+
+	it('reports a rewritten JSX declaration line as a modified target', () => {
+		const diff = [
+			'diff --git a/src/home/hero.tsx b/src/home/hero.tsx',
+			'--- a/src/home/hero.tsx',
+			'+++ b/src/home/hero.tsx',
+			'@@ -12 +12 @@',
+			'-return <p>古い本文</p>',
+			'+return <p>新しい本文</p>',
+		].join('\n');
+		const result = buildReviewTargets(`${diff}\n`, declaration, baseSurfaces);
+		assert.equal(result.status, 'review');
+		assert.equal(result.targets.length, 1);
+		const [target] = result.targets;
+		assert.equal(target.kind, 'modified');
+		assert.equal(target.before, '古い本文');
+		assert.equal(target.after, '新しい本文');
 	});
 
 	it('keeps a template interpolation out of the reviewer text', () => {

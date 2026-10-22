@@ -75,6 +75,15 @@ release-assets/supply-chain/
 # (no `.gitmodules`); biome / lint / format must not touch them.
 external/
 
+# Local coding-agent harness state (pi / Claude Code). These directories
+# hold per-machine agent settings and extensions; they are never
+# repository content. They are listed here because `biome.json` reads
+# this file (`vcs.useIgnoreFile`), so an ignored directory is also out
+# of the format / lint scope — a local agent run must not turn the
+# repository's own gates red.
+.pi/
+.claude/
+
 # Editor / OS
 .DS_Store
 .vscode/*

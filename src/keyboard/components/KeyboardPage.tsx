@@ -298,7 +298,12 @@ const layerTabStyle = css({
 
 const diagramGridStyle = css({
 	display: 'grid',
-	gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1fr) 21rem' },
+	// `minmax(0, 1fr)`, not `1fr`: a bare `1fr` track is sized by its
+	// items' min-content width, so the diagram's intrinsic width would
+	// widen the DOCUMENT at phone width instead of scrolling inside the
+	// diagram's own region. `e2e/keyboard.spec.ts` asserts that the
+	// document does not scroll horizontally at 390px.
+	gridTemplateColumns: { base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 21rem' },
 	gap: '5',
 	alignItems: 'start',
 });

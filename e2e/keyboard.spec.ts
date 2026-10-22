@@ -95,7 +95,13 @@ test.describe('keyboard — /keyboard reference', () => {
 		const overflow = await page.evaluate(() => ({
 			document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
 			diagram: (() => {
-				const region = document.querySelector('[role="group"][aria-label*="キー配置"]');
+				// The diagram's own scroll region is a labelled
+				// `<section aria-label="… のキー配置。横にスクロールできます。">`
+				// (`overflow-x: auto`), not a `role="group"` element — the
+				// old selector matched nothing, so this assertion read 0
+				// and could not distinguish "the diagram scrolls" from
+				// "the diagram is missing".
+				const region = document.querySelector('section[aria-label*="キー配置"]');
 				return region ? region.scrollWidth - region.clientWidth : 0;
 			})(),
 		}));
@@ -123,6 +129,9 @@ test.describe('keyboard — /keyboard reference', () => {
 			'content',
 			'https://rebuildup.dev/keyboard',
 		);
-		await expect(page.locator('meta[property="og:title"]')).toContainText('キーボード配列');
+		await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+			'content',
+			/キーボード配列/,
+		);
 	});
 });

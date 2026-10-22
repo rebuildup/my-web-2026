@@ -681,9 +681,9 @@
 			"requirement": "Verify that the application only contains components which have not breached the documented update and remediation time frames.",
 			"applicability": "applicable",
 			"control": "dependency advisory gate declaration (quality/dependency-advisory-gate.json, Issue #470) — recorded as unverified for this requirement, see follow_up",
-			"issues": [470],
+			"issues": [470, 645],
 			"evidence": [],
-			"follow_up": "Write the update and remediation time frames (per severity) into docs/runbook/dependency-advisories.md, then flip enforcement from audit to block in quality/dependency-advisory-gate.json once the outstanding critical/high advisories are remediated or covered by an approved exception. pnpm run dep-audit:check cannot evidence this requirement as shipped: it reports blocking findings without failing while enforcement is audit, it is CI-only rather than a release gate, the lockfile still carries outstanding blocking advisories, and no remediation deadline is written down anywhere in the repository. Choosing between remediation, exceptions and the escalation itself is an owner decision (#470)."
+			"follow_up": "The gate now runs `enforcement: block` (Issue #645): every critical/high advisory in the lockfile is remediated, except `braces` (GHSA-vfj7-8cjw-p6xm), which has no published patched version and is covered by one exception record that states its grounds, an expiry (2027-01-31) and a tracking Issue (#669). What is still missing for this requirement is the per-severity update and remediation time frame (for example: critical remediated within N days, high within M days) written into docs/runbook/dependency-advisories.md, and a release-gate surface for pnpm run dep-audit:check — it stays CI-only because it needs the npm registry advisory endpoint. Choosing the time frames and adding a release-gate point are owner decisions (#470)."
 		},
 		{
 			"id": "V15.2.2",

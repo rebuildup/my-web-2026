@@ -81,12 +81,29 @@ describe('check-dependency-advisories — exit codes', () => {
 		assert.match(stdout, /advisories reported: 0/);
 	});
 
-	it('records rather than blocks under the committed audit enforcement', () => {
-		const { status, stdout } = run(fixtureArgs('blocking.json'));
+	it('records rather than blocks under audit enforcement', () => {
+		// The committed declaration moved to `block` (Issue #645), so the
+		// recorded-but-not-blocking verdict is covered by a fixture gate
+		// that still declares the audit mode.
+		const { status, stdout } = run(
+			fixtureArgs('blocking.json', ['--gate', gate('gate-audit-enforcement.json')]),
+		);
 		assert.equal(status, EXIT.PASS);
 		assert.match(stdout, /FINDINGS RECORDED/);
 		assert.match(stdout, /enforcement is audit: recorded, not blocking/);
 		assert.ok(!stdout.includes('dependency advisory gate: PASS'));
+	});
+
+	it('blocks on a blocking advisory under the committed block enforcement', () => {
+		// The committed declaration is the one CI runs. Under `block` a
+		// blocking finding that no approved exception covers must stop the
+		// build — this is the behaviour the escalation to `block` claims.
+		const { status, stdout } = run(fixtureArgs('blocking.json'));
+		assert.equal(status, EXIT.BLOCKED);
+		assert.match(stdout, /dependency advisory gate: FAIL/);
+		assert.match(stdout, /enforcement:\s+block/);
+		assert.match(stdout, /\[critical\] GHSA-fixt-fixt-fixt fixture-runtime/);
+		assert.match(stdout, /\[high\] GHSA-fixt-fixt-figh fixture-parser/);
 	});
 
 	it('passes with a record when an approved exception covers the finding', () => {
@@ -214,6 +231,14 @@ describe('check-dependency-advisories — data fetch failure is never zero', () 
 		assert.equal(status, EXIT.DATA_UNAVAILABLE);
 	});
 
+	it('exits 3 under the committed block enforcement too', () => {
+		// Unreadable advisory data fails closed in every enforcement
+		// mode: a registry outage must never read as a clean tree.
+		const { status, stdout } = run(fixtureArgs('registry-error.json'));
+		assert.equal(status, EXIT.DATA_UNAVAILABLE);
+		assert.match(stdout, /DATA UNAVAILABLE/);
+	});
+
 	it('exits 2 — not 3 — for a broken gate declaration', () => {
 		const { status, stderr } = run(
 			fixtureArgs('clean.json', ['--gate', join(FIXTURES, 'missing.json')]),
@@ -281,7 +306,14 @@ describe('check-dependency-advisories — JSON verdict and report output', () =>
 		const dir = mkdtempSync(join(tmpdir(), 'dep-audit-report-'));
 		try {
 			const reportPath = join(dir, 'nested', 'report.html');
-			const { status } = run(fixtureArgs('blocking.json', ['--report', reportPath]));
+			const { status } = run(
+				fixtureArgs('blocking.json', [
+					'--gate',
+					gate('gate-audit-enforcement.json'),
+					'--report',
+					reportPath,
+				]),
+			);
 			assert.equal(status, EXIT.PASS);
 			const html = readFileSync(reportPath, 'utf8');
 			assert.match(html, /^<!doctype html>/);
@@ -420,7 +452,7 @@ describe('check-dependency-advisories — the committed declaration stays valid'
 	it('parses the declaration the repository ships', () => {
 		const raw = JSON.parse(readFileSync(REPOSITORY_GATE, 'utf8'));
 		assert.equal(raw.schemaVersion, 1);
-		assert.ok(['audit', 'block'].includes(raw.enforcement));
+		assert.equal(raw.enforcement, 'block', 'Issue #645 escalated the committed gate to block');
 		assert.ok(Array.isArray(raw.exceptions));
 		const { status, stdout } = run([
 			'--input',
@@ -430,6 +462,35 @@ describe('check-dependency-advisories — the committed declaration stays valid'
 		]);
 		assert.equal(status, EXIT.PASS);
 		assert.match(stdout, /gate declaration:\s+quality\/dependency-advisory-gate\.json/);
+	});
+
+	it('keeps the shipped exception a dated, tracked, reviewable record', () => {
+		// An exception is a decision, so it has to name what it accepts,
+		// who accepted it, when it stops accepting it, and where the
+		// follow-up is tracked. A record without an expiry or a tracking
+		// Issue is not reviewable and the declaration parser rejects it.
+		const raw = JSON.parse(readFileSync(REPOSITORY_GATE, 'utf8'));
+		assert.equal(raw.exceptions.length, 1);
+		const [exception] = raw.exceptions;
+		assert.equal(exception.advisoryId, 'GHSA-vfj7-8cjw-p6xm');
+		assert.equal(exception.package, 'braces');
+		assert.equal(exception.severity, 'high');
+		assert.match(exception.expiresOn, /^\d{4}-\d{2}-\d{2}$/);
+		assert.ok(Number.isInteger(exception.trackingIssue));
+		assert.ok(exception.approvedBy.length > 0);
+		assert.ok(exception.reason.length > 0);
+	});
+
+	it('fails closed on the committed declaration when the advisory data cannot be read', () => {
+		// `enforcement: block` must not weaken the unavailable-data
+		// contract: the declaration still says `dataUnavailable: fail`,
+		// so an unreadable document is exit 3, never a pass.
+		const raw = JSON.parse(readFileSync(REPOSITORY_GATE, 'utf8'));
+		assert.equal(raw.dataUnavailable, 'fail');
+		const { status, stdout } = run(fixtureArgs('registry-error.json'));
+		assert.equal(status, EXIT.DATA_UNAVAILABLE);
+		assert.match(stdout, /DATA UNAVAILABLE/);
+		assert.match(stdout, /UNKNOWN, not zero/);
 	});
 });
 
@@ -443,7 +504,14 @@ describe('check-dependency-advisories — argument contract', () => {
 			const reportPath = join(dir, 'report.html');
 			run(fixtureArgs('clean.json', ['--report', reportPath]));
 			const first = readFileSync(reportPath, 'utf8');
-			run(fixtureArgs('blocking.json', ['--report', reportPath]));
+			run(
+				fixtureArgs('blocking.json', [
+					'--gate',
+					gate('gate-audit-enforcement.json'),
+					'--report',
+					reportPath,
+				]),
+			);
 			const second = readFileSync(reportPath, 'utf8');
 			assert.notEqual(first, second);
 			assert.ok(second.includes('FINDINGS RECORDED'));

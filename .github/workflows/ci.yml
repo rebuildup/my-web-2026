@@ -143,12 +143,13 @@ jobs:
       # exception ledger, expiry).
       #
       # Two independent failure contracts:
-      #   - Blocking critical/high advisories are RECORDED while the
-      #     declaration says `enforcement: audit`. The current lockfile
-      #     carries 1 of them (`braces`, no patched release); remediating
-      #     or approving it is an owner
-      #     decision tracked in docs/runbook/dependency-advisories.md §6,
-      #     and no exception is written here on the owner's behalf.
+      #   - Blocking critical/high advisories FAIL the build while the
+      #     declaration says `enforcement: block` (Issue #645). The one
+      #     outstanding advisory (`braces`, no published patched
+      #     release) is covered by one dated, tracked exception record
+      #     (tracking Issue #669); an expired record blocks again.
+      #     Remediating or approving is an owner decision tracked in
+      #     docs/runbook/dependency-advisories.md §6.
       #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
       #     mode. A registry outage must never be reported as a clean
       #     dependency tree, so this step is not `continue-on-error`.
@@ -159,9 +160,9 @@ jobs:
       # The decision is in scripts/check-dependency-advisories.mjs, not in
       # this YAML, so `pnpm run dep-audit:check` produces the same
       # verdict locally.
-      # Flipping the declaration to `enforcement: block` is the one-line
-      # escalation; `--enforce` previews the same verdict without
-      # editing the reviewed file.
+      # Flipping the declaration away from `enforcement: block` is the
+      # one-line de-escalation; `--enforce` previews the block verdict
+      # without editing the reviewed file.
       - name: Dependency advisory audit
         run: pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html
       # The HTML report is derived from the lockfile's resolved package

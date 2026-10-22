@@ -1467,9 +1467,11 @@ only the diff that introduced it.
   `validate:fast` because it needs the registry advisory endpoint; the
   decision logic is in `scripts/check-dependency-advisories.mjs` and the
   same verdict is reproducible with `pnpm run dep-audit:check`. It ships
-  with `enforcement: audit` and no approved exceptions, so outstanding
-  findings are recorded rather than blocking; moving to `block` is an
-  owner decision. Runbook:
+  with `enforcement: block` (Issue #645), so a blocking finding that no
+  approved exception covers fails the `validate` job; the single
+  exception on record (`braces`, no published patched version) is dated,
+  grounded and tracked (Issue #669), and an expired record blocks again.
+  Runbook:
   [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).

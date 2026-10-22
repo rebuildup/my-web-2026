@@ -199,5 +199,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/issues
+_No findings._
 

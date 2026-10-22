@@ -1201,21 +1201,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://github.com/rebuildup/my-web-2026/issues"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/my-web-2026/issues"
-			}
-		]
+		"findings": []
 	}
 }

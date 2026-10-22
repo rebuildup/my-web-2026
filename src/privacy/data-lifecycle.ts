@@ -16,6 +16,18 @@
  * wording ONE source of truth and let a test prove the wording never
  * says more than the source does. That source is this file.
  *
+ * Scope by sender (Issue #662)
+ * ---------------------------
+ * A send claim is scoped by **who sends the value**, not by the data
+ * item. This platform's own code sends a measurement id and a path;
+ * GA4 collects the referrer and the device information itself. One
+ * sentence covering both ("what is sent is the measurement id and the
+ * path information") reads as excluding the second, and contradicts the
+ * consent banner, which states it plainly. The registry therefore
+ * carries one `transfer.senders` entry per sender, and
+ * `findSendScopeViolations` fails closed on an entry that claims an
+ * outward transfer without naming its sender.
+ *
  * Ownership (ADR-0008, obligation-oriented)
  * ----------------------------------------
  *   - Obligation: the registry of stored data, its retention, its
@@ -85,6 +97,39 @@ export type TransferTarget =
 	/** Google Analytics 4 property (measurement id comes from a runtime secret). */
 	| 'google-analytics-4';
 
+/**
+ * Who sends a value (Issue #662).
+ *
+ * The scope of a send claim is not the data item — it is the **sender**.
+ * Two senders can carry the same kind of item: this platform's own code
+ * can send a measurement id and a path, and a third party can collect
+ * the referrer and the device information itself. "What is sent is X and
+ * Y" therefore reads as "nothing else is sent", which is a claim about
+ * the whole transfer that the code does not support.
+ *
+ * The split by sender is what lets two public surfaces (the consent
+ * banner and the published registry) describe the same data without
+ * contradicting each other: the banner names what reaches the third
+ * party, the registry names who sends what.
+ */
+export type DataSenderKind =
+	/** This platform's own code sends the value explicitly. */
+	| 'platform-code'
+	/**
+	 * The third party reads the value itself and sends it on its own,
+	 * without this platform's code sending it.
+	 */
+	| 'third-party-automatic';
+
+/** One sender's share of an outward transfer. */
+export interface SendScope {
+	readonly sender: DataSenderKind;
+	/** Who the reader is being told about, as a reader would name it. */
+	readonly label: BilingualText;
+	/** What this sender sends, scoped to this sender. */
+	readonly statement: BilingualText;
+}
+
 /** A JA/EN pair. The document language is `ja`, so JA text carries no `lang` tag. */
 export interface BilingualText {
 	readonly ja: string;
@@ -109,6 +154,17 @@ export interface DataLifecycleEntry {
 	readonly transfer: {
 		readonly target: TransferTarget;
 		readonly statement: BilingualText;
+		/**
+		 * The senders of this transfer, one per sender (Issue #662).
+		 *
+		 * An empty list means "nothing leaves this deployment" and is
+		 * the only list an entry with `target: 'none'` may carry. An
+		 * entry that claims an outward transfer names at least one
+		 * sender, and the GA4 entry separates this platform's code from
+		 * GA4's own automatic collection — `findSendScopeViolations`
+		 * fails closed on an entry that does not.
+		 */
+		readonly senders: readonly SendScope[];
 	};
 	/**
 	 * What a visitor can see about the item. Never a value that
@@ -186,6 +242,9 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: 'この識別子の送信先は、このプラットフォーム自身（自オリジン）だけです。',
 				en: 'This identifier travels only to this deployment’s own origin.',
 			},
+			// Nothing leaves the deployment, so there is no outward
+			// sender to name (Issue #662).
+			senders: [],
 		},
 		visibility: {
 			ja: '公開ページ・公開 API・閲覧解析のいずれにも、この識別子の値そのものは現れません。',
@@ -234,6 +293,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: '送信は自オリジンへの内部呼び出しだけです。',
 				en: 'Transmission is the self-call to its own origin only.',
 			},
+			senders: [],
 		},
 		visibility: {
 			ja: '公開されるのは種類ごとの件数（集計）だけで、行の内容や訪問者識別子は公開されません。',
@@ -282,6 +342,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: 'ホームの記録・取得は自オリジンへの内部呼び出しだけです。',
 				en: 'Recording and reading happen through self-calls to the same origin.',
 			},
+			senders: [],
 		},
 		visibility: {
 			ja: '公開されるのは件数と初・最終訪問時刻だけです。一時 UUID も失効時刻も公開されません。',
@@ -319,8 +380,17 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			// happen. See `docs/security/log-redaction.md`
 			// ("Known limits") and `src/editorial/analytics/
 			// GoogleAnalytics.tsx`.
-			ja: '送信するのは測定 ID と、パス情報（`page_path` / `page_location` / `page_title`）です。アプリ内の画面遷移で記録する `page_view` だけはクエリ文字列を除去してパスだけを送ります。ただし最初の読み込みで記録される `page_view` は GA 自身が `document.location` を読むため、このプラットフォームのコードではクエリ文字列を除去できていません。`/admin/**` は送信対象外です。`mw_actor_id` のようなサイト発行の識別子を明示的に送ることはありませんが、URL に書かれたクエリ文字列はそのまま届きます。',
-			en: 'What leaves the deployment: the measurement id and the path information (`page_path` / `page_location` / `page_title`). The `page_view` recorded on an in-app route change has its query string stripped, so only the path is sent. The `page_view` recorded on the first page load is different: GA reads `document.location` itself, so this platform’s code cannot strip the query string there. `/admin/**` is excluded, and no site-issued identifier such as `mw_actor_id` is sent explicitly — but a query string written into the URL reaches GA unchanged.',
+			//
+			// Issue #662: the sentence no longer claims what "is
+			// sent" in the singular. It names the two senders and
+			// points at the per-sender statements below, because "the
+			// measurement id and the path information are what is
+			// sent" reads as excluding GA4's own automatic collection
+			// (referrer, device information) — which the consent
+			// banner states plainly. The detail lives in
+			// `transfer.senders`, one entry per sender.
+			ja: 'このプラットフォームのコードが明示的に Google へ送る値（測定 ID とパス情報）と、GA4 自身が収集する値は、それぞれ別の項目として下に示します。このプラットフォームは閲覧データを保存しません。',
+			en: 'What this platform’s own code sends to Google explicitly (the measurement id and the path information) and what GA4 collects on its own are listed separately below. This platform stores no browsing data.',
 		},
 		retention: {
 			kind: 'third-party',
@@ -342,6 +412,36 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: '公開ページを読み込んだときのみ、ブラウザから Google の解析プロパティへ送信されます。測定 ID の secret が未設定なら解析タグは描画されないので、その secret を外すことが唯一の停止手段です。',
 				en: 'Sent from the visitor’s browser to the Google analytics property only when a public page is loaded. If the measurement-id secret is unset, no analytics tag is rendered at all, so unsetting that secret is the only off switch.',
 			},
+			// The two senders, kept apart (Issue #662). The first is
+			// this platform's own code; the second is GA4's own
+			// automatic collection, which the consent banner
+			// (`src/editorial/analytics/AnalyticsConsent.tsx`) names
+			// plainly. One sentence covering both would read as a
+			// claim about the whole transfer.
+			senders: [
+				{
+					sender: 'platform-code',
+					label: {
+						ja: 'このプラットフォームのコード',
+						en: 'This platform’s own code',
+					},
+					statement: {
+						ja: '測定 ID と、パス情報（`page_path` / `page_location` / `page_title`）を送ります。アプリ内の画面遷移で記録する `page_view` だけはクエリ文字列を除去してパスだけを送ります。ただし最初の読み込みで記録される `page_view` は GA 自身が `document.location` を読むため、このプラットフォームのコードではクエリ文字列を除去できていません。`/admin/**` は送信対象外です。`mw_actor_id` のようなサイト発行の識別子を明示的に送ることはありませんが、URL に書かれたクエリ文字列はそのまま届きます。',
+						en: 'It sends the measurement id and the path information (`page_path` / `page_location` / `page_title`). The `page_view` recorded on an in-app route change has its query string stripped, so only the path is sent. The `page_view` recorded on the first page load is different: GA reads `document.location` itself, so this platform’s code cannot strip the query string there. `/admin/**` is excluded, and no site-issued identifier such as `mw_actor_id` is sent explicitly — but a query string written into the URL reaches GA unchanged.',
+					},
+				},
+				{
+					sender: 'third-party-automatic',
+					label: {
+						ja: 'GA4 自身の自動収集',
+						en: 'GA4’s own automatic collection',
+					},
+					statement: {
+						ja: 'GA4 は、参照元やブラウザや端末の情報などを、GA 自身が読み取って送ります。これはこのプラットフォームのコードが明示的に送る値には含まれません。',
+						en: 'GA4 reads the referrer, the browser and the device information itself and sends them on its own. They are not among the values this platform’s code sends explicitly.',
+					},
+				},
+			],
 		},
 		visibility: {
 			ja: '測定 ID 自体は HTML に出ますが、保存された閲覧データはこのプラットフォームのどこにも残りません。',
@@ -350,6 +450,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		evidence: [
 			'src/editorial/analytics/GoogleAnalytics.tsx (送信する値・SPA 遷移のクエリ除去・初回 config の制約)',
 			'docs/security/log-redaction.md (Known limits: 初回 page_view は GA が document.location を読む)',
+			'src/editorial/analytics/AnalyticsConsent.tsx (同意バナーが名づける GA4 側の自動収集: 参照元・ブラウザや端末の情報)',
 			'src/routes/__root.tsx (測定 ID の注入位置・/admin 除外)',
 			'wrangler.jsonc (GOOGLE_ANALYTICS_MEASUREMENT_ID は実行時 secret)',
 		],
@@ -391,6 +492,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: '外部への送信はありません。閲覧解析も `/admin/**` には送りません。',
 				en: 'Nothing is sent outward; web analytics is not loaded on `/admin/**` either.',
 			},
+			senders: [],
 		},
 		visibility: {
 			// Not "never public". The password hash and the session
@@ -447,6 +549,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 				ja: 'リンク先への移動だけです。フォームからの送信はありません。',
 				en: 'Only a link navigation. There is no form submission.',
 			},
+			senders: [],
 		},
 		visibility: {
 			ja: '掲載先は `src/contact/channels.json` で、所有者は公開済みのリンクのみです。',
@@ -522,6 +625,14 @@ export const UNSUPPORTED_PUBLIC_CLAIMS = [
 		],
 		why: 'No purge job ships. The dedup window is enforced lazily on the next hit from the same request id, and reaction rows have no expiry column at all.',
 	},
+	{
+		id: 'unqualified-send-scope',
+		patterns: [
+			'送信するのは測定 ID と',
+			'What leaves the deployment: the measurement id and the path information',
+		],
+		why: 'The scope of a send claim is the sender, not the data item. "What is sent is the measurement id and the path information" reads as excluding GA4’s own automatic collection (referrer, browser and device information), which the consent banner states plainly. The wording must name the sender instead.',
+	},
 ] as const;
 
 /** Claims found in `text`. Empty array = the text may be published. */
@@ -533,6 +644,90 @@ export function findUnsupportedClaims(text: string): { id: string; pattern: stri
 		}
 	}
 	return found;
+}
+
+/** One entry that claims an outward transfer without naming who sends it. */
+export interface SendScopeViolation {
+	/** The registry entry the violation belongs to. */
+	readonly id: string;
+	/** Why the entry fails the sender rule, in one sentence. */
+	readonly reason: string;
+}
+
+/**
+ * The send-scope rule (Issue #662), fail-closed.
+ *
+ * A send claim is scoped by its **sender**. An entry that claims an
+ * outward transfer has to name who sends the values, and the GA4 entry
+ * has to separate this platform's own code from GA4's own automatic
+ * collection — the split the consent banner relies on. Without it, the
+ * registry's wording ("what is sent is the measurement id and the path
+ * information") reads as excluding the referrer and the device
+ * information GA4 collects on its own, and the two public surfaces
+ * contradict each other.
+ *
+ * The function is exported so the test can exercise it against a
+ * fixture that really breaks the rule: the shipped registry has no
+ * violation, so an assertion over the registry alone could not fail.
+ */
+export function findSendScopeViolations(
+	entries: readonly DataLifecycleEntry[],
+): SendScopeViolation[] {
+	const violations: SendScopeViolation[] = [];
+	for (const entry of entries) {
+		const { target, senders } = entry.transfer;
+		if (target === 'none') {
+			if (senders.length > 0) {
+				violations.push({
+					id: entry.id,
+					reason: 'claims no outward transfer but names a sender',
+				});
+			}
+			continue;
+		}
+		if (senders.length === 0) {
+			violations.push({
+				id: entry.id,
+				reason: 'claims an outward transfer without naming the sender',
+			});
+			continue;
+		}
+		const kinds = new Set(senders.map((sender) => sender.sender));
+		if (kinds.size !== senders.length) {
+			violations.push({
+				id: entry.id,
+				reason: 'names the same sender twice',
+			});
+		}
+		for (const sender of senders) {
+			if (
+				sender.label.ja.trim().length === 0 ||
+				sender.label.en.trim().length === 0 ||
+				sender.statement.ja.trim().length === 0 ||
+				sender.statement.en.trim().length === 0
+			) {
+				violations.push({
+					id: entry.id,
+					reason: `the ${sender.sender} scope carries no text in one of the two locales`,
+				});
+			}
+		}
+		if (target === 'google-analytics-4') {
+			if (!kinds.has('platform-code')) {
+				violations.push({
+					id: entry.id,
+					reason: "does not say what this platform's own code sends",
+				});
+			}
+			if (!kinds.has('third-party-automatic')) {
+				violations.push({
+					id: entry.id,
+					reason: "does not separate GA4's own automatic collection from the code's payload",
+				});
+			}
+		}
+	}
+	return violations;
 }
 
 /**
@@ -586,6 +781,13 @@ function assertDataLifecycleIntegrity(entries: readonly DataLifecycleEntry[]): v
 			}
 		}
 	}
+	// The send-scope rule (Issue #662) is enforced here too, so a
+	// registry that claims an outward transfer without naming the
+	// sender fails the Worker boot instead of shipping a notice whose
+	// scope contradicts the consent banner.
+	for (const violation of findSendScopeViolations(entries)) {
+		throw new Error(`[privacy] ${violation.id} ${violation.reason}`);
+	}
 }
 
 assertDataLifecycleIntegrity(DATA_LIFECYCLE_ENTRIES);
@@ -638,6 +840,12 @@ export function publishedClaimSurface(): string {
 			entry.visibility,
 		]) {
 			parts.push(text.ja, text.en);
+		}
+		// The per-sender statements are published sentences too
+		// (Issue #662), so the claim scan has to see them.
+		for (const sender of entry.transfer.senders) {
+			parts.push(sender.label.ja, sender.label.en);
+			parts.push(sender.statement.ja, sender.statement.en);
 		}
 	}
 	return parts.join('\n');

@@ -146,6 +146,13 @@ describe('the served document publishes the registry and claims nothing more', (
 			expect(html).toContain(entry.deletion.statement.ja);
 			expect(html).toContain(entry.transfer.statement.ja);
 			expect(html).toContain(entry.visibility.ja);
+			// The sender scope is published, not only declared in the
+			// registry (Issue #662): the reader has to see who sends
+			// what.
+			for (const sender of entry.transfer.senders) {
+				expect(html).toContain(sender.label.ja);
+				expect(html).toContain(sender.statement.ja);
+			}
 		}
 		expect(html).toContain(DELETION_REQUEST_CHANNEL.statement.ja);
 		expect(html).toContain('31536000');
@@ -183,6 +190,19 @@ describe('the served document publishes the registry and claims nothing more', (
 		// …and the unqualified claim the previous wording made is not.
 		expect(html).not.toContain('クエリ文字列は送信前に除去され');
 		expect(html).not.toContain('Query strings are stripped before sending');
+	}, 30_000);
+
+	it('the served document separates the two senders of the analytics transfer', async () => {
+		// Issue #662: the reader must be able to tell this platform's
+		// code from GA4's own automatic collection, so the two public
+		// surfaces (this notice and the consent banner) do not
+		// contradict each other.
+		const html = await (await SELF.fetch('https://example.com/')).text();
+		expect(html).toContain('送信者:');
+		expect(html).toContain('このプラットフォームのコード');
+		expect(html).toContain('GA4 自身の自動収集');
+		// The sentence the Issue opened about is gone.
+		expect(html).not.toContain('送信するのは測定 ID と');
 	}, 30_000);
 
 	it('the served document names the surface the invited email address reaches', async () => {

@@ -55,6 +55,14 @@
 			"note": "Person は承認済み snapshot（identity + externalHandles）だけから組み立てる。"
 		},
 		{
+			"path": "/keyboard",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/keyboard",
+			"note": "read-only reference。breadcrumb leaf だけを emit し、キー配列そのものを構造化データの主張にはしない。"
+		},
+		{
 			"path": "/contact",
 			"public": true,
 			"status": "implemented",

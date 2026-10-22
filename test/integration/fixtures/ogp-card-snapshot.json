@@ -47,6 +47,22 @@
 		"twitterDescription": "ソフトウェアと映像・デザインを行き来しながら、作ったものを公開・運用まで持っていく developer / creator。",
 		"twitterImage": "https://rebuildup.dev/og/default-card.png"
 	},
+	"/keyboard": {
+		"ogType": "website",
+		"ogSiteName": "rebuildup.dev",
+		"ogLocale": "ja_JP",
+		"ogTitle": "キーボード配列 — 大西配列と Kanata",
+		"ogDescription": "macOS と Windows のキーボード設定を、実際のキー位置に沿って表示する read-only リファレンス。hidutil のベース差し替え、Kanata の HUB / 記号 / 自動化レイヤー、Space 長押しと Shift 長押しの分岐を確認できます。",
+		"ogUrl": "https://rebuildup.dev/keyboard",
+		"ogImage": "https://rebuildup.dev/og/default-card.png",
+		"ogImageAlt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
+		"ogImageWidth": "1200",
+		"ogImageHeight": "630",
+		"twitterCard": "summary_large_image",
+		"twitterTitle": "キーボード配列 — 大西配列と Kanata",
+		"twitterDescription": "macOS と Windows のキーボード設定を、実際のキー位置に沿って表示する read-only リファレンス。hidutil のベース差し替え、Kanata の HUB / 記号 / 自動化レイヤー、Space 長押しと Shift 長押しの分岐を確認できます。",
+		"twitterImage": "https://rebuildup.dev/og/default-card.png"
+	},
 	"/": {
 		"ogType": "website",
 		"ogTitle": "my-web-2026 — rebuildup.dev",

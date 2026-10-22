@@ -75,6 +75,10 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
+routes -> keyboard (Issue #620 — read-only keyboard-layout reference; the
+                   route supplies chrome only, the snapshot / parsers /
+                   geometry / page stay in `keyboard`)
+keyboard -> editorial (Issue #620 — display primitives and semantic tokens only)
 routes -> projects (Issue #621 — `/projects/dotfiles` loader + page composition)
 projects -> editorial (Issue #621 — display primitives only)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
@@ -252,6 +256,15 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   is wired to a route, so the repository makes **no outbound
   third-party request at runtime**; promotion follows
   `docs/domain/integrations.md` (capability-scoped first).
+- `src/keyboard/**` (Issue #620) owns the read-only keyboard-layout
+  reference: the allowlisted, committed source snapshot and its
+  provenance manifest (`sources/`), the bounded Kanata / hidutil
+  parsers, the key-position geometry, the safe display model, and the
+  page composition. It never fetches at request time; the snapshot is
+  updated out-of-band by `scripts/sync-keyboard-layout.mjs` (the
+  runbook is `docs/runbook/keyboard-layout-sync.md`). It is a peer to
+  `home/` / `about/` / `portfolio/`, composes `editorial` primitives,
+  and imports no other obligation, route, binding or HTTP boundary.
 - `src/legal/**` (Issue #497) owns the publication-rights review of the
   bytes this platform publishes and references: the vocabulary that
   separates "written here", "derived here", "fetched from a provider",

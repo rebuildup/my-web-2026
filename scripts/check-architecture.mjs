@@ -66,6 +66,16 @@ const forbiddenOwnerDependencies = new Map([
 	// open for a promoting capability is an owner decision recorded in
 	// `docs/verification/ops/api-timeout-fallback.md` §7.
 	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `keyboard` (Issue #620) owns the read-only keyboard-layout
+	// reference: the allowlisted source snapshot, its provenance, the
+	// Kanata / hidutil parsers and the key-position display model. It is
+	// a peer surface, not a layer: it composes `editorial` primitives
+	// and may not reach into another peer obligation, the route layer,
+	// the Cloudflare runtime or the inbound HTTP boundary.
+	[
+		'keyboard',
+		new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'server.ts']),
+	],
 	// `projects` (Issue #621) owns the public project-introduction contract:
 	// the committed snapshot shape, its reader-side validation, and the page
 	// that composes it. It is a peer obligation to `home` / `portfolio` /

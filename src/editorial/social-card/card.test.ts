@@ -81,6 +81,7 @@ describe('social card contract (contract.json)', () => {
 				'/about',
 				'/contact',
 				'/design-system',
+				'/keyboard',
 				'/portfolio/',
 				'/portfolio/$slug',
 				'/projects/dotfiles',

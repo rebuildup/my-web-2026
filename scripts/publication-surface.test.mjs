@@ -705,10 +705,10 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
 		assert.equal(surface.sitemap.length, 5 + 4000 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
-		// The four public surfaces outside the sitemap: `/design-system`,
-		// `/admin/login`, `/admin/invitations/accept` and, since Issue #621,
-		// `/projects/dotfiles`.
-		assert.equal(surface.publicUrls.length, surface.sitemap.length + 4);
+		// The five public surfaces outside the sitemap: `/design-system`,
+		// `/admin/login`, `/admin/invitations/accept`, `/keyboard` (Issue
+		// #620) and `/projects/dotfiles` (Issue #621).
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 5);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

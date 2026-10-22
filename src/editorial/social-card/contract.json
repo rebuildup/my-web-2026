@@ -42,6 +42,15 @@
 			"note": "人物 identity の surface。profile:first_name / last_name / username は route が所有する（person facts の owner は about obligation）。card の合成だけこの module に委譲している。"
 		},
 		{
+			"path": "/keyboard",
+			"public": true,
+			"status": "implemented",
+			"ogType": "website",
+			"cardPolicy": "content-first",
+			"samplePath": "/keyboard",
+			"note": "代表画像を持たない read-only reference。og:title / description / url と fallback card だけを公開する。"
+		},
+		{
 			"path": "/",
 			"public": true,
 			"status": "not-implemented",

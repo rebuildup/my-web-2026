@@ -19,7 +19,8 @@
 			"worker-configuration.d.ts",
 			"src/routeTree.gen.ts",
 			"external",
-			"docs/verification/content"
+			"docs/verification/content",
+			"src/keyboard/sources"
 		]
 	},
 	"formatter": {

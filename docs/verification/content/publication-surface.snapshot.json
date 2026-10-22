@@ -193,6 +193,20 @@
 				"reason": "Publicly reachable showcase, but it is intentionally outside the editorial IA (SUPPRESS_BREADCRUMB_LEAF_IDS), so it is not a sitemap target."
 			},
 			{
+				"id": "/keyboard",
+				"path": "/keyboard",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/keyboard.tsx"
+				],
+				"urls": [
+					"/keyboard"
+				],
+				"reason": "Read-only keyboard reference; renders the committed source snapshot and is linked from /about, but is not a sitemap target."
+			},
+			{
 				"id": "/portfolio/",
 				"path": "/portfolio",
 				"classification": "public",
@@ -291,6 +305,7 @@
 			"/admin/login",
 			"/contact",
 			"/design-system",
+			"/keyboard",
 			"/portfolio",
 			"/portfolio/aulymo",
 			"/portfolio/multi-slicer",
@@ -318,6 +333,7 @@
 			"github.com",
 			"host.invalid",
 			"json-schema.org",
+			"raw.githubusercontent.com",
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
@@ -558,6 +574,15 @@
 					"src/routes/__root.tsx",
 					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},
 			{
@@ -929,6 +954,51 @@
 				]
 			},
 			{
+				"url": "https://raw.githubusercontent.com",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/load.ts"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
+				"url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json",
+				"host": "raw.githubusercontent.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/keyboard/sources/manifest.json"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -972,6 +1042,15 @@
 				"identifier": false,
 				"files": [
 					"src/routes/design-system.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/keyboard",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/keyboard.tsx"
 				]
 			},
 			{

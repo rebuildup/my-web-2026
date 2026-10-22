@@ -78,6 +78,15 @@ export const SURFACE_DECLARATIONS = [
 		reason: 'Public narrative surface; renders repo-controlled copy only.',
 	},
 	{
+		id: '/keyboard',
+		path: '/keyboard',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/keyboard.tsx'],
+		reason:
+			'Read-only keyboard reference; renders the committed source snapshot and is linked from /about, but is not a sitemap target.',
+	},
+	{
 		id: '/contact',
 		path: '/contact',
 		classification: 'public',

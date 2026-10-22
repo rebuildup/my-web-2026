@@ -4,6 +4,60 @@ Screenshots and reproduction steps that back a verification claim in a
 pull request. An image alone is not evidence: every entry records the
 command, the URL and the expected result so a reviewer can re-run it.
 
+## `keyboard-page-desktop.webp` / `keyboard-page-mobile.webp`
+
+Chromium rendering of the **real** `/keyboard` page (Issue #620), served
+by the local Vite dev server (`@cloudflare/vite-plugin`) and captured by
+`scripts/make-keyboard-verification-report.mjs` (Playwright `chromium`,
+desktop 1440×900 and mobile 390×844, `sharp` → WebP q80, no intermediate
+PNG on disk).
+
+- Issue: #620 — the read-only keyboard-layout reference
+- Paths: `docs/verification/web/keyboard-page-desktop.webp` and
+  `docs/verification/web/keyboard-page-mobile.webp`
+- Route / URL: `/keyboard` (canonical: `https://rebuildup.dev/keyboard`)
+- Document owner: `src/keyboard/**` (the obligation that owns the
+  committed snapshot, the parsers and the page), rendered through
+  `src/routes/keyboard.tsx`.
+
+What the capture shows: the page a visitor sees — the heading, the
+platform / layer tabs, the key diagram with the `tap` / `hold` branches,
+the hidutil base-mapping table and the provenance section (repository,
+pinned ref, adoption status). The mobile capture is the narrow case:
+the **document** does not scroll horizontally and the diagram keeps its
+own scroll region, exactly as the page's `aria-label` says
+(「横にスクロールできます」).
+
+The page reads only the committed bytes under `src/keyboard/sources/**`,
+so the capture needs no binding, no Infisical and no Cloudflare
+resource — it reproduces offline.
+
+### Reproduce
+
+```bash
+# 1. the artefact itself (the generator starts and stops its own dev server)
+pnpm run verify:keyboard-screenshot
+#   equivalent: node scripts/make-keyboard-verification-report.mjs
+
+# 2. the runtime evidence behind the image
+pnpm exec vitest run test/integration/keyboard-page.test.ts
+pnpm exec playwright test e2e/keyboard.spec.ts
+```
+
+The generator fails closed rather than committing a worthless image: it
+refuses a non-200 response, refuses a page that rendered the safe state
+(「配列を表示できません」), refuses a target that is not `.webp`, and
+refuses an artefact over 300 kB.
+
+### Expected result
+
+Both viewports render the committed snapshot (macOS 12 layers, Windows 3),
+and the document width equals the viewport width at 390 px. The image is
+**supporting evidence**; the authority is the integration test
+(`test/integration/keyboard-page.test.ts`) and the Playwright spec
+(`e2e/keyboard.spec.ts`), which assert the same facts without a
+screenshot.
+
 ## `robots-txt-browser.webp`
 
 Chromium rendering of the **live** `/robots.txt` served by the local

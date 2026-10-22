@@ -26,6 +26,12 @@ import { externalBoundary } from '../../src/http/hono';
  *   - the accepted-vs-rejected matrix that
  *     `scripts/capture-write-rate-limit-report.mjs` screenshots.
  *
+ * Window alignment (Issue #668): the local emulation erases its counter
+ * at every wall-clock minute, so a spend that straddles a boundary
+ * would measure two half-windows instead of one. Every spend below
+ * therefore runs inside `spendInsideOneWindow`, which aligns the spend
+ * to the current window and retries it if the window changed anyway.
+ *
  * Secrets: the API key is stubbed through the existing
  * `withVerifyApiKey` DI seam, so no credential is read, printed, or
  * required. Principal ids are per-test labels, never key material.
@@ -33,6 +39,123 @@ import { externalBoundary } from '../../src/http/hono';
 
 const WRITE_LIMIT = RATE_LIMITS.RATE_LIMIT_WRITE.limit;
 const RETRY_AFTER = RATE_LIMITS.RATE_LIMIT_WRITE.period;
+
+/**
+ * The window of the local rate-limit emulation.
+ *
+ * miniflare's `ratelimit-object.worker.js` — the local emulation of the
+ * Cloudflare Rate Limiting binding — buckets its counter by the
+ * wall-clock epoch `Math.floor(Date.now() / (period * 1e3))` and
+ * overwrites the bucket when the epoch changes. The shipped binding
+ * uses a sliding window; only the local emulation is aligned to the
+ * minute, and that alignment is what lets a budget spend that happens
+ * to straddle a minute boundary end up "not exhausted": the counter is
+ * erased in the middle of the spend and the request after it is
+ * accepted instead of suppressed (Issue #668).
+ *
+ * The helpers below keep every spend inside one window, so the
+ * assertions below measure the budget instead of the clock. The
+ * binding is **not** stubbed: the budgets are still measured through
+ * the real Rate Limiting binding, and only the *timing* of the spend
+ * is aligned.
+ */
+const WINDOW_MS = RETRY_AFTER * 1_000;
+
+/** The wall-clock epoch the local emulation buckets the counter by. */
+function windowEpoch(now: number = Date.now()): number {
+	return Math.floor(now / WINDOW_MS);
+}
+
+/** How much of the current window is left, in milliseconds. */
+function windowRemainingMs(now: number = Date.now()): number {
+	return WINDOW_MS - (now % WINDOW_MS);
+}
+
+/**
+ * Whether the window a spend started in is still the current one. A
+ * change of epoch is exactly the condition under which the emulation
+ * erases the counter.
+ */
+function windowHeld(epoch: number, now: number = Date.now()): boolean {
+	return windowEpoch(now) === epoch;
+}
+
+/**
+ * The headroom a spend needs before it starts, and the longest spend
+ * observed so far. The first spend has no measurement yet, so it gets a
+ * conservative budget; later spends use twice the longest observed
+ * one, so a slower machine is covered as well.
+ *
+ * The headroom also bounds the wait: the alignment returns as soon as
+ * the window has that much room left, and the window it waits for has
+ * the whole period, so the wait never exceeds the headroom.
+ */
+const MIN_SPEND_HEADROOM_MS = 2_000;
+const MAX_SPEND_ATTEMPTS = 3;
+let longestSpendMs = 0;
+
+function requiredHeadroomMs(): number {
+	return Math.max(MIN_SPEND_HEADROOM_MS, longestSpendMs * 2);
+}
+
+/**
+ * Wait until the current window has at least `headroomMs` of room left,
+ * so the spend that follows cannot reach the next boundary. The wait
+ * ends at the next boundary at the latest, so it never costs more than
+ * `headroomMs`; when the window still has room it returns at once.
+ */
+async function awaitWindowHeadroom(headroomMs: number): Promise<void> {
+	while (windowRemainingMs() < headroomMs) {
+		const wait = Math.max(25, Math.min(200, windowRemainingMs()));
+		await new Promise((resolve) => setTimeout(resolve, wait));
+	}
+}
+
+/**
+ * Run a body that spends the write budget inside one rate-limit
+ * window.
+ *
+ * The body is aligned to the current window (see
+ * `awaitWindowHeadroom`) and the window is compared before and after.
+ * If the window changed while the body ran, the local emulation reset
+ * the counter mid-spend, so what the body measured was not one window's
+ * budget; the body is then run again in the new window. The attempt
+ * number lets the body use attempt-scoped principal ids and actor
+ * ids, so a retry starts from an empty bucket and does not reuse a row
+ * an earlier attempt wrote.
+ *
+ * A failure whose window did **not** change is a real failure and is
+ * rethrown untouched.
+ */
+async function spendInsideOneWindow<T>(body: (attempt: number) => Promise<T>): Promise<T> {
+	let lastError: unknown = null;
+	for (let attempt = 0; attempt < MAX_SPEND_ATTEMPTS; attempt += 1) {
+		await awaitWindowHeadroom(requiredHeadroomMs());
+		const epoch = windowEpoch();
+		const startedAt = Date.now();
+		let result: T | undefined;
+		let failure: unknown = null;
+		try {
+			result = await body(attempt);
+		} catch (error) {
+			failure = error;
+		}
+		longestSpendMs = Math.max(longestSpendMs, Date.now() - startedAt);
+		if (windowHeld(epoch)) {
+			// The window held, so what the body measured is one
+			// window's budget. A failure here is a real failure.
+			if (failure) throw failure;
+			return result as T;
+		}
+		// The window changed under the body: the emulation erased the
+		// counter mid-spend, so neither the measurements nor a failure
+		// can be trusted. Run the body again in the new window.
+		if (failure) lastError = failure;
+	}
+	throw new Error(
+		`the write budget could not be spent inside one rate-limit window: ${String(lastError)}`,
+	);
+}
 
 /**
  * Inlined DDL (workerd cannot `fs.readFile`). Same convention as
@@ -172,13 +295,13 @@ async function deleteReaction(actorId: string): Promise<Response> {
 	);
 }
 
-async function postHit(index: number): Promise<Response> {
+async function postHit(index: number, attempt: number): Promise<Response> {
 	return externalBoundary.request(
 		'/api/v1/access/hit',
 		{
 			method: 'POST',
 			headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(index) },
-			body: hitBody(`session-${index}`),
+			body: hitBody(`session-${attempt}-${index}`),
 		},
 		env,
 	);
@@ -203,10 +326,14 @@ function usePrincipal(
 	}));
 }
 
-/** Burn the whole write budget for the current principal. */
-async function exhaustWriteBudget(): Promise<void> {
+/**
+ * Burn the whole write budget for the current principal. The actor id
+ * is attempt-scoped so a retried spend never reuses a row an earlier
+ * attempt wrote.
+ */
+async function exhaustWriteBudget(attempt: number): Promise<void> {
 	for (let i = 0; i < WRITE_LIMIT; i += 1) {
-		await putReaction(`burn-${i}`);
+		await putReaction(`burn-${attempt}-${i}`);
 	}
 }
 
@@ -218,162 +345,206 @@ afterEach(() => {
 	resetVerifyApiKey();
 });
 
-describe('write rate limit — reactions PUT (ADR-0010 budget, real binding)', () => {
-	it('accepts the documented budget, then suppresses the next request with 429 + Retry-After', async () => {
-		usePrincipal('rl-put');
-		for (let i = 0; i < WRITE_LIMIT; i += 1) {
-			const res = await putReaction(`put-${i}`);
-			expect(res.status).toBe(200);
-		}
-		const blocked = await probe('/api/v1/reactions', {
-			method: 'PUT',
-			headers: JSON_HEADERS,
-			body: reactionBody('put-over-budget'),
-		});
-		expect(blocked.status).toBe(429);
-		expect(blocked.error).toBe('rate_limited');
-		expect(blocked.retryAfter).toBe(String(RETRY_AFTER));
-	});
-
-	it('a suppressed write never reaches D1', async () => {
-		usePrincipal('rl-no-write');
-		await exhaustWriteBudget();
-		const before = await env.DB.prepare('SELECT COUNT(*) AS n FROM reactions').first<{
-			n: number;
-		}>();
-		const res = await putReaction('never-stored');
-		const after = await env.DB.prepare('SELECT COUNT(*) AS n FROM reactions').first<{
-			n: number;
-		}>();
-		expect(res.status).toBe(429);
-		expect(after?.n).toBe(before?.n);
-		const row = await env.DB.prepare('SELECT id FROM reactions WHERE actor_id = ?1')
-			.bind('never-stored')
-			.first();
-		expect(row).toBeNull();
-	});
-
-	it('caps a 100-request burst at the documented budget', async () => {
-		usePrincipal('rl-burst');
-		const responses = await Promise.all(
-			Array.from({ length: 100 }, (_, i) => putReaction(`burst-${i}`)),
-		);
-		const accepted = responses.filter((r) => r.status === 200).length;
-		const suppressed = responses.filter((r) => r.status === 429).length;
-		expect(accepted).toBe(WRITE_LIMIT);
-		expect(suppressed).toBe(100 - WRITE_LIMIT);
-		const stored = await env.DB.prepare(
-			'SELECT COUNT(*) AS n FROM reactions WHERE actor_id LIKE ?1',
-		)
-			.bind('burst-%')
-			.first<{ n: number }>();
-		expect(stored?.n).toBe(WRITE_LIMIT);
+describe('the local rate-limit window (Issue #668)', () => {
+	it('erases the counter at every wall-clock minute boundary', () => {
+		// The premise the window alignment rests on: the local
+		// emulation buckets its counter by the wall-clock epoch, so the
+		// budget a spend observes is the budget of the window it
+		// started in — until the wall clock crosses into the next one.
+		const epoch = windowEpoch(0);
+		expect(windowEpoch(0)).toBe(epoch);
+		expect(windowEpoch(WINDOW_MS - 1)).toBe(epoch);
+		expect(windowEpoch(WINDOW_MS)).toBe(epoch + 1);
+		expect(windowHeld(epoch, WINDOW_MS - 1)).toBe(true);
+		expect(windowHeld(epoch, WINDOW_MS)).toBe(false);
 	});
 });
 
-describe('write rate limit — budget is one bucket per principal', () => {
+/**
+ * Every suite below that spends the write budget runs with an explicit
+ * 60 s timeout: the window alignment may wait for the next wall-clock
+ * minute, which is longer than vitest's 5 s default. The assertions are
+ * about the budget, not about latency, and a wait is the price of
+ * measuring one window instead of two.
+ */
+describe(
+	'write rate limit — reactions PUT (ADR-0010 budget, real binding)',
+	{ timeout: 60_000 },
+	() => {
+		it('accepts the documented budget, then suppresses the next request with 429 + Retry-After', async () => {
+			await spendInsideOneWindow(async (attempt) => {
+				usePrincipal(`rl-put-${attempt}`);
+				for (let i = 0; i < WRITE_LIMIT; i += 1) {
+					const res = await putReaction(`put-${attempt}-${i}`);
+					expect(res.status).toBe(200);
+				}
+				const blocked = await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: reactionBody(`put-${attempt}-over-budget`),
+				});
+				expect(blocked.status).toBe(429);
+				expect(blocked.error).toBe('rate_limited');
+				expect(blocked.retryAfter).toBe(String(RETRY_AFTER));
+			});
+		});
+
+		it('a suppressed write never reaches D1', async () => {
+			await spendInsideOneWindow(async (attempt) => {
+				usePrincipal(`rl-no-write-${attempt}`);
+				await exhaustWriteBudget(attempt);
+				const before = await env.DB.prepare('SELECT COUNT(*) AS n FROM reactions').first<{
+					n: number;
+				}>();
+				const res = await putReaction(`never-stored-${attempt}`);
+				const after = await env.DB.prepare('SELECT COUNT(*) AS n FROM reactions').first<{
+					n: number;
+				}>();
+				expect(res.status).toBe(429);
+				expect(after?.n).toBe(before?.n);
+				const row = await env.DB.prepare('SELECT id FROM reactions WHERE actor_id = ?1')
+					.bind(`never-stored-${attempt}`)
+					.first();
+				expect(row).toBeNull();
+			});
+		});
+
+		it('caps a 100-request burst at the documented budget', async () => {
+			await spendInsideOneWindow(async (attempt) => {
+				usePrincipal(`rl-burst-${attempt}`);
+				const responses = await Promise.all(
+					Array.from({ length: 100 }, (_, i) => putReaction(`burst-${attempt}-${i}`)),
+				);
+				const accepted = responses.filter((r) => r.status === 200).length;
+				const suppressed = responses.filter((r) => r.status === 429).length;
+				expect(accepted).toBe(WRITE_LIMIT);
+				expect(suppressed).toBe(100 - WRITE_LIMIT);
+				const stored = await env.DB.prepare(
+					'SELECT COUNT(*) AS n FROM reactions WHERE actor_id LIKE ?1',
+				)
+					.bind(`burst-${attempt}-%`)
+					.first<{ n: number }>();
+				expect(stored?.n).toBe(WRITE_LIMIT);
+			});
+		});
+	},
+);
+
+describe('write rate limit — budget is one bucket per principal', { timeout: 60_000 }, () => {
 	it('PUT and DELETE draw from the same budget', async () => {
-		usePrincipal('rl-shared-routes');
-		for (let i = 0; i < WRITE_LIMIT / 2; i += 1) {
-			expect((await putReaction(`share-put-${i}`)).status).toBe(200);
-			expect((await deleteReaction(`share-del-${i}`)).status).toBe(200);
-		}
-		const putBlocked = await probe('/api/v1/reactions', {
-			method: 'PUT',
-			headers: JSON_HEADERS,
-			body: reactionBody('share-put-over'),
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-shared-routes-${attempt}`);
+			for (let i = 0; i < WRITE_LIMIT / 2; i += 1) {
+				expect((await putReaction(`share-put-${attempt}-${i}`)).status).toBe(200);
+				expect((await deleteReaction(`share-del-${attempt}-${i}`)).status).toBe(200);
+			}
+			const putBlocked = await probe('/api/v1/reactions', {
+				method: 'PUT',
+				headers: JSON_HEADERS,
+				body: reactionBody(`share-put-${attempt}-over`),
+			});
+			const deleteBlocked = await probe('/api/v1/reactions', {
+				method: 'DELETE',
+				headers: JSON_HEADERS,
+				body: reactionBody(`share-del-${attempt}-over`),
+			});
+			expect(putBlocked.status).toBe(429);
+			expect(deleteBlocked.status).toBe(429);
+			expect(deleteBlocked.retryAfter).toBe(String(RETRY_AFTER));
 		});
-		const deleteBlocked = await probe('/api/v1/reactions', {
-			method: 'DELETE',
-			headers: JSON_HEADERS,
-			body: reactionBody('share-del-over'),
-		});
-		expect(putBlocked.status).toBe(429);
-		expect(deleteBlocked.status).toBe(429);
-		expect(deleteBlocked.retryAfter).toBe(String(RETRY_AFTER));
 	});
 
 	it('the access counter draws from the same budget as reactions', async () => {
-		usePrincipal('rl-shared-obligations');
-		for (let i = 0; i < WRITE_LIMIT / 2; i += 1) {
-			expect((await putReaction(`mix-put-${i}`)).status).toBe(200);
-			expect((await postHit(i)).status).toBe(200);
-		}
-		const blocked = await probe('/api/v1/access/hit', {
-			method: 'POST',
-			headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(9999) },
-			body: hitBody('session-over-budget'),
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-shared-obligations-${attempt}`);
+			for (let i = 0; i < WRITE_LIMIT / 2; i += 1) {
+				expect((await putReaction(`mix-put-${attempt}-${i}`)).status).toBe(200);
+				expect((await postHit(i, attempt)).status).toBe(200);
+			}
+			const blocked = await probe('/api/v1/access/hit', {
+				method: 'POST',
+				headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(9999) },
+				body: hitBody(`session-${attempt}-over-budget`),
+			});
+			expect(blocked.status).toBe(429);
+			expect(blocked.error).toBe('rate_limited');
+			const counter = await env.DB.prepare(
+				'SELECT count FROM access_counters WHERE principal = ?1 AND key = ?2',
+			)
+				.bind(`rl-shared-obligations-${attempt}`, 'rate-limit-counter')
+				.first<{ count: number }>();
+			// The suppressed hit was refused before D1: the counter still
+			// reflects exactly the hits that were accepted.
+			expect(counter?.count).toBe(WRITE_LIMIT / 2);
 		});
-		expect(blocked.status).toBe(429);
-		expect(blocked.error).toBe('rate_limited');
-		const counter = await env.DB.prepare(
-			'SELECT count FROM access_counters WHERE principal = ?1 AND key = ?2',
-		)
-			.bind('rl-shared-obligations', 'rate-limit-counter')
-			.first<{ count: number }>();
-		// The suppressed hit was refused before D1: the counter still
-		// reflects exactly the hits that were accepted.
-		expect(counter?.count).toBe(WRITE_LIMIT / 2);
 	});
 
 	it('a different API key principal keeps an independent budget', async () => {
-		usePrincipal('rl-principal-a');
-		await exhaustWriteBudget();
-		expect((await putReaction('a-over')).status).toBe(429);
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-principal-a-${attempt}`);
+			await exhaustWriteBudget(attempt);
+			expect((await putReaction(`a-${attempt}-over`)).status).toBe(429);
 
-		usePrincipal('rl-principal-b');
-		expect((await putReaction('b-first')).status).toBe(200);
+			usePrincipal(`rl-principal-b-${attempt}`);
+			expect((await putReaction(`b-${attempt}-first`)).status).toBe(200);
+		});
 	});
 });
 
-describe('write rate limit — what is NOT throttled', () => {
+describe('write rate limit — what is NOT throttled', { timeout: 60_000 }, () => {
 	it('the read budget survives an exhausted write budget', async () => {
-		usePrincipal('rl-reads');
-		await exhaustWriteBudget();
-		const aggregates = await probe('/api/v1/reactions?target=rate-limit-target', {
-			headers: AUTH_HEADER,
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-reads-${attempt}`);
+			await exhaustWriteBudget(attempt);
+			const aggregates = await probe('/api/v1/reactions?target=rate-limit-target', {
+				headers: AUTH_HEADER,
+			});
+			const count = await probe('/api/v1/access/count/rate-limit-counter', {
+				headers: AUTH_HEADER,
+			});
+			expect(aggregates.status).toBe(200);
+			expect(count.status).toBe(200);
 		});
-		const count = await probe('/api/v1/access/count/rate-limit-counter', {
-			headers: AUTH_HEADER,
-		});
-		expect(aggregates.status).toBe(200);
-		expect(count.status).toBe(200);
 	});
 
 	it('the public image read is keyed on IP, not on the exhausted principal', async () => {
-		usePrincipal('rl-image-read');
-		await exhaustWriteBudget();
-		const res = await probe('/api/v1/reaction-images/00000000000000000000000000000000', {
-			headers: { 'cf-connecting-ip': '203.0.113.7' },
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-image-read-${attempt}`);
+			await exhaustWriteBudget(attempt);
+			const res = await probe('/api/v1/reaction-images/00000000000000000000000000000000', {
+				headers: { 'cf-connecting-ip': '203.0.113.7' },
+			});
+			expect(res.status).toBe(404);
+			expect(res.error).toBe('not_found');
 		});
-		expect(res.status).toBe(404);
-		expect(res.error).toBe('not_found');
 	});
 
 	it('authentication is evaluated before throttling', async () => {
-		usePrincipal('rl-auth-order');
-		await exhaustWriteBudget();
-		expect((await putReaction('auth-order-over')).status).toBe(429);
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-auth-order-${attempt}`);
+			await exhaustWriteBudget(attempt);
+			expect((await putReaction(`auth-order-${attempt}-over`)).status).toBe(429);
 
-		// An unauthenticated caller gets 401 even while the principal is
-		// throttled — the auth layer answers first.
-		const anonymous = await probe('/api/v1/reactions', {
-			method: 'PUT',
-			headers: ANONYMOUS_JSON_HEADERS,
-			body: reactionBody('anonymous'),
+			// An unauthenticated caller gets 401 even while the principal is
+			// throttled — the auth layer answers first.
+			const anonymous = await probe('/api/v1/reactions', {
+				method: 'PUT',
+				headers: ANONYMOUS_JSON_HEADERS,
+				body: reactionBody(`anonymous-${attempt}`),
+			});
+			expect(anonymous.status).toBe(401);
+			expect(anonymous.error).toBe('missing_authorization');
+
+			// "401 spends no budget" is deliberately NOT asserted here: with
+			// the production route shape a 401 short-circuits before the
+			// limiter, so there is no principal whose bucket could shrink —
+			// the IP / `anonymous` write bucket is unreachable because every
+			// write route sits behind `requireApiKey`. The observable form of
+			// the claim lives in `src/http/middleware/rate-limit.test.ts`,
+			// which counts the binding's `limit()` calls through the real
+			// `requireApiKey → rateLimitWrite → requireResourceAction` chain
+			// (401 = 0 calls).
 		});
-		expect(anonymous.status).toBe(401);
-		expect(anonymous.error).toBe('missing_authorization');
-
-		// "401 spends no budget" is deliberately NOT asserted here: with
-		// the production route shape a 401 short-circuits before the
-		// limiter, so there is no principal whose bucket could shrink —
-		// the IP / `anonymous` write bucket is unreachable because every
-		// write route sits behind `requireApiKey`. The observable form of
-		// the claim lives in `src/http/middleware/rate-limit.test.ts`,
-		// which counts the binding's `limit()` calls through the real
-		// `requireApiKey → rateLimitWrite → requireResourceAction` chain
-		// (401 = 0 calls).
 	});
 
 	it('a cross-site write is refused before the write bucket is touched', async () => {
@@ -407,19 +578,24 @@ describe('write rate limit — what is NOT throttled', () => {
 		// cannot say "認証は予算を消費しない" — a read-only principal can
 		// still exhaust the write budget (see
 		// `docs/security/write-rate-limit.md`).
-		usePrincipal('rl-missing-scope', { reactions: ['read'], access_counter: ['read'] });
-		for (let i = 0; i < WRITE_LIMIT; i += 1) {
-			const res = await putReaction(`scope-${i}`);
-			expect(res.status).toBe(403);
-		}
-		const overBudget = await probe('/api/v1/reactions', {
-			method: 'PUT',
-			headers: JSON_HEADERS,
-			body: reactionBody('scope-over-budget'),
+		await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-missing-scope-${attempt}`, {
+				reactions: ['read'],
+				access_counter: ['read'],
+			});
+			for (let i = 0; i < WRITE_LIMIT; i += 1) {
+				const res = await putReaction(`scope-${attempt}-${i}`);
+				expect(res.status).toBe(403);
+			}
+			const overBudget = await probe('/api/v1/reactions', {
+				method: 'PUT',
+				headers: JSON_HEADERS,
+				body: reactionBody(`scope-${attempt}-over-budget`),
+			});
+			expect(overBudget.status).toBe(429);
+			expect(overBudget.error).toBe('rate_limited');
+			expect(overBudget.retryAfter).toBe(String(RETRY_AFTER));
 		});
-		expect(overBudget.status).toBe(429);
-		expect(overBudget.error).toBe('rate_limited');
-		expect(overBudget.retryAfter).toBe(String(RETRY_AFTER));
 	});
 
 	it('a rejected body inside the budget answers 400, not 429', async () => {
@@ -441,141 +617,149 @@ describe('write rate limit — what is NOT throttled', () => {
  * MEASURED table into the committed screenshot. Every cell is read back
  * from a real response; the assertions above are the gate.
  */
-describe('accepted vs rejected input matrix (measured)', () => {
+describe('accepted vs rejected input matrix (measured)', { timeout: 60_000 }, () => {
 	it('prints the measured matrix', async () => {
-		usePrincipal('rl-matrix');
-		const rows: string[][] = [];
-		let index = 0;
-		const record = (endpoint: string, input: string, result: Probe) => {
-			index += 1;
-			rows.push([
-				String(index),
-				endpoint,
-				input,
-				String(result.status),
-				result.error ?? '—',
-				result.retryAfter ?? '—',
-			]);
-		};
+		// The whole matrix — including the exhaustion that produces the
+		// suppression rows — has to be measured inside one rate-limit
+		// window, so the body is the guarded one and the table is
+		// printed once, after the guard accepted the measurements.
+		const rows = await spendInsideOneWindow(async (attempt) => {
+			usePrincipal(`rl-matrix-${attempt}`);
+			const rows: string[][] = [];
+			let index = 0;
+			const record = (endpoint: string, input: string, result: Probe) => {
+				index += 1;
+				rows.push([
+					String(index),
+					endpoint,
+					input,
+					String(result.status),
+					result.error ?? '—',
+					result.retryAfter ?? '—',
+				]);
+			};
 
-		record(
-			'PUT /api/v1/reactions',
-			'有効な body / budget 内',
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-ok'),
-			}),
-		);
-		record(
-			'DELETE /api/v1/reactions',
-			'有効な body / budget 内',
-			await probe('/api/v1/reactions', {
-				method: 'DELETE',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-ok'),
-			}),
-		);
-		record(
-			'POST /api/v1/access/hit',
-			'有効な body / budget 内',
-			await probe('/api/v1/access/hit', {
-				method: 'POST',
-				headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(0) },
-				body: hitBody('matrix-session'),
-			}),
-		);
-		record(
-			'PUT /api/v1/reactions',
-			'kind が未定義値',
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: JSON_HEADERS,
-				body: JSON.stringify({ target_key: 'rate-limit-target', actor_id: 'a', kind: 'sticker' }),
-			}),
-		);
-		record(
-			'PUT /api/v1/reactions',
-			'Authorization ヘッダー無し',
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: ANONYMOUS_JSON_HEADERS,
-				body: reactionBody('matrix-anon'),
-			}),
-		);
-		withVerifyApiKey(async () => ({ valid: false, error: 'invalid', key: null }));
-		record(
-			'PUT /api/v1/reactions',
-			'未知の API キー',
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-unknown'),
-			}),
-		);
-		usePrincipal('rl-matrix', { reactions: ['read'], access_counter: ['read'] });
-		record(
-			'PUT /api/v1/reactions',
-			'キーに reactions:write が無い',
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-scope'),
-			}),
-		);
-		record(
-			'GET /api/v1/reactions',
-			'target 指定（read budget）',
-			await probe('/api/v1/reactions?target=rate-limit-target', {
-				headers: AUTH_HEADER,
-			}),
-		);
-		record(
-			'GET /api/v1/access/count/:key',
-			'read budget',
-			await probe('/api/v1/access/count/rate-limit-counter', {
-				headers: AUTH_HEADER,
-			}),
-		);
+			record(
+				'PUT /api/v1/reactions',
+				'有効な body / budget 内',
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-ok`),
+				}),
+			);
+			record(
+				'DELETE /api/v1/reactions',
+				'有効な body / budget 内',
+				await probe('/api/v1/reactions', {
+					method: 'DELETE',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-ok`),
+				}),
+			);
+			record(
+				'POST /api/v1/access/hit',
+				'有効な body / budget 内',
+				await probe('/api/v1/access/hit', {
+					method: 'POST',
+					headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(0) },
+					body: hitBody(`matrix-${attempt}-session`),
+				}),
+			);
+			record(
+				'PUT /api/v1/reactions',
+				'kind が未定義値',
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: JSON.stringify({ target_key: 'rate-limit-target', actor_id: 'a', kind: 'sticker' }),
+				}),
+			);
+			record(
+				'PUT /api/v1/reactions',
+				'Authorization ヘッダー無し',
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: ANONYMOUS_JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-anon`),
+				}),
+			);
+			withVerifyApiKey(async () => ({ valid: false, error: 'invalid', key: null }));
+			record(
+				'PUT /api/v1/reactions',
+				'未知の API キー',
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-unknown`),
+				}),
+			);
+			usePrincipal(`rl-matrix-${attempt}`, { reactions: ['read'], access_counter: ['read'] });
+			record(
+				'PUT /api/v1/reactions',
+				'キーに reactions:write が無い',
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-scope`),
+				}),
+			);
+			record(
+				'GET /api/v1/reactions',
+				'target 指定（read budget）',
+				await probe('/api/v1/reactions?target=rate-limit-target', {
+					headers: AUTH_HEADER,
+				}),
+			);
+			record(
+				'GET /api/v1/access/count/:key',
+				'read budget',
+				await probe('/api/v1/access/count/rate-limit-counter', {
+					headers: AUTH_HEADER,
+				}),
+			);
 
-		// A dedicated principal so the "over budget" rows below are the
-		// exact 61st request, not "whatever budget was left".
-		usePrincipal('rl-matrix-write');
-		await exhaustWriteBudget();
-		record(
-			'PUT /api/v1/reactions',
-			`${WRITE_LIMIT + 1} 回目（上限超過）`,
-			await probe('/api/v1/reactions', {
-				method: 'PUT',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-over'),
-			}),
-		);
-		record(
-			'DELETE /api/v1/reactions',
-			'上限超過',
-			await probe('/api/v1/reactions', {
-				method: 'DELETE',
-				headers: JSON_HEADERS,
-				body: reactionBody('matrix-over'),
-			}),
-		);
-		record(
-			'POST /api/v1/access/hit',
-			'上限超過',
-			await probe('/api/v1/access/hit', {
-				method: 'POST',
-				headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(9999) },
-				body: hitBody('matrix-session-over'),
-			}),
-		);
-		record(
-			'GET /api/v1/reaction-images/:id',
-			'未知の id（IP キーの read budget）',
-			await probe('/api/v1/reaction-images/00000000000000000000000000000000', {
-				headers: { 'cf-connecting-ip': '203.0.113.7' },
-			}),
-		);
+			// A dedicated principal so the "over budget" rows below are the
+			// exact 61st request, not "whatever budget was left".
+			usePrincipal(`rl-matrix-write-${attempt}`);
+			await exhaustWriteBudget(attempt);
+			record(
+				'PUT /api/v1/reactions',
+				`${WRITE_LIMIT + 1} 回目（上限超過）`,
+				await probe('/api/v1/reactions', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-over`),
+				}),
+			);
+			record(
+				'DELETE /api/v1/reactions',
+				'上限超過',
+				await probe('/api/v1/reactions', {
+					method: 'DELETE',
+					headers: JSON_HEADERS,
+					body: reactionBody(`matrix-${attempt}-over`),
+				}),
+			);
+			record(
+				'POST /api/v1/access/hit',
+				'上限超過',
+				await probe('/api/v1/access/hit', {
+					method: 'POST',
+					headers: { ...JSON_HEADERS, 'user-agent': userAgentFor(9999) },
+					body: hitBody(`matrix-${attempt}-session-over`),
+				}),
+			);
+			record(
+				'GET /api/v1/reaction-images/:id',
+				'未知の id（IP キーの read budget）',
+				await probe('/api/v1/reaction-images/00000000000000000000000000000000', {
+					headers: { 'cf-connecting-ip': '203.0.113.7' },
+				}),
+			);
+
+			return rows;
+		});
 
 		const header = ['#', 'エンドポイント', '入力 / 条件', 'status', 'error', 'Retry-After'];
 		const table = [header, header.map(() => '---'), ...rows]

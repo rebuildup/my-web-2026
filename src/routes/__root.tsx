@@ -1,10 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import {
-	GoogleAnalytics,
-	GoogleAnalyticsRouteTracker,
-} from '../editorial/analytics/GoogleAnalytics';
+import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
+import { isAnalyticsMountPath } from '../editorial/analytics/consent';
 import '../styles.css';
 
 /**
@@ -91,17 +89,24 @@ const APP_ICON_LINKS = [
  * frozen empty stub documented in
  * `src/cloudflare/workers-stub.ts`, so subsequent client-side
  * navigations contribute `undefined`). The value flows into
- * `GoogleAnalytics` only when the current pathname is NOT under
+ * `AnalyticsGate` only when the current pathname is NOT under
  * `/admin/*` — the admin gates are flat siblings under that prefix
  * (`admin.login`, `admin.keys`, `admin.images`,
  * `admin.invitations`, `admin.emoji-catalog`). See
  * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
- * contract and the SSR-capture singleton semantics. SPA route
- * changes are measured by `GoogleAnalyticsRouteTracker` (Issue
- * #286), mounted unconditionally next to the script gate below: the
- * inline `gtag('config', …)` records the initial document load, the
- * tracker pushes one `page_view` per subsequent location change
- * (deduped against the initial location, silent on `/admin/*`).
+ * contract and the SSR-capture singleton semantics.
+ *
+ * Analytics consent (Issue #495). `AnalyticsGate` is also the consent
+ * gate: it mounts the GA4 script AND the SPA route tracker
+ * (`GoogleAnalyticsRouteTracker`, Issue #286) only after a visitor has
+ * recorded an affirmative decision, and renders nothing until then —
+ * including during SSR, which is why no GA4 markup reaches the HTML a
+ * visitor (or a crawler) receives by default. The record is made by
+ * `AnalyticsConsentControl` at the end of `<body>`, also on public
+ * routes only. See `src/editorial/analytics/consent.ts` for the
+ * decision contract and
+ * `docs/verification/privacy/analytics-disabled.md` for the
+ * verification record.
  *
  * Chrome convention (Issue #199). PublicNav and Breadcrumbs are
  * intentionally NOT mounted here. They are regular components in
@@ -256,7 +261,9 @@ export const Route = createRootRoute({
 function RootComponent() {
 	const { gaMeasurementId } = Route.useLoaderData();
 	const { pathname, searchStr } = useLocation();
-	const isAdminPath = pathname.startsWith('/admin');
+	// The `/admin/*` exclusion rule lives in `editorial/analytics/consent.ts`
+	// so it can be tested without a router — see `isAnalyticsMountPath`.
+	const isAdminPath = !isAnalyticsMountPath(pathname);
 	return (
 		<html lang="ja">
 			<head>
@@ -276,19 +283,27 @@ function RootComponent() {
 				    accent step (`brand.700`) instead. */}
 				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
 				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
-				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-				{/* SPA route-change page_view (Issue #286): always mounted;
-				    the tracker itself stays silent on /admin/*. */}
-				<GoogleAnalyticsRouteTracker
-					measurementId={gaMeasurementId}
-					locationKey={`${pathname}${searchStr}`}
-				/>
+				{/* Measurement (Issue #171) behind the consent gate
+				    (Issue #495). `AnalyticsGate` renders nothing — no
+				    loader script, no route tracker, no identifier read —
+				    until this document carries a granted decision, so the
+				    HTML below is the non-tracking default for every public
+				    route. The `/admin/*` exclusion stays here, where the
+				    router context lives. */}
+				{!isAdminPath ? (
+					<AnalyticsGate measurementId={gaMeasurementId} locationKey={`${pathname}${searchStr}`} />
+				) : null}
 			</head>
 			<body>
 				<RootLayout>
 					<Outlet />
 				</RootLayout>
 				<Scripts />
+				{/* Consent control (Issue #495): public routes only — see
+				    the comment above. It renders nothing on the server and
+				    nothing before hydration, so it can never delay or
+				    change the page it sits on. */}
+				{!isAdminPath ? <AnalyticsConsentControl /> : null}
 			</body>
 		</html>
 	);

@@ -71,6 +71,7 @@
 		"rotate:home-api-key": "node scripts/rotate-home-api-key.mjs",
 		"seed:tools": "node scripts/seed-tools.mjs",
 		"security:redirect:report": "node scripts/redirect-validation-report.mjs",
+		"capture:analytics-consent": "node scripts/capture-analytics-consent.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
 		"storybook": "storybook dev -p 6006",
 		"test": "vitest run && node scripts/run-script-tests.mjs",

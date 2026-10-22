@@ -88,6 +88,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run architecture:check',
 	'pnpm run log:redaction:check',
 	'pnpm run structured-data:check',
+	// Issue #621: the offline project-introduction contract reads the
+	// committed snapshot the same way the structured-data gate reads its
+	// contract, so it runs next to it.
+	'pnpm run projects:check',
 	'pnpm run ogp:card:check',
 	'pnpm run index:boundary:check',
 	'pnpm run tools:check',
@@ -110,6 +114,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run tools:provenance:check',
 	'pnpm run storybook:ownership:check',
 	'pnpm run copy:i18n:check',
+	// Issue #437: the owner review-date gate for the time-sensitive
+	// public copy. It runs right after the copy locale contract, so a
+	// review-pending finding is read next to the other copy findings.
+	'pnpm run copy:stale:check',
 	'pnpm run publication:check',
 	'pnpm run content:links:check',
 	'pnpm run publication:redaction:check',

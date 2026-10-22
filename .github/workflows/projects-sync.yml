@@ -1,0 +1,132 @@
+name: Project introduction sync
+
+# Issue #621 — refresh the committed `rebuildup/dotfiles` introduction
+# snapshot from the public upstream README.
+#
+# Trigger / acceptable delay
+# --------------------------
+# Once a day at 03:17 UTC. The page is a committed snapshot, so the
+# maximum honest delay between an upstream README change and the page
+# reflecting it is one schedule interval plus the workflow queue. The
+# page itself never claims to be fresher than the snapshot records:
+# `verifiedAt` older than 14 days renders as `stale`, and the offline
+# gate reports the same age.
+#
+# Why a pull request and not a direct commit
+# ------------------------------------------
+# `main` is the released source state and only release PRs update it
+# (AGENTS.md §6). The workflow therefore opens (or updates) a PR
+# against the active release branch, configured as
+# `vars.PROJECTS_SYNC_BASE_REF` at sprint cut. The workflow never
+# merges, tags, deploys or publishes; those remain human gates. If the
+# variable is unset the job stops with a status-only message rather
+# than guessing a base.
+#
+# What it reads
+# -------------
+# `pnpm run projects:sync` reads exactly three public GitHub endpoints
+# (repository metadata, default-branch commit, README at that commit),
+# with no Authorization header. It writes only
+# `src/projects/snapshots/dotfiles.json`, and only when the content
+# digest changed or the weekly re-verification heartbeat is due.
+#
+# Supply chain: every `uses:` is pinned to a full commit SHA and
+# reviewed in `quality/actions-pins.json` (Issue #472).
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: projects-introduction-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: sync dotfiles introduction
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22.18 }
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with: { version: 12.3.4 }
+      - run: pnpm install --frozen-lockfile
+      - name: resolve release base
+        id: base
+        env:
+          BASE_REF: ${{ vars.PROJECTS_SYNC_BASE_REF }}
+        run: |
+          if [ -z "$BASE_REF" ]; then
+            echo "::error::vars.PROJECTS_SYNC_BASE_REF is unset; set it to the active release-x-y-z branch."
+            exit 1
+          fi
+          echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+      - name: check out the release base
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          BRANCH: projects-introduction-sync
+        run: |
+          git fetch origin "$BASE_REF"
+          git checkout -B "$BRANCH" "origin/$BASE_REF"
+      - name: refresh the snapshot
+        run: pnpm run projects:sync
+      - name: validate the refreshed snapshot
+        run: pnpm run projects:check
+      - name: commit only when the snapshot changed
+        id: commit
+        env:
+          BRANCH: projects-introduction-sync
+        run: |
+          git add src/projects/snapshots
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::snapshot is unchanged; nothing to publish"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(projects): refresh the dotfiles introduction snapshot'
+          git push --force-with-lease origin "$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: open or update the review pull request
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          BRANCH: projects-introduction-sync
+        run: |
+          existing=$(gh pr list --head "$BRANCH" --base "$BASE_REF" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "::notice::updated existing pull request #$existing"
+            exit 0
+          fi
+          body=$(mktemp)
+          cat > "$body" <<'BODY'
+          ## 概要
+
+          `rebuildup/dotfiles` の公開 README から、`/projects/dotfiles` の snapshot を再生成しました。
+          この PR は `Project introduction sync` workflow が自動で作成・更新しています。
+
+          ## 確認
+
+          - `pnpm run projects:check` が snapshot の shape / digest / 公開境界を検証済み
+          - 変更があるときだけ commit しています（内容が同じ日は何もしません）
+          - 上流が非公開・削除・archived の場合は「利用できない」状態を記録し、
+            最後に確認できた内容を current として提示しません
+
+          ## マージ
+
+          release へ取り込むタイミングは人間が判断します。workflow は merge / tag / deploy を行いません。
+
+          Refs #621
+          BODY
+          gh pr create --base "$BASE_REF" --head "$BRANCH" \
+            --title 'chore(projects): dotfiles 紹介 snapshot を更新' --body-file "$body"

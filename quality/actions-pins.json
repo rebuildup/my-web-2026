@@ -49,8 +49,19 @@
 	},
 	"permissions": {
 		"default": "contents: read",
-		"rationale": "All three shipped workflows only read the repository. Nothing in CI pushes a tag, creates a Release, or publishes a package, so the job token never needs a write scope.",
-		"allow_writes": []
+		"rationale": "CI, compatibility and smoke workflows only read the repository. The single write exception is the Issue #621 project-introduction sync, which pushes one automation branch and opens/updates its review PR against the configured release branch; it never merges, tags, deploys or publishes.",
+		"allow_writes": [
+			{
+				"scope": "contents",
+				"workflow": ".github/workflows/projects-sync.yml",
+				"reason": "Issue #621: push the refreshed dotfiles introduction snapshot to the automation branch. The workflow never pushes to main, a release branch, a tag or a Release."
+			},
+			{
+				"scope": "pull-requests",
+				"workflow": ".github/workflows/projects-sync.yml",
+				"reason": "Issue #621: open or update the review PR against the configured release branch. Merge is a human gate; the workflow never approves or merges."
+			}
+		]
 	},
 	"secrets": {
 		"allow_references": [],

@@ -1,0 +1,7 @@
+{
+	"$comment": "Fixture surface declaration for the stale-content-review gate (Issue #437). It declares the fixture's own tiny tree as public copy so the suite never depends on the live `quality/copy-editorial-surfaces.json`.",
+	"version": 1,
+	"policy": "Fixture only: the tree under `src/` of this directory is the whole public copy surface of the fixture.",
+	"publicCopyGlobs": ["src/**"],
+	"excludeGlobs": ["**/*.test.ts", "**/*.test.tsx"]
+}

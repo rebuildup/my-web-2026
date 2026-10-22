@@ -69,6 +69,7 @@ const FIXTURE_ROUTES = [
 	['/keyboard', './routes/keyboard'],
 	['/portfolio/', './routes/portfolio/index'],
 	['/portfolio/$slug', './routes/portfolio/$slug'],
+	['/projects/dotfiles', './routes/projects.dotfiles'],
 	['/tools/', './routes/tools.index'],
 	['/tools/$slug', './routes/tools.$slug'],
 	['/admin', './routes/admin'],
@@ -118,9 +119,16 @@ function routeFileSources(routes = FIXTURE_ROUTES) {
 		const path = fullPath.length > 1 ? fullPath.replace(/\/$/, '') : fullPath;
 		let source = 'export const Route = createFileRoute({});\n';
 		if (
-			['/', '/about', '/contact', '/design-system', '/keyboard', '/portfolio', '/tools'].includes(
-				path,
-			)
+			[
+				'/',
+				'/about',
+				'/contact',
+				'/design-system',
+				'/keyboard',
+				'/portfolio',
+				'/projects/dotfiles',
+				'/tools',
+			].includes(path)
 		) {
 			source += `const links = [{ rel: 'canonical', href: '${ORIGIN}${path}' }];\n`;
 		}

@@ -84,6 +84,7 @@ describe('social card contract (contract.json)', () => {
 				'/keyboard',
 				'/portfolio/',
 				'/portfolio/$slug',
+				'/projects/dotfiles',
 				'/tools/',
 				'/tools/$slug',
 			].sort(),

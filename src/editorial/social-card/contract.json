@@ -89,6 +89,14 @@
 			"cardPolicy": "none",
 			"samplePath": "/design-system",
 			"note": "社内 design-system showcase。public=false なので sitemap にも載らないが、route tree には存在するため entry を置き gate の網羅性を保つ。"
+		},
+		{
+			"path": "/projects/dotfiles",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/projects/dotfiles",
+			"note": "README から生成した introduction を表示する surface。代表画像を持たず、上流 README の画像を hotlink しない方針のため og:image は宣言しない。og:title / description / url は route が出す。"
 		}
 	],
 	"deferredSurfaces": [

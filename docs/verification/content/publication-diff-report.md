@@ -13,10 +13,17 @@
 | Publicly reachable surfaces | 11 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 18 |
+<<<<<<< HEAD
 | External hosts | 33 |
 | First-party hosts | 0 |
 | Approved transition | 9 finding(s) |
 | Verdict of the approved transition | **fail** |
+=======
+| External hosts | 32 |
+| First-party hosts | 0 |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
+>>>>>>> origin/release-0-7-0
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -54,6 +61,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/project-init`
 - `/portfolio/sciencearts-optim-internship-2026`
 - `/portfolio/tastile`
+- `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
 - `/tools/prototype`
@@ -79,6 +87,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
+| `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
 | `/tools/$slug` | — | public | yes | `src/routes/tools.$slug.tsx` |
 
@@ -142,10 +151,26 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/footer.tsx`, `src/home/hero.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
+| `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-ae-expression.git` | `github.com` | external | `src/tools/manifest.json` |
@@ -188,6 +213,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
+<<<<<<< HEAD
 - **ERROR** `E004 external-host-added` New external host raw.githubusercontent.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
 - **WARN** `W002 external-url-added` External URL added: https://github.com
 - **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com
@@ -197,4 +223,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 - **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json
 - **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/keyboard
 - **WARN** `W004 public-url-added` Public URL added: /keyboard
+=======
+_No findings._
+>>>>>>> origin/release-0-7-0
 

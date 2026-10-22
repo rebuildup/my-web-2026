@@ -137,6 +137,34 @@ export function PrivacyNotice({ entries = getPublishedDataLifecycle() }: Privacy
 								<strong>外部送信:</strong> {entry.transfer.statement.ja}
 								<span lang="en"> {entry.transfer.statement.en}</span>
 							</p>
+							{/* The sender split (Issue #662). The reader has to
+							    be able to tell "what this platform's code
+							    sends" from "what the third party collects on
+							    its own" — the consent banner names the
+							    second, so a notice that did not would
+							    contradict it. An entry that sends nothing
+							    outward has no sender and renders no
+							    block. */}
+							{entry.transfer.senders.length > 0 ? (
+								<div>
+									<strong>送信者:</strong>
+									<ul
+										className={css({
+											margin: '0',
+											paddingInlineStart: '5',
+											listStyle: 'disc',
+										})}
+									>
+										{entry.transfer.senders.map((sender) => (
+											<li key={sender.sender}>
+												{sender.label.ja}
+												<span lang="en"> {sender.label.en}</span>: {sender.statement.ja}
+												<span lang="en"> {sender.statement.en}</span>
+											</li>
+										))}
+									</ul>
+								</div>
+							) : null}
 							<p className={css({ margin: '0' })}>
 								<strong>公開範囲:</strong> {entry.visibility.ja}
 								<span lang="en"> {entry.visibility.en}</span>

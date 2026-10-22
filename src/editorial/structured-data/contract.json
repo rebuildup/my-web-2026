@@ -111,6 +111,14 @@
 			"note": "内部 showcase surface。breadcrumb も意図的に suppress されている（route-labels.ts の suppression 集合）。"
 		},
 		{
+			"path": "/projects/dotfiles",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": "/projects/dotfiles",
+			"note": "GitHub の公開 README から生成した snapshot を表示する project introduction。breadcrumb を置かないため BreadcrumbList は emit せず、SoftwareSourceCode 等の表現は上流リポジトリの metadata を owning する別 surface の ticket とする。"
+		},
+		{
 			"path": "/admin/**",
 			"public": false,
 			"status": "out-of-scope",

@@ -8,6 +8,7 @@ import {
 	DELETION_REQUEST_CHANNEL,
 	UNSUPPORTED_PUBLIC_CLAIMS,
 	filterPublishedEntries,
+	findSendScopeViolations,
 	findUnsupportedClaims,
 	getPublishedDataLifecycle,
 	publishedClaimSurface,
@@ -53,10 +54,46 @@ function fixtureEntry(id: string, status: 'approved' | 'pending'): DataLifecycle
 		stores: { ja: `保存項目 ${id}`, en: `Stores ${id}` },
 		retention: { kind: 'not-applicable', statement: { ja: `保持 ${id}`, en: `Retention ${id}` } },
 		deletion: { channel: 'not-applicable', statement: { ja: `削除 ${id}`, en: `Deletion ${id}` } },
-		transfer: { target: 'none', statement: { ja: `送信 ${id}`, en: `Transfer ${id}` } },
+		transfer: {
+			target: 'none',
+			statement: { ja: `送信 ${id}`, en: `Transfer ${id}` },
+			senders: [],
+		},
 		visibility: { ja: `公開 ${id}`, en: `Visibility ${id}` },
 		evidence: ['src/privacy/data-lifecycle.ts'],
 		publication: { status, note: { ja: `備考 ${id}`, en: `Note ${id}` } },
+	};
+}
+
+/**
+ * A fixture entry that claims an outward transfer, with the senders
+ * the caller supplies. The sender list is what the Issue #662 rule
+ * judges, so the fixture has to be able to break it.
+ */
+function fixtureWithSenders(
+	id: string,
+	senders: DataLifecycleEntry['transfer']['senders'],
+): DataLifecycleEntry {
+	const base = fixtureEntry(id, 'approved');
+	return {
+		...base,
+		transfer: {
+			target: 'google-analytics-4',
+			statement: base.transfer.statement,
+			senders,
+		},
+	};
+}
+
+/** One sender scope, in the shape the registry carries. */
+function scope(
+	sender: 'platform-code' | 'third-party-automatic',
+	label: string,
+): DataLifecycleEntry['transfer']['senders'][number] {
+	return {
+		sender,
+		label: { ja: label, en: label },
+		statement: { ja: `${label} の送信`, en: `Sent by ${label}` },
 	};
 }
 
@@ -163,6 +200,15 @@ describe('publication is fail-closed', () => {
 				expect(text.ja.trim().length).toBeGreaterThan(0);
 				expect(text.en.trim().length).toBeGreaterThan(0);
 			}
+			// The per-sender statements are published sentences too
+			// (Issue #662): a scope with no text in one locale is a
+			// scope the reader only half sees.
+			for (const sender of item.transfer.senders) {
+				expect(sender.label.ja.trim().length).toBeGreaterThan(0);
+				expect(sender.label.en.trim().length).toBeGreaterThan(0);
+				expect(sender.statement.ja.trim().length).toBeGreaterThan(0);
+				expect(sender.statement.en.trim().length).toBeGreaterThan(0);
+			}
 		}
 	});
 });
@@ -177,14 +223,21 @@ describe('the wording is scoped to what the code does', () => {
 		// published sentence must carry that limit, because the
 		// platform's own threat model puts `?token=`, `?email=` and
 		// `?q=` in a URL.
-		const stores = entry('analytics-events').stores;
-		expect(stores.ja).toContain('アプリ内の画面遷移');
-		expect(stores.en).toMatch(/in-app route change/);
-		expect(stores.ja).toContain('最初の読み込み');
-		expect(stores.en).toMatch(/first page load/);
+		//
+		// Issue #662: the detail belongs to the sender it describes —
+		// it is this platform's own code that strips the query string,
+		// so the sentence sits in the `platform-code` scope.
+		const code = entry('analytics-events').transfer.senders.find(
+			(sender) => sender.sender === 'platform-code',
+		);
+		expect(code).toBeDefined();
+		expect(code?.statement.ja).toContain('アプリ内の画面遷移');
+		expect(code?.statement.en).toMatch(/in-app route change/);
+		expect(code?.statement.ja).toContain('最初の読み込み');
+		expect(code?.statement.en).toMatch(/first page load/);
 		// The unqualified claim the previous wording made is gone.
-		expect(stores.ja).not.toContain('クエリ文字列は送信前に除去され');
-		expect(stores.en).not.toContain('Query strings are stripped before sending');
+		expect(code?.statement.ja).not.toContain('クエリ文字列は送信前に除去され');
+		expect(code?.statement.en).not.toContain('Query strings are stripped before sending');
 	});
 
 	it('the analytics sentence names the off switch', () => {
@@ -232,6 +285,93 @@ describe('the wording is scoped to what the code does', () => {
 	});
 });
 
+describe('a send scope always names its sender', () => {
+	// Issue #662: the registry and the consent banner describe the
+	// same data. A registry sentence that claims what "is sent" without
+	// saying who sends it reads as excluding GA4's own automatic
+	// collection, and the two public surfaces then contradict each
+	// other. The rule is structural, so it is asserted structurally.
+
+	it('the shipped registry names a sender for every outward transfer', () => {
+		// Non-vacuity: the shipped registry has entries that transfer
+		// outward, so an empty violation list means the rule was
+		// applied, not that there was nothing to apply it to.
+		const outward = DATA_LIFECYCLE_ENTRIES.filter((item) => item.transfer.target !== 'none');
+		expect(outward.length).toBeGreaterThan(0);
+		expect(findSendScopeViolations(DATA_LIFECYCLE_ENTRIES)).toEqual([]);
+	});
+
+	it('the GA4 entry separates the code payload from GA4’s own collection', () => {
+		const senders = entry('analytics-events').transfer.senders;
+		expect(senders.map((sender) => sender.sender)).toEqual([
+			'platform-code',
+			'third-party-automatic',
+		]);
+		// The reader can tell the two senders apart, and each scope
+		// says what that sender sends.
+		expect(senders[0]?.label.ja).toContain('このプラットフォームのコード');
+		expect(senders[1]?.label.ja).toContain('GA4');
+		expect(senders[1]?.statement.ja).toContain('参照元');
+		expect(senders[1]?.statement.en).toMatch(/referrer/);
+	});
+
+	it('an outward transfer without a named sender is an error', () => {
+		// The fixture really claims an outward transfer, so the
+		// assertion can fail: without a sender the scope of the claim
+		// is undefined, and the "only X and Y are sent" misreading
+		// gets through.
+		const unscoped = fixtureWithSenders('unscoped-transfer', []);
+		const violations = findSendScopeViolations([unscoped]);
+		expect(violations.map((violation) => violation.id)).toEqual(['unscoped-transfer']);
+		expect(violations[0]?.reason).toMatch(/sender/);
+	});
+
+	it('a GA4 transfer that does not separate the automatic collection is an error', () => {
+		// The code payload alone is what the previous wording published,
+		// and it is the shape that contradicts the consent banner.
+		const codeOnly = fixtureWithSenders('code-only-transfer', [scope('platform-code', 'コード')]);
+		const violations = findSendScopeViolations([codeOnly]);
+		expect(violations.map((violation) => violation.id)).toEqual(['code-only-transfer']);
+		expect(violations[0]?.reason).toMatch(/automatic collection/);
+	});
+
+	it('an entry that sends nothing outward may not name a sender', () => {
+		const contradictory = {
+			...fixtureEntry('no-transfer-entry', 'approved'),
+			transfer: {
+				target: 'none' as const,
+				statement: { ja: '送信なし', en: 'No transfer' },
+				senders: [scope('platform-code', 'コード')],
+			},
+		};
+		const violations = findSendScopeViolations([contradictory]);
+		expect(violations.map((violation) => violation.id)).toEqual(['no-transfer-entry']);
+	});
+
+	it('a scope with no text in one locale is an error', () => {
+		const halfWritten = fixtureWithSenders('half-written-transfer', [
+			{
+				sender: 'platform-code',
+				label: { ja: 'コード', en: 'Code' },
+				statement: { ja: '', en: 'Sent by the code' },
+			},
+		]);
+		const violations = findSendScopeViolations([halfWritten]);
+		expect(violations.length).toBeGreaterThan(0);
+		expect(violations[0]?.reason).toMatch(/locales/);
+	});
+
+	it('the published wording no longer claims what is sent in the singular', () => {
+		// The sentence the Issue opened about: "送信するのは測定 ID と、
+		// パス情報…です" reads as excluding GA4's own collection. The
+		// refusal list refuses it, and the registry no longer says it.
+		const surface = publishedClaimSurface();
+		expect(surface).not.toContain('送信するのは測定 ID と');
+		expect(surface).not.toContain('What leaves the deployment: the measurement id');
+		expect(findUnsupportedClaims(surface)).toEqual([]);
+	});
+});
+
 describe('the refusal list is load-bearing', () => {
 	it('flags each refused claim when it is written', () => {
 		// Non-vacuity: a detector that never fires would let the old
@@ -241,6 +381,7 @@ describe('the refusal list is load-bearing', () => {
 			'deletion-window': '削除依頼を受け付けます。',
 			'no-third-party': '閲覧データは外部に送信しません。',
 			'auto-expiry': '記録は自動的に削除されます。',
+			'unqualified-send-scope': '送信するのは測定 ID と、パス情報（page_path）です。',
 		};
 		for (const claim of UNSUPPORTED_PUBLIC_CLAIMS) {
 			const sample = samples[claim.id];

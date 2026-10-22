@@ -75,15 +75,12 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
-<<<<<<< HEAD
 routes -> keyboard (Issue #620 — read-only keyboard-layout reference; the
                    route supplies chrome only, the snapshot / parsers /
                    geometry / page stay in `keyboard`)
 keyboard -> editorial (Issue #620 — display primitives and semantic tokens only)
-=======
 routes -> projects (Issue #621 — `/projects/dotfiles` loader + page composition)
 projects -> editorial (Issue #621 — display primitives only)
->>>>>>> origin/release-0-7-0
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph

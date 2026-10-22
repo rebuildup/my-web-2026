@@ -9,21 +9,14 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 18 |
-| Publicly reachable surfaces | 11 |
+| Declared surfaces | 19 |
+| Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 13 |
-| Publicly reachable URLs (surface + Static Assets) | 18 |
-<<<<<<< HEAD
+| Publicly reachable URLs (surface + Static Assets) | 19 |
 | External hosts | 33 |
-| First-party hosts | 0 |
-| Approved transition | 9 finding(s) |
-| Verdict of the approved transition | **fail** |
-=======
-| External hosts | 32 |
 | First-party hosts | 0 |
 | Approved transition | no delta (first record, or unchanged surface) |
 | Verdict of the approved transition | **pass** |
->>>>>>> origin/release-0-7-0
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -93,17 +86,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/keyboard`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `raw.githubusercontent.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -213,17 +206,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-<<<<<<< HEAD
-- **ERROR** `E004 external-host-added` New external host raw.githubusercontent.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://github.com
-- **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com
-- **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd
-- **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd
-- **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh
-- **WARN** `W002 external-url-added` External URL added: https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/keyboard
-- **WARN** `W004 public-url-added` Public URL added: /keyboard
-=======
 _No findings._
->>>>>>> origin/release-0-7-0
 

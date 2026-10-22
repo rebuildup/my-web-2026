@@ -1,0 +1,14 @@
+{
+	"$comment": "Issue #425 fixture. A public UI sentence gains a number: the collector must list the original beside the new text and flag number-drift.",
+	"name": "modified-ui",
+	"expect": "attention",
+	"note": "a public UI sentence gains a numeric claim — number-drift is surfaced, never silently accepted.",
+	"diff": [
+		"diff --git a/src/home/hero.tsx b/src/home/hero.tsx",
+		"--- a/src/home/hero.tsx",
+		"+++ b/src/home/hero.tsx",
+		"@@ -12 +12 @@",
+		"-const lead = '無料で始められます';",
+		"+const lead = '無料で始められます。3分で完了します';"
+	]
+}

@@ -286,6 +286,29 @@ export const LINKED_TOOL_DELIVERY_KINDS = Object.freeze([
 ]);
 
 /**
+ * Selector for a page's OWN content sections (Issue #664).
+ *
+ * A page's content sections are the `<section aria-labelledby>` elements
+ * inside the page subtree, which `RootLayout` renders as `#app-root` in
+ * `src/routes/__root.tsx`.
+ *
+ * Root-layout CHROME lives OUTSIDE that subtree, and some of it is a
+ * `<section>` too: the GA4 consent panel (Issue #495) is a named
+ * `<section>` rendered at the end of `<body>`. It is chrome, not a
+ * section of any page, but a document-wide
+ * `section[aria-labelledby]` selector counts it — so the moment the
+ * consent panel shipped, every page's composition count was off by one
+ * and the Playwright suites went red on `release-0-7-0` (Issue #664).
+ *
+ * Counting the whole document would tie every page's composition to
+ * however much chrome the root layout happens to carry, so the selector
+ * is scoped to the page subtree instead. The expected COUNTS are
+ * unchanged by this scoping: the page's own sections are the same ones
+ * the suites pinned before.
+ */
+export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
+
+/**
  * Section counts the page routes' documented default states depend on.
  *
  * These are composition facts, so they live next to the route contract

@@ -5,6 +5,24 @@ substitute for it. The suite named in each report is the authority:
 re-run it and the artifact is regenerated, and if the artifact and the
 suite disagree, the suite wins.
 
+## `analytics-disabled.webp`
+
+Issue #495 — 解析の同意・拒否の挙動。同意が無い document は計測タグを
+持たず、拒否は保存済みタグも停止させ、拒否状態でも画面と操作は成立する。
+
+- **判定基準**: `docs/verification/privacy/analytics-disabled.md` §3。
+  判定契約・GA4 bootstrap・request-level 要件は workerd pool の
+  `src/editorial/analytics/**` と `test/integration/{analytics-consent,
+  privacy-projection}.test.ts`、DOM / `localStorage` の挙動は
+  `pnpm run test:client` が担う。
+- **実行手順**: `pnpm exec vitest run src/editorial/analytics
+  test/integration/analytics-consent.test.ts
+  test/integration/privacy-projection.test.ts`
+- **画像**: `pnpm run capture:analytics-consent` が shipped story
+  `AllStates` を Vite harness で描画し、1280px で撮影して WebP
+  (quality 80, budget 300 kB) に変換する。Issue の `.png` 経路は
+  リポジトリの WebP 規約に合わせて置換し、その旨をレポート §1 に記録。
+
 ## `data-lifecycle-page.webp`
 
 Issue #496 — the public wording must not claim more than the
@@ -69,7 +87,7 @@ the surface must still show something when the data is private.
   | --- | --- |
   | 公開SSR HTML | owner未承認のフィールド名・**3桁以上の小数**座標ペア・`geo:` URI が含まれない（`/` `/about` `/contact` `/portfolio` `/portfolio/<public>` `/tools` `/tools/text-counter` `/tools/prototype` `/design-system`）。粗い座標（`35.1, 139.7`）や整数座標は precision over recall の方針で検出対象外 |
   | 公開 JSON | `/api/v1/*` の 200 / 404 / 401 レスポンスに同じ語彙が含まれない |
-  | Analytics | GA4 bootstrap は measurement ID のみ、`page_view` は `page_path` 系のみ |
+  | Analytics | 同意が解決するまでタグ・inline gtag は document に存在せず、同意後の `page_view` は `page_path` / `page_location` / `page_title` のみ（Issue #495。判定は `analytics-disabled.md`） |
   | 非公開状態（storage → 公開 response） | `PRIVATE_OWNER_RECORD` の値を持つ行が `visibility='draft'` で D1 に実在し、`/portfolio` と `/portfolio/<slug>` のレスポンスには title / venue / 座標が一切現れない。slug 直叩きは 404 |
   | 公開用代替表示 | 非公開でも surface は空にならない。`/portfolio` は `published + public` の行を提示し続ける。Home も既存の Activity capability を `planned` として提示し続ける |
   | 非空虚性 | 検出器が fixture に対して実際に発火する。加えて、private 行が D1 に**存在する**ことも assert する（書けていなければ「response に無い」は無意味になる） |

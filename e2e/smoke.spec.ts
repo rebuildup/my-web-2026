@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { PAGE_CONTENT_SECTIONS } from '../scripts/prod-smoke-routes.mjs';
 
 /**
  * Deployed Worker smoke.
@@ -86,7 +87,12 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveAccessibleName('my-web-2026');
 
 		// Six content sections, in order, all anchored by aria-labelledby.
-		const sections = page.locator('section[aria-labelledby]');
+		//
+		// The selector is scoped to the page subtree (Issue #664): the
+		// root layout's chrome — including the GA4 consent panel, which
+		// is itself a named `<section>` — is rendered outside it and is
+		// not a section of this page.
+		const sections = page.locator(PAGE_CONTENT_SECTIONS);
 		await expect(sections).toHaveCount(6);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');

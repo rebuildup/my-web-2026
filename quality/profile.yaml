@@ -349,6 +349,16 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #405: the live-region / status-message contract (WCAG 2.2
+      # SC 4.1.3 Status Messages, level AA, and SC 4.1.2 Name, Role,
+      # Value, level A). Every explicit live region in `src/**` must not be
+      # assertive unless it is a `role="alert"`, must not nest inside
+      # another live region, must keep `aria-busy` boolean, and must not
+      # publish the same expression as another region. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the same
+      # evidence is `pnpm run capture:a11y-live-region`, an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:live-region:check' # live region / status message contract (Issue #405)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

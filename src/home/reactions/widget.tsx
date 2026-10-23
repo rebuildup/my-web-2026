@@ -439,6 +439,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	>(data.viewer_reactions);
 	const [error, setError] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
+	// Number of mutations still in flight (Issue #405). The recorded-
+	// reactions region publishes this through `aria-busy`, so the
+	// optimistic chip update is batched into one announcement per result
+	// instead of being re-announced while the server call is pending.
+	const [pendingCount, setPendingCount] = useState(0);
 
 	const visibleAggregates = aggregates.slice(0, MAX_RECORDED_CHIPS);
 
@@ -485,6 +490,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			action === 'remove'
 				? removeHomeReaction({ data: { target, kind, value } })
 				: addHomeReaction({ data: { target, kind, value, codepoint } });
+		setPendingCount((count) => count + 1);
 		void promise
 			.then((result) => {
 				// State holds the machine `reason`; the alert renders the
@@ -496,7 +502,8 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			.catch((err: unknown) => {
 				widgetLogger.error('toggle failed', err);
 				setError('upstream_error');
-			});
+			})
+			.finally(() => setPendingCount((count) => count - 1));
 	};
 
 	const handlePickerSelect = (clicked: EmojiClickData) => {
@@ -531,75 +538,84 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				gap: '6',
 			})}
 		>
-			<fieldset
-				aria-label="Recorded reactions"
-				className={css({
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: '3',
-					border: 'none',
-					padding: '0',
-					margin: '0',
-					minHeight: '10',
-					alignItems: 'center',
-				})}
-			>
-				{visibleAggregates.length === 0 ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						まだ反応はありません — 下のボタンから送ってみましょう
-					</span>
-				) : (
-					visibleAggregates.map((chip) => {
-						const glyph = resolveChipGlyph(chip);
-						return (
-							<button
-								key={`${chip.kind}:${chip.value}`}
-								type="button"
-								onClick={() => toggleReaction(chip.kind, chip.value)}
-								title={`:${chip.value}:`}
-								className={css({
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: '2',
-									paddingInline: '3',
-									height: '8',
-									borderRadius: 'full',
-									borderWidth: '1px',
-									borderColor: 'border.subtle',
-									borderStyle: 'solid',
-									backgroundColor: 'bg.canvas',
-									color: 'text.default',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									cursor: 'pointer',
-									_hover: { borderColor: 'border.focus' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								<span aria-hidden="true">{glyph}</span>
-								<span
+			{/* Issue #405: the recorded reactions are one live region.
+			    `role="status"` is polite by default, `aria-atomic`
+			    announces the whole list once, and `aria-busy` batches the
+			    optimistic update while a mutation is in flight, so one
+			    result is one announcement. The failure path is the
+			    sibling `role="alert"` below, not a second status region. */}
+			{/* biome-ignore lint/a11y/useSemanticElements: the region contains block content (the recorded-reaction chips), so a div with role="status" is the right element; `<output>` is for a calculation result, not this list. */}
+			<div role="status" aria-live="polite" aria-atomic="true" aria-busy={pendingCount > 0}>
+				<fieldset
+					aria-label="Recorded reactions"
+					className={css({
+						display: 'flex',
+						flexWrap: 'wrap',
+						gap: '3',
+						border: 'none',
+						padding: '0',
+						margin: '0',
+						minHeight: '10',
+						alignItems: 'center',
+					})}
+				>
+					{visibleAggregates.length === 0 ? (
+						<span
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								color: 'text.muted',
+							})}
+						>
+							まだ反応はありません — 下のボタンから送ってみましょう
+						</span>
+					) : (
+						visibleAggregates.map((chip) => {
+							const glyph = resolveChipGlyph(chip);
+							return (
+								<button
+									key={`${chip.kind}:${chip.value}`}
+									type="button"
+									onClick={() => toggleReaction(chip.kind, chip.value)}
+									title={`:${chip.value}:`}
 									className={css({
-										fontFamily: 'mono',
-										fontSize: 'sm',
-										color: 'text.muted',
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: '2',
+										paddingInline: '3',
+										height: '8',
+										borderRadius: 'full',
+										borderWidth: '1px',
+										borderColor: 'border.subtle',
+										borderStyle: 'solid',
+										backgroundColor: 'bg.canvas',
+										color: 'text.default',
+										fontFamily: 'sans',
+										fontSize: 'md',
+										cursor: 'pointer',
+										_hover: { borderColor: 'border.focus' },
+										_focusVisible: {
+											outline: '2px solid {colors.border.focus}',
+											outlineOffset: '2px',
+										},
 									})}
 								>
-									{chip.count}
-								</span>
-							</button>
-						);
-					})
-				)}
-			</fieldset>
+									<span aria-hidden="true">{glyph}</span>
+									<span
+										className={css({
+											fontFamily: 'mono',
+											fontSize: 'sm',
+											color: 'text.muted',
+										})}
+									>
+										{chip.count}
+									</span>
+								</button>
+							);
+						})
+					)}
+				</fieldset>
+			</div>
 
 			<div>
 				<button

@@ -328,6 +328,16 @@ gates:
       # accepted only through an explicit, in-use allowlist entry
       # (quality/css-standards.json). Offline; no network, no secret.
       - 'pnpm run css:check' # CSS syntax / unknown-property gate
+      # Issue #399: the colour-contrast AA contract. The gate imports the
+      # shipped token modules (src/editorial/tokens.ts +
+      # src/editorial/semantic-tokens.ts), resolves the `{colors.…}`
+      # references itself and measures every pair of the matrix in BOTH
+      # appearances (light `base` / dark `_dark`) against WCAG 2.2
+      # SC 1.4.3 (4.5:1 normal text, 3:1 large text, 3:1 non-text). A
+      # reference that does not resolve is a violation, never a guess.
+      # Offline, credential-free, status-only. The browser half of the
+      # same evidence is `pnpm run capture:a11y-contrast`.
+      - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

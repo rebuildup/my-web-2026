@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | `mixed-language-content.webp` | #409 | the shipped language-of-parts gallery in four states (mixed-language body / document-language-only body / refused parts / the same body at 320 px), with the WCAG 2.2 mapping table that separates the machine-checked rows from the human ones. `mixed-language-content.md` is the write-up |
 | `table-code-mobile.webp` | #407 | the shipped `DataTable` / `CodeBlock` fixture in its four states at 375 px, with caption / per-cell `scope` / confined scroll / keyboard scrolling measured in Chromium. `table-code.md` is the write-up |
+| `contrast.webp` | #399 | the shipped token pair matrix in both appearances (light / dark), every swatch rendered in its own foreground / background with the measured ratio printed beside it. `contrast.md` is the write-up |
 | `form-error-story.webp` | #404 | the shipped form gallery in five states, with the failure panel's Chromium accessibility snapshot. `form-error-story.md` is the write-up |
 | `icon-button-names.webp` | #396 | the repository's own icon-button fixtures side by side — one named, one not — with the accessible name Chromium resolves for each and the accessibility tree it reports. `icon-button-names.md` is the write-up |
 | `category-appearance.webp`, `category-monochrome*.webp`, `status-*.webp` | earlier issues | monochrome / appearance proofs kept alongside the a11y artefacts |

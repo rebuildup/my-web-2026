@@ -28,25 +28,23 @@
 		"skipLibCheck": true,
 		"verbatimModuleSyntax": true,
 		"paths": {
-			"~/*": ["./src/*"],
-			// `@storybook/react` is imported directly by the story files but is
-			// only a transitive dependency of `@storybook/react-vite`, so pnpm
-			// does not place a symlink for it at the top level of
-			// `node_modules/`. pnpm's virtual store keeps every package of the
-			// dependency graph under `node_modules/.pnpm/node_modules/`, and
-			// that path carries no version in it — unlike the per-package
-			// directory under `node_modules/.pnpm/`, whose name embeds the
-			// resolved version and the peer-resolution hashes. A mapping
-			// through the version-specific directory therefore breaks on
-			// every Storybook version bump; the mapping through the hoisted
-			// directory survives it.
-			"@storybook/react": ["./node_modules/.pnpm/node_modules/@storybook/react"]
+			"~/*": ["./src/*"]
 		}
 	},
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.tsx",
 		"test/integration/**/*.ts",
+		// The accessibility suites are type-checked too (Issue #392). The
+		// Storybook manifest declares the audited story set and its
+		// verdict as a TYPE (`StoryVerdict = 'pass' | 'baseline'`), and a
+		// type that is never checked is a comment: `expect: 'fail'` used
+		// to compile, because the whole `e2e/` tree was outside this
+		// scope and only the runtime guard (`manifest-invalid-verdict`)
+		// caught it. The scope is `e2e/a11y/**` because the other suites
+		// under `e2e/` predate this decision and carry type errors that
+		// are not this ticket's business.
+		"e2e/a11y/**/*.ts",
 		"worker-configuration.d.ts",
 		".cloudflare/types/index.d.ts",
 		"styled-system/**/*.ts",

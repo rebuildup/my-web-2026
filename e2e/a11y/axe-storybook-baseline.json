@@ -1,0 +1,88 @@
+{
+	"$comment": "Known axe-core violations on the audited Storybook stories (Issue #392). One record per story and rule. A violation that is NOT listed here fails the audit; a record that no longer matches an observed violation fails too, so the ledger cannot be emptied to turn the gate green. The story key is `<file>#<export>`, the same key the manifest uses. See docs/verification/a11y/axe-storybook.md.",
+	"version": 2,
+	"recordedAt": "2026-10-23",
+	"axeCoreVersion": "4.14.0",
+	"records": [
+		{
+			"story": "src/home/composer.stories.tsx#AllReachable",
+			"ruleId": "definition-list",
+			"nodes": [".min-w_0.flex-d_column.d_flex > dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/composer.stories.tsx#Degraded",
+			"ruleId": "definition-list",
+			"nodes": [".min-w_0.flex-d_column.d_flex > dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#AllOk",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#MixedHealth",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#EmptyStatuses",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#LocaleJa",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#LocaleKo",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#LocaleTokyo",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#Monochrome",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#NarrowViewport",
+			"ruleId": "definition-list",
+			"nodes": ["dl"],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		},
+		{
+			"story": "src/home/status/tiles.stories.tsx#IncidentContext",
+			"ruleId": "definition-list",
+			"nodes": [
+				"section[aria-labelledby=\"status-heading-published\"] > .w_100\\%.max-w_1024px.mx_auto > .lg\\:grid-tc_minmax\\(0\\,_4fr\\)_minmax\\(0\\,_8fr\\).cg_0.lg\\:cg_10 > .min-w_0.flex-d_column.d_flex > dl",
+				"section[aria-labelledby=\"status-heading-sample\"] > .w_100\\%.max-w_1024px.mx_auto > .lg\\:grid-tc_minmax\\(0\\,_4fr\\)_minmax\\(0\\,_8fr\\).cg_0.lg\\:cg_10 > .min-w_0.flex-d_column.d_flex > dl"
+			],
+			"reason": "Pre-existing: the home status list wraps each term/definition pair in a `<div>`, which the `<dl>` content model does not allow (WCAG 2.2 SC 1.3.1). The owner is `home`; the same defect is recorded for the `/` route in e2e/a11y/axe-baseline.json.",
+			"recordedAt": "2026-10-23"
+		}
+	]
+}

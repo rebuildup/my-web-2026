@@ -388,6 +388,20 @@ gates:
       # the same evidence is `pnpm run capture:a11y-focus-visible`, an
       # artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:focus-visible:check' # focus visible / not obscured contract (Issue #395)
+      # Issue #392: the Storybook story audit. The gate is the OFFLINE
+      # half of the axe-core audit: it checks that the audited-story
+      # manifest (e2e/a11y/axe-storybook-manifest.ts) still matches the
+      # stories the source declares, that every registered story carries
+      # a decision and a note, that the known-violation ledger
+      # (e2e/a11y/axe-storybook-baseline.json) only contains records for
+      # registered stories and always states a reason, and that the
+      # pass/fail self-check fixtures reproduce their declared verdicts.
+      # The browser half — axe-core over the rendered story — is
+      # `pnpm run a11y:axe-storybook:e2e`, which needs a Storybook
+      # server and therefore stays out of the offline fast gate. It runs
+      # in CI instead, in the dedicated `storybook axe` job
+      # (scripts/run-storybook-axe-audit.mjs), unconditionally.
+      - 'pnpm run a11y:axe-storybook:check' # Storybook story axe audit, offline half (Issue #392)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

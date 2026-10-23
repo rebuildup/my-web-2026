@@ -133,6 +133,9 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run knip:check',
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
+	// Issue #396: the icon-button accessible-name contract, declared in
+	// `quality/profile.yaml` right after the reduced-motion gate.
+	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
 	'pnpm run a11y:language-of-parts:check',
 	'pnpm run css:check',

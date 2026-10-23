@@ -137,6 +137,7 @@ const EXPECTED_FAST_PLAN = [
 	// `quality/profile.yaml` right after the reduced-motion gate.
 	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
+	'pnpm run a11y:image-alt:check',
 	'pnpm run a11y:language-of-parts:check',
 	'pnpm run css:check',
 	'pnpm run app:icons:check',

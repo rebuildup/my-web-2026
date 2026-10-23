@@ -297,6 +297,18 @@ gates:
       # `pnpm run capture:a11y:table-code`, an artefact capture and
       # therefore not a fast gate.
       - 'pnpm run a11y:table:code:check' # table / code readability contract (Issue #407)
+      # Issue #397: the shipped image alt / decorative-image contract
+      # (WCAG 2.2 SC 1.1.1 Non-text Content, level A). Every `<img>` in
+      # `src/**` declares an `alt`; an empty alt is a decorative
+      # declaration and therefore carries a decorative mark; a blank alt is
+      # a violation. Which image is meaningful and which is decoration is a
+      # property of the shipped source, so it is decided on every
+      # `validate:fast` run rather than only when someone remembers to
+      # capture the verification artefact. Pure Node text analysis, so it
+      # costs a source walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y-image-alt`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:image-alt:check' # image alt / decorative-image contract (Issue #397)
       # Issue #409: the shipped language-of-parts contract (WCAG 2.2
       # 3.1.2 Language of Parts, level A). A `lang` may be written only
       # on a passage whose language differs from the document language:

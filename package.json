@@ -199,6 +199,8 @@
 		"a11y:icon-button-names:check": "node scripts/check-a11y-icon-button-names.mjs",
 		"capture:a11y-icon-button-names": "node scripts/capture-a11y-icon-button-names.mjs",
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
+		"a11y:image-alt:check": "node scripts/check-a11y-image-alt.mjs",
+		"capture:a11y-image-alt": "node scripts/capture-a11y-image-alt.mjs",
 		"a11y:table:code:check": "node scripts/check-table-code-a11y.mjs",
 		"capture:a11y:table-code": "node scripts/capture-a11y-table-code.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",

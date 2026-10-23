@@ -439,6 +439,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	>(data.viewer_reactions);
 	const [error, setError] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
+	// Number of mutations still in flight (Issue #405). The recorded-
+	// reactions region publishes this through `aria-busy`, so the
+	// optimistic chip update is batched into one announcement per result
+	// instead of being re-announced while the server call is pending.
+	const [pendingCount, setPendingCount] = useState(0);
 
 	const visibleAggregates = aggregates.slice(0, MAX_RECORDED_CHIPS);
 
@@ -485,6 +490,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			action === 'remove'
 				? removeHomeReaction({ data: { target, kind, value } })
 				: addHomeReaction({ data: { target, kind, value, codepoint } });
+		setPendingCount((count) => count + 1);
 		void promise
 			.then((result) => {
 				// State holds the machine `reason`; the alert renders the
@@ -496,7 +502,8 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			.catch((err: unknown) => {
 				widgetLogger.error('toggle failed', err);
 				setError('upstream_error');
-			});
+			})
+			.finally(() => setPendingCount((count) => count - 1));
 	};
 
 	const handlePickerSelect = (clicked: EmojiClickData) => {
@@ -531,7 +538,18 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				gap: '6',
 			})}
 		>
+			{/* Issue #405: the recorded reactions are one live region.
+			    `role="status"` is polite by default, `aria-atomic`
+			    announces the whole list once, and `aria-busy` batches the
+			    optimistic update while a mutation is in flight, so one
+			    result is one announcement. The failure path is the
+			    sibling `role="alert"` below, not a second status region. */}
+			{/* biome-ignore lint/a11y/useSemanticElements: the region holds the recorded-reaction chips, not a calculation result, so `<output>` is not the right element. */}
 			<fieldset
+				role="status"
+				aria-live="polite"
+				aria-atomic="true"
+				aria-busy={pendingCount > 0}
 				aria-label="Recorded reactions"
 				className={css({
 					display: 'flex',

@@ -199,6 +199,8 @@
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
 		"a11y:table:code:check": "node scripts/check-table-code-a11y.mjs",
 		"capture:a11y:table-code": "node scripts/capture-a11y-table-code.mjs",
+		"a11y:contrast:check": "node --experimental-strip-types scripts/check-a11y-contrast.mjs",
+		"capture:a11y-contrast": "node scripts/capture-a11y-contrast.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",

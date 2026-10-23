@@ -222,8 +222,8 @@ two tokens survives the appearance change.
 | Token / pair | Light value | Background | Contrast |
 | --- | --- | --- | --- |
 | `text.default` | `#0f172a` (neutral.900) | `#ffffff` canvas | 17.85 : 1 |
-| `text.muted` | `#64748b` (neutral.500) | `#ffffff` canvas | 4.76 : 1 |
-| `text.muted` | `#64748b` | `#f8fafc` surface | 4.55 : 1 |
+| `text.muted` | `#475569` (neutral.600) | `#ffffff` canvas | 7.58 : 1 |
+| `text.muted` | `#475569` | `#f8fafc` surface | 7.24 : 1 |
 | `text.accent` | `#0369a1` (brand.700) | `#ffffff` canvas | 5.93 : 1 |
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
@@ -237,30 +237,36 @@ two tokens survives the appearance change.
 | `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#ffffff` canvas | 5.93 : 1 |
 | `border.focus` (non-text, 3 : 1) | `#0284c7` | `#ffffff` canvas | 4.10 : 1 |
 | `border.strong` (non-text, 3 : 1) | `#64748b` | `#ffffff` canvas | 4.76 : 1 |
-| **`text.muted` on `bg.subtle`** | `#64748b` | `#f1f5f9` | **4.34 : 1 — known gap** |
-| **`text.muted` on `accent.surface`** | `#64748b` | `#f0f9ff` | **4.46 : 1 — known gap** |
+| `text.muted` on `bg.subtle` | `#475569` | `#f1f5f9` | 6.92 : 1 |
+| `text.muted` on `accent.surface` | `#475569` | `#f0f9ff` | 7.11 : 1 |
 
-**Pair-level versus element-level.** The two bold rows are *pairs*
-(token against token). They are **pre-existing at the pair level**: no
-light `base` value changed in Issue #290 (`git diff` shows the only
-raw additions were dark-only steps). They are, however, different at
-the *element* level, and the two cases must not be conflated:
+**The two light gaps are closed (Issue #399).** The rows above used to
+read `4.34 : 1` and `4.46 : 1` — **both below the 4.5 : 1 minimum** —
+and were recorded here as known gaps. Issue #399 measured them with
+`scripts/check-a11y-contrast.mjs` and moved `text.muted`'s light step
+from `neutral.500` (`#64748b`) to a new raw step `neutral.600`
+(`#475569`).
 
-- `text.muted` on `bg.subtle` (4.34 : 1) — the Badge tone was already
-  rendering this pair before Issue #290 (both are plain, resolving
-  tokens), so these failing elements are pre-existing.
-- `text.muted` on `accent.surface` (4.46 : 1) — the pair existed in
-  the token values, but the `accent.surface` utility emitted invalid
-  CSS before the `{ value: { base, _dark } }` fix, so **the tint never
-  rendered and these elements did not fail**. The fix made the tint
-  real and thereby revealed them. That is a conscious accept: the
-  alternative was leaving a semantic token dead, and repairing the pair
-  means darkening secondary text on every light page.
+*Why a new raw step and not another step of the existing ramp.* The
+`neutral` ramp had 0 / 50 / 100 / 500 / 900. The only darker step than
+500 is `neutral.900`, which is `text.default` — the body colour — so no
+existing step could hold "secondary text at 4.5 : 1". A new step was
+added instead, and the English reason is recorded in `tokens.ts` next
+to the value.
 
-The candidate repair for both is moving `text.muted` to
-`neutral.600`, which is a site-wide light appearance change and
-therefore belongs to a dedicated accessibility pass rather than to the
-dark-theme ticket. Recorded for `accessibility-audit`.
+*What did not change.* The hue and the saturation ladder of the muted
+grey are the same; only the lightness moves, so the "quiet secondary
+text" character survives. The dark step stays `charcoal.400`
+(`#8b9099`, 5.37 : 1 on `bg.subtle`, 5.38 : 1 on `accent.surface`) —
+the dark ramp was designed in Issue #290 and is untouched here.
+
+*What the earlier note recorded, and why it still matters.* The two
+pairs were pre-existing at the pair level: no light `base` value
+changed in Issue #290, and the `accent.surface` case was hidden until
+the `{ value: { base, _dark } }` fix made the tint render for real. The
+historical record stays because it explains why the repair was a
+site-wide light-appearance decision (darkening secondary text on every
+light page) rather than a one-line token edit.
 
 ### How the contrast was computed
 
@@ -280,9 +286,17 @@ implementation.
 
 Two independent checks accompany the table:
 
-1. **Token level** — all 21 semantic tokens × 24 pairs × 2
-   appearances. **Dark: 24/24 PASS.** Light: 2 pair failures (the
-   known gaps above).
+1. **Token level** — the manual audit of Issue #290 covered all 21
+   semantic tokens × 24 pairs × 2 appearances: **dark 24/24 PASS**,
+   light 2 pair failures (the known gaps closed above). Since Issue
+   #399 this level is **enforced by a gate** rather than by prose:
+   `scripts/check-a11y-contrast.mjs` imports `tokens.ts` and
+   `semantic-tokens.ts`, resolves the `{colors.…}` references itself
+   and measures the declared pair matrix (20 pairs × 2 appearances =
+   40 rows) against WCAG 2.2 SC 1.4.3. The matrix, the thresholds and
+   the tokens excluded from it (with the reason) are declared in the
+   gate, and the verification record is
+   [`docs/verification/a11y/contrast.md`](../../../docs/verification/a11y/contrast.md).
 2. **DOM level** — walks visible text on `/`, `/design-system`,
    `/tools` and `/portfolio` in both appearances, composites each
    element's colour against its backdrop *including ancestor opacity*
@@ -299,6 +313,32 @@ Two independent checks accompany the table:
    on `release-0-6-1` and out of scope here**, but recorded. They are
    arguably exempt as inactive UI components; they are listed anyway
    rather than argued away.
+
+## Measured contrast — the gate is the contract (Issue #399)
+
+Until Issue #399 this file was the only place the contrast numbers
+lived, so a publisher who changed a token step could leave the prose
+behind. The ratios are now **measured** by
+`scripts/check-a11y-contrast.mjs` (`pnpm run a11y:contrast:check`, part
+of `validate:fast`), which reads the two shipped token modules and
+resolves the references itself:
+
+| rule | meaning |
+| --- | --- |
+| `contrast-below-normal` | a normal-text pair below 4.5 : 1 |
+| `contrast-below-large` | a large-text pair below 3 : 1 |
+| `contrast-below-non-text` | a non-text UI component pair below 3 : 1 |
+| `unresolved-token-reference` | a semantic token points at a raw token that does not resolve |
+
+`border.subtle` is **not** in the matrix, and the gate prints that
+exclusion with its reason rather than dropping it silently: it is a
+decorative separator, and SC 1.4.3 asks for 3 : 1 only of a boundary
+that identifies a component.
+
+The measurement table (both appearances, every pair) is in
+[`docs/verification/a11y/contrast.md`](../../../docs/verification/a11y/contrast.md),
+together with the split between what the machine decides (the ratio)
+and what a person decides (whether a colour is semantically adequate).
 
 ## Don't
 
@@ -319,6 +359,21 @@ Two independent checks accompany the table:
   name and trust Panda to pick the right variant.
 
 ## Change history
+
+- **2026-10-23** (Issue #399) — The token layer became a **measured**
+  contract. `scripts/check-a11y-contrast.mjs` imports `tokens.ts` and
+  `semantic-tokens.ts`, resolves the `{colors.…}` references itself and
+  measures the declared pair matrix in both appearances against WCAG 2.2
+  SC 1.4.3 (4.5 : 1 normal text, 3 : 1 large text and non-text). An
+  unresolvable reference is a violation, never a guess. The gate runs in
+  `validate:fast`; the browser artefact is
+  `docs/verification/a11y/contrast.webp`. One repair shipped with it:
+  the light `text.muted` step moved `neutral.500` → the new raw step
+  `neutral.600` (`#475569`), which closes the two known light gaps
+  (`text.muted` on `bg.subtle` 4.34 : 1 → 6.92 : 1, on
+  `accent.surface` 4.46 : 1 → 7.11 : 1). Hue and saturation are
+  unchanged; only the lightness moves. The dark step
+  (`charcoal.400`) is untouched.
 
 - **2026-10-19** (Issue #411) — Added the rule that `accent.*` status
   and `accent.category.*` hues may never be the ONLY cue: surfaces now

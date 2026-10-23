@@ -1,0 +1,14 @@
+{
+	"id": "fail-normal-text",
+	"note": "A normal-text pair below SC 1.4.3 AA (4.5:1). This is the shape of the defect the gate has to catch: a muted foreground that is legible enough to look right and still misses the minimum.",
+	"pairs": [
+		{
+			"id": "muted-on-canvas",
+			"fg": "#94a3b8",
+			"bg": "#ffffff",
+			"kind": "normal",
+			"threshold": 4.5,
+			"expect": "fail"
+		}
+	]
+}

@@ -147,6 +147,10 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #401: the tap / click target size contract. It runs right
+	// after the colour-contrast contract, so the two accessibility
+	// findings a reader has to judge together are read together.
+	'pnpm run a11y:target-size:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

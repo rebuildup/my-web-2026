@@ -349,6 +349,18 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #401: the tap / click target size contract (WCAG 2.2
+      # SC 2.5.8 Target Size (Minimum), level AA). The three surfaces
+      # Issue #401 names - the reaction picker, the nav, the filter -
+      # must not DECLARE a hit area below 24 x 24 CSS px; a drag gesture
+      # has to carry a click (or keyboard) alternative; and every
+      # exception the criterion names (inline / spacing / user-agent
+      # control / essential) has to be declared with a reason instead of
+      # being ignored in silence. Pure Node source analysis, so it costs
+      # a source walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y-target-size`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:target-size:check' # tap / click target size contract (Issue #401)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

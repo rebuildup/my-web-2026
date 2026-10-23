@@ -46,6 +46,15 @@
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.tsx",
+		// Issue #401: the tap / click target size fixtures are read as
+		// SOURCE by the target-size gate and the target-size capture
+		// (they are the single definition both halves judge), so nothing
+		// else compiles them. Without this entry a syntactically broken
+		// fixture would pass `pnpm run typecheck` and only fail when
+		// somebody runs the capture by hand. The scope is deliberately
+		// narrow: the other fixture directories contain deliberately
+		// invalid attributes, so they stay out of the type check.
+		"scripts/fixtures/a11y-target-size/**/*.tsx",
 		"test/integration/**/*.ts",
 		"worker-configuration.d.ts",
 		".cloudflare/types/index.d.ts",

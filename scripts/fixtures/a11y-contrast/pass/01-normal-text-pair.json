@@ -1,0 +1,14 @@
+{
+	"id": "pass-normal-text",
+	"note": "A normal-text pair that meets SC 1.4.3 AA (4.5:1). The foreground is the shipped light-appearance body colour, the background the shipped canvas.",
+	"pairs": [
+		{
+			"id": "body-on-canvas",
+			"fg": "#0f172a",
+			"bg": "#ffffff",
+			"kind": "normal",
+			"threshold": 4.5,
+			"expect": "pass"
+		}
+	]
+}

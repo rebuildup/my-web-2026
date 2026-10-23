@@ -961,6 +961,37 @@ Run them:
 pnpm test
 ```
 
+### The pool's two test-environment policies (Issue #261)
+
+Both live in `vitest.config.ts` and both exist because the suite
+must measure the product, not the machine it runs on.
+
+**Outbound requests never leave the machine.** The pool answers every
+outbound request itself (`scripts/_vitest-outbound-policy.mjs`). The
+home route is its own consumer of the access-counter and reactions
+APIs (ADR-0011), so rendering `/` makes the Worker call *its own*
+origin — and in this pool that origin is a public host name, so a
+home render used to spend real DNS + TLS + round-trip time on the
+internet, and `test/integration/cors.test.ts` used to send that
+traffic to the **production** origin. A test that needs an outbound
+answer must mock it deliberately, per host; a test that does not must
+not reach the network by accident.
+
+**The cold start happens outside the timed tests.** A file that
+imports the `SELF` binding pays the workerd cold start (measured
+2230–3240 ms) on its first request, which used to land inside the
+first test's 5000 ms budget. `test/setup/warm-up.ts` issues that one
+request in a `beforeAll` hook instead, so the cost lands in the hook
+budget and every test measures a warm worker. The set of files that
+need it is computed by `scripts/_vitest-warmup-scan.mjs` — only a
+file that imports `SELF` can issue a worker request, so only those
+files pay for the pool connection (the same file-scoped principle
+Issue #618 applied to the Better Auth schema setup).
+
+Neither policy changes a timeout value, an assertion, or the
+application. Details and the measurements are in
+`docs/verification/quality/flaky-unit-suite-261.md`.
+
 ## Public-route head metadata gate
 
 Issue #418 added a gate over the `<head>` of every public route:

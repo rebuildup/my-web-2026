@@ -356,6 +356,15 @@ function DigitStrip({
 					key={`${index}-${char}`}
 					src={DIGIT_URLS[char]}
 					alt=""
+					// Issue #397 — the digit bitmaps are decorative: the
+					// strip's parent carries `role="img"` and the
+					// `aria-label` with the real number, so each frozen
+					// bitmap adds no information of its own. The empty
+					// alt says "no description", and the `aria-hidden`
+					// says "and no semantics" — without the mark, the
+					// two are indistinguishable from an alt nobody
+					// wrote (SC 1.1.1 Non-text Content, level A).
+					aria-hidden="true"
 					// Issue #487 — see "Loading mode" in the module
 					// docstring. `loading` is stated explicitly rather
 					// than left to the UA default so the lazy contract

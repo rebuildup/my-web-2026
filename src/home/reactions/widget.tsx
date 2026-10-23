@@ -147,8 +147,14 @@ interface PickerModalProps {
  * always mounted so React keeps a stable node for the lazy chunk to
  * hydrate into; visibility is owned by the browser (closed by default
  * until `showModal()` is called).
+ *
+ * Exported so the keyboard contract can be measured where the picker
+ * renders without the reactions feature being enabled: the
+ * `/design-system` fixture (Issue #394) mounts this component, so the
+ * dialog's focus trap and its Escape hand-back are checked in Chromium
+ * even in a deployment that has no home consumer API key.
  */
-function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
+export function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 
 	useEffect(() => {
@@ -167,21 +173,38 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	};
 
 	// Backdrop click — the dialog element itself is the click target
-	// for clicks outside the inner content. Native <dialog> already
-	// dispatches ESC as a `cancel` event → `close`, so we don't need a
-	// redundant onKeyDown. The biome `useKeyWithClickEvents` rule is
-	// aware of `onClose` + `onClick` on `<dialog>` in upstream but not
-	// in our pinned 1.9.x release, so we scope the suppression here.
+	// for clicks outside the inner content. The keyboard equivalent of
+	// that gesture is the Escape handler below.
 	const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDialogElement>) => {
 		if (event.target === dialogRef.current) onClose();
 	};
 
+	// Escape closes the picker.
+	//
+	// A native `<dialog>` turns Escape into a `cancel` event by itself,
+	// so this handler was considered redundant. It is not: the picker's
+	// search `<input>` takes the Escape key and calls
+	// `preventDefault()` on it, which cancels the browser's close
+	// request before the `cancel` event is dispatched. The dialog
+	// therefore stayed open with the keyboard — the only way out was a
+	// backdrop click (WCAG 2.2 SC 2.1.1 Keyboard / SC 2.1.2 No Keyboard
+	// Trap). Issue #394's keyboard regression spec found this.
+	//
+	// Handling the key on the `<dialog>` itself keeps the contract
+	// inside this component: the handler runs during the bubble phase,
+	// so it still fires after the picker consumed the key.
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLDialogElement>) => {
+		if (event.key !== 'Escape') return;
+		event.preventDefault();
+		onClose();
+	};
+
 	return (
-		// biome-ignore lint/a11y/useKeyWithClickEvents: <dialog> handles ESC natively via the `cancel` event
 		<dialog
 			ref={dialogRef}
 			aria-label="Add a reaction"
 			onClose={onClose}
+			onKeyDown={handleKeyDown}
 			onClick={handleBackdropMouseDown}
 			className={css({
 				// Native <dialog> UA stylesheet already centers the
@@ -416,6 +439,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	>(data.viewer_reactions);
 	const [error, setError] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
+	// Number of mutations still in flight (Issue #405). The recorded-
+	// reactions region publishes this through `aria-busy`, so the
+	// optimistic chip update is batched into one announcement per result
+	// instead of being re-announced while the server call is pending.
+	const [pendingCount, setPendingCount] = useState(0);
 
 	const visibleAggregates = aggregates.slice(0, MAX_RECORDED_CHIPS);
 
@@ -462,6 +490,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			action === 'remove'
 				? removeHomeReaction({ data: { target, kind, value } })
 				: addHomeReaction({ data: { target, kind, value, codepoint } });
+		setPendingCount((count) => count + 1);
 		void promise
 			.then((result) => {
 				// State holds the machine `reason`; the alert renders the
@@ -473,7 +502,8 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			.catch((err: unknown) => {
 				widgetLogger.error('toggle failed', err);
 				setError('upstream_error');
-			});
+			})
+			.finally(() => setPendingCount((count) => count - 1));
 	};
 
 	const handlePickerSelect = (clicked: EmojiClickData) => {
@@ -508,7 +538,18 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				gap: '6',
 			})}
 		>
+			{/* Issue #405: the recorded reactions are one live region.
+			    `role="status"` is polite by default, `aria-atomic`
+			    announces the whole list once, and `aria-busy` batches the
+			    optimistic update while a mutation is in flight, so one
+			    result is one announcement. The failure path is the
+			    sibling `role="alert"` below, not a second status region. */}
+			{/* biome-ignore lint/a11y/useSemanticElements: the region holds the recorded-reaction chips, not a calculation result, so `<output>` is not the right element. */}
 			<fieldset
+				role="status"
+				aria-live="polite"
+				aria-atomic="true"
+				aria-busy={pendingCount > 0}
 				aria-label="Recorded reactions"
 				className={css({
 					display: 'flex',

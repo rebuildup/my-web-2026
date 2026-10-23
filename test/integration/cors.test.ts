@@ -464,26 +464,27 @@ describe('boundary CORS policy (Issue #455)', () => {
 		}
 	});
 
-	// A generous explicit timeout, and not paranoia: the first `/`
-	// request in a cold workerd pool has to evaluate the whole TanStack
-	// Start module graph, measured at 4.5–6.6 s on this repo, which is
-	// over vitest's 5 s default and produced real flakes under load. The
-	// assertions here are about header bytes, not render latency.
-	it(
-		'leaves the SSR surfaces free of API CORS headers',
-		{
-			timeout: 60_000,
-		},
-		async () => {
-			// The UI is same-origin with the API by construction
-			// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
-			// `/oauth/*` and `/integrations/*` may grow an allow-origin
-			// header as a side effect of mounting the middleware.
-			for (const path of ['/', '/contact', '/admin/login']) {
-				const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
-				expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
-				expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
-			}
-		},
-	);
+	// This test used to carry an explicit `timeout: 60_000`, with a
+	// comment that named the cause: "the first `/` request in a cold
+	// workerd pool has to evaluate the whole TanStack Start module
+	// graph, measured at 4.5-6.6 s ... and produced real flakes under
+	// load". That was a remedy for the cause Issue #261 fixed — the
+	// cold start (and the home route's outbound self-call) fell inside
+	// a timed test.
+	//
+	// The cause is gone, so the override is gone with it: this test
+	// now runs on vitest's DEFAULT 5000 ms budget, which makes the
+	// claim checkable. If the cold start ever comes back, this test
+	// fails on the default budget instead of hiding behind 60 s.
+	it('leaves the SSR surfaces free of API CORS headers', async () => {
+		// The UI is same-origin with the API by construction
+		// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
+		// `/oauth/*` and `/integrations/*` may grow an allow-origin
+		// header as a side effect of mounting the middleware.
+		for (const path of ['/', '/contact', '/admin/login']) {
+			const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
+			expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
+			expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
+		}
+	});
 });

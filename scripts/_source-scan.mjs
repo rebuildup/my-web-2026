@@ -79,11 +79,21 @@ export function stripComments(source) {
 			previous = quote;
 			continue;
 		}
-		if (char === '/' && /[(,=:[!&|?{};+\-*%^~<>]/.test(previous)) {
+		if (
+			char === '/' &&
+			// `</` is a JSX closing tag, never a regex literal. Without
+			// this the state machine read `</h1>` as the start of a
+			// regex, copied the rest of the line into the regex body and
+			// then copied the newline a second time — every JSX closing
+			// tag shifted the reported line number by one.
+			previous !== '<' &&
+			/[(,=:[!&|?{};+\-*%^~<>]/.test(previous)
+		) {
 			// Regex literal: copy to the closing unescaped slash.
 			out += char;
 			i += 1;
 			while (i < source.length) {
+				if (source[i] === '\n') break;
 				out += source[i];
 				if (source[i] === '\\') {
 					out += source[i + 1] ?? '';
@@ -94,7 +104,6 @@ export function stripComments(source) {
 					i += 1;
 					break;
 				}
-				if (source[i] === '\n') break;
 				i += 1;
 			}
 			previous = '/';

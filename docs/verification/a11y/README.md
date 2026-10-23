@@ -26,7 +26,8 @@ The artefact of this issue is a **record**, not a verdict:
 | Layer | What it is | Where it lives |
 | --- | --- | --- |
 | the table | the machine-readable matrix: every WCAG 2.2 A/AA criterion is covered by an item or excluded with a reason, and every item says whether a machine or a person decides it | `quality/wcag-review-matrix.json` |
-| the scope decisions | the A/AA criteria the table does not carry, each with a reason; the gate holds the list and the write-up mirrors it, so a drift is red | `scripts/check-a11y-wcag-review-matrix.mjs` (`SCOPE_DECISIONS`) and `docs/verification/a11y/wcag-review-matrix.md` |
+| the criterion universe | the WCAG 2.2 Level A/AA criteria (55 of them, transcribed from the specification on 2026-10-23) with their level and name; the table's vocabulary and the scope decisions both read it, so the two can never disagree | `scripts/check-a11y-wcag-review-matrix.mjs` (`WCAG_22_A_AA_UNIVERSE`) |
+| the scope decisions | the 25 A/AA criteria the table does not carry, each with a reason; the gate holds the list and the write-up mirrors it, so a drift is red | `scripts/check-a11y-wcag-review-matrix.mjs` (`SCOPE_DECISIONS`) and `docs/verification/a11y/wcag-review-matrix.md` |
 | the gate | a pure Node / offline check that the record is intact | `scripts/check-a11y-wcag-review-matrix.mjs` (`pnpm run a11y:wcag-review-matrix:check`) |
 | the capture | the shipped state gallery rendered in Chromium, plus that gate's report | `pnpm run capture:a11y-wcag-review-matrix` |
 
@@ -35,9 +36,18 @@ them blur into each other: `auto-pass` (a machine gate decided it — no
 reviewer, date, environment or result may be attached), `human-verified`,
 `human-failed` and `not-reviewed` (an assignee, no evidence). A
 document may not turn a machine pass into a site-level conformance
-claim; the gate scans the documents for completion wording and reports
-`compliance-claim-unbacked` unless a human verification exists and the
-line points at the matrix.
+claim; the gate scans the documents for completion wording — in Japanese
+and in English, by pattern rather than by a fixed phrase list — and
+reports `compliance-claim-unbacked` unless **every** manual item is
+`human-verified` and the line names the record exactly
+(`quality/wcag-review-matrix.json` or
+`docs/verification/a11y/wcag-review-matrix.md`, which has to exist).
+
+The gate also checks the criterion universe: the table's vocabulary and
+the scope decisions must together decide all 55 A/AA criteria, so no
+criterion can be dropped silently
+(`criterion-universe-mismatch`). `4.1.1 Parsing` is recorded as
+obsolete in WCAG 2.2 instead of being listed.
 
 A green gate means the **table** is intact. It does not mean the site
 conforms to WCAG 2.2 AA. The write-up

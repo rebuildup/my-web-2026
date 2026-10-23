@@ -20,24 +20,35 @@ import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-	CLAIM_PHRASES,
+	CLAIM_NEGATIONS,
+	CLAIM_PATTERNS,
 	CLAIM_QUALIFIERS,
 	EXPECTED_FIXTURE_FILES,
 	FIXTURE_FAIL_DIR,
 	FIXTURE_PASS_DIR,
+	FIXTURE_REFERENCE_DATE,
+	MATRIX_CITATIONS,
 	REVIEW_RECORD_STATES,
 	REVIEW_STATES,
 	RULES,
 	SCOPE_DECISIONS,
+	WCAG_22_A_AA_UNIVERSE,
 	WCAG_22_CRITERIA,
+	WCAG_22_OBSOLETE_CRITERIA,
+	auditCriterionUniverse,
 	auditFixtures,
 	auditMatrix,
 	auditScopeDecisions,
+	auditSurfaceTarget,
+	citesCanonicalMatrix,
 	collectClaimSurfaceFiles,
 	collectEvidence,
+	compareCriterionSets,
+	compareCriterionUniverse,
 	compareFixtureExpectations,
 	compareScopeDecisions,
 	daysBetween,
+	findClaimMatches,
 	findClaims,
 	isIsoDate,
 	parseOptions,
@@ -165,6 +176,7 @@ test('the rules the gate can report are the documented ones', () => {
 		'criterion-undisposed',
 		'criterion-exclusion-reason-missing',
 		'criterion-conflict',
+		'criterion-universe-mismatch',
 		'compliance-claim-unbacked',
 		'scope-decision-doc-mismatch',
 		'fixture-expectation-mismatch',
@@ -422,9 +434,8 @@ test('a claim without a human verification is reported', () => {
 		{
 			file: 'docs/verification/a11y/example.md',
 			line: 3,
-			phrase: CLAIM_PHRASES[0],
+			phrase: 'AA 準拠',
 			text: 'the site is AA 準拠済み',
-			citesMatrix: true,
 		},
 	];
 	assert.ok(rulesOf(matrix).includes('compliance-claim-unbacked'));
@@ -449,26 +460,110 @@ test('a claim with a human verification that points at the matrix is accepted', 
 		{
 			file: 'docs/verification/a11y/example.md',
 			line: 3,
-			phrase: CLAIM_PHRASES[0],
+			phrase: 'AA 準拠',
 			text: 'the site is AA 準拠済み — see docs/verification/a11y/wcag-review-matrix.md',
-			citesMatrix: true,
 		},
 	];
 	assert.ok(!rulesOf(matrix).includes('compliance-claim-unbacked'));
 });
 
+test('a claim that points at a document that is not the record is not backed', () => {
+	const matrix = validMatrix();
+	matrix.items[0] = {
+		...matrix.items[0],
+		method: 'human',
+		autoGates: [],
+		review: {
+			state: 'human-verified',
+			assignedTo: 'owner',
+			reviewer: 'owner',
+			performedAt: '2026-10-01',
+			environment: 'Chromium',
+			result: 'pass',
+		},
+	};
+	matrix.$claims = [
+		{
+			file: 'docs/verification/a11y/example.md',
+			line: 3,
+			phrase: 'AA 準拠',
+			text: 'the site is AA 準拠済み — see wcag-review-matrix-old.md',
+		},
+	];
+	assert.ok(rulesOf(matrix).includes('compliance-claim-unbacked'));
+});
+
+test('one verified item does not back a site-level claim while the rest is outstanding', () => {
+	const matrix = validMatrix();
+	matrix.items[0] = {
+		...matrix.items[0],
+		method: 'human',
+		autoGates: [],
+		review: {
+			state: 'human-verified',
+			assignedTo: 'owner',
+			reviewer: 'owner',
+			performedAt: '2026-10-01',
+			environment: 'Chromium',
+			result: 'pass',
+		},
+	};
+	matrix.items[1] = {
+		...matrix.items[1],
+		method: 'human',
+		autoGates: [],
+		review: { state: 'not-reviewed', assignedTo: 'owner' },
+	};
+	matrix.$claims = [
+		{
+			file: 'docs/verification/a11y/example.md',
+			line: 3,
+			phrase: 'AA 準拠',
+			text: 'the site is AA 準拠済み — see docs/verification/a11y/wcag-review-matrix.md',
+		},
+	];
+	assert.ok(rulesOf(matrix).includes('compliance-claim-unbacked'));
+});
+
+test('a failed manual item does not back a site-level claim', () => {
+	const matrix = validMatrix();
+	matrix.items[0] = {
+		...matrix.items[0],
+		method: 'human',
+		autoGates: [],
+		review: {
+			state: 'human-failed',
+			assignedTo: 'owner',
+			reviewer: 'owner',
+			performedAt: '2026-10-01',
+			environment: 'Chromium',
+			result: 'fail',
+		},
+	};
+	matrix.$claims = [
+		{
+			file: 'docs/verification/a11y/example.md',
+			line: 3,
+			phrase: 'AA 準拠',
+			text: 'the site is AA 準拠済み — see docs/verification/a11y/wcag-review-matrix.md',
+		},
+	];
+	assert.ok(rulesOf(matrix).includes('compliance-claim-unbacked'));
+});
+
 test('a line that qualifies the phrase is a mention, not a claim', () => {
-	const claims = findClaims(`この文書は ${CLAIM_PHRASES[0]} と書かない。`, { file: 'a.md' });
+	const claims = findClaims('この文書は AA に準拠 と書かない。', { file: 'a.md' });
 	assert.deepEqual(claims, []);
-	const real = findClaims(`この文書は ${CLAIM_PHRASES[0]} です。`, { file: 'a.md' });
+	const real = findClaims('この文書は AA に準拠 です。', { file: 'a.md' });
 	assert.equal(real.length, 1);
-	assert.equal(real[0].phrase, CLAIM_PHRASES[0]);
+	assert.equal(real[0].phrase, 'AA に準拠');
 	assert.equal(real[0].line, 1);
 });
 
-test('the qualifier list is not empty and the phrase list is not empty', () => {
-	assert.ok(CLAIM_PHRASES.length > 0);
+test('the qualifier list is not empty and the pattern list is not empty', () => {
+	assert.ok(CLAIM_PATTERNS.length > 0);
 	assert.ok(CLAIM_QUALIFIERS.length > 0);
+	assert.ok(CLAIM_NEGATIONS.length > 0);
 });
 
 test('the claim is the predicate, not a finished sentence', () => {
@@ -524,6 +619,192 @@ test('the documentation is the claim surface, and it is read', () => {
 	assert.ok(
 		files.includes('docs/verification/a11y/axe-route-report.md'),
 		'the a11y verification notes are claim surfaces',
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * the criterion universe (Codex finding X1)
+ * ------------------------------------------------------------------ */
+
+test('the universe is the single source of truth for levels and names', () => {
+	for (const [sc, criterion] of Object.entries(WCAG_22_CRITERIA)) {
+		assert.deepEqual(criterion, WCAG_22_A_AA_UNIVERSE[sc], `${sc} must come from the universe`);
+	}
+	for (const decision of SCOPE_DECISIONS) {
+		assert.equal(decision.level, WCAG_22_A_AA_UNIVERSE[decision.sc].level);
+		assert.equal(decision.name, WCAG_22_A_AA_UNIVERSE[decision.sc].name);
+	}
+});
+
+test('the universe holds every Level A and Level AA criterion of WCAG 2.2', () => {
+	const levels = Object.values(WCAG_22_A_AA_UNIVERSE).map((criterion) => criterion.level);
+	assert.equal(Object.keys(WCAG_22_A_AA_UNIVERSE).length, 55);
+	assert.equal(levels.filter((level) => level === 'A').length, 31);
+	assert.equal(levels.filter((level) => level === 'AA').length, 24);
+});
+
+test('the obsolete criterion is recorded, not silently dropped', () => {
+	assert.equal(WCAG_22_OBSOLETE_CRITERIA['4.1.1'].name, 'Parsing');
+	assert.ok(!Object.keys(WCAG_22_A_AA_UNIVERSE).includes('4.1.1'));
+	assert.ok(!Object.keys(WCAG_22_CRITERIA).includes('4.1.1'));
+	assert.ok(!SCOPE_DECISIONS.some((decision) => decision.sc === '4.1.1'));
+});
+
+test('the two lists decide every criterion of the universe', () => {
+	assert.deepEqual(compareCriterionUniverse(), []);
+});
+
+test('a criterion that neither list decides is reported', () => {
+	const table = Object.fromEntries(
+		Object.entries(WCAG_22_CRITERIA).filter(([sc]) => sc !== '1.4.3'),
+	);
+	const problems = compareCriterionSets({
+		universe: WCAG_22_A_AA_UNIVERSE,
+		table,
+		scope: SCOPE_DECISIONS.map((decision) => ({
+			sc: decision.sc,
+			level: decision.level,
+			name: decision.name,
+		})),
+	});
+	assert.ok(problems.some((problem) => problem.includes('1.4.3')));
+});
+
+test('a criterion that is not a WCAG 2.2 A/AA criterion is reported', () => {
+	const problems = compareCriterionSets({
+		universe: WCAG_22_A_AA_UNIVERSE,
+		table: {
+			...WCAG_22_CRITERIA,
+			'1.2.8': { level: 'AA', name: 'Media Alternative (Prerecorded)' },
+		},
+		scope: [],
+	});
+	assert.ok(problems.some((problem) => problem.includes('1.2.8')));
+});
+
+test('the obsolete criterion is reported with its reason', () => {
+	const problems = compareCriterionSets({
+		universe: WCAG_22_A_AA_UNIVERSE,
+		table: { ...WCAG_22_CRITERIA, '4.1.1': { level: 'A', name: 'Parsing' } },
+		scope: [],
+	});
+	assert.ok(problems.some((problem) => problem.includes('obsolete')));
+});
+
+test('the gate reports no universe violation', () => {
+	assert.deepEqual(auditCriterionUniverse(), []);
+});
+
+/* ------------------------------------------------------------------ *
+ * the conformance claim (Codex findings X2, X3, X6)
+ * ------------------------------------------------------------------ */
+
+test('the claim patterns do not depend on a fixed phrase list', () => {
+	for (const text of [
+		'このサイトは WCAG 2.2 AA に適合しています。',
+		'このサイトは WCAG 2.2 AA に準拠しています。',
+		'This site conforms to WCAG 2.2 AA.',
+		'The site is WCAG 2.2 AA compliant.',
+		'This site meets WCAG 2.2.',
+		'WCAG 2.2 AA conformance is claimed here.',
+	]) {
+		const claims = findClaims(text, { file: 'a.md' });
+		assert.equal(claims.length, 1, `${text} must be reported as a claim`);
+	}
+});
+
+test('an English negation that is on another line still qualifies the claim', () => {
+	const claims = findClaims(
+		'A green run of this gate means the TABLE is intact.\nIt does not mean the site conforms to WCAG 2.2 AA.',
+		{ file: 'a.md' },
+	);
+	assert.deepEqual(claims, []);
+});
+
+test('a claim that does not name the record is not backed', () => {
+	assert.equal(citesCanonicalMatrix('see wcag-review-matrix', { repoRoot: REPO_ROOT }), false);
+	assert.equal(
+		citesCanonicalMatrix('see docs/verification/a11y/wcag-review-matrix.md', {
+			repoRoot: REPO_ROOT,
+		}),
+		true,
+	);
+	assert.equal(
+		citesCanonicalMatrix('see quality/wcag-review-matrix.json', { repoRoot: REPO_ROOT }),
+		true,
+	);
+	assert.equal(
+		citesCanonicalMatrix('see wcag-review-matrix-old.md', { repoRoot: REPO_ROOT }),
+		false,
+		'a file that does not exist is not a citation',
+	);
+});
+
+test('a claim is backed when every manual item is verified and the record is named', () => {
+	const matrix = validMatrix();
+	matrix.items[0] = {
+		...matrix.items[0],
+		method: 'human',
+		autoGates: [],
+		review: {
+			state: 'human-verified',
+			assignedTo: 'owner',
+			reviewer: 'owner',
+			performedAt: '2026-10-01',
+			environment: 'Chromium',
+			result: 'pass',
+		},
+	};
+	matrix.$claims = [
+		{
+			file: 'docs/verification/a11y/example.md',
+			line: 3,
+			phrase: 'AA 準拠',
+			text: 'the site is AA 準拠済み — see docs/verification/a11y/wcag-review-matrix.md',
+		},
+	];
+	assert.ok(!rulesOf(matrix).includes('compliance-claim-unbacked'));
+});
+
+/* ------------------------------------------------------------------ *
+ * the fixtures and the surfaces (Codex findings X4, X5)
+ * ------------------------------------------------------------------ */
+
+test('the fixture verdict does not depend on the day the gate runs', () => {
+	const audited = auditFixtures({ repoRoot: REPO_ROOT, today: '2099-01-01' });
+	for (const file of audited.files.filter((entry) => entry.expectation === 'pass')) {
+		assert.deepEqual(file.violations, [], `${file.path} must report nothing`);
+	}
+	assert.equal(FIXTURE_REFERENCE_DATE, '2026-10-23');
+});
+
+test('a surface that points at a file that does not exist is reported', () => {
+	const matrix = validMatrix();
+	matrix.surfaces[0] = {
+		...matrix.surfaces[0],
+		path: 'src/editorial/forms/does-not-exist.stories.tsx',
+	};
+	assert.ok(rulesOf(matrix).includes('surface-missing'));
+});
+
+test('a surface whose story export was renamed is reported', () => {
+	const matrix = validMatrix();
+	matrix.surfaces[0] = { ...matrix.surfaces[0], export: 'GalleryThatWasRenamed' };
+	assert.ok(rulesOf(matrix).includes('surface-missing'));
+});
+
+test('the surface is checked for every state, not only for the markup ones', () => {
+	const matrix = validMatrix();
+	matrix.surfaces[0] = {
+		...matrix.surfaces[0],
+		path: 'src/editorial/forms/does-not-exist.stories.tsx',
+	};
+	const audited = auditMatrix(matrix, { today: TODAY, repoRoot: REPO_ROOT });
+	const surfaceMissing = audited.violations.filter((v) => v.rule === 'surface-missing');
+	assert.ok(surfaceMissing.length > 0);
+	assert.ok(
+		surfaceMissing.every((v) => typeof v.message === 'string' && v.message.length > 0),
+		'a surface violation has to say what is wrong',
 	);
 });
 

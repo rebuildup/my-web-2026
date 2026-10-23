@@ -224,8 +224,7 @@
 			"file": "fixtures/a11y-wcag-review-matrix/example.md",
 			"line": 1,
 			"phrase": "AA 準拠済み",
-			"text": "the fixture claims conformance",
-			"citesMatrix": true
+			"text": "the fixture claims conformance — see docs/verification/a11y/wcag-review-matrix.md"
 		}
 	],
 	"$documents": [

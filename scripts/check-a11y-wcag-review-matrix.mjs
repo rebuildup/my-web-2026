@@ -79,6 +79,11 @@
  *       A criterion is excluded without a reason.
  *   criterion-conflict
  *       A criterion is both covered by an item and excluded.
+ *   criterion-universe-mismatch
+ *       The criterion universe does not match: a WCAG 2.2 A/AA
+ *       criterion is decided by neither the table's vocabulary nor the
+ *       scope decisions, one of the two lists holds a criterion that is
+ *       not part of an A/AA claim, or a criterion is decided twice.
  *   compliance-claim-unbacked
  *       A document claims that the site conforms to WCAG 2.2 AA while no
  *       human verification exists, or without pointing at this matrix.
@@ -140,53 +145,149 @@ export const EXPECTED_FIXTURE_FILES = {
 };
 
 /**
- * The WCAG 2.2 A/AA criteria this matrix may speak about.
+ * The official WCAG 2.2 Level A / AA success criteria.
  *
- * Only Level A and Level AA criteria are listed: a Level AAA criterion
- * is not part of a conformance claim this repository makes, and mixing
- * the levels would blur the claim. The table is the vocabulary — an SC
- * number that is not in it is reported, never assumed.
+ * This is the **criterion universe**: the single source of truth for
+ * what a Level A/AA conformance claim covers. It was transcribed from
+ * the WCAG 2.2 specification (W3C, <https://www.w3.org/TR/WCAG22/>)
+ * and checked against it on 2026-10-23: **55 criteria — 31 at Level A
+ * and 24 at Level AA**.
+ *
+ * The table's own vocabulary ({@link WCAG_22_CRITERIA}) and the scope
+ * decisions ({@link SCOPE_DECISIONS}) both take their level and name
+ * from here, and the gate checks that their union is exactly this set
+ * (`criterion-universe-mismatch`), so a criterion can neither be lost
+ * nor invented.
+ *
+ * The gate itself is offline: this constant is a transcription, and the
+ * transcription is only as good as the last manual check against the
+ * specification. The write-up records the date of that check.
  */
-export const WCAG_22_CRITERIA = {
+export const WCAG_22_A_AA_UNIVERSE = {
 	'1.1.1': { level: 'A', name: 'Non-text Content' },
+	'1.2.1': { level: 'A', name: 'Audio-only and Video-only (Prerecorded)' },
 	'1.2.2': { level: 'A', name: 'Captions (Prerecorded)' },
-	'1.2.4': { level: 'AA', name: 'Audio Description (Prerecorded)' },
+	'1.2.3': { level: 'A', name: 'Audio Description or Media Alternative (Prerecorded)' },
+	'1.2.4': { level: 'AA', name: 'Captions (Live)' },
+	'1.2.5': { level: 'AA', name: 'Audio Description (Prerecorded)' },
 	'1.3.1': { level: 'A', name: 'Info and Relationships' },
 	'1.3.2': { level: 'A', name: 'Meaningful Sequence' },
+	'1.3.3': { level: 'A', name: 'Sensory Characteristics' },
 	'1.3.4': { level: 'AA', name: 'Orientation' },
 	'1.3.5': { level: 'AA', name: 'Identify Input Purpose' },
 	'1.4.1': { level: 'A', name: 'Use of Color' },
+	'1.4.2': { level: 'A', name: 'Audio Control' },
 	'1.4.3': { level: 'AA', name: 'Contrast (Minimum)' },
 	'1.4.4': { level: 'AA', name: 'Resize Text' },
+	'1.4.5': { level: 'AA', name: 'Images of Text' },
 	'1.4.10': { level: 'AA', name: 'Reflow' },
 	'1.4.11': { level: 'AA', name: 'Non-text Contrast' },
 	'1.4.12': { level: 'AA', name: 'Text Spacing' },
 	'1.4.13': { level: 'AA', name: 'Content on Hover or Focus' },
 	'2.1.1': { level: 'A', name: 'Keyboard' },
 	'2.1.2': { level: 'A', name: 'No Keyboard Trap' },
+	'2.1.4': { level: 'A', name: 'Character Key Shortcuts' },
+	'2.2.1': { level: 'A', name: 'Timing Adjustable' },
+	'2.2.2': { level: 'A', name: 'Pause, Stop, Hide' },
+	'2.3.1': { level: 'A', name: 'Three Flashes or Below Threshold' },
 	'2.4.1': { level: 'A', name: 'Bypass Blocks' },
 	'2.4.2': { level: 'A', name: 'Page Titled' },
 	'2.4.3': { level: 'A', name: 'Focus Order' },
+	'2.4.4': { level: 'A', name: 'Link Purpose (In Context)' },
+	'2.4.5': { level: 'AA', name: 'Multiple Ways' },
 	'2.4.6': { level: 'AA', name: 'Headings and Labels' },
 	'2.4.7': { level: 'AA', name: 'Focus Visible' },
 	'2.4.11': { level: 'AA', name: 'Focus Not Obscured (Minimum)' },
+	'2.5.1': { level: 'A', name: 'Pointer Gestures' },
+	'2.5.2': { level: 'A', name: 'Pointer Cancellation' },
+	'2.5.3': { level: 'A', name: 'Label in Name' },
+	'2.5.4': { level: 'A', name: 'Motion Actuation' },
+	'2.5.7': { level: 'AA', name: 'Dragging Movements' },
 	'2.5.8': { level: 'AA', name: 'Target Size (Minimum)' },
 	'3.1.1': { level: 'A', name: 'Language of Page' },
-	'3.1.2': { level: 'A', name: 'Language of Parts' },
+	'3.1.2': { level: 'AA', name: 'Language of Parts' },
+	'3.2.1': { level: 'A', name: 'On Focus' },
+	'3.2.2': { level: 'A', name: 'On Input' },
+	'3.2.3': { level: 'AA', name: 'Consistent Navigation' },
+	'3.2.4': { level: 'AA', name: 'Consistent Identification' },
+	'3.2.6': { level: 'A', name: 'Consistent Help' },
 	'3.3.1': { level: 'A', name: 'Error Identification' },
 	'3.3.2': { level: 'A', name: 'Labels or Instructions' },
-	'3.3.7': { level: 'AA', name: 'Redundant Entry' },
+	'3.3.3': { level: 'AA', name: 'Error Suggestion' },
+	'3.3.4': { level: 'AA', name: 'Error Prevention (Legal, Financial, Data)' },
+	'3.3.7': { level: 'A', name: 'Redundant Entry' },
+	'3.3.8': { level: 'AA', name: 'Accessible Authentication (Minimum)' },
 	'4.1.2': { level: 'A', name: 'Name, Role, Value' },
 	'4.1.3': { level: 'AA', name: 'Status Messages' },
 };
 
 /**
+ * The Level A criteria WCAG 2.2 removed.
+ *
+ * `4.1.1 Parsing` is marked "Obsolete and removed" in the WCAG 2.2
+ * specification: it is no longer part of a Level A conformance claim,
+ * so it is deliberately **not** in {@link WCAG_22_A_AA_UNIVERSE}. It
+ * is listed here so that it is not dropped silently — an item or a
+ * scope decision that names it is reported with this reason instead of
+ * a bare "unknown criterion".
+ */
+export const WCAG_22_OBSOLETE_CRITERIA = {
+	'4.1.1': { name: 'Parsing', note: 'obsolete and removed in WCAG 2.2' },
+};
+
+/**
+ * The criteria this matrix may speak about.
+ *
+ * Only Level A and Level AA criteria are listed: a Level AAA criterion
+ * is not part of a conformance claim this repository makes, and mixing
+ * the levels would blur the claim. The table is the vocabulary — an SC
+ * number that is not in it is reported, never assumed.
+ *
+ * The level and the name are taken from {@link WCAG_22_A_AA_UNIVERSE},
+ * so the two can never disagree about what a criterion is.
+ */
+export const WCAG_22_CRITERIA = Object.fromEntries(
+	[
+		'1.1.1',
+		'1.2.2',
+		'1.2.4',
+		'1.3.1',
+		'1.3.2',
+		'1.3.4',
+		'1.3.5',
+		'1.4.1',
+		'1.4.3',
+		'1.4.4',
+		'1.4.10',
+		'1.4.11',
+		'1.4.12',
+		'1.4.13',
+		'2.1.1',
+		'2.1.2',
+		'2.4.1',
+		'2.4.2',
+		'2.4.3',
+		'2.4.6',
+		'2.4.7',
+		'2.4.11',
+		'2.5.8',
+		'3.1.1',
+		'3.1.2',
+		'3.3.1',
+		'3.3.2',
+		'3.3.7',
+		'4.1.2',
+		'4.1.3',
+	].map((sc) => [sc, WCAG_22_A_AA_UNIVERSE[sc]]),
+);
+
+/**
  * The A/AA criteria this table does NOT carry, and why.
  *
- * WCAG 2.2 has 56 Level A / AA criteria (32 at Level A, 24 at Level
- * AA). {@link WCAG_22_CRITERIA} holds the 30 this repository's table
- * speaks about; the remaining 26 are decided HERE, as a scope
- * decision rather than as a table item.
+ * WCAG 2.2 has 55 Level A / AA criteria (31 at Level A, 24 at Level
+ * AA; see {@link WCAG_22_A_AA_UNIVERSE}). {@link WCAG_22_CRITERIA}
+ * holds the 30 this repository's table speaks about; the remaining 25
+ * are decided HERE, as a scope decision rather than as a table item.
  *
  * They are deliberately NOT `excluded` entries: `excluded` accepts the
  * criteria of the table's own vocabulary only, so a number outside it
@@ -194,168 +295,117 @@ export const WCAG_22_CRITERIA = {
  * `item-sc-unknown` instead of being quietly accepted. That is why the
  * two lists never overlap.
  *
- * The reason text is Japanese because the documentation table carries
- * the same text and the gate compares the two (`scope-decision-doc-
- * mismatch`); the rest of this file stays English.
+ * The level and the name are taken from {@link WCAG_22_A_AA_UNIVERSE};
+ * only the reason is written here. The reason text is Japanese because
+ * the documentation table carries the same text and the gate compares
+ * the two (`scope-decision-doc-mismatch`); the rest of this file stays
+ * English.
  */
 export const SCOPE_DECISIONS = [
-	{
-		sc: '1.2.1',
-		level: 'A',
-		name: 'Audio-only and Video-only (Prerecorded)',
-		reason: '事前録音の音声・動画だけのコンテンツを出荷していない。',
-	},
+	{ sc: '1.2.1', reason: '事前録音の音声・動画だけのコンテンツを出荷していない。' },
 	{
 		sc: '1.2.3',
-		level: 'A',
-		name: 'Audio Description or Media Alternative (Prerecorded)',
 		reason: '事前録音の映像を出荷していない（1.2.1 と同じ理由）。',
 	},
 	{
-		sc: '1.2.8',
-		level: 'AA',
-		name: 'Media Alternative (Prerecorded)',
-		reason: '事前録音の音声・動画を出荷しない（1.2.1 と同じ理由）。',
+		sc: '1.2.5',
+		reason:
+			'事前録音の映像・音声を出荷していないため、音声説明の代替手段を用意しない（1.2.1 と同じ理由）。',
 	},
 	{
 		sc: '1.3.3',
-		level: 'A',
-		name: 'Sensory Characteristics',
 		reason: '感覚的な特徴だけに頼って指示する表現を使っていない。',
 	},
 	{
 		sc: '1.4.2',
-		level: 'A',
-		name: 'Audio Control',
 		reason: '2 秒以上鳴り止まない音が自動再生する UI を持たない。',
 	},
 	{
 		sc: '1.4.5',
-		level: 'AA',
-		name: 'Images of Text',
 		reason: '画像の中に文字を埋め込む表現を使っていない。',
 	},
 	{
 		sc: '2.1.4',
-		level: 'A',
-		name: 'Character Key Shortcuts',
 		reason: '1 文字のショートカットキーを使う操作を用意していない。',
 	},
 	{
 		sc: '2.2.1',
-		level: 'A',
-		name: 'Timing Adjustable',
 		reason: '時間の制限のある操作を用意していない。',
 	},
 	{
 		sc: '2.2.2',
-		level: 'A',
-		name: 'Pause, Stop, Hide',
 		reason: '2 秒以上動き続ける自動更新アニメーションを使っていない。',
 	},
 	{
 		sc: '2.3.1',
-		level: 'A',
-		name: 'Three Flashes or Below Threshold',
 		reason: '1 秒間に 3 回以上点滅する表現を使っていない。',
 	},
 	{
 		sc: '2.4.4',
-		level: 'A',
-		name: 'Link Purpose (In Context)',
 		reason: 'リンクの目的を文脈ごとに検査する項目をこの表に持たない。',
 	},
 	{
 		sc: '2.4.5',
-		level: 'A',
-		name: 'Multiple Ways',
 		reason: '複数の到達経路を検査する項目をこの表に持たない。',
 	},
 	{
 		sc: '2.5.1',
-		level: 'A',
-		name: 'Pointer Gestures',
 		reason: 'パス操作（スワイプなど）を使う操作を用意していない。',
 	},
 	{
 		sc: '2.5.2',
-		level: 'A',
-		name: 'Pointer Cancellation',
 		reason: '単一のポインタ操作だけで操作できる UI に絞っている。',
 	},
 	{
 		sc: '2.5.3',
-		level: 'A',
-		name: 'Label in Name',
 		reason: 'アクセシブル名の検査は SC 4.1.2 側に集約している。',
 	},
 	{
 		sc: '2.5.4',
-		level: 'A',
-		name: 'Motion Actuation',
 		reason: '端末を振って操作する機能を持たない。',
 	},
 	{
 		sc: '2.5.7',
-		level: 'AA',
-		name: 'Dragging Movements',
 		reason: 'ドラッグで操作する UI（スライダーなど）を持たない。',
 	},
 	{
 		sc: '3.2.1',
-		level: 'A',
-		name: 'On Focus',
 		reason: 'フォーカスしただけで自動で開く UI を持たない。',
 	},
 	{
 		sc: '3.2.2',
-		level: 'A',
-		name: 'On Input',
 		reason: '入力値の変更で画面が自動で切り替わる UI を持たない。',
 	},
 	{
 		sc: '3.2.3',
-		level: 'AA',
-		name: 'Consistent Navigation',
 		reason: 'ページを越えたナビゲーションの順序を検査する項目をこの表に持たない。',
 	},
 	{
 		sc: '3.2.4',
-		level: 'AA',
-		name: 'Consistent Identification',
 		reason: '同じ機能の名称がページを越えて揃っているかを検査する項目をこの表に持たない。',
 	},
 	{
 		sc: '3.2.6',
-		level: 'A',
-		name: 'Consistent Help',
 		reason: 'ヘルプの置き方の検査項目をこの表に持たない。',
 	},
 	{
 		sc: '3.3.3',
-		level: 'AA',
-		name: 'Error Suggestion',
 		reason: 'エラーメッセージの修正提案を個別に検査する項目をこの表に持たない。',
 	},
 	{
 		sc: '3.3.4',
-		level: 'AA',
-		name: 'Error Prevention (Legal, Financial, Data)',
 		reason: '法的 / 財務 / データの送信を扱う入力が無い。',
 	},
 	{
-		sc: '3.3.6',
-		level: 'AA',
-		name: 'Error Prevention (All)',
-		reason: '入力の取り消しと確認の検査項目をこの表に持たない。',
-	},
-	{
 		sc: '3.3.8',
-		level: 'AA',
-		name: 'Accessible Authentication (Minimum)',
 		reason: '認証は管理画面の対象で、この表（公開画面と story）は扱わない。',
 	},
-];
+].map((decision) => ({
+	sc: decision.sc,
+	level: WCAG_22_A_AA_UNIVERSE[decision.sc].level,
+	name: WCAG_22_A_AA_UNIVERSE[decision.sc].name,
+	reason: decision.reason,
+}));
 
 /**
  * The documentation that mirrors {@link SCOPE_DECISIONS}.
@@ -364,6 +414,107 @@ export const SCOPE_DECISIONS = [
  * constant, so the two can never drift apart silently.
  */
 export const SCOPE_DECISION_DOC = 'docs/verification/a11y/wcag-review-matrix.md';
+
+/**
+ * Compare the criterion universe with the two lists that partition it.
+ *
+ * The table's vocabulary ({@link WCAG_22_CRITERIA}) and the scope
+ * decisions ({@link SCOPE_DECISIONS}) have to cover the official
+ * Level A/AA list ({@link WCAG_22_A_AA_UNIVERSE}) **exactly**:
+ *
+ *   - a criterion of the official list that neither list decides is
+ *     undecided — the record would silently skip it;
+ *   - a criterion in one of the two lists that is not in the official
+ *     list is a typo, a Level AAA criterion, or a criterion WCAG 2.2
+ *     removed — it must not be part of an A/AA claim;
+ *   - a criterion in both lists is decided twice.
+ *
+ * Both directions are checked: a missing criterion and an invented one
+ * are the same defect (the universe is not covered).
+ */
+export function compareCriterionUniverse() {
+	return compareCriterionSets({
+		universe: WCAG_22_A_AA_UNIVERSE,
+		table: WCAG_22_CRITERIA,
+		scope: SCOPE_DECISIONS.map((decision) => ({
+			sc: decision.sc,
+			level: decision.level,
+			name: decision.name,
+		})),
+	});
+}
+
+/**
+ * Compare three criterion lists with each other.
+ *
+ * The lists are given as data so that the comparison can be exercised
+ * with a list that has a hole in it.
+ */
+export function compareCriterionSets({ universe, table, scope }) {
+	const problems = [];
+	const tableSc = Object.keys(table);
+	const scopeSc = scope.map((decision) => decision.sc);
+	const universeSc = Object.keys(universe);
+
+	for (const sc of universeSc) {
+		if (!tableSc.includes(sc) && !scopeSc.includes(sc)) {
+			problems.push(
+				`SC ${sc} (${universe[sc].level}) is a WCAG 2.2 A/AA criterion, but neither the table's vocabulary nor the scope decisions decide it`,
+			);
+		}
+	}
+	const describe = (sc) => {
+		if (WCAG_22_OBSOLETE_CRITERIA[sc]) {
+			return `SC ${sc} is obsolete in WCAG 2.2 (${WCAG_22_OBSOLETE_CRITERIA[sc].note}), so it is not part of an A/AA claim`;
+		}
+		return `SC ${sc} is not a WCAG 2.2 Level A/AA criterion`;
+	};
+	for (const sc of tableSc) {
+		if (!universe[sc]) problems.push(describe(sc));
+	}
+	for (const sc of scopeSc) {
+		if (!universe[sc]) problems.push(describe(sc));
+	}
+	for (const sc of tableSc) {
+		if (scopeSc.includes(sc)) {
+			problems.push(`SC ${sc} is both a criterion of the table's vocabulary and a scope decision`);
+		}
+	}
+	for (const sc of tableSc) {
+		const source = universe[sc];
+		if (!source) continue;
+		if (table[sc].level !== source.level || table[sc].name !== source.name) {
+			problems.push(
+				`SC ${sc} is described as "${table[sc].name}" (${table[sc].level}), not "${source.name}" (${source.level})`,
+			);
+		}
+	}
+	for (const decision of scope) {
+		const source = universe[decision.sc];
+		if (!source) continue;
+		if (decision.level !== source.level || decision.name !== source.name) {
+			problems.push(
+				`SC ${decision.sc} is described as "${decision.name}" (${decision.level}), not "${source.name}" (${source.level})`,
+			);
+		}
+	}
+	return problems;
+}
+
+/**
+ * Audit the criterion universe.
+ *
+ * The universe is a property of the gate's own constants, not of the
+ * matrix, so it is checked once per run and reported whatever the
+ * matrix says.
+ */
+export function auditCriterionUniverse() {
+	return compareCriterionUniverse().map((message) => ({
+		rule: 'criterion-universe-mismatch',
+		file: 'scripts/check-a11y-wcag-review-matrix.mjs',
+		message,
+	}));
+}
 
 /**
  * The state vocabulary.
@@ -445,24 +596,59 @@ export const REVIEW_RECORD_STATES = {
 };
 
 /**
- * The phrases that turn a document into a conformance claim.
+ * The patterns that turn a document into a conformance claim.
  *
- * The list is a PREDICATE list, not a list of finished sentences: the
- * claim is the predicate ("AA 準拠", "AA 適合", "AA compliant"), and
- * the grammatical ending ("済み", "完了", "しています") is irrelevant.
- * A document that says "このサイトは WCAG 2.2 AA に準拠しています" makes
- * the same claim as one that says "AA 準拠完了", so both are detected.
- * The predicate is matched inside the longer form as well, so
- * "WCAG 2.2 AA 準拠" is found by the "AA 準拠" entry.
+ * A claim is a **combination**, not a fixed sentence: the level (AA),
+ * the standard (WCAG 2.2) and the assertion (conforms to / 適合する)
+ * may appear in any order and in any wording. A list of finished
+ * phrases would miss every phrasing it did not anticipate — "WCAG 2.2
+ * AA に適合しています" and "conforms to WCAG 2.2 AA" say the same thing
+ * as "AA 適合済み" — so the gate matches the combination instead.
+ *
+ * Every pattern is matched per line; the qualifier rule
+ * ({@link claimIsQualified}) decides whether a match is a claim or a
+ * mention of the claim.
  */
-export const CLAIM_PHRASES = ['AA に準拠', 'AA に適合', 'AA 準拠', 'AA 適合', 'AA compliant'];
+export const CLAIM_PATTERNS = [
+	{
+		id: 'ja-level',
+		// "AA 準拠", "AA に適合", "AA 適合済み" — the level and the
+		// assertion next to each other.
+		pattern: /AA\s*(?:に\s*)?(?:準拠|適合)(?!性|度|基準|判定|状況|範囲)/g,
+	},
+	{
+		id: 'en-level',
+		// "AA compliant", "WCAG 2.2 AA compliant".
+		pattern: /\bAA[\s-]+compliant\b/gi,
+	},
+	{
+		id: 'en-standard',
+		// "conforms to WCAG 2.2 AA", "conforms to the WCAG 2.2".
+		pattern: /\bconforms?\s+to\s+(?:the\s+)?WCAG\s*2\.\d(?:\s*AA)?/gi,
+	},
+	{
+		id: 'en-meets',
+		// "meets WCAG 2.2 AA", "satisfies the WCAG".
+		pattern: /\b(?:meets|satisfies)\s+(?:the\s+)?WCAG\b/gi,
+	},
+	{
+		id: 'en-noun',
+		// "WCAG 2.2 AA conformance" as a noun phrase.
+		pattern: /\bWCAG\s*2\.\d(?:\s*AA)?\s+conformance\b/gi,
+	},
+	{
+		id: 'ja-standard',
+		// "WCAG 2.2 AA に適合しています", "WCAG 2.2 に準拠する".
+		pattern: /WCAG\s*2\.\d[^\n]{0,16}?(?:に\s*)?(?:準拠|適合)(?!性|度|基準|判定|状況|範囲)/g,
+	},
+];
 
 /**
- * A qualifier next to the claim phrase turns the line into a mention.
+ * A qualifier next to the claim turns it into a mention.
  *
- * A qualifier that stands somewhere else in the line does NOT: "根拠が
- * ないが、このサイトは WCAG 2.2 AA 適合済みです" is a claim, and the
- * negation belongs to a different clause. The proximity rule is in
+ * A qualifier that stands somewhere else does NOT: "根拠がないが、
+ * このサイトは WCAG 2.2 AA 適合済みです" is a claim, and the negation
+ * belongs to a different clause. The proximity rule is in
  * {@link claimIsQualified}.
  */
 export const CLAIM_QUALIFIERS = [
@@ -481,6 +667,16 @@ export const CLAIM_QUALIFIERS = [
 	'避免',
 ];
 
+/**
+ * The English negation words that turn a claim into a mention.
+ *
+ * English puts the negation in front of the verb ("does **not** mean
+ * the site conforms to WCAG 2.2 AA"), so the word window in
+ * {@link QUALIFIER_LEAD_WORDS} is used instead of the Japanese
+ * character window.
+ */
+export const CLAIM_NEGATIONS = ['not', 'never', 'no', 'cannot', "n't"];
+
 /** The characters that end a sentence. */
 const SENTENCE_TERMINATORS = '。！？!?';
 
@@ -493,6 +689,21 @@ const CLAUSE_SEPARATORS = '、，,；;：:';
  * a clause separator, belongs to another clause and does not.
  */
 export const QUALIFIER_LEAD_WINDOW = 10;
+
+/**
+ * How many English words may stand between the negation and the claim
+ * for the negation to frame it.
+ */
+export const QUALIFIER_LEAD_WORDS = 6;
+
+/**
+ * The documents a conformance claim may cite.
+ *
+ * A claim is only backed when it points at the **record**: the matrix
+ * itself or its write-up. A line that names something else
+ * ("wcag-review-matrix-old.md") points at nothing that exists.
+ */
+export const MATRIX_CITATIONS = [MATRIX_PATH, 'docs/verification/a11y/wcag-review-matrix.md'];
 
 /**
  * Where a site-level conformance claim may be written.
@@ -521,6 +732,7 @@ export const RULES = [
 	'criterion-undisposed',
 	'criterion-exclusion-reason-missing',
 	'criterion-conflict',
+	'criterion-universe-mismatch',
 	'compliance-claim-unbacked',
 	'scope-decision-doc-mismatch',
 	'fixture-expectation-mismatch',
@@ -628,6 +840,18 @@ export function auditMatrix(
 	const surfaces = new Map();
 	for (const surface of Array.isArray(matrix.surfaces) ? matrix.surfaces : []) {
 		if (surface && typeof surface.id === 'string') surfaces.set(surface.id, surface);
+	}
+
+	/* --- the surfaces --------------------------------------------- */
+	// Every surface is checked BEFORE any state is looked at: a review
+	// of a surface that is gone — a deleted route, a renamed story —
+	// proves nothing, so the file and the story export have to exist
+	// whatever state the review is about.
+	for (const surface of surfaces.values()) {
+		const problem = auditSurfaceTarget(surface, { repoRoot });
+		if (problem) {
+			add('surface-missing', MATRIX_PATH, problem);
+		}
 	}
 
 	/* --- the state enumeration ------------------------------------ */
@@ -929,30 +1153,49 @@ export function auditMatrix(
 	}
 
 	/* --- the conformance claim ------------------------------------ */
-	const humanVerified = items.filter((item) => item?.review?.state === 'human-verified');
+	const humanItems = items.filter((item) => item?.review?.state !== 'auto-pass');
+	const humanVerified = humanItems.filter((item) => item?.review?.state === 'human-verified');
+	const humanFailed = humanItems.filter((item) => item?.review?.state === 'human-failed');
+	const outstanding = humanItems.filter((item) => item?.review?.state === 'not-reviewed');
 	// The repository's own documentation is always scanned. A matrix may
 	// ADD claims (the fixtures do, so the rule can be exercised without a
 	// document in the tree), but it can never switch the scan off.
 	const claims = [
 		...(claimSurfaces ?? scanClaimSurfaces({ repoRoot })),
-		...(Array.isArray(matrix.$claims) ? matrix.$claims : []),
+		...(Array.isArray(matrix.$claims)
+			? matrix.$claims.map((claim) => ({
+					...claim,
+					// The citation is recomputed: a claim may not declare
+					// that it points at the record — the line itself has to
+					// name the record, and the record has to exist.
+					citesMatrix: citesCanonicalMatrix(String(claim?.text ?? ''), { repoRoot }),
+				}))
+			: []),
 		...(Array.isArray(matrix.$documents)
 			? matrix.$documents.flatMap((document) =>
-					findClaims(document?.text ?? '', { file: document?.file ?? null }),
+					findClaims(document?.text ?? '', { file: document?.file ?? null, repoRoot }),
 				)
 			: []),
 	];
 	for (const claim of claims) {
-		const backed = humanVerified.length > 0 && claim.citesMatrix;
-		if (!backed) {
+		// A site-level Level AA claim needs EVERY manual item of the
+		// matrix to be verified: one verified item while the rest is
+		// outstanding or failed proves nothing about the site. The claim
+		// also has to cite the record itself.
+		const missing = [];
+		if (humanVerified.length === 0) missing.push('no human verification exists');
+		if (outstanding.length > 0) {
+			missing.push(`${outstanding.length} manual item(s) are still outstanding`);
+		}
+		if (humanFailed.length > 0) {
+			missing.push(`${humanFailed.length} manual item(s) failed the review`);
+		}
+		if (!claim.citesMatrix) missing.push('the claim does not point at the review matrix');
+		if (missing.length > 0) {
 			add(
 				'compliance-claim-unbacked',
 				claim.file,
-				`${claim.phrase} is claimed on line ${claim.line}, but ${
-					humanVerified.length > 0
-						? 'the line does not point at the review matrix'
-						: 'no human verification exists — an automatic pass is not a human verification'
-				}`,
+				`${claim.phrase} is claimed on line ${claim.line}, but ${missing.join('; ')}`,
 			);
 		}
 	}
@@ -966,9 +1209,35 @@ export function auditMatrix(
 		coveredCriteria: [...coveredCriteria.entries()].map(([sc, ids]) => ({ sc, items: ids })),
 		claims,
 		humanVerified: humanVerified.length,
-		outstanding: items.filter((item) => item?.review?.state === 'not-reviewed').length,
+		outstanding: outstanding.length,
 		machineChecked: items.filter((item) => item?.review?.state === 'auto-pass').length,
 	};
+}
+
+/**
+ * Audit the target of one surface.
+ *
+ * A surface points at a file (a route, a story) and — for a story — at
+ * the export that renders it. Both have to exist: a review of a
+ * surface that is gone proves nothing, and the state markers of a
+ * deleted surface cannot be found either.
+ */
+export function auditSurfaceTarget(surface, { repoRoot = REPO_ROOT } = {}) {
+	const path = filledString(surface?.path);
+	if (!path) {
+		return `the surface "${surface?.id ?? '(no id)'}" does not name a file to review`;
+	}
+	const absolute = resolve(repoRoot, path);
+	if (!existsSync(absolute)) {
+		return `the surface "${surface.id}" points at ${path}, which does not exist`;
+	}
+	const exported = filledString(surface?.export);
+	if (!exported) return null;
+	const source = readFileSync(absolute, 'utf8');
+	if (!new RegExp(`export\\s+const\\s+${exported}\\b`).test(source)) {
+		return `the surface "${surface.id}" no longer exports "${exported}", so the surface it reviews is gone`;
+	}
+	return null;
 }
 
 /**
@@ -1055,32 +1324,87 @@ function walkMarkdown(directory, repoRoot) {
 /**
  * Find the conformance claims in the documentation.
  *
- * A claim is a phrase from {@link CLAIM_PHRASES} that no qualifier
- * frames. A phrase a qualifier stands next to is a mention of the
- * phrase, not a claim — that is what lets this repository document
- * the phrase list without tripping over it.
+ * A claim is a match of one of the {@link CLAIM_PATTERNS} that no
+ * qualifier frames. A match a qualifier stands next to is a mention of
+ * the claim, not a claim — that is what lets this repository document
+ * the patterns without tripping over them.
+ *
+ * The context of a match is its **paragraph**, not its line: an
+ * English sentence wraps across lines, so the negation of "It does
+ * not mean the site conforms to WCAG 2.2 AA" stands on the line above
+ * the claim.
  */
-export function findClaims(text, { file = null } = {}) {
+export function findClaims(text, { file = null, repoRoot = REPO_ROOT } = {}) {
 	const claims = [];
 	const lines = String(text).split('\n');
-	lines.forEach((line, index) => {
-		for (const phrase of CLAIM_PHRASES) {
-			let at = line.indexOf(phrase);
-			while (at !== -1) {
-				if (!claimIsQualified(line, at, phrase)) {
+	for (const [from, to] of paragraphRanges(lines)) {
+		const paragraph = lines.slice(from, to).join('\n');
+		let offset = 0;
+		for (let index = from; index < to; index += 1) {
+			const line = lines[index];
+			for (const match of findClaimMatches(line)) {
+				const at = offset + match.at;
+				if (!claimIsQualified(paragraph, at, match.phrase)) {
 					claims.push({
 						file,
 						line: index + 1,
-						phrase,
+						phrase: match.phrase,
 						text: line.trim(),
-						citesMatrix: line.includes('wcag-review-matrix'),
+						citesMatrix: citesCanonicalMatrix(paragraph, { repoRoot }),
 					});
 				}
-				at = line.indexOf(phrase, at + phrase.length);
 			}
+			offset += line.length + 1;
 		}
-	});
+	}
 	return claims;
+}
+
+/**
+ * Every claim pattern match in one line.
+ *
+ * A match that is contained in a longer match of the same line is
+ * dropped: "WCAG 2.2 AA に適合" is one claim, not two.
+ */
+export function findClaimMatches(line) {
+	const matches = [];
+	for (const { id, pattern } of CLAIM_PATTERNS) {
+		const scanner = new RegExp(pattern.source, pattern.flags);
+		let match = scanner.exec(line);
+		while (match !== null) {
+			matches.push({ id, at: match.index, phrase: match[0] });
+			match = scanner.exec(line);
+		}
+	}
+	matches.sort((left, right) => left.at - right.at || right.phrase.length - left.phrase.length);
+	const kept = [];
+	for (const match of matches) {
+		const covered = kept.some(
+			(other) =>
+				match.at >= other.at && match.at + match.phrase.length <= other.at + other.phrase.length,
+		);
+		if (!covered) kept.push(match);
+	}
+	return kept;
+}
+
+/**
+ * Does the claim cite the record it claims to be based on?
+ *
+ * The citation has to name the matrix itself
+ * ({@link MATRIX_CITATIONS}) and that file has to exist: a line that
+ * points at "wcag-review-matrix-old.md" points at nothing, so it is
+ * not a citation.
+ */
+export function citesCanonicalMatrix(text, { repoRoot = REPO_ROOT } = {}) {
+	for (const target of MATRIX_CITATIONS) {
+		const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(`${escaped}(?![\\w.-])`);
+		if (!pattern.test(text)) continue;
+		if (!existsSync(resolve(repoRoot, target))) continue;
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -1090,19 +1414,21 @@ export function findClaims(text, { file = null } = {}) {
  *
  *   - behind it, inside the same sentence — "AA 適合済みの記録がある"
  *     is a mention of the phrase, "AA 適合を主張しない" mentions it too;
- *   - or in front of it, close enough ({@link QUALIFIER_LEAD_WINDOW})
- *     and without a clause separator in between — "禁止: AA 適合"
- *     mentions it.
+ *   - or in front of it, close enough ({@link QUALIFIER_LEAD_WINDOW}
+ *     characters for Japanese, {@link QUALIFIER_LEAD_WORDS} words for
+ *     English) and without a clause separator in between — "禁止: AA
+ *     適合" mentions it.
  *
- * A qualifier somewhere else in the line does not frame the phrase:
- * "根拠がないが、このサイトは WCAG 2.2 AA 適合済みです" is a claim,
- * because the negation belongs to another clause.
+ * A qualifier somewhere else does not frame the phrase: "根拠がない
+ * が、このサイトは WCAG 2.2 AA 適合済みです" is a claim, because the
+ * negation belongs to a different clause.
  */
-export function claimIsQualified(line, at, phrase) {
+export function claimIsQualified(context, at, phrase) {
 	const end = at + phrase.length;
-	const behind = line.slice(end, sentenceEndOf(line, end));
+	const behind = context.slice(end, sentenceEndOf(context, end));
 	if (CLAIM_QUALIFIERS.some((qualifier) => behind.includes(qualifier))) return true;
-	const ahead = line.slice(sentenceStartOf(line, at), at);
+	if (CLAIM_NEGATIONS.some((negation) => hasWordBehind(behind, negation))) return true;
+	const ahead = context.slice(sentenceStartOf(context, at), at);
 	for (const qualifier of CLAIM_QUALIFIERS) {
 		let index = ahead.lastIndexOf(qualifier);
 		while (index !== -1) {
@@ -1113,23 +1439,77 @@ export function claimIsQualified(line, at, phrase) {
 			index = index === 0 ? -1 : ahead.lastIndexOf(qualifier, index - 1);
 		}
 	}
+	return hasNegationInFront(ahead);
+}
+
+/**
+ * Is an English negation word in front of the claim, close enough and
+ * in the same clause?
+ */
+function hasNegationInFront(ahead) {
+	const words = ahead.split(/\s+/).filter((word) => word.length > 0);
+	for (let index = words.length - 1; index >= 0; index -= 1) {
+		const word = words[index].toLowerCase().replace(/[^a-z']/g, '');
+		if (!CLAIM_NEGATIONS.includes(word)) continue;
+		const gap = words.slice(index + 1).join(' ');
+		const between = gap.split(/\s+/).filter((entry) => entry.length > 0).length;
+		if (between > QUALIFIER_LEAD_WORDS) return false;
+		return !hasClauseSeparator(gap);
+	}
 	return false;
 }
 
+/** Is an English negation word anywhere in the text behind the claim? */
+function hasWordBehind(text, word) {
+	const pattern = new RegExp(`(^|[^A-Za-z'])${word}([^A-Za-z']|$)`, 'i');
+	return pattern.test(text);
+}
+
+/**
+ * The line ranges of the paragraphs of a text.
+ *
+ * A paragraph is a run of non-empty lines; a blank line ends it.
+ */
+function paragraphRanges(lines) {
+	const ranges = [];
+	let start = 0;
+	for (let index = 0; index <= lines.length; index += 1) {
+		const atEnd = index === lines.length;
+		if (!atEnd && lines[index].trim() !== '') continue;
+		if (index > start) ranges.push([start, index]);
+		start = index + 1;
+	}
+	return ranges;
+}
+
 /** The index just after the last sentence terminator before `index`. */
-function sentenceStartOf(line, index) {
+function sentenceStartOf(text, index) {
 	for (let at = index - 1; at >= 0; at -= 1) {
-		if (SENTENCE_TERMINATORS.includes(line[at])) return at + 1;
+		if (isSentenceEnd(text, at)) return at + 1;
 	}
 	return 0;
 }
 
-/** The index of the next sentence terminator after `index`, or the line length. */
-function sentenceEndOf(line, index) {
-	for (let at = index; at < line.length; at += 1) {
-		if (SENTENCE_TERMINATORS.includes(line[at])) return at;
+/** The index of the next sentence terminator after `index`, or the text length. */
+function sentenceEndOf(text, index) {
+	for (let at = index; at < text.length; at += 1) {
+		if (isSentenceEnd(text, at)) return at;
 	}
-	return line.length;
+	return text.length;
+}
+
+/**
+ * Does the character at `index` end a sentence?
+ *
+ * An ASCII period ends a sentence when a space follows it; the period
+ * inside a version number ("WCAG 2.2") does not.
+ */
+function isSentenceEnd(text, index) {
+	const character = text[index];
+	if (SENTENCE_TERMINATORS.includes(character)) return true;
+	if (character !== '.') return false;
+	const next = text[index + 1];
+	return next === undefined || /\s/.test(next);
 }
 
 /** Does the text carry a character that separates one clause from the next? */
@@ -1204,6 +1584,17 @@ export function compareFixtureExpectations(expectation, expects, produced) {
 }
 
 /**
+ * The date a fixture is judged on.
+ *
+ * A fixture has to give the same verdict today and in a year, so the
+ * freshness of its evidence is measured against a FIXED date instead
+ * of the day the gate happens to run. The run date decides whether
+ * the repository's own matrix is fresh — it must not decide whether a
+ * fixture still passes.
+ */
+export const FIXTURE_REFERENCE_DATE = '2026-10-23';
+
+/**
  * Audit every fixture of the repository.
  *
  * A `pass` fixture must produce no violation at all; a `fail` fixture
@@ -1215,13 +1606,11 @@ export function compareFixtureExpectations(expectation, expects, produced) {
  *
  * A fixture is judged **on its own**: the repository's documentation is
  * not scanned while a fixture is audited, so the fixture's verdict can
- * never depend on what the documentation happens to say that day.
+ * never depend on what the documentation happens to say that day. Its
+ * evidence is judged against {@link FIXTURE_REFERENCE_DATE}, so the
+ * verdict does not depend on the day either.
  */
-export function auditFixtures({
-	repoRoot = REPO_ROOT,
-	today = '2026-10-23',
-	packageScripts = null,
-} = {}) {
+export function auditFixtures({ repoRoot = REPO_ROOT, packageScripts = null } = {}) {
 	const violations = [];
 	const files = [];
 	const scripts = packageScripts ?? readPackageScripts(repoRoot);
@@ -1283,7 +1672,7 @@ export function auditFixtures({
 				continue;
 			}
 			const audited = auditMatrix(fixture, {
-				today,
+				today: FIXTURE_REFERENCE_DATE,
 				repoRoot,
 				packageScripts: scripts,
 				// A fixture is judged on its own: the repository's
@@ -1530,8 +1919,9 @@ export function collectEvidence({
 	}
 	const packageScripts = readPackageScripts(repoRoot);
 	const audited = auditMatrix(matrix, { today, repoRoot, packageScripts });
-	const fixtures = auditFixtures({ repoRoot, today, packageScripts });
+	const fixtures = auditFixtures({ repoRoot, packageScripts });
 	const scopeDecisions = auditScopeDecisions({ repoRoot });
+	const universe = auditCriterionUniverse();
 	return {
 		matrix,
 		matrixPath,
@@ -1550,7 +1940,7 @@ export function collectEvidence({
 		machineChecked: audited.machineChecked,
 		scopeDecisions: SCOPE_DECISIONS,
 		fixtures: fixtures.files,
-		violations: [...audited.violations, ...fixtures.violations, ...scopeDecisions],
+		violations: [...audited.violations, ...fixtures.violations, ...scopeDecisions, ...universe],
 	};
 }
 

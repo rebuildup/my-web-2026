@@ -52,6 +52,16 @@ export const rawTokens = {
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
 			500: { value: '#64748b' },
+			// 600 (Issue #399) — the step the muted text needed in the
+			// light appearance. `neutral.500` measured 4.34:1 on
+			// `neutral.100` and 4.46:1 on `brand.50`, both under the
+			// 4.5:1 SC 1.4.3 minimum, and no lighter or darker step of
+			// this ramp could fix it: `neutral.900` is the body colour
+			// and everything above 500 is lighter. 600 keeps the same
+			// slate hue and the same saturation ladder — only the
+			// lightness moves — so the "quiet secondary text"
+			// character survives the repair.
+			600: { value: '#475569' },
 			900: { value: '#0f172a' },
 		},
 		// Near-neutral dark ladder (Issue #290 rework, Linear-referenced).

@@ -1,19 +1,9 @@
 {
 	"$comment": "Known axe-core violations on the audited public routes (Issue #393). One record per route and rule. A violation that is NOT listed here fails the release candidate; a record that no longer matches an observed violation fails too, so the ledger cannot be emptied to turn the gate green. See docs/verification/a11y/axe-route-report.md.",
-	"version": 1,
+	"version": 2,
 	"recordedAt": "2026-10-23",
 	"axeCoreVersion": "4.14.0",
 	"records": [
-		{
-			"route": "/",
-			"ruleId": "color-contrast",
-			"nodes": [
-				".md\\:ps_0.pos_relative.ps_0:nth-child(3) > .jc_space-between.gap_4 > .bg_bg\\.subtle.h_6.px_3",
-				".md\\:ps_0.pos_relative.ps_0:nth-child(4) > .jc_space-between.gap_4 > .bg_bg\\.subtle.h_6.px_3"
-			],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
-			"recordedAt": "2026-10-23"
-		},
 		{
 			"route": "/",
 			"ruleId": "definition-list",
@@ -30,39 +20,9 @@
 		},
 		{
 			"route": "/about",
-			"ruleId": "color-contrast",
-			"nodes": [".bg_bg\\.subtle"],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/about",
 			"ruleId": "list",
 			"nodes": [".md\\:gap_6"],
 			"reason": "Pre-existing: the desktop navigation puts `<a>` elements directly inside `<ul>` instead of `<li>` items (WCAG 2.2 SC 1.3.1). The navigation markup belongs to the `editorial` obligation; recorded here instead of being ignored.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/keyboard",
-			"ruleId": "color-contrast",
-			"nodes": [
-				".h_6.bg_bg\\.subtle.bdr_full:nth-child(1)",
-				".flex-wrap_wrap.gap_2 > .h_6.bg_bg\\.subtle.bdr_full:nth-child(2)",
-				".h_6.bg_bg\\.subtle.bdr_full:nth-child(3)",
-				".p_5.gap_3.bg-c_bg\\.surface:nth-child(1) > .fs_lg.ff_heading.fw_700 > .h_6.bg_bg\\.subtle.bdr_full",
-				".p_5.gap_3.bg-c_bg\\.surface:nth-child(2) > .fs_lg.ff_heading.fw_700 > .h_6.bg_bg\\.subtle.bdr_full",
-				"#«id»-platform-macos > .ff_mono.m_0.c_text\\.muted",
-				"section[aria-labelledby=\"«id»-hidutil\"] > .max-w_1024px.lg\\:px_8.mx_auto > .mbs_6.gap_5 > .ov-x_auto.ovs-bx_contain.min-w_0 > table > thead > tr > th:nth-child(1)",
-				"section[aria-labelledby=\"«id»-hidutil\"] > .max-w_1024px.lg\\:px_8.mx_auto > .mbs_6.gap_5 > .ov-x_auto.ovs-bx_contain.min-w_0 > table > thead > tr > th:nth-child(2)",
-				"section[aria-labelledby=\"«id»-hidutil\"] > .max-w_1024px.lg\\:px_8.mx_auto > .mbs_6.gap_5 > .ov-x_auto.ovs-bx_contain.min-w_0 > table > thead > tr > th:nth-child(3)",
-				"section[aria-labelledby=\"«id»-hidutil\"] > .max-w_1024px.lg\\:px_8.mx_auto > .mbs_6.gap_5 > .ov-x_auto.ovs-bx_contain.min-w_0 > table > thead > tr > th:nth-child(4)",
-				"section[aria-label=\"出典と最終同期の一覧。横にスクロールできます。\"] > table > thead > tr > th:nth-child(1)",
-				"section[aria-label=\"出典と最終同期の一覧。横にスクロールできます。\"] > table > thead > tr > th:nth-child(2)",
-				"section[aria-label=\"出典と最終同期の一覧。横にスクロールできます。\"] > table > thead > tr > th:nth-child(3)",
-				"section[aria-label=\"出典と最終同期の一覧。横にスクロールできます。\"] > table > thead > tr > th:nth-child(4)",
-				"th:nth-child(5)"
-			],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
 			"recordedAt": "2026-10-23"
 		},
 		{
@@ -77,21 +37,6 @@
 			"ruleId": "list",
 			"nodes": [".md\\:gap_6"],
 			"reason": "Pre-existing: the desktop navigation puts `<a>` elements directly inside `<ul>` instead of `<li>` items (WCAG 2.2 SC 1.3.1). The navigation markup belongs to the `editorial` obligation; recorded here instead of being ignored.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/portfolio",
-			"ruleId": "color-contrast",
-			"nodes": [
-				"li:nth-child(1) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3:nth-child(1)",
-				".h_6.bg_bg\\.subtle.px_3:nth-child(2)",
-				"li:nth-child(2) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3",
-				"li:nth-child(3) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3",
-				"li:nth-child(4) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3",
-				"li:nth-child(5) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3",
-				"li:nth-child(6) > article > .min-w_0.gap_3.flex-d_column > .flex-wrap_wrap[role=\"group\"][aria-label=\"facets\"] > .h_6.bg_bg\\.subtle.px_3"
-			],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
 			"recordedAt": "2026-10-23"
 		},
 		{
@@ -115,13 +60,6 @@
 		},
 		{
 			"route": "/portfolio/my-web-2026",
-			"ruleId": "color-contrast",
-			"nodes": [".h_6"],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/portfolio/my-web-2026",
 			"ruleId": "list",
 			"nodes": [".md\\:gap_6"],
 			"reason": "Pre-existing: the desktop navigation puts `<a>` elements directly inside `<ul>` instead of `<li>` items (WCAG 2.2 SC 1.3.1). The navigation markup belongs to the `editorial` obligation; recorded here instead of being ignored.",
@@ -129,38 +67,9 @@
 		},
 		{
 			"route": "/projects/dotfiles",
-			"ruleId": "color-contrast",
-			"nodes": [
-				".flex-wrap_wrap.gap_2.d_flex > .bg_bg\\.subtle.h_6.px_3:nth-child(1)",
-				".bg_bg\\.subtle.h_6.px_3:nth-child(2)",
-				".bg_bg\\.subtle.h_6.px_3:nth-child(3)",
-				"article:nth-child(2) > .bg_bg\\.subtle.h_6.px_3"
-			],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/projects/dotfiles",
 			"ruleId": "list",
 			"nodes": [".md\\:gap_6"],
 			"reason": "Pre-existing: the desktop navigation puts `<a>` elements directly inside `<ul>` instead of `<li>` items (WCAG 2.2 SC 1.3.1). The navigation markup belongs to the `editorial` obligation; recorded here instead of being ignored.",
-			"recordedAt": "2026-10-23"
-		},
-		{
-			"route": "/design-system",
-			"ruleId": "color-contrast",
-			"nodes": [
-				".bd-c_border\\.subtle.bg-c_bg\\.canvas > .py_4.jc_space-between.gap_3 > .bg_bg\\.subtle.h_6.bdr_full",
-				".bg-c_bg\\.surface.bd-c_border\\.subtle > .py_4.jc_space-between.gap_3 > .bg_bg\\.subtle.h_6.bdr_full",
-				".bg-c_accent\\.surface.bd-c_border\\.subtle > .py_4.jc_space-between.gap_3 > .ls_0\\.06em.tt_uppercase",
-				".bg-c_accent\\.surface.bd-c_border\\.subtle > footer > code",
-				"article[data-status-token=\"accent.positive\"] > header > .bg_bg\\.subtle.h_6.bdr_full",
-				"article[data-status-token=\"accent.negative\"] > header > .bg_bg\\.subtle.h_6.bdr_full",
-				"article[data-status-token=\"accent.warning\"] > header > .bg_bg\\.subtle.h_6.bdr_full",
-				".place-items_center > .ls_0\\.06em.tt_uppercase",
-				"p[data-cls-sentinel=\"below-lazy-cover\"]"
-			],
-			"reason": "Pre-existing: the `muted` text token on the `subtle` surface measures 4.34:1 (below the 4.5:1 AA threshold of WCAG 2.2 SC 1.4.3). The token belongs to the `editorial` obligation, so changing it is a design decision and not an audit decision; recorded here until that decision is taken.",
 			"recordedAt": "2026-10-23"
 		},
 		{

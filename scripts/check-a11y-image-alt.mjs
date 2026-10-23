@@ -39,6 +39,21 @@
  * The fixture, the gate and the verification document all read it; there is
  * no second list to drift.
  *
+ * Two holes this gate refuses to leave open (cold review, Issue #397)
+ * ----------------------------------------------------------------------
+ *   1. A VALUE-FREE decorative mark is not enough. `data-decorative` only
+ *      counts as a mark when its value is `true` (or it carries no value
+ *      at all). `data-decorative={false}` says "NOT decorative", so it must
+ *      not be able to turn an empty alt into a pass.
+ *   2. An alt that is statically ABSENT is not a dynamic alt. React renders
+ *      `alt={undefined}`, `alt={null}` and `alt={false}` as no `alt`
+ *      attribute at all, so those three expressions are decided here: they
+ *      are `img-missing-alt`, exactly like an image with no `alt`.
+ *      Everything else that is an expression (`alt={media.alt}`,
+ *      `alt={cond ? 'a' : 'b'}`) is decided at runtime and stays
+ *      `dynamic-alt` — a pass this gate reports as "not decidable here",
+ *      never as "checked".
+ *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
  * This gate decides ATTRIBUTES: whether an `alt` exists, whether it is
@@ -75,8 +90,11 @@ export const RULES = [
  * own. `aria-hidden="true"` removes it from the accessibility tree,
  * `role="presentation"` removes its semantics, and `data-decorative` is the
  * repository's own hook for a surface that wants the fact in the markup.
- * The value of `data-decorative` is irrelevant — its PRESENCE is the
- * declaration.
+ *
+ * A mark that carries a value counts ONLY when that value is `true`:
+ * `data-decorative={false}` is the author saying "this image is NOT
+ * decorative", and it must not be able to turn an empty alt into a pass. A
+ * value-free `data-decorative` is the `true` shorthand and counts.
  */
 export const DECORATIVE_MARKS = [
 	{
@@ -99,10 +117,22 @@ export const DECORATIVE_MARKS = [
 	},
 	{
 		id: 'data-decorative',
-		describe: 'data-decorative',
-		matches: (attributes) => attributes.some((attribute) => attribute.name === 'data-decorative'),
+		describe: 'data-decorative (value true)',
+		matches: (attributes) =>
+			attributes.some(
+				(attribute) => attribute.name === 'data-decorative' && attributeValueIs(attribute, 'true'),
+			),
 	},
 ];
+
+/**
+ * Expressions that are statically "no alt at all".
+ *
+ * React drops the attribute for these three values, so the rendered
+ * document has no `alt` — the same fact as an image that never declared
+ * one. They are decided here rather than waved through as dynamic.
+ */
+export const STATIC_ABSENT_ALT_VALUES = ['undefined', 'null', 'false'];
 
 /**
  * The scan target: the shipped JSX surface.
@@ -167,11 +197,17 @@ export const FIXTURE_EXPECTATIONS = {
 		'meaningful-alt.tsx': [],
 		'decorative-aria-hidden.tsx': [],
 		'decorative-role-presentation.tsx': [],
+		'decorative-data-decorative.tsx': [],
+		'decorative-data-decorative-true.tsx': [],
 	},
 	fail: {
 		'missing-alt.tsx': ['img-missing-alt'],
 		'empty-alt-without-mark.tsx': ['img-empty-alt-not-decorative'],
 		'blank-alt.tsx': ['img-alt-blank'],
+		'alt-undefined.tsx': ['img-missing-alt'],
+		'alt-null.tsx': ['img-missing-alt'],
+		'alt-false.tsx': ['img-missing-alt'],
+		'data-decorative-false.tsx': ['img-empty-alt-not-decorative'],
 	},
 };
 
@@ -213,7 +249,9 @@ export function attributeValueIs(attribute, expected) {
  *
  * `null` means "this gate cannot decide": the alt is an expression, so
  * whether it is empty depends on data the source does not contain. The
- * report says so instead of pretending the image was checked.
+ * report says so instead of pretending the image was checked. The three
+ * statically absent values are NOT in this case — they are decided before
+ * this function is reached (see {@link evaluateImage}).
  */
 export function literalAltValue(attribute) {
 	if (attribute.kind === 'string') return attribute.value;
@@ -222,6 +260,16 @@ export function literalAltValue(attribute) {
 		if (literal) return literal[2];
 	}
 	return null;
+}
+
+/**
+ * The expression text of an alt attribute, when it is one (pure).
+ *
+ * `null` when the attribute is a literal or a value-free shorthand.
+ */
+export function altExpressionText(attribute) {
+	if (attribute.kind !== 'expression') return null;
+	return attribute.value.trim();
 }
 
 /**
@@ -241,11 +289,18 @@ export function evaluateImage(attributes) {
 		(mark) => mark.id,
 	);
 	if (!altAttribute) {
-		return { verdict: 'missing-alt', alt: null, decorativeMarks };
+		return { verdict: 'missing-alt', alt: null, decorativeMarks, absentValue: null };
+	}
+	// React renders `alt={undefined}` / `alt={null}` / `alt={false}` as no
+	// `alt` attribute at all, so these three are statically "the alt is
+	// missing" — not a runtime value this gate has to wait for.
+	const expression = altExpressionText(altAttribute);
+	if (expression !== null && STATIC_ABSENT_ALT_VALUES.includes(expression)) {
+		return { verdict: 'missing-alt', alt: null, decorativeMarks, absentValue: expression };
 	}
 	const literal = literalAltValue(altAttribute);
 	if (literal === null) {
-		return { verdict: 'dynamic-alt', alt: null, decorativeMarks };
+		return { verdict: 'dynamic-alt', alt: null, decorativeMarks, absentValue: null };
 	}
 	if (literal.trim() === '') {
 		if (literal === '') {
@@ -253,11 +308,12 @@ export function evaluateImage(attributes) {
 				verdict: decorativeMarks.length > 0 ? 'decorative' : 'unmarked-empty',
 				alt: literal,
 				decorativeMarks,
+				absentValue: null,
 			};
 		}
-		return { verdict: 'blank-alt', alt: literal, decorativeMarks };
+		return { verdict: 'blank-alt', alt: literal, decorativeMarks, absentValue: null };
 	}
-	return { verdict: 'described', alt: literal, decorativeMarks };
+	return { verdict: 'described', alt: literal, decorativeMarks, absentValue: null };
 }
 
 /** The rule a verdict is reported under, or `null` for a pass. */
@@ -453,11 +509,13 @@ export function scanViolationsInFile({ relativePath, source }) {
 export function messageFor(evaluation) {
 	switch (evaluation.verdict) {
 		case 'missing-alt':
-			return 'no alt attribute: a reader who cannot see the image gets nothing at all — give it the alt the image carries, or declare it decorative';
+			return evaluation.absentValue
+				? `alt={${evaluation.absentValue}} renders no alt attribute at all: a reader who cannot see the image gets nothing — give it the alt the image carries, or declare it decorative`
+				: 'no alt attribute: a reader who cannot see the image gets nothing at all — give it the alt the image carries, or declare it decorative';
 		case 'blank-alt':
 			return 'alt is blank: it is neither a description nor a decorative declaration — use alt="" with a decorative mark, or describe the image';
 		case 'unmarked-empty':
-			return 'alt="" declares the image decorative but nothing says so — add aria-hidden="true", role="presentation" or data-decorative';
+			return 'alt="" declares the image decorative but nothing says so — add aria-hidden="true", role="presentation" or data-decorative (with a true value)';
 		default:
 			return 'unreachable';
 	}
@@ -479,6 +537,78 @@ function collectTsxFiles(directory) {
 }
 
 /**
+ * Audit the fixture FILES against the roster (pure).
+ *
+ * `entries` is one record per fixture file:
+ *   { directory: 'pass' | 'fail', name, relativePath, expectedRules,
+ *     foundRules, imageCount }
+ *
+ * Kept pure and separate from the filesystem walk so the rules are
+ * testable without a checkout — in particular the rule that a PASS fixture
+ * must actually EXERCISE a rule: a pass fixture that was emptied proves
+ * nothing, and a gate that still reports it as a pass is green for the
+ * wrong reason.
+ */
+export function auditFixtureFiles(entries) {
+	const violations = [];
+	const rows = [];
+	for (const entry of entries) {
+		const { directory, relativePath, expectedRules, foundRules, imageCount } = entry;
+		if (directory === 'pass') {
+			if (imageCount === 0) {
+				violations.push({
+					rule: 'fixture-pass-no-image',
+					file: relativePath,
+					line: null,
+					wcag: WCAG.sc,
+					message:
+						'the pass fixture holds no <img> at all, so it exercises no rule; an empty pass fixture proves nothing and must not keep the gate green',
+				});
+			}
+			if (foundRules.length > 0) {
+				violations.push({
+					rule: 'fixture-pass-violation',
+					file: relativePath,
+					line: foundRules[0].line ?? null,
+					wcag: WCAG.sc,
+					message: `a pass fixture reports ${foundRules.map((rule) => rule.rule).join(', ')}; the pass state is no longer reproduced`,
+				});
+			}
+			rows.push({
+				file: relativePath,
+				expected: [],
+				found: foundRules.map((rule) => rule.rule),
+				images: imageCount,
+			});
+			continue;
+		}
+		const found = foundRules.map((rule) => rule.rule);
+		const missing = expectedRules.filter((rule) => !found.includes(rule));
+		const unexpected = found.filter((rule) => !expectedRules.includes(rule));
+		if (missing.length > 0) {
+			violations.push({
+				rule: 'fixture-fail-not-detected',
+				file: relativePath,
+				line: null,
+				wcag: WCAG.sc,
+				message: `the fail fixture no longer reports ${missing.join(', ')}; the defect it reproduces is not detected any more`,
+			});
+		}
+		if (unexpected.length > 0) {
+			violations.push({
+				rule: 'fixture-fail-unexpected',
+				file: relativePath,
+				line: null,
+				wcag: WCAG.sc,
+				message: `the fail fixture reports ${unexpected.join(', ')}, which it does not stand for`,
+			});
+		}
+		rows.push({ file: relativePath, expected: [...expectedRules], found, images: imageCount });
+	}
+	return { violations, rows };
+}
+
+/**
  * Audit the fixture (pure over the filesystem).
  *
  * The fixture is read by the gate, not only by its test: a fixture that
@@ -487,17 +617,18 @@ function collectTsxFiles(directory) {
  */
 export function auditFixture(repoRoot = REPO_ROOT) {
 	const violations = [];
-	const rows = [];
+	const entries = [];
 	for (const [directory, expectations] of Object.entries(FIXTURE_EXPECTATIONS)) {
 		const absolute = join(repoRoot, FIXTURE_ROOT, directory);
 		const present = existsSync(absolute)
 			? readdirSync(absolute).filter((name) => name.endsWith('.tsx'))
 			: [];
 		for (const [name, expectedRules] of Object.entries(expectations)) {
+			const relativePath = `${FIXTURE_ROOT}/${directory}/${name}`;
 			if (!present.includes(name)) {
 				violations.push({
 					rule: 'fixture-file-missing',
-					file: `${FIXTURE_ROOT}/${directory}/${name}`,
+					file: relativePath,
 					line: null,
 					wcag: null,
 					message:
@@ -505,46 +636,18 @@ export function auditFixture(repoRoot = REPO_ROOT) {
 				});
 				continue;
 			}
-			const relativePath = `${FIXTURE_ROOT}/${directory}/${name}`;
-			const { violations: found } = scanViolationsInFile({
+			const { violations: found, images } = scanViolationsInFile({
 				relativePath,
 				source: readFileSync(join(absolute, name), 'utf8'),
 			});
-			const foundRules = found.map((entry) => entry.rule);
-			if (directory === 'pass') {
-				if (found.length > 0) {
-					violations.push({
-						rule: 'fixture-pass-violation',
-						file: relativePath,
-						line: found[0].line,
-						wcag: WCAG.sc,
-						message: `a pass fixture reports ${foundRules.join(', ')}; the pass state is no longer reproduced`,
-					});
-				}
-				rows.push({ file: relativePath, expected: [], found: foundRules });
-				continue;
-			}
-			const missing = expectedRules.filter((rule) => !foundRules.includes(rule));
-			const unexpected = foundRules.filter((rule) => !expectedRules.includes(rule));
-			if (missing.length > 0) {
-				violations.push({
-					rule: 'fixture-fail-not-detected',
-					file: relativePath,
-					line: null,
-					wcag: WCAG.sc,
-					message: `the fail fixture no longer reports ${missing.join(', ')}; the defect it reproduces is not detected any more`,
-				});
-			}
-			if (unexpected.length > 0) {
-				violations.push({
-					rule: 'fixture-fail-unexpected',
-					file: relativePath,
-					line: null,
-					wcag: WCAG.sc,
-					message: `the fail fixture reports ${unexpected.join(', ')}, which it does not stand for`,
-				});
-			}
-			rows.push({ file: relativePath, expected: [...expectedRules], found: foundRules });
+			entries.push({
+				directory,
+				name,
+				relativePath,
+				expectedRules,
+				foundRules: found,
+				imageCount: images.length,
+			});
 		}
 		const extra = present.filter((name) => !(name in expectations));
 		for (const name of extra) {
@@ -558,7 +661,8 @@ export function auditFixture(repoRoot = REPO_ROOT) {
 			});
 		}
 	}
-	return { violations, rows };
+	const audited = auditFixtureFiles(entries);
+	return { violations: [...violations, ...audited.violations], rows: audited.rows };
 }
 
 /**

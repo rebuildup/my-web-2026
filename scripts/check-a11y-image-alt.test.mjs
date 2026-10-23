@@ -23,6 +23,7 @@ import {
 	FIXTURE_ROOT,
 	HUMAN_EVALUATION,
 	RULES,
+	auditFixtureFiles,
 	collectEvidence,
 	evaluateImage,
 	findImageTags,
@@ -92,6 +93,35 @@ test('an alt that is a runtime expression is reported as not statically decidabl
 
 	assert.deepEqual(violations, []);
 	assert.equal(images[0].verdict, 'dynamic-alt');
+});
+
+test('an alt that is statically absent is a missing alt, not a dynamic one', () => {
+	// React renders these three as NO alt attribute, so the alt is
+	// statically absent — the gate must not let them through.
+	for (const expression of ['undefined', 'null', 'false']) {
+		const { violations, images } = scan(
+			`export const A = () => <img src="/a.png" alt={${expression}} />;\n`,
+		);
+
+		assert.equal(violations.length, 1, `alt={${expression}} must be reported`);
+		assert.equal(violations[0].rule, 'img-missing-alt');
+		assert.equal(images[0].verdict, 'missing-alt');
+		assert.match(violations[0].message, new RegExp(expression));
+	}
+});
+
+test('a decorative mark with a value counts only when the value is true', () => {
+	const fail = scan(
+		'export const A = () => <img src="/a.png" alt="" data-decorative={false} />;\n',
+	);
+	assert.equal(fail.violations.length, 1);
+	assert.equal(fail.violations[0].rule, 'img-empty-alt-not-decorative');
+
+	for (const mark of ['data-decorative', 'data-decorative="true"']) {
+		const pass = scan(`export const A = () => <img src="/a.png" alt="" ${mark} />;\n`);
+		assert.deepEqual(pass.violations, [], `${mark} must count as a decorative mark`);
+		assert.equal(pass.images[0].verdict, 'decorative');
+	}
 });
 
 test('attributes spread over several lines are read as one tag', () => {
@@ -208,6 +238,34 @@ test('every fail fixture reproduces exactly the rule it stands for', () => {
 			`${name} must reproduce ${expectedRules.join(', ')}`,
 		);
 	}
+});
+
+test('every pass fixture holds at least one image, so it exercises a rule', () => {
+	for (const [name] of Object.entries(FIXTURE_EXPECTATIONS.pass)) {
+		const file = join(REPO_ROOT, FIXTURE_ROOT, 'pass', name);
+		const { images } = scanViolationsInFile({
+			relativePath: `${FIXTURE_ROOT}/pass/${name}`,
+			source: readFileSync(file, 'utf8'),
+		});
+
+		assert.ok(images.length > 0, `${name} must hold an <img> to prove anything`);
+	}
+});
+
+test('an emptied pass fixture is reported instead of passing silently', () => {
+	const audited = auditFixtureFiles([
+		{
+			directory: 'pass',
+			name: 'empty.tsx',
+			relativePath: `${FIXTURE_ROOT}/pass/empty.tsx`,
+			expectedRules: [],
+			foundRules: [],
+			imageCount: 0,
+		},
+	]);
+
+	assert.equal(audited.violations.length, 1);
+	assert.equal(audited.violations[0].rule, 'fixture-pass-no-image');
 });
 
 test('the shipped repository passes the gate', () => {

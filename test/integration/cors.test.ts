@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF } from 'cloudflare:test';
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	CORS_REQUEST_HEADERS,
 	type CorsClass,
@@ -381,13 +381,6 @@ async function runProbe(probe: Probe): Promise<Record<string, unknown>> {
 }
 
 describe('boundary CORS policy (Issue #455)', () => {
-	// Issue #261: warm-up the workerd pool so the first SELF.fetch
-	// cold-start (~2.3-2.6s SSR bundle render) does not fall inside
-	// a timed test budget (5000ms).
-	beforeAll(async () => {
-		await SELF.fetch('https://example.com/api/v1/health', { redirect: 'manual' });
-	});
-
 	it('answers every probe in the matrix as the policy demands', async () => {
 		const measured: Array<Record<string, unknown>> = [];
 		for (const probe of PROBES) {
@@ -471,26 +464,27 @@ describe('boundary CORS policy (Issue #455)', () => {
 		}
 	});
 
-	// A generous explicit timeout, and not paranoia: the first `/`
-	// request in a cold workerd pool has to evaluate the whole TanStack
-	// Start module graph, measured at 4.5–6.6 s on this repo, which is
-	// over vitest's 5 s default and produced real flakes under load. The
-	// assertions here are about header bytes, not render latency.
-	it(
-		'leaves the SSR surfaces free of API CORS headers',
-		{
-			timeout: 60_000,
-		},
-		async () => {
-			// The UI is same-origin with the API by construction
-			// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
-			// `/oauth/*` and `/integrations/*` may grow an allow-origin
-			// header as a side effect of mounting the middleware.
-			for (const path of ['/', '/contact', '/admin/login']) {
-				const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
-				expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
-				expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
-			}
-		},
-	);
+	// This test used to carry an explicit `timeout: 60_000`, with a
+	// comment that named the cause: "the first `/` request in a cold
+	// workerd pool has to evaluate the whole TanStack Start module
+	// graph, measured at 4.5-6.6 s ... and produced real flakes under
+	// load". That was a remedy for the cause Issue #261 fixed — the
+	// cold start (and the home route's outbound self-call) fell inside
+	// a timed test.
+	//
+	// The cause is gone, so the override is gone with it: this test
+	// now runs on vitest's DEFAULT 5000 ms budget, which makes the
+	// claim checkable. If the cold start ever comes back, this test
+	// fails on the default budget instead of hiding behind 60 s.
+	it('leaves the SSR surfaces free of API CORS headers', async () => {
+		// The UI is same-origin with the API by construction
+		// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
+		// `/oauth/*` and `/integrations/*` may grow an allow-origin
+		// header as a side effect of mounting the middleware.
+		for (const path of ['/', '/contact', '/admin/login']) {
+			const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
+			expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
+			expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
+		}
+	});
 });

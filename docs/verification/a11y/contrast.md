@@ -102,7 +102,7 @@ Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 1. まず **既存 raw ramp の別 step** を探した。`text.muted` の light step は
    `neutral.500` で、この ramp には 0 / 50 / 100 / 500 / 900 しかなく、
    500 より暗い唯一の step は `neutral.900`（＝ `text.default`、本文の色）である。
-   也就是说、既存 ramp の別 step では「4.5:1 を満たす補助本文」は作れなかった。
+   つまり、既存 ramp の別 step では「4.5:1 を満たす補助本文」は作れなかった。
 2. そこで raw tokens に **新しい step `neutral.600`（`#475569`）** を足した。
    理由は `src/editorial/tokens.ts` に **英語** でコメントとして残してある
    （`src/**` に日本語テキストを追加しないという規約のため）。

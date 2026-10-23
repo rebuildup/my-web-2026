@@ -22,7 +22,7 @@ export const CompensatedOverlayEndOfDocument = () => {
 		);
 	};
 	return (
-		<div
+		<body
 			className={css({
 				// The room at the end of the document.
 				paddingBottom: 'var(--fixture-document-offset)',
@@ -37,6 +37,6 @@ export const CompensatedOverlayEndOfDocument = () => {
 					bottom: '0',
 				})}
 			/>
-		</div>
+		</body>
 	);
 };

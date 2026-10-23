@@ -20,10 +20,10 @@ export const CompensatedOverlay = () => {
 		);
 	};
 	return (
-		<div
+		<body
 			className={css({
-				// The scroll container keeps the focused element clear of
-				// the overlay below it.
+				// The document scroll container keeps the focused element
+				// clear of the overlay below it.
 				scrollPaddingBottom: 'var(--fixture-overlay-offset)',
 			})}
 		>
@@ -36,6 +36,6 @@ export const CompensatedOverlay = () => {
 					bottom: '0',
 				})}
 			/>
-		</div>
+		</body>
 	);
 };

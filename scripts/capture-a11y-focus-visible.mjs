@@ -543,8 +543,42 @@ function parseArgs(argv) {
 	return options;
 }
 
+/**
+ * Create the PARENT directory of `path`.
+ *
+ * This is the sibling captures' convention (`capture-a11y-image-alt` /
+ * `capture-a11y-heading-landmarks`): every caller passes a FILE path, and
+ * the directory the file lives in is created. Passing a DIRECTORY here
+ * creates only its parent and leaves the directory itself missing — the
+ * clean-tree ENOENT defect the Issue #395 cold review found. Use
+ * `ensureHarnessDirectory` / `ensurePngDirectory` for a directory.
+ */
 function ensureDir(path) {
 	mkdirSync(dirname(resolve(REPO_ROOT, path)), { recursive: true });
+}
+
+/**
+ * Create the harness directory that holds the generated HTML.
+ *
+ * `ensureDir` creates the parent of a file path, so a FILE inside the
+ * harness directory is passed on purpose. Exported so the unit test can
+ * prove the directory is created from a clean tree without launching
+ * Chromium.
+ */
+export function ensureHarnessDirectory() {
+	ensureDir(join(HARNESS_DIR, 'uncompensated.html'));
+	return resolve(REPO_ROOT, HARNESS_DIR);
+}
+
+/**
+ * Create the directory the intermediate PNGs are written to.
+ *
+ * Same convention as {@link ensureHarnessDirectory}: a file path inside
+ * the directory, not the directory itself.
+ */
+export function ensurePngDirectory(pngDir) {
+	ensureDir(join(pngDir, 'focus-state.png'));
+	return resolve(REPO_ROOT, pngDir);
 }
 
 async function main() {
@@ -593,7 +627,7 @@ async function main() {
 	}
 
 	const harness = HARNESS_DIR;
-	ensureDir(harness);
+	ensureHarnessDirectory();
 	writeFileSync(
 		resolve(REPO_ROOT, harness, 'uncompensated.html'),
 		harnessHtml({
@@ -627,7 +661,7 @@ async function main() {
 		} else {
 			const { chromium } = await import('@playwright/test');
 			const sharp = (await import('sharp')).default;
-			ensureDir(options.pngDir);
+			ensurePngDirectory(options.pngDir);
 			const browser = await chromium.launch();
 			const shots = [];
 			try {

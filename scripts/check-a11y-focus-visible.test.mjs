@@ -23,16 +23,19 @@ import {
 	FIXTURE_ROOT,
 	HUMAN_EVALUATION,
 	RULES,
+	SCOPE_NOTES,
 	auditFixtureFiles,
 	buildBindings,
 	collectEvidence,
 	declaredCompensations,
 	evaluateFocusBlock,
 	evaluateOverlay,
+	isDocumentScrollConsumer,
 	parseStyleObject,
 	publishedCustomProperties,
 	renderGateSummary,
 	scanSource,
+	scanStylesheet,
 } from './check-a11y-focus-visible.mjs';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname;
@@ -156,9 +159,9 @@ test('a sticky overlay without a compensation is a violation', () => {
 test('an overlay bound to a published offset is compensated', () => {
 	const source = [
 		'export const A = () => (',
-		'\t<div className={css({ scrollPaddingBottom: "var(--surface-offset)" })}>',
+		'\t<body className={css({ scrollPaddingBottom: "var(--surface-offset)" })}>',
 		'\t\t<div className={css({ position: "fixed" })} />',
-		'\t</div>',
+		'\t</body>',
 		');',
 		'document.documentElement.style.setProperty("--surface-offset", "12rem");',
 	].join('\n');
@@ -248,6 +251,124 @@ test('the modal exemption needs the dialog to be opened modally', () => {
 	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
 });
 
+test('a non-modal dialog in a file that also opens a modal one is not exempt', () => {
+	// The modal exemption is decided per ELEMENT, not per file: a
+	// `<dialog open>` in a file that also calls `showModal()` is still
+	// non-modal and can still obscure a focused element.
+	const source = [
+		'export const A = () => (',
+		'\t<>',
+		'\t\t<dialog className={css({ position: "fixed" })}>Modal</dialog>',
+		'\t\t<dialog open className={css({ position: "fixed", bottom: "0" })}>Non-modal</dialog>',
+		'\t</>',
+		');',
+		'dialog.showModal();',
+	].join('\n');
+
+	const { violations, overlays } = scan(source);
+
+	assert.equal(overlays.length, 2);
+	assert.equal(overlays[0].modal, true);
+	assert.equal(overlays[1].modal, false);
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('a compensation on the overlay itself is not a document consumption', () => {
+	// Moving the compensation from the document onto the fixed overlay
+	// must NOT close the chain: a `scrollPaddingBottom` on the overlay
+	// reserves nothing.
+	const source = [
+		'export const A = () => (',
+		'\t<div className={css({ position: "fixed", bottom: "0", scrollPaddingBottom: "var(--surface-offset)" })} />',
+		');',
+		'document.documentElement.style.setProperty("--surface-offset", "12rem");',
+	].join('\n');
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/example.tsx',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
+		},
+	]);
+
+	const { violations } = scan(source, bindings);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('a document scroll element is the only consumer that counts', () => {
+	assert.equal(
+		isDocumentScrollConsumer({ property: 'scrollPaddingBottom', selector: ':root' }),
+		true,
+	);
+	assert.equal(isDocumentScrollConsumer({ property: 'scrollPadding', selector: 'body' }), true);
+	assert.equal(isDocumentScrollConsumer({ property: 'paddingBottom', selector: 'body' }), true);
+	assert.equal(isDocumentScrollConsumer({ property: 'paddingBottom', selector: ':root' }), false);
+	assert.equal(
+		isDocumentScrollConsumer({ property: 'scrollPadding', selector: '.overlay' }),
+		false,
+	);
+	assert.equal(isDocumentScrollConsumer({ property: 'scrollPadding', selector: null }), false);
+});
+
+test('a raw CSS focus rule that removes the outline is a violation', () => {
+	const { violations } = scanStylesheet({
+		relativePath: 'src/styles.css',
+		source: 'button:focus,\na:focus {\n\toutline: none;\n}\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed-in-css');
+	assert.equal(violations[0].wcag, '2.4.7');
+});
+
+test('a raw CSS focus rule that keeps the outline is not a violation', () => {
+	const { violations } = scanStylesheet({
+		relativePath: 'src/styles.css',
+		source: ':focus-visible {\n\toutline: 2px solid red;\n}\n',
+	});
+
+	assert.deepEqual(violations, []);
+});
+
+test("a pointer-only focus rule is not this rule's defect", () => {
+	// `:focus:not(:focus-visible)` targets the pointer focus, where the
+	// browser default ring is not required; the keyboard indicator is
+	// untouched.
+	const { violations } = scanStylesheet({
+		relativePath: 'src/styles.css',
+		source: ':focus:not(:focus-visible) {\n\toutline: none;\n}\n',
+	});
+
+	assert.deepEqual(violations, []);
+});
+
+test('a transparent outline shorthand is invisible, not visible', () => {
+	assert.equal(
+		evaluateFocusBlock(parseStyleObject("outline: '2px solid transparent'")),
+		'invisible',
+	);
+	assert.equal(evaluateFocusBlock(parseStyleObject("outline: '2px solid #0000'")), 'invisible');
+	assert.equal(
+		evaluateFocusBlock(parseStyleObject("outline: '2px solid rgba(0,0,0,0)'")),
+		'invisible',
+	);
+	assert.equal(evaluateFocusBlock(parseStyleObject("outline: '2px solid red'")), 'visible');
+});
+
+test('a no-op colour is not a replacement indicator', () => {
+	for (const value of ['inherit', 'currentColor', 'unset', 'revert', 'initial']) {
+		assert.equal(
+			evaluateFocusBlock(parseStyleObject(`outline: 'none'\ncolor: '${value}'`)),
+			'removed',
+			`color: ${value} must not count as a replacement`,
+		);
+	}
+	assert.equal(evaluateFocusBlock(parseStyleObject("outline: 'none'\ncolor: 'red'")), 'visible');
+});
+
 test('a published offset is found through a module constant', () => {
 	const source = [
 		"const FOCUS_OFFSET_PROPERTY = '--surface-offset';",
@@ -296,6 +417,7 @@ test('every rule the Issue names is a rule the gate knows', () => {
 	for (const rule of [
 		'focus-indicator-removed',
 		'focus-indicator-invisible',
+		'focus-indicator-removed-in-css',
 		'focus-obscured-no-compensation',
 	]) {
 		assert.ok(RULES.includes(rule), `${rule} must be a known rule`);
@@ -452,5 +574,9 @@ test('the report states what was left out of scope, and why', () => {
 	for (const exclusion of EXCLUSIONS) {
 		assert.ok(report.includes(exclusion.describe));
 		assert.ok(report.includes(exclusion.reason));
+	}
+	for (const note of SCOPE_NOTES) {
+		assert.ok(report.includes(note.describe));
+		assert.ok(report.includes(note.reason));
 	}
 });

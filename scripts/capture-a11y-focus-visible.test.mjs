@@ -9,16 +9,19 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	ARTEFACT,
+	HARNESS_DIR,
 	OFFSET_PROPERTY,
 	SCREENSHOT_BUDGET_BYTES,
 	SCREENSHOT_MAX_WIDTH,
 	assertWebpOutputPath,
 	compensationCss,
+	ensureHarnessDirectory,
+	ensurePngDirectory,
 	evaluateScenarios,
 	harnessHtml,
 	readShippedCompensation,
@@ -202,4 +205,31 @@ test('the capture reads this repository, not a copy of it', () => {
 	// else in another. The package NAME is the stable identity.
 	const manifest = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
 	assert.equal(manifest.name, 'my-web-2026');
+});
+
+test('the harness directory is created from a clean tree', () => {
+	// The clean-tree ENOENT defect (Issue #395 cold review F1): the
+	// capture passed a DIRECTORY to a parent-creating helper, so the
+	// directory itself was never made and the first writeFileSync failed.
+	const harness = join(REPO_ROOT, HARNESS_DIR);
+	rmSync(harness, { recursive: true, force: true });
+	assert.equal(existsSync(harness), false);
+
+	const created = ensureHarnessDirectory();
+
+	assert.equal(existsSync(created), true);
+	assert.equal(created, harness);
+	rmSync(harness, { recursive: true, force: true });
+});
+
+test('the intermediate PNG directory is created from a clean tree', () => {
+	const pngDir = '.tmp/a11y-focus-visible';
+	const absolute = join(REPO_ROOT, pngDir);
+	rmSync(absolute, { recursive: true, force: true });
+	assert.equal(existsSync(absolute), false);
+
+	const created = ensurePngDirectory(pngDir);
+
+	assert.equal(existsSync(created), true);
+	rmSync(absolute, { recursive: true, force: true });
 });

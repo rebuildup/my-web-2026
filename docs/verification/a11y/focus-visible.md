@@ -14,7 +14,7 @@
 | 対象 | 範囲 | 備考 |
 | --- | --- | --- |
 | `src/**/*.{ts,tsx}` | 出荷するソースすべて | `css({...})` 呼び出しの対象を走査対象とする（ブラウザがコンパイルする同じもの） |
-| `src/styles.css` | グローバルスタイルシート | 補償（compensation）の宣言はここにある。TS だけを見ると鎖の片端しか見えない |
+| `src/**/*.css` | 出荷する素のスタイルシート | フォーカスブロックの outline 解除・不可視を走査する（`focus-indicator-removed-in-css`）。補償（compensation）の宣言もここにある。TS だけを見ると鎖の片端しか見えない |
 | フォーカスブロック | `_focus` / `_focusVisible` / `_focusWithin` / `&:focus` / `&:focus-visible` / `&:focus-within` | Panda の condition と素の CSS セレクタの両方 |
 | オーバーレイ | `position: fixed` / `position: sticky` | サイト側で作った content であり、フォーカスを覆いうるもの |
 
@@ -26,7 +26,8 @@
 | `*.stories.tsx` | Storybook の story はコンポーネントのプレビュー用ハーネスであり、訪問者が到達する表面ではない（コンポーネント本体は別途走査される） |
 | `**/fixtures/**` | fixture は形を持つために存在し、本 gate が拒否する形も含む。出荷する同じデータは別途走査される |
 | `src/routes/design-system/**` | design-system ルートはリポジトリ内部のコンポーネントギャラリーであり、公開表面ではない（実 primitives は別途走査される） |
-| ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない |
+| ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない。なお `open` 属性 / `show()` で開く非モーダルの `<dialog>` は対象（`showModal()` が同じファイルのどこかにあるだけでは exempt にしない） |
+| 素の CSS の `position: fixed` / `sticky` オーバーレイ | 補償の鎖の判定はオーバーレイを TS の `css({...})` 呼び出しから採集するため、素の CSS で宣言されたオーバーレイは本 gate のオーバーレイとして数えない。素の CSS の outline 解除は対象（`focus-indicator-removed-in-css`） |
 
 ### 基準
 
@@ -40,7 +41,8 @@
 | rule | 意味 | 判定 |
 | --- | --- | --- |
 | `focus-indicator-removed` | フォーカスブロックが指示子を消す（`outline: none` / `0` / `outlineWidth: 0` / `outlineStyle: none`）が、代替の表示（`boxShadow`・色・枠・下線など）を declares しない | 違反 |
-| `focus-indicator-invisible` | フォーカスブロックが見えない輪郭を宣言する（`outline: transparent` / `outlineColor: transparent`）が、代替の表示を宣言しない | 違反 |
+| `focus-indicator-invisible` | フォーカスブロックが見えない輪郭を宣言する（`outline: transparent` / `outlineColor: transparent` / `outline: 2px solid transparent` のような透明色を含む shorthand）が、代替の表示を宣言しない | 違反 |
+| `focus-indicator-removed-in-css` | 素の CSS の `:focus` / `:focus-visible` / `[focus-visible]` 系ルールが指示子を消す / 見えなくする（`outline: none` / `0` / `transparent` / `outline-color: transparent` / `outline-style: none`）が、代替の表示を宣言しない | 違反 |
 | `focus-obscured-no-compensation` | `position: fixed` / `sticky` のオーバーレイが Compensation に束縛されていない | 違反 |
 | `fixture-pass-violation` | pass fixture が違反を報告した（pass の状態が再現できていない） | 違反（fixture の陳腐化） |
 | `fixture-pass-no-case` | pass fixture がフォーカスブロックもオーバーレイも持ちません。何の規則も行使していない | 違反（空の pass fixture は何も証明しない） |
@@ -62,6 +64,11 @@
 片端だけの宣言は**死んだ宣言**であり、違反として報告する。
 `var(--x, 0px)` のフォールバックはフォールバックに過ぎず、
 `--x` を公開する側がなければ何も予約されない。
+
+**消費側は文書のスクロール要素に宣言されていなければならない。**
+`scroll-padding*` は `html` / `body` / `:root`、`padding-bottom` は
+`body` / `html` でだけ効く。オーバーレイ自身の要素に同じ宣言を付けても
+何も予約されないため、鎖は閉じない（`isDocumentScrollConsumer`）。
 
 `scroll-padding-bottom` だけで足りない理由: ブラウザは文書の末尾より
 先にスクロールできない。**最後のフォーカス可能要素**は文書の最下端に
@@ -113,7 +120,10 @@ green な gate は適合の主張ではない。以下の区別は本 gate の�
 | `pass/compensated-overlay-end-of-document.tsx` | pass | 固定オーバーレイ + 文書末尾の部屋（鎖が閉じている） |
 | `fail/focus-outline-removed.tsx` | fail | `focus-indicator-removed` |
 | `fail/focus-outline-transparent.tsx` | fail | `focus-indicator-invisible` |
+| `fail/focus-outline-transparent-shorthand.tsx` | fail | `focus-indicator-invisible`（`outline: 2px solid transparent`） |
 | `fail/uncompensated-fixed-overlay.tsx` | fail | `focus-obscured-no-compensation` |
+| `fail/overlay-self-compensation.tsx` | fail | `focus-obscured-no-compensation`（補償をオーバーレイ自身に付けた no-op） |
+| `fail/dialog-open-not-modal.tsx` | fail | `focus-obscured-no-compensation`（`showModal()` があるファイルの `<dialog open>`） |
 
 fixture は gate 自身が読む。各 fail fixture は期待する rule をちょうど
 1 つ報告しなければならず、pass fixture は 0 件でなければならない。
@@ -157,8 +167,10 @@ gate は「形」を判定する。以下の 3 つは誤検知の候補であり
 1. **`focus-indicator-removed` が「代替の表示なし」と誤認した**
    - 代替は `boxShadow` / `borderColor` / `borderWidth` / `borderStyle` /
      `backgroundColor` / `color` / `textDecoration` / `outline` の 8 種で
-     判定している（`REPLACEMENT_PROPERTIES`）。別の手段（例: 背景画像の
-     差し替え、`filter`）で指示子を作っている場合は、**その実装を
+     判定している（`REPLACEMENT_PROPERTIES`）。`color: inherit` /
+     `currentColor` / `unset` / `revert` / `initial` のような**計算値が
+     変わらない値**は代替と数えない（`NO_OP_VALUES`）。別の手段（例:
+     背景画像の差し替え、`filter`）で指示子を作っている場合は、**その実装を
      `REPLACEMENT_PROPERTIES` に加えて再レビューする**。gate の閾値を
      下げるのではなく、実装の記録を足す。
 2. **`focus-obscured-no-compensation` が「実際には覆わない」を誤認した**

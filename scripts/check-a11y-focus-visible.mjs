@@ -96,6 +96,7 @@ export const WCAG = [
 export const RULES = [
 	'focus-indicator-removed',
 	'focus-indicator-invisible',
+	'focus-indicator-removed-in-css',
 	'focus-obscured-no-compensation',
 ];
 
@@ -133,6 +134,26 @@ export const REPLACEMENT_PROPERTIES = [
 	'textDecoration',
 	'outline',
 ];
+
+/**
+ * Declaration values that change nothing when applied.
+ *
+ * `color: 'inherit'` (or `currentColor` / `unset` / `revert` / `initial`)
+ * does not change the computed colour, so it is not a replacement focus
+ * indicator. Counting it as one would let
+ * `_focus: { outline: 'none', color: 'inherit' }` pass while the element
+ * has no visible focus at all.
+ */
+export const NO_OP_VALUES = new Set([
+	'',
+	'none',
+	'transparent',
+	'inherit',
+	'currentcolor',
+	'unset',
+	'revert',
+	'initial',
+]);
 
 /** The properties that place an element outside the normal flow. */
 export const OVERLAY_POSITIONS = ['fixed', 'sticky'];
@@ -183,7 +204,7 @@ export function isCompensationProperty(property) {
  * see the other end of the chain.
  */
 export const SCAN_ROOT = 'src';
-export const SCAN_SUFFIXES = ['.ts', '.tsx'];
+export const SCAN_SUFFIXES = ['.ts', '.tsx', '.css'];
 export const STYLESHEET_PATH = 'src/styles.css';
 
 /**
@@ -221,6 +242,24 @@ export const EXCLUSIONS = [
 ];
 
 /**
+ * Statements about what the scan does NOT judge, so the report never looks
+ * like it judged more than it did.
+ *
+ * Unlike {@link EXCLUSIONS} these are not file globs: they name a KIND of
+ * declaration that the gate deliberately leaves alone. They are printed in
+ * the same "out of scope" section, because "scanned the file" must not
+ * read as "judged every declaration in it".
+ */
+export const SCOPE_NOTES = [
+	{
+		id: 'raw-css-overlay',
+		describe: 'raw CSS `position: fixed | sticky` overlays',
+		reason:
+			'the compensation-chain decision reads the overlay from a TS `css({...})` call, so a `position: fixed | sticky` declared in raw CSS is not collected as an overlay in this gate. Raw CSS focus-outline removal IS scanned (`focus-indicator-removed-in-css`)',
+	},
+];
+
+/**
  * The fixture the gate actually reads.
  *
  * The fixture is not a decoration: `pass/` must produce zero violations and
@@ -247,7 +286,10 @@ export const FIXTURE_EXPECTATIONS = {
 	fail: {
 		'focus-outline-removed.tsx': ['focus-indicator-removed'],
 		'focus-outline-transparent.tsx': ['focus-indicator-invisible'],
+		'focus-outline-transparent-shorthand.tsx': ['focus-indicator-invisible'],
 		'uncompensated-fixed-overlay.tsx': ['focus-obscured-no-compensation'],
+		'overlay-self-compensation.tsx': ['focus-obscured-no-compensation'],
+		'dialog-open-not-modal.tsx': ['focus-obscured-no-compensation'],
 	},
 };
 
@@ -467,16 +509,29 @@ export function findStyleObjects(source) {
 }
 
 /**
- * The tag name of the element a style object belongs to (pure).
+ * The opening tag a style object belongs to (pure).
  *
  * The search walks backwards from the `css(` call for the nearest opening
  * tag. A style object that is not directly inside a tag (a shared style
- * constant) has no element and returns `null`.
+ * constant) has no element and returns `null`. The tag BODY is returned
+ * too, so the caller can read the element's attributes (a `<dialog open>`
+ * is not a modal).
  */
-export function enclosingTagName(source, index) {
+export function enclosingTag(source, index) {
 	const before = source.slice(0, index);
-	const match = /<([a-zA-Z][a-zA-Z0-9-]*)\b[^<>]*$/.exec(before);
-	return match ? match[1] : null;
+	const match = /<([a-zA-Z][a-zA-Z0-9-]*)\b([^<>]*)$/.exec(before);
+	return match ? { name: match[1], body: match[2] } : null;
+}
+
+/**
+ * Whether a JSX tag carries an `open` attribute (pure).
+ *
+ * A `<dialog open>` (or `open={…}`) is opened NON-modally: the user agent
+ * does not make the rest of the document inert, so it can still obscure a
+ * focused element. It must not take the modal exemption.
+ */
+export function hasOpenAttribute(tagBody) {
+	return /(?:^|\s)open(?:\s|=|\/|$)/.test(tagBody);
 }
 
 /* ------------------------------------------------------------------ *
@@ -506,15 +561,64 @@ export function removesOutline(declarations) {
 	return false;
 }
 
+/**
+ * Whether a colour value is fully transparent (pure).
+ *
+ * The spellings a browser treats as invisible: the `transparent` keyword,
+ * a zero alpha channel (`rgba(…, 0)`, `rgb(0 0 0 / 0)`, `hsla(…, 0)`),
+ * and the hex forms (`#0000`, `#00000000`).
+ */
+export function isTransparentColor(value) {
+	const text = String(value).trim().toLowerCase();
+	if (text === 'transparent') return true;
+	if (/^#[0-9a-f]{4}$/.test(text)) return text[4] === '0';
+	if (/^#[0-9a-f]{8}$/.test(text)) return text.slice(7) === '00';
+	const fn = /^(?:rgba?|hsla?)\(([^)]*)\)$/.exec(text);
+	if (fn) {
+		const body = fn[1];
+		let alpha = null;
+		if (body.includes('/')) {
+			alpha = body.split('/').pop().trim();
+		} else {
+			const parts = body.split(',').map((part) => part.trim());
+			if (parts.length === 4) alpha = parts[3];
+		}
+		if (alpha !== null) return Number(alpha) === 0;
+	}
+	return false;
+}
+
+/**
+ * Whether an `outline` shorthand contains an invisible colour component
+ * (pure).
+ *
+ * `outline: 'transparent'` is only one spelling. `outline: '2px solid
+ * transparent'` — an extremely common way to draw a transparent ring —
+ * is fully invisible too, and the shorthand is a list of components, so
+ * the whole value and each component are checked, plus any colour
+ * function or hex token inside it.
+ */
+export function containsTransparentColor(value) {
+	const text = String(value).trim().toLowerCase();
+	if (isTransparentColor(text)) return true;
+	for (const token of text.split(/\s+/)) {
+		if (isTransparentColor(token)) return true;
+	}
+	for (const match of text.matchAll(/(?:rgba?|hsla?)\([^)]*\)/g)) {
+		if (isTransparentColor(match[0])) return true;
+	}
+	for (const match of text.matchAll(/#[0-9a-f]{4,8}/g)) {
+		if (isTransparentColor(match[0])) return true;
+	}
+	return false;
+}
+
 /** Whether a declaration makes the outline impossible to see (pure). */
 export function hidesOutline(declarations) {
 	const outline = declarations.get('outline');
-	if (outline) {
-		const value = valueText(outline).trim().toLowerCase();
-		if (value === 'transparent') return true;
-	}
+	if (outline && containsTransparentColor(valueText(outline))) return true;
 	const color = declarations.get('outlineColor');
-	if (color && valueText(color).trim().toLowerCase() === 'transparent') return true;
+	if (color && isTransparentColor(valueText(color))) return true;
 	return false;
 }
 
@@ -523,7 +627,10 @@ export function declaresVisibleOutline(declarations) {
 	const outline = declarations.get('outline');
 	if (!outline) return false;
 	const value = valueText(outline).trim().toLowerCase();
-	if (value === 'none' || value === 'transparent' || value === '0' || value === '0px') return false;
+	if (value === 'none' || value === '0' || value === '0px') return false;
+	// `outline: '2px solid transparent'` is a full shorthand that draws
+	// nothing; it must not be read as "a visible outline exists".
+	if (containsTransparentColor(value)) return false;
 	// A visible outline needs a width; `outline: solid red` (no width) is
 	// invalid CSS and computes to the medium width, so it counts.
 	return true;
@@ -539,7 +646,7 @@ export function declaresReplacement(declarations) {
 			continue;
 		}
 		const value = valueText(declaration).trim().toLowerCase();
-		if (value === '' || value === 'none' || value === 'transparent') continue;
+		if (NO_OP_VALUES.has(value)) continue;
 		return true;
 	}
 	return false;
@@ -599,26 +706,111 @@ export function publishedCustomProperties(source) {
  * `css({ scrollPaddingBottom: '…' })` and `scroll-padding-bottom: …;` in
  * a stylesheet are the same declaration in two spellings.
  */
+/**
+ * Every raw CSS declaration block with its selector (pure).
+ *
+ * A minimal reader, no parser library: a block is the text between `{`
+ * and its matching `}`; its selector is the text between the previous
+ * `}`, `;` or `{` and the `{`. A block that contains a nested `{` is an
+ * at-rule / `@layer` wrapper rather than a declaration block, so it is
+ * skipped — its inner rules are still found because the walk descends
+ * into every block.
+ */
+export function rawCssRules(source) {
+	const rules = [];
+	let index = 0;
+	while (index < source.length) {
+		const open = source.indexOf('{', index);
+		if (open === -1) break;
+		const close = matchBrace(source, open);
+		if (close === -1) break;
+		const body = source.slice(open + 1, close);
+		let start = open - 1;
+		while (start >= 0 && !'};{'.includes(source[start])) start -= 1;
+		const selector = source.slice(start + 1, open).trim();
+		if (!body.includes('{')) {
+			rules.push({ selector, body, line: lineAt(source, open) });
+		}
+		index = open + 1;
+	}
+	return rules;
+}
+
+/**
+ * The declarations of a raw CSS block, keyed like a style object (pure).
+ *
+ * Kebab-case properties are normalised to camelCase so the same rule
+ * functions (`removesOutline`, `declaresReplacement`, …) read a
+ * stylesheet block and a `css({...})` object the same way.
+ */
+export function parseCssDeclarations(body) {
+	const declarations = new Map();
+	for (const match of body.matchAll(/([a-z-]+)\s*:\s*([^;}]+)/g)) {
+		declarations.set(normalizeProperty(match[1]), { kind: 'string', value: match[2].trim() });
+	}
+	return declarations;
+}
+
+/**
+ * The scroll compensations a source declares (pure).
+ *
+ * `css({ scrollPaddingBottom: '…' })` and `scroll-padding-bottom: …;` in
+ * a stylesheet are the same declaration in two spellings. Each carries
+ * the CONSUMER it is declared on — the raw CSS selector, or the enclosing
+ * element's tag name for a `css({...})` object — because a compensation
+ * only has an effect on a document scroll element (see
+ * `isDocumentScrollConsumer`).
+ */
 export function declaredCompensations(source) {
 	const compensations = [];
 	for (const object of findStyleObjects(source)) {
+		const tag = enclosingTag(source, object.index);
 		for (const [key, declaration] of object.declarations) {
 			if (!isCompensationProperty(key)) continue;
-			compensations.push({ property: key, value: valueText(declaration), line: object.line });
+			compensations.push({
+				property: key,
+				value: valueText(declaration),
+				line: object.line,
+				selector: tag ? tag.name : null,
+			});
 		}
 	}
-	for (const match of source.matchAll(
-		/((?:scroll-padding|scroll-margin|padding-bottom)[a-z-]*)\s*:\s*([^;}]+)[;}]/g,
-	)) {
-		const property = normalizeProperty(match[1]);
-		if (!isCompensationProperty(property)) continue;
-		compensations.push({
-			property,
-			value: match[2].trim(),
-			line: lineAt(source, match.index),
-		});
+	for (const rule of rawCssRules(source)) {
+		for (const [property, declaration] of parseCssDeclarations(rule.body)) {
+			if (!isCompensationProperty(property)) continue;
+			compensations.push({
+				property,
+				value: valueText(declaration),
+				line: rule.line,
+				selector: rule.selector,
+			});
+		}
 	}
 	return compensations;
+}
+
+/**
+ * Whether a compensation is consumed by the DOCUMENT (pure).
+ *
+ * A compensation only has an effect where it is declared. `scroll-padding*`
+ * is read from the scrolling element (`html` / `body` / `:root`), and the
+ * end-of-document room (`padding-bottom`) is read from `body` / `html`.
+ * A `scrollPaddingBottom` on the overlay's OWN element is a no-op — it
+ * reserves nothing — so it must not close the chain. This is the check
+ * that makes "move the compensation onto the fixed overlay" fail.
+ *
+ * `selector` is the raw CSS selector, or the enclosing element's tag name
+ * for a `css({...})` object. An unknown consumer is not a document
+ * consumption.
+ */
+export function isDocumentScrollConsumer(compensation) {
+	const selector = (compensation.selector ?? '').trim().toLowerCase();
+	if (selector === '') return false;
+	const parts = selector.split(',').map((part) => part.trim());
+	if (normalizeProperty(compensation.property) === 'paddingBottom') {
+		return parts.some((part) => /^(html|body)\b/.test(part));
+	}
+	return parts.some((part) => /^(html|body|:root)\b/.test(part));
 }
 
 /** The custom properties a compensation consumes (pure). */
@@ -662,6 +854,10 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 	const overlays = [];
 	const published = publishedCustomProperties(code);
 	const modalDialog = /\bshowModal\s*\(/.test(code);
+	// A non-modal open (`<dialog open>` or `dialog.show()`) does not make
+	// the rest of the document inert, so it must not take the modal
+	// exemption even in a file that also calls `showModal()` somewhere.
+	const nonModalShow = /\bshow\s*\(/.test(code);
 
 	for (const object of findStyleObjects(code)) {
 		for (const [key, declaration] of object.declarations) {
@@ -684,13 +880,18 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 		if (!position) continue;
 		const value = valueText(position).trim().toLowerCase();
 		if (!OVERLAY_POSITIONS.includes(value)) continue;
-		const tagName = enclosingTagName(code, object.index);
+		const tag = enclosingTag(code, object.index);
+		const tagName = tag ? tag.name : null;
 		const overlay = {
 			file: relativePath,
 			line: object.line,
 			tagName,
 			position: value,
-			modal: tagName === 'dialog' && modalDialog,
+			modal:
+				tagName === 'dialog' &&
+				modalDialog &&
+				!nonModalShow &&
+				!hasOpenAttribute(tag ? tag.body : ''),
 		};
 		overlays.push(overlay);
 		const evaluation = evaluateOverlay(overlay, bindings);
@@ -716,6 +917,55 @@ export function messageForFocusVerdict(verdict, condition) {
 }
 
 /**
+ * Whether a raw CSS selector targets a focus state this gate reads (pure).
+ *
+ * `:focus`, `:focus-visible`, `:focus-within` and `[focus-visible]` are
+ * the spellings. `:focus:not(:focus-visible)` is deliberately EXCLUDED:
+ * that selector targets the POINTER focus, where the browser default ring
+ * is not required and the keyboard indicator is untouched, so removing
+ * the outline there is not this rule's defect.
+ */
+export function isFocusRemovalSelector(selector) {
+	const text = selector.toLowerCase();
+	if (!/(?::focus(?:-visible|-within)?|\[focus-visible\])/.test(text)) return false;
+	if (/:not\(\s*:focus-visible\s*\)/.test(text)) return false;
+	return true;
+}
+
+/**
+ * Focus-removal violations in a raw stylesheet (pure).
+ *
+ * The shipped stylesheet is part of the surface — a global
+ * `:focus { outline: none }` is exactly the defect this gate exists to
+ * catch — so it is read with the same rule functions as a `css({...})`
+ * object, under the `focus-indicator-removed-in-css` rule id.
+ */
+export function scanStylesheet({ relativePath, source }) {
+	const code = stripComments(source);
+	const violations = [];
+	const focusBlocks = [];
+	for (const rule of rawCssRules(code)) {
+		if (!isFocusRemovalSelector(rule.selector)) continue;
+		const declarations = parseCssDeclarations(rule.body);
+		const verdict = evaluateFocusBlock(declarations);
+		focusBlocks.push({ file: relativePath, line: rule.line, condition: rule.selector, verdict });
+		if (verdict === 'visible') continue;
+		violations.push({
+			rule: 'focus-indicator-removed-in-css',
+			file: relativePath,
+			line: rule.line,
+			wcag: '2.4.7',
+			message: `the raw CSS rule \`${rule.selector}\` ${
+				verdict === 'invisible'
+					? 'declares an outline that cannot be seen'
+					: 'removes the focus indicator'
+			} and declares no replacement (SC 2.4.7)`,
+		});
+	}
+	return { violations, focusBlocks };
+}
+
+/**
  * The compensation chain of the whole surface (pure over the scanned files).
  *
  * For every custom property, the file that publishes it and the
@@ -732,6 +982,10 @@ export function buildBindings(files) {
 	const bindings = [];
 	for (const file of files) {
 		for (const compensation of file.compensations) {
+			// Only a compensation declared on the document's scrolling
+			// element actually reserves space. A `scrollPaddingBottom` on
+			// the overlay itself is a no-op and must not close the chain.
+			if (!isDocumentScrollConsumer(compensation)) continue;
 			for (const name of consumedCustomProperties(compensation)) {
 				const publishedIn = publishers.get(name) ?? [];
 				bindings.push({
@@ -940,39 +1194,27 @@ export function collectEvidence(repoRoot = REPO_ROOT) {
 			continue;
 		}
 		filesScanned += 1;
-		const source = readFileSync(file, 'utf8');
+		const source = stripComments(readFileSync(file, 'utf8'));
 		files.push({
 			relativePath,
-			published: publishedCustomProperties(stripComments(source)),
-			compensations: declaredCompensations(stripComments(source)),
-		});
-	}
-	// The global stylesheet is part of the surface: the compensation it
-	// declares is one end of the chain the overlay needs.
-	const stylesheet = join(repoRoot, STYLESHEET_PATH);
-	if (existsSync(stylesheet)) {
-		const source = readFileSync(stylesheet, 'utf8');
-		filesScanned += 1;
-		files.push({
-			relativePath: STYLESHEET_PATH,
-			published: publishedCustomProperties(stripComments(source)),
-			compensations: declaredCompensations(stripComments(source)),
+			kind: relativePath.endsWith('.css') ? 'css' : 'ts',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
 		});
 	}
 
 	const bindings = buildBindings(files);
 
 	for (const file of files) {
-		const absolute =
-			file.relativePath === STYLESHEET_PATH
-				? join(repoRoot, STYLESHEET_PATH)
-				: join(repoRoot, file.relativePath);
-		const source = readFileSync(absolute, 'utf8');
-		const result = scanSource({
-			relativePath: file.relativePath,
-			source,
-			bindings,
-		});
+		const source = readFileSync(join(repoRoot, file.relativePath), 'utf8');
+		if (file.kind === 'css') {
+			// A raw stylesheet is read for focus-outline removal (SC 2.4.7).
+			const result = scanStylesheet({ relativePath: file.relativePath, source });
+			violations.push(...result.violations);
+			focusBlocks.push(...result.focusBlocks);
+			continue;
+		}
+		const result = scanSource({ relativePath: file.relativePath, source, bindings });
 		violations.push(...result.violations);
 		focusBlocks.push(...result.focusBlocks);
 		overlays.push(...result.overlays);
@@ -1008,6 +1250,9 @@ export function renderGateSummary(evidence) {
 	const invisible = evidence.violations.filter(
 		(violation) => violation.rule === 'focus-indicator-invisible',
 	).length;
+	const removedInCss = evidence.violations.filter(
+		(violation) => violation.rule === 'focus-indicator-removed-in-css',
+	).length;
 	const obscured = evidence.violations.filter(
 		(violation) => violation.rule === 'focus-obscured-no-compensation',
 	).length;
@@ -1016,6 +1261,9 @@ export function renderGateSummary(evidence) {
 	);
 	lines.push(
 		`  ${invisible === 0 ? 'ok  ' : 'FAIL'} ${'focus-indicator-invisible'.padEnd(28)} no focus block declares an outline that cannot be seen (SC 2.4.7)`,
+	);
+	lines.push(
+		`  ${removedInCss === 0 ? 'ok  ' : 'FAIL'} ${'focus-indicator-removed-in-css'.padEnd(28)} no raw CSS focus rule removes the indicator without a replacement (SC 2.4.7)`,
 	);
 	lines.push(
 		`  ${obscured === 0 ? 'ok  ' : 'FAIL'} ${'focus-obscured-no-compensation'.padEnd(28)} every author-created overlay is bound to a focus compensation (SC 2.4.11)`,
@@ -1031,6 +1279,9 @@ export function renderGateSummary(evidence) {
 	for (const exclusion of EXCLUSIONS) {
 		const count = evidence.excluded.filter((entry) => entry.reason === exclusion.id).length;
 		lines.push(`  - ${exclusion.describe} (${count} file(s)): ${exclusion.reason}`);
+	}
+	for (const note of SCOPE_NOTES) {
+		lines.push(`  - ${note.describe}: ${note.reason}`);
 	}
 	lines.push('');
 	if (evidence.violations.length > 0) {

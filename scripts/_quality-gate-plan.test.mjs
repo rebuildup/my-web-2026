@@ -147,6 +147,12 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #402: the screen-reader procedure ledger, declared in
+	// `quality/profile.yaml` right after the contrast gate. It reads the
+	// committed ledger of the manual review and keeps the RECORD honest
+	// (complete step, existing surface, no automated audit passed off as
+	// a human screen-reader verification).
+	'pnpm run a11y:screenreader-steps:check',
 	// Issue #405: the live-region / status-message contract, declared in
 	// `quality/profile.yaml` right after the contrast gate.
 	'pnpm run a11y:live-region:check',

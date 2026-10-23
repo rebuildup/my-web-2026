@@ -2,9 +2,7 @@
 	"schemaVersion": 1,
 	"$comment": "Issue #426 fixture. A corpus of example sentences whose rewriting changes — or does not change — the meaning the reader is given. Every case is a proposal pair: `before` is the sentence as written, `after` is the proposed rewrite. `before: null` means no original exists to compare against, which is the 'unverified draft' state the copy contract refuses to publish.",
 	"note": "The corpus is the regression set for the meaning-drift heuristic. It is not a list of strings the platform publishes: every sentence here is synthetic, and no case authorises the rewrite. The classifier's disposition vocabulary has no auto-apply member, so a case can never turn into an applied edit.",
-	"locales": [
-		"ja"
-	],
+	"locales": ["ja"],
 	"cases": [
 		{
 			"id": "permission-widened",
@@ -15,9 +13,7 @@
 				"meaning": "drift",
 				"surface": "prose",
 				"disposition": "review-required",
-				"evidence": [
-					"permission-drift"
-				]
+				"evidence": ["permission-drift"]
 			},
 			"note": "The example Issue #426 names first. `未公開` CONTAINS the substring `公開`, so a naive substring test reports the same marker set on both sides and the access-control widening is invisible. The compound marker `未公開` is what makes the two sides differ."
 		},
@@ -30,9 +26,7 @@
 				"meaning": "drift",
 				"surface": "prose",
 				"disposition": "review-required",
-				"evidence": [
-					"permission-drift"
-				]
+				"evidence": ["permission-drift"]
 			},
 			"note": "The reverse direction of the same widening: the rewrite narrows access control. The drift must be reported in both directions — a narrower sentence is not the safe default either, because the reader is no longer told what the platform actually publishes."
 		},
@@ -45,9 +39,7 @@
 				"meaning": "drift",
 				"surface": "prose",
 				"disposition": "review-required",
-				"evidence": [
-					"number-drift"
-				]
+				"evidence": ["number-drift"]
 			},
 			"note": "The second example Issue #426 names. A digit that changes is a claim that changes: the number a reader is given is a fact about the platform, and a rewriting tool has no authority over it."
 		},
@@ -60,9 +52,7 @@
 				"meaning": "drift",
 				"surface": "prose",
 				"disposition": "review-required",
-				"evidence": [
-					"negation-drift"
-				]
+				"evidence": ["negation-drift"]
 			},
 			"note": "The third example Issue #426 names. The rewrite inverts the sentence: `不可` is a negation marker and `可能` is not, so the negation marker set differs between the two sides."
 		},
@@ -75,9 +65,7 @@
 				"meaning": "drift",
 				"surface": "prose",
 				"disposition": "review-required",
-				"evidence": [
-					"permission-drift"
-				]
+				"evidence": ["permission-drift"]
 			},
 			"note": "Dropping `のみ` widens who may act while the sentence still says `編集`. A boolean 'permission marker present' check would miss it; the marker SETS differ, so the drift is reported."
 		},
@@ -90,9 +78,7 @@
 				"meaning": "preserved",
 				"surface": "typography",
 				"disposition": "meaning-preserved",
-				"evidence": [
-					"typography:stray-whitespace"
-				]
+				"evidence": ["typography:stray-whitespace"]
 			},
 			"note": "A mechanical typography difference: the trailing space violates a rule the script decides on its own. The meaning axis is clean, so this case is NOT a meaning review — but adopting it is still a copy decision, so the classifier still returns no auto-apply."
 		},
@@ -118,9 +104,7 @@
 				"meaning": "undetermined",
 				"surface": "none",
 				"disposition": "review-required",
-				"evidence": [
-					"no-original"
-				]
+				"evidence": ["no-original"]
 			},
 			"note": "There is no original sentence to compare against, so preservation cannot be asserted — the state the copy contract calls an unverified draft. The classifier must not treat 'no drift found' as 'no drift possible'."
 		},

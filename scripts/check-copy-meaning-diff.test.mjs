@@ -86,11 +86,7 @@ describe('check-copy-meaning-diff — the corpus classifies as it is pinned', ()
 		for (const row of result.rows) {
 			assert.equal(row.actual.meaning, row.expected.meaning, `${row.id}: meaning`);
 			assert.equal(row.actual.surface, row.expected.surface, `${row.id}: surface`);
-			assert.equal(
-				row.actual.disposition,
-				row.expected.disposition,
-				`${row.id}: disposition`,
-			);
+			assert.equal(row.actual.disposition, row.expected.disposition, `${row.id}: disposition`);
 			assert.deepEqual(
 				[...row.actual.evidence].sort(),
 				[...(row.expected.evidence ?? [])].sort(),

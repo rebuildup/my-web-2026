@@ -178,10 +178,7 @@ export function classifyProposal({ before, after, locale = 'ja' }) {
 		meaning = 'undetermined';
 		evidence.push('no-original');
 	} else {
-		const analysis = analyzeUnit(
-			{ before, after, kind: paired ? 'modified' : 'removed' },
-			locale,
-		);
+		const analysis = analyzeUnit({ before, after, kind: paired ? 'modified' : 'removed' }, locale);
 		const drift = DRIFT_ORDER.filter((flag) => analysis.risk.includes(flag));
 		meaning = drift.length > 0 ? 'drift' : 'preserved';
 		evidence.push(...drift);
@@ -341,7 +338,15 @@ export function evaluateCorpus(corpus, { contract = null } = {}) {
 				}),
 			);
 		}
-		rows.push({ id: testCase.id, locale: testCase.locale, before: testCase.before ?? null, after: testCase.after ?? null, expected, actual, ok: mismatches.length === 0 });
+		rows.push({
+			id: testCase.id,
+			locale: testCase.locale,
+			before: testCase.before ?? null,
+			after: testCase.after ?? null,
+			expected,
+			actual,
+			ok: mismatches.length === 0,
+		});
 	}
 
 	// The cases that need a person must stay in the corpus: a corpus

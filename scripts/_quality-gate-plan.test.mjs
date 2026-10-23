@@ -147,6 +147,9 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #408: the prerecorded-video caption / text-alternative contract,
+	// declared in `quality/profile.yaml` right after the contrast gate.
+	'pnpm run a11y:video-caption:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

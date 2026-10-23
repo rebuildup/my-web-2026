@@ -544,78 +544,80 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			    optimistic update while a mutation is in flight, so one
 			    result is one announcement. The failure path is the
 			    sibling `role="alert"` below, not a second status region. */}
-			{/* biome-ignore lint/a11y/useSemanticElements: the region contains block content (the recorded-reaction chips), so a div with role="status" is the right element; `<output>` is for a calculation result, not this list. */}
-			<div role="status" aria-live="polite" aria-atomic="true" aria-busy={pendingCount > 0}>
-				<fieldset
-					aria-label="Recorded reactions"
-					className={css({
-						display: 'flex',
-						flexWrap: 'wrap',
-						gap: '3',
-						border: 'none',
-						padding: '0',
-						margin: '0',
-						minHeight: '10',
-						alignItems: 'center',
-					})}
-				>
-					{visibleAggregates.length === 0 ? (
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-							})}
-						>
-							まだ反応はありません — 下のボタンから送ってみましょう
-						</span>
-					) : (
-						visibleAggregates.map((chip) => {
-							const glyph = resolveChipGlyph(chip);
-							return (
-								<button
-									key={`${chip.kind}:${chip.value}`}
-									type="button"
-									onClick={() => toggleReaction(chip.kind, chip.value)}
-									title={`:${chip.value}:`}
+			{/* biome-ignore lint/a11y/useSemanticElements: the region holds the recorded-reaction chips, not a calculation result, so `<output>` is not the right element. */}
+			<fieldset
+				role="status"
+				aria-live="polite"
+				aria-atomic="true"
+				aria-busy={pendingCount > 0}
+				aria-label="Recorded reactions"
+				className={css({
+					display: 'flex',
+					flexWrap: 'wrap',
+					gap: '3',
+					border: 'none',
+					padding: '0',
+					margin: '0',
+					minHeight: '10',
+					alignItems: 'center',
+				})}
+			>
+				{visibleAggregates.length === 0 ? (
+					<span
+						className={css({
+							fontFamily: 'mono',
+							fontSize: 'sm',
+							color: 'text.muted',
+						})}
+					>
+						まだ反応はありません — 下のボタンから送ってみましょう
+					</span>
+				) : (
+					visibleAggregates.map((chip) => {
+						const glyph = resolveChipGlyph(chip);
+						return (
+							<button
+								key={`${chip.kind}:${chip.value}`}
+								type="button"
+								onClick={() => toggleReaction(chip.kind, chip.value)}
+								title={`:${chip.value}:`}
+								className={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '2',
+									paddingInline: '3',
+									height: '8',
+									borderRadius: 'full',
+									borderWidth: '1px',
+									borderColor: 'border.subtle',
+									borderStyle: 'solid',
+									backgroundColor: 'bg.canvas',
+									color: 'text.default',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									cursor: 'pointer',
+									_hover: { borderColor: 'border.focus' },
+									_focusVisible: {
+										outline: '2px solid {colors.border.focus}',
+										outlineOffset: '2px',
+									},
+								})}
+							>
+								<span aria-hidden="true">{glyph}</span>
+								<span
 									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '2',
-										paddingInline: '3',
-										height: '8',
-										borderRadius: 'full',
-										borderWidth: '1px',
-										borderColor: 'border.subtle',
-										borderStyle: 'solid',
-										backgroundColor: 'bg.canvas',
-										color: 'text.default',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										cursor: 'pointer',
-										_hover: { borderColor: 'border.focus' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
+										fontFamily: 'mono',
+										fontSize: 'sm',
+										color: 'text.muted',
 									})}
 								>
-									<span aria-hidden="true">{glyph}</span>
-									<span
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'sm',
-											color: 'text.muted',
-										})}
-									>
-										{chip.count}
-									</span>
-								</button>
-							);
-						})
-					)}
-				</fieldset>
-			</div>
+									{chip.count}
+								</span>
+							</button>
+						);
+					})
+				)}
+			</fieldset>
 
 			<div>
 				<button

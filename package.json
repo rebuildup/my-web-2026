@@ -219,6 +219,8 @@
 		"capture:a11y-contrast": "node scripts/capture-a11y-contrast.mjs",
 		"a11y:wcag-review-matrix:check": "node scripts/check-a11y-wcag-review-matrix.mjs",
 		"capture:a11y-wcag-review-matrix": "node scripts/capture-a11y-wcag-review-matrix.mjs",
+		"a11y:video-caption:check": "node scripts/check-a11y-video-caption.mjs",
+		"capture:a11y-video-caption": "node scripts/capture-a11y-video-caption.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",

@@ -388,6 +388,22 @@ gates:
       # the same evidence is `pnpm run capture:a11y-focus-visible`, an
       # artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:focus-visible:check' # focus visible / not obscured contract (Issue #395)
+      # Issue #408: the prerecorded-video contract (WCAG 2.2 SC 1.2.2
+      # Captions (Prerecorded), level A, SC 1.2.3 Audio Description or Media
+      # Alternative (Prerecorded), level A, SC 1.2.5 Audio Description
+      # (Prerecorded), level AA, SC 1.1.1 Non-text Content, level A, and
+      # SC 2.1.1 Keyboard, level A). A shipped `<video>` must caption its
+      # speech, carry a poster and an accessible name, expose controls, and
+      # NOT be presented as playable while its caption source is unverified
+      # (`data-caption-status="verified"` is the only proof — fail closed).
+      # Its audio-description decision must be declared too, fail closed:
+      # `provided` with a real `<track kind="descriptions">`, or
+      # `not-required` when a human decided the work needs none.
+      # No `<video>` ships yet, so this fixes the contract for the first one.
+      # Pure Node text analysis, so it costs a source walk. The browser half
+      # of the same evidence is `pnpm run capture:a11y-video-caption`, an
+      # artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:video-caption:check' # prerecorded video caption / text alternative contract (Issue #408)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

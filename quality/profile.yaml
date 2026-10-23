@@ -278,6 +278,16 @@ gates:
       # same evidence is `pnpm run capture:a11y-reduced-motion`, which
       # is an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
+      # Issue #396: the icon-button accessible-name contract. Every
+      # icon-only button under `src/**` must carry a mechanism that
+      # supplies an accessible name (aria-label / aria-labelledby /
+      # title / a visually hidden label), and a name that was specified
+      # must not be empty or point at an id the file does not declare.
+      # Pure Node text analysis over `src/**/*.tsx`, so it costs a
+      # source walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y-icon-button-names`, which is an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:icon-button-names:check' # icon-button accessible name contract (Issue #396)
       # Issue #407: the shipped table / code-block readability contract.
       # Every table in `src/**` carries a caption and a scoped header
       # cell, every horizontal scroll box is a focusable named region,
@@ -287,6 +297,18 @@ gates:
       # `pnpm run capture:a11y:table-code`, an artefact capture and
       # therefore not a fast gate.
       - 'pnpm run a11y:table:code:check' # table / code readability contract (Issue #407)
+      # Issue #397: the shipped image alt / decorative-image contract
+      # (WCAG 2.2 SC 1.1.1 Non-text Content, level A). Every `<img>` in
+      # `src/**` declares an `alt`; an empty alt is a decorative
+      # declaration and therefore carries a decorative mark; a blank alt is
+      # a violation. Which image is meaningful and which is decoration is a
+      # property of the shipped source, so it is decided on every
+      # `validate:fast` run rather than only when someone remembers to
+      # capture the verification artefact. Pure Node text analysis, so it
+      # costs a source walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y-image-alt`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:image-alt:check' # image alt / decorative-image contract (Issue #397)
       # Issue #409: the shipped language-of-parts contract (WCAG 2.2
       # 3.1.2 Language of Parts, level A). A `lang` may be written only
       # on a passage whose language differs from the document language:
@@ -306,6 +328,16 @@ gates:
       # accepted only through an explicit, in-use allowlist entry
       # (quality/css-standards.json). Offline; no network, no secret.
       - 'pnpm run css:check' # CSS syntax / unknown-property gate
+      # Issue #399: the colour-contrast AA contract. The gate imports the
+      # shipped token modules (src/editorial/tokens.ts +
+      # src/editorial/semantic-tokens.ts), resolves the `{colors.…}`
+      # references itself and measures every pair of the matrix in BOTH
+      # appearances (light `base` / dark `_dark`) against WCAG 2.2
+      # SC 1.4.3 (4.5:1 normal text, 3:1 large text, 3:1 non-text). A
+      # reference that does not resolve is a violation, never a guess.
+      # Offline, credential-free, status-only. The browser half of the
+      # same evidence is `pnpm run capture:a11y-contrast`.
+      - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

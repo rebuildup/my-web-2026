@@ -1,0 +1,22 @@
+{
+	"id": "pass-non-text-and-large",
+	"note": "A non-text UI component pair (3:1) and a large-text pair (3:1) that both meet SC 1.4.3 AA. The colours are written as raw references so the fixture also proves that the reference resolver works.",
+	"pairs": [
+		{
+			"id": "focus-ring-on-canvas",
+			"fg": "{colors.brand.600}",
+			"bg": "{colors.neutral.0}",
+			"kind": "non-text",
+			"threshold": 3,
+			"expect": "pass"
+		},
+		{
+			"id": "large-link-on-canvas",
+			"fg": "{colors.brand.700}",
+			"bg": "{colors.neutral.0}",
+			"kind": "large",
+			"threshold": 3,
+			"expect": "pass"
+		}
+	]
+}

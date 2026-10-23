@@ -265,6 +265,13 @@ function ImageRow({ image }: { image: AdminImage }) {
 			<img
 				src={`/api/v1/reaction-images/${image.id}`}
 				alt=""
+				// Issue #397 — the thumbnail is decorative here: the row
+				// already names the file in text (id, content type,
+				// size, digest), and the uploaded image carries no
+				// author-written description to relay. The empty alt
+				// says "no description" and the hidden role says "and
+				// no semantics" (SC 1.1.1 Non-text Content, A).
+				aria-hidden="true"
 				width={48}
 				height={48}
 				className={css({

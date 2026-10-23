@@ -66,8 +66,14 @@ export const semanticTokens = {
 			default: {
 				value: { base: '{colors.neutral.900}', _dark: '{colors.neutral.50}' },
 			},
+			// Issue #399: the light step moved from `neutral.500` to
+			// `neutral.600`. `neutral.500` measured 4.34:1 on
+			// `bg.subtle` and 4.46:1 on `accent.surface`, both under
+			// the 4.5:1 SC 1.4.3 minimum for normal text. The dark
+			// step is unchanged: `charcoal.400` measures 5.36:1 on
+			// `bg.subtle` and 5.38:1 on `accent.surface`.
 			muted: {
-				value: { base: '{colors.neutral.500}', _dark: '{colors.charcoal.400}' },
+				value: { base: '{colors.neutral.600}', _dark: '{colors.charcoal.400}' },
 			},
 			// Static: labels sit on `bg.accent`, which never lightens.
 			inverse: {

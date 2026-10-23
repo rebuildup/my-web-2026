@@ -143,6 +143,13 @@ const EXPECTED_FAST_PLAN = [
 	// right after the other `a11y` contracts, so an outline finding is
 	// read next to the other accessibility findings.
 	'pnpm run a11y:heading-landmarks:check',
+	// Issue #410: the WCAG 2.2 A/AA manual review matrix, declared in
+	// `quality/profile.yaml` right after the heading / landmark gate.
+	// Both read the accessibility contract of the shipped surfaces; this
+	// one reads the RECORD of the judgements a machine cannot make. The
+	// position is deliberately NOT right after the colour-contrast gate,
+	// so a gate that needs that position does not collide with this one.
+	'pnpm run a11y:wcag-review-matrix:check',
 	'pnpm run css:check',
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
@@ -151,6 +158,10 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #405: the live-region / status-message contract, declared in
 	// `quality/profile.yaml` right after the contrast gate.
 	'pnpm run a11y:live-region:check',
+	// Issue #395: the focus visibility / focus-not-obscured contract. It
+	// runs right after the colour gate, because both read the shipped
+	// source and the shipped stylesheet.
+	'pnpm run a11y:focus-visible:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

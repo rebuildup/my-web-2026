@@ -196,6 +196,8 @@
 		"capture:a11y-reduced-motion": "node scripts/capture-a11y-reduced-motion.mjs",
 		"a11y:reduced-motion:check": "node scripts/check-reduced-motion.mjs",
 		"a11y:language-of-parts:check": "node --experimental-strip-types scripts/check-language-of-parts.mjs",
+		"a11y:icon-button-names:check": "node scripts/check-a11y-icon-button-names.mjs",
+		"capture:a11y-icon-button-names": "node scripts/capture-a11y-icon-button-names.mjs",
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
 		"a11y:table:code:check": "node scripts/check-table-code-a11y.mjs",
 		"capture:a11y:table-code": "node scripts/capture-a11y-table-code.mjs",

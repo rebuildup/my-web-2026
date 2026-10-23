@@ -29,6 +29,12 @@
 /** Environment variable carrying the JSON array of absolute test paths. */
 export const AUTH_SCHEMA_ENV_VAR = 'BETTER_AUTH_SCHEMA_TEST_FILES';
 
+/**
+ * Environment variable carrying the JSON array of absolute test paths
+ * that need the workerd cold-start warm-up (Issue #261).
+ */
+export const WARMUP_ENV_VAR = 'WORKERD_WARMUP_TEST_FILES';
+
 /** Serialize the scanner result for `test.env`. */
 export function encodeAuthSchemaTestFiles(files) {
 	return JSON.stringify(files);
@@ -54,6 +60,50 @@ export function needsAuthSchema(testPath, encodedFiles) {
 
 	// A file that cannot name itself cannot prove it does not need the
 	// schema, so keep the previous behaviour.
+	if (typeof testPath !== 'string' || testPath.length === 0) return true;
+
+	return files.includes(testPath);
+}
+
+/** Serialize the warm-up scanner result for `test.env`. */
+export function encodeWarmupTestFiles(files) {
+	return JSON.stringify(files);
+}
+
+/**
+ * Whether the current test file needs the workerd cold-start warm-up
+ * (Issue #261).
+ *
+ * The failure direction mirrors `needsAuthSchema` but the cost of a
+ * wrong answer is different, so the reasoning is worth stating:
+ *
+ *   - `true` (warm up) for a file that does not need it costs one
+ *     extra request to a 404 path — the worker is already up, so the
+ *     request is cheap. It is bounded and never fails a test.
+ *   - `false` (skip) for a file that does need it puts the cold start
+ *     back inside the first test's 5000 ms budget, which is the flake
+ *     this ticket exists to remove.
+ *
+ * So an input this function cannot interpret returns `true`. The
+ * degraded state is slower tests, never a failing assertion.
+ *
+ * `encodedFiles` is the value read from `process.env[WARMUP_ENV_VAR]`;
+ * `testPath` is `expect.getState().testPath` from the setup file. Both
+ * are passed in so this function stays pure and testable.
+ */
+export function needsWarmup(testPath, encodedFiles) {
+	if (typeof encodedFiles !== 'string' || encodedFiles.length === 0) return true;
+
+	let files;
+	try {
+		files = JSON.parse(encodedFiles);
+	} catch {
+		return true;
+	}
+	if (!Array.isArray(files)) return true;
+
+	// A file that cannot name itself cannot prove it does not need the
+	// warm-up, so keep the warm-up.
 	if (typeof testPath !== 'string' || testPath.length === 0) return true;
 
 	return files.includes(testPath);

@@ -114,3 +114,25 @@ wait
 - 競合負荷の 3 本並行という条件は CI より意図的に過負荷です。したがって
   「CI でも必ず落ちなくなる」ことまでは主张せず、**cold-start がタイムバジェットの外に
   出たこと**（第 1 テスト 2672〜2769 ms → 7〜12 ms）を主張します。
+
+## 2026-10 更新（Issue #261）— warm-up は共有 setup に統合
+
+Issue #261 が **同じ原因**（workerd pool の cold start）に対して **同じ手段**
+（hook 予算で 1 回だけ warm-up する）を **すべての対象 file に**適用する
+共有 setup（`test/setup/warm-up.ts`）を追加しました。対象 file は
+`scripts/_vitest-warmup-scan.mjs` が `SELF` の import から決定します
+（現状 49 file。`admin-routing.test.ts` も含まれます）。
+
+そのため、この Issue が置いていた **file 単位の `beforeAll` warm-up は冗長**になり、
+削除しました。1 つの原因に 1 つの修正だけを残します。
+
+| 項目 | 値 |
+| --- | --- |
+| 削除したコード | `test/integration/admin-routing.test.ts` の `beforeAll`（`SELF.fetch('https://example.com/admin/login')`）と `beforeAll` の import |
+| 代替 | `test/setup/warm-up.ts`（共有 setup、条件付き） |
+| 第 1 テストの実測 | 7〜12 ms（file 単位 warm-up 時代） → **66 ms**（共有 setup のみ。admin route の chunk ロード分の残差） |
+| 修正前 | 2672〜2769 ms |
+
+ 共有 setup のみに依存する状態でも第 1 テストは budget の 1.3% で、timeout には
+なりません。cold start と outbound round-trip の詳細は
+`docs/verification/quality/flaky-unit-suite-261.md` にあります。

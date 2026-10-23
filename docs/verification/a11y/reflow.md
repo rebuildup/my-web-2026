@@ -103,7 +103,7 @@ capture の case 表と fixture roster の一致は
 | --- | --- | --- |
 | `reflow-wrap-floor-missing` | 出荷する `:where(body)` に破断境界がある | コメント除去後の CSS 走査（`scripts/check-a11y-reflow.mjs`） |
 | `shipped-nowrap` | 出荷コード（`src/**`）が `white-space: nowrap` / `pre` を宣言していない | 同上（`src/**` の .tsx / .ts / .css を走査） |
-| `shipped-fixed-width` | 出荷コードが 320 px 超の `width` / `min-width`（px）を宣言していない | 同上 |
+| `shipped-fixed-width` | 出荷コードが 320 px 超の `width` / `min-width`（`px` / `rem`）を宣言していない | 同上 |
 | `reflow-specimen-without-break` | 改行不能な specimen に破断境界がある | 同上 |
 | `reflow-specimen-fixed-width` | specimen が 320 px 超の固定幅を持たない | 同上 |
 | `reflow-specimen-nowrap` | 改行不能な specimen が折り返しを禁じていない | 同上 |
@@ -191,7 +191,12 @@ capture script が `.png` を拒否する規約のため）。
   ローカルの設計判断であり、本 Issue の floor では決まらない。
 - **gate は「宣言」を、出荷コードの走査として判定する。**
   走査するのは `src/**` の `.tsx` / `.ts` / `.css` で、
-  判定するのは `white-space: nowrap` / `pre` と 320 px 超の `width` / `min-width`（px）だけ。
+  判定するのは `white-space: nowrap` / `pre` と 320 px 超の `width` / `min-width`
+  （`px` と `rem`。`rem` は CSS の初期値 **16 px** で換算する。`html { font-size }` を
+  設定している面では換算値が変わるため、この 16 px は gate の前提であって実測ではない）。
+  値は比較の前に正規化する（前後の空白除去 → `!important` 除去 → 小文字化）ので、
+  CSS 形式と JSX 形式で判定は変わらない。`em` / `ch` などフォント依存の単位は
+  **換算せず、判定不能として out-of-scope の節に出す**（黙って無視しない）。
   `flex` / `grid` の `min-width: auto`、`position: absolute` の要素、
   実行時に決まる幅などは **この gate は見ていない**。
 - **「実画面」を測るのは capture の 出荷 route 測定で、対象は 2 route だけ。**
@@ -203,6 +208,14 @@ capture script が `.png` を拒否する規約のため）。
 - **capture は「測れなかったら失敗する」。**
   ローカル preview server が用意できなければ capture は exit 2（判定不能）で終了し、
   成果物は書かない（測っていないことを緑に見せない）。
+- **出荷 route の browser 測定（`pnpm run capture:a11y-reflow`）は CI では走らない。**
+  CI が常時判定するのは静的走査（`pnpm run a11y:reflow:check`）だけで、capture は
+  成果物生成の人手手順である（`.github/workflows/` に `capture:a11y-reflow` を
+  呼ぶ job は無い）。したがって **宣言で表せない欠陥（flex / grid 子の `min-content`
+  由来）は CI では検出されない**。この事実は PR 本文の「残存リスク」と同じ粒度で
+  記録する。capture を CI に載せるかは owner の判断が要る
+  （fast gate は offline・read-only の契約であり、`e2e/` に Playwright spec を
+  置くのは別 PR の責務）— 本 Issue では CI に接続しない。
 - **fixture の描画は「合成ハーネス」の中での測定である。**
   出荷页面の測定は上記の出荷 route 測定であり、fixture の測定とは別の話である。
   どちらも「合格の代用の画像」ではない。

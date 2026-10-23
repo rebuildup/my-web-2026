@@ -372,6 +372,26 @@ export const SHIPPED_SCAN_ROOT = 'src';
 export const SHIPPED_SCAN_SUFFIXES = ['.tsx', '.ts', '.css'];
 
 /**
+ * The CSS initial font size, used to convert a `rem` length to px.
+ *
+ * `rem` is relative to the ROOT font size, whose CSS initial value is
+ * 16 px. A page that sets `html { font-size }` changes that base, so the
+ * conversion is the gate's documented assumption, not a measurement —
+ * see `docs/verification/a11y/reflow.md`.
+ */
+export const REM_BASE_PX = 16;
+
+/**
+ * Length units the gate cannot convert to px without font context.
+ *
+ * `em` depends on the element's own `font-size`, `ch` on the width of
+ * the `0` glyph; the rest are the same kind of font-relative unit. They
+ * are NOT silently ignored: a declaration in one of them is reported in
+ * the report's out-of-scope section as undecidable.
+ */
+export const UNCONVERTIBLE_LENGTH_UNITS = ['em', 'ch', 'ex', 'cap', 'ic', 'lh', 'rlh'];
+
+/**
  * The files the shipped scan leaves out, each with the reason.
  *
  * The reason is part of the code on purpose: a hole without a reason is
@@ -467,6 +487,14 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		reason:
 			'the key diagram canvas is wider than the reflow budget on purpose: it lives inside the named ScrollRegion, and that named scroll region is the contract that lets a wide diagram scroll instead of squeezing the page',
 	},
+	{
+		id: 'keyboard-key-table',
+		file: 'src/keyboard/components/KeyboardPage.tsx',
+		property: 'min-width',
+		value: '40rem',
+		reason:
+			'the key table is wider than the reflow budget on purpose: it lives inside the named ScrollRegion (`tableWrapStyle`), and that named scroll region is the contract that lets a wide table scroll instead of squeezing the page',
+	},
 ];
 
 /**
@@ -495,46 +523,81 @@ export function styleDeclarationsIn(source) {
 }
 
 /**
+ * A CSS value in the form the rules compare (pure).
+ *
+ * The leading / trailing whitespace and a trailing `!important` are not
+ * part of the value's meaning, and the comparison is case-insensitive.
+ * Normalising once makes the CSS syntax and the JSX syntax agree: a
+ * `.x { white-space: nowrap !important; }` and a
+ * `style={{ whiteSpace: 'nowrap !important' }}` are the same declaration,
+ * so they must produce the same verdict.
+ */
+export function normalizeCssValue(value) {
+	return String(value)
+		.replace(/\s*!important\s*$/i, '')
+		.trim()
+		.toLowerCase();
+}
+
+/**
  * Classify one shipped source file (pure).
  *
  * The rules are about the DECLARATION, not about the rendered box: a
  * shipped surface that forbids wrapping, or that pins a box wider than
  * the reflow budget, cannot reflow whatever it renders.
+ *
+ * A fixed width is judged in px and in `rem` (converted at the CSS
+ * initial 16 px). A font-relative unit the gate cannot convert (`em`,
+ * `ch`, …) is returned as `undecidable` rather than ignored, so the
+ * report shows the declarations the gate did not judge.
  */
 export function evaluateShippedSource({ relativePath, source }) {
 	const violations = [];
+	const undecidable = [];
 	for (const declaration of styleDeclarationsIn(source)) {
-		if (
-			declaration.property === 'white-space' &&
-			(declaration.value === 'nowrap' || declaration.value === 'pre')
-		) {
+		const value = normalizeCssValue(declaration.value);
+		if (declaration.property === 'white-space' && (value === 'nowrap' || value === 'pre')) {
 			violations.push({
 				rule: 'shipped-nowrap',
 				file: relativePath,
 				line: declaration.line,
 				wcag: '1.4.10',
 				property: declaration.property,
-				value: declaration.value,
-				message: `the shipped surface forbids wrapping (white-space: ${declaration.value}); an unbreakable run it renders cannot reflow at ${REFLOW_BUDGET_PX} px, so the page scrolls in two dimensions`,
+				value,
+				message: `the shipped surface forbids wrapping (white-space: ${value}); an unbreakable run it renders cannot reflow at ${REFLOW_BUDGET_PX} px, so the page scrolls in two dimensions`,
 			});
 		}
 		if (declaration.property === 'width' || declaration.property === 'min-width') {
-			const match = /^(\d+(?:\.\d+)?)px$/.exec(declaration.value);
-			if (!match) continue;
-			const px = Number(match[1]);
-			if (px <= REFLOW_BUDGET_PX) continue;
-			violations.push({
-				rule: 'shipped-fixed-width',
-				file: relativePath,
-				line: declaration.line,
-				wcag: '1.4.10',
-				property: declaration.property,
-				value: declaration.value,
-				message: `the shipped surface pins a box to ${declaration.property}: ${px}px, wider than the ${REFLOW_BUDGET_PX} px reflow budget; the box cannot reflow`,
-			});
+			const length = /^(\d+(?:\.\d+)?)(px|rem)$/.exec(value);
+			if (length) {
+				const px = Number(length[1]) * (length[2] === 'rem' ? REM_BASE_PX : 1);
+				if (px <= REFLOW_BUDGET_PX) continue;
+				violations.push({
+					rule: 'shipped-fixed-width',
+					file: relativePath,
+					line: declaration.line,
+					wcag: '1.4.10',
+					property: declaration.property,
+					value,
+					px,
+					message: `the shipped surface pins a box to ${declaration.property}: ${value} (${px}px at the ${REM_BASE_PX} px rem base), wider than the ${REFLOW_BUDGET_PX} px reflow budget; the box cannot reflow`,
+				});
+				continue;
+			}
+			const fontRelative = /^(\d+(?:\.\d+)?)([a-z]+)$/.exec(value);
+			if (fontRelative && UNCONVERTIBLE_LENGTH_UNITS.includes(fontRelative[2])) {
+				undecidable.push({
+					file: relativePath,
+					line: declaration.line,
+					property: declaration.property,
+					value: declaration.value,
+					unit: fontRelative[2],
+					reason: `\`${fontRelative[2]}\` depends on the font context the gate does not have (em = the element's font-size, ch = the width of "0"); the declaration is not judged`,
+				});
+			}
 		}
 	}
-	return { violations };
+	return { violations, undecidable };
 }
 
 /** Every shipped source file under the scan root (filesystem). */
@@ -561,6 +624,7 @@ function collectShippedFiles(directory) {
 export function auditShippedSource(repoRoot = REPO_ROOT) {
 	const violations = [];
 	const excluded = [];
+	const undecidable = [];
 	let filesScanned = 0;
 	const scanRoot = join(repoRoot, SHIPPED_SCAN_ROOT);
 	if (!existsSync(scanRoot) || !statSync(scanRoot).isDirectory()) {
@@ -582,6 +646,7 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 			relativePath,
 			source: readFileSync(file, 'utf8'),
 		});
+		undecidable.push(...result.undecidable);
 		for (const violation of result.violations) {
 			const allowed = SHIPPED_DECLARATION_EXCLUSIONS.find(
 				(entry) =>
@@ -609,7 +674,7 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 		}
 	}
 	excluded.push(...declarationExclusions.values());
-	return { filesScanned, violations, excluded };
+	return { filesScanned, violations, excluded, undecidable };
 }
 
 /** The index of the matching `}` for the `{` at `start` (pure). */
@@ -1012,7 +1077,8 @@ export function renderGateSummary(evidence) {
 	lines.push(
 		`  ${shippedFixed.length === 0 ? 'ok  ' : 'FAIL'} ${'shipped-fixed-width'.padEnd(32)} ${shippedFixed.length} shipped declaration(s) pin a box wider than ${REFLOW_BUDGET_PX} px`,
 	);
-	if (evidence.shipped.excluded.length > 0) {
+	const undecidable = evidence.shipped.undecidable ?? [];
+	if (evidence.shipped.excluded.length > 0 || undecidable.length > 0) {
 		lines.push('');
 		lines.push('out of scope (excluded from the shipped scan, with the reason):');
 		for (const exclusion of EXCLUSIONS) {
@@ -1024,6 +1090,11 @@ export function renderGateSummary(evidence) {
 			if (!entry.declaration) continue;
 			const occurrences = entry.occurrences > 1 ? ` ×${entry.occurrences}` : '';
 			lines.push(`  - ${entry.file} (${entry.declaration}${occurrences}): ${entry.reason}`);
+		}
+		for (const entry of undecidable) {
+			lines.push(
+				`  - ${entry.file}:${entry.line} (${entry.property}: ${entry.value}): ${entry.reason}`,
+			);
 		}
 	}
 	lines.push('');

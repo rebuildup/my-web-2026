@@ -304,6 +304,78 @@ test('the CSS syntax is judged like the object syntax', () => {
 	}
 });
 
+test('a rem fixed width is converted at the CSS initial 16 px base', () => {
+	const over = evaluateShippedSource({
+		relativePath: 'src/home/hero.tsx',
+		source: "const s = css({ minWidth: '24rem' });",
+	});
+
+	assert.equal(over.violations.length, 1);
+	assert.equal(over.violations[0].rule, 'shipped-fixed-width');
+	assert.equal(over.violations[0].px, 384);
+	assert.match(over.violations[0].message, /384px/);
+
+	// 20 rem = 320 px is exactly the budget, not over it.
+	const atBudget = evaluateShippedSource({
+		relativePath: 'src/home/hero.tsx',
+		source: "const s = css({ minWidth: '20rem' });",
+	});
+
+	assert.deepEqual(atBudget.violations, []);
+});
+
+test('a font-relative unit the gate cannot convert is undecidable, not ignored', () => {
+	for (const [value, unit] of [
+		['25em', 'em'],
+		['40ch', 'ch'],
+	]) {
+		const result = evaluateShippedSource({
+			relativePath: 'src/home/hero.tsx',
+			source: `const s = css({ minWidth: '${value}' });`,
+		});
+
+		assert.deepEqual(result.violations, [], `${value} must not be a violation`);
+		assert.equal(result.undecidable.length, 1, `${value} must be reported as undecidable`);
+		assert.equal(result.undecidable[0].unit, unit);
+		assert.ok(result.undecidable[0].reason.length > 20);
+	}
+});
+
+test('the nowrap value is normalised before it is compared', () => {
+	const cssForm = evaluateShippedSource({
+		relativePath: 'src/x.css',
+		source: '.a { white-space: nowrap !important; }',
+	});
+	const jsxForm = evaluateShippedSource({
+		relativePath: 'src/x.tsx',
+		source: "const s = { whiteSpace: 'nowrap !important' };",
+	});
+	const trailing = evaluateShippedSource({
+		relativePath: 'src/x.tsx',
+		source: "const s = { whiteSpace: 'nowrap ' };",
+	});
+
+	for (const result of [cssForm, jsxForm, trailing]) {
+		assert.equal(result.violations.length, 1);
+		assert.equal(result.violations[0].rule, 'shipped-nowrap');
+	}
+	// The CSS syntax and the JSX syntax agree on the same declaration.
+	assert.equal(cssForm.violations[0].value, 'nowrap');
+	assert.equal(jsxForm.violations[0].value, 'nowrap');
+	assert.equal(trailing.violations[0].value, 'nowrap');
+});
+
+test('a fixed width with !important is still a fixed width', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/x.tsx',
+		source: "const s = css({ minWidth: '24rem !important' });",
+	});
+
+	assert.equal(result.violations.length, 1);
+	assert.equal(result.violations[0].rule, 'shipped-fixed-width');
+	assert.equal(result.violations[0].px, 384);
+});
+
 test('a shipped surface inside the budget is not a violation', () => {
 	const result = evaluateShippedSource({
 		relativePath: 'src/admin/keys/step-up-panel.tsx',
@@ -398,4 +470,28 @@ test('the report separates machine-checked facts from human evaluation', () => {
 	assert.match(report, /SC 1\.4\.10/);
 	assert.ok(report.includes(String(REFLOW_BUDGET_PX)));
 	for (const item of HUMAN_EVALUATION) assert.ok(report.includes(item));
+});
+
+test('the report shows a declaration the gate cannot convert', () => {
+	const evidence = collectEvidence();
+	const report = renderGateSummary({
+		...evidence,
+		shipped: {
+			...evidence.shipped,
+			undecidable: [
+				{
+					file: 'src/probe.tsx',
+					line: 1,
+					property: 'min-width',
+					value: '25em',
+					unit: 'em',
+					reason:
+						'`em` depends on the font context the gate does not have; the declaration is not judged',
+				},
+			],
+		},
+	});
+
+	assert.match(report, /out of scope/);
+	assert.match(report, /src\/probe\.tsx:1 \(min-width: 25em\)/);
 });

@@ -28,19 +28,7 @@
 		"skipLibCheck": true,
 		"verbatimModuleSyntax": true,
 		"paths": {
-			"~/*": ["./src/*"],
-			// `@storybook/react` is imported directly by the story files but is
-			// only a transitive dependency of `@storybook/react-vite`, so pnpm
-			// does not place a symlink for it at the top level of
-			// `node_modules/`. pnpm's virtual store keeps every package of the
-			// dependency graph under `node_modules/.pnpm/node_modules/`, and
-			// that path carries no version in it — unlike the per-package
-			// directory under `node_modules/.pnpm/`, whose name embeds the
-			// resolved version and the peer-resolution hashes. A mapping
-			// through the version-specific directory therefore breaks on
-			// every Storybook version bump; the mapping through the hoisted
-			// directory survives it.
-			"@storybook/react": ["./node_modules/.pnpm/node_modules/@storybook/react"]
+			"~/*": ["./src/*"]
 		}
 	},
 	"include": [

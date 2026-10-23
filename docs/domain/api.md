@@ -101,7 +101,7 @@
 - カタログと境界の一致: `pnpm run architecture:check`（`scripts/check-architecture.mjs` の依存方向ゲート）+ `src/http/api-directory/catalog.test.ts`（route 一覧と catalog の構造的一致）。
 - 表示面: `pnpm run build-storybook`（`catalog.stories.tsx` が Panda CSS の `editorial/primitives/` と `css` / `cx` を使用するため、Tailwind は一切使わない）。
 - 空状態: `EmptyState` story（`catalog.stories.tsx` の 2 つ目の story）。
-- 内部ドキュメント（本ファイル）の日本語文言は `quality/copy-editorial-approvals.json` の owner 承認を必要とする（`AGENTS.md` §5 の `copy:approval:check` 契約に従い、本 PR では新しい日本語文言を追加しているため owner レビューが必要）。
+- 内部ドキュメント（本ファイル）と Storybook プレビュー（`catalog.stories.tsx`）は `copy:approval:check` の対象外である。`quality/copy-editorial-surfaces.json` の `publicCopyGlobs` に `src/http/**` はなく、`**/*.md` と `**/*.stories.tsx` は `excludeGlobs` に含まれるため、本ファイルの日本語文言に owner 承認は要らない。
 
 ---
 
@@ -120,4 +120,4 @@
 
 ## 9. 依存方向の確認
 
-`src/http/api-directory/catalog.ts` は `src/http/` の obligation 内にあり、`editorial` の primitive は `catalog.stories.tsx` で `styled-system/css` 経由で使用する（`editorial` への import は許可される方向 — `AGENTS.md` §3 の `routes -> editorial` 方向と同様）。他の obligation（`home`、`portfolio`、`reactions` など）への value import は存在しない（`catalog.test.ts` は `externalBoundary.routes` だけを参照する）。
+`src/http/api-directory/catalog.ts` は `src/http/` の obligation 内にあり、`editorial` の primitive は `catalog.stories.tsx` で使用する（`editorial` への import は許可される方向で、`AGENTS.md` §3 の dependency direction 表に `http -> editorial (Issue #530 …)` として登録されている）。`catalog.fixture.ts` の `TableColumn` 参照は `import type` のみである。他の obligation（`home`、`portfolio`、`reactions` など）への value import は存在しない（`catalog.test.ts` は `externalBoundary.routes` だけを参照する）。

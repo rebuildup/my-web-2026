@@ -154,6 +154,12 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
  *   REST API contract; its response is binary, not JSON.
  * - `/sitemap.xml`, `/robots.txt` — crawler documents.
  * - `/.well-known/security.txt` — RFC 9116 document.
+ * - Boundary middleware (`app.use(...)`, e.g. CORS / cache isolation /
+ *   request id / CSRF) — it runs on the way to a contract and answers
+ *   nothing itself. Hono reports it under `ALL`; the drift rule carries
+ *   it with an explicit `ALL` exclusion rather than a blanket filter,
+ *   so an `.all()` route at a path with no real verb is still reported
+ *   (Issue #530 cold review F1).
  * - Mock routes (`LOCAL_API_MODE=mock`) — not a production surface.
  * - Internal server functions (`/_serverFn/*`) — handled by TanStack Start.
  * - Management / secret / admin endpoints — out of scope by design.
@@ -166,7 +172,7 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
  * absorb a public route.
  */
 export interface ApiScopeExclusion {
-	method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE';
+	method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'ALL';
 	path: string;
 	reason: string;
 }
@@ -210,5 +216,17 @@ export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
 		method: 'GET',
 		path: '/.well-known/security.txt',
 		reason: 'RFC 9116 document (plain text). It is not a request/response data contract.',
+	},
+	{
+		method: 'ALL',
+		path: '/api/v1/*',
+		reason:
+			'Boundary middleware mount (cache isolation, request id, CSRF guard, CORS). It runs on the way to a route and answers nothing itself, so it is not a published contract.',
+	},
+	{
+		method: 'ALL',
+		path: '/*',
+		reason:
+			'Boundary-wide CORS middleware. It runs on the way to every route and answers nothing itself, so it is not a published contract.',
 	},
 ];

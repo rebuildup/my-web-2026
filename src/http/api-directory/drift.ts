@@ -23,24 +23,31 @@
  *   - boundary → catalog: every registered route is either catalogued
  *     or explicitly excluded from the public scope, with a reason.
  *
- * What `ALL` means, and why it is skipped
- * ---------------------------------------
+ * What `ALL` means, and why it is NOT skipped wholesale
+ * -----------------------------------------------------
  * Hono reports two different things under `method: "ALL"`:
  *
- *   - middleware registered with `app.use(path, handler)` — the
- *     boundary's CORS, cache-isolation, request-id and CSRF guards
- *     all show up this way;
  *   - a `.all(path, methodNotAllowed(...))` "method not allowed"
  *     fallback that a sub-router installs after its real handlers.
+ *     Its path already carries real verbs, and those are the
+ *     catalogued contract — the entry for `GET /api/v1/health`
+ *     documents the route whether or not an `ALL` fallback also
+ *     exists behind it. Such an entry is ignored because the SAME
+ *     path has at least one non-`ALL` registration.
+ *   - middleware registered with `app.use(path, handler)` — the
+ *     boundary's CORS, cache-isolation, request-id and CSRF guards.
+ *     A middleware answers nothing itself, so it is carried by an
+ *     explicit `ALL <path>` scope exclusion with a reason rather
+ *     than by a blanket method filter.
  *
- * Neither is a public contract of its own. A middleware runs on the
- * way to a contract and answers nothing itself, and a 405 fallback
- * guards a path whose verbs the catalog already lists — the entry
- * for `GET /api/v1/health` documents that route whether or not an
- * `ALL` fallback also exists behind it. Matching them by path would
- * therefore document the boundary's plumbing rather than its
- * published surface, so `ALL` is filtered out before comparison.
- * The routes that carry a real verb are the ones that must line up.
+ * `ALL` cannot be filtered out wholesale, because `.all()` registers a
+ * LIVE handler: a sub-router (or the boundary itself) can publish a
+ * route with `.all(path, handler)` at a path that carries no real
+ * verb. Ignoring every `ALL` entry would let that route be served
+ * while the catalog never asks anyone to describe it. So an `ALL`
+ * entry is ignored only when its path has a real verb (the 405
+ * fallback case) or when it is an explicit scope exclusion; otherwise
+ * it is reported as undocumented.
  */
 
 export interface RouteRef {
@@ -61,6 +68,18 @@ export interface ScopeExclusionRef {
 /** The method Hono reports for middleware and 405 fallbacks. */
 const ALL_METHOD = 'ALL';
 
+/**
+ * The set of paths that carry at least one non-`ALL` registration.
+ *
+ * An `ALL` entry at one of these paths is the 405 fallback behind the
+ * real verbs, not a route of its own.
+ */
+function pathsWithRealVerb(routes: readonly RouteRef[]): Set<string> {
+	return new Set(
+		routes.filter((route) => route.method.toUpperCase() !== ALL_METHOD).map((route) => route.path),
+	);
+}
+
 function key(method: string, path: string): string {
 	return `${method.toUpperCase()} ${path}`;
 }
@@ -69,6 +88,12 @@ function key(method: string, path: string): string {
  * Registered routes that neither the catalog nor the scope exclusions
  * account for. A non-empty result means the boundary serves a route
  * the public directory does not describe.
+ *
+ * `ALL` entries are judged rather than filtered (see the module doc):
+ * an `ALL` entry at a path that also carries a real verb is the 405
+ * fallback, and an `ALL` entry that an exclusion names explicitly is
+ * boundary middleware. Any other `ALL` entry is an undocumented route,
+ * because `.all()` can register a live handler.
  */
 export function undocumentedRoutes(
 	routes: readonly RouteRef[],
@@ -77,15 +102,19 @@ export function undocumentedRoutes(
 ): RouteRef[] {
 	const catalogKeys = new Set(catalog.map((entry) => key(entry.method, entry.path)));
 	const exclusionKeys = new Set(exclusions.map((entry) => key(entry.method, entry.path)));
+	const realVerbPaths = pathsWithRealVerb(routes);
 
 	return routes.filter((route) => {
 		const method = route.method.toUpperCase();
-		if (method === ALL_METHOD) {
-			// Middleware and 405 fallbacks carry no verb of their own,
-			// so there is nothing published to match them against.
-			return false;
-		}
 		const routeKey = key(method, route.path);
+		if (method === ALL_METHOD) {
+			// A 405 fallback rides behind real verbs already documented
+			// by the catalog, so it adds no route of its own. Middleware
+			// must be named by an explicit exclusion; anything else under
+			// `ALL` is a live route nobody catalogued.
+			if (realVerbPaths.has(route.path)) return false;
+			return !exclusionKeys.has(routeKey);
+		}
 		return !catalogKeys.has(routeKey) && !exclusionKeys.has(routeKey);
 	});
 }

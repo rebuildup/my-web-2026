@@ -498,7 +498,7 @@ function setDelta(before, after) {
  * dropping `のみ` from a sentence that still says `編集` is a permission
  * change even though the permission category stays present.
  */
-export function claimMarkers(text) {
+export function claimMarkers(text, locale = 'ja') {
 	if (text === null || text === undefined) {
 		return {
 			numbers: [],
@@ -508,8 +508,13 @@ export function claimMarkers(text) {
 			permissionMarkers: [],
 		};
 	}
-	const negationMarkers = markersIn(text, NEGATION);
-	const permissionMarkers = markersIn(text, PERMISSION);
+	// A locale with no marker list is UNJUDGED, not judged as "no
+	// markers": an empty list must not be read as "this sentence carries
+	// no claim". Issue #426 makes that explicit — the meaning-diff
+	// classifier reports `unjudged-locale` for such a locale instead of
+	// calling the rewrite meaning-preserved.
+	const negationMarkers = markersIn(text, NEGATION_MARKERS[locale] ?? []);
+	const permissionMarkers = markersIn(text, PERMISSION_MARKERS[locale] ?? []);
 	return {
 		numbers: numericTokens(text),
 		negation: negationMarkers.length > 0,
@@ -528,9 +533,9 @@ export function claimMarkers(text) {
  * it: there is nothing to compare, which is exactly what a reviewer must
  * see.
  */
-export function analyzeUnit(unit) {
-	const before = claimMarkers(unit.before);
-	const after = claimMarkers(unit.after);
+export function analyzeUnit(unit, locale = 'ja') {
+	const before = claimMarkers(unit.before, locale);
+	const after = claimMarkers(unit.after, locale);
 	// Drift compares two sides. An added or removed segment has no other
 	// side to compare with, so its missing markers are not "drift" — the
 	// `claim-added` / `claim-removed` flags carry that case instead.

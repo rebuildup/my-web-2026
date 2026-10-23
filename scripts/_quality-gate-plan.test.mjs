@@ -133,9 +133,20 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run knip:check',
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
+	// Issue #396: the icon-button accessible-name contract, declared in
+	// `quality/profile.yaml` right after the reduced-motion gate.
+	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
+	'pnpm run a11y:image-alt:check',
 	'pnpm run a11y:language-of-parts:check',
+	// Issue #398: the heading-outline / landmark contract. It runs
+	// right after the other `a11y` contracts, so an outline finding is
+	// read next to the other accessibility findings.
+	'pnpm run a11y:heading-landmarks:check',
 	'pnpm run css:check',
+	// Issue #399: the colour-contrast AA contract. It runs right after the
+	// CSS gate, because both read the shipped token / stylesheet layer.
+	'pnpm run a11y:contrast:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

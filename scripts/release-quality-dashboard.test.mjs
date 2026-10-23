@@ -637,10 +637,19 @@ describe('the real roster', () => {
 
 	it('declares the unimplemented families as N/A rather than as measurements', () => {
 		const dashboard = buildDashboard({ root: REPO_ROOT });
-		const planned = dashboard.rows.filter((row) => row.signal.family);
+		const familyRows = dashboard.rows.filter((row) => row.signal.family);
+		const planned = familyRows.filter((row) => row.signal.state === 'planned');
 		assert.ok(planned.length >= 3, 'the roster must still carry the planned families');
 		for (const row of planned) {
 			assert.equal(row.result.status, STATUS.NOT_APPLICABLE);
+		}
+		// A family that IS implemented is a measurement, not an N/A row:
+		// Issue #393 flipped `a11y` to implemented, and the axe scan runs
+		// and decides by its exit code.
+		const implemented = familyRows.filter((row) => row.signal.state === 'implemented');
+		assert.ok(implemented.length >= 1, 'the roster must carry the implemented a11y family');
+		for (const row of implemented) {
+			assert.notEqual(row.result.status, STATUS.NOT_APPLICABLE);
 		}
 	});
 

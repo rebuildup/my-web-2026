@@ -1,0 +1,14 @@
+{
+	"id": "fail-non-text",
+	"note": "A non-text UI component pair below the 3:1 minimum. A hairline boundary that is too faint is the classic case: nothing about it fails a build, and nothing about it is readable.",
+	"pairs": [
+		{
+			"id": "faint-rule-on-canvas",
+			"fg": "#cbd5e1",
+			"bg": "#ffffff",
+			"kind": "non-text",
+			"threshold": 3,
+			"expect": "fail"
+		}
+	]
+}

@@ -40,10 +40,14 @@
  * The manifest CANNOT declare that a story is allowed to fail
  * -----------------------------------------------------------
  * `expect` has no `fail` member, and the audit refuses a declaration
- * outside `{pass}` at run time as well. If the manifest could say "this
- * story is expected to fail", then editing one word here would turn a
- * newly-introduced violation into a green run. The place where a known
- * violation is ALLOWED to exist is the ledger,
+ * outside `{pass, baseline}` at run time as well. If the manifest could
+ * say "this story is expected to fail", then editing one word here would
+ * turn a newly-introduced violation into a green run. `baseline` is not
+ * such a declaration: it says "this file's stories are measured against
+ * a KNOWN violation", and it is only accepted when the ledger records
+ * that violation with a reason — a `baseline` file without a ledger
+ * record, or a `pass` file with one, fails the gate. The place where a
+ * known violation is ALLOWED to exist is the ledger,
  * `e2e/a11y/axe-storybook-baseline.json`: one record per story × rule,
  * with the reason it is tolerated. That is a separate, visible artefact
  * with its own diff, so tolerating a violation is a decision somebody
@@ -67,9 +71,13 @@ export { AXE_TAGS };
  *
  * There is deliberately no `fail` member: the manifest may not say
  * "this story is allowed to fail". A story whose known violations are
- * tolerated is recorded in the ledger, with a reason.
+ * tolerated is recorded in the ledger, with a reason, and the file
+ * declares `baseline` so that the declaration and the ledger cannot
+ * drift apart. The run-time authority is `DECLARABLE_VERDICTS` in
+ * `axe-storybook-verdict.ts`, which the fast gate checks against every
+ * entry of this list.
  */
-export type StoryVerdict = 'pass';
+export type StoryVerdict = 'pass' | 'baseline';
 
 /** One audited story file, with every story export the audit measures. */
 export interface AuditedStoryFile {

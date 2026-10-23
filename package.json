@@ -217,6 +217,8 @@
 		"capture:a11y-screenreader-steps": "node scripts/capture-a11y-screenreader-steps.mjs",
 		"a11y:live-region:check": "node scripts/check-a11y-live-region.mjs",
 		"capture:a11y-live-region": "node scripts/capture-a11y-live-region.mjs",
+		"a11y:focus-visible:check": "node scripts/check-a11y-focus-visible.mjs",
+		"capture:a11y-focus-visible": "node scripts/capture-a11y-focus-visible.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",

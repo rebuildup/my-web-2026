@@ -156,6 +156,10 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #405: the live-region / status-message contract, declared in
 	// `quality/profile.yaml` right after the contrast gate.
 	'pnpm run a11y:live-region:check',
+	// Issue #395: the focus visibility / focus-not-obscured contract. It
+	// runs right after the colour gate, because both read the shipped
+	// source and the shipped stylesheet.
+	'pnpm run a11y:focus-visible:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

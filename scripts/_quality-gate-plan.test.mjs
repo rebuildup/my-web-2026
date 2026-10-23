@@ -142,6 +142,10 @@ const EXPECTED_FAST_PLAN = [
 	// `quality/profile.yaml` right after the image-alt gate.
 	'pnpm run a11y:reflow:check',
 	'pnpm run a11y:language-of-parts:check',
+	// Issue #398: the heading-outline / landmark contract. It runs
+	// right after the other `a11y` contracts, so an outline finding is
+	// read next to the other accessibility findings.
+	'pnpm run a11y:heading-landmarks:check',
 	'pnpm run css:check',
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.

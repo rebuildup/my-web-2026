@@ -2,6 +2,7 @@
 
 | Artefact | Issue | What it proves |
 | --- | --- | --- |
+| `axe-route-report.webp` | #393 | the public-route axe-core audit of the rendered DOM — one row per audited route (verdict, known / new violation counts, rule id with its WCAG tags, element count) with one real violating element captured on the page, so a tolerated violation is visible and not only tabulated. `axe-route-report.md` is the write-up |
 | `mixed-language-content.webp` | #409 | the shipped language-of-parts gallery in four states (mixed-language body / document-language-only body / refused parts / the same body at 320 px), with the WCAG 2.2 mapping table that separates the machine-checked rows from the human ones. `mixed-language-content.md` is the write-up |
 | `table-code-mobile.webp` | #407 | the shipped `DataTable` / `CodeBlock` fixture in its four states at 375 px, with caption / per-cell `scope` / confined scroll / keyboard scrolling measured in Chromium. `table-code.md` is the write-up |
 | `contrast.webp` | #399 | the shipped token pair matrix in both appearances (light / dark), every swatch rendered in its own foreground / background with the measured ratio printed beside it. `contrast.md` is the write-up |
@@ -10,6 +11,7 @@
 | `category-appearance.webp`, `category-monochrome*.webp`, `status-*.webp` | earlier issues | monochrome / appearance proofs kept alongside the a11y artefacts |
 | `reduced-motion-on-off.webp` | #403 | the shipped counter fixture rendered twice in one Chromium — `no-preference` and `reduce` — with the browser-reported `animation-name`, the accessible label, the machine gate's verdict and the WCAG mapping printed above the two panels |
 | `image-alt.webp` | #397 | the image alt / decorative-image contract on one screen: the two states a shipped surface may be in (a meaningful image with an alt, a decorative image with an empty alt plus a decorative mark) and the three states the gate rejects (no alt, an empty alt with no decorative mark, a blank alt), with every image's `alt` attribute and decorative mark read from the live DOM. `image-alt.md` is the write-up |
+| `heading-landmarks.webp` | #398 | the heading outline / landmark contract on one screen: a conforming page (one `main`, one `h1`, contiguous levels) next to a violating one (two `h1`, a skipped level, no `main`), with the per-page verdict of the source gate and the declared rule exemptions printed beside it. `heading-landmarks.md` is the write-up |
 | `reflow.webp` | #400 | the shipped text-reflow fixture measured in Chromium at the 320 CSS px budget (SC 1.4.10 Reflow) and at 200% text (SC 1.4.4 Resize Text): the shipped-contract specimens must fit and the reproduced defects must overflow, read as `scrollWidth > clientWidth` from the live DOM. `reflow.md` is the write-up |
 
 ## Reduced motion (Issue #403)

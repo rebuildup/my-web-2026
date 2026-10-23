@@ -299,6 +299,7 @@ export function headerSvg({ gate, summary, accessibilitySnapshot, width = SCREEN
 		`machine-checked (an automatic pass is NOT a human verification): ${automatic.join(', ')}`,
 		`human review outstanding (a person performs it): ${outstanding.length} item(s) — ${outstanding.slice(0, 6).join(', ')}${outstanding.length > 6 ? ', …' : ''}`,
 		`excluded criteria: ${gate.excluded.map((entry) => `SC ${entry.sc}`).join(', ') || '(none)'}`,
+		`scope decisions: ${gate.scopeDecisions.length} A/AA criteria are outside this table (listed in docs/verification/a11y/wcag-review-matrix.md)`,
 		`states rendered below: ${STORY_MODULE}#${STORY_EXPORT} (正常 / 空欄 / 形式違反 / 失敗 / 縮小表示)`,
 		`gate verdict: ${gate.violations.length} violation(s) — a green run means the TABLE is intact, not that the site conforms to WCAG 2.2 AA`,
 		'',

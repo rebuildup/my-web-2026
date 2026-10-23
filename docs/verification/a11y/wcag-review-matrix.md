@@ -47,11 +47,16 @@
 上の state の分離だけでは、**文書側が**「機械の pass を AA 準拠の根拠として書く」
 余地が残る。だから gate は **表記そのものを** 検査する。
 
-1. gate は **完成主張の語句**（`scripts/check-a11y-wcag-review-matrix.mjs` の
+1. gate は **完成主張の述語**（`scripts/check-a11y-wcag-review-matrix.mjs` の
    `CLAIM_PHRASES`）を **ドキュメント全体**（`README.md` と `docs/**`）から探す。
-2. 同じ行に **否定・禁止の修飾語**（`CLAIM_QUALIFIERS`。「無い / 禁止 /
+   述語リストなので、**文の終わり（済み / 完了 / しています）は問わない**。
+   `AA 準拠` / `AA 適合` / `AA compliant` を **単独で** 禁止語句にする。
+2. **述語に隣接した** 否定・禁止の修飾語（`CLAIM_QUALIFIERS`。「無い / 禁止 /
    主張 しない」など）があれば、その行は **語句の言及** であり **主張ではない**。
-   （だからこの文書も語句を **列挙** できる。）
+   修飾語の位置は **述語との距離** で判定する — 同じ文のうしろなら隣接、
+   うしろではなく **直前 10 文字以内** なら隣接とみなす。ただし途中に
+   句読点があれば **別の節** なので隣接ではない。
+   **行のどこかにあればよい、ではない。**
 3. 主張と判定された行があるとき、**次の両方を満たすこと** を要求する。
    - 表に `human-verified` の項目が **1 件以上** ある（機械の pass は証跡ではない）
    - その行が **この表を指している**（`wcag-review-matrix` を含む）
@@ -61,17 +66,20 @@
 **どの文書も AA 準拠を主張できない**。gate の出力にも
 `site-level conformance claim: NOT available` と出る。
 
-> 語句の具体形（この表：**禁止**）：
+> 述語（この表：**禁止**）：
 >
-> | 語句 | gate の扱い |
-> | --- | --- |
-> | `AA 準拠完了` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `AA 適合完了` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `AA 準拠済み` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `AA 適合済み` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `WCAG 2.2 AA 適合済み` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `WCAG 2.2 AA 準拠済み` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
-> | `WCAG 2.2 AA compliant` | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+> | 述語 | 含む書き方 | gate の扱い |
+> | --- | --- | --- |
+> | `AA に準拠` | 「WCAG 2.2 AA に準拠しています」 | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+> | `AA に適合` | 「WCAG 2.2 AA に適合している」 | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+> | `AA 準拠` | 「AA 準拠」「AA 準拠済み」「AA 準拠完了」 | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+> | `AA 適合` | 「AA 適合」「AA 適合済み」「AA 適合完了」 | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+> | `AA compliant` | 「WCAG 2.2 AA compliant」 | 検出したら `compliance-claim-unbacked`（**この語句は禁止**） |
+>
+> 修飾語が別の節にあるときは **主張のままである**。たとえば
+> 「根拠がないが、このサイトは WCAG 2.2 AA 適合済みです」**という行は主張である**
+> （gate が red にする）。この判定は fixture
+> `fail/12-claim-negated-in-another-clause.json` が固定している。
 
 ## 適用対象・対象外・基準
 
@@ -79,8 +87,10 @@
 
 gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 （`WCAG_22_CRITERIA`）。**AAA の基準は混ざらない** — 適合の主張の粒度を
-ぼかさないため。A/AA 30 項目が **この表のスコープ** で、
-各項目は **「項目で覆っている」** か **「理由つきで適用外」** の
+ぼかさないため。Level A / AA の基準は **56 個**（A 32 個 + AA 24 個）で、
+この表が扱うのは **30 個**（A 15 個 + AA 15 個）である。残りの **26 個** は
+**表の外側の決定**として下の「適用範囲の決定」に記す。
+この表の 30 項目は **「項目で覆っている」** か **「理由つきで適用外」** の
 どちらかで **必ず** 決着している。
 
 | 基準 | レベル | 扱い |
@@ -113,13 +123,68 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 | SC 4.1.2 Name, Role, Value | A | 機械（アイコンボタン）と人（フォーム control） |
 | SC 4.1.3 Status Messages | AA | 人（ErrorSummary） |
 | SC 1.2.2 Captions (Prerecorded) | A | **適用外** — 事前録音の音声・動画を出荷していない |
-| SC 1.2.4 Audio Description (Prerecorded) | A | **適用外** — 同じ理由 |
+| SC 1.2.4 Audio Description (Prerecorded) | AA | **適用外** — 同じ理由 |
 | SC 3.3.7 Redundant Entry | AA | **適用外** — 公開画面には複数手順のフォームが無い（招待フローは認証された管理画面） |
 
 **適用外は「黙って無視する」のではなく「理由つきの決定」** である。
 理由の無い適用外は `criterion-exclusion-reason-missing` で red になる。
 また、**覆うとも適用外とも決着していない基準** は
 `criterion-undisposed` で red になる（「見ていない」は決定ではない）。
+
+#### 適用外の 2 種類（混ざらない）
+
+| 種類 | 対象 | 書く場所 | 検査される rule |
+| --- | --- | --- | --- |
+| 表の適用外 | 語彙にある A/AA の基準のうち、この表が覆わないもの（今は 1.2.2 / 1.2.4 / 3.3.7） | 表の `excluded` | `criterion-undisposed` / `criterion-exclusion-reason-missing` / `criterion-conflict` |
+| スコープの決定 | 語彙の **外側** にある A/AA の基準（下の 26 個） | この文書の「適用範囲の決定」 | `scope-decision-doc-mismatch` |
+
+**どちらが単一の事実源か**:
+
+- `excluded` は **表の語彙（gate の `WCAG_22_CRITERIA`）が持つ基準だけ** を
+  受け付ける。語彙に無い番号を書くと `item-sc-unknown` で red になる。
+- **26 個のリストと理由の事実源は gate の定数 `SCOPE_DECISIONS`** であり、
+  下の表は **その写し** である。ずれると `scope-decision-doc-mismatch` で red になる
+  （表の SC 番号・レベル・名前・理由が 1 つでも違えば red）。
+- **AAA は `excluded` に書かない**（書くと `item-sc-unknown` で red になる）。
+  AAA は **この表が扱う粒度（適合の主張に含める粒度）の外側** であり、
+  この表は AAA を「覆うとも適用外とも」主張しない。つまり AAA は
+  「黙って無視」ではなく **「この表の対象外」** として決着している。
+
+### 適用範囲の決定（表の外側にある 26 基準）
+
+WCAG 2.2 の Level A / AA の基準のうち、**この表が扱わない 26 基準** と
+その理由。**これは表の `excluded` とは別の決着**である（上の表を参照）。
+**事実源は gate の定数 `SCOPE_DECISIONS`** で、この表はその写し。
+1 つでも違えば `scope-decision-doc-mismatch` で gate が red になる。
+
+| SC | レベル | 名前 | 理由 |
+| --- | --- | --- | --- |
+| 1.2.1 | A | Audio-only and Video-only (Prerecorded) | 事前録音の音声・動画だけのコンテンツを出荷していない。 |
+| 1.2.3 | A | Audio Description or Media Alternative (Prerecorded) | 事前録音の映像を出荷していない（1.2.1 と同じ理由）。 |
+| 1.2.8 | AA | Media Alternative (Prerecorded) | 事前録音の音声・動画を出荷しない（1.2.1 と同じ理由）。 |
+| 1.3.3 | A | Sensory Characteristics | 感覚的な特徴だけに頼って指示する表現を使っていない。 |
+| 1.4.2 | A | Audio Control | 2 秒以上鳴り止まない音が自動再生する UI を持たない。 |
+| 1.4.5 | AA | Images of Text | 画像の中に文字を埋め込む表現を使っていない。 |
+| 2.1.4 | A | Character Key Shortcuts | 1 文字のショートカットキーを使う操作を用意していない。 |
+| 2.2.1 | A | Timing Adjustable | 時間の制限のある操作を用意していない。 |
+| 2.2.2 | A | Pause, Stop, Hide | 2 秒以上動き続ける自動更新アニメーションを使っていない。 |
+| 2.3.1 | A | Three Flashes or Below Threshold | 1 秒間に 3 回以上点滅する表現を使っていない。 |
+| 2.4.4 | A | Link Purpose (In Context) | リンクの目的を文脈ごとに検査する項目をこの表に持たない。 |
+| 2.4.5 | A | Multiple Ways | 複数の到達経路を検査する項目をこの表に持たない。 |
+| 2.5.1 | A | Pointer Gestures | パス操作（スワイプなど）を使う操作を用意していない。 |
+| 2.5.2 | A | Pointer Cancellation | 単一のポインタ操作だけで操作できる UI に絞っている。 |
+| 2.5.3 | A | Label in Name | アクセシブル名の検査は SC 4.1.2 側に集約している。 |
+| 2.5.4 | A | Motion Actuation | 端末を振って操作する機能を持たない。 |
+| 2.5.7 | AA | Dragging Movements | ドラッグで操作する UI（スライダーなど）を持たない。 |
+| 3.2.1 | A | On Focus | フォーカスしただけで自動で開く UI を持たない。 |
+| 3.2.2 | A | On Input | 入力値の変更で画面が自動で切り替わる UI を持たない。 |
+| 3.2.3 | AA | Consistent Navigation | ページを越えたナビゲーションの順序を検査する項目をこの表に持たない。 |
+| 3.2.4 | AA | Consistent Identification | 同じ機能の名称がページを越えて揃っているかを検査する項目をこの表に持たない。 |
+| 3.2.6 | A | Consistent Help | ヘルプの置き方の検査項目をこの表に持たない。 |
+| 3.3.3 | AA | Error Suggestion | エラーメッセージの修正提案を個別に検査する項目をこの表に持たない。 |
+| 3.3.4 | AA | Error Prevention (Legal, Financial, Data) | 法的 / 財務 / データの送信を扱う入力が無い。 |
+| 3.3.6 | AA | Error Prevention (All) | 入力の取り消しと確認の検査項目をこの表に持たない。 |
+| 3.3.8 | AA | Accessible Authentication (Minimum) | 認証は管理画面の対象で、この表（公開画面と story）は扱わない。 |
 
 ### state（検査の対象状態）
 
@@ -269,6 +334,7 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 | `criterion-exclusion-reason-missing` | 適用外理由が無い |
 | `criterion-conflict` | 同じ基準が覆われ、かつ適用外 |
 | `compliance-claim-unbacked` | 人の確認が無いまま AA 準拠を主張している |
+| `scope-decision-doc-mismatch` | 適用範囲の決定（表の外側にある基準）が gate の定数と文書で食い違っている |
 | `fixture-expectation-mismatch` | fixture が自分の期待どおりに振る舞っていない |
 | `fixture-contract-missing` | fixture が読めない / ディレクトリが空 |
 
@@ -287,18 +353,26 @@ the site conforms to WCAG 2.2 AA.` と明示される。
 | `pass/01-intact-matrix.json` | 違反 0 件 |
 | `pass/02-claim-with-human-verification.json` | 違反 0 件（人の確認があり表を指す主張は受理する） |
 | `fail/01-review-without-reviewer.json` | `item-evidence-missing` |
-| `fail/02-unknown-state.json` | `item-state-unknown` |
+| `fail/02-unknown-state.json` | `item-state-unknown` + `state-uncovered` + `surface-state-missing` |
 | `fail/03-not-reviewed-with-evidence.json` | `item-review-state-invalid` |
 | `fail/04-missing-surface.json` | `surface-missing` |
 | `fail/05-unbacked-claim.json` | `compliance-claim-unbacked` |
-| `fail/06-exclusion-without-reason.json` | `criterion-exclusion-reason-missing` |
+| `fail/06-exclusion-without-reason.json` | `criterion-exclusion-reason-missing` + `criterion-undisposed` |
 | `fail/07-unknown-auto-gate.json` | `item-auto-gate-missing` |
 | `fail/08-stale-evidence.json` | `item-evidence-stale` |
 | `fail/09-uncovered-state.json` | `state-uncovered` |
 | `fail/10-conflicting-criterion.json` | `criterion-conflict` |
+| `fail/11-claim-predicate-without-qualifier.json` | `compliance-claim-unbacked` |
+| `fail/12-claim-negated-in-another-clause.json` | `compliance-claim-unbacked` |
 
 fixture 集合は **完全一致** で管理する（1 個落としても
 `fixture-expectation-mismatch` で gate が red になる）。
+**fail fixture の期待は「ちょうどその集合」で判定する** — 期待に無い rule が
+出ても、期待した rule が出なくても `fixture-expectation-mismatch` になる
+（表は「出てきうる rule を全部宣言する」）。
+**fixture は自分のものだけで判断される** — 監査中はリポジトリの
+ドキュメントを走査しないので、fixture の判定が「その日の文書の書き方」に
+左右されることはない。
 
 ## 誤検知・誤陰性を見つけたときの解除手順
 
@@ -308,11 +382,12 @@ fixture 集合は **完全一致** で管理する（1 個落としても
 | 表が列挙すべき state を忘れている | 表の `states` に **追加**し、覆う項目を 1 件足す（`state-uncovered` が red になる） |
 | surface が指す story が改名された | 表の `surface`（path / export）と `reproduces` のマーカーを **現実に合わせて更新**する。`surface-missing` / `surface-state-missing` が red になる |
 | story が検査対象の state を持たなくなった | **新しい state を作るのではなく**、その検査を別の surface に向けるか、その項目を `excluded` 相当（基準の適用外）にする |
-| 項目に SC 番号を書きたいが語彙に無い | 語彙は **Level A / AA だけ** を持つ。AAA の基準は **この表の対象外**（`excluded` に理由を書いて除外する） |
+| 項目に SC 番号を書きたいが語彙に無い | `excluded` には **語彙（Level A / AA）がある基準だけ** を書ける。語彙に無い番号を書くと `item-sc-unknown` で red になる。**AAA は `excluded` に書かない** — 「この表の対象外」として上の「適用範囲の決定」側で扱う |
 | 機械が決められる部分が増えた | `method` を `machine` に **変えずに**、`autoGates` に gate 名を追加する。`auto-pass` へ変更するのは **人が確認したあとのみ** |
 | 人が確認した項目を記録したい | `review.state` を `human-verified`（または `human-failed`）にし、**検査者・実施日・環境・結果** を **すべて** 書く。1 つでも空なら red |
 | 検査した時期が古くなった | 検査を **再実施** して `performedAt` を更新する。**日付だけ書き換えてはならない**（`item-evidence-stale` が red になる） |
-| 主張の語句を誤検知した | その行に **否定・禁止の修飾語**があるか確認する。語句の **列挙** だけなら `CLAIM_QUALIFIERS` による言及扱いで red にならない |
+| 主張の語句を誤検知した | その行に **述語に隣接した** 否定・禁止の修飾語があるか確認する。語句の **列挙** だけなら `CLAIM_QUALIFIERS` による言及扱いで red にならない。修飾語が **別の節** にある場合は **主張のまま** なので、文の作り直しか記録の追加が必要 |
+| 適用範囲の決定（表の外側にある基準）がずれた | gate の定数 `SCOPE_DECISIONS` とこの文書の表を **どちらかに合わせて** 揃える。番号・レベル・名前・理由の 1 つでも違えば `scope-decision-doc-mismatch` で red になる |
 | 機械の pass を AA 準拠の根拠として書きたい | **書けない。** 人の確認（`human-verified`）が 1 件出来たら、その行は **この表を指す** 必要があり、語句そのものは **禁止** のまま |
 
 ## スクリーンショット
@@ -344,6 +419,13 @@ pnpm run capture:a11y-wcag-review-matrix  # Chromium で実測して WebP を生
 node --test scripts/check-a11y-wcag-review-matrix.test.mjs
 node --test scripts/capture-a11y-wcag-review-matrix.test.mjs
 node --test scripts/_quality-gate-plan.test.mjs
+
+# オプションは「値付き」「値なし」のどちらの書き方も使える
+node scripts/check-a11y-wcag-review-matrix.mjs --today=2026-10-23
+node scripts/check-a11y-wcag-review-matrix.mjs --today 2026-10-23
+node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/wcag-review-matrix.json
+# 表が読めないとき（存在しないパス）は判断できないので終了コード 2
+node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/does-not-exist.json; echo "exit=$?"
 ```
 
 ## 既知の制約
@@ -368,3 +450,11 @@ node --test scripts/_quality-gate-plan.test.mjs
 - **入力の出典は 2 つの典拠だけ**（WCAG 2.2 と
   <https://zenn.dev/catnose99/articles/547cbf57e5ad28>）。後者はこの表の
   検査項目の並びの参考であり、判定の物差しではない。
+- **基準の総数は仕様から読み取ったもので、このリポジトリでは再取得していない。**
+  A/AA が 56 個（Level A 32 個 + Level AA 24 個）である根拠は
+  [WCAG 2.2 仕様](https://www.w3.org/TR/WCAG22/) の達成基準の一覧である。
+  gate が照合するのは **この 26 個のリスト**（定数 `SCOPE_DECISIONS` と
+  この文書の表）であり、総数そのものは gate の検査対象外である。
+- **AA の適合主張は機械が判定しない。** gate が緑でも、文書が
+  「AA 適合済み」と書くことは **禁止** のままである（`human-verified` が
+  1 件出来ても、その行は **この表を指す** 必要があり、語句そのものは禁止）。

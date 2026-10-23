@@ -14,6 +14,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -27,14 +28,20 @@ import {
 	REVIEW_RECORD_STATES,
 	REVIEW_STATES,
 	RULES,
+	SCOPE_DECISIONS,
 	WCAG_22_CRITERIA,
 	auditFixtures,
 	auditMatrix,
+	auditScopeDecisions,
 	collectClaimSurfaceFiles,
 	collectEvidence,
+	compareFixtureExpectations,
+	compareScopeDecisions,
 	daysBetween,
 	findClaims,
 	isIsoDate,
+	parseOptions,
+	parseScopeDecisionTable,
 	renderGateSummary,
 	validateShape,
 } from './check-a11y-wcag-review-matrix.mjs';
@@ -159,6 +166,7 @@ test('the rules the gate can report are the documented ones', () => {
 		'criterion-exclusion-reason-missing',
 		'criterion-conflict',
 		'compliance-claim-unbacked',
+		'scope-decision-doc-mismatch',
 		'fixture-expectation-mismatch',
 		'fixture-contract-missing',
 	]) {
@@ -463,6 +471,53 @@ test('the qualifier list is not empty and the phrase list is not empty', () => {
 	assert.ok(CLAIM_QUALIFIERS.length > 0);
 });
 
+test('the claim is the predicate, not a finished sentence', () => {
+	for (const text of [
+		'このサイトは WCAG 2.2 AA に準拠しています。',
+		'このサイトは WCAG 2.2 AA に適合しています。',
+		'このサイトは WCAG 2.2 AA 準拠済みです。',
+		'このサイトは WCAG 2.2 AA 適合済みです。',
+		'このサイトは WCAG 2.2 AA 準拠完了です。',
+		'このサイトは WCAG 2.2 AA 適合完了と書いた。',
+		'This site is WCAG 2.2 AA compliant.',
+	]) {
+		const claims = findClaims(text, { file: 'a.md' });
+		assert.equal(claims.length, 1, `${text} must be reported as a claim`);
+	}
+});
+
+test('a negation in another clause does not weaken the claim', () => {
+	for (const text of [
+		'説明がないが、このサイトは WCAG 2.2 AA 適合済みです。',
+		'根拠がないが、このサイトは WCAG 2.2 AA 準拠済みです。',
+		'記録が無い、しかしこのサイトは WCAG 2.2 AA に適合しています。',
+	]) {
+		const claims = findClaims(text, { file: 'a.md' });
+		assert.equal(claims.length, 1, `${text} must be reported as a claim`);
+	}
+});
+
+test('a qualifier next to the phrase turns the line into a mention', () => {
+	for (const text of [
+		'この文書は AA 準拠と主張しない。',
+		'この文書は AA 適合の根拠にはならない。',
+		'AA 準拠という語句は禁止',
+	]) {
+		const claims = findClaims(text, { file: 'a.md' });
+		assert.deepEqual(claims, [], `${text} must be a mention`);
+	}
+});
+
+test('a qualifier that is cut off from the phrase by a clause separator does not frame it', () => {
+	const claims = findClaims('禁止語句: AA 準拠', { file: 'a.md' });
+	assert.equal(claims.length, 1, 'the separator ends the qualifier\u2019s clause');
+});
+
+test('a qualifier in the next sentence does not frame the phrase', () => {
+	const claims = findClaims('AA 適合済みの検査が 1 件ある。ただし証跡はない。', { file: 'a.md' });
+	assert.equal(claims.length, 1, 'the negation belongs to another sentence');
+});
+
 test('the documentation is the claim surface, and it is read', () => {
 	const files = collectClaimSurfaceFiles({ repoRoot: REPO_ROOT });
 	assert.ok(files.includes('README.md'));
@@ -545,6 +600,131 @@ test('the report separates the two kinds of review', () => {
 /* ------------------------------------------------------------------ *
  * the fixtures
  * ------------------------------------------------------------------ */
+
+test('a fixture is judged on its own: the repository documentation is not scanned', () => {
+	const audited = auditFixtures({ repoRoot: REPO_ROOT, today: TODAY });
+	for (const file of audited.files) {
+		for (const claim of file.claims) {
+			assert.ok(
+				String(claim.file ?? '').startsWith('fixtures/'),
+				`${file.path} must not inherit a claim from the repository documentation`,
+			);
+		}
+	}
+});
+
+test('a fail fixture must declare exactly the rules it produces', () => {
+	assert.deepEqual(
+		compareFixtureExpectations('fail', ['item-evidence-missing'], ['item-evidence-missing']),
+		[],
+	);
+	assert.equal(
+		compareFixtureExpectations(
+			'fail',
+			['item-evidence-missing'],
+			['item-evidence-missing', 'state-uncovered'],
+		).length,
+		1,
+		'a rule the fixture produces but does not declare is a mismatch',
+	);
+	assert.equal(
+		compareFixtureExpectations('fail', ['item-evidence-missing'], []).length,
+		1,
+		'a rule the fixture expects but does not produce is a mismatch',
+	);
+	assert.equal(
+		compareFixtureExpectations('fail', [], ['item-evidence-missing']).length,
+		2,
+		'a fail fixture that declares nothing is a mismatch',
+	);
+	assert.equal(
+		compareFixtureExpectations('pass', [], ['item-evidence-missing']).length,
+		1,
+		'a pass fixture that reports a violation is a mismatch',
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * the scope decisions
+ * ------------------------------------------------------------------ */
+
+test('the scope decisions hold every A/AA criterion the table does not carry', () => {
+	const vocabulary = new Set(Object.keys(WCAG_22_CRITERIA));
+	const decided = new Set(SCOPE_DECISIONS.map((decision) => decision.sc));
+	assert.equal(decided.size, SCOPE_DECISIONS.length, 'a scope decision is listed twice');
+	for (const sc of decided) {
+		assert.ok(
+			!vocabulary.has(sc),
+			`SC ${sc} is in the vocabulary and must not be a scope decision`,
+		);
+	}
+	for (const decision of SCOPE_DECISIONS) {
+		assert.ok(['A', 'AA'].includes(decision.level), `SC ${decision.sc} needs an A/AA level`);
+		assert.ok(decision.name.length > 0, `SC ${decision.sc} needs a name`);
+		assert.ok(decision.reason.length > 0, `SC ${decision.sc} needs a reason`);
+	}
+});
+
+test('the documentation states the scope decisions the gate holds', () => {
+	assert.deepEqual(auditScopeDecisions({ repoRoot: REPO_ROOT }), []);
+});
+
+test('a scope decision the documentation does not state is reported', () => {
+	const rows = parseScopeDecisionTable(
+		'| SC | レベル | 名前 | 理由 |\n| --- | --- | --- | --- |\n| 1.2.1 | A | Audio-only | a reason |\n',
+	);
+	assert.equal(rows.length, 1);
+	const problems = compareScopeDecisions(rows);
+	assert.ok(problems.length > 0, 'a partial scope table is a mismatch');
+});
+
+/* ------------------------------------------------------------------ *
+ * the command line
+ * ------------------------------------------------------------------ */
+
+test('an option takes its value attached or as the next argument', () => {
+	assert.equal(parseOptions(['--today=2026-10-23']).today, '2026-10-23');
+	assert.equal(parseOptions(['--today', '2026-10-23']).today, '2026-10-23');
+	assert.equal(parseOptions(['--matrix=quality/x.json']).matrix, 'quality/x.json');
+	assert.equal(parseOptions(['--matrix', 'quality/x.json']).matrix, 'quality/x.json');
+	assert.equal(parseOptions(['--json=a.json']).json, 'a.json');
+	assert.equal(parseOptions(['--json', 'a.json']).json, 'a.json');
+	assert.equal(parseOptions(['--quiet']).quiet, true);
+});
+
+test('an option without a value is refused', () => {
+	assert.throws(() => parseOptions(['--today']));
+	assert.throws(() => parseOptions(['--matrix']));
+	assert.throws(() => parseOptions(['--today', '--quiet']));
+	assert.throws(() => parseOptions(['--unknown']));
+});
+
+test('a matrix that cannot be read is exit code 2', () => {
+	const result = spawnSync(
+		process.execPath,
+		[
+			resolve(REPO_ROOT, 'scripts/check-a11y-wcag-review-matrix.mjs'),
+			'--matrix=quality/does-not-exist.json',
+		],
+		{ cwd: REPO_ROOT, encoding: 'utf8' },
+	);
+	assert.equal(result.status, 2, result.stderr);
+	assert.match(result.stderr, /does-not-exist\.json/);
+});
+
+test('a matrix that cannot be read is exit code 2 with the value spelled separately', () => {
+	const result = spawnSync(
+		process.execPath,
+		[
+			resolve(REPO_ROOT, 'scripts/check-a11y-wcag-review-matrix.mjs'),
+			'--matrix',
+			'quality/does-not-exist.json',
+		],
+		{ cwd: REPO_ROOT, encoding: 'utf8' },
+	);
+	assert.equal(result.status, 2, result.stderr);
+	assert.match(result.stderr, /does-not-exist\.json/);
+});
 
 test('the fixture directories exist and hold exactly the expected files', () => {
 	for (const [directory, expected] of [

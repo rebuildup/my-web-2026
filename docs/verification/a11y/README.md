@@ -12,7 +12,7 @@
 | `reduced-motion-on-off.webp` | #403 | the shipped counter fixture rendered twice in one Chromium — `no-preference` and `reduce` — with the browser-reported `animation-name`, the accessible label, the machine gate's verdict and the WCAG mapping printed above the two panels |
 | `image-alt.webp` | #397 | the image alt / decorative-image contract on one screen: the two states a shipped surface may be in (a meaningful image with an alt, a decorative image with an empty alt plus a decorative mark) and the three states the gate rejects (no alt, an empty alt with no decorative mark, a blank alt), with every image's `alt` attribute and decorative mark read from the live DOM. `image-alt.md` is the write-up |
 | `heading-landmarks.webp` | #398 | the heading outline / landmark contract on one screen: a conforming page (one `main`, one `h1`, contiguous levels) next to a violating one (two `h1`, a skipped level, no `main`), with the per-page verdict of the source gate and the declared rule exemptions printed beside it. `heading-landmarks.md` is the write-up |
-| `wcag-review-matrix.webp` | #410 | the manual-review record for the WCAG 2.2 A/AA criteria a machine cannot decide, with the shipped form-state gallery on one screen, the failure panel's Chromium accessibility snapshot, and the gate's own report (machine-checked rows / outstanding rows / excluded criteria) printed above them. `wcag-review-matrix.md` is the write-up |
+| `wcag-review-matrix.webp` | #410 | the manual-review record for the WCAG 2.2 A/AA criteria a machine cannot decide, with the shipped form-state gallery on one screen, the failure panel's Chromium accessibility snapshot, and the gate's own report (machine-checked rows / outstanding rows / excluded criteria / scope decisions) printed above them. `wcag-review-matrix.md` is the write-up |
 
 ## WCAG AA manual review matrix (Issue #410)
 
@@ -25,6 +25,7 @@ The artefact of this issue is a **record**, not a verdict:
 | Layer | What it is | Where it lives |
 | --- | --- | --- |
 | the table | the machine-readable matrix: every WCAG 2.2 A/AA criterion is covered by an item or excluded with a reason, and every item says whether a machine or a person decides it | `quality/wcag-review-matrix.json` |
+| the scope decisions | the A/AA criteria the table does not carry, each with a reason; the gate holds the list and the write-up mirrors it, so a drift is red | `scripts/check-a11y-wcag-review-matrix.mjs` (`SCOPE_DECISIONS`) and `docs/verification/a11y/wcag-review-matrix.md` |
 | the gate | a pure Node / offline check that the record is intact | `scripts/check-a11y-wcag-review-matrix.mjs` (`pnpm run a11y:wcag-review-matrix:check`) |
 | the capture | the shipped state gallery rendered in Chromium, plus that gate's report | `pnpm run capture:a11y-wcag-review-matrix` |
 
@@ -40,8 +41,8 @@ line points at the matrix.
 A green gate means the **table** is intact. It does not mean the site
 conforms to WCAG 2.2 AA. The write-up
 (`wcag-review-matrix.md`) carries the criterion-by-criterion split, the
-required fields, the rules, and the procedure for releasing a false
-positive.
+list of A/AA criteria the table does not carry, the required fields, the
+rules, and the procedure for releasing a false positive.
 
 ## Reduced motion (Issue #403)
 

@@ -214,5 +214,5 @@
 			"reason": "the fixture does not publish pre-recorded media"
 		}
 	],
-	"$expects": ["item-state-unknown"]
+	"$expects": ["item-state-unknown", "state-uncovered", "surface-state-missing"]
 }

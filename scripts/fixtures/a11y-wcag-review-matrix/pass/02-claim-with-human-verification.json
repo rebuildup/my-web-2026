@@ -221,11 +221,21 @@
 	],
 	"$claims": [
 		{
-			"file": "docs/verification/a11y/wcag-review-matrix.md",
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
 			"line": 1,
 			"phrase": "AA 準拠済み",
 			"text": "the fixture claims conformance",
 			"citesMatrix": true
+		}
+	],
+	"$documents": [
+		{
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
+			"text": "docs/verification/a11y/wcag-review-matrix.md が記録する AA 適合済みの検査が 1 件ある。"
+		},
+		{
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
+			"text": "この文書は AA 準拠と主張しない。"
 		}
 	]
 }

@@ -82,6 +82,9 @@
  *   compliance-claim-unbacked
  *       A document claims that the site conforms to WCAG 2.2 AA while no
  *       human verification exists, or without pointing at this matrix.
+ *   scope-decision-doc-mismatch
+ *       The scope decisions (the A/AA criteria this table does not
+ *       carry) and the documentation that states them disagree.
  *   fixture-expectation-mismatch
  *       A fixture does not behave the way its own expectation says.
  *   fixture-contract-missing
@@ -93,6 +96,7 @@
  * Usage:
  *   node scripts/check-a11y-wcag-review-matrix.mjs [--quiet] [--json=FILE]
  *   node scripts/check-a11y-wcag-review-matrix.mjs --today=2026-10-23
+ *   node scripts/check-a11y-wcag-review-matrix.mjs --today 2026-10-23
  *   node scripts/check-a11y-wcag-review-matrix.mjs --matrix=<path>
  */
 
@@ -130,6 +134,8 @@ export const EXPECTED_FIXTURE_FILES = {
 		'08-stale-evidence.json',
 		'09-uncovered-state.json',
 		'10-conflicting-criterion.json',
+		'11-claim-predicate-without-qualifier.json',
+		'12-claim-negated-in-another-clause.json',
 	],
 };
 
@@ -144,7 +150,7 @@ export const EXPECTED_FIXTURE_FILES = {
 export const WCAG_22_CRITERIA = {
 	'1.1.1': { level: 'A', name: 'Non-text Content' },
 	'1.2.2': { level: 'A', name: 'Captions (Prerecorded)' },
-	'1.2.4': { level: 'A', name: 'Audio Description (Prerecorded)' },
+	'1.2.4': { level: 'AA', name: 'Audio Description (Prerecorded)' },
 	'1.3.1': { level: 'A', name: 'Info and Relationships' },
 	'1.3.2': { level: 'A', name: 'Meaningful Sequence' },
 	'1.3.4': { level: 'AA', name: 'Orientation' },
@@ -173,6 +179,191 @@ export const WCAG_22_CRITERIA = {
 	'4.1.2': { level: 'A', name: 'Name, Role, Value' },
 	'4.1.3': { level: 'AA', name: 'Status Messages' },
 };
+
+/**
+ * The A/AA criteria this table does NOT carry, and why.
+ *
+ * WCAG 2.2 has 56 Level A / AA criteria (32 at Level A, 24 at Level
+ * AA). {@link WCAG_22_CRITERIA} holds the 30 this repository's table
+ * speaks about; the remaining 26 are decided HERE, as a scope
+ * decision rather than as a table item.
+ *
+ * They are deliberately NOT `excluded` entries: `excluded` accepts the
+ * criteria of the table's own vocabulary only, so a number outside it
+ * (a Level AAA criterion, for instance) is reported as
+ * `item-sc-unknown` instead of being quietly accepted. That is why the
+ * two lists never overlap.
+ *
+ * The reason text is Japanese because the documentation table carries
+ * the same text and the gate compares the two (`scope-decision-doc-
+ * mismatch`); the rest of this file stays English.
+ */
+export const SCOPE_DECISIONS = [
+	{
+		sc: '1.2.1',
+		level: 'A',
+		name: 'Audio-only and Video-only (Prerecorded)',
+		reason: '事前録音の音声・動画だけのコンテンツを出荷していない。',
+	},
+	{
+		sc: '1.2.3',
+		level: 'A',
+		name: 'Audio Description or Media Alternative (Prerecorded)',
+		reason: '事前録音の映像を出荷していない（1.2.1 と同じ理由）。',
+	},
+	{
+		sc: '1.2.8',
+		level: 'AA',
+		name: 'Media Alternative (Prerecorded)',
+		reason: '事前録音の音声・動画を出荷しない（1.2.1 と同じ理由）。',
+	},
+	{
+		sc: '1.3.3',
+		level: 'A',
+		name: 'Sensory Characteristics',
+		reason: '感覚的な特徴だけに頼って指示する表現を使っていない。',
+	},
+	{
+		sc: '1.4.2',
+		level: 'A',
+		name: 'Audio Control',
+		reason: '2 秒以上鳴り止まない音が自動再生する UI を持たない。',
+	},
+	{
+		sc: '1.4.5',
+		level: 'AA',
+		name: 'Images of Text',
+		reason: '画像の中に文字を埋め込む表現を使っていない。',
+	},
+	{
+		sc: '2.1.4',
+		level: 'A',
+		name: 'Character Key Shortcuts',
+		reason: '1 文字のショートカットキーを使う操作を用意していない。',
+	},
+	{
+		sc: '2.2.1',
+		level: 'A',
+		name: 'Timing Adjustable',
+		reason: '時間の制限のある操作を用意していない。',
+	},
+	{
+		sc: '2.2.2',
+		level: 'A',
+		name: 'Pause, Stop, Hide',
+		reason: '2 秒以上動き続ける自動更新アニメーションを使っていない。',
+	},
+	{
+		sc: '2.3.1',
+		level: 'A',
+		name: 'Three Flashes or Below Threshold',
+		reason: '1 秒間に 3 回以上点滅する表現を使っていない。',
+	},
+	{
+		sc: '2.4.4',
+		level: 'A',
+		name: 'Link Purpose (In Context)',
+		reason: 'リンクの目的を文脈ごとに検査する項目をこの表に持たない。',
+	},
+	{
+		sc: '2.4.5',
+		level: 'A',
+		name: 'Multiple Ways',
+		reason: '複数の到達経路を検査する項目をこの表に持たない。',
+	},
+	{
+		sc: '2.5.1',
+		level: 'A',
+		name: 'Pointer Gestures',
+		reason: 'パス操作（スワイプなど）を使う操作を用意していない。',
+	},
+	{
+		sc: '2.5.2',
+		level: 'A',
+		name: 'Pointer Cancellation',
+		reason: '単一のポインタ操作だけで操作できる UI に絞っている。',
+	},
+	{
+		sc: '2.5.3',
+		level: 'A',
+		name: 'Label in Name',
+		reason: 'アクセシブル名の検査は SC 4.1.2 側に集約している。',
+	},
+	{
+		sc: '2.5.4',
+		level: 'A',
+		name: 'Motion Actuation',
+		reason: '端末を振って操作する機能を持たない。',
+	},
+	{
+		sc: '2.5.7',
+		level: 'AA',
+		name: 'Dragging Movements',
+		reason: 'ドラッグで操作する UI（スライダーなど）を持たない。',
+	},
+	{
+		sc: '3.2.1',
+		level: 'A',
+		name: 'On Focus',
+		reason: 'フォーカスしただけで自動で開く UI を持たない。',
+	},
+	{
+		sc: '3.2.2',
+		level: 'A',
+		name: 'On Input',
+		reason: '入力値の変更で画面が自動で切り替わる UI を持たない。',
+	},
+	{
+		sc: '3.2.3',
+		level: 'AA',
+		name: 'Consistent Navigation',
+		reason: 'ページを越えたナビゲーションの順序を検査する項目をこの表に持たない。',
+	},
+	{
+		sc: '3.2.4',
+		level: 'AA',
+		name: 'Consistent Identification',
+		reason: '同じ機能の名称がページを越えて揃っているかを検査する項目をこの表に持たない。',
+	},
+	{
+		sc: '3.2.6',
+		level: 'A',
+		name: 'Consistent Help',
+		reason: 'ヘルプの置き方の検査項目をこの表に持たない。',
+	},
+	{
+		sc: '3.3.3',
+		level: 'AA',
+		name: 'Error Suggestion',
+		reason: 'エラーメッセージの修正提案を個別に検査する項目をこの表に持たない。',
+	},
+	{
+		sc: '3.3.4',
+		level: 'AA',
+		name: 'Error Prevention (Legal, Financial, Data)',
+		reason: '法的 / 財務 / データの送信を扱う入力が無い。',
+	},
+	{
+		sc: '3.3.6',
+		level: 'AA',
+		name: 'Error Prevention (All)',
+		reason: '入力の取り消しと確認の検査項目をこの表に持たない。',
+	},
+	{
+		sc: '3.3.8',
+		level: 'AA',
+		name: 'Accessible Authentication (Minimum)',
+		reason: '認証は管理画面の対象で、この表（公開画面と story）は扱わない。',
+	},
+];
+
+/**
+ * The documentation that mirrors {@link SCOPE_DECISIONS}.
+ *
+ * The gate reads the table out of this file and compares it with the
+ * constant, so the two can never drift apart silently.
+ */
+export const SCOPE_DECISION_DOC = 'docs/verification/a11y/wcag-review-matrix.md';
 
 /**
  * The state vocabulary.
@@ -254,24 +445,26 @@ export const REVIEW_RECORD_STATES = {
 };
 
 /**
- * The words that turn a document into a conformance claim.
+ * The phrases that turn a document into a conformance claim.
  *
- * A claim is a phrase that says the conformance is DONE. A phrase inside
- * a line that also carries a qualifier (`ない` / `禁止` / …) is a
- * mention of the phrase, not a claim — that is what lets this
- * repository document the phrase list without tripping over it.
+ * The list is a PREDICATE list, not a list of finished sentences: the
+ * claim is the predicate ("AA 準拠", "AA 適合", "AA compliant"), and
+ * the grammatical ending ("済み", "完了", "しています") is irrelevant.
+ * A document that says "このサイトは WCAG 2.2 AA に準拠しています" makes
+ * the same claim as one that says "AA 準拠完了", so both are detected.
+ * The predicate is matched inside the longer form as well, so
+ * "WCAG 2.2 AA 準拠" is found by the "AA 準拠" entry.
  */
-export const CLAIM_PHRASES = [
-	'AA 準拠完了',
-	'AA 適合完了',
-	'AA 準拠済み',
-	'AA 適合済み',
-	'WCAG 2.2 AA 適合済み',
-	'WCAG 2.2 AA 準拠済み',
-	'WCAG 2.2 AA compliant',
-];
+export const CLAIM_PHRASES = ['AA に準拠', 'AA に適合', 'AA 準拠', 'AA 適合', 'AA compliant'];
 
-/** A line that carries one of these is a mention, not a claim. */
+/**
+ * A qualifier next to the claim phrase turns the line into a mention.
+ *
+ * A qualifier that stands somewhere else in the line does NOT: "根拠が
+ * ないが、このサイトは WCAG 2.2 AA 適合済みです" is a claim, and the
+ * negation belongs to a different clause. The proximity rule is in
+ * {@link claimIsQualified}.
+ */
 export const CLAIM_QUALIFIERS = [
 	'ない',
 	'ません',
@@ -287,6 +480,19 @@ export const CLAIM_QUALIFIERS = [
 	'ありません',
 	'避免',
 ];
+
+/** The characters that end a sentence. */
+const SENTENCE_TERMINATORS = '。！？!?';
+
+/** The characters that separate one clause from the next. */
+const CLAUSE_SEPARATORS = '、，,；;：:';
+
+/**
+ * How far a qualifier may stand IN FRONT of the claim phrase and still
+ * frame it. A qualifier further away, or separated from the phrase by
+ * a clause separator, belongs to another clause and does not.
+ */
+export const QUALIFIER_LEAD_WINDOW = 10;
 
 /**
  * Where a site-level conformance claim may be written.
@@ -316,6 +522,7 @@ export const RULES = [
 	'criterion-exclusion-reason-missing',
 	'criterion-conflict',
 	'compliance-claim-unbacked',
+	'scope-decision-doc-mismatch',
 	'fixture-expectation-mismatch',
 	'fixture-contract-missing',
 ];
@@ -729,6 +936,11 @@ export function auditMatrix(
 	const claims = [
 		...(claimSurfaces ?? scanClaimSurfaces({ repoRoot })),
 		...(Array.isArray(matrix.$claims) ? matrix.$claims : []),
+		...(Array.isArray(matrix.$documents)
+			? matrix.$documents.flatMap((document) =>
+					findClaims(document?.text ?? '', { file: document?.file ?? null }),
+				)
+			: []),
 	];
 	for (const claim of claims) {
 		const backed = humanVerified.length > 0 && claim.citesMatrix;
@@ -843,30 +1055,89 @@ function walkMarkdown(directory, repoRoot) {
 /**
  * Find the conformance claims in the documentation.
  *
- * A claim is a line that carries one of {@link CLAIM_PHRASES} and no
- * qualifier from {@link CLAIM_QUALIFIERS} — a line that also says the
- * phrase is not allowed, or that it is not a claim, mentions the phrase
- * without making the claim.
+ * A claim is a phrase from {@link CLAIM_PHRASES} that no qualifier
+ * frames. A phrase a qualifier stands next to is a mention of the
+ * phrase, not a claim — that is what lets this repository document
+ * the phrase list without tripping over it.
  */
 export function findClaims(text, { file = null } = {}) {
 	const claims = [];
 	const lines = String(text).split('\n');
 	lines.forEach((line, index) => {
-		const qualified = CLAIM_QUALIFIERS.some((qualifier) => line.includes(qualifier));
-		if (qualified) return;
 		for (const phrase of CLAIM_PHRASES) {
-			const at = line.indexOf(phrase);
-			if (at === -1) continue;
-			claims.push({
-				file,
-				line: index + 1,
-				phrase,
-				text: line.trim(),
-				citesMatrix: line.includes('wcag-review-matrix'),
-			});
+			let at = line.indexOf(phrase);
+			while (at !== -1) {
+				if (!claimIsQualified(line, at, phrase)) {
+					claims.push({
+						file,
+						line: index + 1,
+						phrase,
+						text: line.trim(),
+						citesMatrix: line.includes('wcag-review-matrix'),
+					});
+				}
+				at = line.indexOf(phrase, at + phrase.length);
+			}
 		}
 	});
 	return claims;
+}
+
+/**
+ * Does a qualifier frame the claim phrase at `at`?
+ *
+ * The qualifier has to be **attached** to the phrase:
+ *
+ *   - behind it, inside the same sentence — "AA 適合済みの記録がある"
+ *     is a mention of the phrase, "AA 適合を主張しない" mentions it too;
+ *   - or in front of it, close enough ({@link QUALIFIER_LEAD_WINDOW})
+ *     and without a clause separator in between — "禁止: AA 適合"
+ *     mentions it.
+ *
+ * A qualifier somewhere else in the line does not frame the phrase:
+ * "根拠がないが、このサイトは WCAG 2.2 AA 適合済みです" is a claim,
+ * because the negation belongs to another clause.
+ */
+export function claimIsQualified(line, at, phrase) {
+	const end = at + phrase.length;
+	const behind = line.slice(end, sentenceEndOf(line, end));
+	if (CLAIM_QUALIFIERS.some((qualifier) => behind.includes(qualifier))) return true;
+	const ahead = line.slice(sentenceStartOf(line, at), at);
+	for (const qualifier of CLAIM_QUALIFIERS) {
+		let index = ahead.lastIndexOf(qualifier);
+		while (index !== -1) {
+			const gap = ahead.slice(index + qualifier.length);
+			if (gap.length <= QUALIFIER_LEAD_WINDOW && !hasClauseSeparator(gap)) return true;
+			// `lastIndexOf` clamps a negative position to 0, so searching from
+			// `index - 1` would return `index` again and never terminate.
+			index = index === 0 ? -1 : ahead.lastIndexOf(qualifier, index - 1);
+		}
+	}
+	return false;
+}
+
+/** The index just after the last sentence terminator before `index`. */
+function sentenceStartOf(line, index) {
+	for (let at = index - 1; at >= 0; at -= 1) {
+		if (SENTENCE_TERMINATORS.includes(line[at])) return at + 1;
+	}
+	return 0;
+}
+
+/** The index of the next sentence terminator after `index`, or the line length. */
+function sentenceEndOf(line, index) {
+	for (let at = index; at < line.length; at += 1) {
+		if (SENTENCE_TERMINATORS.includes(line[at])) return at;
+	}
+	return line.length;
+}
+
+/** Does the text carry a character that separates one clause from the next? */
+function hasClauseSeparator(text) {
+	for (const character of text) {
+		if (CLAUSE_SEPARATORS.includes(character)) return true;
+	}
+	return false;
 }
 
 /** Read every claim surface and collect the claims. */
@@ -893,12 +1164,58 @@ export function collectFixtureFiles(directory) {
 }
 
 /**
+ * Compare the rules a fixture produced with the rules it declares.
+ *
+ * A `fail` fixture must declare **exactly** the rules it produces: a
+ * rule that is missing from `$expects` and a rule that is produced but
+ * not declared are both a mismatch, so a fixture can never quietly
+ * verify less than it does.
+ */
+export function compareFixtureExpectations(expectation, expects, produced) {
+	const problems = [];
+	const expected = new Set(expects);
+	const actual = new Set(produced);
+	if (expectation === 'pass') {
+		if (actual.size > 0) {
+			problems.push(
+				`the pass fixture reports ${actual.size} violation(s): ${[...actual].join(', ')}`,
+			);
+		}
+		return problems;
+	}
+	for (const rule of expected) {
+		if (!actual.has(rule)) {
+			problems.push(`the fail fixture expects "${rule}" and the audit did not report it`);
+		}
+	}
+	for (const rule of actual) {
+		if (!expected.has(rule)) {
+			problems.push(
+				`the fail fixture produces "${rule}" but does not declare it in $expects (${
+					[...expected].join(', ') || 'nothing'
+				})`,
+			);
+		}
+	}
+	if (expected.size === 0) {
+		problems.push('a fail fixture must declare the rules it expects ($expects)');
+	}
+	return problems;
+}
+
+/**
  * Audit every fixture of the repository.
  *
  * A `pass` fixture must produce no violation at all; a `fail` fixture
- * must produce every rule it declares (`$expects`). The set of fixture
+ * must produce **exactly** the rules it declares (`$expects`) — a rule
+ * the fixture produces but does not declare is a mismatch as well, so
+ * a fixture cannot quietly verify less than it does. The set of fixture
  * files is exact, so a fixture that quietly lost a file cannot "verify"
  * less than it claims.
+ *
+ * A fixture is judged **on its own**: the repository's documentation is
+ * not scanned while a fixture is audited, so the fixture's verdict can
+ * never depend on what the documentation happens to say that day.
  */
 export function auditFixtures({
 	repoRoot = REPO_ROOT,
@@ -965,46 +1282,139 @@ export function auditFixtures({
 				});
 				continue;
 			}
-			const audited = auditMatrix(fixture, { today, repoRoot, packageScripts: scripts });
+			const audited = auditMatrix(fixture, {
+				today,
+				repoRoot,
+				packageScripts: scripts,
+				// A fixture is judged on its own: the repository's
+				// documentation is not part of its verdict.
+				claimSurfaces: [],
+			});
 			const produced = new Set(audited.violations.map((violation) => violation.rule));
 			const expects = Array.isArray(fixture.$expects) ? fixture.$expects : [];
-			if (expectation === 'pass') {
-				if (audited.violations.length > 0) {
-					violations.push({
-						rule: 'fixture-expectation-mismatch',
-						file: relativePath,
-						message: `the pass fixture reports ${audited.violations.length} violation(s): ${[...produced].join(', ')}`,
-					});
-				}
-			} else {
-				for (const rule of expects) {
-					if (!produced.has(rule)) {
-						violations.push({
-							rule: 'fixture-expectation-mismatch',
-							file: relativePath,
-							message: `the fail fixture expects "${rule}" and the audit did not report it`,
-						});
-					}
-				}
-				if (expects.length === 0) {
-					violations.push({
-						rule: 'fixture-expectation-mismatch',
-						file: relativePath,
-						message: 'a fail fixture must declare the rules it expects ($expects)',
-					});
-				}
+			for (const message of compareFixtureExpectations(expectation, expects, produced)) {
+				violations.push({
+					rule: 'fixture-expectation-mismatch',
+					file: relativePath,
+					message,
+				});
 			}
 			files.push({
 				path: relativePath,
 				expectation,
 				expects,
 				produced: [...produced],
+				claims: audited.claims,
 				violations: audited.violations,
 			});
 		}
 	}
 
 	return { files, violations };
+}
+
+/* ------------------------------------------------------------------ *
+ * the scope decisions
+ * ------------------------------------------------------------------ */
+
+/** The header of the scope-decision table in the documentation. */
+export const SCOPE_DECISION_TABLE_HEADER = ['SC', 'レベル', '名前', '理由'];
+
+/**
+ * Read the scope-decision table out of the documentation.
+ *
+ * The table is found by its header row, so the surrounding prose may
+ * move without breaking the gate.
+ */
+export function parseScopeDecisionTable(text) {
+	const rows = [];
+	const lines = String(text).split('\n');
+	let inTable = false;
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (!trimmed.startsWith('|')) {
+			if (inTable) break;
+			continue;
+		}
+		const cells = trimmed
+			.split('|')
+			.slice(1, -1)
+			.map((cell) => cell.trim());
+		if (!inTable) {
+			if (cells.length !== SCOPE_DECISION_TABLE_HEADER.length) continue;
+			if (!cells.every((cell, index) => cell === SCOPE_DECISION_TABLE_HEADER[index])) continue;
+			inTable = true;
+			continue;
+		}
+		if (cells.every((cell) => /^-+$/.test(cell))) continue;
+		rows.push({ sc: cells[0], level: cells[1], name: cells[2], reason: cells[3] });
+	}
+	return rows;
+}
+
+/**
+ * Compare the documented scope decisions with the constant.
+ *
+ * Every criterion of the constant must be documented with the same
+ * level, the same name and the same reason, and the documentation must
+ * not list a criterion the constant does not hold. A drift is a
+ * violation: the script and the document are two views of one decision.
+ */
+export function compareScopeDecisions(rows) {
+	const problems = [];
+	const documented = new Map(rows.map((row) => [row.sc, row]));
+	if (rows.length !== SCOPE_DECISIONS.length) {
+		problems.push(
+			`the documentation lists ${rows.length} scope decision(s) while the gate holds ${SCOPE_DECISIONS.length}`,
+		);
+	}
+	for (const decision of SCOPE_DECISIONS) {
+		const row = documented.get(decision.sc);
+		if (!row) {
+			problems.push(`SC ${decision.sc} (${decision.level}) is not documented`);
+			continue;
+		}
+		if (row.level !== decision.level) {
+			problems.push(`SC ${decision.sc} is documented as level ${row.level}, not ${decision.level}`);
+		}
+		if (row.name !== decision.name) {
+			problems.push(`SC ${decision.sc} is documented as "${row.name}", not "${decision.name}"`);
+		}
+		if (row.reason !== decision.reason) {
+			problems.push(`SC ${decision.sc} is documented with another reason`);
+		}
+	}
+	for (const row of rows) {
+		if (!SCOPE_DECISIONS.some((decision) => decision.sc === row.sc)) {
+			problems.push(`SC ${row.sc} is documented but the gate does not hold it`);
+		}
+	}
+	return problems;
+}
+
+/**
+ * Audit the scope decisions against the documentation.
+ *
+ * The gate holds the decision; the documentation states it. The two
+ * have to agree, or the record is not trustworthy.
+ */
+export function auditScopeDecisions({ repoRoot = REPO_ROOT } = {}) {
+	const path = resolve(repoRoot, SCOPE_DECISION_DOC);
+	if (!existsSync(path)) {
+		return [
+			{
+				rule: 'scope-decision-doc-mismatch',
+				file: SCOPE_DECISION_DOC,
+				message: `the scope decision documentation ${SCOPE_DECISION_DOC} does not exist`,
+			},
+		];
+	}
+	const rows = parseScopeDecisionTable(readFileSync(path, 'utf8'));
+	return compareScopeDecisions(rows).map((message) => ({
+		rule: 'scope-decision-doc-mismatch',
+		file: SCOPE_DECISION_DOC,
+		message,
+	}));
 }
 
 /* ------------------------------------------------------------------ *
@@ -1051,6 +1461,10 @@ export function renderGateSummary(evidence) {
 	for (const entry of evidence.excluded) {
 		lines.push(`  - SC ${entry.sc} ${WCAG_22_CRITERIA[entry.sc].name} — ${entry.reason}`);
 	}
+	lines.push('');
+	lines.push(
+		`scope decisions: ${evidence.scopeDecisions.length} A/AA criteria are outside this table; the list and its reasons live in ${SCOPE_DECISION_DOC}`,
+	);
 	lines.push('');
 	lines.push(
 		`site-level conformance claim: ${
@@ -1117,6 +1531,7 @@ export function collectEvidence({
 	const packageScripts = readPackageScripts(repoRoot);
 	const audited = auditMatrix(matrix, { today, repoRoot, packageScripts });
 	const fixtures = auditFixtures({ repoRoot, today, packageScripts });
+	const scopeDecisions = auditScopeDecisions({ repoRoot });
 	return {
 		matrix,
 		matrixPath,
@@ -1133,8 +1548,9 @@ export function collectEvidence({
 		humanReviewed: audited.items.filter((item) => item?.review?.state !== 'auto-pass').length,
 		outstanding: audited.outstanding,
 		machineChecked: audited.machineChecked,
+		scopeDecisions: SCOPE_DECISIONS,
 		fixtures: fixtures.files,
-		violations: [...audited.violations, ...fixtures.violations],
+		violations: [...audited.violations, ...fixtures.violations, ...scopeDecisions],
 	};
 }
 
@@ -1144,31 +1560,57 @@ function usage() {
 	);
 }
 
-export function runGate(argv = process.argv.slice(2)) {
-	const quiet = argv.includes('--quiet');
-	const jsonIndex = argv.indexOf('--json');
-	const jsonOut = jsonIndex === -1 ? null : (argv[jsonIndex + 1] ?? null);
-	const todayIndex = argv.indexOf('--today');
-	const today = todayIndex === -1 ? todayIso() : (argv[todayIndex + 1] ?? todayIso());
-	const matrixIndex = argv.indexOf('--matrix');
-	const matrixPath = matrixIndex === -1 ? MATRIX_PATH : (argv[matrixIndex + 1] ?? MATRIX_PATH);
-	for (const arg of argv) {
-		if (
-			arg.startsWith('--') &&
-			!['--quiet', '--json', '--today', '--matrix'].includes(arg.split('=')[0])
-		) {
+/**
+ * Read the command line.
+ *
+ * Every option takes its value either attached (`--today=2026-10-23`)
+ * or as the next argument (`--today 2026-10-23`); both spellings mean
+ * the same thing. An option without a value is refused rather than
+ * silently replaced by a default, so a typo cannot turn into "today".
+ */
+export function parseOptions(argv = []) {
+	const options = { quiet: false, json: null, today: null, matrix: null };
+	const valued = { '--json': 'json', '--today': 'today', '--matrix': 'matrix' };
+	for (let index = 0; index < argv.length; index += 1) {
+		const arg = argv[index];
+		if (arg === '--quiet') {
+			options.quiet = true;
+			continue;
+		}
+		const separator = arg.indexOf('=');
+		const name = separator === -1 ? arg : arg.slice(0, separator);
+		if (!Object.hasOwn(valued, name)) {
 			usage();
 			throw new Error(`unknown option: ${arg}`);
 		}
+		let value = separator === -1 ? null : arg.slice(separator + 1);
+		if (value === null) {
+			const next = argv[index + 1] ?? null;
+			if (next?.startsWith('--')) {
+				usage();
+				throw new Error(`${name} requires a value`);
+			}
+			value = next;
+			if (value !== null) index += 1;
+		}
+		if (value === null || value === '') {
+			usage();
+			throw new Error(`${name} requires a value`);
+		}
+		options[valued[name]] = value;
 	}
-	if (jsonIndex !== -1 && jsonOut === null) {
-		usage();
-		throw new Error('--json requires a path');
-	}
+	return options;
+}
+
+export function runGate(argv = process.argv.slice(2)) {
+	const options = parseOptions(argv);
+	const today = options.today ?? todayIso();
+	const matrixPath = options.matrix ?? MATRIX_PATH;
+	const jsonOut = options.json;
 
 	const evidence = collectEvidence({ today, matrixPath });
 
-	if (!quiet) {
+	if (!options.quiet) {
 		process.stdout.write(`${renderGateSummary(evidence)}\n`);
 	}
 	for (const violation of evidence.violations) {

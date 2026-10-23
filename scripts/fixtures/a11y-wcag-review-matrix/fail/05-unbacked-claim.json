@@ -216,7 +216,7 @@
 	],
 	"$claims": [
 		{
-			"file": "docs/verification/a11y/wcag-review-matrix.md",
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
 			"line": 7,
 			"phrase": "AA 準拠済み",
 			"text": "the fixture claims conformance without a human verification",

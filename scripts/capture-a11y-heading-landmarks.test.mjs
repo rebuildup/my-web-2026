@@ -9,12 +9,14 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { collectEvidence } from './check-a11y-heading-landmarks.mjs';
 import {
 	RULES,
 	SPECIMENS,
 	assertWebpOutputPath,
 	evaluateObservation,
 	evaluateRenderedOutline,
+	evidencePanelSvg,
 	harnessIndexHtml,
 	screenshotBudgetVerdict,
 } from './capture-a11y-heading-landmarks.mjs';
@@ -93,4 +95,18 @@ test('the capture speaks the gate rule names', () => {
 		'page-missing-landmark',
 		'landmark-duplicated',
 	]);
+});
+
+test('the evidence panel prints the declared exemption with its reason', () => {
+	// The artefact shows the gate's own state, so a declared
+	// exemption cannot be a line only the terminal shows.
+	const gate = collectEvidence();
+	const panel = evidencePanelSvg({ observation: null, gate, width: 780 });
+
+	assert.match(panel.svg, /exempted rules \(declared, with the reason\)/);
+	assert.ok(gate.exemptions.length > 0);
+	for (const exemption of gate.exemptions) {
+		assert.ok(panel.svg.includes(exemption.reason), 'the reason must be printed');
+		assert.ok(panel.svg.includes(`${exemption.unit}: ${exemption.rule}`));
+	}
 });

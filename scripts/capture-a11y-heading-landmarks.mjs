@@ -474,6 +474,12 @@ export function evidencePanelSvg({ observation, gate, width }) {
 				`${unit.id}: h1=${unit.headings.filter((heading) => heading.level === 1).length} main=${unit.landmarks.length} (${unit.kind})`,
 		),
 		'',
+		'exempted rules (declared, with the reason)',
+		...gate.exemptions.flatMap((exemption) => [
+			`- ${exemption.unit}: ${exemption.rule}`,
+			`  ${exemption.reason}`,
+		]),
+		'',
 		`gate: ${gate.violations.length} violation(s), ${gate.filesScanned} file(s) scanned`,
 		'',
 		'human evaluation (not measured here)',

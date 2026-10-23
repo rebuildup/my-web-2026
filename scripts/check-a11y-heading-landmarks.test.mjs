@@ -19,10 +19,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	EXPECTED_FIXTURES,
+	EXEMPTION_RULE,
 	FIXTURE_RULE,
 	HUMAN_EVALUATION,
 	PAGE_UNITS,
 	RULES,
+	applyExemptions,
 	collectEvidence,
 	collectFixtureEvidence,
 	evaluateUnit,
@@ -361,4 +363,148 @@ test('the report separates machine-checked facts from human evaluation', () => {
 	assert.ok(report.indexOf('machine-checked:') < report.indexOf('not machine-checked'));
 	assert.match(report, /not scanned \(deliberately out of scope\):/);
 	for (const item of HUMAN_EVALUATION) assert.ok(report.includes(item));
+});
+
+/**
+ * A rule exemption is a DECLARATION with a reason.
+ *
+ * `/tools` renders no `main` landmark on purpose: the browser-compat
+ * contract states `main: 'none'` for that route (Issue #288). These
+ * tests pin the three properties that make the exemption honest:
+ *
+ *   1. the declaration names the rule AND the contract it comes from;
+ *   2. the exemption applies to the unit that declares it, and to
+ *      nothing else — a unit that declares none is still reported;
+ *   3. an invalid declaration (no reason, or an unknown rule) excuses
+ *      NOTHING and is reported, so a typo cannot switch a rule off.
+ */
+
+/** The tools-index unit, as the gate declares it. */
+function toolsIndexUnit() {
+	const unit = PAGE_UNITS.find((candidate) => candidate.id === 'tools-index');
+	assert.ok(unit, 'the tools-index unit must be declared');
+	return unit;
+}
+
+/** A page that renders a heading but no main landmark. */
+const noLandmarkSource = 'export const A = () => (<div><h1>Tools</h1><h2>Integrated</h2></div>);\n';
+
+test('the tools-index unit declares the landmark exemption and the contract it comes from', () => {
+	const unit = toolsIndexUnit();
+	const exemptions = unit.exemptRules ?? [];
+
+	assert.equal(exemptions.length, 1);
+	assert.equal(exemptions[0].rule, 'page-missing-landmark');
+	assert.match(exemptions[0].reason, /main: 'none'/);
+	assert.match(exemptions[0].reason, /Issue #288/);
+});
+
+test('an exempt unit does not report the exempted rule, and the exemption is recorded', () => {
+	const result = evaluateUnit({
+		id: 'tools-index',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/tools.index.tsx', source: noLandmarkSource }],
+		exemptRules: toolsIndexUnit().exemptRules,
+	});
+
+	assert.deepEqual(rulesOf(result), []);
+	assert.equal(result.exemptions.length, 1);
+	assert.equal(result.exemptions[0].rule, 'page-missing-landmark');
+	assert.equal(result.exemptions[0].excused.length, 1);
+	assert.equal(result.exemptions[0].excused[0].rule, 'page-missing-landmark');
+});
+
+test('the exemption applies to the declaring unit only', () => {
+	// Fail-closed: the same source in a unit that declares no
+	// exemption is still reported.
+	const declared = evaluateUnit({
+		id: 'tools-index',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/tools.index.tsx', source: noLandmarkSource }],
+		exemptRules: toolsIndexUnit().exemptRules,
+	});
+	const undeclared = evaluateUnit({
+		id: 'other-page',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/other.tsx', source: noLandmarkSource }],
+	});
+
+	assert.deepEqual(rulesOf(declared), []);
+	assert.ok(rulesOf(undeclared).includes('page-missing-landmark'));
+});
+
+test('an exemption excuses only the rule it names', () => {
+	// The tools-index page must still be reported when it grows a
+	// second `main` or loses its `<h1>`.
+	const brokenSource =
+		'export const A = () => (<div><h2>Integrated</h2><main>a</main><main>b</main></div>);\n';
+	const result = evaluateUnit({
+		id: 'tools-index',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/tools.index.tsx', source: brokenSource }],
+		exemptRules: toolsIndexUnit().exemptRules,
+	});
+
+	const rules = rulesOf(result);
+	assert.ok(rules.includes('page-missing-h1'));
+	assert.ok(rules.includes('landmark-duplicated'));
+	assert.ok(!rules.includes('page-missing-landmark'));
+});
+
+test('an exemption without a reason excuses nothing and is reported', () => {
+	const result = evaluateUnit({
+		id: 'tools-index',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/tools.index.tsx', source: noLandmarkSource }],
+		exemptRules: [{ rule: 'page-missing-landmark', reason: '  ' }],
+	});
+
+	assert.ok(rulesOf(result).includes('page-missing-landmark'));
+	assert.equal(result.exemptions.length, 0);
+	assert.equal(result.exemptionProblems.length, 1);
+	assert.equal(result.exemptionProblems[0].rule, EXEMPTION_RULE);
+	assert.match(result.exemptionProblems[0].message, /carries no reason/);
+});
+
+test('an exemption naming a rule the gate does not decide excuses nothing and is reported', () => {
+	const result = applyExemptions(
+		[
+			{
+				rule: 'page-missing-landmark',
+				file: 'page:tools-index',
+				line: null,
+				wcag: '1.3.1',
+				message: 'the page renders no main landmark',
+			},
+		],
+		[{ rule: 'page-missing-landmarkd', reason: 'a typo' }],
+	);
+
+	assert.equal(result.violations.length, 1);
+	assert.equal(result.exemptions.length, 0);
+	assert.equal(result.problems.length, 1);
+	assert.equal(result.problems[0].rule, EXEMPTION_RULE);
+	assert.match(result.problems[0].message, /not a rule this gate decides/);
+});
+
+test('the report prints the exemption with its reason', () => {
+	const evidence = collectEvidence();
+	const report = renderGateSummary(evidence);
+
+	assert.ok(evidence.exemptions.length > 0, 'the tools-index exemption must be declared');
+	assert.match(report, /exempted rules \(declared, with the reason/);
+	for (const exemption of evidence.exemptions) {
+		assert.ok(report.includes(exemption.reason), 'the reason must be printed');
+		assert.ok(report.includes(`${exemption.unit}: ${exemption.rule}`));
+	}
+});
+
+test('the repository run declares the tools-index exemption and reports no violation', () => {
+	const evidence = collectEvidence();
+
+	assert.deepEqual(evidence.violations, []);
+	const exemption = evidence.exemptions.find((entry) => entry.unit === 'tools-index');
+	assert.ok(exemption, 'the tools-index unit must declare its exemption');
+	assert.equal(exemption.rule, 'page-missing-landmark');
+	assert.match(exemption.reason, /Issue #288/);
 });

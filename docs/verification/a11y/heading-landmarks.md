@@ -25,7 +25,7 @@ gate は **ページ単位のソース** を走査する。単位は「1 ペー�
 | `portfolio-detail` | page | `src/portfolio/components/PortfolioDetail.tsx` + `Markdown.tsx` | ポートフォリオ 1 件 |
 | `legal-review` | component | `src/legal/**` | 資産権利レビュー**カード**（ページに埋め込まれる） |
 | `external-api` | component | `src/external-api/**` | 外部 API 読み取りカード |
-| `tools-index` | page | `src/routes/tools.index.tsx` | Tools 一覧 |
+| `tools-index` | page | `src/routes/tools.index.tsx` | Tools 一覧。**`page-missing-landmark` は除外**（理由は「rule 除外（宣言と理由）」の節） |
 | `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（chrome なしの全画面 iframe。ページ own の outline を持たない） |
 | `contact` | page | `src/routes/contact.tsx` + `src/contact/page.tsx` | お問い合わせ（route シェル + 描画するページ） |
 | `projects-dotfiles` | page | `src/routes/projects.dotfiles.tsx` + `src/projects/DotfilesIntroductionPage.tsx` | dotfiles 導入（route シェル + 描画するページ） |
@@ -99,17 +99,66 @@ scanned scope`）。除外は「黙って無視する」のではなく「読め
 
 どちらの種別でも `page-heading-level-skip` は判定する。
 
+### rule 除外（宣言と理由）
+
+**gate 自身は、宣言された unit についてだけ rule を除外できる。**
+除外は「穴」ではなく **別の契約が宣言した状態を、この gate が整合させる** ための
+**宣言** であり、必ず **理由** を伴う。理由は「どの契約のどの状態か」を
+名前に **1 語でも書かずに** 除外してはならない（書かなければ除外は成立しない）。
+
+`PAGE_UNITS` の entry は `exemptRules` で除外を宣言する。
+
+```js
+{
+  id: 'tools-index',
+  kind: 'page',
+  files: ['src/routes/tools.index.tsx'],
+  exemptRules: [
+    {
+      rule: 'page-missing-landmark',
+      reason:
+        "the browser-compat contract expects `main: 'none'` for this route (Issue #288)",
+    },
+  ],
+}
+```
+
+現在の除外は **1 件だけ** である。
+
+| unit | 除外する rule | 理由 | 根拠 |
+| --- | --- | --- | --- |
+| `tools-index` | `page-missing-landmark` | `the browser-compat contract expects main: 'none' for this route (Issue #288)` | `/tools` は全画面 iframe shell であり、browser-compat contract が `main: 'none'` を **明示的に** 期待する documented state（Issue #288）。`e2e/compat/contract.ts` の `COMPAT_ROUTES` が `main: 'none'` と宣言しており、3 エンジンともこれを検証する |
+
+除外の扱いには **fail-closed** が働く。
+
+- 除外は **宣言した unit にだけ** 効く。宣言のない unit は除外されない
+  （`kind` の宣言と同じように「宣言がなければ適用しない」）。
+- 除外は **宣言した rule 名だけ** を免除する。`tools-index` が `main` を **2 つ**
+  持ったら `landmark-duplicated` は仍然として報告される。`<h1>` を失えば
+  `page-missing-h1` が報告される。除外は「その unit を無検査にする」ではない。
+- 理由が空の除外、あるいはこの gate が判定しない rule 名を宣言した除外は
+  **何も免除せず**、`exemption-mismatch` として報告される（gateway の
+  タイポで rule が黙って無効化されることを防ぐ）。
+- 除外は **gate の出力に印字される**。`exempted rules (declared, with the reason — an
+  exemption is never silent):` の節に、unit 名・rule 名・理由・免除した件数が
+  出る。gate 自身は 5 rule に加えて、この印字によって「何が除外されているか」を
+  読者に示す。検証画像（evidence パネル）にも同じ文言が出る。
+- 除外の宣言そのものは **gate のテスト** で確認する
+  （`tools-index` が `page-missing-landmark` を除外していること、理由が空なら
+  何も免除されないこと、宣言のない unit は除外されないこと）。
+
 ## 既存コードの違反と修正
 
-gate の初回実行で **3 件の違反** が出た。いずれも **構造** の修正で、
-**日本語テキストは 1 文字も追加していない**。
+gate の初回実行で **3 件の違反** が出た。うち 2 件は **構造** の修正で、
+**日本語テキストは 1 文字も追加していない**。残り 1 件は **除外** で解決した。
 
 | 違反 | 場所 | 修正 |
 | --- | --- | --- |
 | `landmark-duplicated` ×2 | `src/keyboard/components/KeyboardPage.tsx` | 3 つの描画分岐（ready / unavailable / プラットフォームなし）がそれぞれ `<main>` を持っていたため、**ページの `<main>` を 1 つに** 集約し、分岐側は `<section>` / `<div>` にした |
-| `page-missing-landmark` | `src/routes/tools.index.tsx` | ページ本体が `<main>` を持たなかったため、**ページ全体を `<main>` で包んだ** |
+| `page-missing-landmark` | `src/routes/tools.index.tsx` | **修正ではなく除外**。当初この route は「ページ本体が `<main>` を持たない」ため `<main>` を追加したが、その追加は **既存の browser-compat 契約（Issue #288、`main: 'none'`）を反転** しており、browser-compat job が 3 エンジンすべてで落ちた。よって `<main>` の追加を **取り消し**、`/tools` は `main: 'none'` の documented state に戻し、gate 側に **理由つきの明示的な除外** を宣言した（下記「rule 除外（宣言と理由）」） |
 
-いずれも「見出しの文言を変える必要はなく、要素の追加・属性の付与で解ける」修正である。
+いずれも「見出しの文言を変える必要はなく、要素の追加・属性の付与で解ける」修正である
+（`tools-index` は仕様どおり要素の追加ではなく除外で解いた）。
 
 ## 機械検査と人間の評価の区別
 
@@ -118,6 +167,7 @@ gate の初回実行で **3 件の違反** が出た。いずれも **構造** �
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
 | 上表の 5 rule | ページ unit ごとの `<h1>` 数・`main` 数・見出しレベル | コメント除去後のソース走査（`scripts/check-a11y-heading-landmarks.mjs`） |
+| rule 除外 | 除外が宣言された unit についてだけ、その rule が免除され、**理由と免除件数が出力に印字される** | `PAGE_UNITS` の `exemptRules`（理由つき）。理由が空・未知の rule 名は `exemption-mismatch` として報告され、**何も免除しない** |
 | fixture | `pass/` 2 ファイルは違反 0、`fail/` 6 ファイルは 5 rule をそれぞれ検出 | `node --test scripts/check-a11y-heading-landmarks.test.mjs` が **fixture を実際に読み**、同じ `evaluateUnit` で判定する |
 | fixture の一致 | fixture 集合が `EXPECTED_FIXTURES` と **完全一致** すること、`pass/` の各 fixture が **見出しと `main` ランドマークを実際に持つ** こと、`fail/` の各 fixture が **違反を実際に報告する** こと | gate 自身が行う。違反は `fixture-expectation-mismatch`（5 rule とは別の、gate 自身の証拠に対する rule）。fixture を空に・削除しても gate は緑にならない |
 | 描画された DOM | Chromium が返した実測値に同じ 5 rule を適用し、期待値と一致するか | `pnpm run capture:a11y-heading-landmarks`（一致しなければ成果物を書かずに exit 1） |
@@ -142,7 +192,8 @@ gate の初回実行で **3 件の違反** が出た。いずれも **構造** �
 - 生成: `pnpm run capture:a11y-heading-landmarks`
 - 左: **正常なページ構造**（`main` 1 個 / `h1` 1 個 / `h1` → `h2` → `h3`）
 - 右: **違反した構造**（`h1` 2 個 / `h1` → `h3` / `main` なし）
-- 右の evidence パネル: 描画された DOM の実測値と、ソース gate のページ unit ごとの判定
+- 右の evidence パネル: 描画された DOM の実測値と、ソース gate のページ unit ごとの判定、
+  および **宣言された rule 除外とその理由**
 - 上部: 検証レポート（WCAG 対応・機械検査項目・人間の評価項目）
 - 失敗条件: 描画された実測値が期待値と矛盾した場合、**成果物を書かずに exit 1**
 
@@ -171,7 +222,11 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
    （`SectionHeading`）は level 2 として数える。それ以外の primitive が
    見出しを描画する場合は、その primitive を gate のモデルに加えてから
    判定し直す。
-4. いずれも該当しない場合は **owner へ判断を仰ぐ**。見出しの文言変更を伴う
+4. **他の契約が明示的に宣言している状態なら、除外を宣言する。**
+   例: `/tools` の `main: 'none'` は browser-compat contract（Issue #288）が
+   明示する documented state であり、`PAGE_UNITS` の `exemptRules` に
+   **理由を書いて** 宣言する。理由のない除外は成立しない（`exemption-mismatch`）。
+5. いずれも該当しない場合は **owner へ判断を仰ぐ**。見出しの文言変更を伴う
    修正は public copy の変更になるため、copy editorial approval gate の
    承認が必要である（copy を変えない構造修正は承認不要）。
 

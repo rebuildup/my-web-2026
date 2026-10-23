@@ -50,8 +50,8 @@
  * a unit is not scanned, and the report prints the units it scanned so
  * a reader can see the scope instead of trusting it.
  *
- * Four deliberate decisions
- * --------------------------
+ * Five deliberate decisions
+ * -------------------------
  *   1. `src/routes/__root.tsx` is NOT a page unit. The root owns the
  *      shell (header / nav / footer) that every page renders, so it
  *      is one page's worth of chrome, not a page of its own.
@@ -80,6 +80,19 @@
  *      deleted) to turn the gate green. A fixture that no longer
  *      demonstrates what it demonstrates is reported as
  *      `fixture-expectation-mismatch`.
+ *   5. A rule may be EXEMPT for one declared unit, and the exemption
+ *      is a declaration with a reason, not a quiet hole. It exists
+ *      for the case where another contract already declares the
+ *      state this gate would report: `/tools` renders no `main`
+ *      landmark because the browser-compat contract expects
+ *      `main: 'none'` for that route (Issue #288) — it is a
+ *      full-viewport iframe shell. The exemption names the rule and
+ *      the contract it comes from, the report PRINTS it, and an
+ *      exemption without a reason (or one naming a rule the gate does
+ *      not decide) excuses nothing and is reported as
+ *      `exemption-mismatch`. An exemption applies only to the unit
+ *      that declares it, so a unit that declares nothing is never
+ *      excused.
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
@@ -126,6 +139,11 @@ export const RULES = [
  * component surface (`'component'`). It is declared, not inferred:
  * see the module docstring, decision 2. A unit with no `kind` is
  * treated as a page.
+ *
+ * `exemptRules` DECLARES the rules this unit is exempt from, each
+ * with the reason and the contract the state comes from. It is
+ * optional: a unit that declares nothing is never excused. See the
+ * module docstring, decision 5, and {@link applyExemptions}.
  */
 export const PAGE_UNITS = [
 	{
@@ -181,6 +199,22 @@ export const PAGE_UNITS = [
 		kind: 'page',
 		files: ['src/routes/tools.index.tsx'],
 		note: 'the Tools index page',
+		// Issue #288: this route is a full-viewport iframe shell, and
+		// the browser-compat contract states the state explicitly —
+		// `main: 'none'` — because the route is a documented
+		// full-viewport surface rather than a page with a body
+		// region. The exemption keeps that contract intact instead of
+		// letting this gate report it as a defect, and the report
+		// PRINTS the exemption with this reason, so it cannot
+		// disappear silently. It excuses the missing landmark only:
+		// a second `main`, a missing `<h1>` or a skipped heading level
+		// on this page is still reported.
+		exemptRules: [
+			{
+				rule: 'page-missing-landmark',
+				reason: "the browser-compat contract expects `main: 'none'` for this route (Issue #288)",
+			},
+		],
 	},
 	{
 		id: 'tools-detail',
@@ -270,6 +304,17 @@ export const SECTION_HEADING_PRIMITIVE = 'src/editorial/primitives/SectionHeadin
  * renamed, or emptied must not be able to turn the gate green.
  */
 export const FIXTURE_RULE = 'fixture-expectation-mismatch';
+
+/**
+ * The rule the gate reports when a declared EXEMPTION is not valid.
+ *
+ * Like {@link FIXTURE_RULE}, it does not judge a shipped page: it
+ * judges the gate's own declarations. An exemption that names a rule
+ * the gate does not decide, or that carries no reason, must not be
+ * able to excuse anything — and it must not disappear silently
+ * either.
+ */
+export const EXEMPTION_RULE = 'exemption-mismatch';
 
 /** Where the fixtures live (repo-relative). */
 export const FIXTURE_DIR = 'scripts/fixtures/a11y-heading-landmarks';
@@ -412,6 +457,64 @@ export function levelSkipViolations(headings, relativePath) {
 }
 
 /**
+ * Apply a unit's declared exemptions to its violations (pure).
+ *
+ * An exemption is a statement that ANOTHER contract already declares
+ * the state this gate would otherwise report. It is valid only when it
+ * names one of the gate's rules AND carries the reason (and with it
+ * the contract the state comes from):
+ *
+ *   - an exemption that names a rule this gate does not decide, or
+ *     that carries no reason, is reported as {@link EXEMPTION_RULE}
+ *     and excuses NOTHING (fail-closed: a typo cannot silently
+ *     switch a rule off, and an exemption may never be silent);
+ *   - an exemption applies ONLY to the unit that declares it, so a
+ *     unit that declares nothing is never excused.
+ *
+ * The result separates three things: the violations that remain, the
+ * findings each exemption excused (with the reason that excused
+ * them), and the declarations that were not valid.
+ */
+export function applyExemptions(violations, exemptRules = []) {
+	const remaining = [...violations];
+	const exemptions = [];
+	const problems = [];
+	const known = new Set(RULES);
+
+	for (const declaration of exemptRules) {
+		const rule = declaration?.rule ?? null;
+		const reason = typeof declaration?.reason === 'string' ? declaration.reason.trim() : '';
+		if (!rule || !known.has(rule)) {
+			problems.push({
+				rule: EXEMPTION_RULE,
+				file: 'exemption',
+				line: null,
+				wcag: '1.3.1',
+				message: `the exemption names "${rule}", which is not a rule this gate decides; an exemption may only excuse a rule the gate reports`,
+			});
+			continue;
+		}
+		if (!reason) {
+			problems.push({
+				rule: EXEMPTION_RULE,
+				file: 'exemption',
+				line: null,
+				wcag: '1.3.1',
+				message: `the exemption for "${rule}" carries no reason; an exemption states which contract declares the state it excuses`,
+			});
+			continue;
+		}
+		const excused = remaining.filter((violation) => violation.rule === rule);
+		for (const violation of excused) {
+			remaining.splice(remaining.indexOf(violation), 1);
+		}
+		exemptions.push({ rule, reason, excused });
+	}
+
+	return { violations: remaining, exemptions, problems };
+}
+
+/**
  * Judge one page unit (pure).
  *
  * `files` is `[{ relativePath, source }]`. The unit's `<h1>` count
@@ -426,8 +529,12 @@ export function levelSkipViolations(headings, relativePath) {
  * is). The kind is never inferred from what the unit renders — a page
  * that lost both its `<h1>` and its `main` landmark is still a page,
  * and is reported as such.
+ *
+ * `exemptRules` is the unit's DECLARED exemption list (see
+ * {@link applyExemptions}). It defaults to an empty list, so a unit
+ * that declares no exemption is never excused.
  */
-export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2 }) {
+export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2, exemptRules = [] }) {
 	const violations = [];
 	const headings = [];
 	const landmarks = [];
@@ -486,6 +593,8 @@ export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2 }) {
 		}
 	}
 
+	const applied = applyExemptions(violations, exemptRules);
+
 	return {
 		id,
 		kind: unitKind,
@@ -502,7 +611,12 @@ export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2 }) {
 			line: landmark.line,
 			kind: landmark.kind,
 		})),
-		violations,
+		violations: applied.violations,
+		exemptions: applied.exemptions,
+		exemptionProblems: applied.problems.map((problem) => ({
+			...problem,
+			file: `exemption:${id}`,
+		})),
 	};
 }
 
@@ -651,6 +765,7 @@ export function collectEvidence({
 
 	const units = [];
 	const violations = [];
+	const exemptions = [];
 	const scanned = new Set();
 	for (const unit of PAGE_UNITS) {
 		const paths = expandUnitPatterns(unit.files, readDirectory);
@@ -658,9 +773,19 @@ export function collectEvidence({
 			scanned.add(relativePath);
 			return { relativePath, source: readFile(relativePath) };
 		});
-		const result = evaluateUnit({ id: unit.id, kind: unit.kind, files, primitiveLevel });
+		const result = evaluateUnit({
+			id: unit.id,
+			kind: unit.kind,
+			files,
+			primitiveLevel,
+			exemptRules: unit.exemptRules ?? [],
+		});
 		units.push({ ...result, note: unit.note });
 		violations.push(...result.violations);
+		violations.push(...result.exemptionProblems);
+		for (const exemption of result.exemptions) {
+			exemptions.push({ unit: unit.id, ...exemption });
+		}
 	}
 
 	const excluded = [];
@@ -685,6 +810,7 @@ export function collectEvidence({
 		filesScanned: scanned.size,
 		units,
 		violations,
+		exemptions,
 		excluded,
 		fixtures: fixtureEvidence.fixtures,
 		primitiveLevel,
@@ -704,8 +830,9 @@ export function renderGateSummary(evidence) {
 	lines.push('machine-checked:');
 	for (const unit of evidence.units) {
 		const h1 = unit.headings.filter((heading) => heading.level === 1).length;
+		const exempt = (unit.exemptions ?? []).map((exemption) => exemption.rule).join(', ');
 		lines.push(
-			`  ${unit.violations.length === 0 ? 'ok  ' : 'FAIL'} ${unit.id.padEnd(18)} h1=${h1} main=${unit.landmarks.length} (${unit.kind})`,
+			`  ${unit.violations.length === 0 ? 'ok  ' : 'FAIL'} ${unit.id.padEnd(18)} h1=${h1} main=${unit.landmarks.length} (${unit.kind}${exempt ? `; exempt: ${exempt}` : ''})`,
 		);
 		// The outline is printed per file: the level rule is decided
 		// inside a file, so a flat list would read as one sequence that
@@ -720,6 +847,16 @@ export function renderGateSummary(evidence) {
 		}
 	}
 	lines.push('');
+	if (evidence.exemptions && evidence.exemptions.length > 0) {
+		lines.push('exempted rules (declared, with the reason — an exemption is never silent):');
+		for (const exemption of evidence.exemptions) {
+			lines.push(`  - ${exemption.unit}: ${exemption.rule} — ${exemption.reason}`);
+			lines.push(
+				`      excused ${exemption.excused.length} finding(s)${exemption.excused.length > 0 ? `: ${exemption.excused.map((finding) => finding.file).join(', ')}` : ' (the rule was not triggered)'}`,
+			);
+		}
+		lines.push('');
+	}
 	if (evidence.fixtures && evidence.fixtures.length > 0) {
 		lines.push('fixtures (the gate’s own evidence):');
 		for (const fixture of evidence.fixtures) {

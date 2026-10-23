@@ -182,6 +182,16 @@ export function evaluateObservation(observation) {
 			'Escape closed the mobile menu but the focus did not return to the trigger that opened it (SC 2.4.3 / 2.1.2)',
 		);
 	}
+	if (observation.dialogIsModal !== true) {
+		failures.push(
+			'the picker dialog is not modal; a non-modal dialog leaves the page behind it keyboard-reachable (SC 2.1.2)',
+		);
+	}
+	if (observation.dialogTabTargetsAreItsOwn !== true) {
+		failures.push(
+			"the Tab target while the picker dialog was open was not one of the dialog's own focusable elements (SC 2.1.2)",
+		);
+	}
 	if (observation.dialogFocusTrapped !== true) {
 		failures.push(
 			'the picker dialog did not keep the focus inside while Tab was pressed (SC 2.1.2)',
@@ -219,6 +229,8 @@ export function evidencePanelSvg({ observation, width }) {
 		`wrapped back to the first stop: ${observation.wrapped ? 'yes' : 'NO'}`,
 		`focus ring of the skip link visible: ${observation.skipLinkFocusRingVisible ? 'yes' : 'NO'}`,
 		`mobile menu Escape → focus back on the trigger: ${observation.menuFocusReturnedToTrigger ? 'yes' : 'NO'}`,
+		`picker dialog is modal: ${observation.dialogIsModal ? 'yes' : 'NO'}`,
+		`picker dialog Tab targets are its own focusable elements: ${observation.dialogTabTargetsAreItsOwn ? 'yes' : 'NO'}`,
 		`picker dialog keeps the focus inside: ${observation.dialogFocusTrapped ? 'yes' : 'NO'}`,
 		`picker dialog Escape → closed: ${observation.dialogEscapeClosed ? 'yes' : 'NO'}`,
 		`picker dialog Escape → focus back on the trigger: ${observation.dialogFocusReturnedToTrigger ? 'yes' : 'NO'}`,
@@ -260,7 +272,7 @@ export function headerSvg({ observation, width = SCREENSHOT_MAX_WIDTH }) {
 		`route / · viewport ${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height} · Chromium · the focus ring of the skip link is visible`,
 		`machine-checked: first Tab stop is the skip link, ${observation.tabOrder.length} meaningful stop(s), the order wraps back to the first stop (SC 2.1.1 / 2.4.1 / 2.4.3)`,
 		'machine-checked: Escape closes the mobile menu and hands the focus back to the trigger (SC 2.1.2 / 2.4.3)',
-		'machine-checked: the picker dialog keeps the focus inside, closes on Escape, and hands the focus back to the trigger (SC 2.1.1 / 2.1.2 / 2.4.3)',
+		'machine-checked: the picker dialog is modal, keeps the focus inside, closes on Escape, and hands the focus back to the trigger (SC 2.1.1 / 2.1.2 / 2.4.3)',
 		'not machine-checked: focus-ring contrast, screen-reader announcement, reading order (human evaluation)',
 	];
 	const rowTop = 52;
@@ -368,10 +380,12 @@ export async function walkTabOrder(page) {
  *
  * The dialog is the `/design-system` fixture (Issue #394): the same
  * `PickerModal` component the home page renders, mounted on a route
- * that needs no consumer API key. The three observations are the
- * contract the spec asserts:
+ * that needs no consumer API key. The observations are the contract
+ * the spec asserts:
  *
- *   - the focus stays inside the dialog while Tab is pressed,
+ *   - the dialog is modal (opened with `showModal()`),
+ *   - the focus stays inside the dialog while Tab is pressed, and every
+ *     Tab target is one of the dialog's own focusable elements,
  *   - Escape closes it,
  *   - the focus goes back to the trigger that opened it.
  */
@@ -385,13 +399,26 @@ export async function observePickerDialog(page, baseUrl) {
 	const dialog = page.locator('dialog[aria-label="Add a reaction"]');
 	await dialog.waitFor({ state: 'visible', timeout: 15_000 });
 
+	const modal = await dialog.evaluate((element) => element.matches(':modal'));
+
 	let trapped = true;
+	let targetsAreItsOwn = true;
 	for (let index = 0; index < 12; index += 1) {
 		await page.keyboard.press('Tab');
 		const inside = await dialog.evaluate(
 			(element) => element === document.activeElement || element.contains(document.activeElement),
 		);
 		if (!inside) trapped = false;
+		const own = await dialog.evaluate((element) => {
+			const active = document.activeElement;
+			if (!active || active === document.body) return false;
+			if (!element.contains(active)) return false;
+			const focusable = element.querySelectorAll(
+				'a[href]:not([disabled]), button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			);
+			return Array.prototype.some.call(focusable, (node) => node === active);
+		});
+		if (!own) targetsAreItsOwn = false;
 	}
 
 	await page.keyboard.press('Escape');
@@ -399,6 +426,8 @@ export async function observePickerDialog(page, baseUrl) {
 	const focusAfterEscape = await page.evaluate(READ_ACTIVE);
 
 	return {
+		dialogIsModal: modal,
+		dialogTabTargetsAreItsOwn: targetsAreItsOwn,
 		dialogFocusTrapped: trapped,
 		dialogEscapeClosed: closed,
 		dialogFocusReturnedToTrigger:

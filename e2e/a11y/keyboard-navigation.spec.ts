@@ -1,73 +1,81 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /**
- * キーボードのみのナビゲーション回帰検査 (Issue #394)
+ * Keyboard-only navigation regression spec (Issue #394).
  *
- * キーボードだけで主要導線を完了できることは、WCAG 2.2 の
- * SC 2.1.1 Keyboard / SC 2.1.2 No Keyboard Trap / SC 2.4.1 Bypass Blocks /
- * SC 2.4.3 Focus Order / SC 2.4.7 Focus Visible の要求である。この
- * リポジトリにはその回帰検査が 1 本もなかった。本 spec は既存の
- * route に対して「キーボードだけで到達でき、focus を見失わず、
- * 開いた場所へ focus が戻る」ことを機械で観測する。
+ * Completing the main navigation paths with the keyboard alone is a
+ * requirement of WCAG 2.2 SC 2.1.1 Keyboard / SC 2.1.2 No Keyboard Trap /
+ * SC 2.4.1 Bypass Blocks / SC 2.4.3 Focus Order / SC 2.4.7 Focus Visible.
+ * The repository had no regression spec for it. This spec observes, on
+ * the EXISTING routes, that the keyboard reaches every surface, that
+ * the focus is never lost on the way, and that the focus comes back to
+ * the control that opened a transient surface.
  *
- * 機械で決まること (この spec が検査する範囲)
- *   - skip link が最初の Tab stoppableで、Enter で main へ移動する
- *     (SC 2.4.1 Bypass Blocks)。
- *   - Tab / Shift+Tab の順序が DOM 順と矛盾せず、文書末尾で先頭へ
- *     wrap する = 途中で focus を見失っていない (SC 2.4.3 Focus Order)。
- *   - mobile menu が Enter で開き、Escape で閉じたとき focus がトリガへ
- *     戻る (SC 2.1.2 / SC 2.4.3)。
- *   - 唯一の `<dialog>` (リアクション picker) が開いている間、focus が
- *     dialog の外へ出ない (SC 2.1.2 No Keyboard Trap)。
+ * What this spec decides (machine-checked)
+ *   - the skip link is the first Tab stop, and Enter moves the focus
+ *     past the repeated chrome (SC 2.4.1 Bypass Blocks),
+ *   - the Tab / Shift+Tab order does not contradict the document order
+ *     and wraps back to the first stop at the end of the document, so
+ *     the focus was never lost on the way (SC 2.4.3 Focus Order),
+ *   - the mobile menu opens from the keyboard, and Escape hands the
+ *     focus back to the trigger (SC 2.1.2 / SC 2.4.3),
+ *   - the reaction picker `<dialog>` is MODAL, keeps the focus inside
+ *     while it is open, and closes on Escape (SC 2.1.1 / SC 2.1.2).
  *
- * 機械では決めないこと (人が評価する範囲)
- *   - focus ring の見た目 (視認性・コントラスト)。#399 の gate と人が
- *     評価する領域であり、ここでは扱わない。
- *   - スクリーンリーダーの読み上げ、 MCA (読み上げ) 順序の体感。
+ * What this spec does not decide (human evaluation)
+ *   - how the focus ring LOOKS (visibility, contrast). That is the
+ *     Issue #399 gate plus a human reader; it is out of scope here.
+ *   - how a screen reader announces the page, and the feel of the
+ *     reading order.
  *
- * 既存 config を流用する
- * ----------------------
- * `playwright.config.ts` の `testDir: './e2e'` に置くことで、既存の
- * `pnpm run e2e` (CI の release gate) に乗る。新しい Playwright 設定
- * ファイルは作らず、CI workflow YAML も変更しない。
+ * Reusing the existing configuration
+ * ----------------------------------
+ * The file lives under `playwright.config.ts`'s `testDir: './e2e'`, so
+ * it rides the existing `pnpm run e2e` (the CI release gate). No new
+ * Playwright config file is created, and the CI workflow YAML is not
+ * touched.
  *
- * 安定性
- * ------
- *   - `networkidle` や sleep で同期を補わない。待つのは「意味のある要素」
- *     (`expect(locator).toBeVisible()`) だけ。
- *   - 乱数・時刻に依存しない。Tab 順は静的な DOM から読む。
- *   - negative control を必ず 1 つ以上入れる。正常な実装だけで緑に
- *     すると、assertion が何も見ていない可能性が残るためである。
- *     negative control は production コードを書き換えず、実行時に DOM を
- *     一時的に壊すだけで済る。
+ * Stability
+ * ---------
+ *   - No `networkidle` and no sleep to paper over timing. The only
+ *     waits are on meaningful elements (`expect(locator).toBeVisible()`,
+ *     `expect.poll(...)`).
+ *   - Nothing depends on randomness or on the clock. The Tab order is
+ *     read from a static DOM.
+ *   - At least one negative control is mandatory. With a correct
+ *     implementation alone, green proves nothing: an assertion that
+ *     cannot turn red may not be looking at anything. A negative
+ *     control breaks the DOM at runtime; it never rewrites production
+ *     code.
  */
 
-/** 1 つの Tab stop の観測結果。 */
+/** One observed Tab stop. */
 interface FocusStop {
-	/** 要素の tag 名 (`A` / `BUTTON` / `SUMMARY` …)。 */
+	/** The element's tag name (`A` / `BUTTON` / `SUMMARY` …). */
 	tag: string;
-	/** `href` 属性 (リンクの場合)。 */
+	/** The `href` attribute, when the element is a link. */
 	href: string | null;
-	/** `data-testid` 属性 (stable な識別子がある場合)。 */
+	/** The `data-testid` attribute, when the element carries a stable id. */
 	testId: string | null;
-	/** 人が読めるラベル。 */
+	/** A human-readable label. */
 	label: string;
-	/** `<main>` の内側にいるか。 */
+	/** Whether the element is inside the `<main>` landmark. */
 	inMain: boolean;
 	/**
-	 * 文書中の並び位置 (`document.querySelectorAll('*')` 内の index)。
+	 * The element's position in the document (`document.querySelectorAll('*')`
+	 * index).
 	 *
-	 * focus が文書順に進んでいるか (前に戻っていないか) を判定するための
-	 * 観測値。focus が途中で失われて Tab 順が先頭から再開すると、この値
-	 * が越小になる。
+	 * This is how the spec decides whether the focus moved FORWARD
+	 * through the document. When the focus is lost, Tab restarts at the
+	 * top of the document, so this value becomes smaller.
 	 */
 	order: number;
 }
 
-/** 1 回の走査で許容する Tab stop 数の上限。 */
+/** The maximum number of Tab stops one walk may record. */
 const MAX_TAB_STOPS = 60;
 
-/** Tab stop として意味を持つ要素の tag。 */
+/** The tags that count as a meaningful Tab stop. */
 const INTERACTIVE_TAGS = [
 	'A',
 	'AREA',
@@ -82,21 +90,32 @@ const INTERACTIVE_TAGS = [
 	'VIDEO',
 ];
 
-/** 走査した surface が公開する Tab stop の下限。 */
+/** The minimum number of Tab stops a walked surface must expose. */
 const MIN_TAB_STOPS = 5;
 
-/** 走査の途中で focus が見失われたとみなす supportive element。 */
+/**
+ * The elements inside a container that can take the focus.
+ *
+ * Used for the dialog contract: a Tab target must be one of these,
+ * inside the dialog. The selector is the browser's own notion of a
+ * focusable element, minus the disabled ones (a disabled control
+ * cannot be focused, so including it would weaken the check).
+ */
+const FOCUSABLE_SELECTOR =
+	'a[href]:not([disabled]), button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Whether the focus landed on a supporting element, i.e. was lost. */
 function isSupportingElement(stop: FocusStop): boolean {
 	return stop.tag === 'BODY' || stop.tag === 'HTML' || stop.tag === 'NONE';
 }
 
-/** 2 つの stop が同じ要素を指すか (wrap の判定に使う)。 */
+/** Whether two stops point at the same element (used by the wrap check). */
 function sameStop(a: FocusStop, b: FocusStop | undefined): boolean {
 	if (!b) return false;
 	return a.tag === b.tag && a.href === b.href && a.label === b.label;
 }
 
-/** 現在の `document.activeElement` を読む。 */
+/** Read the current `document.activeElement`. */
 async function readActiveStop(page: Page): Promise<FocusStop> {
 	return page.evaluate(() => {
 		const element = document.activeElement;
@@ -115,43 +134,48 @@ async function readActiveStop(page: Page): Promise<FocusStop> {
 	});
 }
 
-/** focus が止まった意味のある要素 (Tab stop) の並び。 */
+/** The recorded order of the meaningful stops of one walk. */
 interface TabWalk {
-	/** 意味のある要素が並んだ順序。 */
+	/** The meaningful elements, in the order the focus visited them. */
 	stops: FocusStop[];
 	/**
-	 * 走査を終端させた supportive element。
+	 * The supporting element that ended the walk.
 	 *
-	 * `null` は「上限 (`max`) に達した」= 走査が終わらなかったことを
-	 * 意味する。`tag` は実際に focus が落ちた要素の tag で、文書末尾の
-	 * wrap-around なら `BODY` になる。
+	 * `null` means the walk ran out of steps (`max`), i.e. it never
+	 * ended. `tag` is the tag the focus actually fell onto; at the end
+	 * of a document that is `BODY`.
 	 */
 	end: { tag: string; index: number } | null;
 	/**
-	 * 文書末尾のあとで Tab すると先頭へ戻るか。
+	 * Whether Tab after the end of the document returns to the first
+	 * stop.
 	 *
-	 * 「Tab 順が巡回する」ことの証拠になる。ただし focus を失った
-	 * 場合Body からの Tab も先頭へ戻るため、focus を見失ったこと
-	 * 自体は検出しない — それは `forward` が担う。
+	 * This is the evidence that the Tab order is cyclic. It does NOT
+	 * detect a lost focus on its own: a focus lost to the body also
+	 * makes the next Tab land on the first element. `forward` is what
+	 * detects that.
 	 */
 	wrapped: boolean;
 	/**
-	 * focus が文書順に進んでいるか (前の stop に戻っていないか)。
+	 * Whether the focus moved forward through the document, i.e. never
+	 * went back to an earlier stop.
 	 *
-	 * focus を失うと Tab は文書先頭から再開するため、並び位置が
-	 * 越小になる (= `false`)。これが「途中で focus を見失っていない」
-	 * ことの機械的な証拠になる。
+	 * A lost focus makes Tab restart at the top of the document, so
+	 * the document position becomes smaller (= `false`). This is the
+	 * mechanical evidence that the focus was never lost mid-document.
 	 */
 	forward: boolean;
 }
 
 /**
- * Tab で focus が止まった要素を順に集める。
+ * Collect the elements the focus stops at, in order.
  *
- * `body` / `html` に落ちた時点で走査は終端し、**どの supportive element
- * に落ちたか**を `end` として返す（`stops` には supportive element は
- * 混ざらないので、`stops` に対する「supporting element ではない」検査
- * は構造的に真であり、守るものがない）。
+ * The walk ends when the focus falls onto `body` / `html`, and it
+ * reports WHICH supporting element received it as `end`. The
+ * supporting element never enters `stops`, so a "this stop is not a
+ * supporting element" check over `stops` would be structurally true
+ * and would guard nothing; `end` and `forward` are the checks that
+ * carry weight.
  */
 async function collectTabStops(
 	page: Page,
@@ -166,9 +190,10 @@ async function collectTabStops(
 			return { stops, end: { tag: stop.tag, index } };
 		}
 		stops.push(stop);
-		// negative control 用の破壊: focus を持つ要素を DOM から外す。
-		// focus は body へ落ちる。以後の Tab は
-		// 文書先頭から再開する (= focus を見失った状態)。
+		// The negative control's break: remove the element that holds
+		// the focus from the DOM, so the focus falls to the body and
+		// every later Tab restarts at the top of the document (a lost
+		// focus).
 		if (breakAfterStops !== undefined && stops.length === breakAfterStops) {
 			await page.evaluate(() => {
 				const element = document.activeElement;
@@ -179,7 +204,7 @@ async function collectTabStops(
 	return { stops, end: null };
 }
 
-/** focus の並びが文書順に進んでいるか (前に戻っていないか)。 */
+/** Whether the recorded stops moved forward through the document. */
 function isForwardOrder(stops: FocusStop[]): boolean {
 	for (let index = 1; index < stops.length; index += 1) {
 		if (stops[index].order <= stops[index - 1].order) return false;
@@ -188,12 +213,12 @@ function isForwardOrder(stops: FocusStop[]): boolean {
 }
 
 /**
- * 文書末尾まで Tab し、その後で先頭へ wrap することまで確認する。
+ * Tab to the end of the document and then check that Tab wraps back to
+ * the first stop.
  *
- * wrap しないのは「途中で focus を見失った」場合だけである（focus を
- * 失った位置の直後が次の Tab の着地点になるため、新しい要素に跳ぶ）。
- * したがって「wrap した」事実は、focus を見失っていないことの証拠に
- * なる。
+ * The only way the order does NOT wrap is a focus lost on the way: the
+ * Tab after a lost focus lands on a new element instead of the first
+ * one, so "it wrapped" is evidence that the focus was never lost.
  */
 async function walkWholeDocument(
 	page: Page,
@@ -214,18 +239,61 @@ async function walkWholeDocument(
 	};
 }
 
-/** focus が dialog の内側 (dialog 自身を含む) にあるか。 */
+/** Whether the focus is inside the dialog (the dialog element counts). */
 async function isFocusInside(dialog: Locator): Promise<boolean> {
 	return dialog.evaluate(
 		(element) => element === document.activeElement || element.contains(document.activeElement),
 	);
 }
 
-/** Tab を重ねて `target` に focus 할 때까지進める。 */
+/**
+ * Whether the focused element is one of the dialog's own focusable
+ * elements.
+ *
+ * "The focus did not leave the dialog" alone is too weak: a dialog
+ * that is not modal may still hold the focus for a dozen Tab presses
+ * simply because it renders many focusable elements. The stronger
+ * claim is that every Tab target is a focusable element OF the dialog.
+ */
+async function isFocusOnDialogFocusable(dialog: Locator): Promise<boolean> {
+	return dialog.evaluate((element, selector) => {
+		const active = document.activeElement;
+		if (!active || active === document.body) return false;
+		if (!element.contains(active)) return false;
+		return Array.prototype.some.call(element.querySelectorAll(selector), (node) => node === active);
+	}, FOCUSABLE_SELECTOR);
+}
+
+/** Whether the dialog is a modal one (`showModal()`, not `show()`). */
+async function isModalDialog(dialog: Locator): Promise<boolean> {
+	return dialog.evaluate((element) => element.matches(':modal'));
+}
+
+/**
+ * Wait until the dialog renders at least one focusable element.
+ *
+ * The picker content is a lazily loaded chunk, so the dialog may be
+ * shown before it has any focusable child. Waiting for the content
+ * keeps the Tab assertions below from reading a half-rendered dialog.
+ */
+async function waitForDialogFocusable(dialog: Locator): Promise<void> {
+	await expect
+		.poll(
+			async () =>
+				dialog.evaluate(
+					(element, selector) => element.querySelectorAll(selector).length,
+					FOCUSABLE_SELECTOR,
+				),
+			{ timeout: 15_000 },
+		)
+		.toBeGreaterThan(0);
+}
+
+/** Tab until `target` holds the focus, or give up. */
 async function tabUntilFocused(page: Page, target: Locator, max = MAX_TAB_STOPS): Promise<boolean> {
-	// `evaluateAll` を使うのは、同じ href の link が desktop strip と
-	// mobile panel の両方に存在しうるため。単一要素に限定すると
-	// strict mode violation で例外になり、判定が壊れる。
+	// `evaluateAll` is used because the same href can exist in the
+	// desktop strip and in the mobile panel. Narrowing it to a single
+	// element would raise a strict-mode violation and break the check.
 	const isFocused = () =>
 		target
 			.evaluateAll((elements) => elements.some((element) => element === document.activeElement))
@@ -238,7 +306,7 @@ async function tabUntilFocused(page: Page, target: Locator, max = MAX_TAB_STOPS)
 }
 
 /* ---------------------------------------------------------------------------
- * `/` — Home: skip link と focus 順序
+ * `/` — home: skip link and focus order
  * ------------------------------------------------------------------------- */
 
 test.describe('/ — home: skip link and focus order (Issue #394)', () => {
@@ -249,13 +317,14 @@ test.describe('/ — home: skip link and focus order (Issue #394)', () => {
 		const skipLink = page.locator('a[href="#main"]');
 		await expect(skipLink).toHaveCount(1);
 
-		// Tab 1 番で skip link に focus する。
+		// The first Tab focuses the skip link.
 		await page.keyboard.press('Tab');
 		await expect(skipLink).toBeFocused();
 
-		// Enter で main へ移動する。`<main>` 自体は focusable ではないため、
-		// 観測できるのは「fragment が変わった」ことと「次の Tab が main の
-		// 内から始まる」こと (sequential focus navigation starting point)。
+		// Enter moves the focus to `main`. `<main>` itself is not
+		// focusable, so what can be observed is "the fragment changed"
+		// and "the next Tab starts inside main" (the sequential focus
+		// navigation starting point).
 		await page.keyboard.press('Enter');
 		await expect(page).toHaveURL(/#main$/);
 
@@ -334,7 +403,7 @@ test.describe('/ — home: skip link and focus order (Issue #394)', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * `/about` — ヘッダー nav (opt-in page)
+ * `/about` — the header nav (an opt-in page)
  * ------------------------------------------------------------------------- */
 
 test.describe('/about — public nav (Issue #394)', () => {
@@ -357,13 +426,13 @@ test.describe('/about — public nav (Issue #394)', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * `/about` — mobile menu (Escape で閉じ、focus がトリガへ戻る)
+ * `/about` — the mobile menu (Escape closes it, the focus goes back)
  * ------------------------------------------------------------------------- */
 
 test.describe('/about — mobile menu (Issue #394)', () => {
-	// `md` の breakpoint は 768px。`e2e/nav.spec.ts` と同じ 600px を
-	// 使い、desktop strip が畳まれた状態（mobile panel のある状態）を
-	// 決定的につくる。
+	// The `md` breakpoint is 768px. The spec uses the same 600px as
+	// `e2e/nav.spec.ts`, which deterministically produces the collapsed
+	// desktop strip (the state that has the mobile panel).
 	test.use({ viewport: { width: 600, height: 800 } });
 
 	test('the menu opens from the keyboard and Escape returns the focus to the trigger', async ({
@@ -378,7 +447,7 @@ test.describe('/about — mobile menu (Issue #394)', () => {
 		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 		await expect(panel).toBeHidden();
 
-		// トリガへ keyboard で focus して Enter で開く。
+		// Focus the trigger with the keyboard and open it with Enter.
 		expect(await tabUntilFocused(page, toggle), 'the menu trigger must be Tab-reachable').toBe(
 			true,
 		);
@@ -387,14 +456,15 @@ test.describe('/about — mobile menu (Issue #394)', () => {
 		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 		await expect(panel).toBeVisible();
 
-		// パネル内へ Tab 进去る。
+		// Tab moves into the panel.
 		await page.keyboard.press('Tab');
 		expect(
 			await panel.evaluate((element) => element.contains(document.activeElement)),
 			'the focus must be able to move into the open menu panel',
 		).toBe(true);
 
-		// Escape で閉じる。閉じたとき focus はトリガへ戻る (見失れない)。
+		// Escape closes it, and the focus goes back to the trigger
+		// (nothing is lost).
 		await page.keyboard.press('Escape');
 		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 		await expect(panel).toBeHidden();
@@ -407,7 +477,7 @@ test.describe('/about — mobile menu (Issue #394)', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * `/tools` — Tools 入口
+ * `/tools` — the tools entry
  * ------------------------------------------------------------------------- */
 
 test.describe('/tools — the tools entry (Issue #394)', () => {
@@ -429,7 +499,7 @@ test.describe('/tools — the tools entry (Issue #394)', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * `/contact` — channel 一覧 (フォームは無い)
+ * `/contact` — the channel list (there is no form)
  * ------------------------------------------------------------------------- */
 
 test.describe('/contact — the channel list (Issue #394)', () => {
@@ -443,10 +513,11 @@ test.describe('/contact — the channel list (Issue #394)', () => {
 		).toBe(true);
 		await expect(skipLink).toBeFocused();
 
-		// `/contact` にはフォームが無い (Issue #103: channel の一覧だけ) ため、
-		// 「入力要素に focus が届くか」の対象が存在しない。ここではその
-		// 事実を明示的に固定する。フォームが追加されたら、この assertion
-		// が赤になる = そのときに初めて入力要素の focus 契約が要る。
+		// `/contact` has no form (Issue #103 lists the verified channels
+		// and nothing else), so there is no "can the focus reach an input
+		// element" subject here. The fact is pinned explicitly: if a
+		// form is ever added, this assertion turns red, and only then
+		// does the input focus contract become a subject.
 		expect(
 			await page.locator('input, textarea, select').count(),
 			'/contact is a static channel list — it must not grow a form without a focus contract',
@@ -455,7 +526,7 @@ test.describe('/contact — the channel list (Issue #394)', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * 唯一の `<dialog>` — リアクション picker
+ * The one and only `<dialog>` — the reaction picker
  * ------------------------------------------------------------------------- */
 
 test.describe('/ — the reactions picker dialog (Issue #394)', () => {
@@ -471,12 +542,13 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 
 		const trigger = page.getByTestId('home-reactions-open-picker');
 		if (dialogCount === 0) {
-			// `src/home/reactions/widget.tsx` の picker は、この
-			// リポジトリ唯一の `<dialog>` であり、home consumer API key が
-			// 設定された deployment でのみ描画される (未設定なら
-			// 「reactions disabled」表示になる)。key の無い環境では dialog
-			// の実体が存在しないので、Contract としてその状態を明示する
-			// (skip はしない)。
+			// The picker in `src/home/reactions/widget.tsx` is the only
+			// `<dialog>` in this repository, and it renders only in a
+			// deployment that has the home consumer API key (without it
+			// the widget shows the "reactions disabled" marker). A
+			// deployment without the key has no dialog element at all,
+			// so the contract states that case explicitly instead of
+			// skipping.
 			await expect(
 				page.getByText(/reactions disabled/i).first(),
 				'without the picker there must be the documented disabled marker, not a silent gap',
@@ -494,9 +566,10 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 		await page.goto('/');
 		const trigger = page.getByTestId('home-reactions-open-picker');
 		if ((await trigger.count()) === 0) {
-			// 対象なし (dialog が描画されない deployment)。上の test が
-			// 「dialog が存在しないのは documented な状態であること」を
-			// 固定している。ここでは skip ではなく、その状態を表明する。
+			// No subject in this deployment (the dialog is not rendered).
+			// The test above already pins that the absence is a
+			// documented state; here the state is stated instead of
+			// skipping.
 			await expect(page.getByText(/reactions disabled/i).first()).toBeVisible();
 			return;
 		}
@@ -505,7 +578,18 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 		const dialog = page.locator('dialog[aria-label="Add a reaction"]');
 		await expect(dialog).toBeVisible();
 
-		// dialog を開いたら focus は dialog 内に留まる (SC 2.1.2)。
+		// The dialog must be MODAL. A non-modal `<dialog>` (opened with
+		// `show()` instead of `showModal()`) keeps the page behind it
+		// reachable, so the "no keyboard trap" contract is a property of
+		// the modality, not of the element count inside the dialog.
+		expect(
+			await isModalDialog(dialog),
+			'the picker dialog must be modal (opened with showModal()), otherwise the page behind it stays keyboard-reachable (SC 2.1.2)',
+		).toBe(true);
+
+		await waitForDialogFocusable(dialog);
+
+		// Opening the dialog moves the focus into it (SC 2.1.2).
 		expect(
 			await isFocusInside(dialog),
 			'opening the dialog must move the focus into the dialog',
@@ -517,9 +601,13 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 				await isFocusInside(dialog),
 				`the focus escaped the dialog after ${index + 1} Tab(s)`,
 			).toBe(true);
+			expect(
+				await isFocusOnDialogFocusable(dialog),
+				`the Tab target after ${index + 1} Tab(s) is not one of the dialog's own focusable elements`,
+			).toBe(true);
 		}
 
-		// Escape で閉じると focus はトリガへ戻る。
+		// Escape closes it and the focus goes back to the trigger.
 		await page.keyboard.press('Escape');
 		await expect(dialog).toBeHidden();
 		await expect(
@@ -555,17 +643,33 @@ test.describe('/design-system — the reaction picker dialog fixture (Issue #394
 
 		const dialog = page.locator('dialog[aria-label="Add a reaction"]');
 		await expect(dialog).toBeVisible();
+
+		// The modality is the contract: a non-modal dialog leaves the
+		// page behind it keyboard-reachable, and "the focus stayed
+		// inside for twelve Tab presses" would not notice that.
+		expect(
+			await isModalDialog(dialog),
+			'the shipped picker dialog must be modal (opened with showModal()) (SC 2.1.2)',
+		).toBe(true);
+
+		await waitForDialogFocusable(dialog);
+
 		expect(
 			await isFocusInside(dialog),
 			'opening the dialog must move the focus into the dialog (SC 2.1.2)',
 		).toBe(true);
 
-		// Tab keeps the focus inside the dialog (SC 2.1.2).
+		// Every Tab target stays inside the dialog, and it is one of the
+		// dialog's own focusable elements (SC 2.1.2).
 		for (let index = 0; index < 12; index += 1) {
 			await page.keyboard.press('Tab');
 			expect(
 				await isFocusInside(dialog),
 				`the focus escaped the dialog after ${index + 1} Tab(s)`,
+			).toBe(true);
+			expect(
+				await isFocusOnDialogFocusable(dialog),
+				`the Tab target after ${index + 1} Tab(s) is not one of the dialog's own focusable elements`,
 			).toBe(true);
 		}
 
@@ -582,7 +686,7 @@ test.describe('/design-system — the reaction picker dialog fixture (Issue #394
 });
 
 /* ---------------------------------------------------------------------------
- * negative control — assertion が赤になれることの確認
+ * Negative control — proving the assertions can turn red
  * ------------------------------------------------------------------------- */
 
 test.describe('negative control — the assertions can turn red (Issue #394)', () => {
@@ -593,8 +697,8 @@ test.describe('negative control — the assertions can turn red (Issue #394)', (
 			'the skip-link assertion must pass on the shipped page',
 		).toBe(false);
 
-		// production コードは書き換えず、実行時に DOM から skip link を
-		// 外すだけ。
+		// Production code is not rewritten: only the skip link is
+		// removed from the DOM at runtime.
 		await page.evaluate(() => {
 			document.querySelector('a[href="#main"]')?.remove();
 		});
@@ -610,8 +714,9 @@ test.describe('negative control — the assertions can turn red (Issue #394)', (
 		const shipped = await walkWholeDocument(page);
 		expect(shipped.forward, 'the shipped page must walk forward through the document').toBe(true);
 
-		// 実行時に focus を持つ要素を DOM から外す (focus は body へ
-		// 落ちる)。以後の Tab は文書先頭から再開する。
+		// Remove the focused element from the DOM at runtime (the focus
+		// falls to the body). Every later Tab restarts at the top of the
+		// document.
 		await page.goto('/');
 		const broken = await walkWholeDocument(page, MAX_TAB_STOPS, 3);
 		expect(
@@ -622,8 +727,9 @@ test.describe('negative control — the assertions can turn red (Issue #394)', (
 });
 
 test.describe('negative control — mobile menu (Issue #394)', () => {
-	// mobile panel のある viewport でないと trigger が `display: none` に
-	// なるため、menu の negative control は同じ viewport を使う。
+	// Without a viewport that has the mobile panel, the trigger is
+	// `display: none`, so the menu's negative control uses the same
+	// viewport.
 	test.use({ viewport: { width: 600, height: 800 } });
 
 	test('removing the menu trigger turns the focus-return assertion red', async ({ page }) => {
@@ -654,10 +760,12 @@ test.describe('negative control — mobile menu (Issue #394)', () => {
 });
 
 /**
- * 「最初の Tab stop が skip link か」を検査し、違反したら true を返す。
+ * Check whether "the first Tab stop is the skip link" holds, and report
+ * a violation as `true`.
  *
- * negative control 用の helper。catch して boolean に落とすのは、
- * 「assertion が赤になる」ことを 1 つの観測にまとめるため。
+ * A helper for the negative control: catching the failure and turning
+ * it into a boolean collects "the assertion turned red" into one
+ * observation.
  */
 async function skipLinkAssertionFails(page: Page): Promise<boolean> {
 	try {

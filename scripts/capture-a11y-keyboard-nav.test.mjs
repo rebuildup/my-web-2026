@@ -41,6 +41,8 @@ function healthyObservation(overrides = {}) {
 		wrapped: true,
 		skipLinkFocusRingVisible: true,
 		menuFocusReturnedToTrigger: true,
+		dialogIsModal: true,
+		dialogTabTargetsAreItsOwn: true,
 		dialogFocusTrapped: true,
 		dialogEscapeClosed: true,
 		dialogFocusReturnedToTrigger: true,
@@ -114,6 +116,22 @@ test('a dialog that lets the focus escape fails', () => {
 	assert.ok(verdict.failures.some((failure) => failure.includes('SC 2.1.2')));
 });
 
+test('a non-modal dialog fails, even when the focus stayed inside', () => {
+	const verdict = evaluateObservation(
+		healthyObservation({ dialogIsModal: false, dialogFocusTrapped: true }),
+	);
+
+	assert.equal(verdict.ok, false);
+	assert.ok(verdict.failures.some((failure) => failure.includes('modal')));
+});
+
+test("a Tab target outside the dialog's own focusable elements fails", () => {
+	const verdict = evaluateObservation(healthyObservation({ dialogTabTargetsAreItsOwn: false }));
+
+	assert.equal(verdict.ok, false);
+	assert.ok(verdict.failures.some((failure) => failure.includes('own focusable elements')));
+});
+
 test('a dialog that Escape does not close fails', () => {
 	const verdict = evaluateObservation(healthyObservation({ dialogEscapeClosed: false }));
 
@@ -167,7 +185,8 @@ test('the header states what was and was not measured', () => {
 
 	assert.match(header.svg, /machine-checked/);
 	assert.match(header.svg, /not machine-checked/);
-	assert.match(header.svg, /picker dialog keeps the focus inside/);
+	assert.match(header.svg, /picker dialog is modal/);
+	assert.match(header.svg, /keeps the focus inside/);
 });
 
 test('the evidence panel names the WCAG mapping and separates human evaluation', () => {
@@ -182,6 +201,7 @@ test('the evidence panel names the WCAG mapping and separates human evaluation',
 	assert.match(panel.svg, /machine-checked \(Issue #394\)/);
 	assert.match(panel.svg, /human evaluation \(not measured here\)/);
 	assert.match(panel.svg, /picker dialog keeps the focus inside/);
+	assert.match(panel.svg, /picker dialog is modal/);
 	assert.ok(panel.height > 100);
 });
 

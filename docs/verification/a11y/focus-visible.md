@@ -28,6 +28,7 @@
 | `src/routes/design-system/**` | design-system ルートはリポジトリ内部のコンポーネントギャラリーであり、公開表面ではない（実 primitives は別途走査される） |
 | ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない。非モーダルの signal は **要素ごとに** 読む: `open` 属性（`css({...})` 呼び出しの前後どちらにあっても）と、その要素の `ref` に対する `.show()` 呼び出し（`dialogRef.current.show()`）。同じファイルのどこかにある `showModal()` だけでは exempt にしない。**限界**: 要素が `ref` を束縛しておらず、別名の handle で `.show()` される `<dialog>` は帰属できないため exempt のままになりうる（見逃し側に倒す保守的な判断） |
 | 素の CSS の `position: fixed` / `sticky` オーバーレイ | 補償の鎖の判定はオーバーレイを TS の `css({...})` 呼び出しから採集するため、素の CSS で宣言されたオーバーレイは本 gate のオーバーレイとして数えない。素の CSS の outline 解除は対象（`focus-indicator-removed-in-css`） |
+| `:not(:focus-visible)` を含むセレクタ（例: `:focus:not(:focus-visible)`） | pointer focus。ブラウザ既定の指示子は **pointer 操作**には不要で、**キーボード操作のインジケータには影響しない**。`:focus-visible` 側（keyboard focus）は対象のままなので、キーボード利用者がインジケータを失うことはない |
 
 ### 基準
 
@@ -35,6 +36,7 @@
 | --- | --- | --- | --- |
 | SC 2.4.7 Focus Visible | AA | すべてのフォーカスブロック | 適合 — 指示子が外されたまま・見えないままのブロックを機械検査（`scripts/check-a11y-focus-visible.mjs`） |
 | SC 2.4.11 Focus Not Obscured (Minimum) | AA | すべての author-created overlay | 適合 — 補償の鎖が閉じていないオーバーレイを機械検査（同上） |
+| `:focus-within` | AA（SC 2.4.7 と同じ物差し） | 素の CSS の `:focus-within` と `css({...})` の `_focusWithin` / `&:focus-within` | 対象 — フォーカス可能要素**ではない**ラッパ（例: `.field:focus-within { outline: none }`）に適用した `outline: none` は**誤検知の候補**で、解除手順 4 と同じ扱いにする |
 
 ## 規則一覧
 
@@ -162,7 +164,7 @@ Chromium は PNG しか書けず、Issue #395 は `.png` のパスを要求し�
 
 ## 誤検知が起きたときの解除手順
 
-gate は「形」を判定する。以下の 3 つは誤検知の候補であり、**gate を緩め
+gate は「形」を判定する。以下の 4 つは誤検知の候補であり、**gate を緩め
 ずに**個別の契約として扱う:
 
 1. **`focus-indicator-removed` が「代替の表示なし」と誤認した**
@@ -184,6 +186,22 @@ gate は「形」を判定する。以下の 3 つは誤検知の候補であり
      覆うもの」ではない。重ね合わせの順序や `pointer-events` を人工で
      確認したうえで、**対象外とするなら除外理由を `EXCLUSIONS` に
      1 行足す**（理由の文章つき。gate の出力にそのまま出る）。
+4. **`focus-indicator-removed-in-css` が「ラッパの解除」を「フォーカス可能要素の解除」と取り違えた**
+   - `:focus-within` は**一律で対象**である（`focus-within` を持つセレクタは
+     すべて走査される）。フォーカス可能要素**ではない**ラッパ
+     （例: `.field:focus-within { outline: none }`）に適用すると、
+     その下のフォーカス可能要素の指示子は消えていないのに
+     `focus-indicator-removed-in-css` として報告される。
+   - 確認: そのルールの適用の下に**実際にフォーカスできる要素**があるか、
+     かつその要素が**自分の** `:focus-visible` で指示子を持つかを、
+     コードで確かめる（ラッパ自身がフォーカス可能かどうかではない）。
+   - 解除: 解除は**フォーカス可能要素側の指示子**で担保する
+     （ラッパは `outline: none` のままでよい）。gate の閾値は下げず、
+     要素側の指示子の実装を記録として足す（1 と同じ扱い）。
+     判定の形だけを示したいときは `pass/` に fixture を 1 件追加する
+     （2 と同じ扱い）。
+   - **owner へ仰ぐ条件**: フォーカス可能要素が**どの rule にも**指示子を
+     持たないとき（＝実際の欠陥）は、解除ではなく**出荷の修正**である。
 
 いずれも、解除は「gate の判定を緩める」ことではなく「契約の記録を
 増やす」こととして扱う。判断と記録は PR の本文に残す。

@@ -197,15 +197,17 @@ export function isCompensationProperty(property) {
 }
 
 /**
- * The scan target: the shipped source and the global stylesheet.
+ * The scan target: the shipped source and every shipped stylesheet under
+ * it.
  *
- * The stylesheet is scanned because the compensation it declares is part
- * of the contract; a gate that only read `src/**\/*.{ts,tsx}` could not
- * see the other end of the chain.
+ * Every stylesheet under the scan root is scanned, not one global file:
+ * the compensation it declares is part of the contract, and a gate that
+ * only read `src/**\/*.{ts,tsx}` could not see the other end of the
+ * chain. A stylesheet that is added under the scan root is therefore
+ * covered without touching this gate.
  */
 export const SCAN_ROOT = 'src';
 export const SCAN_SUFFIXES = ['.ts', '.tsx', '.css'];
-export const STYLESHEET_PATH = 'src/styles.css';
 
 /**
  * What is deliberately OUT of scope, and why.

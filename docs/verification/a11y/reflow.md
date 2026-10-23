@@ -80,11 +80,17 @@ gate・fixture・ブラウザハーネスが同じ語彙を読む:
 テスト（`scripts/check-a11y-reflow.test.mjs`）はさらに、fixture ディレクトリの一覧と
 期待表が**完全一致**すること（1 個落としても気付けないテストにしない）を assert する。
 
+fixture は `pnpm run typecheck` の対象でもある（`tsconfig.json` の include に
+`scripts/fixtures/a11y-reflow/**/*.tsx` を含む）。gate と capture は
+fixture を **ソースとして** 読むので、構文が壊れた fixture を谁的かが
+気づかないまま放置すると、CI は緑のまま capture だけが落ちる。型検査が
+その穴を閉じる。
+
 **ブラウザ側の specimen 定義はここ 1 つです。** capture は
 `scripts/fixtures/a11y-reflow/**.tsx` を読み、`data-reflow-specimen`（ID）・
 `data-reflow-kind`（種類）・`style`（対策）・描画テキストを抽出して
 case 表を作る（`deriveSpecimenCases`）。ブラウザ側に同じ 6 個を手書きしても
-いないので、静的側とブラウザ側が別の宣言を判定してしまう drift は起きない。
+いないので、静的側とブラウザ側が別の宣言を判定してしまうずれは起きない。
 `pass/` は「収まる」、`fail/` は「はみ出す」が期待値で、
 capture の case 表と fixture roster の一致は
 `scripts/capture-a11y-reflow.test.mjs` が assert する。
@@ -129,6 +135,12 @@ capture script が `.png` を拒否する規約のため）。
 
 - 生成: `pnpm run capture:a11y-reflow`（**先に `pnpm run build`** が必要。
   出荷 route をローカル preview server で開くため、build が無ければ測定できない）
+- 測定環境: **Chromium**（`chromium.launch()`。バージョンは capture の
+  レポート JSON `browser.version` に記録し、検証画像の上部バンドにも印字する）、
+  **出荷 route の viewport は 320×720 CSS px**（SC 1.4.10 の予算）、
+  **ハーネスページの viewport は 1600×1000 CSS px**、
+  **deviceScaleFactor は 1**（`isMobile: false`）。拡大率ではなく viewport
+  自体を 320 CSS px に固定して測っている
 - 方式: loopback の一時 HTTP サーバに生成したハーネスを置き、Chromium で描画して撮影。
   同じ Chromium で、出荷 route を 320 CSS px の viewport で開いて幅を測る
 - 左（上）: 320 px frame の 100% 描画、右（下）: 同じ frame の 200% テキスト描画
@@ -155,8 +167,8 @@ capture script が `.png` を拒否する規約のため）。
 4. **出荷コードの `white-space: nowrap` / 固定幅が意図的なら、除外を宣言する。**
    `scripts/check-a11y-reflow.mjs` の `SHIPPED_DECLARATION_EXCLUSIONS` に
    **1 件 = (file, declaration, reason)** を書く。理由はコードの中に残す
-   （理由をコードに書かないと、次の編集者が理由 unaware に緩める）。
-   除外は宣言単位なので、同じファイルにqushta 別の `nowrap` を足したら
+   （理由をコードに書かないと、次の編集者が理由を知らずに緩める）。
+   除外は宣言単位なので、同じファイルに別の `nowrap` を足したら
    それは違反のまま残る。現在の除外は次の 6 件:
 
    | file | declaration | 理由の要約 |

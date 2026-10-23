@@ -514,7 +514,7 @@ export function evaluateObservation(observation) {
 }
 
 /** The header band: what was measured, what was not. */
-export function headerSvg({ gate, verdict, shipped, width = SCREENSHOT_MAX_WIDTH }) {
+export function headerSvg({ gate, verdict, shipped, browser, width = SCREENSHOT_MAX_WIDTH }) {
 	const title = 'text reflow — Issue #400 (WCAG 2.2 SC 1.4.10 / 1.4.4, AA)';
 	const rows = [
 		`${EXPECTED_CASES.length} fixture specimen(s) x ${STAGES.length} stage(s) = ${EXPECTED_CASES.length * STAGES.length} measured box(es) at the ${REFLOW_BUDGET_PX} px reflow budget`,
@@ -522,6 +522,7 @@ export function headerSvg({ gate, verdict, shipped, width = SCREENSHOT_MAX_WIDTH
 		`machine-checked: ${verdict.ok ? 'every specimen resolved to the box the screen claims' : 'a specimen did NOT resolve to the claimed box'}`,
 		`machine-checked: gate ${gate.violations.length} violation(s); base floor = ${gate.base.breaks.join(', ') || 'none'}; shipped source scanned: ${gate.shipped?.filesScanned ?? 0} file(s)`,
 		`machine-checked: ${SHIPPED_ROUTES.length} shipped route(s) opened at ${SHIPPED_VIEWPORT_PX} CSS px; the document must not scroll horizontally`,
+		`measured in ${browser ? `${browser.name} ${browser.version} (deviceScaleFactor ${browser.deviceScaleFactor})` : 'an unrecorded browser'} at the ${SHIPPED_VIEWPORT_PX} CSS px budget`,
 		...(shipped?.rows ?? []),
 		'not machine-checked: whether a broken URL still reads correctly, hyphenation quality, how the reflowed page feels',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}`,
@@ -637,6 +638,7 @@ async function main() {
 	assertLoopbackBaseUrl(options.baseUrl);
 	const server = await serveDirectory(resolve(REPO_ROOT, HARNESS_DIR));
 	let capture = null;
+	let browserInfo = null;
 	let verdict = null;
 	let observation = null;
 	let shipped = null;
@@ -650,6 +652,17 @@ async function main() {
 			const pagePng = resolve(REPO_ROOT, options.pngDir, 'screen.png');
 			ensureDir(join(options.pngDir, 'x.png'));
 			const browser = await chromium.launch();
+			// The measurement conditions are part of the record: Issue #400
+			// asks for the command, the browser and the viewport to be
+			// written down, and a width measurement without the browser
+			// that produced it is not reproducible.
+			browserInfo = {
+				name: 'chromium',
+				version: browser.version(),
+				deviceScaleFactor: 1,
+				harnessViewport: { width: options.width, height: 1000 },
+				shippedViewport: { width: SHIPPED_VIEWPORT_PX, height: 720 },
+			};
 			try {
 				const context = await browser.newContext({
 					viewport: { width: options.width, height: 1000 },
@@ -712,7 +725,7 @@ async function main() {
 				);
 			}
 
-			const header = headerSvg({ gate, verdict, shipped });
+			const header = headerSvg({ gate, verdict, shipped, browser: browserInfo });
 			const outPath = resolve(REPO_ROOT, options.screenshot);
 			ensureDir(options.screenshot);
 			const geometry = await composeArtefact({ sharp, pagePng, header, outPath });
@@ -763,6 +776,7 @@ async function main() {
 		},
 		kinds: UNBREAKABLE_KINDS,
 		wcag: WCAG_MAPPING,
+		browser: browserInfo,
 		humanEvaluation: gate.humanEvaluation,
 		policy: {
 			webpOnly: true,

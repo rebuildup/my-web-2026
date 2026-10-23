@@ -27,11 +27,25 @@
  *   - `expect`    — the verdict the manifest claims for this route
  *                    (`pass` = no violation at all, `baseline` = every
  *                    observed violation is recorded in
- *                    `e2e/a11y/axe-baseline.json`, `fail` = the route
- *                    is expected to fail). The spec compares the
- *                    declaration with the measurement and goes red
+ *                    `e2e/a11y/axe-baseline.json`). The spec compares
+ *                    the declaration with the measurement and goes red
  *                    when they disagree, so the manifest cannot drift
  *                    away from reality without failing the gate.
+ *
+ * The manifest CANNOT declare that a route is allowed to fail.
+ * ------------------------------------------------------------
+ * `AxeVerdict` has no `fail` member, and the spec refuses a
+ * declaration outside `{pass, baseline}` at run time as well. If the
+ * manifest could say "this route is expected to fail", then editing
+ * one word here would turn a newly-introduced violation into a green
+ * run — the gate's central promise ("a violation that is not recorded
+ * fails the release candidate") would be one edit away from void.
+ *
+ * The place where a known violation is ALLOWED to exist is the
+ * ledger, `e2e/a11y/axe-baseline.json`: one record per route × rule,
+ * with the reason it is tolerated. That is a separate, explicit
+ * artefact with its own diff, so allowing a violation is a visible
+ * decision rather than a word in a declaration.
  *
  * A route that is NOT listed here is not measured. That is only
  * acceptable when the omission has a reason, so the skipped routes
@@ -51,8 +65,16 @@
  */
 export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] as const;
 
-/** The verdict a route may declare in the manifest. */
-export type AxeVerdict = 'pass' | 'baseline' | 'fail';
+/**
+ * The verdict a route may declare in the manifest.
+ *
+ * There is deliberately no `fail` member: the manifest may not say
+ * "this route is allowed to fail". A route whose violations are
+ * tolerated declares `baseline`, and the tolerance itself lives in
+ * the ledger (`e2e/a11y/axe-baseline.json`) with a reason — not in a
+ * declaration that a one-word edit could turn into a permission slip.
+ */
+export type AxeVerdict = 'pass' | 'baseline';
 
 /** One audited route. */
 export interface AuditedRoute {

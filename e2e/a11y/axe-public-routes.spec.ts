@@ -16,21 +16,41 @@ import { AUDITED_ROUTES, AXE_TAGS, SKIPPED_ROUTES } from './axe-manifest';
  * whether the page a visitor actually receives violates WCAG 2.2
  * A / AA.
  *
- * Three things are asserted, per route:
+ * Four things are asserted, per route:
  *
  *   1. the route RESOLVES (HTTP 200) and publishes the document title
  *      the manifest declares — a 404 page or an error boundary must
  *      never be measured and reported as "the route is accessible";
- *   2. the verdict the manifest DECLARES equals the verdict the scan
+ *   2. NO observed violation is outside the known-violation ledger —
+ *      this assertion does not read the manifest at all, so it cannot
+ *      be switched off by editing a declaration. A new violation fails
+ *      the release candidate, whatever the manifest says;
+ *   3. the verdict the manifest DECLARES equals the verdict the scan
  *      MEASURED — so the manifest cannot drift away from reality
- *      without the gate going red;
- *   3. the known-violation ledger (`e2e/a11y/axe-baseline.json`) is
+ *      without the gate going red. The manifest may only declare
+ *      `pass` or `baseline`: it may NOT declare that a route is
+ *      allowed to fail, because that would let a one-word edit hide a
+ *      new violation. The only place a known violation may be allowed
+ *      to exist is the ledger, one record per route × rule with the
+ *      reason it is tolerated;
+ *   4. the known-violation ledger (`e2e/a11y/axe-baseline.json`) is
  *      neither incomplete nor stale:
  *        - a violation that is NOT in the ledger → FAIL (a new
  *          violation must drop the release candidate);
  *        - a ledger record that matches no observed violation → FAIL
  *          (a stale ledger would let somebody delete every record and
- *          turn the gate permanently green).
+ *          turn the gate permanently green);
+ *        - a ledger record without a reason → FAIL (a tolerance with
+ *          no stated reason is not a decision, it is an omission).
+ *
+ * A non-loopback baseURL is a FAILURE, not a skip
+ * -------------------------------------------------
+ * The scan measures the release candidate, never a deployment, so it
+ * only runs against the local preview. When the resolved baseURL is
+ * not loopback, the spec fails instead of skipping: a skipped spec
+ * would report "0 routes scanned, exit 0" — a silent green that reads
+ * like a pass. Failing loudly is the only honest outcome for a
+ * misconfigured origin.
  *
  * The audit target set (the manifest is the authority; this list is
  * the ledger's evidence path, and `quality/route-coverage.json`
@@ -84,17 +104,75 @@ interface BaselineRecord {
 	recordedAt: string;
 }
 
+/**
+ * The verdict a measurement produces.
+ *
+ * `fail` is the measured state "this route has a violation that the
+ * ledger does not record". It is NOT a value the manifest may
+ * declare — see {@link DECLARABLE_VERDICTS}.
+ */
+type MeasuredVerdict = 'pass' | 'baseline' | 'fail';
+
+/**
+ * The verdicts a manifest entry may declare.
+ *
+ * `fail` is absent on purpose: a declaration that says "this route is
+ * expected to fail" would make a newly-introduced violation invisible
+ * to the gate. A route whose known violations are tolerated declares
+ * `baseline`, and the tolerance is recorded — with a reason — in the
+ * ledger, where it is a visible diff instead of a word in a
+ * declaration.
+ */
+const DECLARABLE_VERDICTS: readonly MeasuredVerdict[] = ['pass', 'baseline'];
+
 interface BaselineLedger {
 	version: number;
 	records: BaselineRecord[];
 }
 
+/** One route of the release coverage ledger (`quality/route-coverage.json`). */
+interface CoverageRoute {
+	path: string;
+	gates: Record<string, { status: string; reason?: string; evidence?: string[] }>;
+}
+
+interface CoverageLedger {
+	routes: CoverageRoute[];
+}
+
 const require = createRequire(import.meta.url);
 const AXE_SOURCE: string = require('axe-core').source;
 
-const BASELINE_PATH = join(dirname(fileURLToPath(import.meta.url)), 'axe-baseline.json');
+const SPEC_DIR = dirname(fileURLToPath(import.meta.url));
+const BASELINE_PATH = join(SPEC_DIR, 'axe-baseline.json');
+const COVERAGE_PATH = join(SPEC_DIR, '../../quality/route-coverage.json');
 
 const baseline: BaselineLedger = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
+const coverage: CoverageLedger = JSON.parse(readFileSync(COVERAGE_PATH, 'utf8'));
+
+/**
+ * Is `sample` a route under the ledger's (possibly parameterised) route?
+ *
+ * The coverage ledger names a family of routes (`/portfolio/$slug`),
+ * while the manifest names the concrete route the scan opens
+ * (`/portfolio/my-web-2026`). The ledger route is therefore matched
+ * against the manifest route as a pattern.
+ */
+function isSampleUnderRoute(route: string, sample: string): boolean {
+	const pattern = route
+		.split('/')
+		.filter((segment) => segment.length > 0)
+		.map((segment) =>
+			segment.startsWith('$') ? '[^/]+' : segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+		)
+		.join('/');
+	return new RegExp(`^/${pattern}$`).test(sample);
+}
+
+/** Does `sample` stand for the ledger route `route` (exactly, or under it)? */
+function standsFor(route: string, sample: string): boolean {
+	return route === sample || isSampleUnderRoute(route, sample);
+}
 
 /**
  * Normalise a selector so a React-generated id cannot break the match.
@@ -152,12 +230,27 @@ function recordsForRoute(route: string, records: BaselineRecord[]): BaselineReco
  * `fail` when at least one observed node is not in the ledger, else
  * `baseline` when the route has violations at all, else `pass`.
  */
-function verdictFor(violations: AxeViolation[], route: string, records: BaselineRecord[]): string {
+function verdictFor(
+	violations: AxeViolation[],
+	route: string,
+	records: BaselineRecord[],
+): MeasuredVerdict {
 	const unknown = violations.flatMap(
 		(violation) => matchBaseline(violation, route, records).unknown,
 	);
 	if (unknown.length > 0) return 'fail';
 	return violations.length > 0 ? 'baseline' : 'pass';
+}
+
+/** The observed nodes the ledger does not record, as readable lines. */
+function newViolationLines(
+	violations: AxeViolation[],
+	route: string,
+	records: BaselineRecord[],
+): string[] {
+	return violations.flatMap((violation) =>
+		matchBaseline(violation, route, records).unknown.map((node) => `${violation.ruleId} @ ${node}`),
+	);
 }
 
 /** Ledger records that no observed violation supports any more. */
@@ -232,10 +325,14 @@ async function scan(page: import('@playwright/test').Page): Promise<AxeViolation
 test.describe('public route axe-core scan (#393)', () => {
 	test.beforeEach(async ({ page, baseURL }) => {
 		// The scan measures the release candidate, never a deployment.
-		test.skip(
-			!baseURL || !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(baseURL),
-			`the axe scan runs against the local preview only (baseURL is "${baseURL ?? 'unset'}")`,
-		);
+		// A non-loopback origin is a MISCONFIGURATION, so it fails the
+		// run instead of skipping it: a skipped scan reports "0 routes
+		// measured" with exit code 0, which reads like a pass.
+		if (!baseURL || !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/)/.test(baseURL)) {
+			throw new Error(
+				`the axe scan runs against the local preview only, but baseURL is "${baseURL ?? 'unset'}". Point PLAYWRIGHT_BASE_URL at the loopback preview (or unset it) — a skipped scan would report "0 routes measured" and exit 0.`,
+			);
+		}
 		// The axe bundle is injected before the document is parsed, so the
 		// scan sees the page exactly as a visitor receives it.
 		await page.addInitScript({ content: AXE_SOURCE });
@@ -252,10 +349,27 @@ test.describe('public route axe-core scan (#393)', () => {
 			const verdict = verdictFor(violations, route.path, baseline.records);
 			const stale = staleRecords(violations, route.path, baseline.records);
 
+			// The manifest may not declare that a route is allowed to
+			// fail. If it could, editing one word here would hide a
+			// newly-introduced violation — the exact thing this gate
+			// exists to prevent.
+			expect(
+				DECLARABLE_VERDICTS.includes(route.expect),
+				`${route.path}: the manifest declares "${route.expect}", which is not a declarable verdict (${DECLARABLE_VERDICTS.join(' / ')}). A manifest entry may not allow a route to fail: record a known violation in e2e/a11y/axe-baseline.json with a reason instead.`,
+			).toBe(true);
+
+			// The core contract, checked WITHOUT reading the manifest:
+			// an observed violation that the ledger does not record fails
+			// the release candidate, whatever the manifest declares.
+			expect(
+				newViolationLines(violations, route.path, baseline.records),
+				`${route.path}: the scan found violation(s) the ledger does not record. Fix the violation, or record it in e2e/a11y/axe-baseline.json with a reason (the ledger is the only place where a known violation may be allowed to exist). The manifest cannot allow a failure.`,
+			).toEqual([]);
+
 			// The manifest's declaration and the measurement must agree.
 			expect(
 				verdict,
-				`${route.path}: the manifest declares "${route.expect}" but the scan measured "${verdict}" (${violations.length} violation(s), ${records.length} baseline record(s)). A changed verdict means either a new violation or a fixed one — update e2e/a11y/axe-manifest.ts and e2e/a11y/axe-baseline.json in the same commit.`,
+				`${route.path}: the manifest declares "${route.expect}" but the scan measured "${verdict}" (${violations.length} violation(s), ${records.length} baseline record(s)). A changed verdict means either a new violation or a fixed one: fix the new violation (or record it in the ledger with a reason), and when a violation is FIXED, change the manifest to "pass" and delete the ledger record in the same commit.`,
 			).toBe(route.expect);
 
 			// A stale ledger record means the ledger is no longer the
@@ -306,6 +420,90 @@ test.describe('public route axe-core scan (#393)', () => {
 		expect(
 			orphans,
 			'the baseline ledger records a route the manifest does not audit — delete the record or audit the route',
+		).toEqual([]);
+	});
+
+	test('the manifest declares no failing verdict', () => {
+		const illegal = AUDITED_ROUTES.filter(
+			(route) => !DECLARABLE_VERDICTS.includes(route.expect),
+		).map((route) => `${route.path} · ${route.expect}`);
+		expect(
+			illegal,
+			'a manifest entry may not declare that a route is allowed to fail — that would let a one-word edit hide a new violation. Record the known violation in e2e/a11y/axe-baseline.json with a reason instead.',
+		).toEqual([]);
+	});
+
+	test('the manifest audits at least one route, and every entry is complete', () => {
+		expect(AUDITED_ROUTES.length, 'the manifest must audit at least one route').toBeGreaterThan(0);
+		const incomplete = AUDITED_ROUTES.filter(
+			(route) =>
+				route.path.trim().length === 0 ||
+				route.title.trim().length === 0 ||
+				route.note.trim().length === 0,
+		).map((route) => route.path);
+		expect(
+			incomplete,
+			'every audited route states a path, a title and a note — an empty field would let the scan measure nothing',
+		).toEqual([]);
+	});
+
+	test('every ledger record states why the violation is tolerated', () => {
+		const unexplained = baseline.records
+			.filter((record) => typeof record.reason !== 'string' || record.reason.trim().length === 0)
+			.map((record) => `${record.route} · ${record.ruleId}`);
+		expect(
+			unexplained,
+			'a ledger record is a permission to keep a known violation — it must say why (the ledger is where a failure is allowed, so the reason is the decision)',
+		).toEqual([]);
+	});
+
+	test('the manifest and the coverage ledger agree on the audited route set', () => {
+		// Removing a route from the manifest is as much a one-line edit
+		// as changing its declared verdict, and it would stop the scan
+		// from measuring that route at all. The coverage ledger
+		// (`quality/route-coverage.json`) is the second, independent
+		// record of which routes claim an a11y gate, so the two must
+		// name the same set.
+		const ledgerRoutes = [...new Set(coverage.routes.map((route) => route.path))];
+		const covered = ledgerRoutes.filter(
+			(route) =>
+				coverage.routes.find((entry) => entry.path === route)?.gates.a11y?.status === 'covered',
+		);
+		const excluded = ledgerRoutes.filter(
+			(route) =>
+				coverage.routes.find((entry) => entry.path === route)?.gates.a11y?.status === 'excluded',
+		);
+		const audited = AUDITED_ROUTES.map((route) => route.path);
+		const skipped = SKIPPED_ROUTES.map((route) => route.path);
+
+		const uncovered = covered.filter(
+			(route) => !audited.some((sample) => standsFor(route, sample)),
+		);
+		expect(
+			uncovered,
+			'the coverage ledger marks these routes as a11y-covered, but the manifest does not audit them — audit the route or change the ledger',
+		).toEqual([]);
+
+		const unexplained = excluded.filter(
+			(route) => !skipped.some((sample) => standsFor(route, sample)),
+		);
+		expect(
+			unexplained,
+			'the coverage ledger excludes these routes from the a11y gate, but the manifest does not list them as skipped — list them with a reason, or audit them',
+		).toEqual([]);
+
+		const unlisted = audited.filter((sample) => !covered.some((route) => standsFor(route, sample)));
+		expect(
+			unlisted,
+			'the manifest audits routes the coverage ledger does not mark as a11y-covered — record the coverage (or drop the route from the manifest)',
+		).toEqual([]);
+
+		const unskipped = skipped.filter(
+			(sample) => !excluded.some((route) => standsFor(route, sample)),
+		);
+		expect(
+			unskipped,
+			'the manifest skips routes the coverage ledger does not exclude from the a11y gate — record the exclusion (or audit the route)',
 		).toEqual([]);
 	});
 

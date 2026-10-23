@@ -21,21 +21,50 @@
 | `e2e/a11y/axe-baseline.json` | 既知の既存違反の台帳（1 違反 1 レコード） |
 | `scripts/capture-a11y-axe-routes.mjs` | ゲート自身の実測結果から検証画像（WebP）を作る |
 
-判定は 3 段構えで、**どれかが 1 つでも red なら spec が落ちる**。
+判定は 4 段構えで、**どれかが 1 つでも red なら spec が落ちる**。
 
 | 状況 | 判定 |
 | --- | --- |
-| 観測した違反が台帳に無い | **fail**（新しい違反。release candidate を落とす） |
+| 観測した違反が台帳に無い | **fail**（新しい違反。release candidate を落とす。**manifest を読まない判定なので、宣言を書き換えても回避できない**） |
 | 観測した違反がすべて台帳にある | **baseline**（記録済みの違反。**件数を必ず表示する**） |
 | 違反が 1 件も無い | **pass** |
 | 台帳のレコードに実測違反が対応しない | **fail**（台帳が陳腐化している） |
+| 台帳のレコードに理由が無い | **fail**（許容の理由が無い記録は、決定ではなく脱落） |
 | manifest の宣言と実測の判定が違う | **fail**（manifest が現実とずれている） |
+| manifest が `fail` を宣言している | **fail**（宣言できない。宣言できる値は `pass` / `baseline` だけ） |
+| manifest の監査 route と `quality/route-coverage.json` の a11y covered が食い違う | **fail**（route を manifest から外した改変も塞ぐ） |
 | manifest に無いルートの台帳レコードがある | **fail**（孤立した台帳レコード） |
 | skip した route に理由が無い | **fail**（理由の無い skip は許されない） |
 | manifest の route が 404 / 200 以外を返す | **fail**（missing route を成功と偽らない） |
+| baseURL が loopback ではない | **fail**（skip しない。「0 route を走査して exit 0」という silent green を作らない） |
 
 台帳を空にして恒久 green にする回避は、4 段目（陳腐化検出）で塞いでいる。
 1 件の違反を追加して baseline を 1 件減らした状態で **green には戻れない**。
+
+### 「失敗が許される」のは台帳だけ
+
+manifest の `expect` が宣言できるのは `pass` と `baseline` の 2 値だけで、
+`fail` は **宣言できない**（型にも run time の検査にも無い）。
+manifest の 1 語を書き換えて新規違反を隠す経路を作らないため。
+
+- 違反が **恒久的に存在してよい** 場合は、**台帳**
+  （`e2e/a11y/axe-baseline.json`）に 1 レコード追加し、`reason` に許容理由を書く。
+  台帳は別ファイルなので、許容の判断は **差分として見える**。
+- manifest の宣言は「違反が 1 件もない（`pass`）」か
+  「違反がすべて台帳に載っている（`baseline`）」のどちらかでしかあり得ない。
+  実測が `fail`（台帳に無い違反がある）なら、宣言の値に関係なく **必ず red**。
+
+### 宣言を書き換えて隠せないことの確認（attack）
+
+reviewer が報告した「manifest の `expect` を書き換えると新規違反が通る」経路は、
+次の手順で自分の作業ツリーで再現・否定した（攻撃の入力は作業後にすべて戻した）。
+
+| 攻撃 | 結果 |
+| --- | --- |
+| `/tools` に `alt` の無い `<img>` を 1 枚足して build する | **1 failed / 15 passed**（新規違反が red になる） |
+| 同じ違反のまま `expect: 'pass'` を `expect: 'fail'` に書き換える（型も `fail` を含めるまで改変） | **2 failed / 14 passed**（route の判定と「manifest が `fail` を宣言していないか」の検査の両方が red） |
+| 同じ違反のまま `/tools` を manifest から削除する | **1 failed / 14 passed**（coverage ledger との整合検査が red） |
+| 攻撃をすべて戻す | **16 passed** |
 
 ## 適用対象
 
@@ -45,7 +74,7 @@
 | ページ状態 | 通常描画のみ（初期ロード、`networkidle` まで待機）。ログイン済み状態・検索語を入力した状態・ツールの iframe 内部は対象外 |
 | viewport | 1280 × 720（Playwright `devices['Desktop Chrome']`、deviceScaleFactor 1） |
 | ブラウザ | Chromium のみ（CI が Chromium しか入れていないため。2 引擎目は `cross_browser` family の課題） |
-| 実行先 | **ローカルの preview サーバのみ**（`scripts/e2e-local-bootstrap.mjs` → `vite preview`、loopback）。本番 URL には呼びかない（spec 側で baseURL を検査して skip する） |
+| 実行先 | **ローカルの preview サーバのみ**（`scripts/e2e-local-bootstrap.mjs` → `vite preview`、loopback）。本番 URL には呼びかない（baseURL が loopback でない場合は **skip ではなく fail**。skip すると「0 route を走査して exit 0」という silent green になる） |
 | 収集する結果 | `axe.run` の `violations` のみ（`resultTypes: ['violations']`）。passes / inapplicable / incomplete は収集しない |
 | 走査する rule タグ | `wcag2a` `wcag2aa` `wcag21a` `wcag21aa` `wcag22aa`（axe-core 4.14.0 がすべて受理する。存在しないタグを渡すと axe は例外を投げるため、**外したタグは無い**） |
 
@@ -102,7 +131,7 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 | SC 3.3.2 Labels or Instructions | A | `form-field-multiple-labels` |
 | SC 4.1.2 Name, Role, Value | A | `aria-allowed-attr`, `aria-braille-equivalent`, `aria-command-name`, `aria-conditional-attr`, `aria-deprecated-role`, `aria-hidden-focus`, `aria-input-field-name`, `aria-prohibited-attr`, `aria-required-attr`, `aria-roledescription`, `aria-roles`, `aria-tab-name`, `aria-toggle-field-name`, `aria-tooltip-name`, `aria-valid-attr`, `aria-valid-attr-value`, `button-name`, `duplicate-id-aria`, `frame-title`, `frame-title-unique`, `input-button-name`, `label`, `nested-interactive`, `select-name`, `summary-name` |
 
-実際に本次の実測で観測された rule は `color-contrast`（SC 1.4.3）、
+実際に今回の実測で観測された rule は `color-contrast`（SC 1.4.3）、
 `list` / `definition-list`（SC 1.3.1）、
 `label-content-name-mismatch`（SC 2.5.3）の 4 種類。
 
@@ -115,11 +144,15 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 - 違反した要素がどれか（axe の要素セレクタ）
 - その違反が台帳に載っているか、載っていないか（＝新規違反か）
 - 台帳のレコードが実測と対応しているか（＝台帳が陳腐化していないか）
+- 台帳のレコードに理由があるか（＝許容の判断が書かれているか）
 - manifest の宣言した判定と実測の判定が一致しているか
+- manifest が `fail` を宣言していないか（＝宣言できる値か）
+- manifest の監査 route と `quality/route-coverage.json` の a11y covered が一致しているか
+- 走査の origin が loopback か（本番を測っていないか）
 
 ### 人が評価すること（このゲートは判定しない）
 
-- 記録済みの違反を **設計判断として** 許容してよいか（前景色と背景色のコントラストの取值など）
+- 記録済みの違反を **設計判断として** 許容してよいか（前景色と背景色のコントラストの取りうる値など）
 - 代替テキスト・`aria-label` の文言が読み手に伝わるか
 - キーボード操作だけで主要フローが完了できるか（このゲートは測らない）
 - スクリーンリーダー実機での読み上げ品質（このゲートは測らない）
@@ -154,7 +187,7 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 | route | rule | 要素数 | 理由 |
 | --- | --- | --- | --- |
 | `/` | `color-contrast` | 2 | muted 文字色と subtle 背景が 4.34:1（AA は 4.5:1）。token は `editorial` の所有物なので、値を直すのは設計判断であり監査判断ではない |
-| `/` | `definition-list` | 1 | home の status 列表が `<dl>` の直下に `<div>` を置いている（SC 1.3.1 の content model 違反） |
+| `/` | `definition-list` | 1 | home の status リストが `<dl>` の直下に `<div>` を置いている（SC 1.3.1 の content model 違反） |
 | `/` | `label-content-name-mismatch` | 2 | `aria-label` が可視テキストを含まない（SC 2.5.3） |
 | `/about` | `color-contrast` | 1 | 同上（muted token） |
 | `/about` | `list` | 1 | デスクトップ nav が `<ul>` の直下に `<a>` を置いている（SC 1.3.1） |
@@ -184,11 +217,12 @@ candidate で fail すること」であって「初日から 0 違反にする�
 
 | 状況 | 対応 |
 | --- | --- |
-| axe が誤検知している（其实是適合） | 当該 rule の **コード側を直して** ゲートを再実行する。rule 全体を無効化する手段は本 Issue には無い（runOnly のタグ集合は manifest の `AXE_TAGS` にあるだけで、route 単位で除外する仕組みは持たない） |
+| axe が誤検知している（実際は適合） | 当該 rule の **コード側を直して** ゲートを再実行する。rule 全体を無効化する手段は本 Issue には無い（runOnly のタグ集合は manifest の `AXE_TAGS` にあるだけで、route 単位で除外する仕組みは持たない） |
 | 機械では直せないが受け入れる（false positive を記録する） | 台帳に 1 レコード追加し、`reason` に「なぜこの環境では許されるか」を書く。**route 全体の除外はしない**（他の違反を見逃すため） |
 | 誤陰性（axe が通す SHOULD / 推奨の違反） | このゲートは **A / AA だけ**を扱う。AA を超える基準（例: SC 2.5.5 Target Size (Enhanced)）は tag に入っていないので検出されない。検出機構を追加する場合は `AXE_TAGS` と本表を同時に更新する |
 | 台帳のセレクタが実測と合わない | 要素の class や構造が変わった可能性が高い。**台帳を現状に合わせて書き換える**（ただし「直して消えた」場合だけレコード削除。構造変更だけならセレクタ更新） |
 | manifest の宣言と実測が食い違う | 違反が **追加** されたか **直った**かのどちらか。直ったなら manifest の `expect` を `baseline` → `pass` に、台帳のレコードを削除する。追加されたなら直してから台帳を足す（新規違反を台帳で隠さない） |
+| 「この route は恒久的に fail する」と宣言したい | manifest では宣言できない（宣言できる値は `pass` / `baseline` だけ）。**台帳**（`e2e/a11y/axe-baseline.json`）に route × rule のレコードと `reason` を足す。台帳に無い違反は新規の違反として必ず red になる |
 
 ## スクリーンショット
 
@@ -227,6 +261,6 @@ Playwright の `webServer`（`scripts/e2e-local-bootstrap.mjs`）が自動起動
 - **`/tools/prototype` の中身は測っていない。** 同一オリジンの iframe に載る
   第三者コードで、shell と bundle は別のスコープとして扱う。
 - **台帳のセレクタは class 依存。** Panda の utility class 名が変わると
-  台帳は陈腐化検出で red になる（意図通り。PR で台帳を合わせて更新する）。
+  台帳は陳腐化検出で red になる（意図通り。PR で台帳を合わせて更新する）。
 - **`/admin/login` は Better Auth の secret が無い環境でも 200 を返す。**
   ローカル preview は secret 未設定で動くため、CI と同じ条件下で測定している。

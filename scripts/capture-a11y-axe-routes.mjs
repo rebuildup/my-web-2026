@@ -340,7 +340,7 @@ export function reportHtml({ summaries, element, baseUrl, gateExitCode, axeVersi
       ${renderTable(summaries)}
       <h2 style="margin-top:16px">human evaluation (not decided by this gate)</h2>
       <ul>
-        <li>記録済みの違反を設計判断として許容してよいか（前景色と背景色のコントラストの取值）</li>
+        <li>記録済みの違反を設計判断として許容してよいか（前景色と背景色のコントラストの取りうる値）</li>
         <li>代替テキスト・aria-label の文言が読み手に伝わるか</li>
         <li>キーボード操作だけで主要フローが完了できるか（このゲートは測らない）</li>
         <li>スクリーンリーダー実機での読み上げ品質（このゲートは測らない）</li>

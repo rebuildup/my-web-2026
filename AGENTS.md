@@ -122,6 +122,8 @@ legal -> editorial (Issue #497 — the asset rights-review obligation owns
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
+http -> editorial (Issue #530 — the public API directory preview story
+            and its fixture column type; display primitives only)
 http/media -> portfolio (Issue #634 — `GET /media/<key>` asks the portfolio
   obligation whether a `portfolio/` object is published; the route owns
   namespace and delivery, portfolio owns what "published" means)

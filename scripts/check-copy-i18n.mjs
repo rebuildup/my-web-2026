@@ -189,6 +189,16 @@ export const PERMISSION_MARKERS = {
 		'承認',
 		'公開',
 		'非公開',
+		// Issue #426: `未公開` is listed separately from `公開` because
+		// `markersIn` is a substring test, and `未公開` CONTAINS `公開`.
+		// Without the compound marker, a rewrite from `未公開` to `公開`
+		// produced the same marker set on both sides and the drift was
+		// invisible — the sentence that widened access control looked
+		// identical to the sentence that kept it. Listing the compound
+		// makes the two sides differ, which is the fail-closed direction:
+		// it makes the gate and the review report catch MORE meaning
+		// changes, never fewer.
+		'未公開',
 		'閲覧',
 		'削除',
 		'作成',
@@ -322,8 +332,14 @@ function hasPermissionMarker(text, locale) {
  *
  * Only script-level rules live here. Register, honorifics, sentence
  * length and word order are prose questions and are never guessed at.
+ *
+ * Exported (Issue #426) so the meaning-diff classifier compares a
+ * proposal's two sides with the SAME rule set this gate applies. A
+ * second implementation of the line-break rules would be a second
+ * answer to "is this a typography difference", and the two answers
+ * would drift apart.
  */
-function typographyFindings(text, locale, context) {
+export function typographyFindings(text, locale, context) {
 	const rules = LOCALE_SCRIPTS[locale];
 	if (!rules) {
 		return [

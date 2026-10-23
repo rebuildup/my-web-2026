@@ -233,6 +233,21 @@ export function readShippedFocusRing(source, { focusColor }) {
 }
 
 /**
+ * The CSS selector that matches the focus state a shipped condition names.
+ *
+ * The harness paints the shipped focus ring UNDER the focus state the
+ * shipped code uses, so the measurement can only succeed when that state
+ * is real. A ring painted on the element itself would be visible in every
+ * state, and the capture would prove nothing about the keyboard
+ * indicator.
+ */
+export function focusSelectorForCondition(condition) {
+	if (condition === '_focus') return 'focus';
+	if (condition === '_focusWithin') return 'focus-within';
+	return 'focus-visible';
+}
+
+/**
  * The generated harness page (pure).
  *
  * The page is representative UI, not the site: a long document whose
@@ -246,9 +261,11 @@ export function harnessHtml({
 	focusColor,
 	textColor,
 	focusRing = '2px solid var(--colors-border-focus)',
+	focusCondition = '_focusVisible',
 	offsetProperty = OFFSET_PROPERTY,
 	overlayHeight = OVERLAY_HEIGHT,
 }) {
+	const focusSelector = focusSelectorForCondition(focusCondition);
 	return `<!doctype html>
 <html lang="en">
 	<head>
@@ -277,9 +294,20 @@ export function harnessHtml({
 				display: block;
 				padding: 16px 20px;
 				border-bottom: 1px solid rgba(128, 128, 128, 0.35);
-				outline: ${escapeXml(focusRing)};
+				/*
+				 * The element itself draws NO indicator. The ring is
+				 * painted by the focus state below, so a measurement can
+				 * only see it when that state is real — a ring on the
+				 * element would be visible in every state and would
+				 * prove nothing about the keyboard indicator.
+				 */
+				outline: none;
 				outline-offset: 2px;
 				color: var(--colors-text-default);
+			}
+			#focus-target:${focusSelector} {
+				outline: ${escapeXml(focusRing)};
+				outline-offset: 2px;
 			}
 			#focus-overlay {
 				position: fixed;
@@ -308,7 +336,10 @@ export function harnessHtml({
  * Focus the element under test (runs in the browser).
  *
  * The focus is what makes the browser scroll the element into view — the
- * behaviour the criterion is about.
+ * behaviour the criterion is about. The KEYBOARD is what makes the focus
+ * a `:focus-visible` state, so the keyboard is what drives the capture:
+ * a pointer focus is a different state, and measuring it would measure a
+ * state the criterion is not about.
  */
 export const FOCUS_TARGET = () => {
 	document.getElementById('focus-target')?.focus();
@@ -320,6 +351,10 @@ export const FOCUS_TARGET = () => {
  * The outline is read from the COMPUTED style, and the covering element
  * is read from `elementFromPoint()` — what the browser actually paints at
  * the centre of the focused element.
+ *
+ * `focusVisible` records whether the element matches `:focus-visible`:
+ * a measurement taken outside that state cannot prove that the keyboard
+ * indicator is painted.
  */
 export const READ_FOCUS_STATE = () => {
 	const target = document.getElementById('focus-target');
@@ -332,6 +367,7 @@ export const READ_FOCUS_STATE = () => {
 	const topElement = point ? point.id || point.tagName : null;
 	return {
 		activeElementId: document.activeElement ? document.activeElement.id : null,
+		focusVisible: target.matches(':focus-visible'),
 		outlineStyle: computed.outlineStyle,
 		outlineWidth: computed.outlineWidth,
 		outlineColor: computed.outlineColor,
@@ -349,14 +385,21 @@ export const READ_FOCUS_STATE = () => {
 /**
  * Decide whether the measured states prove the contract (pure).
  *
+ *   - the measured states are `:focus-visible` states, so the indicator
+ *     that was measured is the KEYBOARD indicator;
  *   - the focus indicator is VISIBLE in both states;
  *   - without the compensation the element is OBSCURED (the defect is
  *     real, and the artefact is not photographing a scenario that cannot
  *     happen);
  *   - with the compensation the element is NOT obscured (the shipped
- *     compensation is what makes the difference).
+ *     compensation is what makes the difference);
+ *   - the POINTER control: with the pointer focus — where
+ *     `:focus-visible` does not match — the indicator is NOT painted.
+ *     That is the negative control of the measurement: a ring painted on
+ *     the element itself would still be visible there, and the capture
+ *     would prove nothing about the keyboard indicator.
  */
-export function evaluateScenarios({ states }) {
+export function evaluateScenarios({ states, focusCondition = '_focusVisible' }) {
 	const failures = [];
 	const uncompensated = states.uncompensated;
 	const compensated = states.compensated;
@@ -364,6 +407,7 @@ export function evaluateScenarios({ states }) {
 		return { ok: false, failures: ['one of the two states was not measured'] };
 	}
 	for (const [name, state] of Object.entries(states)) {
+		if (name === 'pointer') continue;
 		if (state.activeElementId !== 'focus-target') {
 			failures.push(`${name}: the element under test is not the focused element`);
 		}
@@ -376,6 +420,11 @@ export function evaluateScenarios({ states }) {
 			failures.push(`${name}: the focus indicator is transparent`);
 		}
 	}
+	if (uncompensated.focusVisible !== true || compensated.focusVisible !== true) {
+		failures.push(
+			'the measured state is not a :focus-visible state, so the ring that was measured is not the keyboard indicator',
+		);
+	}
 	if (!uncompensated.obscured) {
 		failures.push(
 			'uncompensated: the focused element is NOT covered by the overlay, so this page does not reproduce the defect the compensation exists for',
@@ -385,6 +434,20 @@ export function evaluateScenarios({ states }) {
 		failures.push(
 			`compensated: the focused element is still covered by the overlay (elementFromPoint → ${compensated.topElementAtCentre})`,
 		);
+	}
+	const pointer = states.pointer;
+	if (focusCondition === '_focusVisible') {
+		if (!pointer) {
+			failures.push('the pointer control was not measured');
+		} else if (pointer.focusVisible !== false) {
+			failures.push(
+				'pointer: the pointer focus still matches :focus-visible, so the control did not measure a pointer focus',
+			);
+		} else if (pointer.outlineStyle !== 'none' && pointer.outlineWidth !== '0px') {
+			failures.push(
+				`pointer: the focus indicator is still painted without :focus-visible (outline ${pointer.outlineStyle} ${pointer.outlineWidth}); the ring is painted on the element, not by the focus state, so the measurement does not prove the keyboard indicator`,
+			);
+		}
 	}
 	return { ok: failures.length === 0, failures };
 }
@@ -396,6 +459,7 @@ export function headerSvg({ states, rules, width = SCREENSHOT_MAX_WIDTH }) {
 	const compensated = states.compensated;
 	const lines = [
 		'machine-checked: the focus indicator is visible in both states (computed outline, SC 2.4.7, AA)',
+		'machine-checked: the indicator is painted by the :focus-visible state (the pointer control paints no ring)',
 		`machine-checked: without the compensation the focused element is entirely behind the overlay (elementFromPoint → ${uncompensated?.topElementAtCentre ?? 'n/a'}; SC 2.4.11, AA)`,
 		`machine-checked: with the compensation shipped in src/styles.css the focused element is clear (elementFromPoint → ${compensated?.topElementAtCentre ?? 'n/a'})`,
 		`the compensation copied from src/styles.css: ${rules.map((rule) => rule.selector).join(' / ') || 'none'}`,
@@ -637,6 +701,7 @@ async function main() {
 			focusColor,
 			textColor,
 			focusRing: focusRing.value,
+			focusCondition: focusRing.condition,
 		}),
 	);
 	writeFileSync(
@@ -648,6 +713,7 @@ async function main() {
 			focusColor,
 			textColor,
 			focusRing: focusRing.value,
+			focusCondition: focusRing.condition,
 		}),
 	);
 
@@ -678,19 +744,37 @@ async function main() {
 				]) {
 					await page.goto(`${server.baseUrl}/${file}`, { waitUntil: 'networkidle' });
 					await page.waitForSelector('#focus-target');
-					await page.evaluate(FOCUS_TARGET);
+					// The KEYBOARD moves the focus. A pointer focus is a
+					// different state — `:focus-visible` does not match it —
+					// and the criterion is about the keyboard focus.
+					await page.keyboard.press('Tab');
 					await page.waitForTimeout(SETTLE_MS);
 					states[name] = await page.evaluate(READ_FOCUS_STATE);
 					const shot = resolve(REPO_ROOT, options.pngDir, `${name}.png`);
 					writeFileSync(shot, await page.screenshot({ type: 'png' }));
 					shots.push({ name, path: shot });
 				}
+				// The NEGATIVE CONTROL of the measurement: with the pointer
+				// the focus is not a `:focus-visible` state, so the ring
+				// must NOT be painted. A ring painted on the element itself
+				// would still be visible here, and the capture would prove
+				// nothing about the keyboard indicator.
+				const target = await page.locator('#focus-target').boundingBox();
+				if (target) {
+					// The focus is moved AWAY first: clicking an element that
+					// is already focused keeps the keyboard focus state, and
+					// the control would measure the keyboard state again.
+					await page.evaluate(() => document.getElementById('focus-target')?.blur());
+					await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+					await page.waitForTimeout(SETTLE_MS);
+					states.pointer = await page.evaluate(READ_FOCUS_STATE);
+				}
 				await context.close();
 			} finally {
 				await browser.close();
 			}
 
-			verdict = evaluateScenarios({ states });
+			verdict = evaluateScenarios({ states, focusCondition: focusRing.condition });
 			for (const failure of verdict.failures) process.stderr.write(`- ${failure}\n`);
 			if (!verdict.ok) {
 				throw new Error(

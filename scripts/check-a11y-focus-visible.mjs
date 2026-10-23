@@ -155,6 +155,21 @@ export const NO_OP_VALUES = new Set([
 	'initial',
 ]);
 
+/**
+ * Values that make a replacement property INVISIBLE, per property.
+ *
+ * `NO_OP_VALUES` is property-agnostic: `none` changes nothing for `color`,
+ * but `borderWidth: 0` is not a "no-op" — it is a declaration that says
+ * "the border is zero pixels wide", which is just as invisible as
+ * `outline: none`. Counting it as a replacement focus indicator lets
+ * `_focusVisible: { outline: 'none', borderWidth: 0 }` pass while the
+ * element has no visible focus at all.
+ */
+export const INVISIBLE_VALUES_BY_PROPERTY = {
+	borderWidth: ['0', '0px'],
+	borderStyle: ['none', 'hidden'],
+};
+
 /** The properties that place an element outside the normal flow. */
 export const OVERLAY_POSITIONS = ['fixed', 'sticky'];
 
@@ -171,11 +186,6 @@ export const COMPENSATION_PROPERTIES = [
 	'scrollPaddingBottom',
 	'scrollPaddingInline',
 	'scrollPaddingBlock',
-	'scrollMargin',
-	'scrollMarginTop',
-	'scrollMarginBottom',
-	'scrollMarginInline',
-	'scrollMarginBlock',
 	// The room at the END of the document. A scroll compensation alone
 	// cannot help the LAST focusable element of a page: the browser
 	// cannot scroll past the end of the document, so the element stays
@@ -190,10 +200,18 @@ export function normalizeProperty(property) {
 	return property.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
 }
 
-/** Whether a property is a focus compensation (pure). */
+/**
+ * Whether a property is a focus compensation (pure).
+ *
+ * `scroll-margin*` is NOT a compensation: a scroll margin acts on the
+ * scroll position of the element it is declared on, so it never reserves
+ * scrollport for a DESCENDANT's focused element. `html { scroll-margin-bottom:
+ * … }` would close the chain without reserving anything, so the property
+ * is not a candidate at all.
+ */
 export function isCompensationProperty(property) {
 	const normalized = normalizeProperty(property);
-	return COMPENSATION_PROPERTIES.includes(normalized) || /^scroll(Padding|Margin)/.test(normalized);
+	return COMPENSATION_PROPERTIES.includes(normalized) || /^scrollPadding/.test(normalized);
 }
 
 /**
@@ -282,8 +300,7 @@ export const FIXTURE_EXPECTATIONS = {
 		'visible-focus-outline.tsx': [],
 		'focus-replacement-shadow.tsx': [],
 		'modal-dialog-overlay.tsx': [],
-		'compensated-overlay.tsx': [],
-		'compensated-overlay-end-of-document.tsx': [],
+		'compensated-bottom-overlay.tsx': [],
 	},
 	fail: {
 		'focus-outline-removed.tsx': ['focus-indicator-removed'],
@@ -291,6 +308,8 @@ export const FIXTURE_EXPECTATIONS = {
 		'focus-outline-transparent-shorthand.tsx': ['focus-indicator-invisible'],
 		'uncompensated-fixed-overlay.tsx': ['focus-obscured-no-compensation'],
 		'overlay-self-compensation.tsx': ['focus-obscured-no-compensation'],
+		'scroll-padding-only-overlay.tsx': ['focus-obscured-no-compensation'],
+		'end-of-document-room-only-overlay.tsx': ['focus-obscured-no-compensation'],
 		'dialog-open-not-modal.tsx': ['focus-obscured-no-compensation'],
 		'dialog-open-after-classname.tsx': ['focus-obscured-no-compensation'],
 	},
@@ -387,6 +406,29 @@ function isExpressionBody(body) {
 }
 
 /**
+ * The index after the comment at `index` (pure).
+ *
+ * A style object may carry a comment between its declarations, and the
+ * parser must not read the comment as a declaration.
+ */
+export function skipComments(text, index) {
+	let cursor = index;
+	while (cursor < text.length) {
+		if (text[cursor] === '/' && text[cursor + 1] === '/') {
+			while (cursor < text.length && text[cursor] !== '\n') cursor += 1;
+			continue;
+		}
+		if (text[cursor] === '/' && text[cursor + 1] === '*') {
+			const end = text.indexOf('*/', cursor + 2);
+			cursor = end === -1 ? text.length : end + 2;
+			continue;
+		}
+		break;
+	}
+	return cursor;
+}
+
+/**
  * Parse one style object literal (pure).
  *
  * The result is a map of key → declaration:
@@ -401,6 +443,11 @@ export function parseStyleObject(text) {
 		const char = text[index];
 		if (/\s/.test(char) || char === ',') {
 			index += 1;
+			continue;
+		}
+		// A comment between the declarations is not a declaration.
+		if (char === '/' && (text[index + 1] === '/' || text[index + 1] === '*')) {
+			index = skipComments(text, index);
 			continue;
 		}
 		// Key.
@@ -617,26 +664,63 @@ export function nonModalOpenCall(code, tagBody) {
  * Rule evaluation
  * ------------------------------------------------------------------ */
 
+/**
+ * Which edge of the viewport an overlay is anchored to (pure).
+ *
+ * The anchor decides how much of the compensation the overlay needs. A
+ * BOTTOM-anchored overlay sits where the browser puts the last focusable
+ * element of a document, so it needs both mechanisms: the scroll
+ * compensation (for the elements in the middle of the document) and the
+ * room at the end of the document (for the last one, which the browser
+ * cannot scroll further down). A TOP-anchored overlay only needs the
+ * scroll compensation — the room at the end of the document is not where
+ * it sits.
+ *
+ * `unspecified` means the overlay does not name an edge (a full-screen
+ * overlay, for instance); such an overlay is judged by the scroll
+ * compensation alone.
+ */
+export function overlayAnchor(declarations) {
+	if (declarations.has('bottom')) return 'bottom';
+	if (declarations.has('top')) return 'top';
+	return 'unspecified';
+}
+
 /** The declaration value as a comparable string (pure). */
 function valueText(declaration) {
 	if (!declaration) return '';
 	return declaration.value;
 }
 
+/**
+ * A declaration value reduced to what the judgement compares (pure).
+ *
+ * The `!important` flag is not part of the VALUE: `:focus-visible { outline:
+ * none !important }` removes the indicator exactly like `outline: none`,
+ * and a comparison against the bare value would let it through.
+ */
+export function normalizeDeclarationValue(value) {
+	return String(value ?? '')
+		.trim()
+		.replace(/\s*!\s*important\s*$/i, '')
+		.trim()
+		.toLowerCase();
+}
+
 /** Whether a declaration removes the outline (pure). */
 export function removesOutline(declarations) {
 	const outline = declarations.get('outline');
 	if (outline) {
-		const value = valueText(outline).trim().toLowerCase();
+		const value = normalizeDeclarationValue(valueText(outline));
 		if (value === 'none' || value === '0' || value === '0px') return true;
 	}
 	const width = declarations.get('outlineWidth');
 	if (width) {
-		const value = valueText(width).trim().toLowerCase();
+		const value = normalizeDeclarationValue(valueText(width));
 		if (value === '0' || value === '0px') return true;
 	}
 	const style = declarations.get('outlineStyle');
-	if (style && valueText(style).trim().toLowerCase() === 'none') return true;
+	if (style && normalizeDeclarationValue(valueText(style)) === 'none') return true;
 	return false;
 }
 
@@ -648,7 +732,7 @@ export function removesOutline(declarations) {
  * and the hex forms (`#0000`, `#00000000`).
  */
 export function isTransparentColor(value) {
-	const text = String(value).trim().toLowerCase();
+	const text = normalizeDeclarationValue(value);
 	if (text === 'transparent') return true;
 	if (/^#[0-9a-f]{4}$/.test(text)) return text[4] === '0';
 	if (/^#[0-9a-f]{8}$/.test(text)) return text.slice(7) === '00';
@@ -678,7 +762,7 @@ export function isTransparentColor(value) {
  * function or hex token inside it.
  */
 export function containsTransparentColor(value) {
-	const text = String(value).trim().toLowerCase();
+	const text = normalizeDeclarationValue(value);
 	if (isTransparentColor(text)) return true;
 	for (const token of text.split(/\s+/)) {
 		if (isTransparentColor(token)) return true;
@@ -705,7 +789,7 @@ export function hidesOutline(declarations) {
 export function declaresVisibleOutline(declarations) {
 	const outline = declarations.get('outline');
 	if (!outline) return false;
-	const value = valueText(outline).trim().toLowerCase();
+	const value = normalizeDeclarationValue(valueText(outline));
 	if (value === 'none' || value === '0' || value === '0px') return false;
 	// `outline: '2px solid transparent'` is a full shorthand that draws
 	// nothing; it must not be read as "a visible outline exists".
@@ -724,8 +808,10 @@ export function declaresReplacement(declarations) {
 			if (declaresVisibleOutline(declarations)) return true;
 			continue;
 		}
-		const value = valueText(declaration).trim().toLowerCase();
+		const value = normalizeDeclarationValue(valueText(declaration));
 		if (NO_OP_VALUES.has(value)) continue;
+		const invisible = INVISIBLE_VALUES_BY_PROPERTY[property] ?? [];
+		if (invisible.includes(value)) continue;
 		return true;
 	}
 	return false;
@@ -750,6 +836,53 @@ export function ruleForFocusVerdict(verdict) {
 	if (verdict === 'removed') return 'focus-indicator-removed';
 	if (verdict === 'invisible') return 'focus-indicator-invisible';
 	return null;
+}
+
+/**
+ * The declaration sets a style object holds (pure).
+ *
+ * The first set is the object's own leaf declarations; every nested
+ * selector object (`'& a'`, `'&:hover'`, …) is a set of its own, because
+ * it applies to a DIFFERENT element than the parent rule. A focus block
+ * that carries a nested selector has to be judged set by set: the nested
+ * selector can remove the indicator of an element the parent rule keeps.
+ */
+export function declarationSets(declarations) {
+	const own = new Map();
+	const nested = [];
+	for (const [key, declaration] of declarations) {
+		if (declaration.kind === 'object' && declaration.object) {
+			nested.push(...declarationSets(declaration.object));
+			continue;
+		}
+		own.set(key, declaration);
+	}
+	return [own, ...nested];
+}
+
+/**
+ * Every focus block a style object holds, at ANY depth (pure).
+ *
+ * Panda nests a condition inside a selector object as often as not:
+ * `css({ '& a': { _focusVisible: { … } } })` is the shape this repository
+ * uses. A judgement that only looked at the TOP level of the object
+ * would miss the nested block, and the shipped focus indicator could be
+ * broken without the gate noticing.
+ *
+ * `condition` is the path that leads to the block (`'& a › _focusVisible'`),
+ * so the report says WHICH block was judged.
+ */
+export function focusConditionBlocks(declarations, path = []) {
+	const blocks = [];
+	for (const [key, declaration] of declarations) {
+		if (declaration.kind !== 'object' || !declaration.object) continue;
+		const nextPath = [...path, key];
+		if (FOCUS_CONDITIONS.includes(key)) {
+			blocks.push({ condition: nextPath.join(' › '), declarations: declaration.object });
+		}
+		blocks.push(...focusConditionBlocks(declaration.object, nextPath));
+	}
+	return blocks;
 }
 
 /**
@@ -903,15 +1036,47 @@ export function consumedCustomProperties(compensation) {
  * The verdict of one author-created overlay (pure).
  *
  * `overlay` is:
- *   { file, line, tagName, position, modal }
+ *   { file, line, tagName, position, anchor, modal }
+ *
+ * The compensation is a CHAIN: the overlay's own file publishes the
+ * offset it occupies, and the DOCUMENT consumes it. Two mechanisms exist,
+ * and a BOTTOM-anchored overlay needs BOTH of them:
+ *
+ *   - the scroll compensation (`scroll-padding*` on the scrolling
+ *     element) keeps a focused element clear when the browser scrolls it
+ *     into view — but it cannot help the LAST focusable element of a
+ *     document, because the browser cannot scroll past the end of the
+ *     document;
+ *   - the room at the END of the document (`padding-bottom` on `body`)
+ *     lifts that last element clear of the overlay.
+ *
+ * Either half alone leaves a state where the focused element is entirely
+ * behind the overlay, so a chain that carries only one of them is OPEN.
  */
 export function evaluateOverlay(overlay, bindings) {
 	if (overlay.modal) return { verdict: 'modal', reason: 'native modal dialog' };
 	const bound = bindings.filter(
 		(binding) => binding.offsetPublishedIn === overlay.file && binding.compensation !== null,
 	);
-	if (bound.length > 0) return { verdict: 'compensated', reason: bound[0].offset };
-	return { verdict: 'uncompensated', reason: null };
+	const scroll = bound.filter((binding) => isScrollCompensation(binding.compensation));
+	const room = bound.filter((binding) => isEndOfDocumentRoom(binding.compensation));
+	if (scroll.length === 0) {
+		return { verdict: 'uncompensated', reason: null, missing: 'scroll-compensation' };
+	}
+	if (overlay.anchor === 'bottom' && room.length === 0) {
+		return { verdict: 'uncompensated', reason: null, missing: 'end-of-document-room' };
+	}
+	return { verdict: 'compensated', reason: scroll[0].offset, missing: null };
+}
+
+/** Whether a compensation is the scroll compensation (pure). */
+export function isScrollCompensation(property) {
+	return /^scrollpadding/.test(normalizeProperty(property).toLowerCase());
+}
+
+/** Whether a compensation is the room at the end of the document (pure). */
+export function isEndOfDocumentRoom(property) {
+	return normalizeProperty(property).toLowerCase() === 'paddingbottom';
 }
 
 /* ------------------------------------------------------------------ *
@@ -935,25 +1100,37 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 	const modalDialog = /\bshowModal\s*\(/.test(code);
 
 	for (const object of findStyleObjects(code)) {
-		for (const [key, declaration] of object.declarations) {
-			if (!FOCUS_CONDITIONS.includes(key)) continue;
-			if (declaration.kind !== 'object' || !declaration.object) continue;
-			const verdict = evaluateFocusBlock(declaration.object);
-			focusBlocks.push({ file: relativePath, line: object.line, condition: key, verdict });
+		for (const block of focusConditionBlocks(object.declarations)) {
+			// A block is judged set by set: its own declarations, and each
+			// nested selector object inside it.
+			let verdict = 'visible';
+			for (const set of declarationSets(block.declarations)) {
+				const setVerdict = evaluateFocusBlock(set);
+				if (setVerdict !== 'visible') {
+					verdict = setVerdict;
+					break;
+				}
+			}
+			focusBlocks.push({
+				file: relativePath,
+				line: object.line,
+				condition: block.condition,
+				verdict,
+			});
 			const rule = ruleForFocusVerdict(verdict);
 			if (rule === null) continue;
 			violations.push({
 				rule,
 				file: relativePath,
 				line: object.line,
-				wcag: rule === 'focus-indicator-invisible' ? '2.4.7' : '2.4.7',
-				message: messageForFocusVerdict(verdict, key),
+				wcag: '2.4.7',
+				message: messageForFocusVerdict(verdict, block.condition),
 			});
 		}
 
 		const position = object.declarations.get('position');
 		if (!position) continue;
-		const value = valueText(position).trim().toLowerCase();
+		const value = normalizeDeclarationValue(valueText(position));
 		if (!OVERLAY_POSITIONS.includes(value)) continue;
 		const tag = enclosingTag(code, object.index);
 		const tagName = tag ? tag.name : null;
@@ -966,6 +1143,7 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 			line: object.line,
 			tagName,
 			position: value,
+			anchor: overlayAnchor(object.declarations),
 			modal:
 				tagName === 'dialog' &&
 				modalDialog &&
@@ -975,16 +1153,56 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 		overlays.push(overlay);
 		const evaluation = evaluateOverlay(overlay, bindings);
 		if (evaluation.verdict !== 'uncompensated') continue;
+		const missing =
+			evaluation.missing === 'end-of-document-room'
+				? 'the document reserves no room at its end for it (a `padding-bottom` on `body`), so the LAST focusable element of a page stays at the bottom edge of the viewport — exactly where this overlay is (SC 2.4.11)'
+				: 'no focus compensation is bound to it: the browser scrolls a focused element to the edge of the viewport, where this overlay sits, so the element can be entirely hidden (SC 2.4.11)';
 		violations.push({
 			rule: 'focus-obscured-no-compensation',
 			file: relativePath,
 			line: object.line,
 			wcag: '2.4.11',
-			message: `a \`position: ${value}\` overlay is shipped and no focus compensation is bound to it: the browser scrolls a focused element to the edge of the viewport, where this overlay sits, so the element can be entirely hidden (SC 2.4.11). Publish the overlay's offset from this file and consume it in a scroll compensation`,
+			message: `a \`position: ${value}\` overlay is shipped and ${missing}. Publish the overlay's offset from this file and consume it in a scroll compensation${
+				evaluation.missing === 'end-of-document-room'
+					? ' AND in the room at the end of the document'
+					: ''
+			}`,
 		});
 	}
 
+	// A shipped source can carry CSS in a string (the SSR fallback document
+	// is one). That CSS is rendered by the browser, so it is judged with
+	// the same rules as a stylesheet file.
+	for (const block of embeddedStyleBlocks(code)) {
+		const embedded = scanStylesheet({
+			relativePath,
+			source: block.css,
+			lineOffset: block.line - 1,
+		});
+		violations.push(...embedded.violations);
+		focusBlocks.push(...embedded.focusBlocks);
+	}
+
 	return { violations, focusBlocks, overlays, published };
+}
+
+/**
+ * The CSS a source carries in a string (pure).
+ *
+ * A `<style>` block inside a template literal is shipped CSS: the browser
+ * parses it exactly like a stylesheet file. The gate reads the source
+ * TEXT, so it can read that CSS too — otherwise a rule that removes the
+ * focus indicator could hide in a string and the gate would stay green.
+ *
+ * `line` is the line the block starts on, so a violation is reported at
+ * the line the reader can find.
+ */
+export function embeddedStyleBlocks(source) {
+	const blocks = [];
+	for (const match of source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+		blocks.push({ css: match[1], line: lineAt(source, match.index) });
+	}
+	return blocks;
 }
 
 /** The short reason a focus violation is reported (pure). */
@@ -1003,6 +1221,12 @@ export function messageForFocusVerdict(verdict, condition) {
  * that selector targets the POINTER focus, where the browser default ring
  * is not required and the keyboard indicator is untouched, so removing
  * the outline there is not this rule's defect.
+ *
+ * The judgement is per SELECTOR, not per rule: a selector list such as
+ * `:focus-visible, :focus:not(:focus-visible)` names a keyboard focus
+ * state, and the rule that follows it applies to that state. Excluding
+ * the whole list because one of its parts is pointer-only would let the
+ * keyboard half through.
  */
 export function isFocusRemovalSelector(selector) {
 	const text = selector.toLowerCase();
@@ -1012,29 +1236,72 @@ export function isFocusRemovalSelector(selector) {
 }
 
 /**
+ * Split a selector list into its parts (pure).
+ *
+ * A comma inside `:is(...)`, `:not(...)` or an attribute selector does
+ * not separate two selectors, so the depth is tracked.
+ */
+export function splitSelectorList(selector) {
+	const parts = [];
+	let depth = 0;
+	let current = '';
+	for (const char of selector) {
+		if (char === '(' || char === '[') depth += 1;
+		if (char === ')' || char === ']') depth -= 1;
+		if (char === ',' && depth === 0) {
+			parts.push(current);
+			current = '';
+			continue;
+		}
+		current += char;
+	}
+	parts.push(current);
+	return parts.map((part) => part.trim()).filter((part) => part !== '');
+}
+
+/**
+ * The focus-removal selectors of a rule's selector list (pure).
+ *
+ * Empty when the rule targets no keyboard focus state — a pointer-only
+ * list (`':focus:not(:focus-visible)'`) is not judged.
+ */
+export function focusRemovalSelectors(selector) {
+	return splitSelectorList(selector).filter((part) => isFocusRemovalSelector(part));
+}
+
+/**
  * Focus-removal violations in a raw stylesheet (pure).
  *
  * The shipped stylesheet is part of the surface — a global
  * `:focus { outline: none }` is exactly the defect this gate exists to
  * catch — so it is read with the same rule functions as a `css({...})`
  * object, under the `focus-indicator-removed-in-css` rule id.
+ *
+ * `lineOffset` is added to every reported line, so a stylesheet that is
+ * embedded in a source file is reported at the line the reader can find.
  */
-export function scanStylesheet({ relativePath, source }) {
+export function scanStylesheet({ relativePath, source, lineOffset = 0 }) {
 	const code = stripComments(source);
 	const violations = [];
 	const focusBlocks = [];
 	for (const rule of rawCssRules(code)) {
-		if (!isFocusRemovalSelector(rule.selector)) continue;
+		const selectors = focusRemovalSelectors(rule.selector);
+		if (selectors.length === 0) continue;
 		const declarations = parseCssDeclarations(rule.body);
 		const verdict = evaluateFocusBlock(declarations);
-		focusBlocks.push({ file: relativePath, line: rule.line, condition: rule.selector, verdict });
+		focusBlocks.push({
+			file: relativePath,
+			line: rule.line + lineOffset,
+			condition: selectors.join(', '),
+			verdict,
+		});
 		if (verdict === 'visible') continue;
 		violations.push({
 			rule: 'focus-indicator-removed-in-css',
 			file: relativePath,
-			line: rule.line,
+			line: rule.line + lineOffset,
 			wcag: '2.4.7',
-			message: `the raw CSS rule \`${rule.selector}\` ${
+			message: `the raw CSS rule \`${selectors.join(', ')}\` ${
 				verdict === 'invisible'
 					? 'declares an outline that cannot be seen'
 					: 'removes the focus indicator'

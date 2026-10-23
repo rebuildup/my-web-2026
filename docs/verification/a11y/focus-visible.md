@@ -13,9 +13,10 @@
 
 | 対象 | 範囲 | 備考 |
 | --- | --- | --- |
-| `src/**/*.{ts,tsx}` | 出荷するソースすべて | `css({...})` 呼び出しの対象を走査対象とする（ブラウザがコンパイルする同じもの） |
+| `src/**/*.{ts,tsx}` | 出荷するソースすべて | `css({...})` 呼び出しの対象を走査対象とする（ブラウザがコンパイルする同じもの）。**入れ子**のフォーカス条件（`'& a': { _focusVisible: { … } }`）も再帰して読む |
 | `src/**/*.css` | 出荷する素のスタイルシート | フォーカスブロックの outline 解除・不可視を走査する（`focus-indicator-removed-in-css`）。補償（compensation）の宣言もここにある。TS だけを見ると鎖の片端しか見えない |
-| フォーカスブロック | `_focus` / `_focusVisible` / `_focusWithin` / `&:focus` / `&:focus-visible` / `&:focus-within` | Panda の condition と素の CSS セレクタの両方 |
+| ソース内の文字列の CSS | 出荷するソースが持つ `<style>` ブロック | ブラウザが同じものとして解釈する CSS なので、スタイルシートと同じ規則で走査する（例: `src/editorial/error-states/ssr-fallback.ts` の fallback 文書） |
+| フォーカスブロック | `_focus` / `_focusVisible` / `_focusWithin` / `&:focus` / `&:focus-visible` / `&:focus-within` | Panda の condition と素の CSS セレクタの両方。**どの深さでも**読む（入れ子のセレクタオブジェクトの中の条件も対象） |
 | オーバーレイ | `position: fixed` / `position: sticky` | サイト側で作った content であり、フォーカスを覆いうるもの |
 
 ### 対象外（除外の理由も gate の出力に明記する）
@@ -28,7 +29,7 @@
 | `src/routes/design-system/**` | design-system ルートはリポジトリ内部のコンポーネントギャラリーであり、公開表面ではない（実 primitives は別途走査される） |
 | ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない。非モーダルの signal は **要素ごとに** 読む: `open` 属性（`css({...})` 呼び出しの前後どちらにあっても）と、その要素の `ref` に対する `.show()` 呼び出し（`dialogRef.current.show()`）。同じファイルのどこかにある `showModal()` だけでは exempt にしない。**限界**: 要素が `ref` を束縛しておらず、別名の handle で `.show()` される `<dialog>` は帰属できないため exempt のままになりうる（見逃し側に倒す保守的な判断） |
 | 素の CSS の `position: fixed` / `sticky` オーバーレイ | 補償の鎖の判定はオーバーレイを TS の `css({...})` 呼び出しから採集するため、素の CSS で宣言されたオーバーレイは本 gate のオーバーレイとして数えない。素の CSS の outline 解除は対象（`focus-indicator-removed-in-css`） |
-| `:not(:focus-visible)` を含むセレクタ（例: `:focus:not(:focus-visible)`） | pointer focus。ブラウザ既定の指示子は **pointer 操作**には不要で、**キーボード操作のインジケータには影響しない**。`:focus-visible` 側（keyboard focus）は対象のままなので、キーボード利用者がインジケータを失うことはない |
+| `:not(:focus-visible)` を含むセレクタ（例: `:focus:not(:focus-visible)`） | pointer focus。ブラウザ既定の指示子は **pointer 操作**には不要で、**キーボード操作のインジケータには影響しない**。`:focus-visible` 側（keyboard focus）は対象のままなので、キーボード利用者がインジケータを失うことはない。**セレクタリストは 1 項目ずつ判定する**（`:focus-visible, :focus:not(:focus-visible)` なら `:focus-visible` の項目が対象で、リスト全体を除外しない） |
 
 ### 基準
 
@@ -42,10 +43,10 @@
 
 | rule | 意味 | 判定 |
 | --- | --- | --- |
-| `focus-indicator-removed` | フォーカスブロックが指示子を消す（`outline: none` / `0` / `outlineWidth: 0` / `outlineStyle: none`）が、代替の表示（`boxShadow`・色・枠・下線など）を declares しない | 違反 |
+| `focus-indicator-removed` | フォーカスブロックが指示子を消す（`outline: none` / `0` / `outlineWidth: 0` / `outlineStyle: none` / `none !important`）が、代替の表示（`boxShadow`・枠・下線など）を declares しない | 違反 |
 | `focus-indicator-invisible` | フォーカスブロックが見えない輪郭を宣言する（`outline: transparent` / `outlineColor: transparent` / `outline: 2px solid transparent` のような透明色を含む shorthand）が、代替の表示を宣言しない | 違反 |
-| `focus-indicator-removed-in-css` | 素の CSS の `:focus` / `:focus-visible` / `[focus-visible]` 系ルールが指示子を消す / 見えなくする（`outline: none` / `0` / `transparent` / `outline-color: transparent` / `outline-style: none`）が、代替の表示を宣言しない | 違反 |
-| `focus-obscured-no-compensation` | `position: fixed` / `sticky` のオーバーレイが Compensation に束縛されていない | 違反 |
+| `focus-indicator-removed-in-css` | 素の CSS（スタイルシートのファイルとソース内の `<style>` ブロック）の `:focus` / `:focus-visible` / `[focus-visible]` 系ルールが指示子を消す / 見えなくする（`outline: none` / `0` / `transparent` / `outline-color: transparent` / `outline-style: none` / `none !important`）が、代替の表示を宣言しない。**セレクタリストは 1 項目ずつ**判定する | 違反 |
+| `focus-obscured-no-compensation` | `position: fixed` / `sticky` のオーバーレイが Compensation に束縛されていない。**下端固定**のオーバーレイは「文書の末尾の余白」と「scroll-padding」の**両方**が必要（片端では閉じない） | 違反 |
 | `fixture-pass-violation` | pass fixture が違反を報告した（pass の状態が再現できていない） | 違反（fixture の陳腐化） |
 | `fixture-pass-no-case` | pass fixture がフォーカスブロックもオーバーレイも持ちません。何の規則も行使していない | 違反（空の pass fixture は何も証明しない） |
 | `fixture-fail-not-detected` | fail fixture が期待する rule を報告しなくなった | 違反（検出漏れ） |
@@ -58,7 +59,7 @@
 この gate が認める補償は **鎖** であり、両端が必要である:
 
 1. **文書が消費する** — `scroll-padding: 0 0 var(--<offset>) 0`
-   （スクロールのスクロールポートに予約する）または
+   （スクロールのスクロールポートに予約する）と
    `padding-bottom: var(--<offset>)`（文書の末尾に場所を作る）。
 2. **オーバーレイのファイルが公開する** — 同じ `--<offset>` を
    `document.documentElement.style.setProperty('--<offset>', …)` で公開する。
@@ -72,11 +73,22 @@
 `body` / `html` でだけ効く。オーバーレイ自身の要素に同じ宣言を付けても
 何も予約されないため、鎖は閉じない（`isDocumentScrollConsumer`）。
 
-`scroll-padding-bottom` だけで足りない理由: ブラウザは文書の末尾より
-先にスクロールできない。**最後のフォーカス可能要素**は文書の最下端に
-留まり、その位置はビューポートの下端 — つまり固定オーバーレイのある
-位置である。場所を作るのは文書の末尾に確保する
-`padding-bottom` である。capture はこの 2 つを実測で区別している。
+**下端固定のオーバーレイには「両方」が必要である。** どちらか片方では
+閉じたことになる:
+
+- `scroll-padding-bottom` だけ: 途中の要素はスクロール時に避けられるが、
+  ブラウザは文書の末尾より先にスクロールできないため、**最後のフォーカス
+  可能要素**は文書の最下端に留まり、その位置はビューポートの下端 —
+  つまり固定オーバーレイのある位置である。
+- `padding-bottom` だけ: 最後の要素は持ち上がるが、途中の要素は
+  ブラウザがビューポートの端までスクロールするため、覆い隠される。
+
+上端固定（`top`）のオーバーレイは `scroll-padding` だけで足りる
+（末尾の余白は上端固定のオーバーレイの位置ではないため）。
+ゲートは宣言の `bottom` / `top` を見てどちらの型かを判断する
+（`overlayAnchor`）。`scroll-margin*` は補償の候補に**含まれない** —
+scroll margin は宣言した要素自身のスクロール位置に作用するので、
+子孫のフォーカス要素のためにスクロールポートを予約しない。
 
 ## 出荷時の修正（実測で見つかった欠陥）
 
@@ -118,13 +130,14 @@ green な gate は適合の主張ではない。以下の区別は本 gate の�
 | `pass/visible-focus-outline.tsx` | pass | 可視のフォーカスリング（`outline: 2px solid …`） |
 | `pass/focus-replacement-shadow.tsx` | pass | 輪郭を消すが `boxShadow` で代替する |
 | `pass/modal-dialog-overlay.tsx` | pass | ネイティブのモーダル `<dialog>`（`showModal()`） |
-| `pass/compensated-overlay.tsx` | pass | 固定オーバーレイ + スクロール補償（鎖が閉じている） |
-| `pass/compensated-overlay-end-of-document.tsx` | pass | 固定オーバーレイ + 文書末尾の部屋（鎖が閉じている） |
+| `pass/compensated-bottom-overlay.tsx` | pass | 固定オーバーレイ + スクロール補償 + 文書末尾の部屋（**両方**で鎖が閉じている） |
 | `fail/focus-outline-removed.tsx` | fail | `focus-indicator-removed` |
 | `fail/focus-outline-transparent.tsx` | fail | `focus-indicator-invisible` |
 | `fail/focus-outline-transparent-shorthand.tsx` | fail | `focus-indicator-invisible`（`outline: 2px solid transparent`） |
 | `fail/uncompensated-fixed-overlay.tsx` | fail | `focus-obscured-no-compensation` |
 | `fail/overlay-self-compensation.tsx` | fail | `focus-obscured-no-compensation`（補償をオーバーレイ自身に付けた no-op） |
+| `fail/scroll-padding-only-overlay.tsx` | fail | `focus-obscured-no-compensation`（**下端固定**のオーバーレイにスクロール補償だけ — 末尾の余白が無く、最後の要素は隠れる） |
+| `fail/end-of-document-room-only-overlay.tsx` | fail | `focus-obscured-no-compensation`（下端固定のオーバーレイに末尾の余白だけ — 途中の要素が隠れる） |
 | `fail/dialog-open-not-modal.tsx` | fail | `focus-obscured-no-compensation`（`showModal()` があるファイルの `<dialog open>`） |
 | `fail/dialog-open-after-classname.tsx` | fail | `focus-obscured-no-compensation`（`open` が `className={css({...})}` の**後ろ**にある `<dialog open>`） |
 
@@ -136,22 +149,33 @@ pass が gate を green に保つことを許さないため。
 
 ## 検証画像
 
-`docs/verification/a11y/focus-visible.webp`（1600 × 770 / 38 kB）。
+`docs/verification/a11y/focus-visible.webp`（1600 × 790 / 41 kB）。
 
 左パネルは**補償なし**、右パネルは**出荷している補償あり**の同じページである。
 差分は `src/styles.css` の補償ルールだけ — フォーカスの輪郭は
 `src/editorial/nav/PublicNav.tsx` が宣言しているもの
 （`2px solid {colors.border.focus}`）をトークンモジュールから解決して
-描いている。capture はブラウザで次を**実測**し、期待と食い違えば
+描いている。リングは**要素ではなく `:focus-visible` の状態で**描かれる
+（要素にリングを書くと、どの状態でもリングが見えてしまい、
+キーボードのインジケータであることを示せないため）。
+capture はブラウザで次を**実測**し、期待と食い違えば
 画像を一切書かずに exit 1 になる:
 
-| 実測 | 補償なし | 補償あり |
-| --- | --- | --- |
-| `getComputedStyle(target).outlineStyle` / `outlineWidth` | `solid` / `2px` | `solid` / `2px` |
-| フォーカス要素の矩形（ビューポート座標） | 548 – 600 | 408 – 460 |
-| オーバーレイの矩形 | 460 – 600 | 460 – 600 |
-| `document.elementFromPoint(中心)` | `focus-overlay` | `focus-target` |
-| 判定 | **隠れている** | **隠れていない** |
+| 実測 | 補償なし | 補償あり | pointer 対照 |
+| --- | --- | --- | --- |
+| `getComputedStyle(target).outlineStyle` / `outlineWidth` | `solid` / `2px` | `solid` / `2px` | `none` / `0px` |
+| `target.matches(':focus-visible')` | `true` | `true` | `false` |
+| フォーカス要素の矩形（ビューポート座標） | 548 – 600 | 408 – 460 | 408 – 460 |
+| オーバーレイの矩形 | 460 – 600 | 460 – 600 | 460 – 600 |
+| `document.elementFromPoint(中心)` | `focus-overlay` | `focus-target` | `focus-target` |
+| 判定 | **隠れている** | **隠れていない** | **リングが出ない** |
+
+**pointer 対照**は測定の**ネガティブコントロール**である。フォーカスを
+先に解除してから**マウス**で同じ要素をクリックし、`:focus-visible` が
+成立しない状態でリングが**描かれていない**ことを確かめる。リングが
+要素に直接書かれていればこの対照でもリングが見えてしまい、capture は
+「キーボードのインジケータ」を証明していないことになる（その場合
+capture は exit 1 になり、画像は書かれない）。
 
 ### WebP, not PNG
 
@@ -172,8 +196,10 @@ gate は「形」を判定する。以下の 4 つは誤検知の候補であり
      `backgroundColor` / `color` / `textDecoration` / `outline` の 8 種で
      判定している（`REPLACEMENT_PROPERTIES`）。`color: inherit` /
      `currentColor` / `unset` / `revert` / `initial` のような**計算値が
-     変わらない値**は代替と数えない（`NO_OP_VALUES`）。別の手段（例:
-     背景画像の差し替え、`filter`）で指示子を作っている場合は、**その実装を
+     変わらない値**は代替と数えない（`NO_OP_VALUES`）。**何も描かない値**
+     （`borderWidth: 0` / `0px`、`borderStyle: none` / `hidden`）も
+     プロパティごとに除外する（`INVISIBLE_VALUES_BY_PROPERTY`）。
+     別の手段（例: 背景画像の差し替え、`filter`）で指示子を作っている場合は、**その実装を
      `REPLACEMENT_PROPERTIES` に加えて再レビューする**。gate の閾値を
      下げるのではなく、実装の記録を足す。
 2. **`focus-obscured-no-compensation` が「実際には覆わない」を誤認した**
@@ -181,6 +207,10 @@ gate は「形」を判定する。以下の 4 つは誤検知の候補であり
      可能要素がその下に回らない場合など。**その場合は fixture
      （`pass/`）に 1 件追加して、判定が「覆わない」を表現できる
      形であることを示す**。既存の gate を緩めてはならない。
+   - **下端固定のオーバーレイ**には「末尾の余白」と「scroll-padding」の
+     両方が必要だと契約している（片端だけでは閉じない）。片端しか
+     書けていないコードは**出荷側の修正**であり、gate の緩め方では
+     ない。
 3. **固定オーバーレイではないのに `position: fixed` として検出された**
    - `position: fixed` は「サイト側で作った content」であって、「常に
      覆うもの」ではない。重ね合わせの順序や `pointer-events` を人工で

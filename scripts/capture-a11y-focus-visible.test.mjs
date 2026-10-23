@@ -23,6 +23,7 @@ import {
 	ensureHarnessDirectory,
 	ensurePngDirectory,
 	evaluateScenarios,
+	focusSelectorForCondition,
 	harnessHtml,
 	readShippedCompensation,
 	readShippedFocusRing,
@@ -34,6 +35,7 @@ const REPO_ROOT = new URL('..', import.meta.url).pathname;
 function state(overrides = {}) {
 	return {
 		activeElementId: 'focus-target',
+		focusVisible: true,
 		outlineStyle: 'solid',
 		outlineWidth: '2px',
 		outlineColor: 'rgb(2, 132, 199)',
@@ -47,6 +49,20 @@ function state(overrides = {}) {
 		obscured: true,
 		...overrides,
 	};
+}
+
+/** The pointer control: the same element, focused with the pointer. */
+function pointerState(overrides = {}) {
+	return state({
+		focusVisible: false,
+		outlineStyle: 'none',
+		outlineWidth: '0px',
+		rectTop: 408,
+		rectBottom: 460,
+		topElementAtCentre: 'focus-target',
+		obscured: false,
+		...overrides,
+	});
 }
 
 test('the capture refuses a non-WebP artefact path', () => {
@@ -140,11 +156,98 @@ test('the harness renders the element under test and the overlay', () => {
 	assert.match(html, /outline: 2px solid var\(--colors-border-focus\)/);
 });
 
+test('the harness paints the ring by the focus state, not on the element', () => {
+	// The ring must be painted by the `:focus-visible` state: a ring on the
+	// element itself would be visible in every state, so the capture would
+	// prove nothing about the keyboard indicator.
+	const html = harnessHtml({
+		rules: [],
+		enabled: true,
+		canvas: '#ffffff',
+		focusColor: '#0284c7',
+		textColor: '#0f172a',
+	});
+
+	assert.match(html, /#focus-target:focus-visible \{/);
+	assert.match(html, /#focus-target \{\n/);
+	const elementRule = html.split('#focus-target {')[1].split('}')[0];
+	assert.match(elementRule, /outline: none;/);
+	assert.ok(
+		!elementRule.includes('outline: 2px solid'),
+		'the element itself must not draw the ring',
+	);
+});
+
+test('the focus selector follows the shipped focus condition', () => {
+	assert.equal(focusSelectorForCondition('_focusVisible'), 'focus-visible');
+	assert.equal(focusSelectorForCondition('_focus'), 'focus');
+	assert.equal(focusSelectorForCondition('_focusWithin'), 'focus-within');
+});
+
+test('a state that is not a :focus-visible state is a failure', () => {
+	const verdict = evaluateScenarios({
+		states: {
+			uncompensated: state({ focusVisible: false }),
+			compensated: state({
+				focusVisible: false,
+				rectTop: 408,
+				rectBottom: 460,
+				topElementAtCentre: 'focus-target',
+				obscured: false,
+			}),
+			pointer: pointerState(),
+		},
+	});
+
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.failures.join('\n'), /not a :focus-visible state/);
+});
+
+test('a ring that is still painted without :focus-visible is a failure', () => {
+	// The negative control of the measurement: with the pointer focus the
+	// ring must NOT be painted. A ring painted on the element itself
+	// would still be there, and the capture would prove nothing.
+	const verdict = evaluateScenarios({
+		states: {
+			uncompensated: state(),
+			compensated: state({
+				rectTop: 408,
+				rectBottom: 460,
+				topElementAtCentre: 'focus-target',
+				obscured: false,
+			}),
+			pointer: pointerState({ outlineStyle: 'solid', outlineWidth: '2px' }),
+		},
+	});
+
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.failures.join('\n'), /still painted without :focus-visible/);
+});
+
+test('the pointer control that paints no ring passes', () => {
+	const verdict = evaluateScenarios({
+		states: {
+			uncompensated: state(),
+			compensated: state({
+				rectTop: 408,
+				rectBottom: 460,
+				topElementAtCentre: 'focus-target',
+				obscured: false,
+			}),
+			pointer: pointerState(),
+		},
+	});
+
+	assert.deepEqual(verdict.failures, []);
+	assert.equal(verdict.ok, true);
+});
+
 test('a state that does not reproduce the defect is a failure', () => {
 	const verdict = evaluateScenarios({
 		states: {
 			uncompensated: state({ obscured: false, topElementAtCentre: 'focus-target' }),
 			compensated: state({ obscured: false, topElementAtCentre: 'focus-target' }),
+			pointer: pointerState(),
 		},
 	});
 
@@ -157,6 +260,7 @@ test('a state that stays obscured with the compensation is a failure', () => {
 		states: {
 			uncompensated: state(),
 			compensated: state(),
+			pointer: pointerState(),
 		},
 	});
 
@@ -169,6 +273,7 @@ test('an invisible focus indicator is a failure', () => {
 		states: {
 			uncompensated: state({ outlineStyle: 'none' }),
 			compensated: state({ obscured: false, topElementAtCentre: 'focus-target' }),
+			pointer: pointerState(),
 		},
 	});
 
@@ -186,6 +291,7 @@ test('the two measured states that prove the contract pass', () => {
 				topElementAtCentre: 'focus-target',
 				obscured: false,
 			}),
+			pointer: pointerState(),
 		},
 	});
 

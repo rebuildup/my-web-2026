@@ -438,6 +438,224 @@ test('a no-op colour is not a replacement indicator', () => {
 	assert.equal(evaluateFocusBlock(parseStyleObject("outline: 'none'\ncolor: 'red'")), 'visible');
 });
 
+/* ------------------------------------------------------------------ *
+ * The codex review of PR #689 (Issue #395)
+ * ------------------------------------------------------------------ */
+
+test('C4: a zero-width border is not a replacement indicator', () => {
+	// `borderWidth: 0` draws nothing, so it cannot replace the removed
+	// outline: the element would have no visible focus at all.
+	for (const declaration of ['borderWidth: 0', 'borderWidth: "0px"', 'borderStyle: "none"']) {
+		assert.equal(
+			evaluateFocusBlock(parseStyleObject(`outline: 'none'\n${declaration}`)),
+			'removed',
+			`${declaration} must not count as a replacement`,
+		);
+	}
+	// A border that IS drawn still counts.
+	assert.equal(
+		evaluateFocusBlock(parseStyleObject("outline: 'none'\nborderWidth: '2px'")),
+		'visible',
+	);
+});
+
+test('C5: a focus condition nested in a selector object is judged', () => {
+	const { violations, focusBlocks } = scan(
+		'export const A = () => <nav className={css({ "& a": { _focusVisible: { outline: "none" } } })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed');
+	assert.match(violations[0].message, /& a › _focusVisible/);
+	assert.equal(focusBlocks[0].condition, '& a › _focusVisible');
+});
+
+test('C5: the shipped nested focus condition is judged, and it keeps its indicator', () => {
+	const breadcrumbs = readFileSync(
+		join(REPO_ROOT, 'src/editorial/nav/Breadcrumbs.styles.ts'),
+		'utf8',
+	);
+	const { violations, focusBlocks } = scanSource({
+		relativePath: 'src/editorial/nav/Breadcrumbs.styles.ts',
+		source: breadcrumbs,
+		bindings: [],
+	});
+
+	assert.deepEqual(violations, []);
+	assert.ok(
+		focusBlocks.some((block) => block.condition === '& a › _focusVisible'),
+		'the nested focus block must be part of the evidence',
+	);
+});
+
+test('C7: an !important flag is not part of the value', () => {
+	for (const value of ['none !important', '0 !important', 'transparent !important']) {
+		const { violations } = scanStylesheet({
+			relativePath: 'src/styles.css',
+			source: `:focus-visible {\n\toutline: ${value};\n}\n`,
+		});
+
+		assert.equal(violations.length, 1, `outline: ${value} must be reported`);
+		assert.equal(violations[0].rule, 'focus-indicator-removed-in-css');
+	}
+	// The flag does not make a visible outline invisible.
+	assert.deepEqual(
+		scanStylesheet({
+			relativePath: 'src/styles.css',
+			source: ':focus-visible {\n\toutline: 2px solid red !important;\n}\n',
+		}).violations,
+		[],
+	);
+});
+
+test('C9: a selector list is judged per selector', () => {
+	// The list names a keyboard focus state, so the rule is judged.
+	const { violations } = scanStylesheet({
+		relativePath: 'src/styles.css',
+		source: ':focus-visible, :focus:not(:focus-visible) {\n\toutline: none;\n}\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed-in-css');
+	assert.match(violations[0].message, /:focus-visible/);
+});
+
+test('C9: a list of pointer-only selectors is not judged', () => {
+	assert.deepEqual(
+		scanStylesheet({
+			relativePath: 'src/styles.css',
+			source: ':focus:not(:focus-visible), :focus:not(:focus-visible) {\n\toutline: none;\n}\n',
+		}).violations,
+		[],
+	);
+});
+
+test('C2: CSS carried in a string is shipped CSS, and it is judged', () => {
+	const { violations } = scan(
+		[
+			'export const A = () => (',
+			'\t<html>',
+			'\t\t<style>',
+			'\t\t\ta:focus-visible { outline: none; }',
+			'\t\t</style>',
+			'\t</html>',
+			');',
+		].join('\n'),
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed-in-css');
+});
+
+test('C2: the shipped fallback document keeps its focus indicator', () => {
+	const fallback = readFileSync(
+		join(REPO_ROOT, 'src/editorial/error-states/ssr-fallback.ts'),
+		'utf8',
+	);
+	const { violations, focusBlocks } = scanSource({
+		relativePath: 'src/editorial/error-states/ssr-fallback.ts',
+		source: fallback,
+		bindings: [],
+	});
+
+	assert.deepEqual(violations, []);
+	assert.ok(
+		focusBlocks.some((block) => block.condition.includes(':focus-visible')),
+		'the embedded focus rule must be part of the evidence',
+	);
+});
+
+test('C8: a scroll margin does not reserve the scrollport', () => {
+	// `scroll-margin` acts on the scroll position of the element it is
+	// declared on, so it never reserves room for a descendant's focused
+	// element: it must not close the compensation chain.
+	const source = [
+		'export const A = () => (',
+		'\t<html className={css({ scrollMarginBottom: "var(--surface-offset)" })}>',
+		'\t\t<div className={css({ position: "fixed", bottom: "0" })} />',
+		'\t</html>',
+		');',
+		'document.documentElement.style.setProperty("--surface-offset", "12rem");',
+	].join('\n');
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/example.tsx',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
+		},
+	]);
+
+	const { violations } = scan(source, bindings);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('C1: a bottom overlay needs the scroll compensation AND the room at the end', () => {
+	const overlay = ['\t\t<div className={css({ position: "fixed", bottom: "0" })} />'].join('\n');
+	const publication = 'document.documentElement.style.setProperty("--surface-offset", "12rem");';
+
+	const withCompensations = (declarations) => {
+		const source = [
+			'export const A = () => (',
+			'\t<body className={css({',
+			declarations,
+			'\t})}>',
+			overlay,
+			'\t</body>',
+			');',
+			publication,
+		].join('\n');
+		return scan(
+			source,
+			buildBindings([
+				{
+					relativePath: 'src/home/example.tsx',
+					published: publishedCustomProperties(source),
+					compensations: declaredCompensations(source),
+				},
+			]),
+		);
+	};
+
+	const scrollOnly = withCompensations('\t\t\t\tscrollPaddingBottom: "var(--surface-offset)",');
+	const roomOnly = withCompensations('\t\t\t\tpaddingBottom: "var(--surface-offset)",');
+	const both = withCompensations(
+		[
+			'\t\t\t\tscrollPaddingBottom: "var(--surface-offset)",',
+			'\t\t\t\tpaddingBottom: "var(--surface-offset)",',
+		].join('\n'),
+	);
+
+	assert.equal(scrollOnly.violations.length, 1, 'the scroll compensation alone is not enough');
+	assert.match(scrollOnly.violations[0].message, /no room at its end/);
+	assert.equal(roomOnly.violations.length, 1, 'the room at the end alone is not enough');
+	assert.match(roomOnly.violations[0].message, /no focus compensation is bound/);
+	assert.deepEqual(both.violations, [], 'both halves close the chain');
+});
+
+test('C1: a top overlay does not need the room at the end of the document', () => {
+	const source = [
+		'export const A = () => (',
+		'\t<body className={css({ scrollPaddingTop: "var(--surface-offset)" })}>',
+		'\t\t<header className={css({ position: "fixed", top: "0" })} />',
+		'\t</body>',
+		');',
+		'document.documentElement.style.setProperty("--surface-offset", "12rem");',
+	].join('\n');
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/example.tsx',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
+		},
+	]);
+
+	const { violations } = scan(source, bindings);
+
+	assert.deepEqual(violations, []);
+});
+
 test('a published offset is found through a module constant', () => {
 	const source = [
 		"const FOCUS_OFFSET_PROPERTY = '--surface-offset';",

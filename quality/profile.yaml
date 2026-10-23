@@ -298,6 +298,17 @@ gates:
       # of the same evidence is `pnpm run capture:a11y-language-of-parts`,
       # which is an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:language-of-parts:check' # partial `lang` contract (Issue #409)
+      # Issue #398: the shipped heading-outline / landmark contract (WCAG 2.2
+      # SC 1.3.1 Info and Relationships, level A, and SC 2.4.6 Headings and
+      # Labels, level AA). A page renders exactly one `<h1>`, its heading
+      # levels do not skip a level, and it renders exactly one `main`
+      # landmark. The gate reads the page units it declares (the route file
+      # plus the component files that page renders), so it is a property of
+      # the shipped source, decided on every `validate:fast` run. Pure Node
+      # text analysis, so it costs a source walk. The browser half of the
+      # same evidence is `pnpm run capture:a11y-heading-landmarks`, which is
+      # an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:heading-landmarks:check' # heading outline / landmark contract (Issue #398)
       # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
       # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
       # stylesheet under `src/`, and fails an unknown property / at-rule /

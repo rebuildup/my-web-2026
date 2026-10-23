@@ -28,11 +28,14 @@ import {
 	buildBindings,
 	collectEvidence,
 	declaredCompensations,
+	enclosingTag,
 	evaluateFocusBlock,
 	evaluateOverlay,
 	isDocumentScrollConsumer,
+	nonModalOpenCall,
 	parseStyleObject,
 	publishedCustomProperties,
+	refNameOf,
 	renderGateSummary,
 	scanSource,
 	scanStylesheet,
@@ -272,6 +275,72 @@ test('a non-modal dialog in a file that also opens a modal one is not exempt', (
 	assert.equal(overlays[1].modal, false);
 	assert.equal(violations.length, 1);
 	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('an open attribute written after the css call is still read', () => {
+	// JSX attribute order is free: `open` may follow `className={css(...)}`.
+	// The gate has to read the whole start tag, not only the text before
+	// the `css(` call, or the non-modal dialog is exempted.
+	const source = [
+		'export const A = () => (',
+		'\t<>',
+		'\t\t<dialog className={css({ position: "fixed" })}>Modal</dialog>',
+		'\t\t<dialog className={css({ position: "fixed", bottom: "0" })} open>Non-modal</dialog>',
+		'\t</>',
+		');',
+		'dialog.showModal();',
+	].join('\n');
+
+	const { violations, overlays } = scan(source);
+
+	assert.equal(overlays.length, 2);
+	assert.equal(overlays[0].modal, true);
+	assert.equal(overlays[1].modal, false);
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('enclosingTag reads the whole start tag, in either attribute order', () => {
+	const source = '<dialog className={css({ position: "fixed" })} open>';
+	const tag = enclosingTag(source, source.indexOf('css('));
+
+	assert.equal(tag.name, 'dialog');
+	assert.match(tag.body, /open/);
+});
+
+test('a css call in a sibling expression has no enclosing attribute tag', () => {
+	// The nearest `<div>` closed before the `css(` call, so the call is a
+	// shared style constant, not an attribute of that div.
+	const source = '<div />\nconst style = css({ position: "fixed" });';
+
+	assert.equal(enclosingTag(source, source.indexOf('css(')), null);
+});
+
+test('an unrelated show() helper does not strip a modal dialog exemption', () => {
+	const source = [
+		'export const A = () => (',
+		'\t<dialog ref={openModal} className={css({ position: "fixed" })}>Modal</dialog>',
+		');',
+		'const openModal = (d) => d?.showModal();',
+		'function show() {}',
+		'show();',
+	].join('\n');
+
+	const { violations, overlays } = scan(source);
+
+	assert.equal(overlays[0].modal, true);
+	assert.deepEqual(violations, []);
+});
+
+test('the non-modal show() call is tied to the element ref', () => {
+	const body = ' ref={panelRef} className={css({ position: "fixed" })}';
+
+	assert.equal(refNameOf(body), 'panelRef');
+	assert.equal(refNameOf(' className={css({ position: "fixed" })}'), null);
+	assert.equal(nonModalOpenCall('panelRef.current.show();', body), true);
+	assert.equal(nonModalOpenCall('other.show();', body), false);
+	assert.equal(nonModalOpenCall('function show() {}\nshow();', body), false);
+	assert.equal(nonModalOpenCall('panelRef.current.showModal();', body), false);
 });
 
 test('a compensation on the overlay itself is not a document consumption', () => {

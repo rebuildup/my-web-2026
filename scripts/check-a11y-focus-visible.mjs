@@ -290,6 +290,7 @@ export const FIXTURE_EXPECTATIONS = {
 		'uncompensated-fixed-overlay.tsx': ['focus-obscured-no-compensation'],
 		'overlay-self-compensation.tsx': ['focus-obscured-no-compensation'],
 		'dialog-open-not-modal.tsx': ['focus-obscured-no-compensation'],
+		'dialog-open-after-classname.tsx': ['focus-obscured-no-compensation'],
 	},
 };
 
@@ -509,18 +510,75 @@ export function findStyleObjects(source) {
 }
 
 /**
+ * The index of the `>` that closes the start tag opened before `start`
+ * (pure).
+ *
+ * Quote- and brace-aware, so a `>` inside an attribute string or a
+ * `css({...})` expression does not end the tag.
+ */
+export function findTagClose(source, start) {
+	let depth = 0;
+	let quote = null;
+	for (let index = start; index < source.length; index += 1) {
+		const char = source[index];
+		if (quote) {
+			if (char === '\\') {
+				index += 1;
+				continue;
+			}
+			if (char === quote) quote = null;
+			continue;
+		}
+		if (char === '"' || char === "'" || char === '`') {
+			quote = char;
+			continue;
+		}
+		if (char === '{') {
+			depth += 1;
+			continue;
+		}
+		if (char === '}') {
+			depth -= 1;
+			continue;
+		}
+		if (char === '>' && depth === 0) return index;
+	}
+	return -1;
+}
+
+/**
  * The opening tag a style object belongs to (pure).
  *
  * The search walks backwards from the `css(` call for the nearest opening
- * tag. A style object that is not directly inside a tag (a shared style
- * constant) has no element and returns `null`. The tag BODY is returned
- * too, so the caller can read the element's attributes (a `<dialog open>`
- * is not a modal).
+ * tag, then forwards to that tag's closing `>`. The FULL tag body is
+ * returned — everything between the tag name and the `>` — so an
+ * attribute written AFTER the `css(` call (JSX attribute order is free:
+ * `<dialog className={css({...})} open>`) is still read. A style object
+ * that is not inside a tag (a shared style constant, or a `css()` call in
+ * a child expression) has no enclosing attribute tag and returns `null`.
  */
 export function enclosingTag(source, index) {
 	const before = source.slice(0, index);
-	const match = /<([a-zA-Z][a-zA-Z0-9-]*)\b([^<>]*)$/.exec(before);
-	return match ? { name: match[1], body: match[2] } : null;
+	let last = null;
+	for (const match of before.matchAll(/<([a-zA-Z][a-zA-Z0-9-]*)\b/g)) last = match;
+	if (!last) return null;
+	const name = last[1];
+	const bodyStart = last.index + 1 + name.length;
+	const tagEnd = findTagClose(source, bodyStart);
+	// The `css(` call has to sit INSIDE the tag. If the tag closed before
+	// it, this style object belongs to something else (a shared constant
+	// after a sibling element).
+	if (tagEnd !== -1 && tagEnd < index) return null;
+	const body = tagEnd === -1 ? source.slice(bodyStart) : source.slice(bodyStart, tagEnd);
+	return { name, body };
+}
+
+/**
+ * The ref a JSX tag binds (`ref={name}`), or `null` (pure).
+ */
+export function refNameOf(tagBody) {
+	const match = /(?:^|\s)ref=\{([A-Za-z_$][\w$]*)\}/.exec(tagBody);
+	return match ? match[1] : null;
 }
 
 /**
@@ -528,10 +586,29 @@ export function enclosingTag(source, index) {
  *
  * A `<dialog open>` (or `open={…}`) is opened NON-modally: the user agent
  * does not make the rest of the document inert, so it can still obscure a
- * focused element. It must not take the modal exemption.
+ * focused element. It must not take the modal exemption. The attribute may
+ * appear anywhere in the tag, including after the `css(...)` call.
  */
 export function hasOpenAttribute(tagBody) {
 	return /(?:^|\s)open(?:\s|=|\/|$)/.test(tagBody);
+}
+
+/**
+ * Whether THIS element is opened non-modally with a `.show()` call (pure).
+ *
+ * `dialogRef.current.show()` opens a dialog non-modally. The call is tied
+ * to the element's own ref, so an unrelated `.show()` helper in the same
+ * file no longer strips the modal exemption from a real `<dialog>` (a
+ * false positive). When the tag binds no ref, the call cannot be attributed
+ * and only the `open` attribute is used — the conservative direction
+ * (a non-modal dialog with a differently-named handle may stay exempt) is
+ * recorded in `docs/verification/a11y/focus-visible.md`.
+ */
+export function nonModalOpenCall(code, tagBody) {
+	const ref = refNameOf(tagBody);
+	if (!ref) return false;
+	const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return new RegExp(`\\b${escaped}\\b[\\s\\S]{0,48}?\\.show\\s*\\(`).test(code);
 }
 
 /* ------------------------------------------------------------------ *
@@ -854,10 +931,6 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 	const overlays = [];
 	const published = publishedCustomProperties(code);
 	const modalDialog = /\bshowModal\s*\(/.test(code);
-	// A non-modal open (`<dialog open>` or `dialog.show()`) does not make
-	// the rest of the document inert, so it must not take the modal
-	// exemption even in a file that also calls `showModal()` somewhere.
-	const nonModalShow = /\bshow\s*\(/.test(code);
 
 	for (const object of findStyleObjects(code)) {
 		for (const [key, declaration] of object.declarations) {
@@ -882,6 +955,10 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 		if (!OVERLAY_POSITIONS.includes(value)) continue;
 		const tag = enclosingTag(code, object.index);
 		const tagName = tag ? tag.name : null;
+		const tagBody = tag ? tag.body : '';
+		// A non-modal open (`<dialog open>` or `dialogRef.current.show()`)
+		// does not make the rest of the document inert, so it must not take
+		// the modal exemption even in a file that also calls `showModal()`.
 		const overlay = {
 			file: relativePath,
 			line: object.line,
@@ -890,8 +967,8 @@ export function scanSource({ relativePath, source, bindings = [] }) {
 			modal:
 				tagName === 'dialog' &&
 				modalDialog &&
-				!nonModalShow &&
-				!hasOpenAttribute(tag ? tag.body : ''),
+				!hasOpenAttribute(tagBody) &&
+				!nonModalOpenCall(code, tagBody),
 		};
 		overlays.push(overlay);
 		const evaluation = evaluateOverlay(overlay, bindings);

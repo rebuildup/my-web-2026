@@ -26,7 +26,7 @@
 | `*.stories.tsx` | Storybook の story はコンポーネントのプレビュー用ハーネスであり、訪問者が到達する表面ではない（コンポーネント本体は別途走査される） |
 | `**/fixtures/**` | fixture は形を持つために存在し、本 gate が拒否する形も含む。出荷する同じデータは別途走査される |
 | `src/routes/design-system/**` | design-system ルートはリポジトリ内部のコンポーネントギャラリーであり、公開表面ではない（実 primitives は別途走査される） |
-| ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない。なお `open` 属性 / `show()` で開く非モーダルの `<dialog>` は対象（`showModal()` が同じファイルのどこかにあるだけでは exempt にしない） |
+| ネイティブのモーダル `<dialog>` | `showModal()` で開いた `<dialog>` は、UA が文書全体を inert にする。開いている間にダイアログの外へフォーカスできる要素は存在せず、覆いようがない。非モーダルの signal は **要素ごとに** 読む: `open` 属性（`css({...})` 呼び出しの前後どちらにあっても）と、その要素の `ref` に対する `.show()` 呼び出し（`dialogRef.current.show()`）。同じファイルのどこかにある `showModal()` だけでは exempt にしない。**限界**: 要素が `ref` を束縛しておらず、別名の handle で `.show()` される `<dialog>` は帰属できないため exempt のままになりうる（見逃し側に倒す保守的な判断） |
 | 素の CSS の `position: fixed` / `sticky` オーバーレイ | 補償の鎖の判定はオーバーレイを TS の `css({...})` 呼び出しから採集するため、素の CSS で宣言されたオーバーレイは本 gate のオーバーレイとして数えない。素の CSS の outline 解除は対象（`focus-indicator-removed-in-css`） |
 
 ### 基準
@@ -124,6 +124,7 @@ green な gate は適合の主張ではない。以下の区別は本 gate の�
 | `fail/uncompensated-fixed-overlay.tsx` | fail | `focus-obscured-no-compensation` |
 | `fail/overlay-self-compensation.tsx` | fail | `focus-obscured-no-compensation`（補償をオーバーレイ自身に付けた no-op） |
 | `fail/dialog-open-not-modal.tsx` | fail | `focus-obscured-no-compensation`（`showModal()` があるファイルの `<dialog open>`） |
+| `fail/dialog-open-after-classname.tsx` | fail | `focus-obscured-no-compensation`（`open` が `className={css({...})}` の**後ろ**にある `<dialog open>`） |
 
 fixture は gate 自身が読む。各 fail fixture は期待する rule をちょうど
 1 つ報告しなければならず、pass fixture は 0 件でなければならない。

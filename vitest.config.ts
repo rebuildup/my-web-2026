@@ -13,7 +13,14 @@ import {
 } from './scripts/_cloudflare-contract.mjs';
 import { D1_DATABASE_ID, R2_BUCKET_NAME } from './scripts/_cloudflare-identity.mjs';
 import { discoverAuthSchemaTestFiles } from './scripts/_vitest-auth-schema-scan.mjs';
-import { AUTH_SCHEMA_ENV_VAR, encodeAuthSchemaTestFiles } from './scripts/_vitest-setup-needs.mjs';
+import { createOutboundPolicy } from './scripts/_vitest-outbound-policy.mjs';
+import {
+	AUTH_SCHEMA_ENV_VAR,
+	WARMUP_ENV_VAR,
+	encodeAuthSchemaTestFiles,
+	encodeWarmupTestFiles,
+} from './scripts/_vitest-setup-needs.mjs';
+import { discoverWarmupTestFiles } from './scripts/_vitest-warmup-scan.mjs';
 
 /**
  * Vitest configuration for my-web-2026.
@@ -66,9 +73,31 @@ import { AUTH_SCHEMA_ENV_VAR, encodeAuthSchemaTestFiles } from './scripts/_vites
  * file keeps running in the same workerd pool but never opens a pool
  * connection. The check fails safe: when the setup cannot decide, it
  * applies the schema.
+ *
+ * Warm-up scope (Issue #261)
+ * --------------------------
+ * `test/setup/warm-up.ts` uses the SAME file-scoped principle: only a
+ * file that imports the `SELF` binding can issue a worker request, so
+ * only those files pay for the pool connection the warm-up needs.
+ * `scripts/_vitest-warmup-scan.mjs` computes that set and carries it
+ * through `test.env[WARMUP_ENV_VAR]`; the check fails safe (when the
+ * setup cannot decide, it warms up). The warm-up moves the workerd
+ * cold start OUT of the timed tests — it does not change any timeout
+ * value. See `docs/verification/quality/flaky-unit-suite-261.md`.
+ *
+ * Outbound requests (Issue #261)
+ * ------------------------------
+ * The Worker under test must not reach the public internet. It used
+ * to: the home route calls its own origin, and this pool's request
+ * origin is a public host name. `outboundService` answers every
+ * outbound request locally, so a home render no longer spends real
+ * network time — and no longer sends traffic to production from a
+ * test run. The policy and its reasoning live in
+ * `scripts/_vitest-outbound-policy.mjs`.
  */
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 const authSchemaTestFiles = discoverAuthSchemaTestFiles(repoRoot);
+const warmupTestFiles = discoverWarmupTestFiles(repoRoot);
 
 export default defineConfig({
 	plugins: [
@@ -80,6 +109,26 @@ export default defineConfig({
 				compatibilityFlags: ['nodejs_compat', 'global_fetch_strictly_public'],
 				d1Databases: { DB: D1_DATABASE_ID },
 				r2Buckets: { MEDIA: R2_BUCKET_NAME },
+				// The Worker under test must not reach the public internet
+				// (Issue #261). The home route is its own consumer of the
+				// access-counter and reactions APIs, so rendering it makes
+				// the Worker call its OWN origin — and in this pool that
+				// origin is a real public host, so every home render used
+				// to spend real DNS + TLS + round-trip time on the open
+				// internet (`cors.test.ts` even used the production
+				// origin). That made the suite non-hermetic AND slow
+				// (measured 1900-3100 ms per home render, and the reason
+				// `d1.test.ts` still timed out once after the cold-start
+				// fix).
+				//
+				// The pool answers every outbound request locally with a
+				// 503, so the upstream call fails FAST and the Worker
+				// takes the same degradation branch it already took
+				// (the old answer was a 404/405 from the public host).
+				// No assertion changes, and the suite no longer depends on
+				// public or production availability. The policy and its
+				// reasoning live in `scripts/_vitest-outbound-policy.mjs`.
+				outboundService: createOutboundPolicy(),
 				// Rate limits are real bindings here, not stubs: the
 				// rate-limit middleware test asserts against the actual
 				// namespace and budget, so a fake would test nothing.
@@ -123,6 +172,7 @@ export default defineConfig({
 	test: {
 		env: {
 			[AUTH_SCHEMA_ENV_VAR]: encodeAuthSchemaTestFiles(authSchemaTestFiles),
+			[WARMUP_ENV_VAR]: encodeWarmupTestFiles(warmupTestFiles),
 		},
 		include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/integration/**/*.{test,spec}.{ts,tsx}'],
 		exclude: [
@@ -146,6 +196,6 @@ export default defineConfig({
 		// the local D1 binding BEFORE any test file is loaded. The
 		// Better Auth module eagerly validates its schema at import
 		// time and caches the verdict — see test/setup/better-auth-schema.ts.
-		setupFiles: ['./test/setup/better-auth-schema.ts'],
+		setupFiles: ['./test/setup/better-auth-schema.ts', './test/setup/warm-up.ts'],
 	},
 });

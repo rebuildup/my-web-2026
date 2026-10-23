@@ -11,6 +11,36 @@
 | `category-appearance.webp`, `category-monochrome*.webp`, `status-*.webp` | earlier issues | monochrome / appearance proofs kept alongside the a11y artefacts |
 | `reduced-motion-on-off.webp` | #403 | the shipped counter fixture rendered twice in one Chromium — `no-preference` and `reduce` — with the browser-reported `animation-name`, the accessible label, the machine gate's verdict and the WCAG mapping printed above the two panels |
 | `image-alt.webp` | #397 | the image alt / decorative-image contract on one screen: the two states a shipped surface may be in (a meaningful image with an alt, a decorative image with an empty alt plus a decorative mark) and the three states the gate rejects (no alt, an empty alt with no decorative mark, a blank alt), with every image's `alt` attribute and decorative mark read from the live DOM. `image-alt.md` is the write-up |
+| `wcag-review-matrix.webp` | #410 | the manual-review record for the WCAG 2.2 A/AA criteria a machine cannot decide, with the shipped form-state gallery on one screen, the failure panel's Chromium accessibility snapshot, and the gate's own report (machine-checked rows / outstanding rows / excluded criteria) printed above them. `wcag-review-matrix.md` is the write-up |
+
+## WCAG AA manual review matrix (Issue #410)
+
+`wcag-review-matrix.webp` is the committed screenshot of
+`docs/verification/a11y/wcag-review-matrix.png` with the `.webp`
+extension (Issue #410 names a `.png` path; see "WebP, not PNG" below).
+
+The artefact of this issue is a **record**, not a verdict:
+
+| Layer | What it is | Where it lives |
+| --- | --- | --- |
+| the table | the machine-readable matrix: every WCAG 2.2 A/AA criterion is covered by an item or excluded with a reason, and every item says whether a machine or a person decides it | `quality/wcag-review-matrix.json` |
+| the gate | a pure Node / offline check that the record is intact | `scripts/check-a11y-wcag-review-matrix.mjs` (`pnpm run a11y:wcag-review-matrix:check`) |
+| the capture | the shipped state gallery rendered in Chromium, plus that gate's report | `pnpm run capture:a11y-wcag-review-matrix` |
+
+The review states are physically distinct, and the gate refuses to let
+them blur into each other: `auto-pass` (a machine gate decided it — no
+reviewer, date, environment or result may be attached), `human-verified`,
+`human-failed` and `not-reviewed` (an assignee, no evidence). A
+document may not turn a machine pass into a site-level conformance
+claim; the gate scans the documents for completion wording and reports
+`compliance-claim-unbacked` unless a human verification exists and the
+line points at the matrix.
+
+A green gate means the **table** is intact. It does not mean the site
+conforms to WCAG 2.2 AA. The write-up
+(`wcag-review-matrix.md`) carries the criterion-by-criterion split, the
+required fields, the rules, and the procedure for releasing a false
+positive.
 
 ## Reduced motion (Issue #403)
 

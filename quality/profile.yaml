@@ -338,6 +338,19 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #410: the WCAG 2.2 A/AA manual review matrix. The record of
+      # the judgements a machine cannot make (keyboard path, focus order,
+      # zoom, reflow, screen-reader order). The gate decides only whether
+      # the RECORD is intact: every criterion is covered by an item or
+      # excluded with a reason, every item says whether a machine or a
+      # person decides it, every performed review carries a reviewer, a
+      # date, an environment and a result, and no document claims AA
+      # conformance on the strength of an automatic pass. Static data
+      # (quality/wcag-review-matrix.json), pure Node, no binding, no
+      # network. The browser half of the same evidence is
+      # `pnpm run capture:a11y-wcag-review-matrix`, which is an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:wcag-review-matrix:check' # WCAG AA manual review matrix record (Issue #410)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

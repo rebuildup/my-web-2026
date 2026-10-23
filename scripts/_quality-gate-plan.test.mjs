@@ -143,6 +143,11 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #410: the WCAG 2.2 A/AA manual review matrix, declared in
+	// `quality/profile.yaml` right after the colour-contrast gate. Both
+	// read the accessibility contract of the shipped surfaces; this one
+	// reads the RECORD of the judgements a machine cannot make.
+	'pnpm run a11y:wcag-review-matrix:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

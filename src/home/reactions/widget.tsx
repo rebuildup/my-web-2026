@@ -167,21 +167,38 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	};
 
 	// Backdrop click — the dialog element itself is the click target
-	// for clicks outside the inner content. Native <dialog> already
-	// dispatches ESC as a `cancel` event → `close`, so we don't need a
-	// redundant onKeyDown. The biome `useKeyWithClickEvents` rule is
-	// aware of `onClose` + `onClick` on `<dialog>` in upstream but not
-	// in our pinned 1.9.x release, so we scope the suppression here.
+	// for clicks outside the inner content. The keyboard equivalent of
+	// that gesture is the Escape handler below.
 	const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDialogElement>) => {
 		if (event.target === dialogRef.current) onClose();
 	};
 
+	// Escape closes the picker.
+	//
+	// A native `<dialog>` turns Escape into a `cancel` event by itself,
+	// so this handler was considered redundant. It is not: the picker's
+	// search `<input>` takes the Escape key and calls
+	// `preventDefault()` on it, which cancels the browser's close
+	// request before the `cancel` event is dispatched. The dialog
+	// therefore stayed open with the keyboard — the only way out was a
+	// backdrop click (WCAG 2.2 SC 2.1.1 Keyboard / SC 2.1.2 No Keyboard
+	// Trap). Issue #394's keyboard regression spec found this.
+	//
+	// Handling the key on the `<dialog>` itself keeps the contract
+	// inside this component: the handler runs during the bubble phase,
+	// so it still fires after the picker consumed the key.
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLDialogElement>) => {
+		if (event.key !== 'Escape') return;
+		event.preventDefault();
+		onClose();
+	};
+
 	return (
-		// biome-ignore lint/a11y/useKeyWithClickEvents: <dialog> handles ESC natively via the `cancel` event
 		<dialog
 			ref={dialogRef}
 			aria-label="Add a reaction"
 			onClose={onClose}
+			onKeyDown={handleKeyDown}
 			onClick={handleBackdropMouseDown}
 			className={css({
 				// Native <dialog> UA stylesheet already centers the

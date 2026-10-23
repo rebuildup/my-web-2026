@@ -18,7 +18,7 @@ Issue #393 は公開ルートの描画済み DOM を測った。ここが測る�
 | `e2e/a11y/axe-storybook-manifest.ts` | 監査した story の明示的な記録（ファイル / 公開する story.export 名 / title / 期待する判定 / 理由）。**story ファイルから自動生成しない**（監査した範囲を自動生成すると、監査記録として反証できなくなるため） |
 | `e2e/a11y/axe-storybook-verdict.ts` | 判定の式を 1 か所に置いたもの。ブラウザ実測と静的ゲートの両方が同じ式を使うので、ゲートの判定と実測の判定が食い違えない |
 | `e2e/a11y/axe-storybook.spec.ts` | manifest の各 story を Chromium で開き、axe-core で WCAG 2.2 A/AA の違反を収集し、宣言・実測・台帳の 3 者を突き合わせる |
-| `e2e/a11y/axe-storybook-baseline.json` | 既知の既存違反の台帳（1 story × 1 rule × 1 レコード） |
+| `e2e/a11y/axe-storybook-baseline.json` | 既知の既存違反の台帳（11 story × 1 rule = 11 レコード） |
 | `scripts/check-a11y-axe-storybook.mjs` | 静的ゲート（manifest と台帳の整合、登録 story の実在、自己チェック fixture の再現） |
 | `scripts/capture-a11y-axe-storybook.mjs` | ゲート自身の実測結果から検証画像（WebP）を作る |
 
@@ -155,8 +155,18 @@ WCAG 適合を意味しないことを明記しておく。
 
 ## baseline 台帳の扱い
 
-現在の台帳は **空**（`records: []`）。101 story を実測した結果、WCAG 2.2 A/AA に
-抵触する違反は 1 件も観測されなかった。
+現在の台帳は **11 レコード**（11 story × 1 rule）。すべて `definition-list`
+（WCAG 2.2 SC 1.3.1）で、home の status リストが `<dl>` の直下に `<div>` を
+置いている既存の缺陷である。**同じ缺陷が `/` ルートでも記録されている**
+（`e2e/a11y/axe-baseline.json`）。
+
+> **この台帳は「最初に測ったときは空だった」。** Storybook の dev サーバが
+> `@storybook/react` を解決できず **story が 1 つも描画されず**、実測が空の
+> 要素を測っていたため、違反は 1 件も観測されなかった。依存を直して
+> 再実測すると 11 story が `definition-list` を検出したので、台帳に記録した
+> （manifest の `expect` も `baseline` に変更）。**空の台帳は「違反が無い」
+> ではなく「測れていなかった」** のであり、story が描画されていることを
+> 別途確認してから台帳を確定する。
 
 台帳にレコードを追加する条件は「その違反が恒久的に存在してよい」と
 **人が判断した**ことだけである。機械は「記録されているか」を見るだけで、
@@ -174,7 +184,7 @@ WCAG 適合を意味しないことを明記しておく。
 
 ## スクリーンショット
 
-`docs/verification/a11y/axe-storybook-pass-fail.webp`（1400 × 2174 / 285 kB）。
+`docs/verification/a11y/axe-storybook-pass-fail.webp`（1400 × 2300 / 284 kB）。
 
 - 上段: **pass**（出荷どおりに描画した story のスクリーンショット）と
   **fail**（同じ story に `<img alt>` を 1 個だけ注入し、axe-core が
@@ -202,6 +212,20 @@ pnpm run a11y:axe-storybook:e2e
 # 3. 検証画像を生成する（Storybook を自分で起動する）
 pnpm run capture:a11y-axe-storybook
 ```
+
+## 実行環境: Storybook の dev サーバが story を描画できること
+
+ブラウザ実測は **Storybook の dev サーバ**（`pnpm run storybook`）が **story を
+描画できる**ことに依存する。このリポジトリは pnpm の strict layout（Hoist なし）
+で動いているため、Storybook の preview エントリー
+（`@storybook/react/dist/entry-preview.mjs`）は **プロジェクト直下から解決できない**。
+`@storybook/react` を **直接 devDependency として宣言** してあるのはそのためで、
+外すと dev サーバは起動するものの **story が 1 つも描画されず**、
+`#storybook-root` が空のままになる。
+
+この状態は **gate が red になる**（spec は「描画された story」を待って 60 秒で
+タイムアウトする）ので放置はされない。**検証画像（capture）も**、**gate が red のときは何も書かずに
+exit 1** で止まる — 測れていない story を測定結果として描画しないためである。
 
 ## 既知の制約
 

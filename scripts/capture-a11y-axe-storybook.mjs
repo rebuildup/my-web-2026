@@ -540,6 +540,15 @@ async function main() {
 		if (summaries.length === 0) {
 			throw new Error('the audit produced no per-story summary; the artefact would show nothing');
 		}
+		// A red gate means the audit itself did not hold: a story rendered
+		// nothing, or a violation the ledger does not record appeared. The
+		// artefact would then document a failure as if it were a
+		// measurement, so no file is written and the run ends non-zero.
+		if (exitCode !== 0) {
+			throw new Error(
+				`the audit gate exited with ${exitCode}; the artefact would picture a red gate as a measurement. Fix the gate first (the JSON report is under ${options.workDir}).`,
+			);
+		}
 		process.stdout.write(
 			`[capture] audit finished with exit code ${exitCode}; ${summaries.length} story/stories measured\n`,
 		);

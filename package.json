@@ -221,6 +221,8 @@
 		"a11y:axe-storybook:e2e": "playwright test --config playwright.storybook.config.ts",
 		"a11y:axe-storybook:ci": "node scripts/run-storybook-axe-audit.mjs",
 		"capture:a11y-axe-storybook": "node scripts/capture-a11y-axe-storybook.mjs",
+		"a11y:wcag-review-matrix:check": "node scripts/check-a11y-wcag-review-matrix.mjs",
+		"capture:a11y-wcag-review-matrix": "node scripts/capture-a11y-wcag-review-matrix.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",

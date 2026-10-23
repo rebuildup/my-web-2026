@@ -1,0 +1,240 @@
+{
+	"version": 1,
+	"updatedAt": "2026-10-23",
+	"reviewWindowDays": 365,
+	"states": [
+		{
+			"id": "normal",
+			"description": "the surface in its shipped condition"
+		},
+		{
+			"id": "empty",
+			"description": "the surface with nothing in it yet"
+		},
+		{
+			"id": "error",
+			"description": "the surface in its failure state"
+		},
+		{
+			"id": "narrow",
+			"description": "the surface at 320 CSS px"
+		},
+		{
+			"id": "zoomed",
+			"description": "the surface at 200 % text zoom"
+		},
+		{
+			"id": "text-spacing",
+			"description": "the surface with the SC 1.4.12 text spacing override applied"
+		},
+		{
+			"id": "keyboard-only",
+			"description": "the surface operated with the keyboard alone"
+		},
+		{
+			"id": "focus-visible",
+			"description": "the surface with a control holding the focus ring"
+		},
+		{
+			"id": "screen-reader",
+			"description": "the surface read out by a screen reader"
+		}
+	],
+	"surfaces": [
+		{
+			"id": "form-gallery",
+			"kind": "story",
+			"path": "src/editorial/forms/form-errors.stories.tsx",
+			"export": "Gallery",
+			"reproduces": {
+				"empty": ["空欄"],
+				"error": ["失敗"],
+				"narrow": ["縮小表示"]
+			}
+		}
+	],
+	"items": [
+		{
+			"id": "state-normal",
+			"sc": [
+				"1.1.1",
+				"1.3.1",
+				"1.3.2",
+				"1.3.4",
+				"1.3.5",
+				"1.4.1",
+				"1.4.3",
+				"1.4.4",
+				"1.4.10",
+				"1.4.11",
+				"1.4.12",
+				"1.4.13",
+				"2.1.1",
+				"2.1.2",
+				"2.4.1",
+				"2.4.2",
+				"2.4.3",
+				"2.4.6",
+				"2.4.7",
+				"2.4.11",
+				"2.5.8",
+				"3.1.1",
+				"3.1.2",
+				"3.3.1",
+				"3.3.2",
+				"4.1.2",
+				"4.1.3"
+			],
+			"subject": "the fixture covers the normal state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "normal",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "human-verified",
+				"assignedTo": "owner",
+				"reviewer": "owner",
+				"performedAt": "2026-10-01",
+				"environment": "Chromium 141 / macOS 15 / VoiceOver",
+				"result": "pass"
+			}
+		},
+		{
+			"id": "state-empty",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the empty state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "empty",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-error",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the error state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "error",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-narrow",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the narrow state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "narrow",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-zoomed",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the zoomed state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "zoomed",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-text-spacing",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the text-spacing state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "text-spacing",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-keyboard-only",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the keyboard-only state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "keyboard-only",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-focus-visible",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the focus-visible state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "focus-visible",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "state-screen-reader",
+			"sc": ["1.1.1"],
+			"subject": "the fixture covers the screen-reader state",
+			"scope": "the fixture surface only",
+			"surface": "form-gallery",
+			"state": "screen-reader",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		}
+	],
+	"excluded": [
+		{
+			"sc": "1.2.2",
+			"reason": "the fixture does not publish pre-recorded media"
+		},
+		{
+			"sc": "1.2.4",
+			"reason": "the fixture does not publish pre-recorded media"
+		},
+		{
+			"sc": "3.3.7",
+			"reason": "the fixture does not publish pre-recorded media"
+		}
+	],
+	"$claims": [
+		{
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
+			"line": 1,
+			"phrase": "AA 準拠済み",
+			"text": "the fixture claims conformance — see docs/verification/a11y/wcag-review-matrix.md"
+		}
+	],
+	"$documents": [
+		{
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
+			"text": "docs/verification/a11y/wcag-review-matrix.md が記録する AA 適合済みの検査が 1 件ある。"
+		},
+		{
+			"file": "fixtures/a11y-wcag-review-matrix/example.md",
+			"text": "この文書は AA 準拠と主張しない。"
+		}
+	]
+}

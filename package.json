@@ -152,6 +152,8 @@
 		"security:ssrf:report": "node scripts/capture-ssrf-url-adapter-report.mjs",
 		"e2e:compat": "playwright test --config playwright.compat.config.ts",
 		"e2e:compat:install": "playwright install --with-deps chromium firefox webkit",
+		"a11y:keyboard-nav:check": "playwright test e2e/a11y/keyboard-navigation.spec.ts",
+		"capture:a11y-keyboard-nav": "node scripts/capture-a11y-keyboard-nav.mjs",
 		"verify:compat-screenshot": "node scripts/make-compat-matrix-report.mjs",
 		"log:redaction:check": "node scripts/check-log-redaction.mjs",
 		"storybook:ownership:check": "node scripts/check-storybook-ownership.mjs",

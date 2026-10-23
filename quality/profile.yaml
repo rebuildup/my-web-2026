@@ -309,6 +309,16 @@ gates:
       # `pnpm run capture:a11y-image-alt`, an artefact capture and
       # therefore not a fast gate.
       - 'pnpm run a11y:image-alt:check' # image alt / decorative-image contract (Issue #397)
+      # Issue #400: the shipped text-reflow contract (WCAG 2.2 SC 1.4.10
+      # Reflow, level AA, and SC 1.4.4 Resize Text, level AA). The shipped
+      # base stylesheet carries the long-content wrap floor, and the reflow
+      # fixture reproduces the states that break it (an unbreakable run with
+      # no break boundary, a box pinned wider than the 320 px budget, and
+      # unbreakable content with wrapping forbidden). Pure Node text
+      # analysis, so it costs a source + fixture walk. The browser half of
+      # the same evidence is `pnpm run capture:a11y-reflow`, an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:reflow:check' # text reflow / resize-text contract (Issue #400)
       # Issue #409: the shipped language-of-parts contract (WCAG 2.2
       # 3.1.2 Language of Parts, level A). A `lang` may be written only
       # on a passage whose language differs from the document language:

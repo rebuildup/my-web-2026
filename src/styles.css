@@ -156,9 +156,26 @@
 	 * `word-break: break-all` — utilities layer wins over this base
 	 * layer.
 	 */
+	/*
+	 * Long-content wrap floor (Issue #400).
+	 *
+	 * `word-break: normal` / `auto-phrase` gives the line breaker the
+	 * language-specific opportunities it knows about, but it does NOT
+	 * break a run with no opportunity at all — a URL, a long identifier,
+	 * an expanded pseudo-locale word. At the 320 CSS px reflow width
+	 * (WCAG 2.2 SC 1.4.10, 400% zoom) such a run becomes the minimum
+	 * content width and forces a horizontal scrollbar.
+	 *
+	 * `overflow-wrap` is inherited, so one declaration here reaches
+	 * every text surface. `break-word` only breaks a word that would
+	 * otherwise overflow, so ordinary prose is unaffected; a surface
+	 * that needs a stronger min-content guarantee (a flex / grid child)
+	 * keeps its own `min-width: 0` / `overflow-wrap: anywhere`.
+	 */
 	:where(body) {
 		word-break: normal;
 		word-break: auto-phrase;
+		overflow-wrap: break-word;
 		text-wrap: pretty;
 	}
 

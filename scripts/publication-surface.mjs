@@ -231,6 +231,7 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/ColorSwatches.tsx',
 	'src/routes/design-system/sections/ImageCls.tsx',
 	'src/routes/design-system/sections/InteractiveStates.tsx',
+	'src/routes/design-system/sections/ReactionPicker.tsx',
 	'src/routes/design-system/sections/SpacingRuler.tsx',
 	'src/routes/design-system/sections/StatusAccents.tsx',
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',

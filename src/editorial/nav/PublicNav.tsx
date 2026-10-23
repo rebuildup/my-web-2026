@@ -1,5 +1,5 @@
 import { useLocation } from '@tanstack/react-router';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 
 /**
@@ -21,7 +21,10 @@ import { css } from '../../../styled-system/css';
  *   - Mobile (below the `md` breakpoint — 768px) collapses into a
  *     `<button>` with `aria-expanded` / `aria-controls`. The panel
  *     is closed by default; `Escape` and a route change both close
- *     it; clicking a link inside the panel closes it as well. The
+ *     it; clicking a link inside the panel closes it as well.
+ *     `Escape` hands the focus back to the trigger, so closing the
+ *     panel never strands the focus on the document body (Issue #394).
+ *     The
  *     hamburger button is always rendered so the affordance is
  *     predictable across viewports — only its `display` changes.
  *   - The brand mark on the left ("samuido") is part of the same
@@ -105,6 +108,22 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuId = useId();
 	const buttonId = useId();
+	// The trigger keeps a ref so `Escape` can hand the focus back to it
+	// (Issue #394). Closing the panel while the focus sits inside it
+	// removes the focused element from the accessibility tree, and the
+	// browser would drop the focus to the document body — the visitor
+	// would have to rediscover the trigger. The trigger itself is always
+	// rendered, so it is a valid focus target at any viewport.
+	const buttonRef = useRef<HTMLButtonElement>(null);
+	// Set only when `Escape` closed the menu, so the focus hand-back
+	// runs for that gesture and for nothing else.
+	//
+	// The focus is restored AFTER the DOM update (the panel's
+	// `hidden`): hiding the panel can drop the focus to the document
+	// body when the hidden subtree still held it, so restoring before
+	// the update would restore a focus that the update then takes
+	// away. Issue #394's keyboard regression spec observed that race.
+	const restoreFocusRef = useRef(false);
 
 	const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -120,11 +139,18 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 	// `Escape` closes the mobile menu when it is open. The handler
 	// is mounted at all times but only acts when `menuOpen` is
 	// true, so desktop users are not affected.
+	//
+	// The focus goes back to the trigger: closing the panel hides the
+	// element that had the focus, and without this the focus would be
+	// lost to the document body (WCAG 2.2 SC 2.4.3 Focus Order /
+	// SC 2.1.2 No Keyboard Trap). Issue #394's keyboard regression
+	// spec asserts this hand-back.
 	useEffect(() => {
 		if (!menuOpen) return;
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key === 'Escape') {
 				event.preventDefault();
+				restoreFocusRef.current = true;
 				setMenuOpen(false);
 			}
 		};
@@ -132,6 +158,15 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 		return () => {
 			document.removeEventListener('keydown', onKeyDown);
 		};
+	}, [menuOpen]);
+
+	// The focus hand-back runs after the panel is actually hidden, so
+	// the browser cannot move it to the document body afterwards.
+	useEffect(() => {
+		if (menuOpen) return;
+		if (!restoreFocusRef.current) return;
+		restoreFocusRef.current = false;
+		buttonRef.current?.focus();
 	}, [menuOpen]);
 
 	return (
@@ -220,6 +255,7 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 				    even while the panel is closed. */}
 				<button
 					id={buttonId}
+					ref={buttonRef}
 					type="button"
 					aria-label={menuOpen ? 'Close menu' : 'Open menu'}
 					aria-expanded={menuOpen}

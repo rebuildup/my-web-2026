@@ -757,8 +757,9 @@ async function main() {
 		gate: {
 			violations: gate.violations,
 			filesScanned: gate.filesScanned,
+			textlessButtons: gate.textlessButtons,
 			iconOnlyButtons: gate.iconOnlyButtons,
-			namedIconButtons: gate.namedIconButtons,
+			namedTextlessButtons: gate.namedTextlessButtons,
 		},
 		wcag: WCAG_MAPPING,
 		humanEvaluation: gate.humanEvaluation,

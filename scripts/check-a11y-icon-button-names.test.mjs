@@ -13,11 +13,16 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	BUTTON_RULES,
+	EXPECTED_FAIL_FIXTURES,
+	EXPECTED_PASS_FIXTURES,
 	EXCLUSIONS,
 	FIXTURE_ROOT,
 	HUMAN_EVALUATION,
 	RULES,
+	auditFixtureRules,
+	auditFixtureSets,
 	collectEvidence,
+	collectIdDeclarations,
 	evaluateNameMechanisms,
 	exclusionReasons,
 	extractText,
@@ -25,10 +30,12 @@ import {
 	hasHiddenTextLabel,
 	idIsDeclared,
 	isIconOnly,
+	isTextless,
 	parseAttributes,
 	renderGateSummary,
 	scanViolationsInFile,
 	stringLiteralValue,
+	templateFragments,
 } from './check-a11y-icon-button-names.mjs';
 import { REPO_ROOT } from './_source-scan.mjs';
 
@@ -67,10 +74,38 @@ test('a button that carries text is not this gate’s business', () => {
 	assert.deepEqual(violations, []);
 });
 
-test('a button with no icon and no text is not an icon button', () => {
+test('a button with no icon and no text still needs a name', () => {
+	// The icon shape is EVIDENCE, not a precondition: a button that
+	// renders nothing at all is nameless too.
 	const violations = scanViolationsInFile({
 		relativePath: 'src/home/example.tsx',
 		source: '<button type="button" />\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'icon-button-missing-name');
+});
+
+test('a button whose content is a component is checked, whatever the component is called', () => {
+	// The reviewer's attack: `<Close />` does not end in "Icon", so an
+	// icon-shape precondition would let it out of the check.
+	const violations = scanViolationsInFile({
+		relativePath: 'src/home/example.tsx',
+		source: 'export const A = () => (\n\t<button type="button"><Close /></button>\n);\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'icon-button-missing-name');
+});
+
+test('a button whose label is computed is left alone', () => {
+	// The gate cannot read a dynamic expression, so a button whose text
+	// is computed may still render text. Reporting it would be a false
+	// positive on every computed label.
+	const violations = scanViolationsInFile({
+		relativePath: 'src/home/example.tsx',
+		source:
+			'export const A = () => (\n\t<button type="button">{busy ? "…" : "enable"}</button>\n);\n',
 	});
 
 	assert.deepEqual(violations, []);
@@ -231,6 +266,60 @@ test('a literal id that the file does not declare is a broken reference', () => 
 	assert.equal(idIsDeclared('<span id="here" />', 'elsewhere'), false);
 });
 
+test('the attribute name is not a declaration: "label" is not declared by "aria-labelledby"', () => {
+	// The reviewer's attack: a substring rule made every
+	// `aria-labelledby="label"` look resolved, because the attribute
+	// NAME contains the value.
+	const violations = scanViolationsInFile({
+		relativePath: 'src/home/example.tsx',
+		source:
+			'<button type="button" aria-labelledby="label">\n\t<svg viewBox="0 0 16 16" />\n</button>\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'icon-button-name-target-missing');
+	assert.equal(idIsDeclared('<button aria-labelledby="label" />', 'label'), false);
+});
+
+test('only an id declaration makes an id declared', () => {
+	const declarations = collectIdDeclarations(
+		'<span id="here" />\n<span id={\'there\'} />\n<span id={`${base}-panel`} />\n',
+	);
+
+	assert.deepEqual([...declarations.literal].sort(), ['here', 'there']);
+	assert.deepEqual(templateFragments('`${base}-panel`'), ['-panel']);
+});
+
+test('an id built by a template is not reported as broken', () => {
+	const source = [
+		'const baseId = "panel";',
+		'<section id={`${baseId}-caption`}>Caption</section>',
+		'<button type="button" aria-labelledby="panel-caption">',
+		'\t<svg viewBox="0 0 16 16" />',
+		'</button>',
+	].join('\n');
+
+	const violations = scanViolationsInFile({ relativePath: 'src/home/example.tsx', source });
+
+	assert.deepEqual(violations, []);
+});
+
+test('an id the file builds from an unknown value is not reported either', () => {
+	// The gate cannot reason about `id={captionId}`, so it must not
+	// claim the reference is broken.
+	const source = [
+		'const captionId = "panel-caption";',
+		'<section id={captionId}>Caption</section>',
+		'<button type="button" aria-labelledby="panel-caption">',
+		'\t<svg viewBox="0 0 16 16" />',
+		'</button>',
+	].join('\n');
+
+	const violations = scanViolationsInFile({ relativePath: 'src/home/example.tsx', source });
+
+	assert.deepEqual(violations, []);
+});
+
 test('the name mechanisms are reported one by one', () => {
 	const attributes = parseAttributes('aria-label="" title="Open"');
 	const mechanisms = evaluateNameMechanisms(attributes, '<span />', '');
@@ -265,11 +354,64 @@ test('the Issue names three button rules and the gate reports exactly those', ()
 test('the fixtures are read for real: the pass fixtures break nothing', () => {
 	const evidence = collectEvidence();
 
-	assert.equal(evidence.fixtures.pass.length >= 3, true);
-	assert.equal(evidence.fixtures.fail.length >= 3, true);
+	assert.equal(evidence.fixtures.pass.length, EXPECTED_PASS_FIXTURES.length);
+	assert.equal(evidence.fixtures.fail.length, EXPECTED_FAIL_FIXTURES.length);
 	for (const entry of evidence.fixtures.pass) {
 		assert.deepEqual(entry.violations, [], `${entry.file} must break no rule`);
 	}
+});
+
+test('the fixture set is closed: a missing fixture fails the gate', () => {
+	// The reviewer's attack: a lower bound ("at least three") let a
+	// deleted fixture shrink the coverage without turning the gate red.
+	const present = (name) => ({ file: `${FIXTURE_ROOT}/pass/${name}`, violations: [] });
+	const missing = EXPECTED_PASS_FIXTURES.filter((name) => name !== 'title.tsx').map(present);
+
+	const mismatches = auditFixtureSets({
+		pass: missing,
+		fail: EXPECTED_FAIL_FIXTURES.map((name) => ({
+			file: `${FIXTURE_ROOT}/fail/${name}`,
+			violations: [{ rule: 'icon-button-missing-name' }],
+		})),
+	});
+
+	assert.equal(mismatches.length, 1);
+	assert.equal(mismatches[0].rule, 'fixture-expectation-mismatch');
+	assert.match(mismatches[0].message, /title\.tsx/);
+});
+
+test('the fixture set is closed: an unexpected fixture fails the gate', () => {
+	const present = (name) => ({ file: `${FIXTURE_ROOT}/pass/${name}`, violations: [] });
+	const mismatches = auditFixtureSets({
+		pass: [...EXPECTED_PASS_FIXTURES.map(present), present('surprise.tsx')],
+		fail: EXPECTED_FAIL_FIXTURES.map((name) => ({
+			file: `${FIXTURE_ROOT}/fail/${name}`,
+			violations: [{ rule: 'icon-button-missing-name' }],
+		})),
+	});
+
+	assert.equal(mismatches.length, 1);
+	assert.equal(mismatches[0].rule, 'fixture-expectation-mismatch');
+	assert.match(mismatches[0].message, /surprise\.tsx/);
+});
+
+test('the shipped fixtures are exactly the ones the Issue names', () => {
+	const evidence = collectEvidence();
+	const names = (entries) => entries.map((entry) => entry.file.split('/').pop()).sort();
+
+	assert.deepEqual(names(evidence.fixtures.pass), [...EXPECTED_PASS_FIXTURES].sort());
+	assert.deepEqual(names(evidence.fixtures.fail), [...EXPECTED_FAIL_FIXTURES].sort());
+	assert.deepEqual(auditFixtureSets(evidence.fixtures), []);
+});
+
+test('a fail fixture that stops failing is reported', () => {
+	const mismatches = auditFixtureRules({
+		pass: [],
+		fail: [{ file: `${FIXTURE_ROOT}/fail/missing-name.tsx`, violations: [] }],
+	});
+
+	assert.equal(mismatches.length, 1);
+	assert.equal(mismatches[0].rule, 'fixture-expectation-mismatch');
 });
 
 test('the fixtures are read for real: every fail fixture breaks its rule', () => {

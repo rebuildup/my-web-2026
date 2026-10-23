@@ -33,13 +33,22 @@
  *       nameless while the source reads as if it were named.
  *       WCAG 2.2 SC 1.3.1 Info and Relationships (A) + SC 4.1.2 (A).
  *
- * What the gate counts as an icon-only button
- * -------------------------------------------
- * A `<button>` whose descendants (nested elements included) contain no
- * text string at all — JSX text nodes and `{"…"}` string literals — and
- * that contain an icon element (`<svg>`, `<img>`, or a component whose
- * name ends in `Icon`). A button that carries text is not this gate's
- * business: its name comes from the text.
+ * What the gate counts as a button that needs a name
+ * -------------------------------------------------
+ * A `<button>` that renders NO text of its own: no JSX text node and
+ * no string-literal expression (`{"…"}`). Such a button takes its
+ * name from somewhere else, so it is the one that has to be checked.
+ *
+ * The ICON SHAPE is not part of that decision. Requiring a known shape
+ * (`<svg>` / `<img>` / `*Icon`) would let `<button><Close /></button>`
+ * out of the check, and that is exactly the button the contract is
+ * about. The shape is reported as EVIDENCE ("icon-only" / "text-less"),
+ * never as a precondition.
+ *
+ * A button whose content is a DYNAMIC expression (`{busy ? '…' :
+ * 'enable'}`) may render text, so it is not decidable and is left
+ * alone: reporting it would be a false positive on every button whose
+ * label is computed.
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
@@ -301,7 +310,11 @@ export function stringLiteralValue(expression) {
 			continue;
 		}
 		if (char === quote) {
-			return i === trimmed.length - 1 ? trimmed.slice(1, -1) : null;
+			if (i !== trimmed.length - 1) return null;
+			// A template that interpolates is not a literal: its value
+			// depends on the runtime, so the gate cannot read it.
+			if (quote === '`' && trimmed.slice(1, -1).includes('${')) return null;
+			return trimmed.slice(1, -1);
 		}
 		i += 1;
 	}
@@ -398,32 +411,68 @@ export function containsIcon(children) {
 }
 
 /**
- * The ids a file declares literally, plus the ones it builds at
- * runtime.
+ * The ids a file declares, and the ids it builds at runtime.
  *
- * A literal id is `id="x"` / `id={'x'}`. A runtime id (`id={`${base}-x`}`)
- * cannot be resolved statically, so the raw id string is searched for
- * instead: if the string appears somewhere other than the reference
- * itself, the id exists but is built dynamically.
+ * A DECLARATION is an `id=` attribute: `id="x"` / `id={'x'}` /
+ * `id={`x`}` declares a literal id, and `id={`${base}-x`}` builds one
+ * at runtime. Nothing else can make an id "declared" — an arbitrary
+ * substring of the source is not a declaration. (The attribute name
+ * `aria-labelledby` contains the value "label", so a substring rule
+ * would call every `aria-labelledby="label"` resolved.)
  */
-export function collectDeclaredIds(source) {
+export function collectIdDeclarations(source) {
 	const literal = new Set();
-	for (const match of source.matchAll(
-		/\bid=(?:"([^"]*)"|'([^']*)'|\{\s*(['"`])([^'"`]*)\3\s*\})/g,
-	)) {
-		literal.add(match[1] ?? match[2] ?? match[4] ?? '');
+	const dynamic = [];
+	const pattern = /\bid=(?:"([^"]*)"|'([^']*)'|\{((?:[^{}]|\{[^{}]*\})*)\})/g;
+	for (const match of source.matchAll(pattern)) {
+		const quoted = match[1] ?? match[2];
+		if (quoted !== undefined) {
+			literal.add(quoted);
+			continue;
+		}
+		const expression = match[3] ?? '';
+		const value = stringLiteralValue(expression);
+		if (value !== null) {
+			literal.add(value);
+			continue;
+		}
+		const fragments = templateFragments(expression);
+		dynamic.push({ fragments, opaque: fragments.length === 0 });
 	}
-	return literal;
+	return { literal, dynamic };
 }
 
-/** Whether `id` is declared by `source`, literally or at runtime. */
-export function idIsDeclared(source, id, declared = collectDeclaredIds(source)) {
-	if (declared.has(id)) return true;
-	// A dynamically built id appears as a literal piece inside a
-	// template: count the occurrences and require more than the
-	// reference itself.
-	const occurrences = source.split(id).length - 1;
-	return occurrences > 1;
+/**
+ * The static pieces of the template literals in an expression.
+ *
+ * `id={`${baseId}-caption`}` yields ["-caption"]: the piece a runtime
+ * id is built around. An expression with no template literal yields
+ * nothing, which makes the declaration OPAQUE — the id cannot be
+ * reasoned about at all.
+ */
+export function templateFragments(expression) {
+	const fragments = [];
+	for (const match of expression.matchAll(/`([^`]*)`/g)) {
+		for (const piece of match[1].split(/\$\{[^{}]*\}/)) {
+			const trimmed = piece.trim();
+			if (trimmed.length >= 3) fragments.push(trimmed);
+		}
+	}
+	return fragments;
+}
+
+/**
+ * Whether `id` is declared by `source`.
+ *
+ * A literal declaration matches exactly. A runtime declaration matches
+ * when its static pieces appear in the reference (the runtime part may
+ * supply the rest), and an opaque runtime declaration (`id={captionId}`)
+ * makes every reference undecidable, so nothing is reported for it.
+ */
+export function idIsDeclared(source, id, declarations = collectIdDeclarations(source)) {
+	if (declarations.literal.has(id)) return true;
+	if (declarations.dynamic.some((entry) => entry.opaque)) return true;
+	return declarations.dynamic.some((entry) => entry.fragments.some((part) => id.includes(part)));
 }
 
 /**
@@ -512,7 +561,7 @@ export function evaluateNameMechanisms(attributes, source, children) {
 		} else if (literal.trim() === '') {
 			labelledby = 'empty';
 		} else {
-			const declared = collectDeclaredIds(source);
+			const declared = collectIdDeclarations(source);
 			const ids = literal.trim().split(/\s+/).filter(Boolean);
 			missingTargets = ids.filter((id) => !idIsDeclared(source, id, declared));
 			labelledby = missingTargets.length === 0 ? 'present' : 'broken';
@@ -569,14 +618,72 @@ export function findButtons(code) {
 }
 
 /**
+ * Whether a button renders any text at all.
+ *
+ * "Renders text" means LITERAL text: a JSX text node or a string
+ * literal expression. A dynamic expression MAY render text, so a
+ * button whose content is `{busy ? '…' : 'enable'}` is not decidable
+ * and is left alone — reporting it would be a false positive on every
+ * button whose label is computed.
+ */
+export function hasRenderedText(children) {
+	return extractText(children, { skipHidden: true }).trim() !== '';
+}
+
+/**
+ * Whether the children contain a dynamic expression that may render
+ * text.
+ */
+export function hasDynamicContent(children) {
+	let i = 0;
+	while (i < children.length) {
+		const char = children[i];
+		if (char === '{') {
+			const end = findClosingBrace(children, i);
+			const expression = children.slice(i + 1, end === -1 ? children.length : end);
+			const trimmed = expression.trim();
+			const isComment = trimmed.startsWith('/*') && trimmed.endsWith('*/');
+			if (!isComment && stringLiteralValue(expression) === null) return true;
+			i = end === -1 ? children.length : end + 1;
+			continue;
+		}
+		if (char === '<') {
+			if (children.startsWith('<!--', i)) {
+				const end = children.indexOf('-->', i);
+				i = end === -1 ? children.length : end + 3;
+				continue;
+			}
+			const end = findTagEnd(children, i);
+			i = end === -1 ? children.length : end + 1;
+			continue;
+		}
+		i += 1;
+	}
+	return false;
+}
+
+/**
+ * Whether a button carries NO text of its own.
+ *
+ * The icon shape is NOT part of this decision: a button that renders
+ * nothing but a component (`<Close />`) is exactly the case the
+ * accessible-name contract is about, and requiring a known icon shape
+ * (`<svg>` / `<img>` / `*Icon`) would let it out of the check. The
+ * icon shape is reported as EVIDENCE, not as a precondition.
+ */
+export function isTextless(children) {
+	if (hasRenderedText(children)) return false;
+	return !hasDynamicContent(children);
+}
+
+/**
  * Whether a button shows nothing but an icon.
  *
- * "Nothing but an icon" means: no text a sighted reader can see (a
- * visually hidden label does not count as visible text) and at least
- * one icon shape inside.
+ * A narrower statement than {@link isTextless}: it also requires an
+ * icon shape, so it can be used as evidence in the report.
  */
 export function isIconOnly(children) {
-	if (extractText(children, { skipHidden: true }).trim() !== '') return false;
+	if (!isTextless(children)) return false;
 	return containsIcon(children);
 }
 
@@ -604,10 +711,11 @@ export function scanViolationsInFile({ relativePath, source }) {
 	};
 
 	for (const button of findButtons(code)) {
-		if (!isIconOnly(button.children)) continue;
+		if (!isTextless(button.children)) continue;
 
 		const mechanisms = evaluateNameMechanisms(button.attributes, code, button.children);
-		const where = `this icon-only button (${describeMechanisms(mechanisms)})`;
+		const shape = containsIcon(button.children) ? 'icon-only' : 'text-less';
+		const where = `this ${shape} button (${describeMechanisms(mechanisms)})`;
 
 		if (mechanisms.labelledby === 'broken') {
 			record(
@@ -672,6 +780,7 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 	const candidates = collectSourceFiles(directory).filter((file) => file.endsWith('.tsx'));
 	const excluded = [];
 	let scanned = 0;
+	let textless = 0;
 	let iconOnly = 0;
 	let named = 0;
 
@@ -686,8 +795,9 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 		const source = readFileSync(file, 'utf8');
 		const code = stripComments(source);
 		for (const button of findButtons(code)) {
-			if (!isIconOnly(button.children)) continue;
-			iconOnly += 1;
+			if (!isTextless(button.children)) continue;
+			textless += 1;
+			if (containsIcon(button.children)) iconOnly += 1;
 			const mechanisms = evaluateNameMechanisms(button.attributes, code, button.children);
 			if (mechanisms.named) named += 1;
 		}
@@ -699,8 +809,9 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 
 	return {
 		filesScanned: scanned,
+		textlessButtons: textless,
 		iconOnlyButtons: iconOnly,
-		namedIconButtons: named,
+		namedTextlessButtons: named,
 		violations,
 		excluded,
 		fixtures,
@@ -709,11 +820,34 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 }
 
 /**
+ * The fixture files the Issue names, as an EXACT set.
+ *
+ * The set is closed on purpose: a fixture that is deleted must fail the
+ * gate, not shrink the coverage the gate claims. A lower bound ("at
+ * least three") would let the repository verify two thirds of the
+ * states and still be green.
+ */
+export const EXPECTED_PASS_FIXTURES = [
+	'aria-label.tsx',
+	'aria-labelledby.tsx',
+	'hidden-label.tsx',
+	'title.tsx',
+];
+
+export const EXPECTED_FAIL_FIXTURES = [
+	'broken-labelledby.tsx',
+	'empty-aria-label.tsx',
+	'empty-title.tsx',
+	'missing-name.tsx',
+];
+
+/**
  * The fixtures, read for real.
  *
  * A `pass/` fixture must break no rule; a `fail/` fixture must break
- * one. The expectation is checked here so the gate cannot pass with
- * fixtures that stopped reproducing the rules.
+ * one; and BOTH sets must be exactly the sets the Issue names. The
+ * expectation is checked here so the gate cannot pass with fixtures
+ * that stopped reproducing the rules.
  */
 export function collectFixtureEvidence(root = join(REPO_ROOT, FIXTURE_ROOT)) {
 	const read = (directory) => {
@@ -737,6 +871,52 @@ export function collectFixtureEvidence(root = join(REPO_ROOT, FIXTURE_ROOT)) {
 
 	const pass = read(join(root, 'pass')).map(scan);
 	const fail = read(join(root, 'fail')).map(scan);
+	const mismatches = [...auditFixtureSets({ pass, fail }), ...auditFixtureRules({ pass, fail })];
+
+	return { root: FIXTURE_ROOT, pass, fail, mismatches };
+}
+
+/**
+ * The set-level expectation: the fixture files must be exactly the
+ * ones the Issue names — none missing, none unexpected (pure).
+ */
+export function auditFixtureSets({ pass, fail }) {
+	const mismatches = [];
+	const check = (found, expected, kind) => {
+		const names = found.map((entry) => entry.file.split('/').pop());
+		for (const name of expected) {
+			if (!names.includes(name)) {
+				mismatches.push({
+					rule: 'fixture-expectation-mismatch',
+					file: `${FIXTURE_ROOT}/${kind}/${name}`,
+					line: null,
+					wcag: null,
+					message: `the ${kind} fixture ${name} is missing; every state the Issue names has to stay reproducible`,
+				});
+			}
+		}
+		for (const name of names) {
+			if (!expected.includes(name)) {
+				mismatches.push({
+					rule: 'fixture-expectation-mismatch',
+					file: `${FIXTURE_ROOT}/${kind}/${name}`,
+					line: null,
+					wcag: null,
+					message: `the ${kind} fixture ${name} is not one the Issue names; the set of states is closed`,
+				});
+			}
+		}
+	};
+	check(pass, EXPECTED_PASS_FIXTURES, 'pass');
+	check(fail, EXPECTED_FAIL_FIXTURES, 'fail');
+	return mismatches;
+}
+
+/**
+ * The per-file expectation: a pass fixture breaks nothing, a fail
+ * fixture breaks at least one rule (pure).
+ */
+export function auditFixtureRules({ pass, fail }) {
 	const mismatches = [];
 	for (const entry of pass) {
 		if (entry.violations.length > 0) {
@@ -761,8 +941,7 @@ export function collectFixtureEvidence(root = join(REPO_ROOT, FIXTURE_ROOT)) {
 			});
 		}
 	}
-
-	return { root: FIXTURE_ROOT, pass, fail, mismatches };
+	return mismatches;
 }
 
 /** The human-readable report, with the two kinds of statement separated. */
@@ -770,7 +949,7 @@ export function renderGateSummary(evidence) {
 	const lines = [];
 	lines.push(`icon-button accessible name gate — Issue ${ISSUE}`);
 	lines.push(
-		`scanned ${evidence.filesScanned} tsx file(s) under src/; ${evidence.iconOnlyButtons} icon-only button(s), ${evidence.namedIconButtons} of them named`,
+		`scanned ${evidence.filesScanned} tsx file(s) under src/; ${evidence.textlessButtons} button(s) without text (${evidence.iconOnlyButtons} of them carry an icon shape), ${evidence.namedTextlessButtons} of them named`,
 	);
 	lines.push('');
 	lines.push('machine-checked:');

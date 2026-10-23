@@ -331,6 +331,21 @@ gates:
       # same evidence is `pnpm run capture:a11y-heading-landmarks`, which is
       # an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:heading-landmarks:check' # heading outline / landmark contract (Issue #398)
+      # Issue #410: the WCAG 2.2 A/AA manual review matrix. The record of
+      # the judgements a machine cannot make (keyboard path, focus order,
+      # zoom, reflow, screen-reader order). The gate decides only whether
+      # the RECORD is intact: every criterion is covered by an item or
+      # excluded with a reason, every item says whether a machine or a
+      # person decides it, every performed review carries a reviewer, a
+      # date, an environment and a result, and no document claims AA
+      # conformance on the strength of an automatic pass. Static data
+      # (quality/wcag-review-matrix.json), pure Node, no binding, no
+      # network. The browser half of the same evidence is
+      # `pnpm run capture:a11y-wcag-review-matrix`, which is an artefact
+      # capture and therefore not a fast gate. It is anchored after the
+      # heading / landmark gate so that a gate which needs the position
+      # right after the colour-contrast gate does not collide with it.
+      - 'pnpm run a11y:wcag-review-matrix:check' # WCAG AA manual review matrix record (Issue #410)
       # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
       # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
       # stylesheet under `src/`, and fails an unknown property / at-rule /
@@ -349,12 +364,41 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #405: the live-region / status-message contract (WCAG 2.2
+      # SC 4.1.3 Status Messages, level AA, and SC 4.1.2 Name, Role,
+      # Value, level A). Every explicit live region in `src/**` must not be
+      # assertive unless it is a `role="alert"`, must not nest inside
+      # another live region, must keep `aria-busy` boolean, and must not
+      # publish the same expression as another region. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the same
+      # evidence is `pnpm run capture:a11y-live-region`, an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:live-region:check' # live region / status message contract (Issue #405)
+      # Issue #395: the focus visibility / focus-not-obscured contract. The
+      # gate reads the shipped source and the shipped stylesheet: a focus
+      # block that removes the indicator and replaces it with nothing
+      # (WCAG 2.2 SC 2.4.7 Focus Visible, AA), a focus block whose
+      # outline cannot be seen, and an author-created overlay that is not
+      # bound to a focus compensation (SC 2.4.11 Focus Not Obscured
+      # (Minimum), AA). A compensation is a CHAIN — the overlay's own file
+      # publishes the offset it occupies and the document consumes it — and
+      # a chain with a missing end is a violation. A native modal dialog
+      # is not an overlay: the user agent makes the rest of the document
+      # inert. Offline, credential-free, status-only. The browser half of
+      # the same evidence is `pnpm run capture:a11y-focus-visible`, an
+      # artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:focus-visible:check' # focus visible / not obscured contract (Issue #395)
       # Issue #408: the prerecorded-video contract (WCAG 2.2 SC 1.2.2
-      # Captions (Prerecorded), level A, SC 1.1.1 Non-text Content, level A,
-      # and SC 2.1.1 Keyboard, level A). A shipped `<video>` must caption its
+      # Captions (Prerecorded), level A, SC 1.2.3 Audio Description or Media
+      # Alternative (Prerecorded), level A, SC 1.2.5 Audio Description
+      # (Prerecorded), level AA, SC 1.1.1 Non-text Content, level A, and
+      # SC 2.1.1 Keyboard, level A). A shipped `<video>` must caption its
       # speech, carry a poster and an accessible name, expose controls, and
       # NOT be presented as playable while its caption source is unverified
       # (`data-caption-status="verified"` is the only proof — fail closed).
+      # Its audio-description decision must be declared too, fail closed:
+      # `provided` with a real `<track kind="descriptions">`, or
+      # `not-required` when a human decided the work needs none.
       # No `<video>` ships yet, so this fixes the contract for the first one.
       # Pure Node text analysis, so it costs a source walk. The browser half
       # of the same evidence is `pnpm run capture:a11y-video-caption`, an

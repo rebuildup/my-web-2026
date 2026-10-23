@@ -438,6 +438,14 @@ export function exclusionFor(relativePath) {
  * The exclusion is per (file, declaration), not per file: a new
  * `white-space: nowrap` in a file that already has one is still a
  * violation.
+ *
+ * The exclusion is also FINITE. An entry names the number of
+ * declarations it allows (`occurrences`), and the allowance is consumed
+ * one declaration at a time. Without that, an entry that happened to
+ * match two declarations would also match every declaration added to
+ * the same file later, and the hole would grow silently. The allowance
+ * is a positive integer; an entry that does not name one allows
+ * exactly one declaration, so an omission can never widen a hole.
  */
 export const SHIPPED_DECLARATION_EXCLUSIONS = [
 	{
@@ -445,6 +453,10 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/editorial/table-code.tsx',
 		property: 'white-space',
 		value: 'nowrap',
+		// Two header cells declare it: the column header cell and the
+		// row header cell. A third one in this file is not a header
+		// cell, so it is a violation.
+		occurrences: 2,
 		reason:
 			'a table header cell / row header is a unit that must not break inside a word; the table lives in a named scroll container, and `a11y:table:code:check` owns that contract',
 	},
@@ -453,6 +465,7 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/editorial/nav/PublicNav.tsx',
 		property: 'white-space',
 		value: 'nowrap',
+		occurrences: 1,
 		reason:
 			'a navigation label is a unit (Issue #300): it may move to the next row as a whole, but it never breaks inside a Japanese word; the labels are short and the nav wraps between items',
 	},
@@ -461,6 +474,7 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/editorial/nav/Breadcrumbs.styles.ts',
 		property: 'white-space',
 		value: 'nowrap',
+		occurrences: 1,
 		reason:
 			'a deliberately truncated project title (overflow: hidden + text-overflow: ellipsis); the truncation is a design decision of the breadcrumb surface, not an unbreakable run',
 	},
@@ -469,6 +483,7 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/keyboard/components/KeyboardDiagram.tsx',
 		property: 'white-space',
 		value: 'nowrap',
+		occurrences: 1,
 		reason:
 			'a key cap label is one short token that must stay on a single line; the cap is a fixed-size box in the keyboard diagram',
 	},
@@ -477,6 +492,7 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/keyboard/components/KeyboardPage.tsx',
 		property: 'white-space',
 		value: 'nowrap',
+		occurrences: 1,
 		reason: 'a key label in the key table is one short token that must stay on a single line',
 	},
 	{
@@ -484,6 +500,7 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/keyboard/components/KeyboardDiagram.tsx',
 		property: 'min-width',
 		value: '710px',
+		occurrences: 1,
 		reason:
 			'the key diagram canvas is wider than the reflow budget on purpose: it lives inside the named ScrollRegion, and that named scroll region is the contract that lets a wide diagram scroll instead of squeezing the page',
 	},
@@ -492,10 +509,102 @@ export const SHIPPED_DECLARATION_EXCLUSIONS = [
 		file: 'src/keyboard/components/KeyboardPage.tsx',
 		property: 'min-width',
 		value: '40rem',
+		occurrences: 1,
 		reason:
 			'the key table is wider than the reflow budget on purpose: it lives inside the named ScrollRegion (`tableWrapStyle`), and that named scroll region is the contract that lets a wide table scroll instead of squeezing the page',
 	},
 ];
+
+/**
+ * How many declarations one exclusion entry allows (pure).
+ *
+ * The allowance is a positive integer. An entry that does not name one
+ * allows exactly one declaration, so an omission can never turn into a
+ * wider hole. A value that is not a positive integer is a mistake in
+ * the exclusion itself, and it is refused rather than guessed.
+ */
+export function allowedOccurrences(entry) {
+	const declared = entry?.occurrences ?? 1;
+	if (!Number.isInteger(declared) || declared < 1) {
+		throw new Error(
+			`the declaration exclusion \`${entry?.id ?? 'unknown'}\` must declare a positive integer \`occurrences\`; it declares ${JSON.stringify(entry?.occurrences)}`,
+		);
+	}
+	return declared;
+}
+
+/**
+ * Apply the declaration exclusions to one file's violations (pure).
+ *
+ * The exclusion entries are finite: an entry allows exactly
+ * `occurrences` declarations, and the allowance is consumed one
+ * declaration at a time. A declaration that no entry has allowance
+ * left for is a violation, and its message names the exclusion that
+ * ran out.
+ *
+ * The result is the excluded rows (one per entry / file / declaration,
+ * with the number of declarations it allowed) and the violations that
+ * survived.
+ */
+export function applyDeclarationExclusions(violations, entries = SHIPPED_DECLARATION_EXCLUSIONS) {
+	const excluded = [];
+	const remaining = [];
+	// How many declarations each exclusion entry has already allowed.
+	const allowanceUsed = new Map();
+	for (const violation of violations ?? []) {
+		const candidates = entries.filter(
+			(entry) =>
+				entry.file === violation.file &&
+				entry.property === violation.property &&
+				normalizeCssValue(entry.value) === violation.value,
+		);
+		// The first candidate with a remaining allowance takes this
+		// declaration; when every candidate is spent, the declaration is
+		// a violation.
+		let allowed = null;
+		for (const candidate of candidates) {
+			const used = allowanceUsed.get(candidate.id) ?? 0;
+			if (used < allowedOccurrences(candidate)) {
+				allowed = candidate;
+				break;
+			}
+		}
+		if (allowed) {
+			const used = (allowanceUsed.get(allowed.id) ?? 0) + 1;
+			allowanceUsed.set(allowed.id, used);
+			const allowance = allowedOccurrences(allowed);
+			const key = `${allowed.id}|${violation.file}|${violation.property}: ${violation.value}`;
+			const row = excluded.find((entry) => entry.key === key);
+			if (row) {
+				row.occurrences = used;
+			} else {
+				excluded.push({
+					key,
+					file: violation.file,
+					id: allowed.id,
+					declaration: `${violation.property}: ${violation.value}`,
+					occurrences: used,
+					allowed: allowance,
+					reason: allowed.reason,
+				});
+			}
+			continue;
+		}
+		// The allowance is spent. The declaration is a violation, and the
+		// message says which exclusion ran out of allowance.
+		const spent = candidates[0];
+		remaining.push(
+			spent
+				? {
+						...violation,
+						exhaustedExclusion: { id: spent.id, allowed: allowedOccurrences(spent) },
+						message: `${violation.message}; the declaration exclusion \`${spent.id}\` for ${violation.file} (${violation.property}: ${violation.value}) allows ${allowedOccurrences(spent)} occurrence(s), and this declaration is one too many`,
+					}
+				: violation,
+		);
+	}
+	return { excluded, violations: remaining };
+}
 
 /**
  * Every style declaration the shipped scan reads (pure).
@@ -631,8 +740,9 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 		throw new Error(`cannot scan the repository: ${SHIPPED_SCAN_ROOT} is not a directory`);
 	}
 	// One row per (file, declaration) exclusion, with the number of
-	// occurrences: the same declaration may appear more than once in a
-	// file, and the report must not print the same hole twice.
+	// occurrences the entry allowed: the same declaration may appear
+	// more than once in a file, and the report must not print the same
+	// hole twice.
 	const declarationExclusions = new Map();
 	for (const file of collectShippedFiles(scanRoot)) {
 		const relativePath = toRepoPath(file, repoRoot);
@@ -647,31 +757,14 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 			source: readFileSync(file, 'utf8'),
 		});
 		undecidable.push(...result.undecidable);
-		for (const violation of result.violations) {
-			const allowed = SHIPPED_DECLARATION_EXCLUSIONS.find(
-				(entry) =>
-					entry.file === relativePath &&
-					entry.property === violation.property &&
-					entry.value === violation.value,
-			);
-			if (allowed) {
-				const key = `${allowed.id}|${relativePath}|${violation.property}: ${violation.value}`;
-				const row = declarationExclusions.get(key);
-				if (row) {
-					row.occurrences += 1;
-				} else {
-					declarationExclusions.set(key, {
-						file: relativePath,
-						id: allowed.id,
-						declaration: `${violation.property}: ${violation.value}`,
-						occurrences: 1,
-						reason: allowed.reason,
-					});
-				}
-				continue;
-			}
-			violations.push(violation);
+		// The declaration exclusions are finite: an entry allows a
+		// declared number of declarations, and a declaration beyond that
+		// allowance is a violation.
+		const applied = applyDeclarationExclusions(result.violations);
+		for (const row of applied.excluded) {
+			declarationExclusions.set(row.key, row);
 		}
+		violations.push(...applied.violations);
 	}
 	excluded.push(...declarationExclusions.values());
 	return { filesScanned, violations, excluded, undecidable };
@@ -1088,8 +1181,10 @@ export function renderGateSummary(evidence) {
 		}
 		for (const entry of evidence.shipped.excluded) {
 			if (!entry.declaration) continue;
-			const occurrences = entry.occurrences > 1 ? ` ×${entry.occurrences}` : '';
-			lines.push(`  - ${entry.file} (${entry.declaration}${occurrences}): ${entry.reason}`);
+			const allowed = entry.allowed ?? entry.occurrences;
+			lines.push(
+				`  - ${entry.file} (${entry.declaration} ×${entry.occurrences} / allowed ${allowed}): ${entry.reason}`,
+			);
 		}
 		for (const entry of undecidable) {
 			lines.push(

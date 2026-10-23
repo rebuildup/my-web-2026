@@ -30,6 +30,8 @@ import {
 	SHIPPED_DECLARATION_EXCLUSIONS,
 	SHIPPED_SCAN_ROOT,
 	UNBREAKABLE_KINDS,
+	allowedOccurrences,
+	applyDeclarationExclusions,
 	auditFixtureFiles,
 	auditShippedSource,
 	breakDeclarationsIn,
@@ -405,6 +407,91 @@ test('every exclusion carries a reason', () => {
 		assert.ok(exclusion.property.length > 0);
 		assert.ok(exclusion.value.length > 0);
 		assert.ok(exclusion.reason.length > 20, `${exclusion.id} must explain itself`);
+	}
+});
+
+test('every declaration exclusion declares how many declarations it allows', () => {
+	for (const exclusion of SHIPPED_DECLARATION_EXCLUSIONS) {
+		assert.ok(
+			Number.isInteger(exclusion.occurrences) && exclusion.occurrences >= 1,
+			`${exclusion.id} must declare a positive integer \`occurrences\``,
+		);
+	}
+	// An entry that does not name an allowance allows exactly one
+	// declaration, so an omission can never widen a hole.
+	assert.equal(allowedOccurrences({ id: 'probe' }), 1);
+	assert.equal(allowedOccurrences({ id: 'probe', occurrences: 3 }), 3);
+	assert.throws(() => allowedOccurrences({ id: 'probe', occurrences: 0 }), /positive integer/);
+	assert.throws(() => allowedOccurrences({ id: 'probe', occurrences: 1.5 }), /positive integer/);
+});
+
+test('a declaration exclusion allows exactly the declarations it declares', () => {
+	const entries = [
+		{
+			id: 'probe-allowance',
+			file: 'src/probe.tsx',
+			property: 'white-space',
+			value: 'nowrap',
+			occurrences: 2,
+			reason: 'the probe allows two declarations and no more',
+		},
+	];
+	const violation = (line) => ({
+		rule: 'shipped-nowrap',
+		file: 'src/probe.tsx',
+		line,
+		wcag: '1.4.10',
+		property: 'white-space',
+		value: 'nowrap',
+		message: 'the shipped surface forbids wrapping',
+	});
+
+	// Up to the allowance, the declarations are excluded.
+	const within = applyDeclarationExclusions([violation(1), violation(2)], entries);
+
+	assert.deepEqual(within.violations, [], 'the two allowed declarations are excluded');
+	assert.equal(within.excluded.length, 1);
+	assert.equal(within.excluded[0].occurrences, 2);
+	assert.equal(within.excluded[0].allowed, 2);
+	assert.equal(within.excluded[0].id, 'probe-allowance');
+
+	// One declaration beyond the allowance is a violation again.
+	const beyond = applyDeclarationExclusions([violation(1), violation(2), violation(3)], entries);
+
+	assert.equal(beyond.violations.length, 1, 'the third declaration is a violation');
+	assert.equal(beyond.violations[0].rule, 'shipped-nowrap');
+	assert.equal(beyond.violations[0].line, 3);
+	assert.equal(beyond.violations[0].exhaustedExclusion.id, 'probe-allowance');
+	assert.equal(beyond.violations[0].exhaustedExclusion.allowed, 2);
+	assert.match(beyond.violations[0].message, /allows 2 occurrence\(s\)/);
+	assert.match(beyond.violations[0].message, /one too many/);
+});
+
+test('the exclusion report shows the allowance and the reason', () => {
+	const shipped = auditShippedSource();
+
+	for (const entry of shipped.excluded) {
+		if (!entry.declaration) continue;
+		assert.ok(entry.reason.length > 20, `${entry.file} must be excluded with a reason`);
+		assert.ok(
+			Number.isInteger(entry.allowed) && entry.allowed >= 1,
+			`${entry.file} must report the allowance it consumed`,
+		);
+		assert.ok(entry.occurrences <= entry.allowed, 'the exclusion never exceeds its allowance');
+	}
+	const report = renderGateSummary(collectEvidence());
+
+	assert.match(report, /out of scope/);
+	assert.match(
+		report,
+		/src\/editorial\/table-code\.tsx \(white-space: nowrap ×2 \/ allowed 2\)/,
+		'the report prints the used and the allowed count',
+	);
+	for (const exclusion of SHIPPED_DECLARATION_EXCLUSIONS) {
+		assert.ok(
+			report.includes(exclusion.reason),
+			`${exclusion.id} must appear in the report with its reason`,
+		);
 	}
 });
 

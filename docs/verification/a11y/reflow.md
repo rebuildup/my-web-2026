@@ -24,7 +24,7 @@
 | --- | --- |
 | 画像・グラデーション内の文字 | 背景画像との合成問題であり、テキストの折り返し契約ではない |
 | flex / grid 子要素の `min-width: 0` | 面ごとの設計判断であり、継承する body の floor では決まらない（下記「既知の制約」） |
-| `white-space: nowrap` を使う正当な UI（nav ラベル等） | 折り返し不要が意図された短いラベル。**理由付きで `SHIPPED_DECLARATION_EXCLUSIONS` に宣言した宣言だけ**を除外する（下記「誤検知時の対処」） |
+| `white-space: nowrap` を使う正当な UI（nav ラベル等） | 折り返し不要が意図された短いラベル。**理由と許容回数つきで `SHIPPED_DECLARATION_EXCLUSIONS` に宣言した宣言だけ**を除外する（下記「誤検知時の対処」） |
 | `*.test.ts(x)` / `*.stories.tsx` / `src/routes/design-system/**` | 出荷页面ではない（テスト・preview ハーネス・内部ギャラリー）。除外の理由は gate の出力に件数つきで出る |
 | `/` と `/portfolio/my-web-2026` 以外の route | 出荷 route の網羅は別 Issue の責務。本 Issue は Home と Article 形の代表 route を測る（下記「既知の制約」） |
 | 実機（物理デバイス）のテキストのみズーム | 機械では再現できない。人は人が評価する |
@@ -104,6 +104,7 @@ capture の case 表と fixture roster の一致は
 | `reflow-wrap-floor-missing` | 出荷する `:where(body)` に破断境界がある | コメント除去後の CSS 走査（`scripts/check-a11y-reflow.mjs`） |
 | `shipped-nowrap` | 出荷コード（`src/**`）が `white-space: nowrap` / `pre` を宣言していない | 同上（`src/**` の .tsx / .ts / .css を走査） |
 | `shipped-fixed-width` | 出荷コードが 320 px 超の `width` / `min-width`（`px` / `rem`）を宣言していない | 同上 |
+| 出荷宣言の除外 | 除外エントリが宣言した許容回数 (`occurrences`) の範囲内でだけ宣言が除外される。許容回数を使い切ると同値宣言は違反に戻る | 同上（除外は回数単位。gate の出力に使用数 / 許容数が出る） |
 | `reflow-specimen-without-break` | 改行不能な specimen に破断境界がある | 同上 |
 | `reflow-specimen-fixed-width` | specimen が 320 px 超の固定幅を持たない | 同上 |
 | `reflow-specimen-nowrap` | 改行不能な specimen が折り返しを禁じていない | 同上 |
@@ -166,19 +167,28 @@ capture script が `.png` を拒否する規約のため）。
    （`a11y:table:code:check` の scroll container）に属する。
 4. **出荷コードの `white-space: nowrap` / 固定幅が意図的なら、除外を宣言する。**
    `scripts/check-a11y-reflow.mjs` の `SHIPPED_DECLARATION_EXCLUSIONS` に
-   **1 件 = (file, declaration, reason)** を書く。理由はコードの中に残す
+   **1 件 = (file, declaration, reason, occurrences)** を書く。理由はコードの中に残す
    （理由をコードに書かないと、次の編集者が理由を知らずに緩める）。
-   除外は宣言単位なので、同じファイルに別の `nowrap` を足したら
-   それは違反のまま残る。現在の除外は次の 6 件:
+   除外は **宣言単位かつ回数単位** である。`occurrences` はその除外が
+   **許容する宣言の出現回数**で、既定は **1**（省略しても緩くならない）。
+   照合は (file, property, value) で行うが、許容回数は 1 宣言ごとに消費され、
+   **使い切ったらそれ以降の同値宣言は違反として残る**。
+   したがって「同じファイルに別の `nowrap` を足しても、許容回数を使い切って
+   いればそれは違反のまま残る」。
+   現在の除外は次の 7 件（`occurrences` = 許容回数）:
 
-   | file | declaration | 理由の要約 |
-   | --- | --- | --- |
-   | `src/editorial/table-code.tsx` | `white-space: nowrap` | テーブル見出しセルは「ひとまとまり」の語。表は名前付き scroll container の中にあり、その契約は `a11y:table:code:check` が持つ |
-   | `src/editorial/nav/PublicNav.tsx` | `white-space: nowrap` | nav ラベルは単位（Issue #300）。行ごとには移れるが、語を割らない |
-   | `src/editorial/nav/Breadcrumbs.styles.ts` | `white-space: nowrap` | 意図的に省略するタイトル（`overflow: hidden` + `text-overflow: ellipsis`） |
-   | `src/keyboard/components/KeyboardDiagram.tsx` | `white-space: nowrap` | キーキャップのラベルは 1 つの短いトークン |
-   | `src/keyboard/components/KeyboardPage.tsx` | `white-space: nowrap` | キー表のラベルは 1 つの短いトークン |
-   | `src/keyboard/components/KeyboardDiagram.tsx` | `min-width: 710px` | 図のキャンバスは意図的に広い。名前付き `ScrollRegion` の中でスクロールする契約がある |
+   | file | declaration | 許容回数 | 理由の要約 |
+   | --- | --- | --- | --- |
+   | `src/editorial/table-code.tsx` | `white-space: nowrap` | 2 | テーブル見出しセルは「ひとまとまり」の語。列見出しセルと行見出しセルの **2 箇所** だけ。表は名前付き scroll container の中にあり、その契約は `a11y:table:code:check` が持つ |
+   | `src/editorial/nav/PublicNav.tsx` | `white-space: nowrap` | 1 | nav ラベルは単位（Issue #300）。行ごとには移れるが、語を割らない |
+   | `src/editorial/nav/Breadcrumbs.styles.ts` | `white-space: nowrap` | 1 | 意図的に省略するタイトル（`overflow: hidden` + `text-overflow: ellipsis`） |
+   | `src/keyboard/components/KeyboardDiagram.tsx` | `white-space: nowrap` | 1 | キーキャップのラベルは 1 つの短いトークン |
+   | `src/keyboard/components/KeyboardPage.tsx` | `white-space: nowrap` | 1 | キー表のラベルは 1 つの短いトークン |
+   | `src/keyboard/components/KeyboardDiagram.tsx` | `min-width: 710px` | 1 | 図のキャンバスは意図的に広い。名前付き `ScrollRegion` の中でスクロールする契約がある |
+   | `src/keyboard/components/KeyboardPage.tsx` | `min-width: 40rem` | 1 | キー表は意図的に広い。名前付き `ScrollRegion`（`tableWrapStyle`）の中でスクロールする契約がある |
+
+   gate の出力には **使用数と許容数** が出るので、緑でも穴の広さが読める
+   （例: `src/editorial/table-code.tsx (white-space: nowrap ×2 / allowed 2)`）。
 
 5. いずれも該当しない場合は **owner へ判断を仰ぐ**。
 
@@ -199,6 +209,13 @@ capture script が `.png` を拒否する規約のため）。
   **換算せず、判定不能として out-of-scope の節に出す**（黙って無視しない）。
   `flex` / `grid` の `min-width: auto`、`position: absolute` の要素、
   実行時に決まる幅などは **この gate は見ていない**。
+- **除外の許容回数は、人が宣言した数字である。**
+  gate は `SHIPPED_DECLARATION_EXCLUSIONS` の `occurrences`（既定 1）を
+  **そのまま信頼する**。値を大きくすれば除外の穴は広がるが、gate 自身はその
+  数字の妥当性を検証しない（宣言の根拠はコードと reason に残すのが責任）。
+  したがって「除外した分だけ安全」という保証はない。ただし
+  **緑でも除外行が必ず出力される**（使用数 / 許容数つき）ので、
+  穴の広がりは読む人が検出できる。
 - **「実画面」を測るのは capture の 出荷 route 測定で、対象は 2 route だけ。**
   測るのは `/`（Home）と `/portfolio/my-web-2026`（Article 形の長文ページ）で、
   指標は `documentElement.scrollWidth <= documentElement.clientWidth`

@@ -133,10 +133,7 @@ test('the capture refuses any artefact path that is not WebP inside the repo', (
 		() => assertWebpOutputPath('docs/verification/a11y/keyboard-navigation.png'),
 		/non-WebP/,
 	);
-	assert.throws(
-		() => assertWebpOutputPath('../outside.webp'),
-		/outside the repository/,
-	);
+	assert.throws(() => assertWebpOutputPath('../outside.webp'), /outside the repository/);
 	assert.equal(
 		assertWebpOutputPath('docs/verification/a11y/keyboard-navigation.webp'),
 		'docs/verification/a11y/keyboard-navigation.webp',

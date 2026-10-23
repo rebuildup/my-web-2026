@@ -331,6 +331,21 @@ gates:
       # same evidence is `pnpm run capture:a11y-heading-landmarks`, which is
       # an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:heading-landmarks:check' # heading outline / landmark contract (Issue #398)
+      # Issue #410: the WCAG 2.2 A/AA manual review matrix. The record of
+      # the judgements a machine cannot make (keyboard path, focus order,
+      # zoom, reflow, screen-reader order). The gate decides only whether
+      # the RECORD is intact: every criterion is covered by an item or
+      # excluded with a reason, every item says whether a machine or a
+      # person decides it, every performed review carries a reviewer, a
+      # date, an environment and a result, and no document claims AA
+      # conformance on the strength of an automatic pass. Static data
+      # (quality/wcag-review-matrix.json), pure Node, no binding, no
+      # network. The browser half of the same evidence is
+      # `pnpm run capture:a11y-wcag-review-matrix`, which is an artefact
+      # capture and therefore not a fast gate. It is anchored after the
+      # heading / landmark gate so that a gate which needs the position
+      # right after the colour-contrast gate does not collide with it.
+      - 'pnpm run a11y:wcag-review-matrix:check' # WCAG AA manual review matrix record (Issue #410)
       # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
       # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
       # stylesheet under `src/`, and fails an unknown property / at-rule /

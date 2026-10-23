@@ -304,14 +304,56 @@ export function closesPanelOnEscape(code) {
 }
 
 /**
+ * The source position of the call that closes the panel (pure), or -1.
+ *
+ * The hand-back has to happen AFTER the panel is hidden; a focus call
+ * that sits before the close cannot survive the update that hides the
+ * panel (the browser drops the focus to the body when the hidden
+ * subtree still held it).
+ */
+export function panelCloseIndex(code) {
+	const match = /set[A-Za-z0-9_]*(?:Open|Visible|Expanded|Shown)\s*\(\s*false\s*\)/.exec(code);
+	return match ? match.index : -1;
+}
+
+/**
+ * The ref that the disclosure TRIGGER holds (pure), or null.
+ *
+ * The trigger is the element that carries `aria-expanded`; the ref bound
+ * to it is how the file can put the focus back on it.
+ */
+export function triggerRefName(code) {
+	for (const tag of code.match(/<[a-z][^>]*>/g) ?? []) {
+		if (!/aria-expanded\s*=/.test(tag)) continue;
+		const ref = /ref\s*=\s*\{\s*([A-Za-z0-9_$]+)\s*\}/.exec(tag);
+		if (ref) return ref[1];
+	}
+	return null;
+}
+
+/**
  * Whether the file declares a focus hand-back (pure).
  *
- * Any `.focus()` call counts: the contract is that the file can put the
- * focus somewhere after the panel is hidden, and WHICH element it picks
- * is the file's own decision.
+ * The hand-back is a `.focus()` call that targets THE TRIGGER — the
+ * element that carries `aria-expanded` — found through the ref the
+ * trigger holds (`triggerRef.current?.focus()`). Matching the trigger
+ * and not "some `.focus()` call" is what makes the check meaningful: an
+ * unrelated focus call in the same file would otherwise pass a menu that
+ * strands the focus on the document body.
+ *
+ * When the trigger holds no ref (a file that finds the trigger another
+ * way), the fallback is a `.focus()` call that sits AFTER the call that
+ * closes the panel, which is the order the hand-back needs to have.
  */
 export function declaresFocusHandBack(code) {
-	return /\.focus\s*\(/.test(code);
+	const ref = triggerRefName(code);
+	if (ref) {
+		const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		return new RegExp(`${escaped}\\s*\\.current\\s*\\??\\.\\s*focus\\s*\\(`).test(code);
+	}
+	const closeIndex = panelCloseIndex(code);
+	if (closeIndex === -1) return /\.focus\s*\(/.test(code);
+	return [...code.matchAll(/\.focus\s*\(/g)].some((match) => match.index > closeIndex);
 }
 
 /**

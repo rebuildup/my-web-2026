@@ -240,6 +240,44 @@ test('a panel that is not a disclosure menu is not read as one', () => {
 	assert.equal(declaresFocusHandBack('setMenuOpen(false);'), false);
 });
 
+test('an unrelated focus call is not read as a focus hand-back', () => {
+	// The file focuses something else — not the trigger — before the panel
+	// is closed. That focus is taken away again when the panel is hidden,
+	// so it is not a hand-back.
+	const unrelated = [
+		'const first = () => {',
+		'\tsomeInput.current?.focus();',
+		'};',
+		'const onKeyDown = (event) => {',
+		"\tif (event.key === 'Escape') {",
+		'\t\tsetMenuOpen(false);',
+		'\t}',
+		'};',
+		'export const A = () => (',
+		'\t<button ref={triggerRef} type="button" aria-expanded={menuOpen}>Menu</button>',
+		'\t<div id="menu" hidden={!menuOpen}>x</div>',
+		');',
+	].join('\n');
+
+	assert.equal(declaresFocusHandBack(unrelated), false);
+
+	// The same file focusing the TRIGGER is a hand-back.
+	const ordered = [
+		'const onKeyDown = (event) => {',
+		"\tif (event.key === 'Escape') {",
+		'\t\tsetMenuOpen(false);',
+		'\t\ttriggerRef.current?.focus();',
+		'\t}',
+		'};',
+		'export const A = () => (',
+		'\t<button ref={triggerRef} type="button" aria-expanded={menuOpen}>Menu</button>',
+		'\t<div id="menu" hidden={!menuOpen}>x</div>',
+		');',
+	].join('\n');
+
+	assert.equal(declaresFocusHandBack(ordered), true);
+});
+
 test('the shipped repository ships one disclosure menu with a focus hand-back', () => {
 	const evidence = collectEvidence();
 

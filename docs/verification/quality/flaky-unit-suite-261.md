@@ -69,7 +69,8 @@ warm-up を 1 回だけ行います。cold start は hook 予算（vitest 既定
   計算します。`SELF` は `cloudflare:test` の export なので、**`SELF` を import する
   file だけが worker request を発行できます**。したがって「file 自身の import 文を
   直接読む」走査で正確に決まります（pool 接続の走査が import graph を歩くのと
-  対照的）。現状 **49 file** が対象です。
+  対照的）。現状 **50 file** が対象です（cold review 対応で
+  `test/integration/vitest-outbound-policy.test.ts` を追加したため 1 file 増えています）。
 - 対象集合は `test.env[WORKERD_WARMUP_TEST_FILES]` で setup file に渡され、
   `scripts/_vitest-setup-needs.mjs` の `needsWarmup()` が判定します。判定不能な
   入力（env 変数の欠落 / 壊れた JSON / 配列でない / 自分の path が不明）は

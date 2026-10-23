@@ -154,6 +154,10 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #401: the tap / click target size contract. It runs right
+	// after the colour-contrast contract, so the two accessibility
+	// findings a reader has to judge together are read together.
+	'pnpm run a11y:target-size:check',
 	// Issue #405: the live-region / status-message contract, declared in
 	// `quality/profile.yaml` right after the contrast gate.
 	'pnpm run a11y:live-region:check',

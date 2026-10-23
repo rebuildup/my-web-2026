@@ -15,7 +15,33 @@
 | `heading-landmarks.webp` | #398 | the heading outline / landmark contract on one screen: a conforming page (one `main`, one `h1`, contiguous levels) next to a violating one (two `h1`, a skipped level, no `main`), with the per-page verdict of the source gate and the declared rule exemptions printed beside it. `heading-landmarks.md` is the write-up |
 | `keyboard-navigation.webp` | #394 | the keyboard-only navigation contract on one screen: the home page with the focus ring on the skip link (the first Tab stop), the recorded Tab order, and the measured focus hand-backs (the mobile menu on `Escape`, the picker dialog's focus trap and its `Escape` hand-back) printed beside it. `keyboard-navigation.md` is the write-up |
 | `live-region-state.webp` | #405 | the shipped live-region contract driven through idle / pending / success / settled / failure / empty / 320 px in one Chromium: the status region's `role`, `aria-live`, `aria-atomic` and `aria-busy` read at every step, with the mutation count proving one announcement per result and no re-announce. `live-region.md` is the write-up |
+| `tap-target-overlay.webp` | #401 | the tap / click target size contract on one screen: the repository's own target-size fixtures (four conforming specimens, three violating ones) and the three shipped surfaces the Issue names (the reaction picker, the nav, the facet filter), each target carrying the 24 × 24 CSS px minimum drawn over its hit box (green = meets it, red = misses it), with the measured size of every target printed beside it. `target-size.md` is the write-up |
 | `wcag-review-matrix.webp` | #410 | the manual-review record for the WCAG 2.2 A/AA criteria a machine cannot decide, with the shipped form-state gallery on one screen, the failure panel's Chromium accessibility snapshot, and the gate's own report (machine-checked rows / outstanding rows / excluded criteria / scope decisions) printed above them. `wcag-review-matrix.md` is the write-up |
+
+## Tap and click target size (Issue #401)
+
+`tap-target-overlay.webp` is the committed screenshot of
+`docs/verification/a11y/tap-target-overlay.png` with the `.webp`
+extension (the repository's rule is that a verification artefact is
+WebP; Issue #401 names a `.png` path — see "WebP, not PNG" below).
+
+The criterion is WCAG 2.2 **SC 2.5.8 Target Size (Minimum), level AA**:
+a pointer target is at least 24 × 24 CSS px, unless it falls under one
+of the four exceptions the criterion names. The Issue is decided in two
+halves, because the two halves can only say half of it:
+
+| half | entry point | decides |
+| --- | --- | --- |
+| static | `pnpm run a11y:target-size:check` | the size a target **declares**, the validity of a declared exception, and whether a drag gesture has a click (or keyboard) alternative |
+| measured | `pnpm run capture:a11y-target-size` | the **rendered** box in Chromium, and the exceptions the source cannot settle (the inline and the spacing exception) |
+
+The scope is the three surfaces Issue #401 names — the reaction picker,
+the nav, the facet filter. Everything else under `src/**` is excluded
+**with its reason printed**, never silently skipped. The exceptions are
+never ignored in silence either: `inline` and `spacing` are decided by
+measurement, `user-agent control` and `essential` have to be declared
+with a reason (`SHIPPED_EXCEPTIONS`, empty today and printed as such).
+
 
 ## WCAG AA manual review matrix (Issue #410)
 

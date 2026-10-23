@@ -162,7 +162,7 @@ spacing 例外を「宣言だから通す」のではなく、幾何で検算し
 
 ## 検証画像
 
-`docs/verification/a11y/tap-target-overlay.webp`（1600 × 1708 px、198 kB）。
+`docs/verification/a11y/tap-target-overlay.webp`（1600 × 1708 px、199 kB）。
 
 - 上段: fixture 標本（正常 4 つ、違反 3 つ）。各対象に**最小値 24 px の
   円**（破線）と対象の外接矩形（緑 = 適合、赤 = 違反）を重ねている。

@@ -105,12 +105,18 @@ test('an <dialog> opened with showModal() and no close path is a keyboard trap',
 	assert.equal(violations[0].wcag, '2.1.2');
 });
 
-test('an Escape handler counts as a close path', () => {
-	assert.equal(hasClosePath("if (event.key !== 'Escape') return;"), true);
+test('a close path is a way to close the dialog element itself', () => {
+	// The dialog element's own close method.
 	assert.equal(hasClosePath('dialog.close();'), true);
-	assert.equal(hasClosePath('<dialog onClose={close}>'), true);
+	assert.equal(hasClosePath('dialogRef.current?.close();'), true);
+	// The `cancel` handler: the user agent fires it before it closes.
 	assert.equal(hasClosePath('<dialog onCancel={close}>'), true);
 	assert.equal(hasClosePath('addEventListener("cancel", close)'), true);
+	// An `onClose` handler reacts to the close EVENT — it fires after the
+	// dialog is closed and cannot close it, and a bare `Escape` string
+	// says nothing about whether the dialog is closed.
+	assert.equal(hasClosePath('<dialog onClose={close}>'), false);
+	assert.equal(hasClosePath("if (event.key !== 'Escape') return;"), false);
 	assert.equal(hasClosePath('const open = (d) => d?.showModal();'), false);
 });
 

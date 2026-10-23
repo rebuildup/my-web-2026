@@ -258,11 +258,15 @@ export function hasNonModalShowCall(code) {
  * the keyboard.
  */
 export function hasClosePath(code) {
+	// The dialog element's OWN close method (`dialog.close()`). This is
+	// the path the shipped picker uses: the `Escape` handler prevents the
+	// user agent's default and lets the state change drive `close()`.
 	if (/\.close\s*\(/.test(code)) return true;
-	if (/\bonClose\s*=/.test(code)) return true;
+	// The `cancel` handler: the user agent fires `cancel` BEFORE it
+	// closes the dialog, so a handler that closes the dialog is a close
+	// path.
 	if (/\bonCancel\s*=/.test(code)) return true;
-	if (/addEventListener\(\s*['"](?:close|cancel)['"]/.test(code)) return true;
-	if (/['"]Escape['"]/.test(code)) return true;
+	if (/addEventListener\(\s*['"]cancel['"]/.test(code)) return true;
 	return false;
 }
 
@@ -423,7 +427,7 @@ export function scanSource({ relativePath, source }) {
 				line: tag.line,
 				wcag: '2.1.2',
 				message:
-					'this `<dialog>` is opened with `showModal()` but the file declares no close path (`close()`, `onClose`, `onCancel`, a `cancel`/`close` listener or an `Escape` handler); a modal with no way out is a keyboard trap (SC 2.1.2)',
+					'this `<dialog>` is opened with `showModal()` but the file declares no close path (`dialog.close()`, an `onCancel` handler or a `cancel` listener); a modal with no way out is a keyboard trap (SC 2.1.2)',
 			});
 		}
 	}

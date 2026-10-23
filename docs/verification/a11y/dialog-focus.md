@@ -20,7 +20,7 @@
 | `role="dialog"` / `aria-modal` | 0 件 | 対象（rule はあるが、出荷コードに該当なし） |
 | popover（`popover` 属性） | 0 件 | 対象外（実在しない） |
 | menu ボタン（`aria-haspopup` / `role="menu"`） | 0 件 | 対象外（実在しない） |
-| 開閉メニュー（`aria-expanded` + `aria-controls`） | `src/editorial/nav/PublicNav.tsx` の mobile menu（disclosure） | **対象（静的 gate のみ）**。gate が列挙し、`Escape` で閉じる menu に focus hand-back が無いと違反にする。**browser 実測はしない**（runtime の実測は Issue #394 の `e2e/a11y/keyboard-navigation.spec.ts` が既に担っている） |
+| 開閉メニュー（`aria-expanded` の trigger ＋ `hidden` の panel） | `src/editorial/nav/PublicNav.tsx` の mobile menu（disclosure） | **対象（静的 gate のみ）**。gate が列挙し、`Escape` で閉じる menu に focus hand-back が無いと違反にする。**browser 実測はしない**（runtime の実測は Issue #394 の `e2e/a11y/keyboard-navigation.spec.ts` が既に担っている） |
 
 「実在しないもの」は作らない。fixture は **既存 primitive の組み合わせ**で
 状態を再現する申し立てであり、出荷 component をコピーしない。
@@ -59,7 +59,7 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | 対象 | 範囲 | 備考 |
 | --- | --- | --- |
 | `src/**/*.{ts,tsx}` | 出荷する JSX / TS のすべて | ネイティブ `<dialog>` と custom modal の宣言を読む |
-| ネイティブ `<dialog>` | `open` 属性 / `showModal()` / close 経路 | 契約は「`showModal()` で開き、閉じる経路がある」 |
+| ネイティブ `<dialog>` | `open` 属性 / `showModal()` / close 経路 | 契約は「`showModal()` で開き、**ダイアログ自身を閉じられる**（`dialog.close()` / `onCancel` / `cancel` listener）」 |
 | custom modal | `role="dialog"` / `aria-modal="true"`（`<dialog>` 以外の要素） | 契約は「`document.activeElement` を保存し `.focus()` で戻す」 |
 | 開閉メニュー（disclosure） | `aria-expanded` の trigger ＋ `hidden` の panel を持ち、`Escape` で閉じるもの | 契約は「閉じたあとに trigger へ focus を戻す」 |
 
@@ -89,9 +89,9 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | rule | 意味 | 判定 |
 | --- | --- | --- |
 | `dialog-non-modal-open` | ネイティブ `<dialog>` を `open` 属性 / `show()` で開いている（UA の focus trap も focus 復帰も無い） | 違反 |
-| `dialog-close-path-missing` | `showModal()` で開く modal に閉じる経路（`close()` / `onClose` / `onCancel` / `cancel`・`close` listener / key handler）が無い | 違反 |
+| `dialog-close-path-missing` | `showModal()` で開く modal に、**ダイアログ自身を閉じる手段**が無い（`dialog.close()` / `onCancel` / `cancel` listener が無い）。`onClose` は **閉じた後の `close` イベント**の handler であり、閉じ手段には数えない | 違反 |
 | `custom-dialog-focus-return-missing` | custom modal（`role="dialog"` / `aria-modal`）に focus-return 契約（`document.activeElement` の保存 + `.focus()`）が無い | 違反 |
-| `menu-focus-return-missing` | 開閉メニュー（disclosure）が `Escape` で閉じるのに、閉じたあとに trigger へ focus を戻す宣言が無い。panel が `hidden` になると focused element が accessibility tree から消え、focus が body に落ちる（SC 2.4.3 / SC 2.1.2） | 違反 |
+| `menu-focus-return-missing` | 開閉メニュー（disclosure）が `Escape` で閉じるのに、閉じたあとに trigger へ focus を戻す宣言が無い。panel が `hidden` になると focused element が accessibility tree から消え、focus が body に落ちる（SC 2.4.3 / SC 2.1.2）。宣言の読み方: **`aria-expanded` を持つ trigger が保持する ref に対して `.focus()` を呼んでいること**（同じファイルの無関係な `.focus()` は hand-back として数えない） | 違反 |
 | `fixture-pass-no-case` / `fixture-pass-violation` / `fixture-fail-not-detected` / `fixture-fail-unexpected` / `fixture-file-missing` / `fixture-file-unexpected` | fixture の目録と実体・期待の整合 | 違反（gate 自身の整合性） |
 
 ## fixture
@@ -161,7 +161,7 @@ capture は **同じ測定を 2 回** 走らせる:
 | --- | --- | --- |
 | A | `src/home/reactions/widget.tsx` の `dialog.showModal()` を `dialog.show()` に置き換え（非 modal にする） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-non-modal-open`）。`pnpm run capture:a11y-dialog-focus` も **exit 1**（`:modal` が false / 背景が inert でない / `Escape` で閉じない / focus が戻らない）で成果物を書かない |
 | B | `fail` fixture の期待 rule を 1 つ減らす | gate が **exit 1**（`fixture-fail-not-detected`） |
-| C | `src/home/reactions/widget.tsx` の `dialog.close()` と `onClose` を消す（閉じる経路を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-close-path-missing`） |
+| C | `src/home/reactions/widget.tsx` の `dialog.close()` を消す（ダイアログを閉じる手段を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-close-path-missing`） |
 | D | `src/editorial/nav/PublicNav.tsx` の `Escape` ハンドラから trigger への `.focus()` を外す（menu の focus hand-back を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`menu-focus-return-missing`） |
 
 注入はすべて revert 済み（`git status --porcelain` が空）。
@@ -214,9 +214,12 @@ capture は preview server を必要とする（`dist/client` が必要な場合
    モーダルでないなら対象外である。対象外にするには、その surface と理由を
    本 doc の「対象外」表に書く（理由の無い除外は成立しない）。
 2. **close 経路は本当に無いか。** `close()` を helper 経由で呼んでいる、
-   `onClose` を spread で渡している、といった書き方は、いまの
+   `onCancel` で閉じている、といった書き方は、いまの
    `hasClosePath` では検出できない。その場合は検出器を広げる（`close()`
    呼び出しの別名を読む）のであって、rule を消さない。
+   逆に **`onClose` だけを持つ実装は close 経路として数えない**
+   （`close` イベントはダイアログが閉じた**後**に発火するため、
+   閉じ手段にならない）。
 3. **custom modal の focus 復帰は別の形か。** `document.activeElement` を
    保存せず、`inert` 属性や `focus()` の別名で戻している実装は、検出器を
    広げる対象である。

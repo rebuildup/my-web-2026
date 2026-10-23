@@ -78,7 +78,10 @@ export const Route = createFileRoute('/tools/')({
 function ToolsIndexRoute() {
 	const { embeddable, disabled } = Route.useLoaderData();
 	return (
-		<>
+		// Issue #398: the page renders one `main` landmark. The sections
+		// below are the page BODY, so the landmark wraps them; without it
+		// the page exposed no region for the reader to skip to.
+		<main>
 			{/* Issue #300: the hero block and the tool lists were one
 			    section, so the page-entry beat was 96px where every
 			    other page enters at 128px. Split into the canonical
@@ -175,7 +178,7 @@ function ToolsIndexRoute() {
 					)}
 				</Container>
 			</section>
-		</>
+		</main>
 	);
 }
 

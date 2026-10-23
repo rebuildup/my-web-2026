@@ -422,7 +422,12 @@ export function KeyboardPage({ data }: KeyboardPageProps) {
 	const baseId = useId().replaceAll(':', '');
 
 	return (
-		<>
+		// Issue #398: the page owns exactly ONE `main` landmark. The three
+		// render branches below (ready / unavailable / no platform) each
+		// used to open their own `<main>`, so the source carried three
+		// `main` landmarks where a reader meets one. The landmark now
+		// belongs to the page, and the branches are ordinary sections.
+		<main>
 			<section className={heroStyle} aria-labelledby={`${baseId}-title`}>
 				<Container>
 					<div className={heroInnerStyle}>
@@ -449,7 +454,7 @@ export function KeyboardPage({ data }: KeyboardPageProps) {
 			) : (
 				<KeyboardPageUnavailable data={data} />
 			)}
-		</>
+		</main>
 	);
 }
 
@@ -472,14 +477,14 @@ function KeyboardPageReady({
 
 	if (platform === undefined) {
 		return (
-			<main className={sectionStyle}>
+			<section className={sectionStyle}>
 				<Container>
 					<SafePanel
 						title="表示できるプラットフォームがありません"
 						message="同期マニフェストに有効なプラットフォームが含まれていません。"
 					/>
 				</Container>
-			</main>
+			</section>
 		);
 	}
 
@@ -526,7 +531,7 @@ function KeyboardPageReady({
 	}
 
 	return (
-		<main>
+		<div>
 			<section className={sectionStyle} aria-label="同期状態">
 				<Container>
 					<div className={statusStripStyle}>
@@ -821,7 +826,7 @@ function KeyboardPageReady({
 					</div>
 				</Container>
 			</section>
-		</main>
+		</div>
 	);
 }
 
@@ -856,7 +861,7 @@ function KeyboardPageUnavailable({
 	data: Extract<KeyboardPageData, { status: 'unavailable' }>;
 }) {
 	return (
-		<main className={sectionStyle}>
+		<section className={sectionStyle}>
 			<Container>
 				<div className={bodyStyle}>
 					<SafePanel title="現在、配列を表示できません" message={data.message} />
@@ -872,7 +877,7 @@ function KeyboardPageUnavailable({
 					</ul>
 				</div>
 			</Container>
-		</main>
+		</section>
 	);
 }
 

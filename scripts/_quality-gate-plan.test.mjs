@@ -134,6 +134,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
 	'pnpm run a11y:table:code:check',
+	'pnpm run a11y:image-alt:check',
 	'pnpm run a11y:language-of-parts:check',
 	'pnpm run css:check',
 	'pnpm run app:icons:check',

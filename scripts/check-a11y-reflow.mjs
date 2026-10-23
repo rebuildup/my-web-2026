@@ -244,6 +244,54 @@ export function cssPropertyFor(key) {
 }
 
 /**
+ * The token file that owns the repository's Panda breakpoints.
+ *
+ * The breakpoints are READ from the token source instead of being
+ * copied into this gate: a copy would be a second source of truth that
+ * drifts, and a drifted breakpoint table would decide the wrong value
+ * at the reflow budget.
+ */
+export const PANDA_TOKENS_PATH = 'src/editorial/tokens.ts';
+
+/**
+ * The breakpoints of the repository, read from the token source (pure).
+ *
+ * `base` is the implicit Panda breakpoint: it applies at every width,
+ * so it needs no entry in the token file. A named breakpoint applies
+ * from its own width upwards, so a named breakpoint wider than the
+ * reflow budget does not apply AT the budget.
+ *
+ * `null` when the token file does not declare a readable breakpoint
+ * table. The caller then decides the named breakpoints as undecidable
+ * rather than guessing.
+ */
+export function parseBreakpoints(source) {
+	const block = /breakpoints\s*:\s*\{([\s\S]*?)\}/.exec(String(source ?? ''));
+	if (!block) return null;
+	const breakpoints = { base: 0 };
+	for (const match of block[1].matchAll(
+		/([A-Za-z][A-Za-z0-9]*)\s*:\s*['"](\d+(?:\.\d+)?)(px|rem)['"]/g,
+	)) {
+		breakpoints[match[1]] = Number(match[2]) * (match[3] === 'rem' ? REM_BASE_PX : 1);
+	}
+	const named = Object.keys(breakpoints).filter((key) => key !== 'base');
+	return named.length > 0 ? breakpoints : null;
+}
+
+/**
+ * The breakpoints of the repository (filesystem).
+ *
+ * `null` when the token file is missing or unreadable — the caller
+ * reports the responsive declarations it cannot decide instead of
+ * passing them.
+ */
+export function readBreakpoints(repoRoot = REPO_ROOT) {
+	const path = join(repoRoot, PANDA_TOKENS_PATH);
+	if (!existsSync(path)) return null;
+	return parseBreakpoints(readFileSync(path, 'utf8'));
+}
+
+/**
  * The style declarations a fixture specimen declares (pure).
  *
  * Only the inline `style={{ … }}` object is read: the fixture is a
@@ -614,21 +662,205 @@ export function applyDeclarationExclusions(violations, entries = SHIPPED_DECLARA
  * the viewport.
  */
 export function styleDeclarationsIn(source) {
-	const code = stripComments(source);
+	return scanStyleDeclarations(stripComments(source), 0, Number.POSITIVE_INFINITY);
+}
+
+/**
+ * The properties the shipped rules judge.
+ *
+ * A responsive object of another property (a colour, a gap, a grid
+ * template) is not this gate's business, and reading its entries as
+ * declarations would flood the report with rows nobody can act on.
+ */
+export const SHIPPED_JUDGED_PROPERTIES = ['width', 'min-width', 'white-space'];
+
+/**
+ * The style declarations of a source range (pure).
+ *
+ * The scanner is position-aware on purpose: a declaration whose value
+ * is an OBJECT owns the values inside it, so the scanner must not read
+ * `base` / `md` as properties of their own. An object of a property
+ * this gate does not judge is not a style declaration at all — the
+ * scanner walks INTO it instead, because a style declaration may sit
+ * further down (`css({ … })`, a nested style object).
+ */
+function scanStyleDeclarations(code, from, to) {
 	const found = [];
-	for (const match of code.matchAll(
-		/([A-Za-z][A-Za-z0-9-]*)\s*:\s*(?:'([^']*)'|"([^"]*)"|([A-Za-z0-9][A-Za-z0-9.%]*))/g,
-	)) {
-		const value = match[2] ?? match[3] ?? match[4];
+	// `skipUntil` is where the next unconsumed match may start: a
+	// declaration whose value is an OBJECT owns the values inside it,
+	// so the scanner must not read `base` / `md` as properties of
+	// their own.
+	let skipUntil = from;
+	for (const match of code.matchAll(/([A-Za-z][A-Za-z0-9-]*)\s*:\s*/g)) {
+		if (match.index < skipUntil) continue;
+		if (match.index >= to) break;
+		const property = cssPropertyFor(match[1]);
+		const line = lineAt(code, match.index);
+		let cursor = match.index + match[0].length;
+		while (cursor < code.length && /\s/.test(code[cursor])) cursor += 1;
+		if (code[cursor] === '{') {
+			const close = matchBrace(code, cursor);
+			if (close === -1) break;
+			if (SHIPPED_JUDGED_PROPERTIES.includes(property)) {
+				found.push({
+					property,
+					value: null,
+					responsive: true,
+					entries: parseStyleObjectEntries(code.slice(cursor + 1, close)),
+					line,
+					source: code.slice(match.index, close + 1).trim(),
+				});
+			} else {
+				found.push(...scanStyleDeclarations(code, cursor + 1, close));
+			}
+			skipUntil = close + 1;
+			continue;
+		}
+		if (code[cursor] === '[') {
+			const close = code.indexOf(']', cursor);
+			const end = close === -1 ? cursor + 1 : close + 1;
+			if (SHIPPED_JUDGED_PROPERTIES.includes(property)) {
+				found.push({
+					property,
+					value: null,
+					array: true,
+					entries: [],
+					line,
+					source: code.slice(match.index, end).trim(),
+				});
+			} else {
+				found.push(...scanStyleDeclarations(code, cursor + 1, end - 1));
+			}
+			skipUntil = end;
+			continue;
+		}
+		const valueMatch = /^(?:'([^']*)'|"([^"]*)"|([A-Za-z0-9][A-Za-z0-9.%]*))/.exec(
+			code.slice(cursor),
+		);
+		if (!valueMatch) continue;
+		const value = valueMatch[1] ?? valueMatch[2] ?? valueMatch[3];
 		if (value === undefined) continue;
 		found.push({
-			property: cssPropertyFor(match[1]),
+			property,
 			value,
-			line: lineAt(code, match.index),
-			source: match[0].trim(),
+			line,
+			source: `${match[1]}: ${value}`.trim(),
 		});
 	}
 	return found;
+}
+
+/**
+ * The entries of a style object (pure).
+ *
+ * `key: 'value'` pairs. A value that is an object again, an array, or
+ * a call is kept as a flag instead of being dropped: the caller
+ * reports it, because a value this gate cannot read must not look
+ * like a value this gate read and found harmless.
+ */
+export function parseStyleObjectEntries(text) {
+	const entries = [];
+	let skipUntil = 0;
+	for (const match of String(text ?? '').matchAll(/([A-Za-z][A-Za-z0-9_-]*)\s*:\s*/g)) {
+		if (match.index < skipUntil) continue;
+		const key = match[1];
+		let cursor = match.index + match[0].length;
+		while (cursor < text.length && /\s/.test(text[cursor])) cursor += 1;
+		if (text[cursor] === '{') {
+			const close = matchBrace(text, cursor);
+			if (close === -1) {
+				entries.push({ key, nested: true, value: null });
+				continue;
+			}
+			entries.push({
+				key,
+				nested: true,
+				value: null,
+				entries: parseStyleObjectEntries(text.slice(cursor + 1, close)),
+			});
+			skipUntil = close + 1;
+			continue;
+		}
+		if (text[cursor] === '[') {
+			const close = text.indexOf(']', cursor);
+			entries.push({ key, array: true, value: null });
+			skipUntil = close === -1 ? cursor + 1 : close + 1;
+			continue;
+		}
+		const valueMatch = /^(?:'([^']*)'|"([^"]*)"|([A-Za-z0-9][A-Za-z0-9.%]*))/.exec(
+			text.slice(cursor),
+		);
+		if (!valueMatch) {
+			entries.push({ key, dynamic: true, value: null });
+			continue;
+		}
+		entries.push({ key, value: valueMatch[1] ?? valueMatch[2] ?? valueMatch[3] });
+	}
+	return entries;
+}
+
+/**
+ * The value of a responsive declaration that applies at the reflow
+ * budget (pure).
+ *
+ * A responsive object maps a breakpoint to a value. The value that
+ * applies at the budget is the one of the LARGEST breakpoint that is
+ * not wider than the budget — `base` (which applies at every width) or
+ * a named breakpoint that starts at or below the budget. A value of a
+ * wider breakpoint does not apply at the budget at all, so it is not a
+ * violation there.
+ *
+ * The result carries the entries the gate could not decide (a
+ * breakpoint the repository does not declare, a nested condition, an
+ * array, a call) so the caller can report them instead of dropping
+ * them.
+ */
+export function effectiveValueAtBudget(entries, breakpoints, budgetPx = REFLOW_BUDGET_PX) {
+	const undecidable = [];
+	const applicable = [];
+	for (const entry of entries ?? []) {
+		if (entry.nested) {
+			undecidable.push({
+				key: entry.key,
+				reason:
+					'the value is a nested condition; this gate reads the flat responsive form (`base`, `md`, …) and cannot decide a nested one',
+			});
+			continue;
+		}
+		if (entry.array) {
+			undecidable.push({
+				key: entry.key,
+				reason:
+					'the value is an array; this gate reads the Panda responsive object form and cannot decide an array value',
+			});
+			continue;
+		}
+		if (entry.dynamic) {
+			undecidable.push({
+				key: entry.key,
+				reason:
+					'the value is computed at runtime; the gate reads the declaration, not the value it produces',
+			});
+			continue;
+		}
+		if (entry.key === 'base') {
+			applicable.push({ key: 'base', px: 0, value: entry.value });
+			continue;
+		}
+		const width = breakpoints?.[entry.key];
+		if (width === undefined) {
+			const known = Object.keys(breakpoints ?? {}).join(', ') || 'none';
+			undecidable.push({
+				key: entry.key,
+				reason: `\`${entry.key}\` is not a breakpoint this repository declares (${known}), so the gate cannot tell whether the value applies at ${budgetPx} px`,
+			});
+			continue;
+		}
+		if (width <= budgetPx) applicable.push({ key: entry.key, px: width, value: entry.value });
+	}
+	if (applicable.length === 0) return { value: null, breakpoint: null, undecidable };
+	const winner = applicable.reduce((a, b) => (b.px > a.px ? b : a));
+	return { value: winner.value, breakpoint: winner.key, undecidable };
 }
 
 /**
@@ -660,24 +892,61 @@ export function normalizeCssValue(value) {
  * `ch`, …) is returned as `undecidable` rather than ignored, so the
  * report shows the declarations the gate did not judge.
  */
-export function evaluateShippedSource({ relativePath, source }) {
+export function evaluateShippedSource({ relativePath, source, breakpoints = null }) {
 	const violations = [];
 	const undecidable = [];
 	for (const declaration of styleDeclarationsIn(source)) {
-		const value = normalizeCssValue(declaration.value);
-		if (declaration.property === 'white-space' && (value === 'nowrap' || value === 'pre')) {
+		if (declaration.array) {
+			undecidable.push({
+				file: relativePath,
+				line: declaration.line,
+				property: declaration.property,
+				value: null,
+				reason:
+					'the value is an array; this gate reads the Panda responsive object form (`{ base, … }`) and cannot decide an array value',
+			});
+			continue;
+		}
+		let value = declaration.value;
+		let breakpoint = null;
+		if (declaration.responsive) {
+			// A responsive object is judged by the value that applies AT
+			// the reflow budget, under the PARENT property: `minWidth: {
+			// base: '640px', md: '0' }` pins the box to 640 px at the
+			// budget, and the `md` value does not apply there at all.
+			const resolved = effectiveValueAtBudget(declaration.entries, breakpoints);
+			for (const row of resolved.undecidable) {
+				undecidable.push({
+					file: relativePath,
+					line: declaration.line,
+					property: declaration.property,
+					value: row.key,
+					reason: row.reason,
+				});
+			}
+			if (resolved.value === null) continue;
+			value = resolved.value;
+			breakpoint = resolved.breakpoint;
+		}
+		const normalized = normalizeCssValue(value);
+		const at = breakpoint ? ` at the ${breakpoint} breakpoint` : '';
+		if (
+			declaration.property === 'white-space' &&
+			(normalized === 'nowrap' || normalized === 'pre')
+		) {
 			violations.push({
 				rule: 'shipped-nowrap',
 				file: relativePath,
 				line: declaration.line,
 				wcag: '1.4.10',
 				property: declaration.property,
-				value,
-				message: `the shipped surface forbids wrapping (white-space: ${value}); an unbreakable run it renders cannot reflow at ${REFLOW_BUDGET_PX} px, so the page scrolls in two dimensions`,
+				value: normalized,
+				breakpoint,
+				message: `the shipped surface forbids wrapping (white-space: ${normalized}${at}); an unbreakable run it renders cannot reflow at ${REFLOW_BUDGET_PX} px, so the page scrolls in two dimensions`,
 			});
 		}
 		if (declaration.property === 'width' || declaration.property === 'min-width') {
-			const length = /^(\d+(?:\.\d+)?)(px|rem)$/.exec(value);
+			const length = /^(\d+(?:\.\d+)?)(px|rem)$/.exec(normalized);
 			if (length) {
 				const px = Number(length[1]) * (length[2] === 'rem' ? REM_BASE_PX : 1);
 				if (px <= REFLOW_BUDGET_PX) continue;
@@ -687,13 +956,14 @@ export function evaluateShippedSource({ relativePath, source }) {
 					line: declaration.line,
 					wcag: '1.4.10',
 					property: declaration.property,
-					value,
+					value: normalized,
 					px,
-					message: `the shipped surface pins a box to ${declaration.property}: ${value} (${px}px at the ${REM_BASE_PX} px rem base), wider than the ${REFLOW_BUDGET_PX} px reflow budget; the box cannot reflow`,
+					breakpoint,
+					message: `the shipped surface pins a box to ${declaration.property}: ${normalized}${at} (${px}px at the ${REM_BASE_PX} px rem base), wider than the ${REFLOW_BUDGET_PX} px reflow budget; the box cannot reflow`,
 				});
 				continue;
 			}
-			const fontRelative = /^(\d+(?:\.\d+)?)([a-z]+)$/.exec(value);
+			const fontRelative = /^(\d+(?:\.\d+)?)([a-z]+)$/.exec(normalized);
 			if (fontRelative && UNCONVERTIBLE_LENGTH_UNITS.includes(fontRelative[2])) {
 				undecidable.push({
 					file: relativePath,
@@ -744,6 +1014,10 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 	// more than once in a file, and the report must not print the same
 	// hole twice.
 	const declarationExclusions = new Map();
+	// The breakpoints decide which value of a responsive declaration
+	// applies at the reflow budget; they are read from the token
+	// source, not copied here.
+	const breakpoints = readBreakpoints(repoRoot);
 	for (const file of collectShippedFiles(scanRoot)) {
 		const relativePath = toRepoPath(file, repoRoot);
 		const exclusion = exclusionFor(relativePath);
@@ -755,6 +1029,7 @@ export function auditShippedSource(repoRoot = REPO_ROOT) {
 		const result = evaluateShippedSource({
 			relativePath,
 			source: readFileSync(file, 'utf8'),
+			breakpoints,
 		});
 		undecidable.push(...result.undecidable);
 		// The declaration exclusions are finite: an entry allows a

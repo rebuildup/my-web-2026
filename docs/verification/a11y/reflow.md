@@ -16,7 +16,7 @@
 | `src/**`（`.tsx` / `.ts` / `.css`） | **出荷コード**が `white-space: nowrap` / 320 px 超の固定幅を宣言していないか | rule `shipped-nowrap` / `shipped-fixed-width` |
 | `scripts/fixtures/a11y-reflow/{pass,fail}/*.tsx` | 長文 / 言語拡張の再現用 fixture | `data-reflow-kind` を持つ specimen |
 | 上記 fixture の描画 | Chromium での `scrollWidth > clientWidth` 実測 | capture が 100% と 200% の 2 stage で測る。**case 表は fixture ファイルから生成する**（二重定義なし） |
-| 出荷 route `/` と `/portfolio/my-web-2026` | 320 CSS px で `documentElement.scrollWidth <= clientWidth` | capture がローカル preview server で開く。**ここが「実画面」の側** |
+| 出荷 route `/` と `/portfolio/my-web-2026` | 320 CSS px で `documentElement.scrollWidth <= clientWidth`（100% stage）/ テキストが clipping されないこと（200% stage） | capture がローカル preview server で開く。**ここが「実画面」の側**。**100% と 200% の 2 stage を測る** |
 
 ### 対象外（理由も gate の出力に明記する）
 
@@ -33,8 +33,8 @@
 
 | 基準 | レベル | 該当箇所 | 判定 |
 | --- | --- | --- | --- |
-| SC 1.4.10 Reflow | AA | 320 CSS px で水平スクロールを要求しないこと | 静的検査（wrap floor / specimen の破断境界）+ Chromium 実測 |
-| SC 1.4.4 Resize Text | AA | 200% テキストで内容を失わないこと | Chromium 実測（200% stage） |
+| SC 1.4.10 Reflow | AA | 320 CSS px で水平スクロールを要求しないこと | 静的検査（wrap floor / specimen の破断境界）+ Chromium 実測（出荷 route の **100% stage**） |
+| SC 1.4.4 Resize Text | AA | 200% テキストで内容を失わないこと | Chromium 実測（出荷 route の **200% stage**）。**テキストを clipping する箱があれば失敗**。水平スクロールは「内容の消失」ではないため **記録する（failed にはしない）** |
 
 ## 規則一覧
 
@@ -46,6 +46,30 @@
 | `reflow-specimen-without-break` | 改行不能な specimen に破断境界が無い | 違反（fixture） |
 | `reflow-specimen-fixed-width` | specimen が 320 px を超える `width` / `min-width`（px）を固定している | 違反（fixture） |
 | `reflow-specimen-nowrap` | 改行不能な specimen が `white-space: nowrap` で折り返しを禁じている | 違反（fixture） |
+
+### レスポンシブオブジェクト（`minWidth: { base: …, md: … }`）の読み方
+
+Panda CSS のレスポンシブオブジェクトは、**親プロパティ**の名前で判定する。
+
+- `minWidth: { base: '640px', md: '0' }` は **budget（320 px）で適用される値**
+  （`base`）で判定する。`base` の 640 px は `shipped-fixed-width` の違反で、
+  `md` の `0` は違反ではない（`md` は 768 px 以上でしか適用されないので、
+  320 px では適用されない）。
+- 適用される値は **budget 以下で最大の breakpoint** の値。`base` は常に適用される
+  （0 px として扱う）。
+- breakpoint の px は **token 実装（`src/editorial/tokens.ts`）から読む**
+  （`parseBreakpoints` / `readBreakpoints`）。gate の中に写し直さない。
+  読めなかった場合、名前付き breakpoint の値は **判定不能として out-of-scope に出す**
+  （黙って無視しない）。`base` は breakpoint 表が無くても適用される。
+- **この gate が判定しない書き方**（黙って通さない。out-of-scope の節に出す）:
+  配列値（`minWidth: ['640px']`）、入れ子条件（`minWidth: { base: { _hover: … } }`）、
+  実行時に決まる値。
+- **対象プロパティは `width` / `min-width` / `white-space` だけ。**
+  他のプロパティ（色・余白・grid テンプレート）の responsive オブジェクトは
+  本 gate の対象外であり、宣言として読まない（その内部だけを再帰的に探す）。
+- **fixture は 1 宣言 1 値が契約。** fixture の inline style に responsive /
+  配列値が来ると、ブラウザ側は CSS として描画できないため、
+  `scripts/check-a11y-reflow.test.mjs` が fixture roster を検査して落とす。
 
 「破断境界」の定義は gate の **1 か所**（`BREAK_DECLARATIONS`）にまとめてあり、
 gate・fixture・ブラウザハーネスが同じ語彙を読む:
@@ -110,12 +134,30 @@ capture の case 表と fixture roster の一致は
 | `reflow-specimen-nowrap` | 改行不能な specimen が折り返しを禁じていない | 同上 |
 | fixture の再現 | `pass/` は違反 0 かつ specimen を持つ、`fail/` は期待した rule | 同上（gate 自身が行う） |
 | ブラウザ側の観測 | 各 specimen の `scrollWidth > clientWidth`（100% / 200% の 2 stage、320 px frame） | Chromium 実測（capture） |
-| **出荷 route の観測** | `/` と `/portfolio/my-web-2026` を 320 CSS px で開き、`documentElement.scrollWidth <= clientWidth` | Chromium 実測（capture）。1 route でも横スクロールすれば capture は exit 1、成果物は書かない |
+| **出荷 route の観測（100% stage）** | `/` と `/portfolio/my-web-2026` を 320 CSS px で開き、`documentElement.scrollWidth <= documentClientWidth` | Chromium 実測（capture）。1 route でも横スクロールすれば capture は exit 1、成果物は書かない |
+| **出荷 route の観測（200% stage）** | 同じ 2 route を 200% テキストで開き、**テキストを clipping する箱が無い**こと | Chromium 実測（capture）。clipping があれば exit 1。水平スクロールは記録して failed にはしない（下記「既知の制約」） |
+| **測る対象の同一性** | 測定対象の origin が **このリポジトリの build** を配信している | capture が build 出力のファイル 1 本の **バイト列** で照合する。違えば **専用の空きポート**に preview を起動し直してそちらを測る |
+| **成果物の予算** | 生成物は **予算以内**でだけ差し替える | capture は一時パスへ書き、予算判定を通ってから差し替える。超過時は一時ファイルも追跡対象も残さない |
 
 capture は **negative control** を内蔵する。`pass/` の specimen が
 はみ出せば失敗し、`fail/` の specimen がはみ出さなくなったら
 （= 欠陥を再現しなくなったら）失敗する。片方だけ緑にはできない。
 出荷 route の測定も同じ契約で、**測れなかったら失敗**（空の測定は緑にしない）。
+
+### 測る対象の同一性（origin の識別）
+
+capture は「応答がある＝自分の preview」ではない。**ポートが塞がっている場合も
+「全部 200 を返す別の SPA」も通ってしまうため、判定は **バイト列**で行う。
+
+- 測る直前に、**このリポジトリの build 出力**（`.cloudflare/output/v0/workers/
+  default/assets`）からファイル 1 本を選び、その URL パスと **バイト列**を控える
+  （`buildAssetProbe`）。ファイル名は build ごとに変わるので、
+  別の build は別の名前・別のバイト列になる。
+- origin がそのバイト列を返せば **自分の build** と確定する（`originServesBuild`）。
+- 返さなければ **capture 専用の空きポート**（`findFreePort`）に preview を
+  起動し直して、そちらを測る（`startPreviewServer`）。起動した preview も
+  同じ照合を通すので、**測る対象が自分の preview であることは必ず確認される**。
+- どちらの経路でも、**foreign な origin を測ることはない**。
 
 ### 人間の評価（機械では判定しない）
 
@@ -142,15 +184,28 @@ capture script が `.png` を拒否する規約のため）。
   **ハーネスページの viewport は 1600×1000 CSS px**、
   **deviceScaleFactor は 1**（`isMobile: false`）。拡大率ではなく viewport
   自体を 320 CSS px に固定して測っている
+- **出荷 route は 100% と 200% テキストの 2 stage を測る。**
+  200% は fixture と同じ方式（`textScaleCss`）で適用する。fixture は
+  stage 要素の `font-size`、出荷 route は **root 要素の `font-size`** を 2 倍する
+  （rem 基準のサイズも一緒に成長する、ブラウザのテキストのみズームと同じ挙動）。
 - 方式: loopback の一時 HTTP サーバに生成したハーネスを置き、Chromium で描画して撮影。
   同じ Chromium で、出荷 route を 320 CSS px の viewport で開いて幅を測る
 - 左（上）: 320 px frame の 100% 描画、右（下）: 同じ frame の 200% テキスト描画
 - 各 specimen は 320 px frame の中に描画し、`pass/` は収まり、
   `fail/` ははみ出す（frame が clip する）
 - 上部バンド: 機械検査の結果（gate 違反数・base floor・走査した出荷ファイル数・
-  各 box の実測・**出荷 route ごとの document 幅**）、人間評価項目、WCAG 対応
-- 失敗条件: 観測が契約と矛盾した場合（fixture の実測、または出荷 route の横スクロール）、
+  各 box の実測・**出荷 route ごとの document 幅（100% / 200% の 2 stage）**・
+  **記録された観測**）、人間評価項目、WCAG 対応
+- 失敗条件: 観測が契約と矛盾した場合（fixture の実測、出荷 route の横スクロール
+  （100% stage）、**テキストの clipping（どの stage でも）**）、
   **成果物を書かずに exit 1**
+- **成果物の差し替え**: capture は一時パス（`.tmp/…/artefact.webp`）へ書き、
+  **予算（300 kB）を判定してから**追跡対象のパスへ差し替える。予算超過で
+  失敗したときは **一時ファイルも追跡対象も残らない**（以前の有効な成果物も
+  失われない）。
+- **`--width` はハーネス本体の幅にも効く**: 生成 HTML の `body` 幅と
+  ヘッダーの幅が指定幅になる。ヘッダーの行は幅に合わせて折り返す
+  （切れた行は「足りない証拠」になるため）。
 
 ## 誤検知が起きたときの対処
 
@@ -190,7 +245,12 @@ capture script が `.png` を拒否する規約のため）。
    gate の出力には **使用数と許容数** が出るので、緑でも穴の広さが読める
    （例: `src/editorial/table-code.tsx (white-space: nowrap ×2 / allowed 2)`）。
 
-5. いずれも該当しない場合は **owner へ判断を仰ぐ**。
+5. **レスポンシブオブジェクト（`{ base, md }`）で引っかかったら。**
+   判定されるのは **320 px で適用される値**（`base`）だけである。
+   `md` 以降の値は 320 px では適用されないので該当しない。
+   `base` の値が本当に 320 px を超えるなら、
+   その面は `min-width: 0` を持つなどして予算内に収める（下記 1 番目の制約）。
+6. いずれも該当しない場合は **owner へ判断を仰ぐ**。
 
 ## 既知の制約 / 未対応範囲
 
@@ -222,6 +282,17 @@ capture script が `.png` を拒否する規約のため）。
   （320 CSS px の viewport）。**他の route は測っていない**し、
   要素単位の溢れ（ボックスの内側で文字がはみ出す状態）は診断情報として
   記録するだけで判定には使わない。他 route の網羅は別 Issue の責務。
+- **200% テキストで Home は横スクロールする（記録している、failed にはしていない）。**
+  capture が 200% stage で実測した値は **`/` が document 578 px / client 320 px**
+  （`/portfolio/my-web-2026` は 320 / 320 で収まる）。これは
+  **SC 1.4.4 の失敗ではない**（1.4.4 が禁じるのは「内容の消失」であって
+  「スクロール」ではないため）。ただし Issue #400 の受け入れ範囲にある目標
+  （「テキスト拡大時に Home/Article が横スクロールしない」）には届いていない。
+  原因は CJK の phrase 改行（`word-break: auto-phrase`）と
+  flex / grid 子要素の `min-width: auto` の組み合わせで、
+  修正は各面の `min-width: 0` ではなく**面の設計判断**（下記 1 番目の制約）に
+  属する。capture はこの事実を **測った値として記録する**（ヘッダーと
+  レポート JSON に残る）。**失敗扱いに変えるかどうかは owner の判断**。
 - **capture は「測れなかったら失敗する」。**
   ローカル preview server が用意できなければ capture は exit 2（判定不能）で終了し、
   成果物は書かない（測っていないことを緑に見せない）。
@@ -238,3 +309,12 @@ capture script が `.png` を拒否する規約のため）。
   どちらも「合格の代用の画像」ではない。
 - **200% テキストは capture の stage で再現する。**
   実機のテキストのみズームは機械では再現できない。
+- **レスポンシブオブジェクトの判定は「budget で適用される値」だけ。**
+  `minWidth: { base: '640px', md: '0' }` の **md** の値は 320 px では
+  適用されないので判定対象外であり、これは「穴」ではなく仕様である
+  （SC 1.4.10 の予算は 320 px）。一方で **breakpoint が読めない値**、
+  **配列値**、**入れ子条件**は判定不能として out-of-scope の節に出す。
+- **capture が測る origin は照合で確定する。**
+  build 出力がない（`pnpm run build` 前）環境では照合の基準が無く、
+  capture は自分の preview を起動してそれを照合する。照合に失敗した origin は
+  **測らない**。

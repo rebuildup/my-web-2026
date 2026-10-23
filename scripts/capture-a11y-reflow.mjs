@@ -68,7 +68,17 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+	copyFileSync,
+	createReadStream,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,6 +96,27 @@ export const STAGES = [
 	{ id: 'base', label: '320 px (SC 1.4.10 reflow)', fontScale: 1 },
 	{ id: 'text-200', label: '320 px @ 200% text (SC 1.4.4)', fontScale: 2 },
 ];
+
+/**
+ * The font-size declaration that applies a text scale (pure).
+ *
+ * The harness puts it in the stage element's inline style; the shipped
+ * route puts the same declaration on the ROOT element, which is what a
+ * browser's text-only zoom does: the root font size grows, and every
+ * rem-based size grows with it. The two halves therefore scale the
+ * text the same way.
+ */
+export function textScaleDeclaration(fontScale) {
+	return `font-size: ${(fontScale || 1) * 100}%`;
+}
+
+/**
+ * The rule that applies a text scale to a selector (pure).
+ */
+export function textScaleCss(fontScale, selector = 'html') {
+	if (!fontScale || fontScale === 1) return '';
+	return `${selector} { ${textScaleDeclaration(fontScale)} !important; }`;
+}
 
 /** The page viewport the harness is captured at. */
 export const PAGE_WIDTH = 1600;
@@ -195,10 +226,10 @@ function specimenEntry(entry, stageId) {
  * screen, in both stages, so a reviewer can compare them without opening
  * two files — and the measurement reads all of them.
  */
-export function harnessIndexHtml() {
+export function harnessIndexHtml(pageWidth = PAGE_WIDTH) {
 	const stages = STAGES.map((stage) => {
 		const cases = EXPECTED_CASES.map((entry) => specimenEntry(entry, stage.id)).join('\n\t\t');
-		return `<section class="stage" data-stage="${escapeXml(stage.id)}" style="font-size:${stage.fontScale * 100}%">
+		return `<section class="stage" data-stage="${escapeXml(stage.id)}" style="${escapeXml(textScaleDeclaration(stage.fontScale))}">
 		<h2>${escapeXml(stage.label)}</h2>
 		<div class="frames">${cases}</div>
 	</section>`;
@@ -215,7 +246,7 @@ export function harnessIndexHtml() {
 		<title>text reflow — Issue #400</title>
 		<style>
 			* { box-sizing: border-box; }
-			body { margin: 0; padding: 20px 24px 32px; width: ${PAGE_WIDTH}px; background: #ffffff; color: #101828;
+			body { margin: 0; padding: 20px 24px 32px; width: ${pageWidth}px; background: #ffffff; color: #101828;
 				font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 			h1 { font-size: 20px; margin: 0 0 6px; }
 			p.lede { margin: 0 0 18px; color: #475467; }
@@ -294,10 +325,10 @@ export function serveDirectory(root) {
 }
 
 /** Write the generated harness (idempotent, so a re-run reuses it). */
-export function writeHarness(repoRoot = REPO_ROOT) {
+export function writeHarness(repoRoot = REPO_ROOT, pageWidth = PAGE_WIDTH) {
 	const dir = resolve(repoRoot, HARNESS_DIR);
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(join(dir, 'index.html'), harnessIndexHtml());
+	writeFileSync(join(dir, 'index.html'), harnessIndexHtml(pageWidth));
 	return dir;
 }
 
@@ -339,6 +370,79 @@ export async function isOriginReady(baseUrl) {
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * The build output whose static assets the preview serves.
+ *
+ * The identity of a preview is proven by its BYTES, not by the fact
+ * that it answers: a foreign SPA answers every path with 200, and
+ * another worktree's preview of the same repository answers with a
+ * DIFFERENT build.
+ */
+export const BUILD_ASSETS_DIR = '.cloudflare/output/v0/workers/default/assets';
+
+/**
+ * One file of this repository's build, with the URL path the preview
+ * serves it under (filesystem).
+ *
+ * A hashed client chunk is used on purpose: its name changes with
+ * every build, so an origin that serves it byte for byte is serving
+ * THIS build. `null` when there is no build to compare against.
+ */
+export function buildAssetProbe(repoRoot = REPO_ROOT) {
+	const root = join(repoRoot, BUILD_ASSETS_DIR);
+	if (!existsSync(root)) return null;
+	for (const relative of ['assets', '']) {
+		const dir = relative ? join(root, relative) : root;
+		if (!existsSync(dir) || !statSync(dir).isDirectory()) continue;
+		const names = readdirSync(dir)
+			.filter((name) => name.endsWith('.js'))
+			.sort();
+		if (names.length === 0) continue;
+		const name = names[0];
+		return {
+			urlPath: `/${relative ? `${relative}/` : ''}${name}`,
+			bytes: readFileSync(join(dir, name)),
+		};
+	}
+	return null;
+}
+
+/**
+ * Whether the origin serves THIS repository's build (browser side).
+ *
+ * The probe compares the bytes, so an origin that answers 200 with
+ * something else — a foreign SPA, another worktree's preview — is not
+ * mistaken for the build under measurement.
+ */
+export async function originServesBuild(baseUrl, probe) {
+	if (!probe) return false;
+	try {
+		const response = await fetch(new URL(probe.urlPath, baseUrl), { redirect: 'manual' });
+		if (!response.ok) return false;
+		const body = Buffer.from(await response.arrayBuffer());
+		return body.length === probe.bytes.length && body.equals(probe.bytes);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * A free loopback port (filesystem / network).
+ *
+ * The capture starts its own preview on a port nobody else uses, so a
+ * server that is already there can never be measured by mistake.
+ */
+export function findFreePort() {
+	return new Promise((resolvePort, reject) => {
+		const server = createServer();
+		server.on('error', reject);
+		server.listen(0, '127.0.0.1', () => {
+			const { port } = server.address();
+			server.close(() => resolvePort(port));
+		});
+	});
 }
 
 /**
@@ -392,56 +496,122 @@ export const READ_SHIPPED_DOCUMENT = () => ({
 			clientWidth: element.clientWidth,
 			text: (element.textContent ?? '').trim().slice(0, 40),
 		})),
+	// The elements that HIDE their own text: a box that clips its
+	// content loses the text when the text grows. This is the SC 1.4.4
+	// condition (no loss of content at 200% text), and it is read at
+	// every stage.
+	clipped: [...document.querySelectorAll('body *')]
+		.filter((element) => {
+			if (element.clientWidth < 8 || element.clientHeight < 8) return false;
+			if (!(element.textContent ?? '').trim()) return false;
+			const style = getComputedStyle(element);
+			const clips = ['hidden', 'clip'].includes(style.overflowY);
+			return clips && element.scrollHeight > element.clientHeight + 1;
+		})
+		.slice(0, 5)
+		.map((element) => ({
+			tag: element.tagName.toLowerCase(),
+			scrollHeight: element.scrollHeight,
+			clientHeight: element.clientHeight,
+			text: (element.textContent ?? '').trim().slice(0, 40),
+		})),
 });
 
 /**
  * Decide whether the shipped routes honour the reflow contract (pure).
  *
- * One shipped route that scrolls horizontally at the budget is a
- * violation, and the capture writes no artefact.
+ * Two criteria, two stages:
+ *
+ *   - SC 1.4.10 (Reflow, AA) is defined at 320 CSS px. The 100% stage
+ *     therefore FAILS when the document scrolls horizontally.
+ *   - SC 1.4.4 (Resize Text, AA) requires no LOSS OF CONTENT at 200%
+ *     text. Text hidden by a clipping box fails at every stage; a
+ *     horizontal scroll at 200% is not a loss of content, so it is
+ *     RECORDED (the row says how wide the document became) instead of
+ *     failed — the criterion the capture asserts is the one WCAG
+ *     states.
+ *
+ * A route that was not measured at all is a failure: an empty
+ * measurement is not a measurement.
  */
 export function evaluateShippedRoutes(observations) {
 	const failures = [];
 	const rows = [];
+	const notes = [];
 	for (const observation of observations ?? []) {
 		const overflow = observation.documentScrollWidth > observation.documentClientWidth + 1;
-		if (overflow) {
+		const clipped = observation.clipped ?? [];
+		const stage = observation.stage ?? 'base';
+		if (stage === 'base' && overflow) {
 			failures.push(
 				`the shipped route ${observation.path} scrolls horizontally at ${observation.viewportWidth} px (${observation.documentScrollWidth} px > ${observation.documentClientWidth} px)`,
 			);
 		}
+		if (stage !== 'base' && overflow) {
+			notes.push(
+				`${observation.path} [${stage}]: the document scrolls horizontally (${observation.documentScrollWidth} px > ${observation.documentClientWidth} px); SC 1.4.4 forbids a loss of content, not a scroll, so this is recorded and not failed`,
+			);
+		}
+		for (const element of clipped) {
+			failures.push(
+				`the shipped route ${observation.path} [${stage}] hides its own text (${element.tag}: ${element.scrollHeight} px of text in a ${element.clientHeight} px box): "…${element.text}…"; the text is lost at ${observation.fontScale ?? 1}x`,
+			);
+		}
 		rows.push(
-			`${overflow ? 'FAIL' : 'ok  '} ${observation.path.padEnd(24)} document scroll=${observation.documentScrollWidth} client=${observation.documentClientWidth} (${observation.label})`,
+			`${overflow ? 'scroll' : 'ok   '} ${observation.path.padEnd(24)} [${stage.padEnd(8)}] document scroll=${observation.documentScrollWidth} client=${observation.documentClientWidth} clipped=${clipped.length} (${observation.label})`,
 		);
 	}
 	if ((observations ?? []).length === 0) {
 		failures.push('no shipped route was measured; the shipped half of the evidence would be empty');
 	}
-	return { ok: failures.length === 0, failures, rows };
+	return { ok: failures.length === 0, failures, rows, notes };
 }
 
 /**
  * Open every shipped route at the reflow budget and read its width.
  *
  * The routes are served by the local preview server; a route that cannot
- * be opened is a failure, not a skipped measurement.
+ * be opened is a failure, not a skipped measurement. Every route is
+ * measured in BOTH stages: at 100% text (the SC 1.4.10 condition) and
+ * at 200% text (the SC 1.4.4 condition), with the same text scale the
+ * fixture harness uses.
  */
-export async function measureShippedRoutes(page, baseUrl, routes = SHIPPED_ROUTES) {
+export async function measureShippedRoutes(
+	page,
+	baseUrl,
+	routes = SHIPPED_ROUTES,
+	stages = STAGES,
+) {
 	const observations = [];
 	for (const route of routes) {
-		const response = await page.goto(`${baseUrl}${route.path}`, { waitUntil: 'networkidle' });
-		if (!response || response.status() >= 400) {
-			throw new Error(
-				`the shipped route ${route.path} answered ${response ? response.status() : 'nothing'}; the shipped half of the evidence cannot be measured`,
-			);
+		for (const stage of stages) {
+			const response = await page.goto(`${baseUrl}${route.path}`, { waitUntil: 'networkidle' });
+			if (!response || response.status() >= 400) {
+				throw new Error(
+					`the shipped route ${route.path} answered ${response ? response.status() : 'nothing'}; the shipped half of the evidence cannot be measured`,
+				);
+			}
+			if (stage.fontScale !== 1) {
+				await page.addStyleTag({ content: textScaleCss(stage.fontScale) });
+				// Two frames: the first applies the new root font size, the
+				// second reflows the boxes the first one resized.
+				await page.evaluate(
+					() =>
+						new Promise((done) => {
+							requestAnimationFrame(() => requestAnimationFrame(() => done(null)));
+						}),
+				);
+			}
+			const reading = await page.evaluate(READ_SHIPPED_DOCUMENT);
+			observations.push({
+				path: route.path,
+				label: route.label,
+				stage: stage.id,
+				fontScale: stage.fontScale,
+				viewportWidth: SHIPPED_VIEWPORT_PX,
+				...reading,
+			});
 		}
-		const reading = await page.evaluate(READ_SHIPPED_DOCUMENT);
-		observations.push({
-			path: route.path,
-			label: route.label,
-			viewportWidth: SHIPPED_VIEWPORT_PX,
-			...reading,
-		});
 	}
 	return observations;
 }
@@ -513,6 +683,36 @@ export function evaluateObservation(observation) {
 	return { ok: failures.length === 0, failures, rows };
 }
 
+/**
+ * Wrap one header row so the evidence stays readable at any width
+ * (pure).
+ *
+ * The header is an SVG text band, so a row that is wider than the
+ * band would be cut off — and a cut-off row is a missing piece of the
+ * evidence. The rows are wrapped instead.
+ */
+export function wrapRow(row, width, fontSize = 12) {
+	const maxChars = Math.max(24, Math.floor((width - 32) / (fontSize * 0.6)));
+	if (row.length <= maxChars) return [row];
+	const lines = [];
+	let current = '';
+	for (const word of String(row).split(' ')) {
+		const candidate = current ? `${current} ${word}` : word;
+		if (candidate.length <= maxChars) {
+			current = candidate;
+			continue;
+		}
+		if (current) lines.push(current);
+		current = word;
+		while (current.length > maxChars) {
+			lines.push(current.slice(0, maxChars));
+			current = current.slice(maxChars);
+		}
+	}
+	if (current) lines.push(current);
+	return lines;
+}
+
 /** The header band: what was measured, what was not. */
 export function headerSvg({ gate, verdict, shipped, browser, width = SCREENSHOT_MAX_WIDTH }) {
 	const title = 'text reflow — Issue #400 (WCAG 2.2 SC 1.4.10 / 1.4.4, AA)';
@@ -521,17 +721,19 @@ export function headerSvg({ gate, verdict, shipped, browser, width = SCREENSHOT_
 		'machine-checked: every fixture box measured from the live DOM (scrollWidth > clientWidth); the fail fixtures must overflow, the pass fixtures must fit',
 		`machine-checked: ${verdict.ok ? 'every specimen resolved to the box the screen claims' : 'a specimen did NOT resolve to the claimed box'}`,
 		`machine-checked: gate ${gate.violations.length} violation(s); base floor = ${gate.base.breaks.join(', ') || 'none'}; shipped source scanned: ${gate.shipped?.filesScanned ?? 0} file(s)`,
-		`machine-checked: ${SHIPPED_ROUTES.length} shipped route(s) opened at ${SHIPPED_VIEWPORT_PX} CSS px; the document must not scroll horizontally`,
+		`machine-checked: ${SHIPPED_ROUTES.length} shipped route(s) opened at ${SHIPPED_VIEWPORT_PX} CSS px in ${STAGES.length} stage(s) (100% and 200% text); at 100% the document must not scroll horizontally (SC 1.4.10), at 200% no box may hide its own text (SC 1.4.4)`,
 		`measured in ${browser ? `${browser.name} ${browser.version} (deviceScaleFactor ${browser.deviceScaleFactor})` : 'an unrecorded browser'} at the ${SHIPPED_VIEWPORT_PX} CSS px budget`,
 		...(shipped?.rows ?? []),
+		...(shipped?.notes ?? []).map((note) => `observed, not failed: ${note}`),
 		'not machine-checked: whether a broken URL still reads correctly, hyphenation quality, how the reflowed page feels',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}`,
 		'',
 		...verdict.rows,
 	];
 	const rowTop = 34 + 30;
-	const height = rowTop + rows.length * 19 + 16;
-	const lines = rows
+	const lines = rows.flatMap((row) => wrapRow(row, width));
+	const height = rowTop + lines.length * 19 + 16;
+	const text = lines
 		.map(
 			(row, index) =>
 				`<text x="16" y="${rowTop + index * 19}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#1c2030">${escapeXml(row)}</text>`,
@@ -542,7 +744,7 @@ export function headerSvg({ gate, verdict, shipped, browser, width = SCREENSHOT_
 		svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
 	<rect width="${width}" height="${height}" fill="#f4efdf" />
 	<text x="16" y="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700" fill="#0b1020">${escapeXml(title)}</text>
-	${lines}
+	${text}
 </svg>
 `,
 	};
@@ -574,6 +776,35 @@ export async function composeArtefact({ sharp, pagePng, header, outPath }) {
 		pageHeight: meta.height ?? null,
 		headerHeight: header.height,
 	};
+}
+
+/**
+ * Move the candidate artefact into place — but only if it fits the
+ * budget (filesystem).
+ *
+ * The candidate is written to a temporary path first, so a capture that
+ * fails the budget leaves NEITHER a budget-breaking artefact in the
+ * tree NOR a hole where the previous valid artefact used to be. The
+ * committed file is replaced only on success.
+ */
+export function promoteArtefact({
+	candidatePath,
+	outPath,
+	bytes,
+	budgetBytes = SCREENSHOT_BUDGET_BYTES,
+}) {
+	const verdict = screenshotBudgetVerdict(bytes);
+	if (!verdict.withinBudget) {
+		rmSync(candidatePath, { force: true });
+		return {
+			promoted: false,
+			verdict,
+			reason: `capture is ${verdict.kb} kB, over the ${Math.round(budgetBytes / 1024)} kB budget; the committed artefact was left untouched`,
+		};
+	}
+	copyFileSync(candidatePath, outPath);
+	rmSync(candidatePath, { force: true });
+	return { promoted: true, verdict, reason: null };
 }
 
 function parseArgs(argv) {
@@ -634,7 +865,7 @@ async function main() {
 		);
 	}
 
-	writeHarness();
+	writeHarness(REPO_ROOT, options.width);
 	assertLoopbackBaseUrl(options.baseUrl);
 	const server = await serveDirectory(resolve(REPO_ROOT, HARNESS_DIR));
 	let capture = null;
@@ -650,6 +881,7 @@ async function main() {
 			const { chromium } = await import('@playwright/test');
 			const sharp = (await import('sharp')).default;
 			const pagePng = resolve(REPO_ROOT, options.pngDir, 'screen.png');
+			const candidatePath = resolve(REPO_ROOT, options.pngDir, 'artefact.webp');
 			ensureDir(join(options.pngDir, 'x.png'));
 			const browser = await chromium.launch();
 			// The measurement conditions are part of the record: Issue #400
@@ -677,10 +909,20 @@ async function main() {
 
 				// The SHIPPED half: the real routes, opened at the same
 				// 320 CSS px budget, read from the local preview server.
+				//
+				// The origin is identified by its BYTES: the origin has to
+				// serve one file of THIS repository's build, byte for
+				// byte. An origin that answers but serves something else
+				// (a foreign SPA, another worktree's preview) is not
+				// measured at all — a dedicated preview is started on a
+				// free port instead.
 				let baseUrl = options.baseUrl;
-				if (!(await isOriginReady(baseUrl))) {
-					const port = Number(new URL(baseUrl).port || 80);
-					process.stdout.write(`[capture] starting the local preview server on port ${port}…\n`);
+				const probe = buildAssetProbe();
+				if (!(await originServesBuild(baseUrl, probe))) {
+					const port = await findFreePort();
+					process.stdout.write(
+						`[capture] ${baseUrl} does not serve this repository's build; starting a dedicated preview on port ${port}…\n`,
+					);
 					try {
 						preview = await startPreviewServer(port);
 					} catch (error) {
@@ -689,6 +931,13 @@ async function main() {
 						);
 					}
 					baseUrl = preview.baseUrl;
+					if (!(await originServesBuild(baseUrl, probe))) {
+						throw new UndecidableError(
+							`the preview on ${baseUrl} does not serve this repository's build; the shipped half of the evidence would be a measurement of something else`,
+						);
+					}
+				} else {
+					process.stdout.write(`[capture] measuring the build of this repository at ${baseUrl}\n`);
 				}
 				const shippedContext = await browser.newContext({
 					viewport: { width: SHIPPED_VIEWPORT_PX, height: 720 },
@@ -719,24 +968,38 @@ async function main() {
 				);
 			}
 			for (const failure of shipped.failures) process.stderr.write(`- ${failure}\n`);
+			for (const note of shipped.notes ?? []) process.stdout.write(`[capture] observed: ${note}\n`);
 			if (!shipped.ok) {
 				throw new Error(
 					`a shipped route does not honour the reflow contract (${shipped.failures.length} failure(s)); no artefact was written`,
 				);
 			}
 
-			const header = headerSvg({ gate, verdict, shipped, browser: browserInfo });
+			const header = headerSvg({
+				gate,
+				verdict,
+				shipped,
+				browser: browserInfo,
+				width: Math.min(options.width, SCREENSHOT_MAX_WIDTH),
+			});
 			const outPath = resolve(REPO_ROOT, options.screenshot);
 			ensureDir(options.screenshot);
-			const geometry = await composeArtefact({ sharp, pagePng, header, outPath });
-			const meta = await sharp(outPath).metadata();
-			const budget = screenshotBudgetVerdict(statSync(outPath).size);
+			// The candidate is written first and moved into place only
+			// after the budget check: a capture that breaks the budget
+			// must not leave a breaking artefact in the tree, and it
+			// must not delete the valid one either.
+			const geometry = await composeArtefact({ sharp, pagePng, header, outPath: candidatePath });
+			const promotion = promoteArtefact({
+				candidatePath,
+				outPath,
+				bytes: statSync(candidatePath).size,
+			});
 			rmSync(pagePng, { force: true });
-			if (!budget.withinBudget) {
-				throw new Error(
-					`capture is ${budget.kb} kB, over the ${Math.round(SCREENSHOT_BUDGET_BYTES / 1024)} kB budget`,
-				);
+			if (!promotion.promoted) {
+				throw new Error(promotion.reason);
 			}
+			const meta = await sharp(outPath).metadata();
+			const budget = promotion.verdict;
 			capture = {
 				artefact: options.screenshot,
 				viewport: { width: options.width, height: 1000 },

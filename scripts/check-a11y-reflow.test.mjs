@@ -38,12 +38,15 @@ import {
 	collectEvidence,
 	deriveSpecimenCases,
 	describeSpecimen,
+	effectiveValueAtBudget,
 	evaluateFixtureSource,
 	evaluateShippedSource,
 	exclusionFor,
 	fixedWidthsIn,
 	forbidsWrapIn,
 	hasBreakBoundary,
+	parseBreakpoints,
+	readBreakpoints,
 	readFixtureEntries,
 	renderGateSummary,
 	specimenKindsIn,
@@ -274,6 +277,116 @@ test('a shipped surface pinned wider than the budget is a violation', () => {
 	assert.equal(result.violations.length, 1);
 	assert.equal(result.violations[0].rule, 'shipped-fixed-width');
 	assert.match(result.violations[0].message, /710px/);
+});
+
+test('a responsive object is judged by the value that applies at the budget', () => {
+	const breakpoints = readBreakpoints();
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ minWidth: { base: '640px', md: '0' } });",
+		breakpoints,
+	});
+
+	assert.equal(result.violations.length, 1, 'the base value pins the box wider than the budget');
+	assert.equal(result.violations[0].rule, 'shipped-fixed-width');
+	assert.equal(result.violations[0].value, '640px');
+	assert.equal(result.violations[0].breakpoint, 'base');
+	assert.match(result.violations[0].message, /at the base breakpoint/);
+	assert.deepEqual(result.undecidable, [], 'the md value is decided, not undecidable');
+});
+
+test('a responsive value of a breakpoint wider than the budget does not apply', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ minWidth: { base: '0', md: '640px' } });",
+		breakpoints: readBreakpoints(),
+	});
+
+	assert.deepEqual(result.violations, [], 'the md value does not apply at the 320 px budget');
+	assert.deepEqual(result.undecidable, []);
+});
+
+test('a responsive value of a breakpoint the repository does not declare is reported', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ minWidth: { base: '0', huge: '640px' } });",
+		breakpoints: readBreakpoints(),
+	});
+
+	assert.deepEqual(result.violations, []);
+	assert.equal(result.undecidable.length, 1, 'a breakpoint the gate cannot place is not passed');
+	assert.match(result.undecidable[0].reason, /not a breakpoint this repository declares/);
+});
+
+test('a value this gate cannot read is reported, not passed', () => {
+	const array = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ minWidth: ['640px'] });",
+		breakpoints: readBreakpoints(),
+	});
+	assert.deepEqual(array.violations, []);
+	assert.equal(array.undecidable.length, 1);
+	assert.match(array.undecidable[0].reason, /array/);
+
+	const nested = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ minWidth: { base: { _hover: '640px' } } });",
+		breakpoints: readBreakpoints(),
+	});
+	assert.deepEqual(nested.violations, []);
+	assert.equal(nested.undecidable.length, 1);
+	assert.match(nested.undecidable[0].reason, /nested condition/);
+});
+
+test('a responsive object of a property this gate does not judge is not a declaration', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/x.tsx',
+		source: "const s = css({ color: { base: 'red' }, gap: { base: '4', md: '0' } });",
+		breakpoints: readBreakpoints(),
+	});
+
+	assert.deepEqual(result.violations, []);
+	assert.deepEqual(result.undecidable, [], 'a colour is not a reflow declaration');
+});
+
+test('the breakpoints are read from the token source', () => {
+	const parsed = parseBreakpoints("breakpoints: { sm: '640px', md: '768px' },");
+
+	assert.deepEqual(parsed, { base: 0, sm: 640, md: 768 });
+	assert.equal(parseBreakpoints('no breakpoints here'), null);
+
+	const repository = readBreakpoints();
+	assert.ok(repository, 'the repository declares its breakpoints');
+	assert.equal(repository.base, 0);
+	assert.ok(repository.md > REFLOW_BUDGET_PX, 'the named breakpoints start above the budget');
+});
+
+test('the value that applies at the budget is the largest one that applies', () => {
+	const resolved = effectiveValueAtBudget(
+		[
+			{ key: 'base', value: '0' },
+			{ key: 'sm', value: '640px' },
+			{ key: 'md', value: '768px' },
+		],
+		{ base: 0, sm: 640, md: 768 },
+		320,
+	);
+
+	assert.equal(resolved.value, '0', 'only the base value applies at 320 px');
+	assert.equal(resolved.breakpoint, 'base');
+	assert.deepEqual(resolved.undecidable, []);
+});
+
+test('every fixture declares one value per declaration', () => {
+	for (const entry of readFixtureEntries()) {
+		const declarations = styleDeclarationsIn(entry.source);
+		for (const declaration of declarations) {
+			assert.ok(
+				!declaration.responsive && !declaration.array,
+				`${entry.relativePath} declares a responsive / array value; the fixture contract is one value per declaration, because the browser half renders the fixture's own declaration as CSS`,
+			);
+		}
+	}
 });
 
 test('the CSS syntax is judged like the object syntax', () => {

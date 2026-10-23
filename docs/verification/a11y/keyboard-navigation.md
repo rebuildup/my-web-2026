@@ -52,9 +52,14 @@ deployment でのみ描画されるため、**CI（key なし）では dialog �
   fixture は `routes -> home`（登録済みの依存方向、AGENTS.md §3）の
   範囲内であり、新しい obligation を作らない。
 - **bundle / 予算**: fixture は `/design-system` のルート chunk に
-  含まれる。`pnpm run bundle:budget:check` で `/design-system` に
-  50.0 KiB の余裕があり、budget は PASS した（`/design-system`
-  1.65 MiB / 上限内）。
+  含まれる。`pnpm run bundle:budget:check` の実測は
+  `/design-system` の route-added JS **49.6 KiB**（エントリシェルに
+  加えてこの route が持ち込む JS。gate の出力の 3 列目）で、budget は
+  PASS した。ここで **余裕（headroom）** とは「上限 − 実測サイズ」で、
+  上限を持つのは 2 指標だけである: initial JS は
+  実測 1,731,135 B / 上限 1,740,000 B で余裕 8,865 B、
+  initial CSS は実測 47,041 B / 上限 50,000 B で余裕 2,959 B。
+  （route-added JS 自体には上限がないため「余裕」は定義されない。）
 - **copy approval gate の対象外**: `quality/copy-editorial-surfaces.json`
   の `excludeGlobs` に `src/routes/design-system/**` があるため、この
   fixture の日本語 copy は owner の編集承認を要求しない。既存の
@@ -79,6 +84,17 @@ deployment では、同じ契約が home 側でもそのまま走る（spec は 
 | F1 | `src/editorial/nav/PublicNav.tsx` のコメント 6 行が日本語で、AGENTS.md §1「ソースコード、コミットメッセージは英語」に反していた | コメントを英語へ書き直した（**コードの意味は変えない**）。同ファイル内の既存の英語コメントと同じ書き方に揃えた |
 | F2 | `e2e/a11y/keyboard-navigation.spec.ts` の `for (const stop of stops) expect(isSupportingElement(stop)).toBe(false)` は、walk が supporting element で終端するため **構造的に常に真**（守るものがなかった） | walk が **終端した情報**（`end`: どの supportive element に落ちたか）と **focus が前に戻らなかったか**（`forward`: 文書内並び位置が単調増加か）を観測する形に変更し、その 2 つを assert した。実効的な assertion は減らしていない（`end` が存在すること・`BODY` であること・per-stop の tag と識別子・`forward`・`wrapped`）。壊し方（focus を途中で失う）を入れた negative control と、出荷コードを実際に壊す attack の両方で赤くなることを確認した |
 | F3 | dialog の focus 契約が、CI に consumer API key が無いため実質未検証だった | **選択肢 (a)** を採用: 出荷している `PickerModal` を `/design-system` の fixture として描画し、どの deployment でも同じ契約が走る。採用理由と、採らない (b) / (c) の理由は上の節に書いた |
+
+### 2 巡目（d430f96a への cold review）の対応
+
+| 指摘 | 内容 | 対応 |
+| --- | --- | --- |
+| R8 (major) | Issue の受け入れ条件 5 の「誤検知時の対応を記録」が成果物のどこにも無かった | 本 doc に「## 誤検知が起きたときの対応」節を追加した（どの assertion がどの route で誤検知しうるか / 解除手順 / 「閾値を緩めて緑にする手順は禁止」で、対象の拡大縮小は doc に宣言する） |
+| R7 (minor) | doc が Issue の実名 `keyboard-focus-sequence.png` を引用せず、ファイル名が乖離した理由も書かれていなかった | 「## スクリーンショット」節を直し、Issue の実名と成果物の乖離を **ファイル名と拡張子の 2 点に分けて** 理由付きで書いた |
+| R3 (minor) | `dialog-traps-focus` は dialog の modality を失っても緑のままだった（`showModal()` → `show()` で 13/13 緑） | spec を 2 段の assertion にした: 1) `dialog.matches(':modal')` が真であること、2) Tab の行き先が dialog 内の focus 可能要素の集合に収まること。既存「dialog 内に留まる」assertion は強化として残した。`show()` に置き換えた attack で**新しい test が赤くなる**ことを確認済み |
+| R5 (minor) | 新規 spec のコメントが日本語 120 行（既存 e2e 15 本は 0 行。AGENTS.md §1「ソースコードは英語」） | spec のコメントをすべて英語へ書き直した（識別子・文言・assertion の意味は不変）。機械確認で日本語行数 **0** |
+| R8 / R1 (minor) | PR 本文に「対象」節が無かった / doc の bundle 予算の数値（50.0 KiB）が実測（49.6 KiB）と食い違っていた | PR 本文に「## 対象」節を追加。doc の予算の記述を実測値へ直し、「余裕 = 上限 − 実測サイズ」の定義と、上限を持つ指標（initial JS / initial CSS）の実測値と上限を明記した |
+
 
 ## 適用対象
 
@@ -139,6 +155,8 @@ deployment では、同じ契約が home 側でもそのまま走る（spec は 
 | `nav-reachable` / `nav-activatable` | nav の link に Tab で到達でき、Enter で遷移する | Chromium: `toBeFocused()` + URL 変化 |
 | `menu-escape-returns-focus` | mobile menu が Escape で閉じ、**trigger へ focus が戻る** | Chromium: Escape 後の `toBeFocused()` |
 | `dialog-traps-focus` | `<dialog>` を開いている間、Tab を重ねても focus が dialog の外へ出ない | Chromium: 12 回の Tab の各点で `dialog.contains(activeElement)` |
+| `dialog-is-modal` | picker の `<dialog>` は **modal** である（`showModal()` で開かれている）。非 modal（`show()`）では、dialog が focus を持っていても 12 回の Tab が dialog 内にとどまるため、上の assertion では気づけない | Chromium: `dialog.matches(':modal')` |
+| `dialog-tab-targets-are-its-own` | Tab の行き先は **dialog 内の focus 可能要素**である（dialog 以外の要素へ Tab しない） | Chromium: 各 Tab の `activeElement` が dialog 内の focus 可能要素（`a[href]` / `button` / `input` / `select` / `textarea` / `[tabindex]`。disabled を除く）に含まれるか |
 | `dialog-escape-returns-focus` | Escape で dialog が閉じ、trigger へ focus が戻る | Chromium: `toBeHidden()` + `toBeFocused()` |
 | `dialog-surface-is-known` | このリポジトリの `<dialog>` はリアクション picker だけである | Chromium: `dialog` 要素の `aria-label` を全件検査 |
 | `dialog-fixture-contract` | **key 不要の surface**（`/design-system` の fixture）で、出荷している picker の dialog が focus を拘束し、Escape で閉じ、trigger へ focus を戻す | Chromium: fixture の trigger に focus して Enter → 12 回の Tab が外へ出ない → Escape で `toBeHidden()` → trigger が `toBeFocused()` |
@@ -185,14 +203,23 @@ assertion が赤くなることを、修正を戻す前に確認した（attack�
 | --- | --- | --- |
 | A | `src/editorial/nav/PublicNav.tsx` の Escape 後の focus 復元（`buttonRef.current?.focus()`）を無効化 | `/about` の mobile menu の test が **赤**（`the focus must return to the trigger that opened the menu` / focus は `<BODY>` にいた）。同じ修正を入れると緑 |
 | B | `src/home/reactions/widget.tsx` の `<dialog>` の Escape handler（`onKeyDown`）を無効化 | `/design-system` の fixture の dialog test が **赤**（`expect(locator).toBeHidden() failed` = Escape で閉じない）。同じ修正を入れると緑 |
+| C | `src/home/reactions/widget.tsx` の `dialog.showModal()` を `dialog.show()` に置き換え（**非 modal** にする） | `/design-system` の fixture の dialog test が **赤**（`the shipped picker dialog must be modal (opened with showModal()) (SC 2.1.2)`）。`showModal()` に戻すと緑。modal 性を失っても「12 回の Tab が dialog 内に留まる」は緑のままになるため、この attack は `dialog-is-modal` assertion が有効であることを示す |
 
 attack A は「修正 **(a)** が本当に効いている」ことを、attack B は
 「**dialog の focus 契約が key なしで検査されている**」ことを示す。
 
 ## スクリーンショット
 
-`docs/verification/a11y/keyboard-navigation.webp`（Issue #394 が指定する
-`keyboard-navigation.png` の WebP 版。PNG はリポジトリに置いていない）。
+成果物は `docs/verification/a11y/keyboard-navigation.webp`（PNG はリポジトリに
+置いていない）。Issue #394 の「PRの必須スクリーンショット」は
+`docs/verification/a11y/keyboard-focus-sequence.png` を要求している。成果物の
+ファイル名と拡張子は Issue の指定と **2 点で異なる**ので、理由を分けて
+書いておく（読者が別々に追えるようにするため）。
+
+| 乖離 | Issue の指定 | 成果物 | 理由 |
+| --- | --- | --- | --- |
+| ファイル名 | `keyboard-focus-sequence.png` | `keyboard-navigation.webp`（名前部分 = `keyboard-navigation`） | Issue は「focus sequence」と書いているが、本 PR の主題は nav / mobile menu / dialog / tools 入口という **キーボード契約全体** であり、focus の並びだけではない。成果物の名前を `keyboard-navigation` に改めた |
+| 拡張子 | `.png` | `.webp` | 本リポジトリの capture script は **WebP のみ**（`.png` の出力パスを拒否する。既存の `capture-a11y-table-code.mjs` と同じ扱い）。Chromium の PNG を `sharp` で WebP に変換し、中間 PNG は削除する |
 
 - 生成: `pnpm run capture:a11y-keyboard-nav`
 - 対象: ローカルの preview server（`scripts/e2e-local-bootstrap.mjs`、Playwright の
@@ -201,6 +228,9 @@ attack A は「修正 **(a)** が本当に効いている」ことを、attack B
   当たっている状態**（focus ring が見える。skip link は focus されるまで
   画面外へ translate される）
 - 右: 記録した Tab 順の一覧（何番目に何が focus したか）と、機械検査の結果
+  （skip link の focus ring の視認性、Tab 順の巡回、mobile menu の Escape での
+  focus 戻し、picker dialog の **modal 性** / Tab 行き先が dialog 内の focus
+  可能要素であること / focus 拘束 / Escape での閉鎖と trigger への focus 戻し）
 - 上部: 検証レポート（WCAG 対応・機械検査項目・人間の評価項目）
 - 失敗条件: 観測がキーボード契約と矛盾した場合、**成果物を書かずに exit 1**
   （見栄えのよい画像だけが残ることを防ぐ）
@@ -210,6 +240,7 @@ attack A は「修正 **(a)** が本当に効いている」ことを、attack B
 ```bash
 pnpm run a11y:keyboard-nav:check    # Playwright のキーボード回帰検査（gate）
 pnpm run capture:a11y-keyboard-nav   # Chromium で実測して WebP を生成
+node --test scripts/capture-a11y-keyboard-nav.test.mjs  # capture の判定関数の単体テスト
 pnpm exec vitest run src/editorial/nav/PublicNav.test.ts
 pnpm run bundle:budget:check         # fixture 追加後のルート予算
 pnpm run format:check && pnpm run lint:check && pnpm run architecture:check
@@ -218,6 +249,47 @@ pnpm run format:check && pnpm run lint:check && pnpm run architecture:check
 `pnpm run a11y:keyboard-nav:check` は preview server を必要とするが、
 Playwright の `webServer` が自動起動する（`dist/client` が必要な場合は先に
 `pnpm run build`）。
+
+## 誤検知が起きたときの対応
+
+機械検査は **構造** だけを判定する。誤検知（偽陽性）が起きた場合は、次の順で
+対処する。どの判断も **gate の閾値を緩めることで済ませない**。
+
+1. **その assertion は本当にその route で成立する性質か。** 本 spec の
+   assertion は route ごとに決まるもので、どの route にも共通して成り立つ
+   構造を測る。`/` の Tab walk が測るのは「すべての stop が
+   インタラクティブ要素で、focus が文書順に進み、文書末尾で `BODY` へ
+   落ちる」という性質であり、特定の route の内容には依存しない。逆に、
+   **内容に依存する** assertion（公開行の順序、件数、日次で変わる一覧）を
+   route をまたいで足すと、その assertion は誤検知の温床になる。
+2. **日付・データ・設定に依存する副作用か。** 誤検知が起きうる主な例は
+   次の 3 つであり、いずれも **assert しない** 方向で処理済みである。
+   - `/portfolio` / `/portfolio/[slug]`: 公開行の有無で Tab 順が変わる
+     （対象外表に明記済み）。
+   - `/contact`: channel 一覧が 30 日の鮮度窓で入れ替わるため、本 spec は
+     件数・順序・文言を assert せず、skip link への到達だけを見る。
+   - `/tools`: 「公開されている Tool が 1 件以上ある」は公開状態に依存する。
+     さらに dialog 側は home consumer API key の有無で 2 つの状態になる
+     （key あり = full 契約 / なし = 「reactions disabled」注記のみ。
+     どちらの分岐も明示的に assert し、skip はしない）。
+3. **その route を対象外表に足すか、対象を狭めるか。** 対象外表
+   （`## 対象外（理由つき）` の表）に **route と理由** を書いて除外する。
+   理由の無い除外は成立しない。spec 側で除外する場合は、describe を
+   丸ごと消すのではなく、**その route で成立する assertion だけを残す**
+   （skip ではなく、状態を明示的に表明する形にする）。
+4. **gate の閾値を緩めて緑にする手順は禁止。** `MIN_TAB_STOPS` を下げる、
+   Tab の回数を減らす、`isFocusInside` の条件を緩める、といった変更で
+   「緑にした」を報告してはならない。**対象の拡大縮小は本 doc に宣言して
+   から** コードを変える（どの性質をどの程度緩めるのか、どの route を
+   対象外にするのかを書く）。宣言しない閾値の緩和は、その assertion が
+   何も見ていないことを隠す。
+5. **いずれも該当しない場合は owner へ判断を仰ぐ。** 判断が要るのは、
+   「この route を対象外にしてよいか」「この性質は gate の対象から外して
+   よいか」のように、**検査対象そのものの範囲**が変わる場合である。
+
+なお、本 spec の assertion は negative control（3 件）と attack（3 件）で
+「赤になれること」を確認済みなので、誤検知の報告には **どの assertion が
+どの route で落ちたか** を添えること。
 
 ## 既知の制約・残件
 

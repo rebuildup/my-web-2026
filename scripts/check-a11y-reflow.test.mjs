@@ -21,21 +21,31 @@ import {
 	BASE_SELECTOR,
 	BASE_STYLES_PATH,
 	BREAK_DECLARATIONS,
+	EXCLUSIONS,
 	FIXTURE_EXPECTATIONS,
 	FIXTURE_ROOT,
 	HUMAN_EVALUATION,
 	REFLOW_BUDGET_PX,
 	RULES,
+	SHIPPED_DECLARATION_EXCLUSIONS,
+	SHIPPED_SCAN_ROOT,
 	UNBREAKABLE_KINDS,
 	auditFixtureFiles,
+	auditShippedSource,
 	breakDeclarationsIn,
 	collectEvidence,
+	deriveSpecimenCases,
+	describeSpecimen,
 	evaluateFixtureSource,
+	evaluateShippedSource,
+	exclusionFor,
 	fixedWidthsIn,
 	forbidsWrapIn,
 	hasBreakBoundary,
+	readFixtureEntries,
 	renderGateSummary,
 	specimenKindsIn,
+	styleDeclarationsIn,
 } from './check-a11y-reflow.mjs';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname;
@@ -221,6 +231,162 @@ test('the shipped repository passes the gate', () => {
 	assert.deepEqual(evidence.violations, []);
 	assert.equal(evidence.fixture.violations.length, 0);
 	assert.equal(evidence.fixture.rows.length, 6);
+});
+
+/* ------------------------------------------------------------------ *
+ * The shipped source scan
+ * ------------------------------------------------------------------ */
+
+test('a maximum is not read as a width', () => {
+	const declarations = styleDeclarationsIn('main { max-width: 720px; margin: 0 auto; }');
+
+	assert.deepEqual(
+		declarations.map((declaration) => declaration.property),
+		['max-width', 'margin'],
+	);
+	const result = evaluateShippedSource({
+		relativePath: 'src/x.ts',
+		source: 'main { max-width: 720px; }',
+	});
+	assert.deepEqual(result.violations, [], 'a maximum does not pin a box wider than the budget');
+});
+
+test('a shipped surface that forbids wrapping is a violation', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/hero.tsx',
+		source: "const s = { whiteSpace: 'nowrap' };",
+	});
+
+	assert.equal(result.violations.length, 1);
+	assert.equal(result.violations[0].rule, 'shipped-nowrap');
+	assert.equal(result.violations[0].wcag, '1.4.10');
+	assert.ok(result.violations[0].line > 0, 'the violation carries a line the developer can open');
+});
+
+test('a shipped surface pinned wider than the budget is a violation', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/editorial/x.tsx',
+		source: "const s = css({ minWidth: '710px' });",
+	});
+
+	assert.equal(result.violations.length, 1);
+	assert.equal(result.violations[0].rule, 'shipped-fixed-width');
+	assert.match(result.violations[0].message, /710px/);
+});
+
+test('the CSS syntax is judged like the object syntax', () => {
+	assert.equal(
+		evaluateShippedSource({ relativePath: 'src/x.css', source: '.a { min-width: 400px; }' })
+			.violations[0].rule,
+		'shipped-fixed-width',
+	);
+	assert.equal(
+		evaluateShippedSource({ relativePath: 'src/x.css', source: '.a { width: 500px; }' })
+			.violations[0].rule,
+		'shipped-fixed-width',
+	);
+	assert.equal(
+		evaluateShippedSource({ relativePath: 'src/x.css', source: '.a { white-space: pre; }' })
+			.violations[0].rule,
+		'shipped-nowrap',
+	);
+	for (const source of [
+		'.a { max-width: 500px; }',
+		'.a { width: 100%; }',
+		'.a { width: 20rem; }',
+		'.a { width: calc(100% - 2rem); }',
+	]) {
+		assert.deepEqual(
+			evaluateShippedSource({ relativePath: 'src/x.css', source }).violations,
+			[],
+			`${source} must not be a violation`,
+		);
+	}
+});
+
+test('a shipped surface inside the budget is not a violation', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/admin/keys/step-up-panel.tsx',
+		source: "const s = css({ minWidth: '240px', maxWidth: '640px' });",
+	});
+
+	assert.deepEqual(result.violations, []);
+});
+
+test('a declaration named in a comment is documentation, not a declaration', () => {
+	const result = evaluateShippedSource({
+		relativePath: 'src/home/hero.tsx',
+		source: '/** white-space: nowrap would be wrong here */\nexport const a = 1;',
+	});
+
+	assert.deepEqual(result.violations, []);
+});
+
+test('every exclusion carries a reason', () => {
+	for (const exclusion of EXCLUSIONS) {
+		assert.ok(exclusion.id.length > 0);
+		assert.ok(exclusion.describe.length > 0);
+		assert.ok(exclusion.reason.length > 20, `${exclusion.id} must explain itself`);
+	}
+	for (const exclusion of SHIPPED_DECLARATION_EXCLUSIONS) {
+		assert.ok(exclusion.file.length > 0);
+		assert.ok(exclusion.property.length > 0);
+		assert.ok(exclusion.value.length > 0);
+		assert.ok(exclusion.reason.length > 20, `${exclusion.id} must explain itself`);
+	}
+});
+
+test('the exclusion list is used, not dead code', () => {
+	assert.equal(exclusionFor('src/home/hero.test.tsx')?.id, 'test-files');
+	assert.equal(exclusionFor('src/home/hero.stories.tsx')?.id, 'story-files');
+	assert.equal(exclusionFor('src/routes/design-system/index.tsx')?.id, 'design-system-route');
+	assert.equal(exclusionFor('src/home/hero.tsx'), null);
+});
+
+test('the shipped source scan finds no violation and shows its holes', () => {
+	const shipped = auditShippedSource();
+
+	assert.deepEqual(shipped.violations, [], 'the shipped source must not break the reflow contract');
+	assert.ok(shipped.filesScanned > 100, 'the scan must actually read the shipped source');
+	for (const entry of shipped.excluded) {
+		assert.ok(entry.reason.length > 20, `${entry.file} must be excluded with a reason`);
+	}
+});
+
+/* ------------------------------------------------------------------ *
+ * One definition for both halves
+ * ------------------------------------------------------------------ */
+
+test('the browser cases are derived from the fixture files', () => {
+	const entries = readFixtureEntries();
+	const cases = deriveSpecimenCases(entries);
+
+	assert.equal(cases.length, entries.length);
+	for (const entry of entries) {
+		const specimen = describeSpecimen(entry);
+		assert.ok(specimen.specimenId, `${entry.relativePath} must declare a specimen id`);
+		assert.ok(specimen.kind, `${entry.relativePath} must declare a specimen kind`);
+		assert.ok(specimen.text, `${entry.relativePath} must render text`);
+	}
+	assert.equal(
+		cases.filter((entry) => entry.expectOverflow).length,
+		Object.keys(FIXTURE_EXPECTATIONS.fail).length,
+	);
+});
+
+test('a fixture without a readable specimen is refused, not rendered as an empty box', () => {
+	assert.throws(
+		() =>
+			deriveSpecimenCases([
+				{
+					directory: 'pass',
+					name: 'broken.tsx',
+					relativePath: `${FIXTURE_ROOT}/pass/broken.tsx`,
+					source: 'export const A = () => <div>text</div>;',
+				},
+			]),
+		/does not declare a readable specimen/,
+	);
 });
 
 test('the report separates machine-checked facts from human evaluation', () => {

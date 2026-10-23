@@ -11,14 +11,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
 	EXPECTED_CASES,
+	SHIPPED_ROUTES,
 	STAGES,
+	assertLoopbackBaseUrl,
 	assertWebpOutputPath,
 	evaluateObservation,
+	evaluateShippedRoutes,
 	harnessIndexHtml,
 	overflowOf,
 	resolveStaticTarget,
 	screenshotBudgetVerdict,
 } from './capture-a11y-reflow.mjs';
+import { FIXTURE_EXPECTATIONS, FIXTURE_ROOT } from './check-a11y-reflow.mjs';
 
 /** A synthetic browser observation that matches every expectation. */
 function conformingObservation() {
@@ -62,18 +66,87 @@ test('every expected specimen is on the screen, in both stages, showing both sid
 			);
 		}
 	}
-	assert.ok(EXPECTED_CASES.some((entry) => entry.group === 'shipped contract'));
-	assert.ok(EXPECTED_CASES.some((entry) => entry.group === 'reproduced defect'));
+	assert.ok(EXPECTED_CASES.some((entry) => entry.group === 'fixture: pass state'));
+	assert.ok(EXPECTED_CASES.some((entry) => entry.group === 'fixture: fail state'));
 });
 
-test('the shipped contract plus the reproduced defects satisfies the observations', () => {
+test('the browser case table is the fixture roster, not a second copy of it', () => {
+	const expected = Object.entries(FIXTURE_EXPECTATIONS).flatMap(([directory, expectations]) =>
+		Object.keys(expectations).map((name) => `${directory}/${name}`),
+	);
+
+	assert.deepEqual(
+		EXPECTED_CASES.map((entry) => entry.file.replace(`${FIXTURE_ROOT}/`, '')).sort(),
+		expected.sort(),
+		'every fixture file must produce exactly one browser case, and no case may exist without a fixture file',
+	);
+	for (const entry of EXPECTED_CASES) {
+		assert.ok(entry.text.length > 0, `${entry.id} must render text`);
+		assert.ok(entry.kind.length > 0, `${entry.id} must declare a kind`);
+	}
+	assert.equal(
+		EXPECTED_CASES.filter((entry) => entry.expectOverflow).length,
+		Object.keys(FIXTURE_EXPECTATIONS.fail).length,
+		'the fail fixtures are the ones that must overflow',
+	);
+});
+
+test('a non-loopback origin is refused', () => {
+	assert.throws(() => assertLoopbackBaseUrl('https://rebuildup.dev'), /non-loopback/);
+	assert.equal(assertLoopbackBaseUrl('http://127.0.0.1:3100'), 'http://127.0.0.1:3100');
+});
+
+test('a shipped route that scrolls horizontally at the budget is a failure', () => {
+	const verdict = evaluateShippedRoutes([
+		{
+			path: '/',
+			label: 'Home',
+			viewportWidth: 320,
+			documentScrollWidth: 730,
+			documentClientWidth: 320,
+		},
+	]);
+
+	assert.equal(verdict.ok, false);
+	assert.ok(
+		verdict.failures.some((failure) => /the shipped route \/ scrolls horizontally/.test(failure)),
+	);
+});
+
+test('shipped routes that fit at the budget pass', () => {
+	const verdict = evaluateShippedRoutes(
+		SHIPPED_ROUTES.map((route) => ({
+			path: route.path,
+			label: route.label,
+			viewportWidth: 320,
+			documentScrollWidth: 320,
+			documentClientWidth: 320,
+		})),
+	);
+
+	assert.equal(verdict.ok, true, verdict.failures.join('; '));
+	assert.equal(verdict.rows.length, SHIPPED_ROUTES.length);
+});
+
+test('an empty shipped measurement is a failure, not a pass', () => {
+	const verdict = evaluateShippedRoutes([]);
+
+	assert.equal(verdict.ok, false);
+	assert.ok(verdict.failures.some((failure) => /no shipped route was measured/.test(failure)));
+});
+
+test('the shipped route set includes the home surface', () => {
+	assert.ok(SHIPPED_ROUTES.some((route) => route.path === '/'));
+});
+
+test('the pass state plus the fail state satisfies the observations', () => {
 	const verdict = evaluateObservation(conformingObservation());
 
 	assert.equal(verdict.ok, true, verdict.failures.join('; '));
 	assert.equal(verdict.rows.length, EXPECTED_CASES.length * STAGES.length);
 });
 
-test('a shipped-contract specimen that overflows is a failure', () => {
+test('a pass-state specimen that overflows is a failure', () => {
 	const observation = conformingObservation();
 	const entry = observation.cases.find((candidate) => candidate.id === 'pass-long-word');
 	entry.scrollWidth = 720;
@@ -84,7 +157,7 @@ test('a shipped-contract specimen that overflows is a failure', () => {
 	assert.ok(verdict.failures.some((failure) => /pass-long-word.*overflows/.test(failure)));
 });
 
-test('a reproduced defect that stops overflowing is a failure (the negative control)', () => {
+test('a fail-state specimen that stops overflowing is a failure (the negative control)', () => {
 	const observation = conformingObservation();
 	const entry = observation.cases.find((candidate) => candidate.id === 'fail-without-break');
 	entry.scrollWidth = entry.clientWidth;

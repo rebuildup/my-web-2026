@@ -13,8 +13,10 @@
 | 対象 | 範囲 | 備考 |
 | --- | --- | --- |
 | `src/styles.css` の `:where(body)` ルール | 出荷する長文の折り返し下限（wrap floor） | `overflow-wrap` は継承するので 1 宣言が全テキスト面に届く |
+| `src/**`（`.tsx` / `.ts` / `.css`） | **出荷コード**が `white-space: nowrap` / 320 px 超の固定幅を宣言していないか | rule `shipped-nowrap` / `shipped-fixed-width` |
 | `scripts/fixtures/a11y-reflow/{pass,fail}/*.tsx` | 長文 / 言語拡張の再現用 fixture | `data-reflow-kind` を持つ specimen |
-| 上記 fixture の描画 | Chromium での `scrollWidth > clientWidth` 実測 | capture が 100% と 200% の 2 stage で測る |
+| 上記 fixture の描画 | Chromium での `scrollWidth > clientWidth` 実測 | capture が 100% と 200% の 2 stage で測る。**case 表は fixture ファイルから生成する**（二重定義なし） |
+| 出荷 route `/` と `/portfolio/my-web-2026` | 320 CSS px で `documentElement.scrollWidth <= clientWidth` | capture がローカル preview server で開く。**ここが「実画面」の側** |
 
 ### 対象外（理由も gate の出力に明記する）
 
@@ -22,7 +24,9 @@
 | --- | --- |
 | 画像・グラデーション内の文字 | 背景画像との合成問題であり、テキストの折り返し契約ではない |
 | flex / grid 子要素の `min-width: 0` | 面ごとの設計判断であり、継承する body の floor では決まらない（下記「既知の制約」） |
-| `white-space: nowrap` を使う正当な UI（nav ラベル等） | 折り返し不要が意図された短いラベルであり、specimen ではない |
+| `white-space: nowrap` を使う正当な UI（nav ラベル等） | 折り返し不要が意図された短いラベル。**理由付きで `SHIPPED_DECLARATION_EXCLUSIONS` に宣言した宣言だけ**を除外する（下記「誤検知時の対処」） |
+| `*.test.ts(x)` / `*.stories.tsx` / `src/routes/design-system/**` | 出荷页面ではない（テスト・preview ハーネス・内部ギャラリー）。除外の理由は gate の出力に件数つきで出る |
+| `/` と `/portfolio/my-web-2026` 以外の route | 出荷 route の網羅は別 Issue の責務。本 Issue は Home と Article 形の代表 route を測る（下記「既知の制約」） |
 | 実機（物理デバイス）のテキストのみズーム | 機械では再現できない。人は人が評価する |
 
 ### 基準
@@ -37,6 +41,8 @@
 | rule | 意味 | 判定 |
 | --- | --- | --- |
 | `reflow-wrap-floor-missing` | 出荷する `:where(body)` ルールに破断境界が無い | 違反（出荷コード） |
+| `shipped-nowrap` | 出荷コードが `white-space: nowrap` / `pre` で折り返しを禁じている | 違反（出荷コード） |
+| `shipped-fixed-width` | 出荷コードが 320 px を超える `width` / `min-width`（px）を固定している | 違反（出荷コード） |
 | `reflow-specimen-without-break` | 改行不能な specimen に破断境界が無い | 違反（fixture） |
 | `reflow-specimen-fixed-width` | specimen が 320 px を超える `width` / `min-width`（px）を固定している | 違反（fixture） |
 | `reflow-specimen-nowrap` | 改行不能な specimen が `white-space: nowrap` で折り返しを禁じている | 違反（fixture） |
@@ -74,6 +80,15 @@ gate・fixture・ブラウザハーネスが同じ語彙を読む:
 テスト（`scripts/check-a11y-reflow.test.mjs`）はさらに、fixture ディレクトリの一覧と
 期待表が**完全一致**すること（1 個落としても気付けないテストにしない）を assert する。
 
+**ブラウザ側の specimen 定義はここ 1 つです。** capture は
+`scripts/fixtures/a11y-reflow/**.tsx` を読み、`data-reflow-specimen`（ID）・
+`data-reflow-kind`（種類）・`style`（対策）・描画テキストを抽出して
+case 表を作る（`deriveSpecimenCases`）。ブラウザ側に同じ 6 個を手書きしても
+いないので、静的側とブラウザ側が別の宣言を判定してしまう drift は起きない。
+`pass/` は「収まる」、`fail/` は「はみ出す」が期待値で、
+capture の case 表と fixture roster の一致は
+`scripts/capture-a11y-reflow.test.mjs` が assert する。
+
 ## 機械検査と人間の評価の区別
 
 ### 機械検査（`pnpm run a11y:reflow:check` / `pnpm run capture:a11y-reflow`）
@@ -81,15 +96,19 @@ gate・fixture・ブラウザハーネスが同じ語彙を読む:
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
 | `reflow-wrap-floor-missing` | 出荷する `:where(body)` に破断境界がある | コメント除去後の CSS 走査（`scripts/check-a11y-reflow.mjs`） |
+| `shipped-nowrap` | 出荷コード（`src/**`）が `white-space: nowrap` / `pre` を宣言していない | 同上（`src/**` の .tsx / .ts / .css を走査） |
+| `shipped-fixed-width` | 出荷コードが 320 px 超の `width` / `min-width`（px）を宣言していない | 同上 |
 | `reflow-specimen-without-break` | 改行不能な specimen に破断境界がある | 同上 |
 | `reflow-specimen-fixed-width` | specimen が 320 px 超の固定幅を持たない | 同上 |
 | `reflow-specimen-nowrap` | 改行不能な specimen が折り返しを禁じていない | 同上 |
 | fixture の再現 | `pass/` は違反 0 かつ specimen を持つ、`fail/` は期待した rule | 同上（gate 自身が行う） |
 | ブラウザ側の観測 | 各 specimen の `scrollWidth > clientWidth`（100% / 200% の 2 stage、320 px frame） | Chromium 実測（capture） |
+| **出荷 route の観測** | `/` と `/portfolio/my-web-2026` を 320 CSS px で開き、`documentElement.scrollWidth <= clientWidth` | Chromium 実測（capture）。1 route でも横スクロールすれば capture は exit 1、成果物は書かない |
 
-capture は **negative control** を内蔵する。`shipped contract` の specimen が
-はみ出せば失敗し、`reproduced defect` の specimen がはみ出さなくなったら
+capture は **negative control** を内蔵する。`pass/` の specimen が
+はみ出せば失敗し、`fail/` の specimen がはみ出さなくなったら
 （= 欠陥を再現しなくなったら）失敗する。片方だけ緑にはできない。
+出荷 route の測定も同じ契約で、**測れなかったら失敗**（空の測定は緑にしない）。
 
 ### 人間の評価（機械では判定しない）
 
@@ -108,13 +127,17 @@ capture は **negative control** を内蔵する。`shipped contract` の specim
 `reflow-400-percent.png` の WebP 版。**PNG はリポジトリに置いていない** —
 capture script が `.png` を拒否する規約のため）。
 
-- 生成: `pnpm run capture:a11y-reflow`
-- 方式: loopback の一時 HTTP サーバに生成したハーネスを置き、Chromium で描画して撮影
+- 生成: `pnpm run capture:a11y-reflow`（**先に `pnpm run build`** が必要。
+  出荷 route をローカル preview server で開くため、build が無ければ測定できない）
+- 方式: loopback の一時 HTTP サーバに生成したハーネスを置き、Chromium で描画して撮影。
+  同じ Chromium で、出荷 route を 320 CSS px の viewport で開いて幅を測る
 - 左（上）: 320 px frame の 100% 描画、右（下）: 同じ frame の 200% テキスト描画
-- 各 specimen は 320 px frame の中に描画し、`shipped contract` は収まり、
-  `reproduced defect` ははみ出す（frame が clip する）
-- 上部バンド: 機械検査の結果（gate 違反数・base floor・各 box の実測）、人間評価項目、WCAG 対応
-- 失敗条件: 観測が契約と矛盾した場合、**成果物を書かずに exit 1**
+- 各 specimen は 320 px frame の中に描画し、`pass/` は収まり、
+  `fail/` ははみ出す（frame が clip する）
+- 上部バンド: 機械検査の結果（gate 違反数・base floor・走査した出荷ファイル数・
+  各 box の実測・**出荷 route ごとの document 幅**）、人間評価項目、WCAG 対応
+- 失敗条件: 観測が契約と矛盾した場合（fixture の実測、または出荷 route の横スクロール）、
+  **成果物を書かずに exit 1**
 
 ## 誤検知が起きたときの対処
 
@@ -129,7 +152,23 @@ capture script が `.png` を拒否する規約のため）。
 3. **固定幅が意図的か。** 320 px を超える固定幅が必要な UI は、
    折り返しではなく「横スクロール可能な名前付き領域」として別の契約
    （`a11y:table:code:check` の scroll container）に属する。
-4. いずれも該当しない場合は **owner へ判断を仰ぐ**。
+4. **出荷コードの `white-space: nowrap` / 固定幅が意図的なら、除外を宣言する。**
+   `scripts/check-a11y-reflow.mjs` の `SHIPPED_DECLARATION_EXCLUSIONS` に
+   **1 件 = (file, declaration, reason)** を書く。理由はコードの中に残す
+   （理由をコードに書かないと、次の編集者が理由 unaware に緩める）。
+   除外は宣言単位なので、同じファイルにqushta 別の `nowrap` を足したら
+   それは違反のまま残る。現在の除外は次の 6 件:
+
+   | file | declaration | 理由の要約 |
+   | --- | --- | --- |
+   | `src/editorial/table-code.tsx` | `white-space: nowrap` | テーブル見出しセルは「ひとまとまり」の語。表は名前付き scroll container の中にあり、その契約は `a11y:table:code:check` が持つ |
+   | `src/editorial/nav/PublicNav.tsx` | `white-space: nowrap` | nav ラベルは単位（Issue #300）。行ごとには移れるが、語を割らない |
+   | `src/editorial/nav/Breadcrumbs.styles.ts` | `white-space: nowrap` | 意図的に省略するタイトル（`overflow: hidden` + `text-overflow: ellipsis`） |
+   | `src/keyboard/components/KeyboardDiagram.tsx` | `white-space: nowrap` | キーキャップのラベルは 1 つの短いトークン |
+   | `src/keyboard/components/KeyboardPage.tsx` | `white-space: nowrap` | キー表のラベルは 1 つの短いトークン |
+   | `src/keyboard/components/KeyboardDiagram.tsx` | `min-width: 710px` | 図のキャンバスは意図的に広い。名前付き `ScrollRegion` の中でスクロールする契約がある |
+
+5. いずれも該当しない場合は **owner へ判断を仰ぐ**。
 
 ## 既知の制約 / 未対応範囲
 
@@ -138,8 +177,22 @@ capture script が `.png` を拒否する規約のため）。
   下げない。広い単一トークンを flex 子に置く面は、その面が
   `min-width: 0`（または `overflow-wrap: anywhere`）を持つかという
   ローカルの設計判断であり、本 Issue の floor では決まらない。
-- **gate は fixture の宣言と出荷する base floor を判定する。**
-  「実画面がはみ出さない」ことの保証は capture（Chromium 実測）が担う。
+- **gate は「宣言」を、出荷コードの走査として判定する。**
+  走査するのは `src/**` の `.tsx` / `.ts` / `.css` で、
+  判定するのは `white-space: nowrap` / `pre` と 320 px 超の `width` / `min-width`（px）だけ。
+  `flex` / `grid` の `min-width: auto`、`position: absolute` の要素、
+  実行時に決まる幅などは **この gate は見ていない**。
+- **「実画面」を測るのは capture の 出荷 route 測定で、対象は 2 route だけ。**
+  測るのは `/`（Home）と `/portfolio/my-web-2026`（Article 形の長文ページ）で、
+  指標は `documentElement.scrollWidth <= documentElement.clientWidth`
+  （320 CSS px の viewport）。**他の route は測っていない**し、
+  要素単位の溢れ（ボックスの内側で文字がはみ出す状態）は診断情報として
+  記録するだけで判定には使わない。他 route の網羅は別 Issue の責務。
+- **capture は「測れなかったら失敗する」。**
+  ローカル preview server が用意できなければ capture は exit 2（判定不能）で終了し、
+  成果物は書かない（測っていないことを緑に見せない）。
+- **fixture の描画は「合成ハーネス」の中での測定である。**
+  出荷页面の測定は上記の出荷 route 測定であり、fixture の測定とは別の話である。
   どちらも「合格の代用の画像」ではない。
 - **200% テキストは capture の stage で再現する。**
   実機のテキストのみズームは機械では再現できない。

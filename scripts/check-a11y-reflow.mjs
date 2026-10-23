@@ -17,11 +17,15 @@
  *   - SC 1.4.4 Resize Text (level AA): text can be enlarged to 200%
  *     without loss of content or functionality.
  *
- * This gate is the STATIC half. It decides two things:
+ * This gate is the STATIC half. It decides three things:
  *
  *   1. the shipped base stylesheet carries the wrap floor that lets an
- *      unbreakable run break at all (`reflow-wrap-floor-missing`); and
- *   2. each reflow fixture reproduces the state it claims — a specimen
+ *      unbreakable run break at all (`reflow-wrap-floor-missing`);
+ *   2. the SHIPPED SOURCE does not declare the two declarations that
+ *      make a page un-reflowable - a surface that forbids wrapping
+ *      (`shipped-nowrap`) and a surface pinned wider than the 320 px
+ *      budget (`shipped-fixed-width`); and
+ *   3. each reflow fixture reproduces the state it claims — a specimen
  *      that injects unbreakable content either declares its break
  *      boundary or is reported (`reflow-specimen-without-break`), a
  *      specimen with a fixed width wider than the 320 px budget is
@@ -29,10 +33,13 @@
  *      forbids wrapping is reported (`reflow-specimen-nowrap`).
  *
  * The browser half of the same evidence is
- * `scripts/capture-a11y-reflow.mjs`, which renders the same specimen
- * kinds in Chromium at 320 px and at 200% text and measures
- * `scrollWidth > clientWidth`. Neither half substitutes for the other:
- * the gate reads the source, the capture reads the rendered box.
+ * `scripts/capture-a11y-reflow.mjs`, which renders the SAME fixture
+ * files (the case table is derived from them, not written twice) in
+ * Chromium at 320 px and at 200% text, measures `scrollWidth >
+ * clientWidth`, and opens the SHIPPED routes at the same 320 px budget
+ * to read the document's own width. Neither half substitutes for the
+ * other: the gate reads the source, the capture reads the rendered box
+ * and the rendered page.
  *
  * The rules
  * ---------
@@ -49,6 +56,14 @@
  *       A fixture specimen injects unbreakable content while forbidding
  *       wrapping (`white-space: nowrap`), so no break declaration can
  *       help it. (SC 1.4.10)
+ *   shipped-nowrap
+ *       A shipped surface forbids wrapping (`white-space: nowrap` /
+ *       `pre`). Whatever it renders, an unbreakable run in it cannot
+ *       reflow, so the page scrolls in two dimensions. (SC 1.4.10)
+ *   shipped-fixed-width
+ *       A shipped surface pins a box to a `width` / `min-width` in px
+ *       wider than the 320 px budget, so the box cannot reflow.
+ *       (SC 1.4.10)
  *
  * What "break boundary" means is defined once, in
  * {@link BREAK_DECLARATIONS}: `overflow-wrap: anywhere` /
@@ -59,22 +74,33 @@
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
- * This gate decides DECLARATIONS: whether the break floor exists, and
- * whether a specimen carries the boundary it claims. It cannot decide
- * whether the rendered page actually fits (the capture does that), how
- * a broken URL reads, whether a hyphenation dictionary would be better,
- * or how the reflowed page feels to a reader. Those stay human
- * evaluation and are printed separately, never merged into one green
- * mark.
+ * This gate decides DECLARATIONS: whether the break floor exists,
+ * whether a shipped surface forbids wrapping or pins itself wider than
+ * the budget, and whether a specimen carries the boundary it claims. It
+ * cannot decide whether the rendered page actually fits (the capture
+ * does that), how a broken URL reads, whether a hyphenation dictionary
+ * would be better, or how the reflowed page feels to a reader. Those
+ * stay human evaluation and are printed separately, never merged into
+ * one green mark.
+ *
+ * Exclusions
+ * ----------
+ * A shipped surface may forbid wrapping on purpose (a one-word nav
+ * label, a key cap, a code fragment inside a named scroll container).
+ * Those are listed in SHIPPED_DECLARATION_EXCLUSIONS with the reason
+ * they are legitimate, per (file, declaration) - a new
+ * `white-space: nowrap` in a file that already has one is still a
+ * violation. Every exclusion is printed with the report, so a green run
+ * always shows the holes it has.
  *
  * Exit codes: 0 = every rule passes, 1 = at least one violation,
  * 2 = the repository could not be scanned.
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REPO_ROOT, lineAt, stripComments } from './_source-scan.mjs';
+import { REPO_ROOT, lineAt, stripComments, toRepoPath } from './_source-scan.mjs';
 
 /** The Issue this gate belongs to. */
 export const ISSUE = '#400';
@@ -97,6 +123,8 @@ export const RULES = [
 	'reflow-specimen-without-break',
 	'reflow-specimen-fixed-width',
 	'reflow-specimen-nowrap',
+	'shipped-nowrap',
+	'shipped-fixed-width',
 ];
 
 /** The WCAG criterion each rule answers to. */
@@ -105,6 +133,8 @@ export const WCAG_BY_RULE = {
 	'reflow-specimen-without-break': '1.4.10',
 	'reflow-specimen-fixed-width': '1.4.10',
 	'reflow-specimen-nowrap': '1.4.10',
+	'shipped-nowrap': '1.4.10',
+	'shipped-fixed-width': '1.4.10',
 };
 
 /**
@@ -186,12 +216,400 @@ export const HUMAN_EVALUATION = [
 	'a real browser zoom / text-only-zoom pass on a physical device',
 ];
 
-/** Whether an exclusion applies to a repo-relative path (unused today). */
+/* ------------------------------------------------------------------ *
+ * The fixture specimen — ONE definition both halves read
+ * ------------------------------------------------------------------ */
+
+/**
+ * The CSS spelling of a React / Panda style key.
+ *
+ * The fixture writes `overflowWrap`, the browser writes `overflow-wrap`.
+ * Both halves speak CSS, so the key is translated once, here.
+ */
+export function cssPropertyFor(key) {
+	switch (key) {
+		case 'overflowWrap':
+			return 'overflow-wrap';
+		case 'wordBreak':
+			return 'word-break';
+		case 'whiteSpace':
+			return 'white-space';
+		case 'minWidth':
+			return 'min-width';
+		case 'maxWidth':
+			return 'max-width';
+		default:
+			return key;
+	}
+}
+
+/**
+ * The style declarations a fixture specimen declares (pure).
+ *
+ * Only the inline `style={{ … }}` object is read: the fixture is a
+ * hand-written specimen whose countermeasure sits next to its content,
+ * and the browser half has to render exactly that declaration.
+ */
+export function specimenStyleDeclarationsIn(source) {
+	const declarations = [];
+	for (const match of source.matchAll(/style=\{\{([\s\S]*?)\}\}/g)) {
+		for (const pair of match[1].matchAll(/([A-Za-z][A-Za-z0-9]*)\s*:\s*'([^']*)'/g)) {
+			declarations.push({ property: cssPropertyFor(pair[1]), value: pair[2] });
+		}
+	}
+	return declarations;
+}
+
+/**
+ * The text a fixture specimen renders (pure).
+ *
+ * The fixture names its token in a module-level constant and renders
+ * `{CONSTANT}`; the constant is resolved here, so the browser renders
+ * the same characters the fixture declares.
+ */
+export function specimenTextIn(source) {
+	const constants = new Map(
+		[...source.matchAll(/const\s+([A-Z][A-Z0-9_]*)\s*=\s*'([^']*)'/g)].map((match) => [
+			match[1],
+			match[2],
+		]),
+	);
+	const declaration = /data-reflow-specimen\s*=\s*["'][a-z0-9-]+["']/.exec(source);
+	if (!declaration) return null;
+	const tagEnd = source.indexOf('>', declaration.index);
+	if (tagEnd === -1) return null;
+	const close = source.indexOf('</div>', tagEnd);
+	if (close === -1) return null;
+	const inner = source.slice(tagEnd + 1, close);
+	const expression = /\{([A-Za-z_][A-Za-z0-9_]*)\}/.exec(inner);
+	if (!expression) return inner.trim() || null;
+	return constants.get(expression[1]) ?? null;
+}
+
+/**
+ * Everything the browser half needs to render one fixture specimen
+ * (pure).
+ */
+export function describeSpecimen({ relativePath, source }) {
+	return {
+		relativePath,
+		specimenId: specimenIdsIn(source)[0] ?? null,
+		kind: specimenKindsIn(source)[0] ?? null,
+		text: specimenTextIn(source),
+		declarations: specimenStyleDeclarationsIn(source),
+	};
+}
+
+/**
+ * Read every fixture file (filesystem).
+ *
+ * The roster is the directory listing, so a fixture that was added
+ * without the gate knowing about it is still read here — the gate
+ * reports the drift, and the browser half renders what is on disk.
+ */
+export function readFixtureEntries(repoRoot = REPO_ROOT) {
+	const entries = [];
+	for (const directory of Object.keys(FIXTURE_EXPECTATIONS)) {
+		const absolute = join(repoRoot, FIXTURE_ROOT, directory);
+		if (!existsSync(absolute)) continue;
+		for (const name of readdirSync(absolute)
+			.filter((entry) => entry.endsWith('.tsx'))
+			.sort()) {
+			entries.push({
+				directory,
+				name,
+				relativePath: `${FIXTURE_ROOT}/${directory}/${name}`,
+				source: readFileSync(join(absolute, name), 'utf8'),
+			});
+		}
+	}
+	return entries;
+}
+
+/**
+ * The browser's specimen table, derived from the fixture files.
+ *
+ * The browser half used to carry its own copy of the six specimens. Two
+ * copies of the same six things drift, and the drift is invisible: the
+ * static half would judge one set while the browser measured another.
+ * There is now ONE definition — the fixture file — and this function
+ * reads it.
+ *
+ * The expectation comes from the directory the fixture lives in: a
+ * `pass/` fixture must fit inside the budget, a `fail/` fixture must
+ * overflow it.
+ */
+export function deriveSpecimenCases(entries) {
+	const cases = [];
+	for (const entry of entries) {
+		const specimen = describeSpecimen(entry);
+		if (!specimen.specimenId || !specimen.kind || specimen.text === null) {
+			throw new Error(
+				`the fixture ${entry.relativePath} does not declare a readable specimen (id / kind / text); the browser half cannot render it`,
+			);
+		}
+		cases.push({
+			id: `${entry.directory}-${specimen.specimenId}`,
+			kind: specimen.kind,
+			group: entry.directory === 'pass' ? 'fixture: pass state' : 'fixture: fail state',
+			expectOverflow: entry.directory === 'fail',
+			text: specimen.text,
+			declarations: specimen.declarations,
+			file: entry.relativePath,
+		});
+	}
+	return cases;
+}
+
+/* ------------------------------------------------------------------ *
+ * The shipped source scan
+ * ------------------------------------------------------------------ */
+
+/** The shipped source the gate scans for text-surface defects. */
+export const SHIPPED_SCAN_ROOT = 'src';
+
+/** The suffixes the shipped scan reads. */
+export const SHIPPED_SCAN_SUFFIXES = ['.tsx', '.ts', '.css'];
+
+/**
+ * The files the shipped scan leaves out, each with the reason.
+ *
+ * The reason is part of the code on purpose: a hole without a reason is
+ * a hole the next editor will widen without knowing.
+ */
+export const EXCLUSIONS = [
+	{
+		id: 'test-files',
+		describe: '*.test.ts / *.test.tsx',
+		reason:
+			'a test file asserts on rendered markup; the defect this gate removes is in the shipped product code, not in its assertions',
+	},
+	{
+		id: 'story-files',
+		describe: '*.stories.tsx',
+		reason:
+			'a Storybook story is a preview harness for a component, not a surface a visitor reaches; the component it renders is scanned on its own',
+	},
+	{
+		id: 'design-system-route',
+		describe: 'src/routes/design-system/**',
+		reason:
+			'the design-system route is the repository-internal component gallery, not a published surface; its demo markup is a specimen of the primitive, and the primitive itself is scanned',
+	},
+];
+
+/** Whether an exclusion applies to a repo-relative path (pure). */
 export function exclusionFor(relativePath) {
-	if (/\.test\.tsx$/.test(relativePath)) return 'test source — asserts, does not render a surface';
-	if (/\.stories\.tsx$/.test(relativePath))
-		return 'story — a preview harness, not a shipped surface';
+	if (/\.test\.tsx?$/.test(relativePath)) return EXCLUSIONS[0];
+	if (/\.stories\.tsx$/.test(relativePath)) return EXCLUSIONS[1];
+	if (relativePath.startsWith('src/routes/design-system/')) return EXCLUSIONS[2];
 	return null;
+}
+
+/**
+ * The shipped declarations that are allowed to break the reflow rule,
+ * each with the reason it is legitimate.
+ *
+ * A shipped surface may forbid wrapping on purpose — a one-word
+ * navigation label, a key cap, a code fragment inside a named scroll
+ * container. Those are not accidents, so they are listed here with the
+ * reason; anything NOT listed is a violation.
+ *
+ * The exclusion is per (file, declaration), not per file: a new
+ * `white-space: nowrap` in a file that already has one is still a
+ * violation.
+ */
+export const SHIPPED_DECLARATION_EXCLUSIONS = [
+	{
+		id: 'table-code-header-cell',
+		file: 'src/editorial/table-code.tsx',
+		property: 'white-space',
+		value: 'nowrap',
+		reason:
+			'a table header cell / row header is a unit that must not break inside a word; the table lives in a named scroll container, and `a11y:table:code:check` owns that contract',
+	},
+	{
+		id: 'nav-label',
+		file: 'src/editorial/nav/PublicNav.tsx',
+		property: 'white-space',
+		value: 'nowrap',
+		reason:
+			'a navigation label is a unit (Issue #300): it may move to the next row as a whole, but it never breaks inside a Japanese word; the labels are short and the nav wraps between items',
+	},
+	{
+		id: 'breadcrumb-title',
+		file: 'src/editorial/nav/Breadcrumbs.styles.ts',
+		property: 'white-space',
+		value: 'nowrap',
+		reason:
+			'a deliberately truncated project title (overflow: hidden + text-overflow: ellipsis); the truncation is a design decision of the breadcrumb surface, not an unbreakable run',
+	},
+	{
+		id: 'keyboard-key-cap-label',
+		file: 'src/keyboard/components/KeyboardDiagram.tsx',
+		property: 'white-space',
+		value: 'nowrap',
+		reason:
+			'a key cap label is one short token that must stay on a single line; the cap is a fixed-size box in the keyboard diagram',
+	},
+	{
+		id: 'keyboard-key-label',
+		file: 'src/keyboard/components/KeyboardPage.tsx',
+		property: 'white-space',
+		value: 'nowrap',
+		reason: 'a key label in the key table is one short token that must stay on a single line',
+	},
+	{
+		id: 'keyboard-diagram-canvas',
+		file: 'src/keyboard/components/KeyboardDiagram.tsx',
+		property: 'min-width',
+		value: '710px',
+		reason:
+			'the key diagram canvas is wider than the reflow budget on purpose: it lives inside the named ScrollRegion, and that named scroll region is the contract that lets a wide diagram scroll instead of squeezing the page',
+	},
+];
+
+/**
+ * Every style declaration the shipped scan reads (pure).
+ *
+ * The property name is captured in full, so `max-width` is never read as
+ * `width`: a maximum is a cap, and a cap does not pin a box wider than
+ * the viewport.
+ */
+export function styleDeclarationsIn(source) {
+	const code = stripComments(source);
+	const found = [];
+	for (const match of code.matchAll(
+		/([A-Za-z][A-Za-z0-9-]*)\s*:\s*(?:'([^']*)'|"([^"]*)"|([A-Za-z0-9][A-Za-z0-9.%]*))/g,
+	)) {
+		const value = match[2] ?? match[3] ?? match[4];
+		if (value === undefined) continue;
+		found.push({
+			property: cssPropertyFor(match[1]),
+			value,
+			line: lineAt(code, match.index),
+			source: match[0].trim(),
+		});
+	}
+	return found;
+}
+
+/**
+ * Classify one shipped source file (pure).
+ *
+ * The rules are about the DECLARATION, not about the rendered box: a
+ * shipped surface that forbids wrapping, or that pins a box wider than
+ * the reflow budget, cannot reflow whatever it renders.
+ */
+export function evaluateShippedSource({ relativePath, source }) {
+	const violations = [];
+	for (const declaration of styleDeclarationsIn(source)) {
+		if (
+			declaration.property === 'white-space' &&
+			(declaration.value === 'nowrap' || declaration.value === 'pre')
+		) {
+			violations.push({
+				rule: 'shipped-nowrap',
+				file: relativePath,
+				line: declaration.line,
+				wcag: '1.4.10',
+				property: declaration.property,
+				value: declaration.value,
+				message: `the shipped surface forbids wrapping (white-space: ${declaration.value}); an unbreakable run it renders cannot reflow at ${REFLOW_BUDGET_PX} px, so the page scrolls in two dimensions`,
+			});
+		}
+		if (declaration.property === 'width' || declaration.property === 'min-width') {
+			const match = /^(\d+(?:\.\d+)?)px$/.exec(declaration.value);
+			if (!match) continue;
+			const px = Number(match[1]);
+			if (px <= REFLOW_BUDGET_PX) continue;
+			violations.push({
+				rule: 'shipped-fixed-width',
+				file: relativePath,
+				line: declaration.line,
+				wcag: '1.4.10',
+				property: declaration.property,
+				value: declaration.value,
+				message: `the shipped surface pins a box to ${declaration.property}: ${px}px, wider than the ${REFLOW_BUDGET_PX} px reflow budget; the box cannot reflow`,
+			});
+		}
+	}
+	return { violations };
+}
+
+/** Every shipped source file under the scan root (filesystem). */
+function collectShippedFiles(directory) {
+	const files = [];
+	for (const entry of readdirSync(directory, { withFileTypes: true })) {
+		const path = join(directory, entry.name);
+		if (entry.isDirectory()) {
+			files.push(...collectShippedFiles(path));
+			continue;
+		}
+		if (!SHIPPED_SCAN_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) continue;
+		files.push(path);
+	}
+	return files;
+}
+
+/**
+ * Scan the shipped source (filesystem).
+ *
+ * Every file the scan left out, and every declaration it allowed, is
+ * recorded with its reason — a green run has to show the holes it has.
+ */
+export function auditShippedSource(repoRoot = REPO_ROOT) {
+	const violations = [];
+	const excluded = [];
+	let filesScanned = 0;
+	const scanRoot = join(repoRoot, SHIPPED_SCAN_ROOT);
+	if (!existsSync(scanRoot) || !statSync(scanRoot).isDirectory()) {
+		throw new Error(`cannot scan the repository: ${SHIPPED_SCAN_ROOT} is not a directory`);
+	}
+	// One row per (file, declaration) exclusion, with the number of
+	// occurrences: the same declaration may appear more than once in a
+	// file, and the report must not print the same hole twice.
+	const declarationExclusions = new Map();
+	for (const file of collectShippedFiles(scanRoot)) {
+		const relativePath = toRepoPath(file, repoRoot);
+		const exclusion = exclusionFor(relativePath);
+		if (exclusion) {
+			excluded.push({ file: relativePath, id: exclusion.id, reason: exclusion.reason });
+			continue;
+		}
+		filesScanned += 1;
+		const result = evaluateShippedSource({
+			relativePath,
+			source: readFileSync(file, 'utf8'),
+		});
+		for (const violation of result.violations) {
+			const allowed = SHIPPED_DECLARATION_EXCLUSIONS.find(
+				(entry) =>
+					entry.file === relativePath &&
+					entry.property === violation.property &&
+					entry.value === violation.value,
+			);
+			if (allowed) {
+				const key = `${allowed.id}|${relativePath}|${violation.property}: ${violation.value}`;
+				const row = declarationExclusions.get(key);
+				if (row) {
+					row.occurrences += 1;
+				} else {
+					declarationExclusions.set(key, {
+						file: relativePath,
+						id: allowed.id,
+						declaration: `${violation.property}: ${violation.value}`,
+						occurrences: 1,
+						reason: allowed.reason,
+					});
+				}
+				continue;
+			}
+			violations.push(violation);
+		}
+	}
+	excluded.push(...declarationExclusions.values());
+	return { filesScanned, violations, excluded };
 }
 
 /** The index of the matching `}` for the `{` at `start` (pure). */
@@ -546,6 +964,7 @@ export function auditBaseStyles(repoRoot = REPO_ROOT) {
 export function collectEvidence(repoRoot = REPO_ROOT) {
 	const base = auditBaseStyles(repoRoot);
 	const fixture = auditFixture(repoRoot);
+	const shipped = auditShippedSource(repoRoot);
 	const shippedStyles = [BASE_STYLES_PATH].map((relativePath) => ({
 		file: relativePath,
 		exists: existsSync(join(repoRoot, relativePath)),
@@ -554,7 +973,8 @@ export function collectEvidence(repoRoot = REPO_ROOT) {
 		shippedStyles,
 		base,
 		fixture,
-		violations: [...base.violations, ...fixture.violations],
+		shipped,
+		violations: [...base.violations, ...fixture.violations, ...shipped.violations],
 		humanEvaluation: HUMAN_EVALUATION,
 		wcag: WCAG,
 	};
@@ -565,7 +985,7 @@ export function renderGateSummary(evidence) {
 	const lines = [];
 	lines.push(`text reflow gate — Issue ${ISSUE}`);
 	lines.push(
-		`shipped: ${evidence.shippedStyles.map((entry) => entry.file).join(', ')} (base rule ${BASE_SELECTOR}); fixture: ${evidence.fixture.rows.length} file(s)`,
+		`shipped: ${evidence.shippedStyles.map((entry) => entry.file).join(', ')} (base rule ${BASE_SELECTOR}) + ${evidence.shipped.filesScanned} shipped source file(s) under ${SHIPPED_SCAN_ROOT}/; fixture: ${evidence.fixture.rows.length} file(s)`,
 	);
 	lines.push('');
 	lines.push('machine-checked:');
@@ -573,13 +993,39 @@ export function renderGateSummary(evidence) {
 	lines.push(
 		`  ${baseOk ? 'ok  ' : 'FAIL'} ${'reflow-wrap-floor-missing'.padEnd(32)} the ${BASE_SELECTOR} rule carries a break boundary (${evidence.base.breaks.join(', ') || 'none'}) for SC 1.4.10 (${REFLOW_BUDGET_PX} px budget)`,
 	);
-	for (const rule of RULES.slice(1)) {
+	for (const rule of RULES.slice(1, 4)) {
 		const count = evidence.fixture.rows.filter((row) => row.found.includes(rule)).length;
 		lines.push(`  ${'ok  '} ${rule.padEnd(32)} ${count} fixture(s) reproduce it`);
 	}
 	lines.push(
 		`  ${evidence.fixture.violations.length === 0 ? 'ok  ' : 'FAIL'} ${'fixture'.padEnd(32)} ${evidence.fixture.rows.length} fixture file(s) reproduce the states they stand for`,
 	);
+	const shippedNowrap = evidence.shipped.violations.filter(
+		(entry) => entry.rule === 'shipped-nowrap',
+	);
+	const shippedFixed = evidence.shipped.violations.filter(
+		(entry) => entry.rule === 'shipped-fixed-width',
+	);
+	lines.push(
+		`  ${shippedNowrap.length === 0 ? 'ok  ' : 'FAIL'} ${'shipped-nowrap'.padEnd(32)} ${shippedNowrap.length} shipped declaration(s) forbid wrapping`,
+	);
+	lines.push(
+		`  ${shippedFixed.length === 0 ? 'ok  ' : 'FAIL'} ${'shipped-fixed-width'.padEnd(32)} ${shippedFixed.length} shipped declaration(s) pin a box wider than ${REFLOW_BUDGET_PX} px`,
+	);
+	if (evidence.shipped.excluded.length > 0) {
+		lines.push('');
+		lines.push('out of scope (excluded from the shipped scan, with the reason):');
+		for (const exclusion of EXCLUSIONS) {
+			const count = evidence.shipped.excluded.filter((entry) => entry.id === exclusion.id).length;
+			if (count === 0) continue;
+			lines.push(`  - ${exclusion.describe} (${count} file(s)): ${exclusion.reason}`);
+		}
+		for (const entry of evidence.shipped.excluded) {
+			if (!entry.declaration) continue;
+			const occurrences = entry.occurrences > 1 ? ` ×${entry.occurrences}` : '';
+			lines.push(`  - ${entry.file} (${entry.declaration}${occurrences}): ${entry.reason}`);
+		}
+	}
 	lines.push('');
 	lines.push('not machine-checked (human evaluation):');
 	for (const item of evidence.humanEvaluation) lines.push(`  - ${item}`);

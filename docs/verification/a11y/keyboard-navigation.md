@@ -28,6 +28,58 @@
 いずれも「見た目を整える」修正ではなく、**キーボードだけで到達・離脱
 できる**という契約の修正である。
 
+## dialog の focus 契約は key 不要の fixture で実効化する
+
+cold review の指摘（F3）: リアクション picker の `<dialog>` は home
+consumer API key（`MY_WEB_2026_CONSUMER_API_KEY`）が設定された
+deployment でのみ描画されるため、**CI（key なし）では dialog の focus
+契約が一度も走らない**。「未検証である」と記録するだけでも構わないが、
+記録に残すなら spec と矛盾しない形にしなければならない。
+
+そこで **選択肢 (a) を採用**した: `src/routes/design-system/` に
+**出荷している `PickerModal` をそのまま描画する fixture**
+（`/design-system` の「05 — Interactive」セクション内の fixture）を
+置き、`e2e/a11y/keyboard-navigation.spec.ts` から駆動する。
+
+- 検査対象は**本物**である。fixture が使うのは
+  `src/home/reactions/widget.tsx` の `PickerModal` と同じ要素であり、
+  コピーではない（Issue #486 の CLS fixture と同じ考え方: 検査対象は
+  出荷要素、データだけを固定する）。
+- 採る route: `/design-system` は key を要求しないため、**どの
+  deployment でも**同じ契約が走る。key が必要なら「dialog の contract は
+  環境依存」という記録だけが残り、CI は何も検査しないまま終わる。
+- `PickerModal` を `export` する変更は 1 行と、その docstring だけ。
+  fixture は `routes -> home`（登録済みの依存方向、AGENTS.md §3）の
+  範囲内であり、新しい obligation を作らない。
+- **bundle / 予算**: fixture は `/design-system` のルート chunk に
+  含まれる。`pnpm run bundle:budget:check` で `/design-system` に
+  50.0 KiB の余裕があり、budget は PASS した（`/design-system`
+  1.65 MiB / 上限内）。
+- **copy approval gate の対象外**: `quality/copy-editorial-surfaces.json`
+  の `excludeGlobs` に `src/routes/design-system/**` があるため、この
+  fixture の日本語 copy は owner の編集承認を要求しない。既存の
+  `src/routes/design-system/sections/**` と同じ扱いで、**新しい公開
+  copy 面を作らない**。とはいえ **新しい日本語 copy は追加していない**
+  （fixture のデモラベルは、同セクションの `Primary CTA` / `Secondary`
+  と同じ英語。picker 自体の検索プレースホルダーは
+  `src/home/reactions/widget.tsx` の担当のまま、fixture は再宣言
+  しない）。`node scripts/check-copy-editorial-approval.mjs
+  --base=release-0-8-0` の verdict は **not applicable**（changed public
+  segments: 0）。
+
+これで dialog の focus 契約（focus 拘束・Escape 解除・focus 復帰）は
+**key の有無にかかわらず** CI で緑になる。ホームの picker がある
+deployment では、同じ契約が home 側でもそのまま走る（spec は 2 つの
+状態を明示的に assert する: skip はしない）。
+
+## cold review 指摘への対応
+
+| 指摘 | 内容 | 対応 |
+| --- | --- | --- |
+| F1 | `src/editorial/nav/PublicNav.tsx` のコメント 6 行が日本語で、AGENTS.md §1「ソースコード、コミットメッセージは英語」に反していた | コメントを英語へ書き直した（**コードの意味は変えない**）。同ファイル内の既存の英語コメントと同じ書き方に揃えた |
+| F2 | `e2e/a11y/keyboard-navigation.spec.ts` の `for (const stop of stops) expect(isSupportingElement(stop)).toBe(false)` は、walk が supporting element で終端するため **構造的に常に真**（守るものがなかった） | walk が **終端した情報**（`end`: どの supportive element に落ちたか）と **focus が前に戻らなかったか**（`forward`: 文書内並び位置が単調増加か）を観測する形に変更し、その 2 つを assert した。実効的な assertion は減らしていない（`end` が存在すること・`BODY` であること・per-stop の tag と識別子・`forward`・`wrapped`）。壊し方（focus を途中で失う）を入れた negative control と、出荷コードを実際に壊す attack の両方で赤くなることを確認した |
+| F3 | dialog の focus 契約が、CI に consumer API key が無いため実質未検証だった | **選択肢 (a)** を採用: 出荷している `PickerModal` を `/design-system` の fixture として描画し、どの deployment でも同じ契約が走る。採用理由と、採らない (b) / (c) の理由は上の節に書いた |
+
 ## 適用対象
 
 | route | URL | viewport | ブラウザ | 観測するもの |
@@ -37,6 +89,7 @@
 | About（mobile menu） | `/about` | 600 × 800 | Chromium | menu が Enter で開き、Escape で閉じて **focus が trigger に戻る** |
 | Tools | `/tools` | 1280 × 720 | Chromium | Tools 入口の link に Tab で到達でき、Enter でその Tool の画面へ遷移する |
 | Contact | `/contact` | 1280 × 720 | Chromium | skip link に Tab で到達できる（channel 一覧は日次で変わるため件数や順序は固定しない） |
+| Design system（dialog の fixture） | `/design-system` | 1280 × 720 | Chromium | 出荷している picker の `<dialog>` が focus を拘束し、Escape で閉じて、trigger へ focus を戻す |
 
 - 実行コマンド: `pnpm run a11y:keyboard-nav:check`
 - ブラウザ: Chromium のみ（`playwright.config.ts` の `projects` は chromium 1 つ。
@@ -54,7 +107,7 @@
 | `/admin/*` | admin は自前の chrome を持つ別の obligation。公開導線のキーボード契約ではなく、管理者のセッション内操作の契約である |
 | `/tools/<slug>` の Tool 本体 | Tool の iframe は**別 origin**（同一 document ではない）で、Tool 自身の bundle の所有物。ホスト側のキーボード契約ではない |
 | `/portfolio` / `/portfolio/[slug]` | 公開行が D1 に存在する与否で Tab 順が変わるため、**順序を固定できない**。skip link は `#portfolio-detail` を持つが、判定が日次データに左右される（本 Issue は安定する route を選ぶ） |
-| `/design-system` | デザインシステムの見本画面であり、利用者の主要導線ではない |
+| `/design-system` の**見本自体** | デザインシステムの見本画面は利用者の主要導線ではない。ただし Issue #394 の **dialog focus 契約の fixture** としてだけ使う（下記「dialog の focus 契約は key 不要の fixture で実効化する」）。TAB 順や copy の検査対象にはしない |
 | `/keyboard` / `/projects/dotfiles` | 本 Issue の対象外として名指しされていない route。別の Issue の検査対象 |
 | focus ring の見た目（コントラスト・視認性） | 機械では判定しない領域。#399 の gate と人が評価する（下記） |
 | スクリーンリーダーの読み上げ・MCA 順序 | 機械では判定しない領域。人が評価する（下記） |
@@ -78,14 +131,17 @@
 | --- | --- | --- |
 | `skip-link-first` | `/` の最初の Tab stop が skip link（`a[href="#main"]`）である | Chromium: 1 回目の Tab 後の `document.activeElement` |
 | `skip-link-bypass` | Enter 後の次の Tab が `<main>` 内から始まる（sequential focus navigation starting point） | Chromium: `activeElement.closest('main') !== null` |
-| `focus-order-stable` | Tab walk の全 stop が意味のある要素で、supporting element（`body` / `html`）に一度も落ちない | Chromium: walk の途中で `body` に落ちたら終了し、落ちた位置を記録 |
-| `focus-order-wraps` | 文書末尾のあとで Tab すると先頭へ戻る = 途中で focus を見失っていない | Chromium: `body` に落ちた直後の 1 回の Tab が最初の stop に戻る |
+| `focus-order-stable` | Tab walk の全 stop が意味のある要素で、supporting element（`body` / `html`）に一度も落ちない | Chromium: walk の途中で `body` に落ちたら終了し、落ちた位置と tag を `end` として記録する |
+| `focus-order-ends-at-document` | Tab walk は「上限に達した」のではなく、**文書末尾で終わる**（focus が `body` へ返る） | Chromium: `end` が `null` ではなく `tag === 'BODY'` |
+| `focus-order-forward` | focus は文書順に進む（前の stop に戻らない）。戻った = 途中で focus を失い、Tab 順が先頭から再開した | Chromium: 各 stop の文書内並び位置（`querySelectorAll('*')` の index）が単調増加 |
+| `focus-order-wraps` | 文書末尾のあとで Tab すると先頭へ戻る（Tab 順が巡回する） | Chromium: `body` に落ちた直後の 1 回の Tab が最初の stop に戻る |
 | `focus-order-reversible` | Shift+Tab が逆順に歩く | Chromium: 2 回目の Tab の要素と Shift+Tab 後の要素の比較 |
 | `nav-reachable` / `nav-activatable` | nav の link に Tab で到達でき、Enter で遷移する | Chromium: `toBeFocused()` + URL 変化 |
 | `menu-escape-returns-focus` | mobile menu が Escape で閉じ、**trigger へ focus が戻る** | Chromium: Escape 後の `toBeFocused()` |
 | `dialog-traps-focus` | `<dialog>` を開いている間、Tab を重ねても focus が dialog の外へ出ない | Chromium: 12 回の Tab の各点で `dialog.contains(activeElement)` |
 | `dialog-escape-returns-focus` | Escape で dialog が閉じ、trigger へ focus が戻る | Chromium: `toBeHidden()` + `toBeFocused()` |
 | `dialog-surface-is-known` | このリポジトリの `<dialog>` はリアクション picker だけである | Chromium: `dialog` 要素の `aria-label` を全件検査 |
+| `dialog-fixture-contract` | **key 不要の surface**（`/design-system` の fixture）で、出荷している picker の dialog が focus を拘束し、Escape で閉じ、trigger へ focus を戻す | Chromium: fixture の trigger に focus して Enter → 12 回の Tab が外へ出ない → Escape で `toBeHidden()` → trigger が `toBeFocused()` |
 
 ### 人が評価すること（機械では判定しない）
 
@@ -101,7 +157,7 @@
 ## negative control（検査が「見ていない」状態の排除）
 
 正常な実装だけで緑にすると、assertion が何も見ていない可能性が残る。
-そのため **意図的に壊したケースを同じ spec の中に 2 つ** 用意し、
+そのため **意図的に壊したケースを同じ spec の中に 3 つ** 用意し、
 そのケースで assertion が赤になることを確認している（negative control は
 **必ず成功する**。赤になると assertion が機能していないことを示す）。
 production コードは書き換えず、実行時に DOM を一時的に壊すだけ。
@@ -110,6 +166,28 @@ production コードは書き換えず、実行時に DOM を一時的に壊す�
 | --- | --- | --- |
 | skip link を外す | `document.querySelector('a[href="#main"]')?.remove()` を実行時に実行 | 「最初の Tab stop が `#main` か」。壊す前に通ることと、壊した後に赤になることを spec 内で両方 assert する |
 | menu trigger を外す | 開いた状態で `nav[aria-label="Public"] button[aria-controls]` を実行時に除去してから Escape | 「Escape 後に focus が trigger へ戻ったか」。trigger が無いので `toBeFocused()` が必ず失敗する |
+| 途中で focus を失う | 3 個目の stop の要素を実行時に DOM から除去し、focus を body へ落とす | 「focus が文書順に進んでいるか」（`focus-order-forward`）。Tab が先頭から再開するため並び位置が越小になり、walk の assertion が赤くなる |
+
+3 つめは **F2 の指摘**（supporting element に対する検査が構造的に常に
+真だった）への回答でもある。supporting element は walk の**終端条件**で
+あって stop には混ざらないため、「stop が supporting element ではない」
+という検査は守るものがなかった。代わりに walk が**どう終端したか**
+（`end`）と **focus が前に戻らなかったか**（`forward`）を観測し、
+その 2 つを assert している。
+
+## attack（壊し方を入れたときに赤になることの確認）
+
+negative control に加えて、**出荷コード側を実際に壊したとき**に
+assertion が赤くなることを、修正を戻す前に確認した（attack）。
+壊した内容は作業用ブランチの commit には含まれない。
+
+| attack | 壊したもの | 結果 |
+| --- | --- | --- |
+| A | `src/editorial/nav/PublicNav.tsx` の Escape 後の focus 復元（`buttonRef.current?.focus()`）を無効化 | `/about` の mobile menu の test が **赤**（`the focus must return to the trigger that opened the menu` / focus は `<BODY>` にいた）。同じ修正を入れると緑 |
+| B | `src/home/reactions/widget.tsx` の `<dialog>` の Escape handler（`onKeyDown`）を無効化 | `/design-system` の fixture の dialog test が **赤**（`expect(locator).toBeHidden() failed` = Escape で閉じない）。同じ修正を入れると緑 |
+
+attack A は「修正 **(a)** が本当に効いている」ことを、attack B は
+「**dialog の focus 契約が key なしで検査されている**」ことを示す。
 
 ## スクリーンショット
 
@@ -133,6 +211,7 @@ production コードは書き換えず、実行時に DOM を一時的に壊す�
 pnpm run a11y:keyboard-nav:check    # Playwright のキーボード回帰検査（gate）
 pnpm run capture:a11y-keyboard-nav   # Chromium で実測して WebP を生成
 pnpm exec vitest run src/editorial/nav/PublicNav.test.ts
+pnpm run bundle:budget:check         # fixture 追加後のルート予算
 pnpm run format:check && pnpm run lint:check && pnpm run architecture:check
 ```
 
@@ -150,6 +229,12 @@ Playwright の `webServer` が自動起動する（`dist/client` が必要な場
   picker がある環境では dialog の full 契約（focus 拘束・Escape 解除・
   focus 復帰）、ない環境では「disabled 注記が出ていて `<dialog>` が 0 個」
   という documented な状態。どちらの分岐もローカルで実測済みである。
+  さらに **key 不要の fixture**（`/design-system` の「05 — Interactive」
+  セクション内の fixture）があるため、
+  dialog の focus 契約は **key の有無にかかわらず** 必ず CI で走る
+  （「dialog の focus 契約は key 未設定環境では未検証」という記録だけ
+  を残す選択肢 (c) は採らない。採らない理由は、**記録が残ると CI が
+  何も検査しないまま終わる**ためで、代替 (a) が可用だった）。
   本番（key 設定済み）での dialog 契約は、既存の
   `e2e/prod-smoke.spec.ts` が picker 自体の操作を Production Smoke として
   カバーしている。

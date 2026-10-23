@@ -115,12 +115,14 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 	// would have to rediscover the trigger. The trigger itself is always
 	// rendered, so it is a valid focus target at any viewport.
 	const buttonRef = useRef<HTMLButtonElement>(null);
-	// `Escape` で menu を閉じたときだけ trigger へ focus を戻す flag。
-	// focus の復元は DOM 更新 (panel の `hidden`) の **後** に行う:
-	// panel を隠す処理が、隠れた中の要素に focus が残っていた場合に
-	// focus を body へ落とすことがあるため、その後に戻さないと
-	// 「戻した focus が消える」順序になる (Issue #394 の回帰検査で
-	// 観測された race)。
+	// Set only when `Escape` closed the menu, so the focus hand-back
+	// runs for that gesture and for nothing else.
+	//
+	// The focus is restored AFTER the DOM update (the panel's
+	// `hidden`): hiding the panel can drop the focus to the document
+	// body when the hidden subtree still held it, so restoring before
+	// the update would restore a focus that the update then takes
+	// away. Issue #394's keyboard regression spec observed that race.
 	const restoreFocusRef = useRef(false);
 
 	const closeMenu = useCallback(() => setMenuOpen(false), []);

@@ -5,6 +5,7 @@ import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
 import { ImageCls } from './sections/ImageCls';
 import { InteractiveStates } from './sections/InteractiveStates';
+import { ReactionPicker } from './sections/ReactionPicker';
 import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
@@ -29,6 +30,11 @@ import { Typography } from './sections/Typography';
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
  *   - 05 Interactive states default / hover / focus / pressed on `<a>` + `<button>`.
+ *                            It also carries the Issue #394 keyboard
+ *                            fixture: the shipped reaction picker
+ *                            dialog, so its focus trap and its Escape
+ *                            hand-back can be measured in a deployment
+ *                            without a home consumer API key.
  *   - 06 Status / category  positive / negative / warning badges + four
  *                            content-category left-border treatments.
  *   - 07 Image / CLS         Issue #486 measurement fixture: the real
@@ -51,6 +57,11 @@ import { Typography } from './sections/Typography';
  * production element the CLS regression lives in. The import is
  * deliberate and allowed — `routes -> portfolio` is a registered
  * dependency direction (AGENTS.md §3).
+ *
+ * The interactive section does the same for the home obligation: it
+ * imports the shipped reaction picker dialog, the production element
+ * the keyboard regression lives in. `routes -> home` is a registered
+ * dependency direction (AGENTS.md §3) as well.
  *
  * Each section uses `SectionHeading` with the same editorial spread
  * (4/12 heading cluster + 8/12 body) the home / about / portfolio
@@ -285,6 +296,7 @@ function InteractiveSection() {
 					variant="spread"
 				>
 					<InteractiveStates />
+					<ReactionPicker />
 				</SectionHeading>
 			</Container>
 		</section>

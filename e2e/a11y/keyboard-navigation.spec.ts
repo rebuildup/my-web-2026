@@ -54,10 +54,36 @@ interface FocusStop {
 	label: string;
 	/** `<main>` の内側にいるか。 */
 	inMain: boolean;
+	/**
+	 * 文書中の並び位置 (`document.querySelectorAll('*')` 内の index)。
+	 *
+	 * focus が文書順に進んでいるか (前に戻っていないか) を判定するための
+	 * 観測値。focus が途中で失われて Tab 順が先頭から再開すると、この値
+	 * が越小になる。
+	 */
+	order: number;
 }
 
 /** 1 回の走査で許容する Tab stop 数の上限。 */
 const MAX_TAB_STOPS = 60;
+
+/** Tab stop として意味を持つ要素の tag。 */
+const INTERACTIVE_TAGS = [
+	'A',
+	'AREA',
+	'AUDIO',
+	'BUTTON',
+	'DETAILS',
+	'IFRAME',
+	'INPUT',
+	'SELECT',
+	'SUMMARY',
+	'TEXTAREA',
+	'VIDEO',
+];
+
+/** 走査した surface が公開する Tab stop の下限。 */
+const MIN_TAB_STOPS = 5;
 
 /** 走査の途中で focus が見失われたとみなす supportive element。 */
 function isSupportingElement(stop: FocusStop): boolean {
@@ -75,7 +101,7 @@ async function readActiveStop(page: Page): Promise<FocusStop> {
 	return page.evaluate(() => {
 		const element = document.activeElement;
 		if (!element) {
-			return { tag: 'NONE', href: null, testId: null, label: '', inMain: false };
+			return { tag: 'NONE', href: null, testId: null, label: '', inMain: false, order: -1 };
 		}
 		const raw = element.getAttribute('aria-label') ?? element.textContent ?? '';
 		return {
@@ -84,32 +110,81 @@ async function readActiveStop(page: Page): Promise<FocusStop> {
 			testId: element.getAttribute('data-testid'),
 			label: raw.replace(/\s+/g, ' ').trim().slice(0, 48),
 			inMain: element.closest('main') !== null,
+			order: Array.prototype.indexOf.call(document.querySelectorAll('*'), element),
 		};
 	});
+}
+
+/** focus が止まった意味のある要素 (Tab stop) の並び。 */
+interface TabWalk {
+	/** 意味のある要素が並んだ順序。 */
+	stops: FocusStop[];
+	/**
+	 * 走査を終端させた supportive element。
+	 *
+	 * `null` は「上限 (`max`) に達した」= 走査が終わらなかったことを
+	 * 意味する。`tag` は実際に focus が落ちた要素の tag で、文書末尾の
+	 * wrap-around なら `BODY` になる。
+	 */
+	end: { tag: string; index: number } | null;
+	/**
+	 * 文書末尾のあとで Tab すると先頭へ戻るか。
+	 *
+	 * 「Tab 順が巡回する」ことの証拠になる。ただし focus を失った
+	 * 場合Body からの Tab も先頭へ戻るため、focus を見失ったこと
+	 * 自体は検出しない — それは `forward` が担う。
+	 */
+	wrapped: boolean;
+	/**
+	 * focus が文書順に進んでいるか (前の stop に戻っていないか)。
+	 *
+	 * focus を失うと Tab は文書先頭から再開するため、並び位置が
+	 * 越小になる (= `false`)。これが「途中で focus を見失っていない」
+	 * ことの機械的な証拠になる。
+	 */
+	forward: boolean;
 }
 
 /**
  * Tab で focus が止まった要素を順に集める。
  *
- * `body` / `html` に落ちた時点が「focus が見失われた」地点だが、文書
- * 末尾の wrap-around でも同じ supportive element に落ちる。そのため
- * 「意味のある要素が何個連続して並んだか」と「最後に supportive element
- * へ落ちたか」を分けて返す。
+ * `body` / `html` に落ちた時点で走査は終端し、**どの supportive element
+ * に落ちたか**を `end` として返す（`stops` には supportive element は
+ * 混ざらないので、`stops` に対する「supporting element ではない」検査
+ * は構造的に真であり、守るものがない）。
  */
 async function collectTabStops(
 	page: Page,
 	max: number = MAX_TAB_STOPS,
-): Promise<{ stops: FocusStop[]; reachedEnd: boolean }> {
+	breakAfterStops?: number,
+): Promise<{ stops: FocusStop[]; end: { tag: string; index: number } | null }> {
 	const stops: FocusStop[] = [];
 	for (let index = 0; index < max; index += 1) {
 		await page.keyboard.press('Tab');
 		const stop = await readActiveStop(page);
 		if (isSupportingElement(stop)) {
-			return { stops, reachedEnd: true };
+			return { stops, end: { tag: stop.tag, index } };
 		}
 		stops.push(stop);
+		// negative control 用の破壊: focus を持つ要素を DOM から外す。
+		// focus は body へ落ちる。以後の Tab は
+		// 文書先頭から再開する (= focus を見失った状態)。
+		if (breakAfterStops !== undefined && stops.length === breakAfterStops) {
+			await page.evaluate(() => {
+				const element = document.activeElement;
+				if (element && element !== document.body) element.remove();
+			});
+		}
 	}
-	return { stops, reachedEnd: false };
+	return { stops, end: null };
+}
+
+/** focus の並びが文書順に進んでいるか (前に戻っていないか)。 */
+function isForwardOrder(stops: FocusStop[]): boolean {
+	for (let index = 1; index < stops.length; index += 1) {
+		if (stops[index].order <= stops[index - 1].order) return false;
+	}
+	return true;
 }
 
 /**
@@ -123,12 +198,27 @@ async function collectTabStops(
 async function walkWholeDocument(
 	page: Page,
 	max: number = MAX_TAB_STOPS,
-): Promise<{ stops: FocusStop[]; wrapped: boolean }> {
-	const { stops, reachedEnd } = await collectTabStops(page, max);
-	if (!reachedEnd || stops.length === 0) return { stops, wrapped: false };
+	breakAfterStops?: number,
+): Promise<TabWalk> {
+	const { stops, end } = await collectTabStops(page, max, breakAfterStops);
+	if (end === null || stops.length === 0) {
+		return { stops, end, wrapped: false, forward: isForwardOrder(stops) };
+	}
 	await page.keyboard.press('Tab');
 	const first = await readActiveStop(page);
-	return { stops, wrapped: sameStop(first, stops[0]) };
+	return {
+		stops,
+		end,
+		wrapped: sameStop(first, stops[0]),
+		forward: isForwardOrder(stops),
+	};
+}
+
+/** focus が dialog の内側 (dialog 自身を含む) にあるか。 */
+async function isFocusInside(dialog: Locator): Promise<boolean> {
+	return dialog.evaluate(
+		(element) => element === document.activeElement || element.contains(document.activeElement),
+	);
 }
 
 /** Tab を重ねて `target` に focus 할 때까지進める。 */
@@ -181,21 +271,50 @@ test.describe('/ — home: skip link and focus order (Issue #394)', () => {
 		page,
 	}) => {
 		await page.goto('/');
-		const { stops, wrapped } = await walkWholeDocument(page);
+		const walk = await walkWholeDocument(page);
+		const { stops, end, wrapped, forward } = walk;
+
+		// The walk must END by leaving the document (the browser hands
+		// the focus back to the document at the end of the page), not by
+		// running out of steps. `end` records WHICH element the focus
+		// fell onto, so this is an observation rather than a constant.
+		expect(
+			end,
+			'the Tab walk must terminate by leaving the document, not by hitting the step limit',
+		).not.toBeNull();
+		expect(
+			end?.tag,
+			'the walk must end on the document body — the standard way a Tab order ends (SC 2.4.3)',
+		).toBe('BODY');
 
 		expect(
 			stops.length,
 			'the home surface must expose a keyboard-reachable path (SC 2.1.1)',
-		).toBeGreaterThanOrEqual(5);
+		).toBeGreaterThanOrEqual(MIN_TAB_STOPS);
+
+		// Every recorded stop must be an interactive control, and it must
+		// carry a name a reader can hear. `stops` cannot contain a
+		// supporting element (the walk stops there), so this is the
+		// meaningful per-stop check.
 		for (const stop of stops) {
 			expect(
-				isSupportingElement(stop),
-				`the focus fell onto a supporting element (${stop.tag}) instead of a meaningful control`,
-			).toBe(false);
+				INTERACTIVE_TAGS,
+				`the focus landed on <${stop.tag}>, which is not an interactive control`,
+			).toContain(stop.tag);
+			expect(
+				stop.label.length > 0 || stop.href !== null || stop.testId !== null,
+				`the focused control <${stop.tag}> carries no accessible name, href or test id`,
+			).toBe(true);
 		}
+
+		expect(
+			forward,
+			'the focus must move forward through the document; a stop that goes back means the focus was lost mid-document and the Tab order restarted (SC 2.4.3)',
+		).toBe(true);
+
 		expect(
 			wrapped,
-			'the Tab order must wrap back to the first stop after the end of the document; a non-wrapping walk means the focus was lost mid-document (SC 2.4.3)',
+			'the Tab order must wrap back to the first stop after the end of the document (SC 2.4.3)',
 		).toBe(true);
 	});
 
@@ -387,15 +506,17 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 		await expect(dialog).toBeVisible();
 
 		// dialog を開いたら focus は dialog 内に留まる (SC 2.1.2)。
-		const inside = await dialog.evaluate((element) => element.contains(document.activeElement));
-		expect(inside, 'opening the dialog must move the focus into the dialog').toBe(true);
+		expect(
+			await isFocusInside(dialog),
+			'opening the dialog must move the focus into the dialog',
+		).toBe(true);
 
 		for (let index = 0; index < 12; index += 1) {
 			await page.keyboard.press('Tab');
-			const stillInside = await dialog.evaluate((element) =>
-				element.contains(document.activeElement),
-			);
-			expect(stillInside, `the focus escaped the dialog after ${index + 1} Tab(s)`).toBe(true);
+			expect(
+				await isFocusInside(dialog),
+				`the focus escaped the dialog after ${index + 1} Tab(s)`,
+			).toBe(true);
 		}
 
 		// Escape で閉じると focus はトリガへ戻る。
@@ -404,6 +525,58 @@ test.describe('/ — the reactions picker dialog (Issue #394)', () => {
 		await expect(
 			trigger,
 			'the focus must return to the trigger that opened the dialog',
+		).toBeFocused();
+	});
+});
+
+/* ---------------------------------------------------------------------------
+ * `/design-system` — the shipped picker dialog fixture
+ *
+ * The home picker renders only when the home consumer API key is
+ * configured, so a deployment without that key has no `<dialog>` at all
+ * and the dialog's focus contract cannot be measured there. The
+ * `/design-system` fixture mounts the SHIPPED dialog component
+ * (`PickerModal`), so the contract below is exercised in every
+ * deployment — the key is not part of the contract, the dialog is.
+ * ------------------------------------------------------------------------- */
+
+test.describe('/design-system — the reaction picker dialog fixture (Issue #394)', () => {
+	test('the shipped picker dialog traps the focus and returns it to the trigger on Escape', async ({
+		page,
+	}) => {
+		await page.goto('/design-system');
+		const trigger = page.getByTestId('design-system-reaction-picker-open');
+		await expect(trigger).toBeVisible();
+
+		// Open it with the keyboard only: focus the trigger, press Enter.
+		await trigger.focus();
+		await expect(trigger).toBeFocused();
+		await page.keyboard.press('Enter');
+
+		const dialog = page.locator('dialog[aria-label="Add a reaction"]');
+		await expect(dialog).toBeVisible();
+		expect(
+			await isFocusInside(dialog),
+			'opening the dialog must move the focus into the dialog (SC 2.1.2)',
+		).toBe(true);
+
+		// Tab keeps the focus inside the dialog (SC 2.1.2).
+		for (let index = 0; index < 12; index += 1) {
+			await page.keyboard.press('Tab');
+			expect(
+				await isFocusInside(dialog),
+				`the focus escaped the dialog after ${index + 1} Tab(s)`,
+			).toBe(true);
+		}
+
+		// Escape closes it, even though the picker's search input
+		// consumes the key (SC 2.1.2), and the focus goes back to the
+		// trigger that opened it (SC 2.4.3).
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(
+			trigger,
+			'the focus must return to the trigger that opened the dialog (SC 2.4.3)',
 		).toBeFocused();
 	});
 });
@@ -430,6 +603,21 @@ test.describe('negative control — the assertions can turn red (Issue #394)', (
 			await skipLinkAssertionFails(page),
 			'the skip-link assertion must turn red once the skip link is removed — otherwise it asserts nothing',
 		).toBe(true);
+	});
+
+	test('losing the focus mid-document turns the focus-order assertion red', async ({ page }) => {
+		await page.goto('/');
+		const shipped = await walkWholeDocument(page);
+		expect(shipped.forward, 'the shipped page must walk forward through the document').toBe(true);
+
+		// 実行時に focus を持つ要素を DOM から外す (focus は body へ
+		// 落ちる)。以後の Tab は文書先頭から再開する。
+		await page.goto('/');
+		const broken = await walkWholeDocument(page, MAX_TAB_STOPS, 3);
+		expect(
+			broken.forward,
+			'the focus-order assertion must turn red once the focus is lost mid-document — otherwise it asserts nothing',
+		).toBe(false);
 	});
 });
 

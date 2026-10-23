@@ -21,6 +21,9 @@
  *     on the way),
  *   - the mobile menu (`/about` at 600 px) closes on `Escape` and
  *     hands the focus back to the trigger that opened it.
+ *   - the shipped reaction picker dialog (`/design-system`, the
+ *     Issue #394 fixture) traps the focus, closes on `Escape`, and
+ *     hands the focus back to the trigger that opened it.
  *
  * The artefact shows the focused element AND the recorded Tab order at
  * the same time, because "the ring is visible" and "the order is
@@ -179,6 +182,21 @@ export function evaluateObservation(observation) {
 			'Escape closed the mobile menu but the focus did not return to the trigger that opened it (SC 2.4.3 / 2.1.2)',
 		);
 	}
+	if (observation.dialogFocusTrapped !== true) {
+		failures.push(
+			'the picker dialog did not keep the focus inside while Tab was pressed (SC 2.1.2)',
+		);
+	}
+	if (observation.dialogEscapeClosed !== true) {
+		failures.push(
+			'Escape did not close the picker dialog; the keyboard had no way out (SC 2.1.1 / 2.1.2)',
+		);
+	}
+	if (observation.dialogFocusReturnedToTrigger !== true) {
+		failures.push(
+			'the picker dialog closed but the focus did not return to the trigger that opened it (SC 2.4.3)',
+		);
+	}
 
 	return { ok: failures.length === 0, failures };
 }
@@ -201,6 +219,9 @@ export function evidencePanelSvg({ observation, width }) {
 		`wrapped back to the first stop: ${observation.wrapped ? 'yes' : 'NO'}`,
 		`focus ring of the skip link visible: ${observation.skipLinkFocusRingVisible ? 'yes' : 'NO'}`,
 		`mobile menu Escape → focus back on the trigger: ${observation.menuFocusReturnedToTrigger ? 'yes' : 'NO'}`,
+		`picker dialog keeps the focus inside: ${observation.dialogFocusTrapped ? 'yes' : 'NO'}`,
+		`picker dialog Escape → closed: ${observation.dialogEscapeClosed ? 'yes' : 'NO'}`,
+		`picker dialog Escape → focus back on the trigger: ${observation.dialogFocusReturnedToTrigger ? 'yes' : 'NO'}`,
 		'',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}`,
 		'',
@@ -239,6 +260,7 @@ export function headerSvg({ observation, width = SCREENSHOT_MAX_WIDTH }) {
 		`route / · viewport ${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height} · Chromium · the focus ring of the skip link is visible`,
 		`machine-checked: first Tab stop is the skip link, ${observation.tabOrder.length} meaningful stop(s), the order wraps back to the first stop (SC 2.1.1 / 2.4.1 / 2.4.3)`,
 		'machine-checked: Escape closes the mobile menu and hands the focus back to the trigger (SC 2.1.2 / 2.4.3)',
+		'machine-checked: the picker dialog keeps the focus inside, closes on Escape, and hands the focus back to the trigger (SC 2.1.1 / 2.1.2 / 2.4.3)',
 		'not machine-checked: focus-ring contrast, screen-reader announcement, reading order (human evaluation)',
 	];
 	const rowTop = 52;
@@ -302,11 +324,12 @@ export async function composeArtefact({ sharp, pagePng, header, panelSvg, outPat
 /** Read the current `document.activeElement` (runs in the browser). */
 export const READ_ACTIVE = () => {
 	const element = document.activeElement;
-	if (!element) return { tag: 'NONE', href: null, label: '' };
+	if (!element) return { tag: 'NONE', href: null, label: '', testId: null };
 	const raw = element.getAttribute('aria-label') ?? element.textContent ?? '';
 	return {
 		tag: element.tagName,
 		href: element.getAttribute('href'),
+		testId: element.getAttribute('data-testid'),
 		label: raw.replace(/\s+/g, ' ').trim().slice(0, 48),
 	};
 };
@@ -338,6 +361,51 @@ export async function walkTabOrder(page) {
 		wrapped = first.tag === stops[0].tag && first.href === stops[0].href;
 	}
 	return { stops, wrapped };
+}
+
+/**
+ * Drive the shipped picker dialog and record its keyboard contract.
+ *
+ * The dialog is the `/design-system` fixture (Issue #394): the same
+ * `PickerModal` component the home page renders, mounted on a route
+ * that needs no consumer API key. The three observations are the
+ * contract the spec asserts:
+ *
+ *   - the focus stays inside the dialog while Tab is pressed,
+ *   - Escape closes it,
+ *   - the focus goes back to the trigger that opened it.
+ */
+export async function observePickerDialog(page, baseUrl) {
+	await page.goto(`${baseUrl}/design-system`, { waitUntil: 'domcontentloaded' });
+	const trigger = page.getByTestId('design-system-reaction-picker-open');
+	await trigger.waitFor({ state: 'visible', timeout: 15_000 });
+	await trigger.focus();
+	await page.keyboard.press('Enter');
+
+	const dialog = page.locator('dialog[aria-label="Add a reaction"]');
+	await dialog.waitFor({ state: 'visible', timeout: 15_000 });
+
+	let trapped = true;
+	for (let index = 0; index < 12; index += 1) {
+		await page.keyboard.press('Tab');
+		const inside = await dialog.evaluate(
+			(element) => element === document.activeElement || element.contains(document.activeElement),
+		);
+		if (!inside) trapped = false;
+	}
+
+	await page.keyboard.press('Escape');
+	const closed = await dialog.isHidden();
+	const focusAfterEscape = await page.evaluate(READ_ACTIVE);
+
+	return {
+		dialogFocusTrapped: trapped,
+		dialogEscapeClosed: closed,
+		dialogFocusReturnedToTrigger:
+			closed &&
+			focusAfterEscape.tag === 'BUTTON' &&
+			focusAfterEscape.testId === 'design-system-reaction-picker-open',
+	};
 }
 
 /** Wait until the preview server answers on the loopback port. */
@@ -481,6 +549,19 @@ async function main() {
 				);
 				await mobile.close();
 
+				// The shipped picker dialog, driven on the
+				// `/design-system` fixture (Issue #394).
+				const dialogContext = await browser.newContext({
+					viewport: DESKTOP_VIEWPORT,
+					deviceScaleFactor: 1,
+				});
+				const dialogPage = await dialogContext.newPage();
+				const dialogObservation = await observePickerDialog(dialogPage, baseUrl);
+				process.stdout.write(
+					`[capture] picker dialog: trapped=${dialogObservation.dialogFocusTrapped} closed=${dialogObservation.dialogEscapeClosed} focus-back=${dialogObservation.dialogFocusReturnedToTrigger}\n`,
+				);
+				await dialogContext.close();
+
 				observation = {
 					route: '/',
 					tabOrder: stops,
@@ -492,6 +573,7 @@ async function main() {
 						skipLinkBox.y < DESKTOP_VIEWPORT.height,
 					menuFocusReturnedToTrigger:
 						menuFocus.tag === 'BUTTON' && menuFocus.label.toLowerCase().includes('menu'),
+					...dialogObservation,
 				};
 				await context.close();
 			} finally {

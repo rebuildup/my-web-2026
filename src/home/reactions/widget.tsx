@@ -147,8 +147,14 @@ interface PickerModalProps {
  * always mounted so React keeps a stable node for the lazy chunk to
  * hydrate into; visibility is owned by the browser (closed by default
  * until `showModal()` is called).
+ *
+ * Exported so the keyboard contract can be measured where the picker
+ * renders without the reactions feature being enabled: the
+ * `/design-system` fixture (Issue #394) mounts this component, so the
+ * dialog's focus trap and its Escape hand-back are checked in Chromium
+ * even in a deployment that has no home consumer API key.
  */
-function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
+export function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 
 	useEffect(() => {

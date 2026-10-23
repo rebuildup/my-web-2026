@@ -18,10 +18,13 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
+	EXPECTED_FIXTURES,
+	FIXTURE_RULE,
 	HUMAN_EVALUATION,
 	PAGE_UNITS,
 	RULES,
 	collectEvidence,
+	collectFixtureEvidence,
 	evaluateUnit,
 	extractHeadings,
 	extractMainLandmarks,
@@ -29,6 +32,7 @@ import {
 	renderGateSummary,
 } from './check-a11y-heading-landmarks.mjs';
 
+const REPO_ROOT = join(import.meta.dirname, '..');
 const FIXTURE_ROOT = join(import.meta.dirname, 'fixtures/a11y-heading-landmarks');
 
 /** Read one fixture file from disk (the gate reads real files too). */
@@ -48,7 +52,7 @@ function fixtureNames(kind) {
 /** Evaluate one fixture file as its own page unit. */
 function judgeFixture(kind, name) {
 	const file = readFixture(kind, name);
-	return evaluateUnit({ id: name, files: [file] });
+	return evaluateUnit({ id: name, kind: 'page', files: [file] });
 }
 
 /** The rules a fixture's evaluation reports. */
@@ -64,6 +68,70 @@ test('every passing fixture reports no violation', () => {
 		const result = judgeFixture('pass', name);
 		assert.deepEqual(rulesOf(result), [], `${name} must not report a violation`);
 	}
+});
+
+test('a passing fixture still carries the structure it demonstrates', () => {
+	// A passing fixture that was EMPTIED reports no violation, so a
+	// fixture set alone cannot tell "correct" from "empty". The gate
+	// therefore requires a passing fixture to hold a heading AND a
+	// main landmark, and reports the empty one as a mismatch.
+	for (const name of fixtureNames('pass')) {
+		const result = judgeFixture('pass', name);
+		assert.ok(result.headings.length > 0, `${name} must render a heading`);
+		assert.ok(result.landmarks.length > 0, `${name} must render a main landmark`);
+	}
+});
+
+test('an emptied passing fixture is reported as a fixture expectation mismatch', () => {
+	const evidence = collectFixtureEvidence({
+		readDirectory: (directory) =>
+			directory.endsWith('/pass')
+				? ['pass-landmarks.tsx', 'pass-outline.tsx']
+				: fixtureNames('fail'),
+		readFile: (relativePath) =>
+			relativePath.endsWith('pass-outline.tsx')
+				? 'export const A = () => <div>nothing structural</div>;\n'
+				: readFileSync(join(REPO_ROOT, relativePath), 'utf8'),
+	});
+
+	const mismatches = evidence.violations.filter((violation) => violation.rule === FIXTURE_RULE);
+	assert.ok(
+		mismatches.length > 0,
+		'an emptied passing fixture must not be able to keep the gate green',
+	);
+	assert.ok(mismatches.some((violation) => violation.file.endsWith('pass-outline.tsx')));
+});
+
+test('a missing fixture is reported as a fixture expectation mismatch', () => {
+	const evidence = collectFixtureEvidence({
+		readDirectory: (directory) =>
+			directory.endsWith('/pass') ? ['pass-landmarks.tsx'] : fixtureNames('fail'),
+		readFile: (relativePath) => readFileSync(join(REPO_ROOT, relativePath), 'utf8'),
+	});
+
+	const mismatches = evidence.violations.filter((violation) => violation.rule === FIXTURE_RULE);
+	assert.ok(mismatches.length > 0, 'a deleted fixture must not be able to keep the gate green');
+	assert.ok(mismatches.some((violation) => violation.file.endsWith('pass-outline.tsx')));
+});
+
+test('the fixture set is exactly the expected one', () => {
+	const evidence = collectFixtureEvidence({
+		readDirectory: (directory) =>
+			directory.endsWith('/pass')
+				? [...fixtureNames('pass'), 'pass-extra.tsx']
+				: fixtureNames('fail'),
+		readFile: (relativePath) =>
+			relativePath.endsWith('pass-extra.tsx')
+				? 'export const A = () => <div>nothing structural</div>;\n'
+				: readFileSync(join(REPO_ROOT, relativePath), 'utf8'),
+	});
+
+	const mismatches = evidence.violations.filter((violation) => violation.rule === FIXTURE_RULE);
+	assert.ok(mismatches.some((violation) => violation.file.endsWith('pass-extra.tsx')));
+
+	// The committed tree matches the expectation exactly.
+	assert.deepEqual(fixtureNames('pass'), [...EXPECTED_FIXTURES.pass].sort());
+	assert.deepEqual(fixtureNames('fail'), [...EXPECTED_FIXTURES.fail].sort());
 });
 
 test('a fixture with two h1 elements is reported as page-multiple-h1', () => {
@@ -100,6 +168,18 @@ test('a fixture with two main landmarks is reported as landmark-duplicated', () 
 	const result = judgeFixture('fail', 'fail-duplicated-landmark.tsx');
 
 	assert.ok(rulesOf(result).includes('landmark-duplicated'));
+});
+
+test('a fixture that lost both its h1 and its main landmark reports both rules', () => {
+	// The negative control for the unit KIND: a page is a page
+	// because the unit table says so, not because it still renders
+	// something. Losing both the <h1> and the landmark has to be
+	// reported, not read as "this is a component surface".
+	const result = judgeFixture('fail', 'fail-missing-page-outline.tsx');
+
+	const rules = rulesOf(result);
+	assert.ok(rules.includes('page-missing-h1'));
+	assert.ok(rules.includes('page-missing-landmark'));
 });
 
 test('the failing fixtures cover every rule the gate can report', () => {
@@ -174,10 +254,12 @@ test('the level rule starts at the first heading of the file', () => {
 });
 
 test('a component surface is not asked for a page outline', () => {
-	// A shared component (no h1, no main landmark) is not a page: it
-	// must not be told to carry the page's h1 or the page's landmark.
+	// A shared component (declared `kind: 'component'`) is not a
+	// page: it must not be told to carry the page's h1 or the page's
+	// landmark.
 	const result = evaluateUnit({
 		id: 'component',
+		kind: 'component',
 		files: [
 			{
 				relativePath: 'src/editorial/example.tsx',
@@ -187,7 +269,58 @@ test('a component surface is not asked for a page outline', () => {
 	});
 
 	assert.equal(result.isComponentSurface, true);
+	assert.equal(result.kind, 'component');
 	assert.deepEqual(rulesOf(result), []);
+});
+
+test('a page unit that renders neither an h1 nor a main landmark is still a page', () => {
+	// The hole the cold review found: inferring "component surface"
+	// from what a unit renders lets a page that lost BOTH its <h1>
+	// and its landmark pass with zero violations. The kind is
+	// declared, so the page unit reports both rules.
+	const source = 'export const A = () => (<div><section><h2>a</h2></section></div>);\n';
+
+	const asPage = evaluateUnit({
+		id: 'page',
+		kind: 'page',
+		files: [{ relativePath: 'src/routes/example.tsx', source }],
+	});
+	const asComponent = evaluateUnit({
+		id: 'component',
+		kind: 'component',
+		files: [{ relativePath: 'src/editorial/example.tsx', source }],
+	});
+
+	const pageRules = rulesOf(asPage);
+	assert.ok(pageRules.includes('page-missing-h1'));
+	assert.ok(pageRules.includes('page-missing-landmark'));
+	assert.deepEqual(rulesOf(asComponent), []);
+});
+
+test('a unit that declares no kind is judged as a page', () => {
+	// Fail-closed: an undeclared unit is never quietly excused.
+	const result = evaluateUnit({
+		id: 'undeclared',
+		files: [
+			{
+				relativePath: 'src/routes/example.tsx',
+				source: 'export const A = () => (<div><section><h2>a</h2></section></div>);\n',
+			},
+		],
+	});
+
+	assert.equal(result.kind, 'page');
+	assert.ok(rulesOf(result).includes('page-missing-h1'));
+	assert.ok(rulesOf(result).includes('page-missing-landmark'));
+});
+
+test('every page unit declares whether it is a page or a component surface', () => {
+	for (const unit of PAGE_UNITS) {
+		assert.ok(
+			unit.kind === 'page' || unit.kind === 'component',
+			`${unit.id} must declare its kind`,
+		);
+	}
 });
 
 test('every page unit names its scope, and no unit covers the route root', () => {

@@ -50,23 +50,36 @@
  * a unit is not scanned, and the report prints the units it scanned so
  * a reader can see the scope instead of trusting it.
  *
- * Three deliberate decisions
+ * Four deliberate decisions
  * --------------------------
  *   1. `src/routes/__root.tsx` is NOT a page unit. The root owns the
  *      shell (header / nav / footer) that every page renders, so it
  *      is one page's worth of chrome, not a page of its own.
- *   2. A unit that renders neither an `<h1>` nor a `main` landmark is
- *      a COMPONENT surface (a card, a list, a panel), not a page.
- *      Such a unit is not asked for a page outline — a shared
- *      component has no business carrying the page's `<h1>` — but its
- *      heading levels are still checked, so a component cannot skip a
- *      level either.
+ *   2. A unit is a PAGE or a COMPONENT surface, and the unit table
+ *      says which — `kind: 'page'` or `kind: 'component'`. The kind
+ *      is DECLARED, never inferred from what the unit happens to
+ *      render: a page that lost both its `<h1>` and its `main`
+ *      landmark must still be reported, so the gate may not read
+ *      "this unit renders no `<h1>` and no `main`" as "this unit is
+ *      not a page". A unit that declares no kind is treated as a
+ *      page (fail-closed: an undeclared unit is never quietly
+ *      excused). A component surface is not asked for a page outline
+ *      — a shared component has no business carrying the page's
+ *      `<h1>` — but its heading levels are still checked, so a
+ *      component cannot skip a level either.
  *   3. Heading levels are compared WITHIN one file, in the order the
  *      file writes them. The shared `SectionHeading` primitive renders
  *      exactly one `<h2>` per call, so a `<SectionHeading …>` is read
  *      as a level-2 heading; without that the primitive's own `<h2>`
  *      would be invisible to a source scan and every page built from
  *      it would look like it skipped a level.
+ *   4. The fixtures are part of the gate, not decoration. The gate
+ *      checks that the fixture set is exactly the expected one and
+ *      that every passing fixture still carries the structure it is
+ *      supposed to demonstrate, so a fixture cannot be emptied (or
+ *      deleted) to turn the gate green. A fixture that no longer
+ *      demonstrates what it demonstrates is reported as
+ *      `fixture-expectation-mismatch`.
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
@@ -81,7 +94,7 @@
  * 2 = the repository could not be scanned.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -108,25 +121,34 @@ export const RULES = [
  * paths with a single `dir/**` pattern per directory; the pattern
  * covers every source file in that directory except the excluded
  * kinds below.
+ *
+ * `kind` DECLARES whether the unit is a page (`'page'`) or a
+ * component surface (`'component'`). It is declared, not inferred:
+ * see the module docstring, decision 2. A unit with no `kind` is
+ * treated as a page.
  */
 export const PAGE_UNITS = [
 	{
 		id: 'home',
+		kind: 'page',
 		files: ['src/routes/index.tsx', 'src/home/**'],
 		note: 'the canonical home surface (route + composer + sections)',
 	},
 	{
 		id: 'about',
+		kind: 'page',
 		files: ['src/routes/about.tsx', 'src/about/**'],
 		note: 'the approved person identity surface',
 	},
 	{
 		id: 'keyboard',
+		kind: 'page',
 		files: ['src/routes/keyboard.tsx', 'src/keyboard/components/**'],
 		note: 'the read-only keyboard-layout reference',
 	},
 	{
 		id: 'portfolio-list',
+		kind: 'page',
 		files: [
 			'src/portfolio/components/PortfolioList.tsx',
 			'src/portfolio/components/ProjectCard.tsx',
@@ -135,6 +157,7 @@ export const PAGE_UNITS = [
 	},
 	{
 		id: 'portfolio-detail',
+		kind: 'page',
 		files: [
 			'src/portfolio/components/PortfolioDetail.tsx',
 			'src/portfolio/components/Markdown.tsx',
@@ -143,38 +166,45 @@ export const PAGE_UNITS = [
 	},
 	{
 		id: 'legal-review',
+		kind: 'component',
 		files: ['src/legal/**'],
-		note: 'the asset rights review surface',
+		note: 'the asset rights review card — a component a page embeds, so it carries no page outline of its own',
 	},
 	{
 		id: 'external-api',
+		kind: 'component',
 		files: ['src/external-api/**'],
-		note: 'the outbound-read display card',
+		note: 'the outbound-read display card — a component a page embeds',
 	},
 	{
 		id: 'tools-index',
+		kind: 'page',
 		files: ['src/routes/tools.index.tsx'],
 		note: 'the Tools index page',
 	},
 	{
 		id: 'tools-detail',
+		kind: 'component',
 		files: ['src/routes/tools.$slug.tsx'],
-		note: 'one Tool shell page',
+		note: 'the Tool embed host shell — a chrome-less full-bleed iframe host whose document title is the route head, not a page outline',
 	},
 	{
 		id: 'contact',
-		files: ['src/routes/contact.tsx'],
-		note: 'the contact route shell',
+		kind: 'page',
+		files: ['src/routes/contact.tsx', 'src/contact/page.tsx'],
+		note: 'the contact page (route shell + the page it composes)',
 	},
 	{
 		id: 'projects-dotfiles',
-		files: ['src/routes/projects.dotfiles.tsx'],
-		note: 'the project-introduction route shell',
+		kind: 'page',
+		files: ['src/routes/projects.dotfiles.tsx', 'src/projects/DotfilesIntroductionPage.tsx'],
+		note: 'the project-introduction page (route shell + the page it composes)',
 	},
 	{
 		id: 'design-system',
-		files: ['src/routes/design-system.tsx'],
-		note: 'the design-system route shell',
+		kind: 'page',
+		files: ['src/routes/design-system.tsx', 'src/routes/design-system/DesignSystemPage.tsx'],
+		note: 'the design-system page (route shell + the page it composes)',
 	},
 ];
 
@@ -208,13 +238,14 @@ export const OUT_OF_SCOPE = [
 		reason: 'the admin surface is an authenticated shell, not a public page',
 	},
 	{
-		area: 'src/routes/design-system/**',
-		reason: 'the design-system gallery composes many surfaces into one screen',
+		area: 'src/routes/design-system/** (except DesignSystemPage.tsx)',
+		reason:
+			'the gallery composes many surfaces into one screen; the page composition itself IS scanned as the design-system page unit',
 	},
 	{
-		area: 'src/contact/**, src/projects/**, src/tools/**',
+		area: 'src/contact/** (except page.tsx), src/projects/** (except DotfilesIntroductionPage.tsx), src/tools/**',
 		reason:
-			'those pages own their own obligation; this Issue scoped the units above, so their headings are not checked here yet',
+			'those pages own their own obligation; this Issue scanned the page compositions above, so their remaining modules are not checked here yet',
 	},
 	{
 		area: 'src/routes/portfolio/**, src/routes/projects/**',
@@ -229,6 +260,38 @@ export const OUT_OF_SCOPE = [
  * change to the primitive cannot silently change the gate's model.
  */
 export const SECTION_HEADING_PRIMITIVE = 'src/editorial/primitives/SectionHeading.tsx';
+
+/**
+ * The rule the gate reports when the FIXTURES no longer demonstrate
+ * what they are supposed to demonstrate.
+ *
+ * It is not one of the five page rules: it does not judge a shipped
+ * page, it judges the gate's own evidence. A fixture that was deleted,
+ * renamed, or emptied must not be able to turn the gate green.
+ */
+export const FIXTURE_RULE = 'fixture-expectation-mismatch';
+
+/** Where the fixtures live (repo-relative). */
+export const FIXTURE_DIR = 'scripts/fixtures/a11y-heading-landmarks';
+
+/**
+ * The fixture set the gate expects, exactly.
+ *
+ * The comparison is an EXACT set: a missing fixture and an extra
+ * fixture are both a mismatch, because the set is what says which
+ * rule has a demonstration.
+ */
+export const EXPECTED_FIXTURES = {
+	pass: ['pass-landmarks.tsx', 'pass-outline.tsx'],
+	fail: [
+		'fail-duplicated-landmark.tsx',
+		'fail-heading-level-skip.tsx',
+		'fail-missing-h1.tsx',
+		'fail-missing-landmark.tsx',
+		'fail-missing-page-outline.tsx',
+		'fail-multiple-h1.tsx',
+	],
+};
 
 /**
  * Things this gate deliberately does not decide. Printed with the
@@ -356,8 +419,15 @@ export function levelSkipViolations(headings, relativePath) {
  * page is rendered from several files, so a page-level fact is a
  * unit-level fact — while the heading LEVELS are compared inside each
  * file.
+ *
+ * `kind` is the unit's DECLARED kind: `'page'` or `'component'`. It
+ * defaults to `'page'`, and an unknown value is read as `'page'` too
+ * (fail-closed: a unit is never excused because nobody said what it
+ * is). The kind is never inferred from what the unit renders — a page
+ * that lost both its `<h1>` and its `main` landmark is still a page,
+ * and is reported as such.
  */
-export function evaluateUnit({ id, files, primitiveLevel = 2 }) {
+export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2 }) {
 	const violations = [];
 	const headings = [];
 	const landmarks = [];
@@ -374,7 +444,8 @@ export function evaluateUnit({ id, files, primitiveLevel = 2 }) {
 	}
 
 	const h1s = headings.filter((heading) => heading.level === 1);
-	const isComponentSurface = h1s.length === 0 && landmarks.length === 0;
+	const unitKind = kind === 'component' ? 'component' : 'page';
+	const isComponentSurface = unitKind === 'component';
 
 	if (!isComponentSurface) {
 		if (h1s.length === 0) {
@@ -417,6 +488,7 @@ export function evaluateUnit({ id, files, primitiveLevel = 2 }) {
 
 	return {
 		id,
+		kind: unitKind,
 		isComponentSurface,
 		files: files.map((file) => file.relativePath),
 		headings: headings.map((heading) => ({
@@ -432,6 +504,107 @@ export function evaluateUnit({ id, files, primitiveLevel = 2 }) {
 		})),
 		violations,
 	};
+}
+
+/**
+ * The gate's own FIXTURES, judged (pure over the injected readers).
+ *
+ * The fixtures are the evidence the five rules are demonstrated with,
+ * so the gate checks that they still are:
+ *
+ *   - the fixture set is EXACTLY {@link EXPECTED_FIXTURES} (a deleted,
+ *     renamed or added fixture is a mismatch);
+ *   - every passing fixture still carries the structure it
+ *     demonstrates — at least one heading AND at least one `main`
+ *     landmark — so an emptied fixture cannot pass by reporting no
+ *     violation;
+ *   - every failing fixture still reports a violation, so a fixture
+ *     that stopped demonstrating its rule is a mismatch too.
+ *
+ * A mismatch is reported as {@link FIXTURE_RULE}. It is a gate
+ * failure: the evidence is gone, so the run is not trustworthy.
+ */
+export function collectFixtureEvidence({
+	root = REPO_ROOT,
+	readFile = (relativePath) => readFileSync(join(root, relativePath), 'utf8'),
+	readDirectory = (directory) => readdirSync(join(root, directory)).sort(),
+} = {}) {
+	const violations = [];
+	const fixtures = [];
+	const mismatch = (file, message) => ({
+		rule: FIXTURE_RULE,
+		file,
+		line: null,
+		wcag: '1.3.1',
+		message,
+	});
+
+	for (const kind of ['pass', 'fail']) {
+		const directory = `${FIXTURE_DIR}/${kind}`;
+		let names = [];
+		try {
+			names = readDirectory(directory);
+		} catch (error) {
+			violations.push(
+				mismatch(directory, `the fixture directory cannot be read: ${error.message}`),
+			);
+			continue;
+		}
+		const expected = EXPECTED_FIXTURES[kind];
+		for (const name of expected.filter((name) => !names.includes(name))) {
+			violations.push(mismatch(`${directory}/${name}`, 'the expected fixture is missing'));
+		}
+		for (const name of names.filter((name) => !expected.includes(name))) {
+			violations.push(
+				mismatch(`${directory}/${name}`, 'the fixture is not part of the expected fixture set'),
+			);
+		}
+		for (const name of names) {
+			const relativePath = `${directory}/${name}`;
+			const source = readFile(relativePath);
+			const result = evaluateUnit({
+				id: name,
+				kind: 'page',
+				files: [{ relativePath, source }],
+			});
+			const rules = result.violations.map((violation) => violation.rule);
+			fixtures.push({
+				kind,
+				name,
+				relativePath,
+				headings: result.headings.length,
+				landmarks: result.landmarks.length,
+				rules,
+			});
+			if (kind === 'pass') {
+				if (result.headings.length === 0) {
+					violations.push(
+						mismatch(
+							relativePath,
+							'the passing fixture renders no heading; it demonstrates nothing about the outline',
+						),
+					);
+				}
+				if (result.landmarks.length === 0) {
+					violations.push(
+						mismatch(
+							relativePath,
+							'the passing fixture renders no main landmark; it demonstrates nothing about the landmarks',
+						),
+					);
+				}
+			} else if (result.violations.length === 0) {
+				violations.push(
+					mismatch(
+						relativePath,
+						'the failing fixture reports no violation; it demonstrates nothing',
+					),
+				);
+			}
+		}
+	}
+
+	return { violations, fixtures };
 }
 
 /**
@@ -485,7 +658,7 @@ export function collectEvidence({
 			scanned.add(relativePath);
 			return { relativePath, source: readFile(relativePath) };
 		});
-		const result = evaluateUnit({ id: unit.id, files, primitiveLevel });
+		const result = evaluateUnit({ id: unit.id, kind: unit.kind, files, primitiveLevel });
 		units.push({ ...result, note: unit.note });
 		violations.push(...result.violations);
 	}
@@ -505,11 +678,15 @@ export function collectEvidence({
 		}
 	}
 
+	const fixtureEvidence = collectFixtureEvidence({ root });
+	violations.push(...fixtureEvidence.violations);
+
 	return {
 		filesScanned: scanned.size,
 		units,
 		violations,
 		excluded,
+		fixtures: fixtureEvidence.fixtures,
 		primitiveLevel,
 		primitiveNote,
 		humanEvaluation: HUMAN_EVALUATION,
@@ -528,7 +705,7 @@ export function renderGateSummary(evidence) {
 	for (const unit of evidence.units) {
 		const h1 = unit.headings.filter((heading) => heading.level === 1).length;
 		lines.push(
-			`  ${unit.violations.length === 0 ? 'ok  ' : 'FAIL'} ${unit.id.padEnd(18)} h1=${h1} main=${unit.landmarks.length} ${unit.isComponentSurface ? '(component surface)' : ''}`,
+			`  ${unit.violations.length === 0 ? 'ok  ' : 'FAIL'} ${unit.id.padEnd(18)} h1=${h1} main=${unit.landmarks.length} (${unit.kind})`,
 		);
 		// The outline is printed per file: the level rule is decided
 		// inside a file, so a flat list would read as one sequence that
@@ -543,6 +720,15 @@ export function renderGateSummary(evidence) {
 		}
 	}
 	lines.push('');
+	if (evidence.fixtures && evidence.fixtures.length > 0) {
+		lines.push('fixtures (the gate’s own evidence):');
+		for (const fixture of evidence.fixtures) {
+			lines.push(
+				`  ${fixture.kind.padEnd(4)} ${fixture.name.padEnd(34)} headings=${fixture.headings} landmarks=${fixture.landmarks} rules=[${fixture.rules.join(', ') || 'none'}]`,
+			);
+		}
+		lines.push('');
+	}
 	lines.push('not machine-checked (human evaluation):');
 	for (const item of evidence.humanEvaluation) lines.push(`  - ${item}`);
 	lines.push('');

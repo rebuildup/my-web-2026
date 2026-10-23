@@ -471,7 +471,7 @@ export function evidencePanelSvg({ observation, gate, width }) {
 		'',
 		...gate.units.map(
 			(unit) =>
-				`${unit.id}: h1=${unit.headings.filter((heading) => heading.level === 1).length} main=${unit.landmarks.length} ${unit.isComponentSurface ? '(component surface)' : ''}`,
+				`${unit.id}: h1=${unit.headings.filter((heading) => heading.level === 1).length} main=${unit.landmarks.length} (${unit.kind})`,
 		),
 		'',
 		`gate: ${gate.violations.length} violation(s), ${gate.filesScanned} file(s) scanned`,

@@ -16,22 +16,26 @@ gate は **ページ単位のソース** を走査する。単位は「1 ペー�
 -route ファイル + そのページを描画するコンポーネント」で、
 `scripts/check-a11y-heading-landmarks.mjs` の `PAGE_UNITS` がその定義である。
 
-| ページ unit | 対象ファイル | 備考 |
-| --- | --- | --- |
-| `home` | `src/routes/index.tsx` + `src/home/**` | ホーム画面（composer + 各セクション） |
-| `about` | `src/routes/about.tsx` + `src/about/**` | 人物像画面 |
-| `keyboard` | `src/routes/keyboard.tsx` + `src/keyboard/components/**` | キーボード配列の参照画面 |
-| `portfolio-list` | `src/portfolio/components/PortfolioList.tsx` + `ProjectCard.tsx` | ポートフォリオ一覧 |
-| `portfolio-detail` | `src/portfolio/components/PortfolioDetail.tsx` + `Markdown.tsx` | ポートフォリオ 1 件 |
-| `legal-review` | `src/legal/**` | 資産権利レビュー |
-| `external-api` | `src/external-api/**` | 外部 API 読み取りカード |
-| `tools-index` | `src/routes/tools.index.tsx` | Tools 一覧 |
-| `tools-detail` | `src/routes/tools.$slug.tsx` | Tool シェル |
-| `contact` | `src/routes/contact.tsx` | お問い合わせの route シェル |
-| `projects-dotfiles` | `src/routes/projects.dotfiles.tsx` | dotfiles 導入の route シェル |
-| `design-system` | `src/routes/design-system.tsx` | デザインシステムの route シェル |
+| ページ unit | 種別 | 対象ファイル | 備考 |
+| --- | --- | --- | --- |
+| `home` | page | `src/routes/index.tsx` + `src/home/**` | ホーム画面（composer + 各セクション） |
+| `about` | page | `src/routes/about.tsx` + `src/about/**` | 人物像画面 |
+| `keyboard` | page | `src/routes/keyboard.tsx` + `src/keyboard/components/**` | キーボード配列の参照画面 |
+| `portfolio-list` | page | `src/portfolio/components/PortfolioList.tsx` + `ProjectCard.tsx` | ポートフォリオ一覧 |
+| `portfolio-detail` | page | `src/portfolio/components/PortfolioDetail.tsx` + `Markdown.tsx` | ポートフォリオ 1 件 |
+| `legal-review` | component | `src/legal/**` | 資産権利レビュー**カード**（ページに埋め込まれる） |
+| `external-api` | component | `src/external-api/**` | 外部 API 読み取りカード |
+| `tools-index` | page | `src/routes/tools.index.tsx` | Tools 一覧 |
+| `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（chrome なしの全画面 iframe。ページ own の outline を持たない） |
+| `contact` | page | `src/routes/contact.tsx` + `src/contact/page.tsx` | お問い合わせ（route シェル + 描画するページ） |
+| `projects-dotfiles` | page | `src/routes/projects.dotfiles.tsx` + `src/projects/DotfilesIntroductionPage.tsx` | dotfiles 導入（route シェル + 描画するページ） |
+| `design-system` | page | `src/routes/design-system.tsx` + `src/routes/design-system/DesignSystemPage.tsx` | デザインシステム（route シェル + 描画するページ） |
 
-走査対象は **57 ファイル**（2026-10-23 時点、`.ts` / `.tsx`）。
+走査対象は **60 ファイル**（2026-10-23 時点、`.ts` / `.tsx`）。
+
+**種別（`kind`）は「推測」ではなく「宣言」する。** `PAGE_UNITS` の各 entry は
+`kind: 'page'` か `kind: 'component'` を明示し、種別を宣言しない unit は
+**既定で page** として扱う（fail-closed。推測で合格にしない）。
 
 ## 対象外（理由つき）
 
@@ -39,16 +43,16 @@ gate は **ページ単位のソース** を走査する。単位は「1 ペー�
 | --- | --- |
 | `src/routes/__root.tsx` | root は全ページ共通の shell（header / nav / footer）。1 ページ分の chrome でありページ自身ではない（root 自身の検査は別件） |
 | `src/routes/admin.*` | 認証された管理画面。公開ページではない |
-| `src/routes/design-system/**` | 多数のエフェクトを 1 画面に合成するギャラリー。1 つのページではない |
+| `src/routes/design-system/**`（`DesignSystemPage.tsx` を除く） | 多数のエフェクトを 1 画面に合成するギャラリー。1 つのページではない（ページ構成本体は design-system unit として走査する） |
 | `*.test.ts(x)` / `*.spec.ts(x)` | テストは「描画する」のではなく「検証する」。ページではない |
 | `*.stories.tsx` | Storybook は変化形の一覧を表示する。ページではない |
 | `**/fixtures/**` | fixture はデータ。出荷されたページではない |
-| `src/contact/**`, `src/projects/**`, `src/tools/**` | それぞれの obligation が自分のページを持つ。本 Issue のスコープ外（既知の穴。下記「既知の制約」） |
+| `src/contact/**`（`page.tsx` を除く）, `src/projects/**`（`DotfilesIntroductionPage.tsx` を除く）, `src/tools/**` | それぞれの obligation が自分のモジュールを持つ。本 Issue はページの描画本体だけを走査する（残りは既知の穴。下記「既知の制約」） |
 | `src/routes/portfolio/**`, `src/routes/projects/**` | ディレクトリであり `src/routes/*.tsx` ではない |
 
 対象外にした理由と件数は **gate の出力そのもの** に印字される
 （`not scanned (deliberately out of scope):` と `excluded files inside the
-scanned scope`）。除外は「黙って無視する」 아니라「読める」ことを意図している。
+scanned scope`）。除外は「黙って無視する」のではなく「読める」ことを意図している。
 
 ## 機械検査する規則
 
@@ -78,12 +82,22 @@ scanned scope`）。除外は「黙って無視する」 아니라「読める�
    「レベルを飛ばしている」と誤検出する。primitive の描画するレベルは
    **primitive のソースから読む** ので、primitive が変われば gate も変わる。
 
-### コンポーネント surface の扱い
+### page unit と component surface の区別
 
-`<h1>` も `main` ランドマークも描画しない unit（カード / リスト / パネル）は
-**ページではない**。共通コンポーネントにページの `<h1>` を持たせるのは誤りなので、
-`page-missing-h1` / `page-missing-landmark` は課さない。ただし見出しレベルは
-検査する（コンポーネントもレベルを飛ばしてはいけない）。
+`PAGE_UNITS` の各 unit は `kind: 'page'` か `kind: 'component'` を **宣言** する。
+`kind` は **描画結果から推測しない**。
+
+- **page の unit** は、`<h1>` と `main` ランドマークの個数を **無条件に** 課される。
+  ページが `<h1>` と `main` の **両方** を失っても `page-missing-h1` と
+  `page-missing-landmark` の **両方** として報告される（cold review で指摘された穴）。
+- **component の unit** は、ページに埋め込まれるカード / リスト / パネルであり、
+  ページ own の `<h1>` を持つべきではない。よって `page-missing-h1` /
+  `page-missing-landmark` は課さない。ただし **見出しレベルは検査する**
+  （コンポーネントもレベルを飛ばしてはいけない）。
+- **種別の宣言がない unit は page として扱う**（fail-closed）。
+  種別を推測して合格にさせない。
+
+どちらの種別でも `page-heading-level-skip` は判定する。
 
 ## 既存コードの違反と修正
 
@@ -104,7 +118,8 @@ gate の初回実行で **3 件の違反** が出た。いずれも **構造** �
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
 | 上表の 5 rule | ページ unit ごとの `<h1>` 数・`main` 数・見出しレベル | コメント除去後のソース走査（`scripts/check-a11y-heading-landmarks.mjs`） |
-| fixture | `pass/` 2 ファイルは違反 0、`fail/` 5 ファイルは 5 rule をそれぞれ検出 | `node --test scripts/check-a11y-heading-landmarks.test.mjs` が **fixture を実際に読み**、同じ `evaluateUnit` で判定する |
+| fixture | `pass/` 2 ファイルは違反 0、`fail/` 6 ファイルは 5 rule をそれぞれ検出 | `node --test scripts/check-a11y-heading-landmarks.test.mjs` が **fixture を実際に読み**、同じ `evaluateUnit` で判定する |
+| fixture の一致 | fixture 集合が `EXPECTED_FIXTURES` と **完全一致** すること、`pass/` の各 fixture が **見出しと `main` ランドマークを実際に持つ** こと、`fail/` の各 fixture が **違反を実際に報告する** こと | gate 自身が行う。違反は `fixture-expectation-mismatch`（5 rule とは別の、gate 自身の証拠に対する rule）。fixture を空に・削除しても gate は緑にならない |
 | 描画された DOM | Chromium が返した実測値に同じ 5 rule を適用し、期待値と一致するか | `pnpm run capture:a11y-heading-landmarks`（一致しなければ成果物を書かずに exit 1） |
 
 ### 人間の評価（機械では判定しない）
@@ -144,14 +159,15 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
 
 機械検査は **構造** だけを判定する。誤検知が起きた場合は、次の順で対処する。
 
-1. **そのページは本当にページか。** 共通コンポーネントが `<h1>` を持つべきではない
-   場合は、`PAGE_UNITS` の定義側を直して「コンポーネント surface」として
-   扱う（`page-missing-h1` / `page-missing-landmark` は課されない）。
+1. **その unit は本当にページか。** 共通コンポーネントが `<h1>` を持つべきではない
+   場合は、`PAGE_UNITS` の定義側で `kind: 'component'` を **明示** する
+   （`page-missing-h1` / `page-missing-landmark` は課されない）。逆に、
+   本物のページなら `kind: 'page'` を明示する（既定でも page になる）。
 2. **その `<h1>` / `main` は本当に重複か。** 描画の分岐が排他的である場合
    （`KeyboardPage` の ready / unavailable など）、ソース上の個数と実際の
    個数が食い違う。gate は **ソース** の個数で判定する（描画を再現しないため）ので、
    ソース側を「1 個のランドマーク」に直すのが正解。
-3. **見出しレベルが意図的に，飞びているのか。** primitive 経由の見出し
+3. **見出しレベルが意図的に飛びているのか。** primitive 経由の見出し
    （`SectionHeading`）は level 2 として数える。それ以外の primitive が
    見出しを描画する場合は、その primitive を gate のモデルに加えてから
    判定し直す。
@@ -166,15 +182,24 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
   別々）は検出しない。検出できるのは「同じファイルで書かれた連続した見出し」の
   飛ばしだけである。DOM 順の再現は Worker と binding を要するため、
   この gate は行わない。
-- **`src/contact/**` / `src/projects/**` / `src/tools/**` は未走査。**
-  これらのページは自分の obligation が heading と landmark を持っている。
-  Issue #398 のスコープは上の unit 表に閉じており、拡張は別の ticket での
-  決定が必要（unit 定義と source 走査はコード上はそのまま足せる）。
+- **`src/contact/**` / `src/projects/**` / `src/tools/**` は一部のみ走査。**
+  ページの描画本体（`src/contact/page.tsx`、`src/projects/DotfilesIntroductionPage.tsx`）は
+  unit に含めて走査するが、残りのモジュールは自分の obligation が heading と
+  landmark を持っている。残りを広げるかどうかは unit 定義と source 走査の拡張であり、
+  別の ticket での決定を要する。
 - **ポートフォリオ本文の Markdown 見出しは `h3` / `h4` / `h5` のまま。**
-  ページ见他出しは `h1` なので描画上は `h1` → `h3` になるが、
-  `src/portfolio/markdown.safety.test.tsx` が「ページ见他出しは `h3`/`h4`/`h5` の
+  ページ外見出しは `h1` なので描画上は `h1` → `h3` になるが、
+  `src/portfolio/markdown.safety.test.tsx` が「ページ外見出しは `h3`/`h4`/`h5` の
   スロット」という**既存の明示的な契約**として固定しているため、本 Issue では
   変更しない（変更は別 ticket の決定事項）。
+- **`kind: 'component'` の unit は「宣言された判断」である。**
+  `legal-review` / `external-api` / `tools-detail` は、ページに埋め込まれる
+  カード、または chrome なしの iframe ホスト shell であり、ページ own の
+  `<h1>` / `main` を持たない。種別は **宣言** なので、gate の出力には
+  `(component)` として印字され、reader が判断の根拠を追える。
+  一方 `tools-detail` は `<h2>` だけを持ち `<h1>` を持たないため、
+  スクリーンリーダーからは「ページ名の-announce がない」状態として残る。
+  これは public copy の変更を要する事項であり、本 Issue のスコープ外。
 - **`scripts/_source-scan.mjs` の行番号バグを本 Issue で直した。**
   JSX の閉じタグ `</h1>` を正規表現リテラルと誤認して改行を二重に数えており、
   報告行が 1 行ずれる（JSX の閉じタグが多いファイルほどずれる）状態だった。

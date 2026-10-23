@@ -359,6 +359,30 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #405: the live-region / status-message contract (WCAG 2.2
+      # SC 4.1.3 Status Messages, level AA, and SC 4.1.2 Name, Role,
+      # Value, level A). Every explicit live region in `src/**` must not be
+      # assertive unless it is a `role="alert"`, must not nest inside
+      # another live region, must keep `aria-busy` boolean, and must not
+      # publish the same expression as another region. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the same
+      # evidence is `pnpm run capture:a11y-live-region`, an artefact
+      # capture and therefore not a fast gate.
+      - 'pnpm run a11y:live-region:check' # live region / status message contract (Issue #405)
+      # Issue #395: the focus visibility / focus-not-obscured contract. The
+      # gate reads the shipped source and the shipped stylesheet: a focus
+      # block that removes the indicator and replaces it with nothing
+      # (WCAG 2.2 SC 2.4.7 Focus Visible, AA), a focus block whose
+      # outline cannot be seen, and an author-created overlay that is not
+      # bound to a focus compensation (SC 2.4.11 Focus Not Obscured
+      # (Minimum), AA). A compensation is a CHAIN — the overlay's own file
+      # publishes the offset it occupies and the document consumes it — and
+      # a chain with a missing end is a violation. A native modal dialog
+      # is not an overlay: the user agent makes the rest of the document
+      # inert. Offline, credential-free, status-only. The browser half of
+      # the same evidence is `pnpm run capture:a11y-focus-visible`, an
+      # artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:focus-visible:check' # focus visible / not obscured contract (Issue #395)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

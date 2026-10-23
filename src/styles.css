@@ -211,8 +211,54 @@
 		}
 	}
 
+	/*
+	 * Focus compensation for the fixed consent surface (Issue #395).
+	 *
+	 * WCAG 2.2 SC 2.4.11 Focus Not Obscured (Minimum, AA): when a
+	 * component receives keyboard focus, it is not entirely hidden by
+	 * author-created content. The analytics consent surface is
+	 * `position: fixed` at the bottom of the viewport, and the browser
+	 * scrolls a focused element to the edge of the viewport — the bottom
+	 * edge is where that surface is. Without a compensation, a focused
+	 * element near the end of the page can end up entirely behind it.
+	 *
+	 * `scroll-padding` on the scrolling element (the document) is
+	 * the mechanism: the browser keeps a focused element clear of the
+	 * reserved space when it scrolls it into view. The reserved height
+	 * is published by the surface itself
+	 * (`--analytics-consent-offset`, set from the rendered height in
+	 * `src/editorial/analytics/AnalyticsConsent.tsx`), so the
+	 * compensation follows the surface instead of guessing a number.
+	 * Without the surface on the page the variable is absent and the
+	 * fallback reserves nothing.
+	 *
+	 * The shorthand is used rather than the `scroll-padding-bottom`
+	 * longhand, because the longhand is not in this repository's CSS
+	 * vocabulary record (`quality/css-standards.json`) and the two mean
+	 * the same thing.
+	 *
+	 * The reserved space ALONE is not enough for the last focusable
+	 * element of a page: the browser cannot scroll past the end of the
+	 * document, so that element stays at the bottom edge of the
+	 * viewport — exactly where the surface is. The room at the END of
+	 * the document (the body's bottom padding, below) is what lifts it
+	 * clear. Both are read by
+	 * `scripts/check-a11y-focus-visible.mjs`, which requires both ends
+	 * of the chain: a compensation that nothing publishes is a dead
+	 * declaration and fails the gate.
+	 */
+	:root {
+		scroll-padding: 0 0 var(--analytics-consent-offset, 0px) 0;
+	}
+
 	body {
 		background-color: var(--colors-bg-canvas);
+		/*
+		 * The room the fixed surface needs at the end of the document.
+		 * The band is the canvas colour — the footer has no background of
+		 * its own — so the reserved space reads as page, not as a seam.
+		 */
+		padding-bottom: var(--analytics-consent-offset, 0px);
 	}
 
 	/*

@@ -61,11 +61,14 @@
  *                          (default .tmp/a11y-axe-storybook/report.json)
  */
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isOriginReady, startStorybook } from './_storybook-server.mjs';
+
+export { isOriginReady, startStorybook };
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -97,7 +100,7 @@ export const MANIFEST_PATH = 'e2e/a11y/axe-storybook-manifest.ts';
 export const BASELINE_PATH = 'e2e/a11y/axe-storybook-baseline.json';
 
 /** How long the local Storybook may take to become ready. */
-export const SERVER_READY_TIMEOUT_MS = 180_000;
+export { SERVER_READY_TIMEOUT_MS } from './_storybook-server.mjs';
 
 /** Reject an output path that is not WebP, or that leaves the repository. */
 export function assertWebpOutputPath(path, repoRoot = REPO_ROOT) {
@@ -128,46 +131,6 @@ export function escapeHtml(value) {
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
 		.replace(/"/g, '&quot;');
-}
-
-/** Is the loopback origin already answering? */
-export async function isOriginReady(baseUrl) {
-	try {
-		const response = await fetch(`${baseUrl}/index.json`, { redirect: 'manual' });
-		return response.status > 0;
-	} catch {
-		return false;
-	}
-}
-
-/**
- * Start the local Storybook and wait until it answers.
- *
- * The server is the repository's own Storybook (`.storybook/main.ts`),
- * started on loopback with the CI flag. Nothing is deployed and no
- * binding outside the local state directory is touched.
- */
-export async function startStorybook(port, repoRoot = REPO_ROOT) {
-	const binary = join(repoRoot, 'node_modules', '.bin', 'storybook');
-	if (!existsSync(binary)) {
-		throw new Error('the Storybook binary is not installed; run `pnpm install` first');
-	}
-	const child = spawn(
-		binary,
-		['dev', '-p', String(port), '--host', '127.0.0.1', '--ci', '--no-open', '--quiet'],
-		{ cwd: repoRoot, stdio: ['ignore', 'ignore', 'inherit'] },
-	);
-	const baseUrl = `http://localhost:${port}`;
-	const deadline = Date.now() + SERVER_READY_TIMEOUT_MS;
-	while (Date.now() < deadline) {
-		if (await isOriginReady(baseUrl)) return { baseUrl, child };
-		if (child.exitCode !== null) {
-			throw new Error(`the local Storybook exited with code ${child.exitCode}`);
-		}
-		await new Promise((done) => setTimeout(done, 500));
-	}
-	child.kill('SIGTERM');
-	throw new Error(`the local Storybook did not become ready within ${SERVER_READY_TIMEOUT_MS} ms`);
 }
 
 /**

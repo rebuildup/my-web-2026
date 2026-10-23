@@ -12,6 +12,7 @@ import {
 	reportedRuleIds,
 	resolveStoryEntry,
 	staleRecords,
+	type StoryIndex,
 	storyKey,
 	verdictFor,
 } from './axe-storybook-verdict.ts';

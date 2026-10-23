@@ -29,9 +29,24 @@ Issue #393 は公開ルートの描画済み DOM を測った。ここが測る�
 | 静的ゲート | manifest / 台帳 / fixture の整合だけ。**Storybook を起動しない** | `pnpm run a11y:axe-storybook:check`（`validate:fast` に登録済み） |
 | ブラウザ実測 | Chromium で story を開き、axe-core を走らせ、宣言・実測・台帳を突き合わせる | `pnpm run a11y:axe-storybook:e2e`（Storybook が必要） |
 
-静的ゲートを高速ゲートに、ブラウザ実測を専用ジョブに分けた理由: Storybook の起動には数分かかり、`validate:fast` のような「毎回通る」ゲートには重すぎる。実測は
-リリース候補を測るものだからであり、CI の通常ゲートに入れると「story が 1 つも
-測られていないのに green」という状態を的形成する。
+静的ゲートを高速ゲートに、ブラウザ実測を専用ジョブに分けた理由: Storybook の起動には数分かかり、`validate:fast` のような「毎回通る」ゲートには重すぎる。
+
+**ブラウザ実測は CI の専用ジョブ `storybook axe` で常に走る**（条件なし）。
+このジョブは Storybook の dev サーバを loopback に起動し、origin が 200 を返す
+ことに加えて **1 つの story が実際に描画されたこと**（fresh checkout の cold start
+では Vite の依存最適化が終わるまで preview が開かないことがある）を確認してから
+`pnpm run a11y:axe-storybook:e2e` を実行し、失敗したときは dev サーバのログを
+表示する。
+
+**条件を設けない**理由: story の描画結果はコンポーネント・依存・Storybook の
+設定・トークンのどれででも変わりうるため、`**/*.stories.tsx` の差分や
+`accessibility` label で絞り込むと「実測されていないのに green」が再び生まれる。
+問題の本質（story が描画できない状態で static ゲートだけ緑になる）を閉じ直すには、
+**測る装置そのものを PR ごとに回す**ことが必要である。
+
+判断・起動・結果集約のロジックは `scripts/run-storybook-axe-audit.mjs` にあり、
+workflow YAML はジョブの起動と結果の集約に留まる（AGENTS.md §5: 検証ロジックを
+YAML に隠さない）。同じスクリプトがローカルでも同じ判定を出す。
 
 ## 判定の 4 段構え
 
@@ -61,6 +76,19 @@ manifest の `expect` が宣言できるのは `pass` と `baseline` の 2 値�
 `fail` は **宣言できない**（型にも run time の検査にも無い）。
 manifest の 1 語を書き換えて新規違反を隠す経路を作らないため。
 
+この 2 値は **型と run time の 2 枚**で守られている:
+
+- **型**: `export type StoryVerdict = 'pass' | 'baseline';`。
+  `e2e/a11y/**` は `tsconfig.json#include` にあるので `pnpm run typecheck` が
+  manifest を型検査する。`expect: 'fail'` を書くと **型エラー**になる
+  （`TS2322: Type '"fail"' is not assignable to type 'StoryVerdict'`）。
+- **run time**: 静的ゲートの `manifest-invalid-verdict` が、型を通り越した値
+  （たとえば JSON 経由で届いた値）を止める。
+
+型検査に含める範囲は `e2e/a11y/**` である。他の `e2e/` 配下の suite はこの決定に
+先立って存在し、まだ型エラーを持つため、この Issue の範囲外として
+**今回一并に直さない**（直すと別の Issue の仕事になる）。
+
 - 違反が **恒久的に存在してよい** 場合は、**台帳**
   （`e2e/a11y/axe-storybook-baseline.json`）に 1 レコード追加し、`reason` に許容理由を書く。
   台帳は別ファイルなので、許容の判断は **差分として見える**。
@@ -73,11 +101,18 @@ manifest の 1 語を書き換えて新規違反を隠す経路を作らない�
 reviewer が報告する「manifest を書き換えると新規違反が通る」経路を、自分の作業
 ツリーで再現・否定した（攻撃の入力は作業後にすべて戻した）。
 
-| 攻撃 | 結果 |
-| --- | --- |
-| `expect: 'pass'` のファイルを `expect: 'baseline'` に書き換える（台帳は空のまま） | 静的ゲートが `baseline-missing-record` で **red**。許容にするには台帳のレコードと理由が要る、ということが宣言だけからは逃げられない |
-| 登録済みファイルから story を 1 つ外す（`Badge.stories.tsx#Accent`） | 静的には **red にならない**（未登録 story は open item）。ただしゲートの要約が `100 registered, 1 deferred, 0 not registered yet` から `99 registered, 1 deferred, 1 not registered yet` に変わり、差分でも見える（既知の制約に書いた） |
-| 台帳からレコードを消して恒久 green にする | ブラウザ実測が `fail`（台帳が陳腐化している）。**ブラウザ実測なしでは green のまま**なので、この迂回を塞ぐのはブラウザ側 |
+| 攻撃 | 静的ゲート | ブラウザ実測 |
+| --- | --- | --- |
+| `expect: 'pass'` のファイルを `expect: 'baseline'` に書き換える（台帳は空のまま） | **red**（`baseline-missing-record`）。許容にするには台帳のレコードと理由が要る、ということが宣言だけからは逃げられない | — |
+| 登録済みファイルから story を 1 つ外す（`Badge.stories.tsx#Accent`） | **red にならない**（未登録 story は open item）。ただしゲートの要約が `100 registered, 1 deferred, 0 not registered yet` から `99 registered, 1 deferred, 1 not registered yet` に変わり、差分でも見える（既知の制約に書いた） | — |
+| **実在する story** の台帳レコードを消して恒久 green にする | 緑（静的ゲートは **ファイル単位**で判定するので、同じファイルに別の story の記録が残っている限り `baseline` 宣言は守られる） | **red**（`the scan found violation(s) the ledger does not record`） |
+| 台帳の記録が実測と合わなくなった（rule id を変えた、違反が直ったのに残した） | 緑（静的には判定しない） | **red**（`the scan found violation(s) the ledger does not record` / 記録側の陳腐化は `the baseline ledger records violations the scan no longer observes`） |
+| **実在しない story** の台帳レコードを足す | **red**（`baseline-story-not-audited`） | 緑（対応する test が存在しないので、この入力はブラウザ実測に現れない） |
+
+3 行目〜5 行目は **別々の装置**が赤くなる。両方を塞げているので、
+「台帳を空にして恒久 green にする」迂回が残らない。
+ブラウザ実測は CI の専用ジョブ `storybook axe` が条件なしで毎回走らせるので、
+「ブラウザ実測が走らないから緑」という状態は起こらない。
 
 ## 適用対象
 
@@ -99,13 +134,16 @@ defer は静的ゲートが red にする。
 
 ## 走査の範囲: story の部分木だけ
 
-走査対象は `#storybook-root` の部分木で、プレビュー文書全体ではない。理由は 2 つで、
-どちらも測った結果である。
+走査対象は `#storybook-root` の部分木で、プレビュー文書全体ではない。理由は 2 つ。
 
-- **プレビューの道具は監査対象ではない。** Storybook の dev サーバーが差し込む
-  Vite のエラーオーバーレイは chrome であり、文書全体を走査すると
-  **101 story すべて**で `scrollable-region-focusable` が出る。道具についての話で、
-  コンポーネントについての話ではない。
+- **プレビューの道具は監査対象ではない。** Storybook は（component story ではなく）
+  道具の画面である。dev サーバがエラーを起こしたときに注入する Vite の
+  エラーオーバーレイのような chrome 領域は測定対象から外すため、走査範囲は
+  `#storybook-root` の部分木に固定する。**正常状態の dev サーバでは文書全体を
+  走査しても部分木走査と同じ結果になる**（`scrollable-region-focusable` は 1 件も
+  出ない。オーバーレイはエラーがある時にしか注入されないため）。壊れた環境
+  （この Issue が直した「story が描画できない状態」）ではオーバーレイ由来の
+  違反が混ざるが、その状態は gate が red にするので、記録に残さない。
 - **コンポーネント story は断片である。** ページ水準の規則（document title、
   landmark、`html-has-lang`）は断片には適用されない。それらはルート監査
   （Issue #393）の対象である。
@@ -209,6 +247,9 @@ pnpm run a11y:axe-storybook:check
 pnpm run storybook            # 別ターミナル
 pnpm run a11y:axe-storybook:e2e
 
+# 2'. ブラウザ実測を CI と同じ手順で回す（Storybook の起動も待ちも含む）
+pnpm run a11y:axe-storybook:ci
+
 # 3. 検証画像を生成する（Storybook を自分で起動する）
 pnpm run capture:a11y-axe-storybook
 ```
@@ -227,6 +268,16 @@ pnpm run capture:a11y-axe-storybook
 タイムアウトする）ので放置はされない。**検証画像（capture）も**、**gate が red のときは何も書かずに
 exit 1** で止まる — 測れていない story を測定結果として描画しないためである。
 
+### cold start（依存最適化の待ち）
+
+checkout したばかりの Storybook は Vite の依存最適化がまだ走っておらず、preview
+の iframe が開かないことがある。この状態で最初の数十 story がまとめて落ち、
+最適化が終われば通る。**これを「監査が壊れている」と読むのは誤診** である。
+CI のジョブは **1 つの story が実際に描画されたことを確認してから** スイートを
+走らせる（`scripts/run-storybook-axe-audit.mjs` の `waitForStoryRendered`）。
+描画確認が通らないままなら、その状態は **skip ではなく fail** として扱う
+（「0 story を測って exit 0」という silent green を作らないため）。
+
 ## 既知の制約
 
 1. **story の走査はページ水準の規則を含まない。** document title、landmark、
@@ -242,6 +293,9 @@ exit 1** で止まる — 測れていない story を測定結果として描�
    実測対象から外れる**。ゲートは要約行で `registered` と `not registered yet` の
    数を出し続けるので、差分と要約の両方で見える。
 5. **ブラウザ実測は fast ゲートに入っていない。** Storybook の起動時間のため。
-   CI で回すなら専用ジョブ（`pnpm run a11y:axe-storybook:e2e`）として追加する。
+   代わりに **CI の専用ジョブ `storybook axe` が条件なしで毎回回す**
+   （`.github/workflows/ci.yml`、ロジックは
+   `scripts/run-storybook-axe-audit.mjs`）。静的ゲートだけでは違反を
+   検出できないため、このジョブが唯一の測定装置である。
 6. **axe-core の rule 集合がそのまま監査の範囲である。** axe が検出しない違反
    （読み上げの自然さ、キーボード操作の順番、意味の誤り）はこの監査では検出できない。

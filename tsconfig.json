@@ -35,6 +35,16 @@
 		"src/**/*.ts",
 		"src/**/*.tsx",
 		"test/integration/**/*.ts",
+		// The accessibility suites are type-checked too (Issue #392). The
+		// Storybook manifest declares the audited story set and its
+		// verdict as a TYPE (`StoryVerdict = 'pass' | 'baseline'`), and a
+		// type that is never checked is a comment: `expect: 'fail'` used
+		// to compile, because the whole `e2e/` tree was outside this
+		// scope and only the runtime guard (`manifest-invalid-verdict`)
+		// caught it. The scope is `e2e/a11y/**` because the other suites
+		// under `e2e/` predate this decision and carry type errors that
+		// are not this ticket's business.
+		"e2e/a11y/**/*.ts",
 		"worker-configuration.d.ts",
 		".cloudflare/types/index.d.ts",
 		"styled-system/**/*.ts",

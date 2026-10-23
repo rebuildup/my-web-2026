@@ -620,10 +620,15 @@
 			"group": "accessibility",
 			"family": "a11y",
 			"label": "axe-core 自動スキャン",
-			"contract": "",
-			"requirements": [],
-			"evidence": null,
-			"owner": "quality/route-coverage.json#gate_families.a11y"
+			"state": "implemented",
+			"contract": "公開ルートの描画済み DOM を axe-core で走査し、台帳に無い新しい違反と陳腐化した台帳レコードを release candidate の失敗として落とす。",
+			"command": "pnpm run a11y:axe:check",
+			"requirements": ["build", "browser", "worker"],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "判定は spec の終了コード。検証画像は capture が別に作る（docs/verification/a11y/axe-route-report.webp）。"
+			},
+			"owner": "Issue #393"
 		},
 		{
 			"id": "cross-browser",

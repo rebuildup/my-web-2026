@@ -21,9 +21,9 @@
 		},
 		{
 			"id": "a11y",
-			"state": "planned",
-			"evidence_kind": "spec_or_doc",
-			"contract": "An automated axe-core scan runs over the rendered surface and its violations are gated. Hand-written landmark / heading assertions in the e2e specs do not satisfy this family — they are a weaker, different check."
+			"state": "implemented",
+			"evidence_kind": "spec",
+			"contract": "An automated axe-core scan runs over the rendered surface (the DOM a visitor receives, not the source) and its violations are gated: a violation that is not recorded in e2e/a11y/axe-baseline.json fails the release candidate, and a baseline record that no longer matches an observed violation fails too. Hand-written landmark / heading assertions in the e2e specs do not satisfy this family — they are a weaker, different check."
 		},
 		{
 			"id": "performance",
@@ -57,8 +57,8 @@
 					"reason": "No spec pins the home canonical / Open Graph metadata; the surface is asserted for composition only."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -83,8 +83,8 @@
 				"e2e": { "status": "covered", "evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"] },
 				"seo": { "status": "covered", "evidence": ["e2e/about.spec.ts"] },
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -109,8 +109,8 @@
 				"e2e": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
 				"seo": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -138,8 +138,8 @@
 					"reason": "No spec pins the contact canonical / Open Graph metadata."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -170,8 +170,8 @@
 					"evidence": ["e2e/projects-dotfiles.spec.ts"]
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -199,8 +199,8 @@
 					"reason": "Only the detail route's canonical / Open Graph metadata is asserted; the list route is not."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -226,8 +226,8 @@
 				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
 				"seo": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -255,8 +255,8 @@
 					"reason": "No spec pins the Tool index canonical / Open Graph metadata."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -289,7 +289,7 @@
 				},
 				"a11y": {
 					"status": "excluded",
-					"reason": "No axe-core scan exists yet. The Tool bundle itself is third-party code and would need its own scope."
+					"reason": "The Tool bundle is third-party code hosted in a same-origin iframe; the host shell is audited at /tools, and the bundle's own scope is a separate question."
 				},
 				"performance": {
 					"status": "excluded",
@@ -317,8 +317,8 @@
 					"reason": "Internal design-system showcase; no spec pins its canonical / Open Graph metadata."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -383,7 +383,7 @@
 				},
 				"a11y": {
 					"status": "excluded",
-					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+					"reason": "Layout route renders no surface of its own to scan."
 				},
 				"performance": {
 					"status": "excluded",
@@ -411,8 +411,8 @@
 					"reason": "The sign-in document publishes no canonical / Open Graph metadata that a spec pins."
 				},
 				"a11y": {
-					"status": "excluded",
-					"reason": "No axe-core scan exists yet. A login form is the highest-value first target once one does."
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",

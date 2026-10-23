@@ -58,30 +58,31 @@ Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 ## 全組み合わせの測定値
 
 `pnpm run a11y:contrast:check` の出力そのまま。light / dark の両列に
-「前景 / 背景」の実値と比率を記す。
+「前景 / 背景」の実値と比率を記す。比率の表記は gate の
+`formatRatio` と同一（小数 2 桁の **切捨て**）で、1 桁も違わない。
 
 | 組み合わせ | light（前景 / 背景） | 比率 | dark（前景 / 背景） | 比率 | 基準 | 用途 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `text.default on bg.canvas` | `#0f172a` / `#ffffff` | 17.85 | `#f8fafc` / `#0a0b0e` | 18.81 | 4.5 (normal) | 本文（ページ） |
+| `text.default on bg.canvas` | `#0f172a` / `#ffffff` | 17.85 | `#f8fafc` / `#0a0b0e` | 18.80 | 4.5 (normal) | 本文（ページ） |
 | `text.default on bg.surface` | `#0f172a` / `#f8fafc` | 17.06 | `#f8fafc` / `#111317` | 17.77 | 4.5 (normal) | 本文（カード面） |
-| `text.default on bg.subtle` | `#0f172a` / `#f1f5f9` | 16.30 | `#f8fafc` / `#191b21` | 16.45 | 4.5 (normal) | 本文（淡い面） |
-| `text.muted on bg.canvas` | `#475569` / `#ffffff` | 7.58 | `#8b9099` / `#0a0b0e` | 6.14 | 4.5 (normal) | 補助本文（ページ） |
-| `text.muted on bg.surface` | `#475569` / `#f8fafc` | 7.24 | `#8b9099` / `#111317` | 5.80 | 4.5 (normal) | 補助本文（カード面） |
-| `text.muted on bg.subtle` | `#475569` / `#f1f5f9` | 6.92 | `#8b9099` / `#191b21` | 5.37 | 4.5 (normal) | 補助本文（淡い面） |
-| `text.muted on accent.surface` | `#475569` / `#f0f9ff` | 7.11 | `#8b9099` / `#151b26` | 5.38 | 4.5 (normal) | 補助本文（着色された特徴領域） |
+| `text.default on bg.subtle` | `#0f172a` / `#f1f5f9` | 16.29 | `#f8fafc` / `#191b21` | 16.45 | 4.5 (normal) | 本文（淡い面） |
+| `text.muted on bg.canvas` | `#475569` / `#ffffff` | 7.57 | `#8b9099` / `#0a0b0e` | 6.13 | 4.5 (normal) | 補助本文（ページ） |
+| `text.muted on bg.surface` | `#475569` / `#f8fafc` | 7.24 | `#8b9099` / `#111317` | 5.79 | 4.5 (normal) | 補助本文（カード面） |
+| `text.muted on bg.subtle` | `#475569` / `#f1f5f9` | 6.91 | `#8b9099` / `#191b21` | 5.36 | 4.5 (normal) | 補助本文（淡い面） |
+| `text.muted on accent.surface` | `#475569` / `#f0f9ff` | 7.10 | `#8b9099` / `#151b26` | 5.38 | 4.5 (normal) | 補助本文（着色された特徴領域） |
 | `text.inverse on bg.accent` | `#ffffff` / `#0369a1` | 5.93 | `#ffffff` / `#0369a1` | 5.93 | 4.5 (normal) | CTA ラベル |
 | `text.inverse on bg.inverse` | `#ffffff` / `#0f172a` | 17.85 | `#ffffff` / `#0f172a` | 17.85 | 4.5 (normal) | 反転パネルのラベル |
 | `text.accent on bg.canvas` | `#0369a1` / `#ffffff` | 5.93 | `#0ea5e9` / `#0a0b0e` | 7.10 | 4.5 (normal) | リンク |
-| `text.accent on accent.surface` | `#0369a1` / `#f0f9ff` | 5.57 | `#0ea5e9` / `#151b26` | 6.23 | 3 (large) | 大きなリンク / 見出し（着色領域上） |
+| `text.accent on accent.surface` | `#0369a1` / `#f0f9ff` | 5.56 | `#0ea5e9` / `#151b26` | 6.22 | 3 (large) | 大きなリンク / 見出し（着色領域上） |
 | `accent.positive on bg.canvas` | `#047857` / `#ffffff` | 5.48 | `#6ee7b7` / `#0a0b0e` | 12.91 | 4.5 (normal) | ステータス文字「正常」 |
-| `accent.negative on bg.canvas` | `#be123c` / `#ffffff` | 6.29 | `#fda4af` / `#0a0b0e` | 10.41 | 4.5 (normal) | ステータス文字「異常」 |
-| `accent.warning on bg.canvas` | `#b45309` / `#ffffff` | 5.02 | `#fcd34d` / `#0a0b0e` | 13.65 | 4.5 (normal) | ステータス文字「劣化」 |
-| `accent.category.design on bg.canvas` | `#be185d` / `#ffffff` | 6.04 | `#f9a8d4` / `#0a0b0e` | 10.85 | 3 (non-text) | design カテゴリ識別子 |
-| `accent.category.code on bg.canvas` | `#0e7490` / `#ffffff` | 5.36 | `#67e8f9` / `#0a0b0e` | 13.58 | 3 (non-text) | code カテゴリ識別子 |
-| `accent.category.writing on bg.canvas` | `#a16207` / `#ffffff` | 4.92 | `#fde047` / `#0a0b0e` | 14.93 | 3 (non-text) | writing カテゴリ識別子 |
+| `accent.negative on bg.canvas` | `#be123c` / `#ffffff` | 6.28 | `#fda4af` / `#0a0b0e` | 10.40 | 4.5 (normal) | ステータス文字「異常」 |
+| `accent.warning on bg.canvas` | `#b45309` / `#ffffff` | 5.02 | `#fcd34d` / `#0a0b0e` | 13.64 | 4.5 (normal) | ステータス文字「劣化」 |
+| `accent.category.design on bg.canvas` | `#be185d` / `#ffffff` | 6.03 | `#f9a8d4` / `#0a0b0e` | 10.85 | 3 (non-text) | design カテゴリ識別子 |
+| `accent.category.code on bg.canvas` | `#0e7490` / `#ffffff` | 5.35 | `#67e8f9` / `#0a0b0e` | 13.57 | 3 (non-text) | code カテゴリ識別子 |
+| `accent.category.writing on bg.canvas` | `#a16207` / `#ffffff` | 4.92 | `#fde047` / `#0a0b0e` | 14.92 | 3 (non-text) | writing カテゴリ識別子 |
 | `accent.category.tool on bg.canvas` | `#4338ca` / `#ffffff` | 7.90 | `#a5b4fc` / `#0a0b0e` | 9.87 | 3 (non-text) | tool カテゴリ識別子 |
-| `border.focus on bg.canvas` | `#0284c7` / `#ffffff` | 4.10 | `#7dd3fc` / `#0a0b0e` | 11.80 | 3 (non-text) | フォーカスインジケータ |
-| `border.strong on bg.canvas` | `#64748b` / `#ffffff` | 4.76 | `#6f747d` / `#0a0b0e` | 4.19 | 3 (non-text) | 強調の境界線 |
+| `border.focus on bg.canvas` | `#0284c7` / `#ffffff` | 4.09 | `#7dd3fc` / `#0a0b0e` | 11.80 | 3 (non-text) | フォーカスインジケータ |
+| `border.strong on bg.canvas` | `#64748b` / `#ffffff` | 4.75 | `#6f747d` / `#0a0b0e` | 4.18 | 3 (non-text) | 強調の境界線 |
 
 20 組合せ × 2 appearance = **40 行すべて適合**。
 
@@ -93,8 +94,8 @@ Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 
 | 組み合わせ | 修正前 | 修正後 | 判定 |
 | --- | --- | --- | --- |
-| `text.muted` on `bg.subtle`（light） | `neutral.500` `#64748b` → 4.34:1 | `neutral.600` `#475569` → 6.92:1 | 4.5:1 未満だった |
-| `text.muted` on `accent.surface`（light） | `neutral.500` `#64748b` → 4.46:1 | `neutral.600` `#475569` → 7.11:1 | 4.5:1 未満だった |
+| `text.muted` on `bg.subtle`（light） | `neutral.500` `#64748b` → 4.34:1 | `neutral.600` `#475569` → 6.91:1 | 4.5:1 未満だった |
+| `text.muted` on `accent.surface`（light） | `neutral.500` `#64748b` → 4.46:1 | `neutral.600` `#475569` → 7.10:1 | 4.5:1 未満だった |
 
 **選び方の根拠。**
 
@@ -108,7 +109,7 @@ Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 3. **hue と彩度の意図は変えていない。** 同じ slate 系で、変わるのは明度だけ。
    「控えめな補助本文」というキャラクターは保たれている。
 4. dark の step は `charcoal.400` のまま。dark 側は元から
-   5.37:1 / 5.38:1 で基準を満たしており、**手は入れていない**。
+   5.36:1 / 5.38:1 で基準を満たしており、**手は入れていない**。
    （ Issue #290 の dark rework で設計し直した値なので、
    此次の修正で触るとその判断を壊す。）
 
@@ -124,8 +125,8 @@ Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 | `contrast-below-large` | 大きなテキストの組合せが 3:1 を下回る |
 | `contrast-below-non-text` | 非テキスト UI 部品の組合せが 3:1 を下回る |
 | `unresolved-token-reference` | semantic token が参照する raw token が解決できない（**推測で埋めない**） |
-| `fixture-expectation-mismatch` | fixture の期待と実測が食い違う |
-| `fixture-contract-missing` | fixture ディレクトリが無い、または Issue が要求するファイル数に足りない |
+| `fixture-expectation-mismatch` | fixture の期待と実測が食い違う / `pass` fixture が pair を 1 件も評価していない / fixture ファイルの集合が gate が宣言した期待集合と一致しない（欠落・過剰） |
+| `fixture-contract-missing` | fixture ディレクトリにファイルが 1 つも無い（fixture の source がない） |
 
 capture は **ブラウザ実測** でもう一度確かめる。各スウォッチについて
 Chromium が返した **計算済みの foreground / background** から比率を
@@ -163,6 +164,23 @@ gate はそれに従って **違反**（`pass` の_expectation を破ったと�
 `fixture-expectation-mismatch` として gate を赤にする。
 `pass/` のファイルで違反が出たら `contrast-below-*` として gate を赤にする。
 
+### fixture の集合そのものも契約
+
+上表のファイル名 **ちょうど** が gate が宣言する期待集合
+（`EXPECTED_FIXTURE_FILES`）である。cold review で見つかった穴
+「`pass` fixture の `pairs` を空配列にすると、何も検証しないのに
+gate が緑のままになる」を塞ぐために、次の 3 つを gate が落とす:
+
+| 状況 | rule | 判定 |
+| --- | --- | --- |
+| `pass` fixture が pair を 1 件も評価していない | `fixture-expectation-mismatch` | 何も検証しない fixture は緑のまま通らない |
+| 期待集合に無いファイルがある（過剰） | `fixture-expectation-mismatch` | 登録されていない fixture は検証対象ではない |
+| 期待集合のファイルが欠けている（欠落） | `fixture-expectation-mismatch` | 失われた fixture は「検証朋友圈」を保証できない |
+| fixture ディレクトリにファイルが 1 つも無い | `fixture-contract-missing` | fixture の source がない |
+
+ファイル数の最小値は **この gate 自身の契約** であり、Issue が
+規定したものではない。
+
 ## スクリーンショット
 
 `docs/verification/a11y/contrast.webp`（Issue #399 が指定する
@@ -172,7 +190,7 @@ gate はそれに従って **違反**（`pass` の_expectation を破ったと�
 - 生成: `pnpm run capture:a11y-contrast`
 - 左: light appearance のスウォッチ列、右: dark appearance のスウォッチ列
 - 各スウォッチ: 実際の前景色 / 背景色で文字を描画し、その場で
-  **計測比率**（例 `7.58:1 · needs 4.5:1 · PASS`）を併記
+  **計測比率**（例 `7.57:1 · needs 4.5:1 · PASS`）を併記
 - 上部: 検証レポート（機械検査項目・人間評価項目・除外した token・WCAG 対応）
 - 失敗条件: 描画された色と gate の計測が食い違う場合、
   **成果物を書かずに exit 1**

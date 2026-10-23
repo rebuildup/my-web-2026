@@ -8,6 +8,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	ARTEFACT,
@@ -58,10 +60,12 @@ test('both appearances are rendered, each with its own swatch ids', async () => 
 
 test('the harness shows both appearances with the measured ratio', async () => {
 	const evidence = await collectEvidence();
-	const { rawTokens, semanticTokens } = await import('../src/editorial/tokens.ts').then(async (raw) => {
-		const semantic = await import('../src/editorial/semantic-tokens.ts');
-		return { rawTokens: raw.rawTokens, semanticTokens: semantic.semanticTokens };
-	});
+	const { rawTokens, semanticTokens } = await import('../src/editorial/tokens.ts').then(
+		async (raw) => {
+			const semantic = await import('../src/editorial/semantic-tokens.ts');
+			return { rawTokens: raw.rawTokens, semanticTokens: semantic.semanticTokens };
+		},
+	);
 	const panels = buildPanels(evidence, { rawTokens, semanticTokens });
 	assert.equal(panels.length, APPEARANCES.length);
 	const html = harnessHtml(panels);
@@ -130,6 +134,11 @@ test('the artefact budget is a WebP budget', () => {
 	assert.ok(SCREENSHOT_BUDGET_BYTES > 0);
 });
 
-test('the capture reads the repository, not a copy of it', () => {
-	assert.match(REPO_ROOT, /my-web-2026/);
+test('the capture reads this repository, not a copy of it', () => {
+	// Deliberately NOT an assertion about the DIRECTORY name: this
+	// repository is worked on through `git worktree`, so the checkout
+	// directory is `my-web-2026-wt/<issue>` in one machine and something
+	// else in another. The package NAME is the stable identity.
+	const manifest = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
+	assert.equal(manifest.name, 'my-web-2026');
 });

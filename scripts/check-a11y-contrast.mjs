@@ -31,11 +31,13 @@
  *   unresolved-token-reference
  *       A semantic token points at a raw token that does not resolve.
  *   fixture-expectation-mismatch
- *       A fixture pair does not behave the way its own expectation says
- *       (a `pass` pair that fails, a `fail` pair that passes).
+ *       A fixture does not behave the way its own expectation says: a
+ *       `pass` pair that fails, a `fail` pair that passes, a `pass`
+ *       fixture that evaluates no pair at all, or a fixture file that is
+ *       missing from / not part of the expected fixture set.
  *   fixture-contract-missing
- *       A fixture directory is missing or holds fewer files than the Issue
- *       requires, so the fixture proves nothing.
+ *       A fixture directory holds no file at all, so the fixture has no
+ *       source and proves nothing.
  *
  * The thresholds are WCAG 2.2 SC 1.4.3 (Contrast (Minimum), Level AA):
  * 4.5 : 1 for normal text, 3 : 1 for large text, 3 : 1 for the boundaries
@@ -75,8 +77,21 @@ export const FIXTURE_ROOT = 'scripts/fixtures/a11y-contrast';
 export const FIXTURE_PASS_DIR = `${FIXTURE_ROOT}/pass`;
 export const FIXTURE_FAIL_DIR = `${FIXTURE_ROOT}/fail`;
 
-/** The Issue requires at least two fixture files in each directory. */
-export const FIXTURE_MIN_FILES = 2;
+/**
+ * The fixture files this gate expects in each directory.
+ *
+ * The set is EXACT, not a minimum: a fixture that quietly lost a file
+ * would otherwise "verify" less than it claims, and a file that appeared
+ * without being registered would verify something nobody read. Both are
+ * reported as `fixture-expectation-mismatch`.
+ *
+ * The count is this gate's own contract — the Issue names the directories,
+ * not the file names.
+ */
+export const EXPECTED_FIXTURE_FILES = {
+	pass: ['01-normal-text-pair.json', '02-non-text-and-large-pairs.json'],
+	fail: ['01-below-normal-text.json', '02-below-non-text.json', '03-unresolved-reference.json'],
+};
 
 /** The two appearances the semantic layer ships. */
 export const APPEARANCES = [
@@ -675,10 +690,17 @@ export function collectFixtureFiles(directory) {
 /**
  * Audit every fixture file of the repository.
  *
- * The directory itself is part of the contract: a missing `pass/` or
- * `fail/` directory, or one that holds fewer than the Issue's minimum,
- * is reported as `fixture-contract-missing` — a fixture that quietly lost
- * a file would otherwise "verify" less than it claims.
+ * The fixture set is part of the contract, in three ways:
+ *
+ *   - a directory with no file at all is `fixture-contract-missing` — the
+ *     fixture has no owner and proves nothing;
+ *   - a file that is missing from the expected set, or a file that is
+ *     not in it, is `fixture-expectation-mismatch` — the set is exact, so
+ *     a fixture that quietly lost a file cannot "verify" less than it
+ *     claims, and a file nobody registered cannot verify something
+ *     unread;
+ *   - a `pass` fixture with no pair at all is `fixture-expectation-mismatch`
+ *     too: an empty fixture evaluates nothing and would stay green.
  */
 export function auditFixtures({ rawTokens, semanticTokens, repoRoot = REPO_ROOT }) {
 	const violations = [];
@@ -690,7 +712,7 @@ export function auditFixtures({ rawTokens, semanticTokens, repoRoot = REPO_ROOT 
 	]) {
 		const absolute = resolve(repoRoot, directory);
 		const found = collectFixtureFiles(absolute);
-		if (found.length < FIXTURE_MIN_FILES) {
+		if (found.length === 0) {
 			violations.push({
 				rule: 'fixture-contract-missing',
 				file: directory,
@@ -699,9 +721,37 @@ export function auditFixtures({ rawTokens, semanticTokens, repoRoot = REPO_ROOT 
 				bg: null,
 				ratio: null,
 				threshold: null,
-				message: `${directory} holds ${found.length} fixture file(s); the Issue requires at least ${FIXTURE_MIN_FILES} in the ${expectation} directory`,
+				message: `${directory} holds no fixture file; the ${expectation} fixture has no source`,
 			});
 			continue;
+		}
+		const expected = EXPECTED_FIXTURE_FILES[expectation] ?? [];
+		const foundNames = found.map((path) => path.slice(path.lastIndexOf('/') + 1));
+		const missing = expected.filter((name) => !foundNames.includes(name));
+		const extra = foundNames.filter((name) => !expected.includes(name));
+		for (const name of missing) {
+			violations.push({
+				rule: 'fixture-expectation-mismatch',
+				file: `${directory}/${name}`,
+				appearance: null,
+				fg: null,
+				bg: null,
+				ratio: null,
+				threshold: null,
+				message: `the ${expectation} fixture ${name} is missing; the expected fixture set is ${expected.join(', ')}`,
+			});
+		}
+		for (const name of extra) {
+			violations.push({
+				rule: 'fixture-expectation-mismatch',
+				file: `${directory}/${name}`,
+				appearance: null,
+				fg: null,
+				bg: null,
+				ratio: null,
+				threshold: null,
+				message: `the ${expectation} fixture ${name} is not part of the expected fixture set (${expected.join(', ')})`,
+			});
 		}
 		for (const path of found) {
 			const relativePath = path.slice(repoRoot.length + 1);
@@ -720,6 +770,19 @@ export function auditFixtures({ rawTokens, semanticTokens, repoRoot = REPO_ROOT 
 					message: `the fixture cannot be parsed: ${error.message}`,
 				});
 				continue;
+			}
+			if (expectation === 'pass' && (fixture.pairs ?? []).length === 0) {
+				violations.push({
+					rule: 'fixture-expectation-mismatch',
+					file: relativePath,
+					appearance: null,
+					fg: null,
+					bg: null,
+					ratio: null,
+					threshold: null,
+					message:
+						'the fixture evaluates no pair at all; a pass fixture that checks nothing would stay green',
+				});
 			}
 			const audited = auditFixture(fixture, { rawTokens, semanticTokens, file: relativePath });
 			files.push({ path: relativePath, expectation, ...audited });

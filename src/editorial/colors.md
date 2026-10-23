@@ -222,7 +222,7 @@ two tokens survives the appearance change.
 | Token / pair | Light value | Background | Contrast |
 | --- | --- | --- | --- |
 | `text.default` | `#0f172a` (neutral.900) | `#ffffff` canvas | 17.85 : 1 |
-| `text.muted` | `#475569` (neutral.600) | `#ffffff` canvas | 7.58 : 1 |
+| `text.muted` | `#475569` (neutral.600) | `#ffffff` canvas | 7.57 : 1 |
 | `text.muted` | `#475569` | `#f8fafc` surface | 7.24 : 1 |
 | `text.accent` | `#0369a1` (brand.700) | `#ffffff` canvas | 5.93 : 1 |
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
@@ -237,8 +237,8 @@ two tokens survives the appearance change.
 | `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#ffffff` canvas | 5.93 : 1 |
 | `border.focus` (non-text, 3 : 1) | `#0284c7` | `#ffffff` canvas | 4.10 : 1 |
 | `border.strong` (non-text, 3 : 1) | `#64748b` | `#ffffff` canvas | 4.76 : 1 |
-| `text.muted` on `bg.subtle` | `#475569` | `#f1f5f9` | 6.92 : 1 |
-| `text.muted` on `accent.surface` | `#475569` | `#f0f9ff` | 7.11 : 1 |
+| `text.muted` on `bg.subtle` | `#475569` | `#f1f5f9` | 6.91 : 1 |
+| `text.muted` on `accent.surface` | `#475569` | `#f0f9ff` | 7.10 : 1 |
 
 **The two light gaps are closed (Issue #399).** The rows above used to
 read `4.34 : 1` and `4.46 : 1` — **both below the 4.5 : 1 minimum** —
@@ -370,8 +370,8 @@ and what a person decides (whether a colour is semantically adequate).
   `docs/verification/a11y/contrast.webp`. One repair shipped with it:
   the light `text.muted` step moved `neutral.500` → the new raw step
   `neutral.600` (`#475569`), which closes the two known light gaps
-  (`text.muted` on `bg.subtle` 4.34 : 1 → 6.92 : 1, on
-  `accent.surface` 4.46 : 1 → 7.11 : 1). Hue and saturation are
+  (`text.muted` on `bg.subtle` 4.34 : 1 → 6.91 : 1, on
+  `accent.surface` 4.46 : 1 → 7.10 : 1). Hue and saturation are
   unchanged; only the lightness moves. The dark step
   (`charcoal.400`) is untouched.
 

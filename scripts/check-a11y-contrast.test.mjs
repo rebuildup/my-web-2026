@@ -9,7 +9,8 @@
  */
 
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
@@ -17,8 +18,8 @@ import {
 	CONTRAST_PAIRS,
 	CONTRAST_RULES,
 	EXCLUDED_TOKENS,
+	EXPECTED_FIXTURE_FILES,
 	FIXTURE_FAIL_DIR,
-	FIXTURE_MIN_FILES,
 	FIXTURE_PASS_DIR,
 	FIXTURE_ROOT,
 	HUMAN_EVALUATION,
@@ -26,6 +27,7 @@ import {
 	THRESHOLDS,
 	UNRESOLVED_RULE,
 	auditFixture,
+	auditFixtures,
 	auditPairs,
 	collectEvidence,
 	contrastRatio,
@@ -273,10 +275,120 @@ test('a `fail` fixture pair that unexpectedly passes is a mismatch', () => {
 	assert.equal(audited.detections.length, 0);
 });
 
-test('the repository carries at least two fixture files in each directory', () => {
-	for (const directory of [FIXTURE_PASS_DIR, FIXTURE_FAIL_DIR]) {
-		const files = readdirSync(join(REPO_ROOT, directory)).filter((name) => name.endsWith('.json'));
-		assert.ok(files.length >= FIXTURE_MIN_FILES, `${directory} needs ${FIXTURE_MIN_FILES} files`);
+test('the repository carries exactly the expected fixture files', () => {
+	for (const [expectation, directory] of [
+		['pass', FIXTURE_PASS_DIR],
+		['fail', FIXTURE_FAIL_DIR],
+	]) {
+		const files = readdirSync(join(REPO_ROOT, directory))
+			.filter((name) => name.endsWith('.json'))
+			.sort();
+		assert.deepEqual(
+			files,
+			[...EXPECTED_FIXTURE_FILES[expectation]].sort(),
+			`${directory} must carry exactly the expected fixture set`,
+		);
+	}
+});
+
+test('every `pass` fixture evaluates at least one pair', async () => {
+	const evidence = await collectEvidence();
+	const passFiles = evidence.fixtures.filter((file) => file.expectation === 'pass');
+	assert.ok(passFiles.length > 0);
+	for (const file of passFiles) {
+		assert.ok(file.rows.length > 0, `${file.path} evaluates no pair at all`);
+	}
+});
+
+test('a fixture directory without a file is a contract failure', () => {
+	const audited = auditFixtures({
+		rawTokens: {},
+		semanticTokens: {},
+		repoRoot: '/nonexistent-repo-root',
+	});
+	assert.equal(audited.violations.length, 2);
+	for (const violation of audited.violations) {
+		assert.equal(violation.rule, 'fixture-contract-missing');
+	}
+});
+
+test('a `pass` fixture with no pair is a mismatch, not a silent pass', () => {
+	// The hole a cold review found: emptying a `pass` fixture left the
+	// gate green, because nothing evaluated anything.
+	const root = mkdtempSync(join(tmpdir(), 'a11y-contrast-'));
+	try {
+		for (const expectation of ['pass', 'fail']) {
+			mkdirSync(join(root, FIXTURE_ROOT, expectation), { recursive: true });
+			for (const name of EXPECTED_FIXTURE_FILES[expectation]) {
+				writeFileSync(
+					join(root, FIXTURE_ROOT, expectation, name),
+					`${JSON.stringify({ id: name, pairs: [] }, null, 2)}\n`,
+				);
+			}
+		}
+		const audited = auditFixtures({ rawTokens: {}, semanticTokens: {}, repoRoot: root });
+		const mismatches = audited.violations.filter(
+			(violation) => violation.rule === 'fixture-expectation-mismatch',
+		);
+		assert.equal(mismatches.length, EXPECTED_FIXTURE_FILES.pass.length);
+		for (const mismatch of mismatches) {
+			assert.match(mismatch.message, /evaluates no pair/);
+		}
+	} finally {
+		// The temporary directory this test created, in the OS temp dir —
+		// not the repository working tree.
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('a fixture file outside the expected set is a mismatch', () => {
+	const root = mkdtempSync(join(tmpdir(), 'a11y-contrast-'));
+	try {
+		for (const expectation of ['pass', 'fail']) {
+			mkdirSync(join(root, FIXTURE_ROOT, expectation), { recursive: true });
+			for (const name of EXPECTED_FIXTURE_FILES[expectation]) {
+				writeFileSync(
+					join(root, FIXTURE_ROOT, expectation, name),
+					`${JSON.stringify({ id: name, pairs: [] }, null, 2)}\n`,
+				);
+			}
+		}
+		writeFileSync(
+			join(root, FIXTURE_ROOT, 'pass', '99-unregistered.json'),
+			`${JSON.stringify({ id: 'x', pairs: [] }, null, 2)}\n`,
+		);
+		const audited = auditFixtures({ rawTokens: {}, semanticTokens: {}, repoRoot: root });
+		const extra = audited.violations.filter((violation) =>
+			violation.message.includes('not part of the expected fixture set'),
+		);
+		assert.equal(extra.length, 1);
+		assert.equal(extra[0].rule, 'fixture-expectation-mismatch');
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('a fixture file missing from the expected set is a mismatch', () => {
+	const root = mkdtempSync(join(tmpdir(), 'a11y-contrast-'));
+	try {
+		for (const expectation of ['pass', 'fail']) {
+			mkdirSync(join(root, FIXTURE_ROOT, expectation), { recursive: true });
+			for (const name of EXPECTED_FIXTURE_FILES[expectation]) {
+				if (expectation === 'pass' && name === EXPECTED_FIXTURE_FILES.pass[0]) continue;
+				writeFileSync(
+					join(root, FIXTURE_ROOT, expectation, name),
+					`${JSON.stringify({ id: name, pairs: [] }, null, 2)}\n`,
+				);
+			}
+		}
+		const audited = auditFixtures({ rawTokens: {}, semanticTokens: {}, repoRoot: root });
+		const missing = audited.violations.filter((violation) =>
+			violation.message.includes('is missing'),
+		);
+		assert.equal(missing.length, 1);
+		assert.equal(missing[0].rule, 'fixture-expectation-mismatch');
+	} finally {
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 

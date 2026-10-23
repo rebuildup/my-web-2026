@@ -601,7 +601,7 @@ route_quality_coverage:
   gate_families:
     - 'e2e' # implemented — Playwright spec asserts the rendered surface
     - 'seo' # implemented — canonical / Open Graph metadata assertion
-    - 'a11y' # planned — axe-core scan (not yet ticketed)
+    - 'a11y' # implemented — axe-core scan over the rendered public route
     - 'performance' # planned — Lighthouse (#384 measures, #385 gates, #386 budgets)
     - 'cross_browser' # planned — a second browser engine (CI is Chromium-only)
     - 'security_headers' # planned — response security-header assertion

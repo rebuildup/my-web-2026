@@ -84,6 +84,55 @@ import {
 	writeAnalyticsConsent,
 } from './consent';
 
+/**
+ * The custom property that carries this surface's height to the
+ * document's focus compensation.
+ *
+ * Issue #395 (WCAG 2.2 SC 2.4.11 Focus Not Obscured — Minimum, AA): both
+ * shapes of this surface are `position: fixed` at the bottom of the
+ * viewport, so they are author-created content that can cover a focused
+ * element. The browser scrolls a focused element to the edge of the
+ * viewport, and the bottom edge is where this surface is.
+ *
+ * The compensation is a chain, and this file is one end of it: the
+ * surface publishes the height it occupies, and `src/styles.css` consumes
+ * it as the document's `scroll-padding` and as the room at the end of
+ * the document (`body { padding-bottom }`). The browser then keeps a
+ * focused element clear of the reserved space when it scrolls it into
+ * view. The reserved height follows the rendered surface instead of a
+ * guessed number, and with the surface off the page the property is
+ * absent and the fallback reserves nothing.
+ */
+const FOCUS_OFFSET_PROPERTY = '--analytics-consent-offset';
+
+/**
+ * Publish how much of the viewport this surface occupies.
+ *
+ * The measurement is re-published when the surface is resized, so a
+ * surface whose content changes height (a longer answer, a wrapped
+ * label) keeps the compensation honest.
+ */
+function useFocusOffset(element: HTMLElement | null) {
+	useEffect(() => {
+		if (!element) return;
+		const root = document.documentElement;
+		const publish = () => {
+			const { height } = element.getBoundingClientRect();
+			// `bottom: 3` is a 0.75rem gap above the viewport edge, so the
+			// space the surface occupies is that gap plus its own height.
+			root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${Math.ceil(height + 12)}px`);
+		};
+		publish();
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver(publish);
+		observer.observe(element);
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
+		};
+	}, [element]);
+}
+
 /** Copy for the panel. Kept next to the markup so a wording change is one edit. */
 export const ANALYTICS_CONSENT_COPY = {
 	eyebrow: 'アクセス解析',
@@ -148,6 +197,10 @@ export function AnalyticsConsentPanel({
 }: AnalyticsConsentPanelProps) {
 	const headingId = 'analytics-consent-heading';
 	const descriptionId = 'analytics-consent-description';
+	// The surface is measured so the document can reserve the space it
+	// occupies (Issue #395, SC 2.4.11).
+	const [surface, setSurface] = useState<HTMLElement | null>(null);
+	useFocusOffset(surface);
 	// A refused write outranks the recorded state: the browser does not
 	// hold the decision, so reporting "許可されています" here would be a
 	// claim about a state the visitor no longer has.
@@ -183,6 +236,7 @@ export function AnalyticsConsentPanel({
 
 	return (
 		<section
+			ref={setSurface}
 			aria-labelledby={headingId}
 			aria-describedby={descriptionId}
 			data-testid="analytics-consent"
@@ -414,6 +468,10 @@ export function AnalyticsConsentControl() {
 	// `unset` panel and would flash it at a visitor who already answered.
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => setMounted(true), []);
+	// The collapsed status control is a fixed overlay too, so it publishes
+	// its own height for the same compensation (Issue #395, SC 2.4.11).
+	const [surface, setSurface] = useState<HTMLElement | null>(null);
+	useFocusOffset(surface);
 
 	const decide = useCallback((decision: AnalyticsConsentDecision) => {
 		const written = writeAnalyticsConsent(decision);
@@ -466,6 +524,7 @@ export function AnalyticsConsentControl() {
 	return (
 		<button
 			type="button"
+			ref={setSurface}
 			onClick={() => setExpanded(true)}
 			data-testid="analytics-consent-toggle"
 			aria-expanded={false}

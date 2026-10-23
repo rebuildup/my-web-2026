@@ -1,0 +1,456 @@
+/**
+ * The Issue #395 gate's own unit tests.
+ *
+ * The gate is the machine half of the Issue ("フォーカスが見えること /
+ * フォーカス位置が隠されていないことを機械検査で固定する"), so the rules have
+ * to be testable without a browser: a rule that can only fail inside a real
+ * page is a rule nobody re-runs when it breaks.
+ *
+ * The fixture assertions are deliberately strict. A test that only checked
+ * "the fixture produced some output" would pass after a fixture file was
+ * deleted or after the fixture stopped reproducing its defect, so the roster
+ * is compared with the directory listing and every fail fixture is matched
+ * against the rule it stands for.
+ */
+
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import {
+	EXCLUSIONS,
+	FIXTURE_EXPECTATIONS,
+	FIXTURE_ROOT,
+	HUMAN_EVALUATION,
+	RULES,
+	auditFixtureFiles,
+	buildBindings,
+	collectEvidence,
+	declaredCompensations,
+	evaluateFocusBlock,
+	evaluateOverlay,
+	parseStyleObject,
+	publishedCustomProperties,
+	renderGateSummary,
+	scanSource,
+} from './check-a11y-focus-visible.mjs';
+
+const REPO_ROOT = new URL('..', import.meta.url).pathname;
+
+/** Scan a source snippet the way the gate scans a file. */
+function scan(source, bindings = []) {
+	return scanSource({ relativePath: 'src/home/example.tsx', source, bindings });
+}
+
+test('a focus block that removes the outline is a violation', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focusVisible: { outline: "none" } })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed');
+	assert.equal(violations[0].wcag, '2.4.7');
+	assert.match(violations[0].message, /no visible focus/);
+});
+
+test('a zero-width outline is the same defect with a different spelling', () => {
+	for (const declaration of ['outline: "0"', 'outline: "0px"', 'outlineWidth: "0"']) {
+		const { violations } = scan(
+			`export const A = () => <a className={css({ _focus: { ${declaration} } })} />;\n`,
+		);
+
+		assert.equal(violations.length, 1, `${declaration} must be reported`);
+		assert.equal(violations[0].rule, 'focus-indicator-removed');
+	}
+});
+
+test('an outline style of none removes the indicator too', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focus: { outlineStyle: "none" } })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-removed');
+});
+
+test('a transparent outline is invisible, not removed', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focus: { outline: "transparent" } })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-invisible');
+	assert.equal(violations[0].wcag, '2.4.7');
+});
+
+test('a transparent outline colour is invisible too', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focus: { outlineColor: "transparent" } })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-indicator-invisible');
+});
+
+test('a replacement indicator keeps the focus visible', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focusVisible: { outline: "none", boxShadow: "0 0 0 2px #2b6cb0" } })} />;\n',
+	);
+
+	assert.deepEqual(violations, []);
+});
+
+test('a visible outline is not a violation', () => {
+	for (const declaration of [
+		'outline: "2px solid #2b6cb0"',
+		'outline: "2px solid {colors.border.focus}"',
+		'outlineWidth: "2px"',
+	]) {
+		const { violations } = scan(
+			`export const A = () => <a className={css({ _focusVisible: { ${declaration} } })} />;\n`,
+		);
+
+		assert.deepEqual(violations, [], `${declaration} must be accepted`);
+	}
+});
+
+test('a focus block that says nothing about the outline keeps the browser default', () => {
+	const { violations } = scan(
+		'export const A = () => <a className={css({ _focusVisible: { backgroundColor: "bg.surface" } })} />;\n',
+	);
+
+	assert.deepEqual(violations, []);
+});
+
+test('a focus condition named in a comment is documentation, not a violation', () => {
+	const source = [
+		'/**',
+		' * A `_focusVisible: { outline: "none" }` block would remove the focus.',
+		' */',
+		'export const A = () => <div />;',
+	].join('\n');
+
+	assert.deepEqual(scan(source).violations, []);
+});
+
+test('a fixed overlay without a compensation is a violation', () => {
+	const { violations } = scan(
+		'export const A = () => <div className={css({ position: "fixed", bottom: "0" })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+	assert.equal(violations[0].wcag, '2.4.11');
+	assert.match(violations[0].message, /compensation/);
+});
+
+test('a sticky overlay without a compensation is a violation', () => {
+	const { violations } = scan(
+		'export const A = () => <header className={css({ position: "sticky", top: "0" })} />;\n',
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('an overlay bound to a published offset is compensated', () => {
+	const source = [
+		'export const A = () => (',
+		'\t<div className={css({ scrollPaddingBottom: "var(--surface-offset)" })}>',
+		'\t\t<div className={css({ position: "fixed" })} />',
+		'\t</div>',
+		');',
+		'document.documentElement.style.setProperty("--surface-offset", "12rem");',
+	].join('\n');
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/example.tsx',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
+		},
+	]);
+
+	const { violations, overlays } = scan(source, bindings);
+
+	assert.deepEqual(violations, []);
+	assert.equal(overlays.length, 1);
+	assert.equal(overlays[0].position, 'fixed');
+});
+
+test('a compensation that nothing publishes is a dead declaration', () => {
+	// The document reserves the space, but no file publishes the offset,
+	// so the chain is open and the overlay is uncompensated.
+	const source = [
+		'export const A = () => (',
+		'\t<div className={css({ scrollPaddingBottom: "var(--surface-offset)" })}>',
+		'\t\t<div className={css({ position: "fixed" })} />',
+		'\t</div>',
+		');',
+	].join('\n');
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/example.tsx',
+			published: publishedCustomProperties(source),
+			compensations: declaredCompensations(source),
+		},
+	]);
+
+	const { violations } = scan(source, bindings);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('an offset published in another file does not compensate this overlay', () => {
+	// The publication exists, but in a DIFFERENT file than the overlay:
+	// the overlay's own file has to publish the offset it occupies.
+	const source = 'export const A = () => <div className={css({ position: "fixed" })} />;\n';
+	const bindings = buildBindings([
+		{
+			relativePath: 'src/home/other.tsx',
+			published: publishedCustomProperties('setProperty("--surface-offset", "1rem");'),
+			compensations: [],
+		},
+	]);
+
+	const { violations } = scan(source, bindings);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('a native modal dialog is not an overlay that can obscure the focus', () => {
+	const source = [
+		'export const A = () => (',
+		'\t<dialog className={css({ position: "fixed" })}>',
+		'\t\t<p>Example</p>',
+		'\t</dialog>',
+		');',
+		'dialog.showModal();',
+	].join('\n');
+
+	const { violations, overlays } = scan(source);
+
+	assert.deepEqual(violations, []);
+	assert.equal(overlays.length, 1);
+	assert.equal(overlays[0].modal, true);
+});
+
+test('the modal exemption needs the dialog to be opened modally', () => {
+	const source = [
+		'export const A = () => <dialog className={css({ position: "fixed" })}>Example</dialog>;',
+	].join('\n');
+
+	const { violations, overlays } = scan(source);
+
+	assert.equal(overlays[0].modal, false);
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'focus-obscured-no-compensation');
+});
+
+test('a published offset is found through a module constant', () => {
+	const source = [
+		"const FOCUS_OFFSET_PROPERTY = '--surface-offset';",
+		'document.documentElement.style.setProperty(FOCUS_OFFSET_PROPERTY, "12rem");',
+	].join('\n');
+
+	assert.deepEqual([...publishedCustomProperties(source)], ['--surface-offset']);
+});
+
+test('the focus verdict is decided by the shared rule table', () => {
+	assert.equal(evaluateFocusBlock(parseStyleObject('outline: "none"')), 'removed');
+	assert.equal(evaluateFocusBlock(parseStyleObject('outline: "transparent"')), 'invisible');
+	assert.equal(evaluateFocusBlock(parseStyleObject('outline: "2px solid red"')), 'visible');
+	assert.equal(
+		evaluateFocusBlock(parseStyleObject('outline: "none"\nboxShadow: "0 0 0 2px red"')),
+		'visible',
+	);
+	assert.equal(evaluateFocusBlock(parseStyleObject('color: "red"')), 'visible');
+});
+
+test('the overlay verdict is decided by the shared rule table', () => {
+	const overlay = {
+		file: 'src/home/example.tsx',
+		line: 1,
+		tagName: 'div',
+		position: 'fixed',
+		modal: false,
+	};
+
+	assert.equal(evaluateOverlay(overlay, []).verdict, 'uncompensated');
+	assert.equal(evaluateOverlay({ ...overlay, modal: true }, []).verdict, 'modal');
+	assert.equal(
+		evaluateOverlay(overlay, [
+			{
+				offset: '--x',
+				compensation: 'scrollPaddingBottom',
+				compensationFile: 'a.tsx',
+				offsetPublishedIn: 'src/home/example.tsx',
+			},
+		]).verdict,
+		'compensated',
+	);
+});
+
+test('every rule the Issue names is a rule the gate knows', () => {
+	for (const rule of [
+		'focus-indicator-removed',
+		'focus-indicator-invisible',
+		'focus-obscured-no-compensation',
+	]) {
+		assert.ok(RULES.includes(rule), `${rule} must be a known rule`);
+	}
+});
+
+test('the fixture roster matches the fixture directory exactly', () => {
+	for (const [directory, expectations] of Object.entries(FIXTURE_EXPECTATIONS)) {
+		const absolute = join(REPO_ROOT, FIXTURE_ROOT, directory);
+		const present = readdirSync(absolute)
+			.filter((name) => name.endsWith('.tsx'))
+			.sort();
+		const expected = Object.keys(expectations).sort();
+
+		assert.deepEqual(present, expected, `the ${directory} fixture roster drifted`);
+		assert.ok(present.length >= 2, `the ${directory} fixture needs at least two files`);
+	}
+});
+
+test('every pass fixture produces no violation', () => {
+	for (const [name] of Object.entries(FIXTURE_EXPECTATIONS.pass)) {
+		const file = join(REPO_ROOT, FIXTURE_ROOT, 'pass', name);
+		const source = readFileSync(file, 'utf8');
+		const { violations } = scanSource({
+			relativePath: `${FIXTURE_ROOT}/pass/${name}`,
+			source,
+			bindings: buildBindings([
+				{
+					relativePath: `${FIXTURE_ROOT}/pass/${name}`,
+					published: publishedCustomProperties(source),
+					compensations: declaredCompensations(source),
+				},
+			]),
+		});
+
+		assert.deepEqual(
+			violations.map((violation) => violation.rule),
+			[],
+			`${name} must stay a pass fixture`,
+		);
+	}
+});
+
+test('every fail fixture reproduces exactly the rule it stands for', () => {
+	for (const [name, expectedRules] of Object.entries(FIXTURE_EXPECTATIONS.fail)) {
+		const file = join(REPO_ROOT, FIXTURE_ROOT, 'fail', name);
+		const source = readFileSync(file, 'utf8');
+		const { violations } = scanSource({
+			relativePath: `${FIXTURE_ROOT}/fail/${name}`,
+			source,
+			bindings: buildBindings([
+				{
+					relativePath: `${FIXTURE_ROOT}/fail/${name}`,
+					published: publishedCustomProperties(source),
+					compensations: declaredCompensations(source),
+				},
+			]),
+		});
+
+		assert.deepEqual(
+			violations.map((violation) => violation.rule),
+			expectedRules,
+			`${name} must reproduce ${expectedRules.join(', ')}`,
+		);
+	}
+});
+
+test('every pass fixture holds a focus block or an overlay, so it exercises a rule', () => {
+	for (const [name] of Object.entries(FIXTURE_EXPECTATIONS.pass)) {
+		const file = join(REPO_ROOT, FIXTURE_ROOT, 'pass', name);
+		const source = readFileSync(file, 'utf8');
+		const { focusBlocks, overlays } = scanSource({
+			relativePath: `${FIXTURE_ROOT}/pass/${name}`,
+			source,
+		});
+
+		assert.ok(
+			focusBlocks.length + overlays.length > 0,
+			`${name} must hold a focus block or an overlay to prove anything`,
+		);
+	}
+});
+
+test('an emptied pass fixture is reported instead of passing silently', () => {
+	const audited = auditFixtureFiles([
+		{
+			directory: 'pass',
+			name: 'empty.tsx',
+			relativePath: `${FIXTURE_ROOT}/pass/empty.tsx`,
+			expectedRules: [],
+			foundRules: [],
+			focusBlockCount: 0,
+			overlayCount: 0,
+		},
+	]);
+
+	assert.equal(audited.violations.length, 1);
+	assert.equal(audited.violations[0].rule, 'fixture-pass-no-case');
+});
+
+test('a fail fixture that stopped reproducing its defect is reported', () => {
+	const audited = auditFixtureFiles([
+		{
+			directory: 'fail',
+			name: 'stopped.tsx',
+			relativePath: `${FIXTURE_ROOT}/fail/stopped.tsx`,
+			expectedRules: ['focus-indicator-removed'],
+			foundRules: [],
+			focusBlockCount: 1,
+			overlayCount: 0,
+		},
+	]);
+
+	assert.equal(audited.violations.length, 1);
+	assert.equal(audited.violations[0].rule, 'fixture-fail-not-detected');
+});
+
+test('the shipped repository passes the gate', () => {
+	const evidence = collectEvidence();
+
+	assert.deepEqual(evidence.violations, []);
+	assert.ok(evidence.filesScanned > 0);
+	assert.ok(evidence.focusBlocks.length > 0);
+	assert.equal(evidence.fixture.violations.length, 0);
+});
+
+test('the shipped repository binds every overlay to a compensation', () => {
+	const evidence = collectEvidence();
+
+	for (const overlay of evidence.overlays) {
+		if (overlay.modal) continue;
+		const bound = evidence.bindings.some(
+			(binding) => binding.offsetPublishedIn === overlay.file && binding.compensation !== null,
+		);
+		assert.ok(bound, `${overlay.file} must publish the offset it occupies`);
+	}
+});
+
+test('the report separates machine-checked facts from human evaluation', () => {
+	const report = renderGateSummary(collectEvidence());
+
+	assert.match(report, /machine-checked:/);
+	assert.match(report, /not machine-checked \(human evaluation\):/);
+	assert.ok(report.indexOf('machine-checked:') < report.indexOf('not machine-checked'));
+	assert.match(report, /SC 2\.4\.7/);
+	assert.match(report, /SC 2\.4\.11/);
+	for (const item of HUMAN_EVALUATION) assert.ok(report.includes(item));
+});
+
+test('the report states what was left out of scope, and why', () => {
+	const report = renderGateSummary(collectEvidence());
+
+	assert.match(report, /out of scope \(excluded from the scan, with the reason\):/);
+	for (const exclusion of EXCLUSIONS) {
+		assert.ok(report.includes(exclusion.describe));
+		assert.ok(report.includes(exclusion.reason));
+	}
+});

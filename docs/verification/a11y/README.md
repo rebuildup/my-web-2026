@@ -10,6 +10,7 @@
 | `category-appearance.webp`, `category-monochrome*.webp`, `status-*.webp` | earlier issues | monochrome / appearance proofs kept alongside the a11y artefacts |
 | `reduced-motion-on-off.webp` | #403 | the shipped counter fixture rendered twice in one Chromium — `no-preference` and `reduce` — with the browser-reported `animation-name`, the accessible label, the machine gate's verdict and the WCAG mapping printed above the two panels |
 | `image-alt.webp` | #397 | the image alt / decorative-image contract on one screen: the two states a shipped surface may be in (a meaningful image with an alt, a decorative image with an empty alt plus a decorative mark) and the three states the gate rejects (no alt, an empty alt with no decorative mark, a blank alt), with every image's `alt` attribute and decorative mark read from the live DOM. `image-alt.md` is the write-up |
+| `focus-visible.webp` | #395 | the focus contract on one screen: the SAME page in two states — without the focus compensation (the focused element is entirely behind the fixed overlay) and with the compensation `src/styles.css` ships (the element is clear of it). The focus ring is the one `src/editorial/nav/PublicNav.tsx` declares, and the covering element is read from `document.elementFromPoint()`. `focus-visible.md` is the write-up |
 
 ## Reduced motion (Issue #403)
 

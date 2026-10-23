@@ -97,13 +97,16 @@ A human recovering the same ticket reads:
   reactions / access-counter foundation, release gates, and
   personal / domain grounding (`https://rebuildup.dev` is the canonical
   origin; the `*.workers.dev` URL is debug-only).
-- **Release candidate surfaces** — the next release integration
-  branch ships additional capabilities (Portfolio publication
-  pipeline, public Tools index, About / Contact routes, Invitation
-  accept flow, etc.). These are wired in source but gated behind
-  the release PR merge + production deploy handshake documented in
-  [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md);
-  they become publicly visible after the next production deploy.
+- **Shipped surfaces** — the capabilities that used to sit on the
+  release integration branch (Portfolio publication pipeline, public
+  Tools index, About / Contact routes, Invitation accept flow, etc.)
+  are on `main` and served in production. A surface counts as public
+  only once the release PR merge *and* the production deploy
+  handshake documented in
+  [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md)
+  have both completed; `GET /api/v1/health` answers with the version
+  actually serving, which is the runtime record of that state rather
+  than anything asserted here.
 - **2025 edition** — remains the complete public site at https://yusuke-kim.com
   until the required surfaces have moved.
 

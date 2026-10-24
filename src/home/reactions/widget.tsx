@@ -200,6 +200,9 @@ export function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	};
 
 	return (
+		<dialog ref={confirmRef}>
+			<p>confirm</p>
+		</dialog>
 		<dialog
 			ref={dialogRef}
 			aria-label="Add a reaction"

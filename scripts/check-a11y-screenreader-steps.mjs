@@ -132,6 +132,18 @@ export const FIXTURE_FILES = {
  */
 export const REVIEW_WINDOW_DAYS = 365;
 
+/**
+ * The date a fixture is judged on.
+ *
+ * A fixture has to give the same verdict today and in a year, so the
+ * freshness of its evidence is measured against a FIXED date instead
+ * of the day the gate happens to run. The run date decides whether the
+ * repository's own ledger is fresh — it must not decide whether a
+ * fixture still passes. (The sibling gate of Issue #410 works the same
+ * way, for the same reason.)
+ */
+export const FIXTURE_REFERENCE_DATE = '2026-10-23';
+
 /** The results a step may carry. */
 export const RESULTS = ['not-performed', 'pass', 'fail'];
 
@@ -216,6 +228,36 @@ export function daysBetween(from, to) {
 }
 
 /**
+ * The tokens that name an automated audit.
+ *
+ * The rule is not about one product: it is about the CLAIM. A record
+ * that says "the automated audit passed, so a person verified it" is
+ * the defect the Issue names, whether the audit is axe, another
+ * checker, or a script. The tokens are matched with word boundaries so
+ * an ordinary word that happens to contain a token ("the taxes passed")
+ * is not a false positive.
+ */
+export const AUTOMATED_AUDIT_TOKENS = [
+	{ name: 'axe', pattern: /\baxe\b/i },
+	{ name: '自動監査', pattern: /自動監査/ },
+	{ name: '自動チェック', pattern: /自動チェック/ },
+	{ name: 'automated audit', pattern: /\bautomated[\s-]+audit\b/i },
+	{ name: 'automated check', pattern: /\bautomated[\s-]+check(?:er|ed|ing)?\b/i },
+	{ name: 'checker', pattern: /\bchecker\b/i },
+];
+
+/**
+ * The words that turn an audit mention into a VERIFICATION claim.
+ *
+ * A plain cross-reference ("the axe audit of Issue #393 is a different
+ * thing") names an audit without claiming anything, and stays allowed.
+ */
+const VERIFICATION_WORDS = /合格|確認済|確認した|検証済|passed|passes|pass|verified/i;
+
+/** How far apart an audit token and a verification word may be. */
+const AUDIT_CLAIM_WINDOW = 30;
+
+/**
  * Whether a piece of text leans on an automated audit as the evidence of
  * a human review (pure).
  *
@@ -231,16 +273,39 @@ export function daysBetween(from, to) {
  */
 export function leansOnAutomatedAudit(text) {
 	if (typeof text !== 'string' || text.trim() === '') return false;
-	return (
-		/axe[^\n]{0,30}?(合格|確認済|確認した|pass|検証済|passed)/i.test(text) ||
-		/(合格|確認済|確認した|pass|検証済|passed)[^\n]{0,30}?axe/i.test(text)
-	);
+	for (const token of AUTOMATED_AUDIT_TOKENS) {
+		const pattern = new RegExp(token.pattern.source, `${token.pattern.flags.replace('g', '')}g`);
+		let match = pattern.exec(text);
+		while (match !== null) {
+			const from = Math.max(0, match.index - AUDIT_CLAIM_WINDOW);
+			const to = Math.min(text.length, match.index + match[0].length + AUDIT_CLAIM_WINDOW);
+			if (VERIFICATION_WORDS.test(text.slice(from, to))) return true;
+			if (match[0].length === 0) pattern.lastIndex += 1;
+			match = pattern.exec(text);
+		}
+	}
+	return false;
 }
 
 /** Whether a performed observation mentions an automated audit (pure). */
 export function observationMentionsAudit(text) {
 	if (typeof text !== 'string') return false;
-	return /\baxe\b/i.test(text);
+	return AUTOMATED_AUDIT_TOKENS.some((token) => token.pattern.test(text));
+}
+
+/**
+ * Whether a source file declares a named export (pure).
+ *
+ * The declaration is matched, not the mere occurrence of the name: a
+ * story whose export name only survives in a comment or in a string is
+ * not a story the step can be performed on.
+ */
+export function declaresExport(source, name) {
+	if (typeof source !== 'string' || typeof name !== 'string' || name.trim() === '') return false;
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return new RegExp(`export\\s+(?:const|let|var|function|class|async\\s+function)\\s+${escaped}\\b`).test(
+		source,
+	);
 }
 
 /**
@@ -277,14 +342,34 @@ export function evaluateStep(step, { ledger, exists, readFile, today }) {
 
 	const states = new Set((ledger?.states ?? []).map((state) => state.id));
 	const surface = step?.surface;
-	if (!isEmpty(surface) && typeof surface === 'object') {
-		if (!isEmpty(surface.state) && !states.has(surface.state)) {
+	const surfaceObject =
+		surface && typeof surface === 'object' && !Array.isArray(surface) ? surface : null;
+	if (!surfaceObject) {
+		// The surface has to be an object with a path. A surface that is
+		// a bare string (or anything else) is a broken record, and the
+		// existence check must not be skipped because of it: a step
+		// whose surface cannot be read is a step whose surface cannot
+		// be proved to exist.
+		push(
+			'step-field-missing',
+			'the step does not describe its surface as an object with a path',
+			{ field: 'surface' },
+		);
+		const candidate = typeof surface === 'string' ? surface.trim() : '';
+		if (candidate !== '' && !exists(candidate)) {
 			push(
-				'step-state-unknown',
-				`the step names the state \`${surface.state}\`, which the ledger does not declare`,
+				'step-surface-missing',
+				`the step points at \`${candidate}\`, which does not exist; a review of a surface that is gone proves nothing`,
 			);
 		}
-		const path = surface.path;
+	} else {
+		if (!isEmpty(surfaceObject.state) && !states.has(surfaceObject.state)) {
+			push(
+				'step-state-unknown',
+				`the step names the state \`${surfaceObject.state}\`, which the ledger does not declare`,
+			);
+		}
+		const path = surfaceObject.path;
 		if (isEmpty(path)) {
 			push('step-field-missing', 'the step does not say which surface it is about', {
 				field: 'surface.path',
@@ -294,12 +379,12 @@ export function evaluateStep(step, { ledger, exists, readFile, today }) {
 				'step-surface-missing',
 				`the step points at \`${path}\`, which does not exist; a review of a surface that is gone proves nothing`,
 			);
-		} else if (!isEmpty(surface.export)) {
+		} else if (!isEmpty(surfaceObject.export)) {
 			const source = readFile(path) ?? '';
-			if (!source.includes(surface.export)) {
+			if (!declaresExport(source, surfaceObject.export)) {
 				push(
 					'step-surface-missing',
-					`the step points at the export \`${surface.export}\` of \`${path}\`, which that file does not declare`,
+					`the step points at the export \`${surfaceObject.export}\` of \`${path}\`, which that file does not declare`,
 				);
 			}
 		}
@@ -393,6 +478,48 @@ export function evaluateStep(step, { ledger, exists, readFile, today }) {
 }
 
 /**
+ * The shape a ledger must have (pure).
+ *
+ * A ledger that cannot be read is NOT a ledger without problems: it is
+ * a ledger the gate cannot judge, and the two are different verdicts.
+ * The shape is therefore checked before anything else, and a broken
+ * shape ends the run as "cannot decide" (exit 2) instead of "no
+ * violations" (exit 0).
+ *
+ * The vocabulary (subjects / states / wcag / assistive technologies) is
+ * part of the shape: a ledger that declares nothing to cover is a
+ * ledger whose coverage rules can never fire, so a green run would
+ * mean nothing.
+ */
+export function validateLedgerShape(ledger) {
+	const problems = [];
+	if (!ledger || typeof ledger !== 'object' || Array.isArray(ledger)) {
+		return ['the ledger is not a JSON object'];
+	}
+	if (!Array.isArray(ledger.steps)) {
+		problems.push('steps must be an array');
+	}
+	for (const [field, label] of [
+		['subjects', 'subjects'],
+		['states', 'states'],
+		['wcag', 'wcag'],
+		['assistiveTechnologies', 'assistive technologies'],
+	]) {
+		if (!Array.isArray(ledger[field]) || ledger[field].length === 0) {
+			problems.push(`${label} must be a non-empty array`);
+		}
+	}
+	if (
+		typeof ledger.reviewWindowDays !== 'number' ||
+		!Number.isInteger(ledger.reviewWindowDays) ||
+		ledger.reviewWindowDays <= 0
+	) {
+		problems.push('reviewWindowDays must be a positive integer');
+	}
+	return problems;
+}
+
+/**
  * The violations of the whole ledger (pure over the ledger and the
  * repository).
  */
@@ -477,9 +604,25 @@ export function summarizeLedger(ledger) {
  * Every fixture is a complete ledger, so the same rule functions judge
  * it. A fixture declares the rules it expects in `$expects`; the gate
  * compares the rules it actually found with that expectation.
+ *
+ * The fixtures are judged on a FIXED reference date
+ * ({@link FIXTURE_REFERENCE_DATE}), never on the day the gate runs: a
+ * fixture that passed yesterday and fails today because the calendar
+ * moved is a fixture nobody can repair.
  */
-export function evaluateFixtures({ fixtureFiles, exists, readFile, today }) {
+export function evaluateFixtures({
+	fixtureFiles,
+	exists,
+	readFile,
+	referenceDate = FIXTURE_REFERENCE_DATE,
+}) {
 	const violations = [];
+	const today = new Date(`${referenceDate}T00:00:00Z`);
+	if (Number.isNaN(today.getTime())) {
+		throw new Error(
+			`the fixture reference date is not a date: ${referenceDate} (it must be a fixed date, not the run date)`,
+		);
+	}
 	for (const [kind, expectedFiles] of Object.entries(FIXTURE_FILES)) {
 		const directory = kind === 'pass' ? FIXTURE_PASS_DIR : FIXTURE_FAIL_DIR;
 		const present = fixtureFiles[kind] ?? [];
@@ -533,6 +676,15 @@ export function evaluateFixtures({ fixtureFiles, exists, readFile, today }) {
 				continue;
 			}
 			const expected = Array.isArray(fixture.$expects) ? fixture.$expects : [];
+			const shapeProblems = validateLedgerShape(fixture);
+			if (shapeProblems.length > 0) {
+				violations.push({
+					rule: 'fixture-contract-missing',
+					id: null,
+					message: `the fixture \`${path}\` is not a ledger: ${shapeProblems.join('; ')}`,
+				});
+				continue;
+			}
 			const found = evaluateLedger({ ledger: fixture, exists, readFile, today });
 			const foundRules = [...new Set(found.map((violation) => violation.rule))].sort();
 			const expectedRules = [...new Set(expected)].sort();

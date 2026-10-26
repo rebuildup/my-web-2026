@@ -303,9 +303,9 @@ export function observationMentionsAudit(text) {
 export function declaresExport(source, name) {
 	if (typeof source !== 'string' || typeof name !== 'string' || name.trim() === '') return false;
 	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	return new RegExp(`export\\s+(?:const|let|var|function|class|async\\s+function)\\s+${escaped}\\b`).test(
-		source,
-	);
+	return new RegExp(
+		`export\\s+(?:const|let|var|function|class|async\\s+function)\\s+${escaped}\\b`,
+	).test(source);
 }
 
 /**
@@ -350,11 +350,9 @@ export function evaluateStep(step, { ledger, exists, readFile, today }) {
 		// existence check must not be skipped because of it: a step
 		// whose surface cannot be read is a step whose surface cannot
 		// be proved to exist.
-		push(
-			'step-field-missing',
-			'the step does not describe its surface as an object with a path',
-			{ field: 'surface' },
-		);
+		push('step-field-missing', 'the step does not describe its surface as an object with a path', {
+			field: 'surface',
+		});
 		const candidate = typeof surface === 'string' ? surface.trim() : '';
 		if (candidate !== '' && !exists(candidate)) {
 			push(

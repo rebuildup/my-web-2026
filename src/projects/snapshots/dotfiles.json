@@ -14,7 +14,7 @@
 	},
 	"availability": "public",
 	"unavailable": null,
-	"verifiedAt": "2026-10-20T02:20:44.835Z",
+	"verifiedAt": "2026-10-27T08:59:05.424Z",
 	"appliedAt": "2026-10-20T02:20:44.835Z",
 	"contentDigest": "sha256:a5ff0d1dc498c828f0f4c5d3aea0601bd63eba207b092ff5f750224e6ad5d007",
 	"introduction": {
@@ -79,7 +79,15 @@
 				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout",
 				"summary": null,
 				"points": [],
-				"structure": [".infisical.json", "config", "agents", "home", "script", "docs", "AGENTS.md"]
+				"structure": [
+					".infisical.json",
+					"config",
+					"agents",
+					"home",
+					"script",
+					"docs",
+					"AGENTS.md"
+				]
 			},
 			{
 				"id": "agent-launcher",

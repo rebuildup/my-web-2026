@@ -45,7 +45,30 @@
  * What "decorative" means is defined once, in {@link isDecorativeVideo}:
  * a background video is exempt from captions and controls only when it is
  * BOTH `muted` and hidden from assistive technology (`aria-hidden="true"`
- * / `role="presentation"` / `data-decorative`).
+ * / `role="presentation"` / `role="none"` / `data-decorative`).
+ *
+ * Values the gate cannot decide (fail-closed)
+ * -------------------------------------------
+ * A static gate reads the markup, so a value the markup does not decide is
+ * a hole. Three of them are closed here, in one place:
+ *
+ *   - a BOOLEAN attribute is read as its EFFECTIVE value: `controls` and
+ *     `controls=""` are on, `controls={false}` is off, and a value the
+ *     gate cannot read is NOT on. So `muted={false}` does not silence a
+ *     video, and `controls={false}` does not give it controls;
+ *   - the PLAYABILITY of a video is decided by the `src` attribute and the
+ *     `<source>` children. A `src` whose value is a runtime expression may
+ *     or may not point at media, so the video is judged as PLAYABLE and the
+ *     caption / controls / audio-description rules apply to it;
+ *   - a SPREAD (`{...props}`) can carry any attribute, so every attribute
+ *     a spread may override is undecided. JSX lets a later prop win, so
+ *     only the attributes written AFTER the last spread are final.
+ *
+ * The direction is always the safe one: an undecided value is judged as
+ * the value that demands MORE of the video, never the value that excuses
+ * it. A static `false` and an undecided value are DIFFERENT facts and are
+ * reported differently, so a reader can tell "the author decided this" from
+ * "the gate cannot read this".
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
@@ -140,8 +163,41 @@ export const CAPTION_STATUS_VERIFIED = 'verified';
  */
 export const NAME_ATTRIBUTES = ['aria-label', 'aria-labelledby', 'title'];
 
-/** The marks that hide a decorative video from assistive technology. */
-export const DECORATIVE_MARKS = ['aria-hidden="true"', 'role="presentation"', 'data-decorative'];
+/**
+ * The marks that hide a decorative video from assistive technology.
+ *
+ * A mark counts only when its value DECIDES it: `aria-hidden="true"`,
+ * `role="presentation"` / `role="none"`, and `data-decorative` whose value
+ * is `true` (or which carries no value at all). `data-decorative={false}`
+ * is the author saying "this video is NOT decorative", so it must not be
+ * able to turn a video into an exempt one.
+ */
+export const DECORATIVE_MARKS = [
+	{
+		id: 'aria-hidden',
+		attribute: 'aria-hidden',
+		describe: 'aria-hidden="true"',
+		decided: (attributes) => stringState(attributes, 'aria-hidden') === 'true',
+		undecided: (attributes) => stringState(attributes, 'aria-hidden') === null,
+	},
+	{
+		id: 'role',
+		attribute: 'role',
+		describe: 'role="presentation"',
+		decided: (attributes) => {
+			const role = stringState(attributes, 'role');
+			return role === 'presentation' || role === 'none';
+		},
+		undecided: (attributes) => stringState(attributes, 'role') === null,
+	},
+	{
+		id: 'data-decorative',
+		attribute: 'data-decorative',
+		describe: 'data-decorative (value true)',
+		decided: (attributes) => booleanState(attributes, 'data-decorative') === true,
+		undecided: (attributes) => booleanState(attributes, 'data-decorative') === null,
+	},
+];
 
 /**
  * The scan target: the shipped JSX surface.
@@ -199,6 +255,7 @@ export const FIXTURE_EXPECTATIONS = {
 		'01-captioned-video.tsx': [],
 		'02-decorative-video.tsx': [],
 		'03-awaiting-caption-source.tsx': [],
+		'04-spread-with-explicit-contract.tsx': [],
 	},
 	fail: {
 		'01-without-caption-track.tsx': ['video-without-caption-track'],
@@ -206,6 +263,18 @@ export const FIXTURE_EXPECTATIONS = {
 		'03-without-controls.tsx': ['video-without-controls'],
 		'04-playable-without-verified-caption.tsx': ['video-playable-without-verified-caption'],
 		'05-without-audio-description.tsx': ['video-without-audio-description'],
+		'06-dynamic-src.tsx': ['video-without-caption-track'],
+		'07-dynamic-controls.tsx': ['video-without-controls'],
+		'08-controls-false.tsx': ['video-without-controls'],
+		'09-muted-false-is-not-decorative.tsx': ['video-without-controls'],
+		'10-dynamic-muted.tsx': ['video-without-controls'],
+		'11-spread-may-carry-controls.tsx': ['video-without-controls'],
+		'12-spread-overrides-earlier-attributes.tsx': [
+			'video-without-text-alternative',
+			'video-without-controls',
+			'video-playable-without-verified-caption',
+			'video-without-audio-description',
+		],
 	},
 };
 
@@ -230,6 +299,14 @@ export function exclusionFor(relativePath) {
 /* ------------------------------------------------------------------ *
  * JSX parsing (pure)
  * ------------------------------------------------------------------ */
+
+/**
+ * The name a spread attribute (`{...props}`) is recorded under.
+ *
+ * It is not a real attribute name, so it can never collide with one the
+ * gate looks up.
+ */
+export const SPREAD_ATTRIBUTE_NAME = '...spread';
 
 /** The index of the matching `}` for the `{` at `start` (pure). */
 export function matchBrace(text, start) {
@@ -293,7 +370,9 @@ export function findTagEnd(code, start) {
  * Parse one JSX opening tag's attributes (pure).
  *
  * Values are reported as written, so the caller can tell a literal from a
- * runtime expression. A spread is skipped.
+ * runtime expression. A spread (`{...props}`) is recorded as its own
+ * entry, because it can carry any attribute and therefore decides what the
+ * attributes around it really are.
  */
 export function parseAttributes(text) {
 	const attributes = [];
@@ -307,6 +386,14 @@ export function parseAttributes(text) {
 		if (char === '{') {
 			const end = matchBrace(text, index);
 			if (end === -1) break;
+			const content = text.slice(index + 1, end);
+			if (/^\s*\.\.\./.test(content)) {
+				attributes.push({
+					name: SPREAD_ATTRIBUTE_NAME,
+					kind: 'spread',
+					value: content.trim(),
+				});
+			}
 			index = end + 1;
 			continue;
 		}
@@ -362,14 +449,101 @@ export function attributeValue(attribute) {
 	return null;
 }
 
-/** Whether an attribute is present at all (pure). */
-export function hasAttribute(attributes, name) {
-	return attributes.some((attribute) => attribute.name === name);
-}
-
 /** The first attribute with `name`, or `undefined` (pure). */
 export function attributeOf(attributes, name) {
 	return attributes.find((attribute) => attribute.name === name);
+}
+
+/**
+ * The index of the LAST spread in a tag, or -1 when there is none (pure).
+ *
+ * JSX lets a later prop override an earlier one, so only the attributes
+ * written AFTER the last spread are final; everything before it may be
+ * replaced by the spread.
+ */
+export function lastSpreadIndex(attributes) {
+	for (let index = attributes.length - 1; index >= 0; index -= 1) {
+		if (attributes[index].kind === 'spread') return index;
+	}
+	return -1;
+}
+
+/**
+ * The attribute with `name`, and whether its value is final (pure).
+ *
+ * `final` is false when a spread written later may override it, and when
+ * the attribute is absent but a spread may still carry it.
+ */
+export function effectiveAttribute(attributes, name) {
+	const spread = lastSpreadIndex(attributes);
+	const index = attributes.findIndex((attribute) => attribute.name === name);
+	if (index === -1) return { attribute: undefined, final: spread === -1 };
+	return { attribute: attributes[index], final: spread === -1 || index > spread };
+}
+
+/**
+ * Whether an expression is one React renders as no attribute at all (pure).
+ *
+ * React drops `attr={undefined}` and `attr={null}`, so they are the same
+ * fact as an attribute that was never written.
+ */
+export function isReactAbsent(attribute) {
+	if (!attribute || attribute.kind !== 'expression') return false;
+	const expression = attribute.value.trim();
+	return expression === 'undefined' || expression === 'null';
+}
+
+/**
+ * The effective boolean state of an attribute (pure).
+ *
+ * `true` / `false` when the markup decides it, `null` when the gate cannot
+ * decide it — a runtime expression, or an attribute a later spread may
+ * override. The distinction is the point: a static `false` is a decision
+ * the author made, while an undecided value is no decision at all, so it
+ * must never be read as "off".
+ */
+export function booleanState(attributes, name) {
+	const { attribute, final } = effectiveAttribute(attributes, name);
+	if (attribute === undefined) return final ? false : null;
+	if (!final) return null;
+	const value = attributeValue(attribute);
+	// A boolean attribute written without a value (`controls`) and the DOM
+	// form of the same thing (`controls=""`) are both "on".
+	if (value === 'true' || value === '') return true;
+	if (value === 'false') return false;
+	if (value === null && isReactAbsent(attribute)) return false;
+	return null;
+}
+
+/**
+ * The effective string state of an attribute (pure).
+ *
+ * The statically known value, `''` when the attribute is absent or
+ * statically empty, and `null` when the gate cannot decide it.
+ */
+export function stringState(attributes, name) {
+	const { attribute, final } = effectiveAttribute(attributes, name);
+	if (attribute === undefined) return final ? '' : null;
+	if (!final) return null;
+	const value = attributeValue(attribute);
+	if (value === null) return isReactAbsent(attribute) ? '' : null;
+	return value;
+}
+
+/**
+ * The statically known value of an OPTIONAL attribute (pure).
+ *
+ * `value` is `null` when the attribute is absent or undecided, and
+ * `undecidable` says which of the two it is — the difference between "the
+ * author said nothing" and "the gate cannot read what the author said".
+ */
+export function optionalStringState(attributes, name) {
+	const { attribute, final } = effectiveAttribute(attributes, name);
+	if (attribute === undefined) return { value: null, undecidable: false };
+	if (!final) return { value: null, undecidable: true };
+	const value = attributeValue(attribute);
+	if (value === null) return { value: null, undecidable: !isReactAbsent(attribute) };
+	return { value, undecidable: false };
 }
 
 /**
@@ -461,24 +635,44 @@ export function hasSourceChild(children) {
  * BOTH silenced (`muted`) and hidden from assistive technology. `muted`
  * alone is still a video a visitor can see; `aria-hidden` alone is still a
  * video that makes sound.
+ *
+ * `muted={false}` does NOT silence a video: the effective value decides,
+ * not the presence of the attribute.
  */
 export function isDecorativeVideo(attributes) {
-	return (
-		hasAttribute(attributes, 'muted') &&
-		DECORATIVE_MARKS.some((mark) => {
-			const [name, value] = mark.split('=');
-			const attribute = attributeOf(attributes, name);
-			return value === undefined
-				? hasAttribute(attributes, name)
-				: attributeValue(attribute) === value.replace(/"/g, '');
-		})
-	);
+	return decorativeState(attributes) === true;
 }
 
-/** Whether a video is playable — it has a `src` or a `<source>` child (pure). */
-export function isPlayableVideo(attributes, hasSource) {
-	const src = attributeOf(attributes, 'src');
-	return (src !== undefined && (attributeValue(src) ?? '').length > 0) || hasSource === true;
+/**
+ * Whether a video is DECORATIVE, and whether that is decidable (pure).
+ *
+ * `true` when the video is silenced AND hidden, `false` when it is not, and
+ * `null` when the gate cannot decide — a runtime `muted`, a runtime
+ * `aria-hidden`, or a spread that may carry either. An undecided
+ * decoration is NOT an exemption: the video is judged as content.
+ */
+export function decorativeState(attributes) {
+	const muted = booleanState(attributes, 'muted');
+	if (muted === false) return false;
+	if (muted === null) return null;
+	if (DECORATIVE_MARKS.some((mark) => mark.decided(attributes))) return true;
+	if (DECORATIVE_MARKS.some((mark) => mark.undecided(attributes))) return null;
+	return false;
+}
+
+/**
+ * Whether a video is playable — and whether that is decidable (pure).
+ *
+ * `true` / `false` when the markup decides it, `null` when it does not: a
+ * `src` whose value is a runtime expression may or may not point at media,
+ * and "the gate cannot tell" must never be read as "it cannot play".
+ */
+export function playableState(attributes, hasSource) {
+	const src = stringState(attributes, 'src');
+	if (src !== null && src.trim().length > 0) return true;
+	if (hasSource === true) return true;
+	if (src === '') return false;
+	return null;
 }
 
 /** Whether a video has a `<track kind="captions">` (pure). */
@@ -489,35 +683,111 @@ export function hasCaptionTrack(tracks) {
 	);
 }
 
-/** Whether a video has an accessible name (pure). */
+/**
+ * Whether a video has an accessible name (pure).
+ *
+ * A name whose value is a runtime expression is NOT a name the gate can
+ * read, so the video counts as unnamed and the static / text alternative
+ * rule applies to it.
+ */
 export function hasTextAlternative(attributes) {
 	return NAME_ATTRIBUTES.some((name) => {
-		const attribute = attributeOf(attributes, name);
-		if (attribute === undefined) return false;
-		const value = attributeValue(attribute);
-		return value === null ? false : value.trim().length > 0;
+		const value = stringState(attributes, name);
+		return value !== null && value.trim().length > 0;
 	});
+}
+
+/**
+ * Whether a video declares a poster image, and whether that is decidable
+ * (pure).
+ */
+export function posterState(attributes) {
+	const poster = stringState(attributes, 'poster');
+	if (poster === null) return null;
+	return poster.trim().length > 0;
 }
 
 /** The facts of one video (pure). */
 export function videoFacts({ attributes, tracks = [], hasSource = false }) {
+	const playable = playableState(attributes, hasSource);
+	const decorative = decorativeState(attributes);
+	const controls = booleanState(attributes, 'controls');
+	const poster = posterState(attributes);
+	const muted = booleanState(attributes, 'muted');
+	const caption = optionalStringState(attributes, CAPTION_STATUS_ATTRIBUTE);
+	const ad = optionalStringState(attributes, AD_STATUS_ATTRIBUTE);
+
+	// The attributes whose value the gate could NOT decide. They are
+	// reported separately from a static `false`, so a reader can tell
+	// "the author decided this" from "the gate cannot read this".
+	const undecidable = [];
+	if (playable === null) undecidable.push('src');
+	if (muted === null) undecidable.push('muted');
+	if (decorative === null && muted === true) {
+		const mark = DECORATIVE_MARKS.find((candidate) => candidate.undecided(attributes));
+		if (mark) undecidable.push(mark.attribute);
+	}
+	if (controls === null) undecidable.push('controls');
+	if (poster === null) undecidable.push('poster');
+	const nameAttribute = NAME_ATTRIBUTES.find((name) => stringState(attributes, name) === null);
+	if (nameAttribute) undecidable.push(nameAttribute);
+	if (caption.undecidable) undecidable.push(CAPTION_STATUS_ATTRIBUTE);
+	if (ad.undecidable) undecidable.push(AD_STATUS_ATTRIBUTE);
+
 	return {
-		playable: isPlayableVideo(attributes, hasSource),
-		decorative: isDecorativeVideo(attributes),
-		hasControls: hasAttribute(attributes, 'controls'),
-		hasPoster: hasAttribute(attributes, 'poster'),
+		playable: playable !== false,
+		decorative: decorative === true,
+		hasControls: controls === true,
+		hasPoster: poster === true,
 		hasName: hasTextAlternative(attributes),
 		captionTracks: tracks.filter(
 			(track) =>
 				(attributeValue(attributeOf(track, 'kind')) ?? '').toLowerCase() === CAPTION_TRACK_KIND,
 		).length,
-		captionStatus: attributeValue(attributeOf(attributes, CAPTION_STATUS_ATTRIBUTE)),
+		captionStatus: caption.value,
 		descriptionTracks: tracks.filter(
 			(track) =>
 				(attributeValue(attributeOf(track, 'kind')) ?? '').toLowerCase() === DESCRIPTION_TRACK_KIND,
 		).length,
-		adStatus: attributeValue(attributeOf(attributes, AD_STATUS_ATTRIBUTE)),
+		adStatus: ad.value,
+		undecidable,
 	};
+}
+
+/**
+ * What each undecided attribute means for the verdict (pure).
+ *
+ * Every entry names the direction the gate judged in, so the report says
+ * WHY a value was read the way it was.
+ */
+export const UNDECIDABLE_CONSEQUENCE = {
+	src: 'the video is treated as playable',
+	controls: 'the video is treated as having no controls',
+	muted: 'the video is treated as making sound',
+	poster: 'the video is treated as having no poster',
+	'aria-label': 'the video is treated as unnamed',
+	'aria-labelledby': 'the video is treated as unnamed',
+	title: 'the video is treated as unnamed',
+	'data-caption-status': 'the caption source counts as unverified',
+	'data-audio-description-status': 'the audio-description disposition counts as undecided',
+};
+
+/**
+ * The note that names an attribute the gate could not decide (pure).
+ *
+ * `''` when the attribute was decided, so a static `false` and an
+ * undecided value never read the same.
+ */
+export function undecidableNote(facts, name) {
+	if (!facts.undecidable.includes(name)) return '';
+	const consequence = UNDECIDABLE_CONSEQUENCE[name] ?? 'the gate judges the safe direction';
+	return ` (the \`${name}\` value is not statically decidable, so ${consequence})`;
+}
+
+/** The note for the accessible name, whichever attribute carries it (pure). */
+function nameNote(facts) {
+	const name = NAME_ATTRIBUTES.find((candidate) => facts.undecidable.includes(candidate));
+	return name ? undecidableNote(facts, name) : '';
 }
 
 /**
@@ -538,23 +808,25 @@ export function evaluateVideo(element) {
 		violations.push({
 			rule: 'video-without-caption-track',
 			wcag: WCAG_BY_RULE['video-without-caption-track'],
-			message:
-				'a playable <video> has no <track kind="captions">: the spoken content is not captioned (SC 1.2.2). A <track> without `kind` defaults to `subtitles`, which does not caption the speech',
+			message: `a playable <video> has no <track kind="captions">: the spoken content is not captioned (SC 1.2.2). A <track> without \`kind\` defaults to \`subtitles\`, which does not caption the speech${undecidableNote(facts, 'src')}`,
 		});
 	}
 	if (!facts.hasPoster || !facts.hasName) {
+		const missing = [
+			!facts.hasPoster ? 'no poster image' : '',
+			!facts.hasName ? 'no accessible name (aria-label / aria-labelledby / title)' : '',
+		].filter((part) => part !== '');
 		violations.push({
 			rule: 'video-without-text-alternative',
 			wcag: WCAG_BY_RULE['video-without-text-alternative'],
-			message: `${!facts.hasPoster ? 'no poster image' : ''}${!facts.hasPoster && !facts.hasName ? ' and ' : ''}${!facts.hasName ? 'no accessible name (aria-label / aria-labelledby / title)' : ''}: the video has no static / text alternative (SC 1.1.1)`,
+			message: `${missing.join(' and ')}: the video has no static / text alternative (SC 1.1.1)${undecidableNote(facts, 'poster')}${nameNote(facts)}`,
 		});
 	}
 	if (facts.playable && !facts.hasControls) {
 		violations.push({
 			rule: 'video-without-controls',
 			wcag: WCAG_BY_RULE['video-without-controls'],
-			message:
-				'a playable <video> has no `controls`: a keyboard user cannot start, pause or seek it (SC 2.1.1)',
+			message: `a playable <video> has no \`controls\`: a keyboard user cannot start, pause or seek it (SC 2.1.1)${undecidableNote(facts, 'controls')}`,
 		});
 	}
 	if (
@@ -565,7 +837,7 @@ export function evaluateVideo(element) {
 		violations.push({
 			rule: 'video-playable-without-verified-caption',
 			wcag: WCAG_BY_RULE['video-playable-without-verified-caption'],
-			message: `a playable <video> carries a caption track but does not declare ${CAPTION_STATUS_ATTRIBUTE}="${CAPTION_STATUS_VERIFIED}" (saw ${facts.captionStatus === null ? 'nothing' : `"${facts.captionStatus}"`}): a work whose caption source is undetermined is presented as playable (SC 1.2.2)`,
+			message: `a playable <video> carries a caption track but does not declare ${CAPTION_STATUS_ATTRIBUTE}="${CAPTION_STATUS_VERIFIED}" (saw ${facts.captionStatus === null ? 'nothing' : `"${facts.captionStatus}"`}): a work whose caption source is undetermined is presented as playable (SC 1.2.2)${undecidableNote(facts, CAPTION_STATUS_ATTRIBUTE)}`,
 		});
 	}
 	const adProvided = facts.adStatus === AD_STATUS_PROVIDED && facts.descriptionTracks > 0;
@@ -574,7 +846,7 @@ export function evaluateVideo(element) {
 		violations.push({
 			rule: 'video-without-audio-description',
 			wcag: WCAG_BY_RULE['video-without-audio-description'],
-			message: `a playable <video> does not declare its audio description: set ${AD_STATUS_ATTRIBUTE}="${AD_STATUS_PROVIDED}" with a <track kind="${DESCRIPTION_TRACK_KIND}">, or "${AD_STATUS_NOT_REQUIRED}" when the work carries no visual-only information (SC 1.2.3 A / SC 1.2.5 AA, fail-closed — saw ${facts.adStatus === null ? 'nothing' : `"${facts.adStatus}"`})`,
+			message: `a playable <video> does not declare its audio description: set ${AD_STATUS_ATTRIBUTE}="${AD_STATUS_PROVIDED}" with a <track kind="${DESCRIPTION_TRACK_KIND}">, or "${AD_STATUS_NOT_REQUIRED}" when the work carries no visual-only information (SC 1.2.3 A / SC 1.2.5 AA, fail-closed — saw ${facts.adStatus === null ? 'nothing' : `"${facts.adStatus}"`})${undecidableNote(facts, AD_STATUS_ATTRIBUTE)}`,
 		});
 	}
 	return { facts, violations };
@@ -815,6 +1087,15 @@ export function renderGateSummary(evidence) {
 	lines.push(
 		`  ${evidence.fixture.violations.length === 0 ? 'ok  ' : 'FAIL'} ${'fixture'.padEnd(42)} ${evidence.fixture.rows.length} fixture file(s) reproduce the states they stand for`,
 	);
+	const undecidable = evidence.shipped.videos.filter((video) => video.undecidable.length > 0);
+	lines.push(
+		`  ${undecidable.length === 0 ? 'ok  ' : 'FAIL'} ${'undecidable-values'.padEnd(42)} ${undecidable.length} video(s) carry a value the gate cannot decide statically (judged in the safe direction)`,
+	);
+	if (undecidable.length > 0) {
+		for (const video of undecidable) {
+			lines.push(`    ${video.file}:${video.line} — ${video.undecidable.join(', ')}`);
+		}
+	}
 	lines.push('');
 	lines.push('not machine-checked (human evaluation):');
 	for (const item of evidence.humanEvaluation) lines.push(`  - ${item}`);

@@ -25,7 +25,9 @@ import {
 	WCAG_REFERENCE,
 	attributeValue,
 	auditFixtureFiles,
+	booleanState,
 	collectEvidence,
+	decorativeState,
 	evaluateVideo,
 	findTrackTags,
 	findVideoTags,
@@ -33,8 +35,8 @@ import {
 	hasSourceChild,
 	hasTextAlternative,
 	isDecorativeVideo,
-	isPlayableVideo,
 	parseAttributes,
+	playableState,
 	renderGateSummary,
 	scanViolationsInFile,
 	videoFacts,
@@ -92,11 +94,18 @@ test('the attribute parser distinguishes a literal from an expression', () => {
 
 test('a video with no src and no source child is not playable', () => {
 	const [tag] = findVideoTags('<video poster="/a.webp" aria-label="x" />');
-	assert.equal(isPlayableVideo(tag.attributes, hasSourceChild(tag.children)), false);
+	assert.equal(playableState(tag.attributes, hasSourceChild(tag.children)), false);
 	const [playable] = findVideoTags('<video src="/a.mp4" />');
-	assert.equal(isPlayableVideo(playable.attributes, hasSourceChild(playable.children)), true);
+	assert.equal(playableState(playable.attributes, hasSourceChild(playable.children)), true);
 	const [sourced] = findVideoTags('<video><source src="/a.mp4" /></video>');
-	assert.equal(isPlayableVideo(sourced.attributes, hasSourceChild(sourced.children)), true);
+	assert.equal(playableState(sourced.attributes, hasSourceChild(sourced.children)), true);
+});
+
+test('a src the gate cannot read is judged as playable, not as "cannot play"', () => {
+	const [tag] = findVideoTags('<video src={clipUrl} />');
+	assert.equal(playableState(tag.attributes, hasSourceChild(tag.children)), null);
+	const [empty] = findVideoTags('<video src="" />');
+	assert.equal(playableState(empty.attributes, hasSourceChild(empty.children)), false);
 });
 
 test('a decorative video must be both muted and hidden', () => {
@@ -106,6 +115,52 @@ test('a decorative video must be both muted and hidden', () => {
 	assert.equal(isDecorativeVideo(hiddenOnly), false);
 	const both = parseAttributes(' muted aria-hidden="true"');
 	assert.equal(isDecorativeVideo(both), true);
+});
+
+test('the effective boolean reads the VALUE, not the presence of the attribute', () => {
+	assert.equal(booleanState(parseAttributes(' muted'), 'muted'), true);
+	assert.equal(booleanState(parseAttributes(' muted="true"'), 'muted'), true);
+	assert.equal(booleanState(parseAttributes(' muted={true}'), 'muted'), true);
+	assert.equal(booleanState(parseAttributes(' muted={false}'), 'muted'), false);
+	assert.equal(booleanState(parseAttributes(' muted="false"'), 'muted'), false);
+	assert.equal(booleanState(parseAttributes(' muted={undefined}'), 'muted'), false);
+	assert.equal(booleanState(parseAttributes(' muted={null}'), 'muted'), false);
+	// A value the gate cannot read is not "off" — it is undecided.
+	assert.equal(booleanState(parseAttributes(' muted={isMuted}'), 'muted'), null);
+	// The DOM form of a boolean attribute carries no value.
+	assert.equal(booleanState(parseAttributes(' controls=""'), 'controls'), true);
+});
+
+test('muted={false} does not silence a video', () => {
+	const attributes = parseAttributes(' muted={false} aria-hidden="true"');
+	assert.equal(decorativeState(attributes), false);
+});
+
+test('a muted value the gate cannot read is not read as silence', () => {
+	assert.equal(decorativeState(parseAttributes(' muted={isMuted} aria-hidden="true"')), null);
+});
+
+test('a spread makes every attribute it may carry undecided', () => {
+	const leading = parseAttributes(' {...props} controls poster="/a.webp"');
+	// Written after the spread: JSX lets a later prop win, so it is final.
+	assert.equal(booleanState(leading, 'controls'), true);
+	// Absent: the spread may still carry it.
+	assert.equal(booleanState(leading, 'muted'), null);
+	const trailing = parseAttributes(' controls {...props}');
+	// Written before the spread: the spread may override it.
+	assert.equal(booleanState(trailing, 'controls'), null);
+});
+
+test('a static false and an undecided value are different facts', () => {
+	const off = videoFacts(videoInput('<video controls={false} poster="/a.webp" aria-label="x" />'));
+	const undecided = videoFacts(
+		videoInput('<video controls={isPlaying} poster="/a.webp" aria-label="x" />'),
+	);
+
+	assert.equal(off.hasControls, false);
+	assert.deepEqual(off.undecidable, []);
+	assert.equal(undecided.hasControls, false);
+	assert.deepEqual(undecided.undecidable, ['controls']);
 });
 
 test('only an explicit kind="captions" track captions the speech', () => {
@@ -225,7 +280,89 @@ test('the facts of a video are the whole contract', () => {
 		captionStatus: 'verified',
 		descriptionTracks: 1,
 		adStatus: AD_STATUS_PROVIDED,
+		undecidable: [],
 	});
+});
+
+test('a dynamic src does not skip the caption / controls / audio-description rules', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-audio-description-status="not-required" src={clipUrl} />`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.playable, true, 'a src the gate cannot read is judged as playable');
+	assert.deepEqual(facts.undecidable, ['src']);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-caption-track'],
+	);
+	assert.match(violations[0].message, /not statically decidable/);
+});
+
+test('a video that is not silenced is checked even when it is hidden from AT', () => {
+	const source = `<video muted={false} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.decorative, false, 'muted={false} does not make the video decorative');
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-controls'],
+	);
+});
+
+test('a muted value the gate cannot read is not read as silence', () => {
+	const source = `<video muted={isMuted} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.decorative, false);
+	assert.deepEqual(facts.undecidable, ['muted']);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-controls'],
+	);
+});
+
+test('controls={false} is not a control', () => {
+	const source = `<video controls={false} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.hasControls, false);
+	assert.deepEqual(facts.undecidable, []);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-controls'],
+	);
+});
+
+test('a controls value the gate cannot read does not pass either', () => {
+	const source = `<video controls={isPlaying} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.hasControls, false);
+	assert.deepEqual(facts.undecidable, ['controls']);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-controls'],
+	);
+	assert.match(violations[0].message, /not statically decidable/);
+});
+
+test('a spread may carry any attribute, so the video is judged in the safe direction', () => {
+	const source = `<video {...props} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.hasControls, false, 'the spread may carry `controls`');
+	assert.ok(facts.undecidable.includes('controls'));
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-without-controls'],
+	);
+});
+
+test('attributes written after a spread are final', () => {
+	const source = `<video {...props} controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.hasControls, true);
+	assert.deepEqual(violations, []);
 });
 
 test('every rule the Issue names is a rule the gate knows', () => {

@@ -79,11 +79,49 @@ gate は出荷面に対して **0 `<video>` / 違反 0** で緑になる（実�
   - 値が無い・未知の値は「判断していない」ので違反（無言は同意ではない）。
 - **装飾動画の除外**は 1 箇所（`isDecorativeVideo`）で定義する:
   `muted` **かつ** 支援技術から隠れている（`aria-hidden="true"` /
-  `role="presentation"` / `data-decorative`）場合にだけ、字幕・音声説明・`controls` を免除する。
+  `role="presentation"` / `role="none"` / `data-decorative`）場合にだけ、字幕・音声説明・`controls` を免除する。
   `muted` だけの動画は目に見える動画であり、`aria-hidden` だけの動画は音を出す。
+  `muted` は**実効値**で判定する（属性があるかどうかではない）ので、
+  `muted={false}` は「消音していない」= 装飾ではない。
+  `data-decorative` も値が `true`（または値なし）だけをマークとして数え、
+  `data-decorative={false}` は装飾ではないという主張として扱う。
 - **再生できない動画**（`src` も `<source>` もない）は字幕・音声説明の要求対象外。
   字幕ソースが未確定の作品を「再生可」と誤記しないための状態であり、
   その状態自体は違反ではない（`pass/03-awaiting-caption-source.tsx`）。
+
+## 判断できない値の扱い（fail-closed）
+
+静的な gate は「マークアップが書いていないこと」を読めない。**読めない値を
+「条件を満たしていない」と読むのがこの gate の姿勢**（fail-closed）で、
+判断の単位は次の 3 つ:
+
+| 値 | 静的に決まる場合 | 判断できない場合 | 判断できないとき gate が読む方向 |
+| --- | --- | --- | --- |
+| boolean 属性（`muted` / `controls` / `data-decorative`） | `controls`・`controls=""`・`controls={true}` は on、`controls={false}`・`controls={undefined}` は off | 実行時式の値（`controls={isPlaying}`）や、後ろの spread が上書きしうる属性 | **off** として読む（安全側） |
+| 再生可否（`src` / `<source>`） | `src="/a.mp4"` または `<source>` があれば playable、`src=""` も `<source>` も無ければ not playable | `src={clipUrl}` のように実行時式 | **playable** として読む（安全側） |
+| 属性の spread（`{...props}`） | spread の**後**に書かれた属性は確定（JSX は後の prop が勝つ） | spread が持ちうる属性（書いた属性・書かなかった属性 alike） | その属性が無い/ off として読む（安全側） |
+
+- この判定は **「静的な false」と「評価不能」を区別する**。両者は同じ違反に
+  ならない: 静的 false は「著者が決めたこと」、評価不能は「gate が読めないこと」。
+  違反メッセージは後者に `（`controls` の値は静的に決まらないため、controls の無い動画として扱う）`
+  のように、何が読めなかったのかを名指しする。gate の report には
+  `undecidable-values` の行として、どの文件的どの属性が読めなかったかを出す。
+- **動的な `src` で検査を飛ばさない**。`src={clipUrl}` の動画は「再生できる」と
+  判定し、字幕・`controls`・音声説明の検査を**そのまま実行する**
+  （`fail/06-dynamic-src.tsx`）。「値が動的だから再生できない」と読むと、
+  字幕の無い作品が playable として通ってしまう（fail-open）。
+- **装飾の免除も「評価不能なら解除」**。`muted={isMuted}` は消音与否が読めないので、
+  装飾動画として免除せず、字幕・`controls`・音声説明の要求対象にする
+  （`fail/10-dynamic-muted.tsx`）。
+- **`controls` の有無も実効値で判定する**。`controls={false}` は「controls が無い」ので
+  `video-without-controls` になる（`fail/08-controls-false.tsx`）。
+  `controls={isPlaying}` は評価不能なので，同样に off として読む
+  （`fail/07-dynamic-controls.tsx`）。
+- **spread は「最後の spread より後」の属性だけ確定する**。`{...props}` を
+  属性の**後**に書くと、それ以前の属性は全部 shadow されうる
+  （`fail/12-spread-overrides-earlier-attributes.tsx`）。前方に置いた spread は
+  後続の明示的な属性を壊さない（`pass/04-spread-with-explicit-contract.tsx`）。
+
 
 ## fixture
 
@@ -94,11 +132,19 @@ gate は出荷面に対して **0 `<video>` / 違反 0** で緑になる（実�
 | `pass/` | `01-captioned-video.tsx` | 違反 0（`controls` + `poster` + 名前 + `kind="captions"` + `verified` + `kind="descriptions"` + `data-audio-description-status="provided"`） |
 | `pass/` | `02-decorative-video.tsx` | 違反 0（`muted` + `aria-hidden="true"` の背景動画） |
 | `pass/` | `03-awaiting-caption-source.tsx` | 違反 0（**再生不可**。字幕ソース未確定を再生可と誤記しない） |
+| `pass/` | `04-spread-with-explicit-contract.tsx` | 違反 0（spread の**後**に契約の属性を書けば確定する） |
 | `fail/` | `01-without-caption-track.tsx` | `video-without-caption-track` |
 | `fail/` | `02-without-text-alternative.tsx` | `video-without-text-alternative` |
 | `fail/` | `03-without-controls.tsx` | `video-without-controls` |
 | `fail/` | `04-playable-without-verified-caption.tsx` | `video-playable-without-verified-caption` |
 | `fail/` | `05-without-audio-description.tsx` | `video-without-audio-description` |
+| `fail/` | `06-dynamic-src.tsx` | `video-without-caption-track`（動的な `src` で検査を飛ばさない） |
+| `fail/` | `07-dynamic-controls.tsx` | `video-without-controls`（評価不能な `controls` は pass しない） |
+| `fail/` | `08-controls-false.tsx` | `video-without-controls`（`controls={false}` は control ではない） |
+| `fail/` | `09-muted-false-is-not-decorative.tsx` | `video-without-controls`（`muted={false}` は装飾ではない） |
+| `fail/` | `10-dynamic-muted.tsx` | `video-without-controls`（評価不能な `muted` は消音と読まない） |
+| `fail/` | `11-spread-may-carry-controls.tsx` | `video-without-controls`（spread が `controls` を持ちうる） |
+| `fail/` | `12-spread-overrides-earlier-attributes.tsx` | 4 rule（`video-without-text-alternative` / `video-without-controls` / `video-playable-without-verified-caption` / `video-without-audio-description`）。**唯一の複数 rule fixture**: spread は属性をまとめて shadow する |
 
 `pass/` が違反を出せば `fixture-pass-violation`、`<video>` を 1 つも持たなければ
 `fixture-pass-no-video`、`fail/` が期待した rule を出さなければ
@@ -106,7 +152,9 @@ gate は出荷面に対して **0 `<video>` / 違反 0** で緑になる（実�
 テスト（`scripts/check-a11y-video-caption.test.mjs`）はさらに、fixture ディレクトリの
 一覧と期待表が**完全一致**すること（1 個落としても気付けないテストにしない）を assert する。
 各 `fail/` fixture は **他の違反を同時に起こさない**ように、他の契約（字幕・名前・
-controls・音声説明）は充足した状態で 1 つの rule だけを出す。
+controls・音声説明）は充足した状態で 1 つの rule だけを出す
+（`12-spread-overrides-earlier-attributes.tsx` だけが例外で、spread が
+属性をまとめて shadow するため 4 rule になる）。
 
 ## 機械検査と人間の評価の区別
 
@@ -115,6 +163,7 @@ controls・音声説明）は充足した状態で 1 つの rule だけを出す
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
 | 規則一覧の 5 rule | 出荷する `src/**/*.tsx` の `<video>` | コメント除去後のソース走査（`scripts/check-a11y-video-caption.mjs`） |
+| 判断できない値の明示 | 動的な値や spread を持つ動画が、どの属性を読めなかったか | 同上（`facts.undecidable` を report の `undecidable-values` 行に出す） |
 | fixture の再現 | `pass/` は違反 0 かつ `<video>` を持つ、`fail/` は期待した rule | 同上（gate 自身が行う） |
 | ブラウザ側の観測 | 各カードの `evaluateVideo` verdict、字幕トラックの `readyState`（LOADED / ERROR）、失敗時に `data-caption-status` が `verified` のままでないこと、320 px で facts が変わらないこと | Chromium 実測（capture） |
 
@@ -164,7 +213,7 @@ capture は **negative control** を内蔵する。各カードが主張と違�
 
 ## 誤検知が起きたときの解除手順
 
-gate は「宣言」を判定する。以下の 4 つは誤検知の候補であり、**gate を緩めずに**
+gate は「宣言」を判定する。以下の 5 つは誤検知の候補であり、**gate を緩めずに**
 個別の契約として扱う:
 
 1. **`video-without-caption-track` / `video-playable-without-verified-caption` が誤検知した**
@@ -178,8 +227,17 @@ gate は「宣言」を判定する。以下の 4 つは誤検知の候補であ
      `<track kind="descriptions">` を同梱する。要らない作品なら
      `data-audio-description-status="not-required"` を宣言する（**人が判断した**場合のみ）。
 4. **装飾動画として除外したい**
-   - `muted` と `aria-hidden="true"`（または `role="presentation"` / `data-decorative`）の
-     両方を付ける。片方だけでは除外されない（片方は「見える」「聞こえる」を残す）。
+   - `muted` と `aria-hidden="true"`（または `role="presentation"` / `role="none"` /
+     `data-decorative`）の**両方**を、**静的な値で**付ける。片方だけでは除外されない
+     （片方は「見える」「聞こえる」を残す）。`muted` を実行時に切り替える Videos
+     は装飾として証明できない（`muted={isMuted}` は「消音与否が読めない」= 判定不能）。
+5. **値が動的だから読み飛ばしてほしい**
+   - この gate は動的な値を「読めない = 条件を満たしていない」として扱う
+     （fail-closed）。読み飛ばしはしない。解除は値を**静的に読める**形にすること
+     （`controls={isPlaying}` ではなく `controls`、`muted={isMuted}` ではなく `muted`、
+     `poster={poster}` ではなく `poster="/media/…"`）。実行時の値に依存する仕様が
+     必要なら、その判断は**別の契約**（例: 動画が装飾かどうかは再生前に決める）として
+     記録し、gate 側は静的に読める形にする。
 
 いずれも、解除は「gate の判定を緩める」ことではなく「契約の記録を増やす」こととして扱う。
 
@@ -187,6 +245,11 @@ gate は「宣言」を判定する。以下の 4 つは誤検知の候補であ
 
 - **出荷面に `<video>` が無いため、実データでの検証ではない。** gate は
   「公開されたときに満たす契約」を fixture と capture で固定している。
+- **gate が読むのは静的に決まる値だけである。** 実行時の値（`src={clipUrl}` /
+  `controls={isPlaying}` / `muted={isMuted}` / spread）は「読めない」として安全側に
+  扱う（上記「判断できない値の扱い」）。この gate は**動的な値を検査の除外理由に
+  しない**。動的な値を許す設計に変えたい場合は、判定の単位そのものの変更になるため
+  owner の判断と ADR を要する。
 - **音声説明は「必要か」ではなく「判断を宣言したか」を機械で判定する。**
   その作品が視覚情報だけの内容を持つかどうかは人評価（下記）。
   gate が機械で強制するのは宣言の**存在**（fail-closed）であり、
@@ -194,7 +257,8 @@ gate は「宣言」を判定する。以下の 4 つは誤検知の候補であ
 - **`not-required` は人の判断を前提とする宣言**である。gate は宣言の
   事実だけを判定する。
 - **アクセシブルな名前は `<video>` 自身からしか読まない。** 兄弟テキストによる説明は
-  検出しない（`aria-labelledby` を付けることを契約とする）。
+  検出しない（`aria-labelledby` を付けることを契約とする）。名前が実行時の値のときは
+  「名前の無い動画」として扱う（安全側）。
 - **`verified` は宣言であり、真偽を機械では確かめない。** 字幕ソースが実際に
   配信され続けるかは運用の責任（capture は「読み込みに失敗したら主張を降格する」ことだけを実測）。
 - **字幕の品質（正確さ・完全さ・言語）は人評価。**

@@ -1012,6 +1012,7 @@
 					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
+					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/portfolio/components/Markdown.tsx",
 					"src/portfolio/markdown.notion.ts",
 					"src/routes/index.tsx"
@@ -1059,6 +1060,7 @@
 				"kind": "origin",
 				"identifier": false,
 				"files": [
+					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/routes/portfolio/$slug.tsx",
 					"src/routes/portfolio/index.tsx"
 				]

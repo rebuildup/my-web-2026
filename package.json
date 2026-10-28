@@ -258,14 +258,14 @@
 		"anomaly:fixture:report": "node scripts/request-anomaly-monitor-fixture.mjs --html=.tmp/anomaly-monitor-fixture.html"
 	},
 	"dependencies": {
-		"@better-auth/api-key": "^1.7.5",
+		"@better-auth/api-key": "^1.7.7",
 		"@tanstack/react-router": "1.170.42",
 		"@tanstack/react-start": "1.168.61",
-		"better-auth": "^1.7.5",
+		"better-auth": "^1.7.7",
 		"emoji-picker-react": "^4.22.2",
 		"hono": "^4.13.7",
 		"react": "^19.2.0",
-		"zod": "^4.6.5"
+		"zod": "^4.6.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
@@ -287,7 +287,7 @@
 		"cf": "1.0.0-beta.12",
 		"cross-env": "^7.0.3",
 		"gifenc": "^1.0.3",
-		"happy-dom": "^20.8.9",
+		"happy-dom": "^21.0.4",
 		"knip": "^6.41.0",
 		"react-dom": "^19.3.0",
 		"sharp": "^0.35.4",

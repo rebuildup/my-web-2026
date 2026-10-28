@@ -30,11 +30,17 @@ patchedDependencies:
 # lowest such version unless the tree already resolved a newer one in
 # the same major (browserslist), in which case that version is kept
 # rather than downgraded.
-# Reachability: all of these are build / test toolchain packages. None
-# of them is reachable from the Worker runtime bundle, and the
-# dependency-advisory gate classifies 15 of the 16 blocking findings as
-# `dev-dependency path only`. `source-map-js` is the one production-path
-# finding and is still build-time only (`vite > postcss > source-map-js`).
+# Two entries need the reason spelled out, because they do not fit that
+# one-line rule: `happy-dom` crosses a major (the patched release only
+# exists in 21.x, vitest declares its optional happy-dom peer as `*`,
+# and the direct devDependency carries the same major bump), and `zod`
+# is a runtime dependency rather than a toolchain package (the override
+# stays inside the 4.x major the tree already resolves, and the direct
+# dependency declares the same floor).
+# Reachability: every other entry is a build / test toolchain package
+# that is not reachable from the Worker runtime bundle.
+# `source-map-js` is the one production-path finding and is still
+# build-time only (`vite > postcss > source-map-js`).
 overrides:
   # GHSA-73wf-gq98-2v4g / GHSA-c83g-rgw3-j3cx (high), unpatched below
   # 4.28.7; reached via @pandacss/dev > @pandacss/node > browserslist.
@@ -47,18 +53,33 @@ overrides:
   # 8.5.14 exactly; every one of those is inside the 8.x major the
   # override keeps.
   postcss: 8.5.31
-  # GHSA-w4gp-fjgq-3q4g (high, >=20.8.9) and GHSA-6q6h-j7hj-3r64 /
-  # GHSA-37j7-fg3j-429f (critical). The direct devDependency is bumped
-  # in package.json; this keeps the better-auth > vitest > happy-dom
+  # GHSA-w4gp-fjgq-3q4g (high, >=20.8.9), GHSA-6q6h-j7hj-3r64 /
+  # GHSA-37j7-fg3j-429f (critical) and GHSA-834v-8h66-3h79 (high,
+  # >=17.0.0 <=21.0.3). 21.0.4 is the lowest release that clears the
+  # last one and the 21.x line is what vitest 4.1 declares as its
+  # (optional) happy-dom peer. The direct devDependency is bumped in
+  # package.json; this keeps the better-auth > vitest > happy-dom
   # transitive copy on the same line.
-  happy-dom: 20.8.9
+  happy-dom: 21.0.4
   # GHSA-wq5f-xc86-pv6w + the librsvg/libheif advisories (high);
   # 0.35.5 is the last 0.35.x, so no major is crossed.
   sharp: 0.35.5
-  # GHSA-rfgv-xxqx-mfg5 / GHSA-w293-vg96-wgc3 and the moderate/low
-  # undici set; 7.29.1 clears all of them. 8.x is NOT taken — that is a
-  # major bump behind miniflare.
-  undici: 7.29.1
+  # GHSA-rfgv-xxqx-mfg5 / GHSA-w293-vg96-wgc3, the moderate/low undici
+  # set and GHSA-2m5v-pch6-74hx / GHSA-4w7w-5xrc-9h26 /
+  # GHSA-qrxm-fqhp-jwvm / GHSA-xjj6-f33q-929c (high); 7.30.1 clears
+  # all of them. The miniflare copies in this tree pin undici exactly,
+  # so the override is the only route to a patched undici until those
+  # pins move; 7.30.1 is what miniflare itself now pins. 8.x is NOT
+  # taken — that is a major bump behind miniflare.
+  undici: 7.30.1
+  # GHSA-mrhx-c7xc-m3w5 (high, <4.6.6). Both @cloudflare/config copies
+  # in this tree (the ones behind the pinned @cloudflare/vite-plugin
+  # build and the one behind @cloudflare/build-output-utils) pin zod
+  # exactly, so the override is the only route to a patched zod. The
+  # direct runtime dependency resolves 4.6.7, so that version is kept
+  # rather than downgraded to the 4.6.6 floor; still inside the 4.x
+  # major the tree already resolves.
+  zod: 4.6.7
   # GHSA-68fv-2mgg-jv7q (high); 1.2.1 -> 1.2.2, patch only.
   source-map-js: 1.2.2
   # GHSA-rj75-hqrm-r3gf (moderate) + GHSA-w9m9-85wc-3x92 (low);

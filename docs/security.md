@@ -1468,9 +1468,10 @@ only the diff that introduced it.
   decision logic is in `scripts/check-dependency-advisories.mjs` and the
   same verdict is reproducible with `pnpm run dep-audit:check`. It ships
   with `enforcement: block` (Issue #645), so a blocking finding that no
-  approved exception covers fails the `validate` job; the single
-  exception on record (`braces`, no published patched version) is dated,
-  grounded and tracked (Issue #669), and an expired record blocks again.
+  approved exception covers fails the `validate` job; the exception
+  ledger is empty — the `braces` record was retired in Issue #704 when
+  the advisory was withdrawn upstream — so every `critical` / `high`
+  finding blocks, and an expired record would block again.
   Runbook:
   [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 - Code scanning (SAST): deferred.

@@ -12,15 +12,5 @@
 		"note": "The npm registry advisory endpoint answers from the lockfile's resolved name@version set. No node_modules, credential or environment value is read."
 	},
 	"note": "Blocking severities are declared here, not in code, so a policy change is a reviewable one-line diff. `enforcement: block` (Issue #645) fails the build on any blocking finding that no approved exception covers, and still fails closed on unavailable advisory data; the escalation path and the exception procedure are described in docs/runbook/dependency-advisories.md section 6.",
-	"exceptions": [
-		{
-			"advisoryId": "GHSA-vfj7-8cjw-p6xm",
-			"package": "braces",
-			"severity": "high",
-			"reason": "No patched release is published (npm reports patched_versions_unpublished), so there is nothing to upgrade to; the only dependency paths are .>@pandacss/dev>@pandacss/node>fast-glob>micromatch>braces and .>@pandacss/dev>@pandacss/postcss>@pandacss/node>fast-glob>micromatch>braces, both dev-only build tooling (@pandacss/dev is a devDependency used by the Panda CSS codegen), and braces/micromatch/fast-glob are absent from the Worker runtime bundle, so the stack-exhaustion denial of service has no production path. Retire this record when a patched braces is published, when the dependency path changes, or when the dependency is dropped.",
-			"approvedBy": "repository owner (Issue #645)",
-			"trackingIssue": 669,
-			"expiresOn": "2027-01-31"
-		}
-	]
+	"exceptions": []
 }

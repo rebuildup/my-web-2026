@@ -160,12 +160,12 @@ jobs:
       #
       # Two independent failure contracts:
       #   - Blocking critical/high advisories FAIL the build while the
-      #     declaration says `enforcement: block` (Issue #645). The one
-      #     outstanding advisory (`braces`, no published patched
-      #     release) is covered by one dated, tracked exception record
-      #     (tracking Issue #669); an expired record blocks again.
-      #     Remediating or approving is an owner decision tracked in
-      #     docs/runbook/dependency-advisories.md §6.
+      #     declaration says `enforcement: block` (Issue #645). The
+      #     exception ledger is empty, so every critical/high finding
+      #     blocks; a record that matches no advisory is reported as
+      #     stale and has to be removed, and an expired record blocks
+      #     again. Remediating or approving is an owner decision
+      #     tracked in docs/runbook/dependency-advisories.md §6.
       #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
       #     mode. A registry outage must never be reported as a clean
       #     dependency tree, so this step is not `continue-on-error`.

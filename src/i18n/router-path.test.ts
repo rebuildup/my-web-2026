@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	ADMIN_SURFACE_NAMESPACE,
-	isPathInNamespace,
-	normaliseRouterPathname,
-} from './router-path';
+import { ADMIN_SURFACE_NAMESPACE, isPathInNamespace, normaliseRouterPathname } from './router-path';
 
 /**
  * The request-path reading contract (Issue #700).

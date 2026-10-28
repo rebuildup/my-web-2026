@@ -107,11 +107,11 @@ describe('the rule is the same one the JSON round trip keeps', () => {
 	it('refuses an integral value beyond the safe range even when it is a REAL', () => {
 		// The rule draws ONE line, at 2^53 − 1, and refuses every
 		// integral value beyond it. A REAL holding 1e16 would
-		// round-trip exactly, and is still refused: a second line at
-		// the int64 range would make the rule depend on a column's
-		// storage class, which a value read through the adapter does
-		// not carry. Refusing a value that would have round-tripped is
-		// a smaller defect than accepting one that would not.
+		// round-trip exactly, and is still refused: the rule can only
+		// look at the value, because a value read through the adapter
+		// does not carry its column's storage class. Refusing a value
+		// that would have round-tripped is a smaller defect than
+		// accepting one that would not.
 		expect(classifyD1NumericValue(1e16)).toBe('unsafe_integer');
 		expect(classifyD1NumericValue(Number.MAX_VALUE)).toBe('unsafe_integer');
 		expect(isD1BackupSafeNumber(1e16)).toBe(false);

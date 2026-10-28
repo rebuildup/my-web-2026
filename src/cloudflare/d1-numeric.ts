@@ -42,11 +42,14 @@
  * The refusal is deliberately wider than the lossless cases. The rule
  * draws ONE line, at 2^53 − 1, and refuses every integral value beyond
  * it: a REAL column holding 1e16 would round-trip exactly and is
- * still refused. A second line at the int64 range would make the rule
- * depend on a column's storage class, which a value read through the
- * adapter does not carry — and the document's number rule has to be
- * the rule the restore applies. Refusing a value that would have
- * round-tripped is a smaller defect than accepting one that would not.
+ * still refused. The rule can only look at the VALUE, because a value
+ * read through the adapter does not carry its column's storage class.
+ * A second, value-only line (a value beyond the int64 range can only
+ * have come from a REAL) would recover those cases, at the price of a
+ * second claim to state, to prove and to audit — and the check the
+ * Issue asks for is the safe-integer one. Refusing a value that would
+ * have round-tripped is a smaller defect than accepting one that
+ * would not.
  *
  * The adapter constraint (recorded, not worked around)
  * -----------------------------------------------------

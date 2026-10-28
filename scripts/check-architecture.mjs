@@ -83,6 +83,15 @@ const forbiddenOwnerDependencies = new Map([
 	// Cloudflare runtime or the inbound HTTP boundary. It composes
 	// `editorial` primitives and reads only its own committed snapshot.
 	['projects', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `personal` (Issue #709) owns the structured display data and the
+	// standalone preview of the personal documents (the philosophy, the
+	// making motivation, the brand naming record, the influence notes).
+	// It is a peer obligation to `home` / `portfolio` / `about`: it
+	// composes `editorial` display primitives and reads no route, no
+	// binding and no peer obligation. The documents themselves are
+	// Markdown under `docs/**`; this owner holds only what a preview
+	// renders.
+	['personal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
 	// `legal` (Issue #497) owns the publication-rights review contract for
 	// the assets this repository ships and references: which rights
 	// holder, which licence and which evidence back a shipped byte, and

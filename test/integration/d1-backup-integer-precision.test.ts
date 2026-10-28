@@ -180,6 +180,10 @@ describe('a value the adapter can carry survives the round trip exactly', () => 
 		// back through the same adapter the export uses.
 		const before = await readSafeRows();
 		expect(before).toEqual(EXPECTED_SAFE_ROWS);
+		// As exact integers, so the fixture cannot be satisfied by a
+		// rounded value that happens to compare equal.
+		expect(BigInt(before[0].boundary)).toBe(9007199254740991n);
+		expect(BigInt(before[1].boundary)).toBe(-9007199254740991n);
 
 		const backup = await exportSafe();
 		expect(tableNamed(backup, SAFE_TABLE).rowCount).toBe(EXPECTED_SAFE_ROWS.length);
@@ -229,7 +233,8 @@ describe('a value the adapter cannot carry is refused, never written', () => {
 		const table = tableNamed(tampered, SAFE_TABLE);
 		// Replace a boundary value with 2^53 and re-sign the document:
 		// the digest is well formed and matches the content, and the
-		// content is still not restorable.
+		// content is still not restorable. The columns are
+		// id / label / boundary / measure / optional.
 		table.rows[0][2] = 9007199254740992;
 		table.rows[0][4] = 9007199254740992;
 		const resigned = await resign(tampered);

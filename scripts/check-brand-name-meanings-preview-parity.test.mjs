@@ -38,6 +38,18 @@
  *
  * Usage:
  *   node --experimental-strip-types --test scripts/check-brand-name-meanings-preview-parity.test.mjs
+ *
+ * Why the capture module is imported here
+ * ---------------------------------------
+ * `scripts/capture-brand-name-meanings.mjs` is the script that writes
+ * this Issue's verification image. The ticket forbids registering it as
+ * an npm script (a shared `package.json` line is a merge-conflict
+ * magnet for concurrent tickets), and an unwired script is an unused
+ * file as far as `knip` is concerned. Importing it from the test that
+ * belongs to the same Issue keeps it reachable without touching a
+ * shared file, and the import is not a formality: the block below
+ * asserts the capture's WebP-only policy, so the artefact this Issue
+ * ships cannot silently become a PNG.
  */
 
 import assert from 'node:assert/strict';
@@ -49,6 +61,13 @@ import {
 	BRAND_NAME_CARDS,
 	BRAND_NAME_PROPOSALS,
 } from '../src/personal/brand-naming/BrandNameMeanings.preview.ts';
+import {
+	READY_SELECTOR,
+	STORY_EXPORT,
+	STORY_MODULE,
+	assertWebpOutputPath,
+	screenshotBudgetVerdict,
+} from './capture-brand-name-meanings.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -255,5 +274,35 @@ describe('brand naming note / preview parity (Issue #521)', () => {
 			assert.ok(status, `the card "${card.heading}" declares no adoption state`);
 			assert.match(status, /保留/, `the card "${card.heading}" must stay held`);
 		}
+	});
+});
+
+describe('brand naming preview capture policy (Issue #521)', () => {
+	it('writes a WebP and refuses any other artefact format', () => {
+		assert.equal(
+			assertWebpOutputPath('docs/verification/brand/361do-name-meanings.webp'),
+			'docs/verification/brand/361do-name-meanings.webp',
+		);
+		assert.throws(
+			() => assertWebpOutputPath('docs/verification/brand/361do-name-meanings.png'),
+			/non-WebP/,
+			'the Issue names a .png path; the repository ships WebP, and the capture must refuse the PNG',
+		);
+	});
+
+	it('refuses to write outside the repository', () => {
+		assert.throws(() => assertWebpOutputPath('../outside.webp'), /outside the repository/);
+	});
+
+	it('keeps the committed artefact inside the verification budget', () => {
+		const verdict = screenshotBudgetVerdict(300 * 1024);
+		assert.equal(verdict.withinBudget, true);
+		assert.equal(screenshotBudgetVerdict(300 * 1024 + 1).withinBudget, false);
+	});
+
+	it('captures the shipped story, not a copy of it', () => {
+		assert.equal(STORY_MODULE, 'src/personal/brand-naming/BrandNameMeanings.stories.tsx');
+		assert.equal(STORY_EXPORT, 'Standard');
+		assert.equal(READY_SELECTOR, '[data-brand-name-meanings-preview]');
 	});
 });

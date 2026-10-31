@@ -398,14 +398,15 @@ export function UsableProductPublication({ withExamples = true }: { withExamples
 	);
 }
 
-const meta = {
+const meta: Meta<typeof UsableProductPublication> = {
 	title: 'Preview / UsableProductPublication (#515)',
+	component: UsableProductPublication,
 	parameters: { layout: 'fullscreen' },
-} satisfies Meta<typeof UsableProductPublication>;
+};
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof UsableProductPublication>;
 
 /** The whole contract: stages, checks, three worked examples, decisions. */
 export const Checklist: Story = {

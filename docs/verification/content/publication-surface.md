@@ -28,7 +28,7 @@
 | 対象 | 取得元 | 扱い |
 | --- | --- | --- |
 | route surface の分類（public / internal） | `scripts/publication-surface.mjs` の `SURFACE_DECLARATIONS` | route file との網羅性を検査し、漏れた route file は `E005` |
-| sitemap 対象 URL | 同宣言の `sitemap: true` | 宣言表の出力であり、sitemap.xml の実体ではない |
+| sitemap 対象 URL | 同宣言の `sitemap: true` | 宣言表の出力であり、sitemap.xml の実体ではない。**正本は生成器**（`src/http/seo/sitemap.ts`）で、宣言表は `scripts/check-sitemap-ledger-agreement.mjs`（Issue #734）が突き合わせる |
 | **公開到達可能 URL 全体**（sitemap 対象 + sitemap 外の public surface + 静的ページ） | 宣言の `classification: 'public'` の URL 展開 + `public/**` の HTML | **これが比較対象**。減ると `E001`（Issue の「review 必要」状態） |
 | portfolio の公開 URL | `src/portfolio/seed.ts` の slug | seed は `visibility: 'public'` / `status: 'published'` で投入される契約（`migrations/0007_portfolio.sql` の DEFAULT と `scripts/seed-portfolio.mjs`） |
 | tools の公開 URL | `src/tools/manifest.json` の `delivery.kind ∈ {same_origin_static, external_exception}` | `host_disabled` / `not_integrable_yet` は `/tools` 上で "Coming soon" になるだけで、リンク先 URL を持たない |
@@ -42,16 +42,29 @@
 `docs/verification/content/publication-surface.snapshot.json` が機械可読な正であり、
 この節はその要約です。**数値は snapshot を正としてください**（手で書き換えない）。
 
-### 3.1 sitemap 対象（13 URL）
+### 3.1 sitemap 対象（12 URL）
 
-- `/`, `/about`, `/contact`
+- `/`, `/about`, `/contact`, `/design-system`
 - `/portfolio` と、portfolio seed 由来の `/portfolio/<slug>`
-- `/tools` と、統合済み tool 由来の `/tools/<slug>`
+- `/tools`
+
+所属の**正本は sitemap 生成器**（`src/http/seo/sitemap.ts`）です。生成器は自前の
+membership rule を明示しています —「(a) 認証なしで到達できる / (b) 自分の `head()`
+が `robots: noindex` を宣言しない / (c) 公開 nav（`PUBLIC_NAV_ITEMS`）からリンク
+される」。上の 12 件は **その rule を満たすものだけ**に一致します。宣言表
+（`scripts/publication-surface.mjs`）は独立した分類であり、生成器と食い違えば
+`sitemap:ledger:check`（Issue #734）が gate を赤くします。
 
 ### 3.2 公開到達可能だが sitemap に入れない surface
 
-- `/design-system` — 公開到達可能。`SUPPRESS_BREADCRUMB_LEAF_IDS` と同じく
-  editorial IA の外側に置く意図的な showcase なので sitemap 対象外。
+- `/tools/<slug>` — 統合済み tool の shell（`src/routes/tools.$slug.tsx`）。
+  公開到達可能だが、自分で `robots: noindex` を宣言しているため rule (b) に反り
+  sitemap には入りません。tool の一覧 `/tools` は入ります。
+- `/keyboard` — キーボードレイアウトの参照ページ。`SITEMAP_EXCLUSIONS` に除外理由が
+  記録されています（nav の宛先ではない、内容は commit 済みスナップショットを同期した
+  時だけ変わる）。
+- `/projects/dotfiles` — dotfiles の紹介ページ。`SITEMAP_EXCLUSIONS` に除外理由が
+  記録されています（公開・indexable だが nav の宛先ではない）。
 - `/admin/login` — **公開が前提**。session が存在しない状態で到達できなければ
   ログインできません。loader は「サイン済みなら `/admin` へ redirect」だけを行います。
 - `/admin/invitations/accept` — **公開が前提**。メールで届いた token を
@@ -59,8 +72,8 @@
 - `/share/procon2026/` — `public/share/procon2026/index.html` が Static Assets
   で直接配信する静的ページ。route ではないので宣言表には現れず、sitemap にもしません。
 
-**公開到達可能 URL は合計 17 件**（sitemap 13 + sitemap 外の public surface 3 +
-静的ページ 1）。`E001 removed-public-url` が比較するのはこの 17 件です。
+**公開到達可能 URL は合計 19 件**（sitemap 12 + sitemap 外の public surface 6 +
+静的ページ 1）。`E001 removed-public-url` が比較するのはこの 19 件です。
 
 ### 3.3 非公開 surface
 
@@ -143,22 +156,29 @@ sitemap target にはしません。**prefix の増減も差分対象**で、減
   `MEDIA_PUBLIC_BASE_URL` で宣言されますが、shipped source に URL literal が
   ありません（`MEDIA_PUBLIC_BASE_URL` を実行時に読むため）。したがって host 集合には
   現れません。**first-party host が 0 件なのはこの理由**であり、回帰ではありません。
-- **sitemap.xml / robots.txt の実体** — この Issue は「sitemap 対象の比較」を
-  作ることが目的で、sitemap 自体の配信は別 ticket の領域です。宣言表が唯一の正なので、
-  sitemap を配信する段階ではこの表を使うことになります。
+- **sitemap.xml / robots.txt の実体** — この gate は「sitemap 対象の比較」を
+  作ることが目的で、sitemap 自体の配信・HTTP 応答の確認は別 ticket の領域です。
+  所属の**正本は生成器**（`src/http/seo/sitemap.ts`）で、宣言表はそれと突き合わせる
+  独立した分類です（Issue #734）。したがって「宣言表が唯一の正」という関係ではなく、
+  **生成器 → 宣言表** の向きに校正されています。
 - **visual / layout** — 別 gate（`scripts/layout-audit-check.mjs`）の領域です。
 
 ## 6. 運用
 
 ```bash
-pnpm run publication:check   # CI が走る判定。差分・網羅性・invariant を fail-closed で検査
-pnpm run publication:write   # 公開面の変更を「承認」する。snapshot + report を再生成
+pnpm run publication:check    # CI が走る判定。差分・網羅性・invariant を fail-closed で検査
+pnpm run publication:write    # 公開面の変更を「承認」する。snapshot + report を再生成
+pnpm run sitemap:ledger:check # 宣言表と sitemap 生成器の所属が食い違っていないか検査
 ```
 
 公開面を変えた PR では `publication:write` を実行して
 `docs/verification/content/publication-surface.snapshot.json` と
 `publication-diff-report.md` を commit します。surface が変わっているのに記録が
 更新されていない場合は `E011 stale-report` で red になります。
+
+`sitemap:ledger:check`（Issue #734）は「宣言表の `sitemap` フラグ」と「生成器が
+出力する document」を突き合わせます。両者は独立した宣言なので、**比較しないと
+ずれたまま緑になります**。生成器が正本で、宣言表はそれに従う側です。
 
 `--write` は snapshot を「現在の surface」に更新すると同時に、**承認した差分**を
 snapshot 内の `approvedTransition` と report に保存します。次に surface が変わると

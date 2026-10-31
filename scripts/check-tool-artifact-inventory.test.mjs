@@ -259,6 +259,27 @@ describe('the gate over the synthetic fixture', () => {
 		assert.match(result.stderr, /unusable input/);
 		assert.match(result.stderr, /manifest not found/);
 	});
+
+	/**
+	 * Issue #733 (V-2): "not observed" is not "observed and clean".
+	 *
+	 * The outbound rule can only be judged against the bytes that would be
+	 * served. A gate that runs before the build observes nothing and says
+	 * nothing, which reads like a pass. `--require-observed` makes the
+	 * observation a precondition of the verdict.
+	 */
+	it('requires the artefact to be observed when it is asked to', () => {
+		const root = fixture();
+		rmSync(join(root, 'dist'), { recursive: true, force: true });
+
+		const tolerant = runGate([`--root=${root}`]);
+		assert.doesNotMatch(tolerant.stderr, /ARTEFACT_NOT_OBSERVED/);
+
+		const strict = runGate([`--root=${root}`, '--require-observed']);
+		assert.equal(strict.status, 1, 'an unobserved shipped Tool must fail the strict mode');
+		assert.match(strict.stderr, /ARTEFACT_NOT_OBSERVED/);
+		assert.match(strict.stderr, /verified-widget/);
+	});
 });
 
 describe('report rendering', () => {

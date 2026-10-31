@@ -378,8 +378,9 @@ origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-produ
 `routes[]` binding for the bare hostname live in the companion
 file `wrangler.production.jsonc`. Production delivery is owned by Cloudflare
 Workers Builds: pushes to `main` run the configured Cloudflare build command
-and production deploy command. GitHub Actions owns validation and the manual
-production-smoke workflow only; it must not deploy production. The local
+and production deploy command. GitHub Actions owns validation and the
+production-smoke workflow only (operator-triggered, plus a daily scheduled
+pass — Issue #733 V-4); it must not deploy production. The local
 `pnpm run deploy:production` command is a recovery/debugging fallback. The
 companion file exists because
 declaring `env.production` inside `wrangler.jsonc` causes wrangler

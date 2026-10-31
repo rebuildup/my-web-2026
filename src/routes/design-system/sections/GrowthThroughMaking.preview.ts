@@ -88,7 +88,7 @@ export const GROWTH_THROUGH_MAKING = {
 		source: '典拠: Issue #513 が引用する Miro の見出し語「哲学 > 作ることで成長する > 自信になる」',
 		verification: '機械検証: scripts/check-growth-through-making-preview-parity.test.mjs',
 		preview: 'プレビュー: src/routes/design-system/sections/GrowthThroughMaking.stories.tsx',
-	},
+	} satisfies GrowthDocument,
 	sections: [
 		{
 			heading: '1. 目的とこの仕様が解く問題',

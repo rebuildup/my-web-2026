@@ -1,0 +1,277 @@
+{
+	"$comment": "Screen reader procedure ledger (Issue #402). This file is the RECORD of the manual screen-reader review: for every operation a person has to perform with an assistive technology, it says what the operation is, which surface it happens on, which assistive technology and environment it has to be performed in, and what the announcement is expected to be. The gate (scripts/check-a11y-screenreader-steps.mjs) decides only whether the RECORD is intact - that every step is complete, that every step points at a surface that exists, and that no automated audit is passed off as a human screen-reader verification. The write-up is docs/verification/a11y/screenreader-steps.md.",
+	"version": 1,
+	"issue": "#402",
+	"updatedAt": "2026-10-23",
+	"reviewWindowDays": 365,
+	"policy": "A screen-reader review is performed by a person with an assistive technology, and the record of that review is the observation a machine can never make. So the observation columns (observedAnnounce / performer / performedAt) stay EMPTY until a person fills them in, and an empty observation is not a violation: it is 'not-performed'. What the gate refuses is a record that is broken, that points at a surface that is gone, or that claims a screen-reader verification on the strength of an automated audit (the axe run of Issue #393 is a different thing and can never stand in for a person listening). A green run of this gate therefore means 'the ledger of the manual review is intact', never 'the site was read aloud and confirmed'.",
+	"assistiveTechnologies": [
+		{
+			"id": "VoiceOver",
+			"description": "macOS / iOS のスクリーンリーダー。Cmd+F5 で開始し、Ctrl+Option で読み上げる。"
+		},
+		{
+			"id": "NVDA",
+			"description": "Windows のスクリーンリーダー。NVDA+Space で開始し、矢印キーで読み上げる。"
+		}
+	],
+	"subjects": [
+		{
+			"id": "heading",
+			"description": "主要見出し。見出しのテキストとレベルが読み上げで判別できること。"
+		},
+		{
+			"id": "operation-name",
+			"description": "操作名。リンク・ボタン・入力欄のアクセシブルな名前が読み上げで判別できること。"
+		},
+		{
+			"id": "input-error",
+			"description": "入力エラー。失敗の理由が入力項目と結びついて読み上げられること。"
+		}
+	],
+	"states": [
+		{
+			"id": "normal",
+			"description": "その surface が出荷状態のままのときの表示。"
+		},
+		{
+			"id": "empty",
+			"description": "まだ何も入っていない状態の表示（未入力のフォーム）。"
+		},
+		{
+			"id": "error",
+			"description": "失敗した状態の表示（送信後の拒否、必須の欠落など）。"
+		},
+		{
+			"id": "narrow",
+			"description": "CSS 320 px 幅で Forced reflow を満たすときの表示。"
+		}
+	],
+	"wcag": [
+		{
+			"id": "1.3.1",
+			"name": "Info and Relationships",
+			"level": "A",
+			"description": "見出し・リスト・フォームの構造が支援技術に伝わること。"
+		},
+		{
+			"id": "2.4.6",
+			"name": "Headings and Labels",
+			"level": "AA",
+			"description": "見出しとラベルが何を指しているかが読み上げで識別できること。"
+		},
+		{
+			"id": "3.3.1",
+			"name": "Error Identification",
+			"level": "A",
+			"description": "入力エラーがテキストで示され、該当の項目と結びついていること。"
+		},
+		{
+			"id": "4.1.2",
+			"name": "Name, Role, Value",
+			"level": "A",
+			"description": "操作に名前と役割があり、状態が変わると伝えられること。"
+		}
+	],
+	"steps": [
+		{
+			"id": "home-skip-link",
+			"subject": "operation-name",
+			"operation": "ページを開いた直後に Tab を 1 回押し、「本文へスキップ」リンクへフォーカスを移す。",
+			"surface": {
+				"kind": "route",
+				"route": "/",
+				"path": "src/routes/index.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/home/composer.tsx の <main id=\"main\"> へ向かう skip link（ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "「本文へスキップ、リンク」と読み上げられる。フォーカスが当たるとリンクが画面内に出る。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["2.4.6", "4.1.2"],
+			"notes": ""
+		},
+		{
+			"id": "home-h1",
+			"subject": "heading",
+			"operation": "「本文へスキップ」リンクを Enter で押し、そのまま Tab で最初の見出し（hero の h1）へフォーカスを移す。",
+			"surface": {
+				"kind": "route",
+				"route": "/",
+				"path": "src/routes/index.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/home/hero.tsx の <h1 id=\"hero-title\">（ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "「my-web-2026、見出しレベル 1」と読み上げられる（h1 のテキストは視覚的に隠されている）。",
+			"observedAnnounce": "「my-web-2026、見出しレベル 1」と読み上げられた。",
+			"performer": "owner",
+			"performedAt": "2024-01-05",
+			"result": "pass",
+			"wcag": ["1.3.1", "2.4.6"],
+			"notes": ""
+		},
+		{
+			"id": "home-hero-about-link",
+			"subject": "operation-name",
+			"operation": "hero 見出しの下にある「About me / 自己紹介 →」リンクへフォーカスを移す。",
+			"surface": {
+				"kind": "route",
+				"route": "/",
+				"path": "src/routes/index.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/home/hero.tsx の <a href=\"/about\">（ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "「About me / 自己紹介 →、リンク」と読み上げられる。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["4.1.2"],
+			"notes": ""
+		},
+		{
+			"id": "about-h1",
+			"subject": "heading",
+			"operation": "/about を開き、最初の見出し（人物の氏名の h1）へフォーカスを移す。",
+			"surface": {
+				"kind": "route",
+				"route": "/about",
+				"path": "src/routes/about.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/about/components/AboutPage.tsx の <h1 id=\"about-hero-title\">（ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "人物の氏名と「見出しレベル 1」が読み上げられる（氏名は承認済みのスナップショットから描画される）。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["1.3.1", "2.4.6"],
+			"notes": ""
+		},
+		{
+			"id": "about-footer-heading",
+			"subject": "heading",
+			"operation": "/about の末尾まで移動し、「他の場所で見つける / Elsewhere」の見出しへフォーカスを移す。",
+			"surface": {
+				"kind": "route",
+				"route": "/about",
+				"path": "src/routes/about.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/about/components/AboutPage.tsx の <h2 id=\"about-footer-heading\">（ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "NVDA",
+			"environment": "Windows 11 / Firefox 133 / NVDA 2024.4",
+			"expectedAnnounce": "「他の場所で見つける / Elsewhere、見出しレベル 2」と読み上げられる。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["1.3.1", "2.4.6"],
+			"notes": ""
+		},
+		{
+			"id": "about-breadcrumb",
+			"subject": "operation-name",
+			"operation": "/about のページ先頭にあるパンくずリスト（ホーム / 自己紹介）へフォーカスを移し、2 項目を順に読み上げる。",
+			"surface": {
+				"kind": "route",
+				"route": "/about",
+				"path": "src/routes/about.tsx",
+				"export": null,
+				"state": "normal",
+				"reproduce": "src/editorial/nav/Breadcrumbs.tsx（ページ先頭、ビューポート 1280×720）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "「ホーム、リンク」→「自己紹介、リンク」と順に読み上げられ、パンくずリストとしてまとまって読み上げられる。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["1.3.1", "4.1.2"],
+			"notes": ""
+		},
+		{
+			"id": "form-empty-submit",
+			"subject": "input-error",
+			"operation": "フォームの story（Gallery）を開き、必須項目を空のまま送信する。",
+			"surface": {
+				"kind": "story",
+				"route": null,
+				"path": "src/editorial/forms/form-errors.stories.tsx",
+				"export": "Gallery",
+				"state": "empty",
+				"reproduce": "storybook の Gallery（未入力の状態）"
+			},
+			"assistiveTechnology": "NVDA",
+			"environment": "Windows 11 / Firefox 133 / NVDA 2024.4",
+			"expectedAnnounce": "送信した項目ごとに「必須」の旨が読み上げられ、エラー summary が件数と項目名を示す。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["3.3.1", "1.3.1"],
+			"notes": ""
+		},
+		{
+			"id": "form-error-summary",
+			"subject": "input-error",
+			"operation": "フォームの story（Gallery）でエラー付きの入力を行い、エラー summary にフォーカスを移して各項目へ移動する。",
+			"surface": {
+				"kind": "story",
+				"route": null,
+				"path": "src/editorial/forms/form-errors.stories.tsx",
+				"export": "Gallery",
+				"state": "error",
+				"reproduce": "storybook の Gallery（失敗状態のパネル）"
+			},
+			"assistiveTechnology": "NVDA",
+			"environment": "Windows 11 / Firefox 133 / NVDA 2024.4",
+			"expectedAnnounce": "「パスワードが短すぎます (8 文字以上)。」のように、項目名と拒否理由が 1 つのまとまりで読み上げられる。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["3.3.1", "4.1.2"],
+			"notes": ""
+		},
+		{
+			"id": "form-narrow-field",
+			"subject": "operation-name",
+			"operation": "フォームの story（Gallery）を 320 CSS px の幅で開き、入力欄にフォーカスを移す。",
+			"surface": {
+				"kind": "story",
+				"route": null,
+				"path": "src/editorial/forms/form-errors.stories.tsx",
+				"export": "Gallery",
+				"state": "narrow",
+				"reproduce": "storybook の Gallery（幅 320 CSS px）"
+			},
+			"assistiveTechnology": "VoiceOver",
+			"environment": "macOS 15 / Safari 18 / VoiceOver（Cmd+F5 で開始）",
+			"expectedAnnounce": "入力欄のラベルと必須状態が省略されず、「テキスト入力、必須」のように読み上げられる。",
+			"observedAnnounce": null,
+			"performer": null,
+			"performedAt": null,
+			"result": "not-performed",
+			"wcag": ["4.1.2", "1.3.1"],
+			"notes": ""
+		}
+	],
+	"$expects": ["step-evidence-stale"]
+}

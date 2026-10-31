@@ -489,6 +489,14 @@ gates:
       # + `build:cf:verify` (Build Output completeness: Worker bundle +
       # Tool artifacts + mode).
       - 'pnpm run build:production'
+      # Issue #733 (V-2): the Tool artefact inventory is judged against the
+      # bytes that would be served, so it runs against the build that
+      # produced them. `--require-observed` makes the observation itself a
+      # precondition: a build that never produced the artefact leaves the
+      # outbound rule unobserved, and "unobserved" is not "observed and
+      # clean". The fast gate still runs the same check in its tolerant
+      # form, because the fast gate is offline and read-only by contract.
+      - 'pnpm run tools:artifact:check:observed'
       # Issue #475: a credential can reach the deploy artifact through
       # build-time inlining even when no source file matches, so the freshly
       # built bundle is a second scan surface.

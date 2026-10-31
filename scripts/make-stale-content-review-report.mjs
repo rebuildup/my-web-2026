@@ -47,11 +47,12 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+	DEFAULT_ARTICLE_SOURCES,
+	JAPANESE_REVIEW_SURFACES_PATH,
 	REGISTRY_PATH,
 	SURFACES_PATH,
-	collectSegments,
-	evaluateRegistry,
 	renderHtml,
+	runReview,
 } from './check-stale-content-review.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -101,11 +102,20 @@ if (!WEBP_TARGET.endsWith('.webp')) {
 
 const surfaces = JSON.parse(readFileSync(join(ROOT, SURFACES_PATH), 'utf8'));
 const registry = JSON.parse(readFileSync(join(ROOT, REGISTRY_PATH), 'utf8'));
-const { segments, skipped } = collectSegments(ROOT, surfaces, {
-	excludedPaths: registry.excludedPaths ?? [],
-	excludedExpressions: registry.excludedExpressions ?? [],
+let japaneseSurfaces = null;
+try {
+	japaneseSurfaces = JSON.parse(readFileSync(join(ROOT, JAPANESE_REVIEW_SURFACES_PATH), 'utf8'));
+} catch {
+	japaneseSurfaces = null;
+}
+const { result, skipped } = runReview({
+	root: ROOT,
+	surfaces,
+	registry,
+	today: today(),
+	articleSources: DEFAULT_ARTICLE_SOURCES,
+	japaneseSurfaces,
 });
-const result = evaluateRegistry({ segments, registry, today: today() });
 
 mkdirSync(dirname(HTML_REPORT), { recursive: true });
 writeFileSync(HTML_REPORT, renderHtml(result, { sourceSha: headSha(), skipped }));

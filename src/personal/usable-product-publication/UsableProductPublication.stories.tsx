@@ -16,6 +16,7 @@ import {
 	usableProductSections,
 	usableProductStages,
 	usableProductTitle,
+	usableProductVerdicts,
 } from './UsableProductPublication.preview';
 
 /**
@@ -56,6 +57,15 @@ import {
  * to stay legible, and a hand-rolled scroll box is a keyboard question
  * this screen does not need to open.
  *
+ * What the screen shows about each example
+ * ------------------------------------------
+ * Every stage note carries its VERDICT (適合 / 未確認 / 不適合) and its
+ * NEXT ACTION, not only what the record says and what it does not say.
+ * A reader of the screen must be able to see that a published surface
+ * does not meet the criterion, and where the next action is recorded —
+ * a verdict that lives only in the Markdown would leave the screen
+ * flattering.
+ *
  * What it deliberately does NOT claim
  * -----------------------------------
  * The facts on the screen were read from two committed records — the Tool
@@ -71,6 +81,7 @@ const EYEBROW: Record<SectionKind, string> = {
 	sources: '典拠',
 	stages: '公開条件',
 	checklist: 'チェックリスト',
+	verdicts: '判定',
 	example: '適用例',
 	decisions: '判断',
 	open: '未決',
@@ -223,7 +234,14 @@ const factListClassName = css({
 	overflowWrap: 'anywhere',
 });
 
-/** One example's per-stage note: what the record says, and what it does not. */
+/**
+ * One example's per-stage note: what the record says, what it does not
+ * say, how that meets the stage's criterion, and what happens next.
+ *
+ * The verdict is drawn with the accent tone when it is 不適合 — a
+ * published surface that does not meet the criterion is the thing a
+ * reviewer has to look at — and with the neutral tone otherwise.
+ */
 function Note({ example, stageId }: { example: AppliedExample; stageId: string }) {
 	const note = example.notes.find((item) => item.stageId === stageId);
 	const stage = usableProductStages.find((item) => item.id === stageId);
@@ -239,6 +257,14 @@ function Note({ example, stageId }: { example: AppliedExample; stageId: string }
 					<p className={gapBodyClassName}>{note.gap}</p>
 				</>
 			)}
+			<p className={cardLabelClassName}>{usableProductLabels.verdict}</p>
+			<p className={cardBodyClassName}>
+				<Badge tone={note.verdict === usableProductVerdicts.nonconforming ? 'accent' : 'neutral'}>
+					{note.verdict}
+				</Badge>
+			</p>
+			<p className={cardLabelClassName}>{usableProductLabels.nextAction}</p>
+			<p className={cardBodyClassName}>{note.nextAction}</p>
 		</div>
 	);
 }
@@ -301,6 +327,14 @@ function Section({ section }: { section: PreviewSection }) {
 						</div>
 					))}
 				</>
+			) : null}
+
+			{section.kind === 'verdicts' ? (
+				<ul className={listClassName}>
+					{section.bullets.map((bullet) => (
+						<li key={bullet}>{bullet}</li>
+					))}
+				</ul>
 			) : null}
 
 			{section.kind === 'example' && example ? (

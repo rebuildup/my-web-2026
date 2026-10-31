@@ -74,6 +74,7 @@ function completeObservation() {
 				const stage = usableProductStages.find((item) => item.id === note.stageId);
 				const lines = [stage.name, note.evidence];
 				if (note.gap !== null) lines.push(note.gap);
+				lines.push(note.verdict, note.nextAction);
 				return { stage: note.stageId, lines, items: [] };
 			});
 		}
@@ -293,6 +294,26 @@ describe('capture-usable-product-publication (Issue #515)', () => {
 		const verdict = verifyRenderedPreview(observation);
 		assert.equal(verdict.ok, false);
 		assert.match(verdict.failures.join('\n'), /does not render the gap/);
+	});
+
+	it('fails when an example loses the verdict of a stage', () => {
+		const observation = completeObservation();
+		const note = usableProductExamples[0].notes[0];
+		const card = sectionOf(observation, 'example-readmark').cards[0];
+		card.lines = card.lines.filter((line) => line !== note.verdict);
+		const verdict = verifyRenderedPreview(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /does not render the verdict/);
+	});
+
+	it('fails when an example loses the next action of a stage', () => {
+		const observation = completeObservation();
+		const note = usableProductExamples[0].notes[0];
+		const card = sectionOf(observation, 'example-readmark').cards[0];
+		card.lines = card.lines.filter((line) => line !== note.nextAction);
+		const verdict = verifyRenderedPreview(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /does not render the next action/);
 	});
 
 	it('fails when an adopted decision is missing', () => {

@@ -24,13 +24,37 @@
  * The five-stage translation below is this Issue's reading of that
  * heading, and everything only the owner can decide is marked
  * 「未確認（owner 確認待ち）」 rather than invented.
+ *
+ * Every stage of every worked example also carries a VERDICT and a
+ * NEXT ACTION (Issue #515 review). The verdict is derived from the
+ * committed record that the example was read from — never from an
+ * intention — and the next action points at a place this document
+ * already has (a 保留 item, a 未決 item, or the condition the manifest
+ * itself states), so the verdict cannot quietly start a process the
+ * document never described.
  */
 
 /** The five stages, in the order the checklist asks them in. */
 export type StageId = 'acquire' | 'operate' | 'explain' | 'recover' | 'retire';
 
 /** What kind of content a section of the preview carries. */
-export type SectionKind = 'sources' | 'stages' | 'checklist' | 'example' | 'decisions' | 'open';
+export type SectionKind =
+	| 'sources'
+	| 'stages'
+	| 'checklist'
+	| 'verdicts'
+	| 'example'
+	| 'decisions'
+	| 'open';
+
+/**
+ * The verdict one stage of one worked example gets.
+ *
+ * The three words ARE the vocabulary, and the document defines them:
+ * 適合 / 未確認 / 不適合. A verdict is derived from a committed record,
+ * never from an intention.
+ */
+export type Verdict = '適合' | '未確認' | '不適合';
 
 /** One check inside one stage. */
 export interface StageItem {
@@ -60,6 +84,10 @@ export interface ExampleNote {
 	evidence: string;
 	/** What the record does NOT state. `null` when the record answers the stage. */
 	gap: string | null;
+	/** How this stage meets its judgement criterion, read from the record. */
+	verdict: Verdict;
+	/** What happens next — a place this document already has. */
+	nextAction: string;
 }
 
 /** One worked example, read from one committed record. */
@@ -108,7 +136,71 @@ export const usableProductLabels = {
 	gap: '記録に無いこと',
 	adopted: '採用',
 	held: '保留',
+	verdict: '判定結果',
+	nextAction: '次の対応',
 } as const;
+
+/**
+ * The three verdicts, and the words the document and the screen use.
+ *
+ * They are published as values so that the parity test can enumerate
+ * the closed set: a verdict that is not one of these three words is a
+ * failure, not a new category.
+ */
+export const usableProductVerdicts = {
+	conforming: '適合',
+	undecided: '未確認',
+	nonconforming: '不適合',
+} as const;
+
+/**
+ * The next action of a stage that already conforms: nothing is due.
+ *
+ * It is a named constant so that the parity test can tell "nothing is
+ * due" apart from "the next action was not written".
+ */
+export const usableProductNoAction = '対応不要（記録が判定基準を満たしている）。';
+
+/**
+ * The verdict vocabulary, as the document states it.
+ *
+ * Each entry is one line of the 判定の語彙 section: the verdict word
+ * and what it means. The definitions are the reason the three words
+ * are enough — a fourth word would be a new criterion, and the
+ * document does not have one.
+ */
+export const usableProductVerdictDefinitions: readonly {
+	verdict: Verdict;
+	definition: string;
+}[] = [
+	{
+		verdict: usableProductVerdicts.conforming,
+		definition: '記録がその段階の判定基準を満たし、その記録自身がそれを示している。',
+	},
+	{
+		verdict: usableProductVerdicts.undecided,
+		definition:
+			'記録ではその段階を判定できない。決めとなる事実が別の記録にあるか、静的に読めない範囲にある。',
+	},
+	{
+		verdict: usableProductVerdicts.nonconforming,
+		definition:
+			'記録がその段階の判定基準を満たさない。必要な項目が無く、記載があるとしても基準に届かない。',
+	},
+];
+
+/**
+ * The scope of the rule 「出口が閉じている段階があれば、その段階に到達するものは公開しない」.
+ *
+ * The rule is a PUBLICATION CRITERION for what is published from now on
+ * — new surfaces, and surfaces whose content is revised and
+ * re-published. It is NOT a decision to withdraw an already-published
+ * surface: the availability of a published surface is the owner's
+ * decision, so that question is recorded as an open owner decision in
+ * the 残存 section instead.
+ */
+export const usableProductRuleScope =
+	'この規則の適用範囲は、これから公開する公開物（新規に公開する Tool / API サービス、および内容を改訂して再公開する公開物）である。すでに公開済みの公開物（readmark と /api/v1/reactions）をこの基準で撤回することは本稿では決めない。公開済みの公開物を提供するかどうかと、その記録を改訂するかどうかは owner の判断であり、本稿は既存の記録を現状のまま記録する。撤回に関する判断は「残存 · 要 owner 判断」の未決項目に記す。';
 
 /** The five stages, in order. */
 export const usableProductStages: readonly Stage[] = [
@@ -239,30 +331,44 @@ export const usableProductExamples: readonly AppliedExample[] = [
 				evidence:
 					'manifest が `same_origin_static` として配布 path（`/tools/readmark/app`）と entry HTML（`/tools/readmark/app/index.html`）を宣言し、iframe は `sandbox: allow-scripts` / `referrer_policy: no-referrer`。',
 				gap: '配布の前提（Tool の build が host の release に載る条件）は manifest に宣言されていない。',
+				verdict: '未確認',
+				nextAction:
+					'配布の前提（Tool の build が host の release に載る条件）を manifest に宣言する件は manifest schema の変更であり、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 			{
 				stageId: 'operate',
 				evidence:
 					'manifest の description が「A local-first reading app for the browser. PDFs in MVP; EPUB/Markdown/text next.」と対象範囲を書き、対象形式が PDF に限ると記している。',
 				gap: '入力の型（受け付ける file 形式・上限）と、操作に失敗したときの表示は manifest に宣言されていない。',
+				verdict: '不適合',
+				nextAction:
+					'操作の入力形（受け付ける file 形式・上限）と操作に失敗したときの表示を manifest に宣言する件は、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 			{
 				stageId: 'explain',
 				evidence:
 					'manifest の description と `license: MIT` が対象とライセンスを説明し、`delivery.privacy.basis` は「measured at pinned readmark 906c90e: no external origin in index.html or src/**; re-measure after a bump」と測定根拠として記録する。',
 				gap: null,
+				verdict: '適合',
+				nextAction: usableProductNoAction,
 			},
 			{
 				stageId: 'recover',
 				evidence:
 					'同じ manifest が、配布できない Tool には `delivery.disabled_reason` で「なぜ出せないか」を宣言する書式を持っている。',
 				gap: 'readmark には `disabled_reason` が無く、配布に失敗したときの表示（build 不能・成果物が無い）は manifest に宣言されていない。',
+				verdict: '不適合',
+				nextAction:
+					'配布に失敗したときの表示（build 不能・成果物が無い）を manifest に宣言する件は manifest schema の変更であり、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 			{
 				stageId: 'retire',
 				evidence:
 					'manifest は `source.pinned_sha` を固定し、`delivery.privacy.basis` に「re-measure after a bump」と書いている。',
 				gap: '提供終了の告知期間と移行先は manifest に宣言されていない。',
+				verdict: '不適合',
+				nextAction:
+					'提供終了の告知期間は保留条項「廃止段階の告知期間（何日前にお知らせするか）は owner の判断であり、本 Issue では決めない。」の判断に含める。移行先の path を manifest に宣言する件は manifest schema の変更として別の Issue の領域にする。',
 			},
 		],
 	},
@@ -285,29 +391,43 @@ export const usableProductExamples: readonly AppliedExample[] = [
 				evidence:
 					'API directory が `path` / `method` / `authentication: credentialed` / `authForm: api-key` を宣言し、必要な scope（`reactions:read` / `reactions:write`）を `purpose` に明記している。',
 				gap: 'API key をどこで発行するかについての記載は catalog に無く、catalog の責務外である。',
+				verdict: '未確認',
+				nextAction:
+					'API key をどこで発行し、利用者がたどる案内をどの記録に書くかは、未決項目「API key をどこで発行し、利用者がたどる案内をどの記録に書くかは owner の判断である（未確認・owner 確認待ち）。」の判断に含める。',
 			},
 			{
 				stageId: 'operate',
 				evidence:
 					'`purpose` が「idempotent by target + actor + image reference」と操作の入力を名指しし、`responseExample` が成功時の応答の形を示している。',
 				gap: 'リクエスト body の field 名・型・必須か任意かの区別は表明されておらず、入力の example も無い。',
+				verdict: '不適合',
+				nextAction:
+					'リクエスト body の field 名・型・必須か任意かの区別と入力の example を catalog に宣言する件は、保留条項「API directory の schema に deprecation を表す field を追加するかは、既存 schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 			{
 				stageId: 'explain',
 				evidence:
 					'3 verb すべての `purpose` が何を返すかを示し、`responseExample` が field 単位の形を示している。',
 				gap: null,
+				verdict: '適合',
+				nextAction: usableProductNoAction,
 			},
 			{
 				stageId: 'recover',
 				evidence:
 					'`errorForm` が 401 / 403 / 400 / 422 / 429 を列挙し、`rateLimitBinding` が read と write の上限 binding を示す。',
 				gap: '429 を受けた利用者がいつ再試行してよいか（Retry-After のような指標）は catalog に宣言されていない。',
+				verdict: '不適合',
+				nextAction:
+					'429 を受けた利用者が再試行してよい時期の指標を catalog に宣言する件は、保留条項「API directory の schema に deprecation を表す field を追加するかは、既存 schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 			{
 				stageId: 'retire',
 				evidence: 'なし（catalog に、廃止や廃止予定を表す field が無い）。',
 				gap: '提供を終了するときの告知と移行先の記述が catalog に無い。schema への追加は別の Issue の領域である。',
+				verdict: '未確認',
+				nextAction:
+					'提供終了の告知と移行先を catalog に宣言する件は、保留条項「API directory の schema に deprecation を表す field を追加するかは、既存 schema の変更として別の Issue の領域にする。」の判断に含める。',
 			},
 		],
 	},
@@ -328,27 +448,42 @@ export const usableProductExamples: readonly AppliedExample[] = [
 				evidence:
 					'manifest が `delivery.kind: host_disabled` と `disabled_reason` に「Tool is currently a Next.js component library (no vite.config, no index.html). Embedding blocked until the Tool repo adds a standalone Vite build path (Issue #81 follow-up after pilot).」を宣言している。',
 				gap: null,
+				verdict: '不適合',
+				nextAction:
+					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と entry HTML が manifest に載る）。',
 			},
 			{
 				stageId: 'operate',
 				evidence: 'なし（配布 path が無いので、操作の入口も無い）。',
 				gap: '利用者が入るべき入口が存在しない。',
+				verdict: '不適合',
+				nextAction:
+					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と操作の入口が manifest に載る）。',
 			},
 			{
 				stageId: 'explain',
 				evidence: '`disabled_reason` が「なぜ公開できないか」を説明している。',
 				gap: null,
+				verdict: '不適合',
+				nextAction:
+					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（対象とライセンスの説明が manifest に載る）。',
 			},
 			{
 				stageId: 'recover',
 				evidence: 'なし。',
 				gap: '失敗した利用者に「待つ」以外の復帰手段が無い。',
+				verdict: '不適合',
+				nextAction:
+					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布に失敗したときの表示が manifest に載る）。',
 			},
 			{
 				stageId: 'retire',
 				evidence:
 					'`disabled_reason` が解禁の条件（Tool リポジトリ側に standalone Vite build path を追加する）を書いている。',
 				gap: '終了の告知は該当しない（そもそも未公開）。',
+				verdict: '不適合',
+				nextAction:
+					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（解禁の条件と移行先が manifest に載る）。',
 			},
 		],
 	},
@@ -378,6 +513,7 @@ export const usableProductSections: readonly PreviewSection[] = [
 		paragraphs: [
 			'公開の判定は「動くか」ではない。利用者が利用開始から失敗時の復帰まで、それぞれの段階で終えられるかで決める。',
 			'5段階は順に置く。並び替えると「操作できないものを先に配ってよい」という誤読が生まれる。出口が閉じている段階があれば、その段階に到達するものは公開しない。',
+			usableProductRuleScope,
 		],
 		bullets: [
 			'入手: 利用開始できる。',
@@ -395,6 +531,17 @@ export const usableProductSections: readonly PreviewSection[] = [
 			'各段階のチェックは「確認できたか」を問う。確認できない項目は保留（未確認）として記録し、勝手に埋めない。',
 		],
 		bullets: [],
+	},
+	{
+		id: 'verdicts',
+		heading: '判定の語彙',
+		kind: 'verdicts',
+		paragraphs: [
+			'適用例の各段階には、判定（適合 / 未確認 / 不適合）と次の対応を記録する。判定は記録だけから出す——記録が答えられない段階は未確認とし、記録に無いまま「適合」とは書かない。',
+		],
+		bullets: usableProductVerdictDefinitions.map(
+			(entry) => `${entry.verdict} — ${entry.definition}`,
+		),
 	},
 	{
 		id: 'example-readmark',
@@ -466,6 +613,21 @@ export const usableProductOpenDecisions: readonly string[] = [
 	'Miro の付箋本文（見出し語以外）を確認できないため、5 段階の順序と「出口」の語彙が owner の意図と一致するかは未確認（owner 確認待ち）。',
 	'「配布する Tool」と「公開する API サービス」のどちらに比重を置くかは、owner の判断である（未確認・owner 確認待ち）。',
 	'廃止の告知をどの記録に書くか（Tool manifest / API catalog / 別の記録）は未確認（owner 確認待ち）。',
+	'API key をどこで発行し、利用者がたどる案内をどの記録に書くかは owner の判断である（未確認・owner 確認待ち）。',
+	'すでに公開済みの公開物（readmark と /api/v1/reactions）が本稿の基準で「不適合」の段階を持つことを踏まえ、公開の継続・撤回・記録の改訂のどれを選ぶかは owner の判断である（未確認・owner 確認待ち）。',
+];
+
+/**
+ * The places a next action may point at.
+ *
+ * A next action that points nowhere would start a process this document
+ * does not have, so the set is closed: the held items, the open owner
+ * decisions, and the condition the Tool manifest itself states.
+ */
+export const usableProductNextActionTargets: readonly string[] = [
+	...usableProductHeld,
+	...usableProductOpenDecisions,
+	'Tool repo adds a standalone Vite build path',
 ];
 
 /** The preview header. */

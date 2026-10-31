@@ -43,9 +43,14 @@ import {
 	usableProductExamples,
 	usableProductHeld,
 	usableProductLabels,
+	usableProductNextActionTargets,
+	usableProductNoAction,
 	usableProductOpenDecisions,
+	usableProductRuleScope,
 	usableProductSections,
 	usableProductStages,
+	usableProductVerdictDefinitions,
+	usableProductVerdicts,
 } from '../src/personal/usable-product-publication/UsableProductPublication.preview.ts';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -293,6 +298,78 @@ describe('worked example parity', () => {
 				stageLines.map((line) => line.stage),
 				expectedStages,
 			);
+		});
+	}
+});
+
+describe('verdict parity', () => {
+	const stagesHeading = usableProductSections.find((section) => section.kind === 'stages')?.heading;
+	const verdictsHeading = usableProductSections.find(
+		(section) => section.kind === 'verdicts',
+	)?.heading;
+
+	it('states the scope of the rule in the document', () => {
+		const body = sections.get(stagesHeading ?? '')?.body.join('\n') ?? '';
+		assert.ok(body.includes(usableProductRuleScope), 'the document does not state the scope');
+	});
+
+	it('defines exactly the three verdicts, and the document carries them', () => {
+		assert.equal(usableProductVerdictDefinitions.length, 3);
+		assert.deepEqual(
+			usableProductVerdictDefinitions.map((entry) => entry.verdict),
+			Object.values(usableProductVerdicts),
+		);
+		const body = sections.get(verdictsHeading ?? '')?.body.join('\n') ?? '';
+		for (const entry of usableProductVerdictDefinitions) {
+			const line = `${entry.verdict} — ${entry.definition}`;
+			assert.ok(body.includes(line), `missing definition: ${entry.verdict}`);
+		}
+	});
+
+	it('records the withdrawal of a published surface as an open owner decision', () => {
+		assert.ok(
+			usableProductOpenDecisions.some((item) => item.includes('撤回')),
+			'no open owner decision about withdrawing an already-published surface',
+		);
+	});
+
+	for (const example of usableProductExamples) {
+		const section = usableProductSections.find((item) => item.exampleId === example.id);
+		it(`gives every stage of ${example.subject} a verdict and a next action`, () => {
+			const body = sections.get(section?.heading ?? '')?.body.join('\n') ?? '';
+			const stageLines = sectionStageLines(body.split('\n'));
+			assert.equal(stageLines.length, example.notes.length);
+			for (const [index, note] of example.notes.entries()) {
+				const line = stageLines[index];
+				assert.ok(
+					Object.values(usableProductVerdicts).includes(note.verdict),
+					`unknown verdict for ${example.subject}/${note.stageId}: ${note.verdict}`,
+				);
+				assert.ok(
+					line.text.includes(`${usableProductLabels.verdict}: ${note.verdict}`),
+					`the stage line of ${example.subject}/${note.stageId} does not carry the verdict`,
+				);
+				assert.ok(
+					line.text.includes(`${usableProductLabels.nextAction}: ${note.nextAction}`),
+					`the stage line of ${example.subject}/${note.stageId} does not carry the next action`,
+				);
+				assert.ok(
+					body.includes(note.nextAction),
+					`the next action of ${example.subject}/${note.stageId} is missing`,
+				);
+				if (note.verdict === usableProductVerdicts.conforming) {
+					assert.equal(
+						note.nextAction,
+						usableProductNoAction,
+						`a conforming stage of ${example.subject}/${note.stageId} needs no action`,
+					);
+					continue;
+				}
+				assert.ok(
+					usableProductNextActionTargets.some((target) => note.nextAction.includes(target)),
+					`the next action of ${example.subject}/${note.stageId} points at no place this document has`,
+				);
+			}
 		});
 	}
 });

@@ -13,16 +13,16 @@
 | Storybook story id | `preview-usableproductpublication-515--checklist` |
 | capture 手段 | `node scripts/capture-usable-product-publication.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
-| viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影。描画後のページ高は 8403 CSS px） |
-| 生成物サイズ | 1024 x 5975 px、**260 kB** WebP（quality 80、budget 300 kB） |
+| viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影。描画後のページ高は 11042 CSS px） |
+| 生成物サイズ | 860 x 6595 px、**282 kB** WebP（quality 80、budget 300 kB） |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 
-### なぜ 1024 px 幅なのか（budget に対して）
+### なぜ 860 px 幅なのか（budget に対して）
 
-1440 px の viewport でページ全体を描いて 1440 px 幅のまま WebP 化すると budget を超える（実測: 1200 px 幅で 330 kB）。**budget は上げない**。
+1440 px の viewport でページ全体を描いて 1440 px 幅のまま WebP 化すると budget を超える。**budget は上げない**。
 
-- 1440 px 幅のままでは 300 kB を超えるため、画像の画素数を絞った。1024 px 幅へ downsample すると **同じ 1 画面の全体**が 260 kB に収まる。
+- 1440 px 幅のままでは 300 kB を超えるため、画像の画素数を絞った。判定結果と次の対応が画面に加わった後の実測は、1024 px 幅で 374 kB / 940 px 幅で 327 kB / 900 px 幅で 303 kB と budget を超え、**860 px 幅で 282 kB** に収まる。
 - viewport を狭めても解決しない。content span は `Container`（`maxWidth: 1024px`）で上限を持つため、viewport を狭めても本文の幅は 1024 px のままで、**文書は長くなる**だけである。WebP の size は本文の画素数でほぼ決まるので、狭い viewport は容量の節約にならない。
 
 つまり「画面を一部だけ撮る」のではなく「**画面全体を、budget に収まる倍率で**撮る」選択である。assertion（§3）は画像の画素数に依らず DOM 全体を見るので、文書の途中が欠けていても capture は落ちる。**画像は 1 画面（full page）そのものであり、切り詰めた部分画像ではない**。
@@ -51,12 +51,14 @@ harness は **shipped story module を直接 import** し、その story が宣�
 
 1. **document title** — `usableProductTitle`（「使えるもの」を配布・API・操作の公開条件に落とす）。
 2. **lead 段落** — `usableProductLead`。
-3. **8 つの section** — `usableProductSections` の順に並ぶ（典拠と読み方 / 公開条件の5段階 / 段階ごとのチェックリスト / 適用例 3 件 / 採用と保留 / 残存 · 要 owner 判断）。見出しは preview データの `heading` と一致する（§3 の gate が集合と順序を固定する）。
-4. **5 段階のカード** — 各段階の「利用者の出口」と「判定」。
-5. **段階ごとのチェック** — 5 段階 × 3 項目 = 15 個のチェック項目が list item として描画される。
-6. **適用例 3 件** — readmark（既存 Tool）/ `/api/v1/reactions`（既存 API）/ text-counter（公開できない Tool）。各例は、典拠（committed record）と pointer、事実値、5 段階ごとの「記録が述べていること」と「記録に無いこと」を持つ。
-7. **採用と保留** — 採用 5 項目 / 保留 4 項目。
-8. **残存 · 要 owner 判断** — 未決 3 項目。
+3. **9 つの section** — `usableProductSections` の順に並ぶ（典拠と読み方 / 公開条件の5段階 / 段階ごとのチェックリスト / 判定の語彙 / 適用例 3 件 / 採用と保留 / 残存 · 要 owner 判断）。見出しは preview データの `heading` と一致する（§3 の gate が集合と順序を固定する）。
+4. **規則の適用範囲** — 「公開条件の5段階」節の 3 番目の段落。規則が「これから公開する公開物」に適用する公開条件であり、公開済みの公開物の撤回は本稿では決めないことを明記する。
+5. **5 段階のカード** — 各段階の「利用者の出口」と「判定」。
+6. **段階ごとのチェック** — 5 段階 × 3 項目 = 15 個のチェック項目が list item として描画される。
+7. **判定の語彙** — 適合 / 未確認 / 不適合の 3 つの定義。
+8. **適用例 3 件** — readmark（既存 Tool）/ `/api/v1/reactions`（既存 API）/ text-counter（公開できない Tool）。各例は、典拠（committed record）と pointer、事実値、5 段階ごとの「記録が述べていること」「記録に無いこと」、そして各段階の **判定結果** と **次の対応** を持つ。
+9. **採用と保留** — 採用 5 項目 / 保留 4 項目。
+10. **残存 · 要 owner 判断** — 未決 5 項目（API key の発行場所、公開済み公開物の継続・撤回・記録の改訂を含む）。
 
 ## 3. 機械で検証した項目
 
@@ -77,6 +79,8 @@ harness は **shipped story module を直接 import** し、その story が宣�
 | 適用例が描く事実 | 各適用例が `label = value` の形式ですべての `facts` を描画する |
 | 適用例の段階ノート | 各適用例が 5 段階それぞれの `evidence` を描画する |
 | 適用例の欠落 | `gap !== null` の段階についてのみ `gap` を描画する（`gap === null` の段階に欠落文言を出さない） |
+| 適用例の判定結果 | 各段階が `verdict`（適合 / 未確認 / 不適合）を描画する |
+| 適用例の次の対応 | 各段階が `nextAction` を描画する |
 | 採用 / 保留 / 未決 | `usableProductAdopted` / `usableProductHeld` / `usableProductOpenDecisions` の全項目が `<li>` として描画される |
 | 横スクロール | `scrollWidth <= clientWidth`（WCAG 2.2 SC 1.4.10 Reflow）。撮影幅 1440 で横スクロールは出ない |
 
@@ -84,7 +88,7 @@ harness は **shipped story module を直接 import** し、その story が宣�
 
 ## 4. 本文との一致（parity gate）
 
-本文 `docs/personal/usable-product-publication.md` と preview データ `src/personal/usable-product-publication/UsableProductPublication.preview.ts` の一致は `scripts/check-usable-product-preview-parity.test.mjs` が検証する。
+本文 `docs/personal/usable-product-publication.md` と preview データ `src/personal/usable-product-publication/UsableProductPublication.preview.ts` の一致は `scripts/check-usable-product-preview-parity.test.mjs` が検証する。parity gate は本文と preview データが一致しているかを見るに加えて、各段階の判定が 3 つの語彙のどれかでであること、次の対応が本文に存在すること、次の対応が本文が既に持つ場所（保留項目・未決項目・manifest 自身が宣言する条件）を指していること、規則の適用範囲が本文に書かれていることも見る。
 
 本 capture はその parity gate の **別 half** である。parity gate は「本文と preview データが一致しているか」を見るが、**preview が実際に描画されているか**は見ていない。capture は描画された DOM を見る。
 
@@ -111,10 +115,10 @@ capture script は `package.json` に登録していない（並列 PR の confl
 - 記録の**事実値**（Tool slug・API path・schema field・件数）が、その記録の正しい読み取りであるか。
 - 5 段階の並び順が**読み順**として自然か、廃止段の扱いが運用と合っているか。
 - 適用例として選んだ 3 件（既存 Tool / 既存 API / 公開できない Tool）が「代表性がある」と言えるか。
-- artefact の 1024 px 幅の縮小が、レビュー時に読みやすさとして妥当か。
+- artefact の 860 px 幅の縮小が、レビュー時に読みやすさとして妥当か。
 
 ## 7. 残存の未決事項
 
 - **`pnpm run knip:check` は green（141 findings / 141 baselined / 0 new）。** `knip.json` の entry には `scripts/*.test.mjs` が含まれるため、`scripts/capture-usable-product-publication.test.mjs` が本 script を import する時点で本 script は unused 扱いにならない。`package.json` の scripts には登録していない（並列 PR との conflict を避けるため）。§5 の `node scripts/...` で実行できる。
 - Miro の付箋本文は閲覧できないため、付箋内の詳細・時系列・数値・評価・軸の優先順位は本文側で「未確認（owner 確認待ち）」と明示してある。確認後に本文を書き換える場合、本文と preview の parity gate が落ちるため、preview データも同時に更新する必要がある。
-- 画像内地物の文字は 1024 px 幅へ downsample されている（本文の 16 px は約 11 px になる）。拡大すれば読めるが、印刷して読む用途には適さない。
+- 画像内地物の文字は 860 px 幅へ downsample されている（本文の 16 px は約 10 px になる）。拡大すれば読めるが、印刷して読む用途には適さない。

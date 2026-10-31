@@ -18,13 +18,13 @@
  * it reads the document title, the lead paragraph, every section
  * heading and its prose, every bullet, every stage (name / exit /
  * judgement), every stage check, every worked example (subject /
- * record / facts / per-stage evidence and gap), the adopted and the
- * held decisions, the open questions, and it compares them with the
- * preview data module. A preview that stopped rendering a section, a
- * stage or an example fails the capture instead of producing a
- * flattering picture of half the inventory. It also reads whether the
- * document scrolls sideways at the capture width (WCAG 2.2 SC 1.4.10
- * Reflow).
+ * record / facts / per-stage evidence and gap, and the VERDICT and the
+ * NEXT ACTION of every stage), the adopted and the held decisions, the
+ * open questions, and it compares them with the preview data module. A
+ * preview that stopped rendering a section, a stage or an example fails
+ * the capture instead of producing a flattering picture of half the
+ * inventory. It also reads whether the document scrolls sideways at the
+ * capture width (WCAG 2.2 SC 1.4.10 Reflow).
  *
  * Why a generated harness instead of the Storybook builder
  * ---------------------------------------------------------
@@ -137,16 +137,18 @@ export const SCREENSHOT_BUDGET_BYTES = 300 * 1024;
  *
  * The checklist is long: the five stages are drawn three times over
  * (once as the stage table, once as the per-stage checks, once as the
- * per-stage evidence notes of every worked example), and three worked
- * examples are attached. The full-page capture therefore costs more
- * than the 300 kB budget a committed verification artefact may
- * occupy, and the budget is never raised to fit a bigger picture. The
- * artefact is encoded narrower instead: the same page, downsampled,
- * stays inside the budget (measured 2026-10-31: 1200 px wide costs
- * 330 kB and is over budget, 1024 px wide costs 260 kB and is under
- * it).
+ * per-stage evidence notes of every worked example), three worked
+ * examples are attached, and every stage note now carries its verdict
+ * and its next action. The full-page capture therefore costs more than
+ * the 300 kB budget a committed verification artefact may occupy, and
+ * the budget is never raised to fit a bigger picture. The artefact is
+ * encoded narrower instead: the same page, downsampled, stays inside
+ * the budget (measured 2026-10-31 with the verdict and next action on
+ * the screen: 1024 px wide costs 374 kB and is over budget, 940 px
+ * wide costs 327 kB and is over budget, 900 px wide costs 303 kB and
+ * is over budget, 860 px wide costs 282 kB and is under it).
  */
-export const ARTEFACT_WIDTH = 1024;
+export const ARTEFACT_WIDTH = 860;
 
 /** The device pixel ratio of the capture (the artefact is downsampled). */
 export const SCREENSHOT_DEVICE_SCALE_FACTOR = 1;
@@ -482,6 +484,16 @@ export function verifyRenderedPreview(
 			if (note.gap !== null && !(card.lines ?? []).includes(note.gap)) {
 				failures.push(
 					`the example "${example.subject}" does not render the gap of the stage "${note.stageId}"`,
+				);
+			}
+			if (!(card.lines ?? []).includes(note.verdict)) {
+				failures.push(
+					`the example "${example.subject}" does not render the verdict "${note.verdict}" of the stage "${note.stageId}"`,
+				);
+			}
+			if (!(card.lines ?? []).includes(note.nextAction)) {
+				failures.push(
+					`the example "${example.subject}" does not render the next action of the stage "${note.stageId}"`,
 				);
 			}
 		}

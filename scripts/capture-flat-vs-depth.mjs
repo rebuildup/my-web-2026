@@ -14,14 +14,22 @@
  *
  * Why a generated harness instead of the Storybook iframe
  * ---------------------------------------------------------
- * The Storybook dev preview does not boot in this repository: the
- * iframe drops `@id/__x00__virtual:/@storybook/builder-vite/vite-app.js`
- * with a 404 (Storybook 8.6 / Vite 7 incompatibility). The repository
- * already records this as a known limitation
- * (`docs/verification/a11y/status-monochrome.md` §既知の制約) and the
- * canonical way to photograph a story here is a generated Vite harness
- * that imports the story module itself — the same shape as
- * `scripts/capture-error-state-gallery.mjs`. Because the harness imports
+ * `pnpm run build-storybook` in this repository emits a MANAGER-ONLY
+ * static build (no `iframe.html`): the `@storybook/react-vite` builder
+ * merges the project's `vite.config.ts`, and the `@cloudflare/vite-plugin`
+ * + TanStack Start plugins in it take over the output. That defect is
+ * recorded in `scripts/capture-error-state-gallery.mjs` (Issue #501)
+ * and `scripts/capture-a11y-table-code.mjs` (Issue #407).
+ *
+ * `storybook dev` itself DOES start and DOES render the stories
+ * (measured 2026-10-31: `pnpm exec storybook dev --port 6013` serves
+ * the index and `iframe.html?id=<story id>` renders the story; the
+ * `Missing required secrets for Worker "my-web-2026"` line it prints
+ * is a warning, not a startup failure). The capture still uses a
+ * harness so that it does not depend on a long-lived dev server, so
+ * that the DOM assertions run inside the same command as the capture,
+ * and so that its result does not depend on the Storybook builder.
+ * Because the harness imports
  * the story module, the capture and the Storybook surface cannot drift
  * apart: renaming the story makes this script fail loudly instead of
  * quietly photographing an empty page.
@@ -422,8 +430,8 @@ async function main() {
 			quality: SCREENSHOT_QUALITY,
 			budgetBytes: SCREENSHOT_BUDGET_BYTES,
 			issuePathSubstituted: `${ISSUE_ARTEFACT_PATH} -> .webp`,
-			storybookIframeUnavailable:
-				'this repository cannot boot the Storybook dev preview (the iframe drops the builder-vite preview module with a 404); the capture renders the same story module through the repository Vite harness pattern',
+			captureMechanism:
+				'the capture renders the same story module through the repository Vite harness pattern; `pnpm run build-storybook` in this repository emits a manager-only static build with no `iframe.html`, so there is no static Storybook gallery to photograph',
 			compositionNotScreenshot:
 				'the preview reproduces the measured composition of the two public screens; it is not a screenshot of them',
 			reproducible:

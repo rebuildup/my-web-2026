@@ -2,7 +2,6 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
-import { auth } from '../../cloudflare/auth/better-auth';
 import type { AdminSession } from '../auth/load';
 import { AdminAuthError, requireAdmin } from '../auth/require-admin';
 import { StepUpError, assertStepUpGranted } from '../auth/step-up';
@@ -16,6 +15,18 @@ import { StepUpError, assertStepUpGranted } from '../auth/step-up';
  * incoming request headers so Better Auth recognises the caller as
  * an admin (the plugin's `adminMiddleware` is satisfied because the
  * `requireAdmin()` helper above gates on role first).
+ *
+ * Issue #724: the Better Auth instance is resolved with `await import(…)`
+ * inside each implementation function, never at module level. A
+ * module-level import is evaluated when the module loads, so it stays in
+ * the graph of every client that imports this file — the Better Auth
+ * server stack (Kysely, Drizzle, the SQLite dialects, the API-key
+ * plugin) would then ship to every visitor's browser, even to the public
+ * home page. The `*Impl` functions below are plain exports rather than
+ * `.handler()` bodies, so the compiler plugin does not strip them for the
+ * client; the dynamic import is what keeps the server stack out of the
+ * browser graph, because the client build has no reference left to these
+ * functions once the server-function handler bodies are stripped.
  *
  * Issue #445: key CREATION additionally passes the step-up gate
  * (`assertStepUpGranted`) because it grants standing authority. The
@@ -105,6 +116,7 @@ export async function listApiKeysImpl(
 	// the body, so the SERVER_ONLY_PROPERTY gate is not triggered
 	// here. See `createApiKey` for the parallel reasoning on why
 	// that one DOES drop the headers.
+	const { auth } = await import('../../cloudflare/auth/better-auth');
 	const result = await auth.api.listApiKeys({ headers });
 	const rows = (result as unknown as { apiKeys?: Array<Record<string, unknown>> }).apiKeys ?? [];
 	return rows.map(toAdminApiKey);
@@ -140,6 +152,7 @@ export async function createApiKeyImpl(
 	// session user id. See ADR-0009 §4 for the broader "service role"
 	// pattern that this implements for admin operations.
 	void _headers;
+	const { auth } = await import('../../cloudflare/auth/better-auth');
 	const created = (await auth.api.createApiKey({
 		body: {
 			name: data.name,
@@ -221,6 +234,7 @@ export async function deleteApiKeyImpl(
 	// the caller as admin and check ownership of the row. The body
 	// only carries `keyId` — no SERVER_ONLY_PROPERTY fields — so
 	// `isClientRequest && permissions…` does not fire.
+	const { auth } = await import('../../cloudflare/auth/better-auth');
 	await auth.api.deleteApiKey({
 		headers,
 		body: { keyId: data.id },

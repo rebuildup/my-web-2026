@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
-import { auth } from '../../cloudflare/auth/better-auth';
 
 /**
  * Server-side session helpers for the admin surface.
@@ -17,6 +16,16 @@ import { auth } from '../../cloudflare/auth/better-auth';
  *
  * The admin plugin's role field is exposed as `user.role`. The project has
  * no custom roles — only `admin` and `user`. See ADR-0009 §1.
+ *
+ * Issue #724: the Better Auth instance is resolved with `await import(…)`
+ * **inside** each `.handler()` body, never at module level. A module-level
+ * import is evaluated when the module loads, so it stays in the graph of
+ * every client that imports this file — and the Better Auth server stack
+ * (Kysely, Drizzle, the SQLite dialects, the API-key plugin) then ships to
+ * every visitor's browser. Inside `.handler()` is the one position the
+ * TanStack Start compiler plugin treats as Worker-only: it strips the
+ * handler body out of the client build, so the server stack never enters
+ * the browser graph at all.
  */
 export interface AdminSessionUser {
 	id: string;
@@ -44,6 +53,7 @@ export interface AdminSession {
 export const getCurrentSession = createServerFn({ method: 'GET' }).handler(
 	async (): Promise<AdminSession | null> => {
 		const headers = getRequestHeaders();
+		const { auth } = await import('../../cloudflare/auth/better-auth');
 		const session = await auth.api.getSession({ headers });
 		if (!session) return null;
 		return {
@@ -69,6 +79,7 @@ export const getCurrentSession = createServerFn({ method: 'GET' }).handler(
 export const signOutCurrentSession = createServerFn({ method: 'POST' }).handler(
 	async (): Promise<void> => {
 		const headers = getRequestHeaders();
+		const { auth } = await import('../../cloudflare/auth/better-auth');
 		await auth.api.signOut({ headers });
 	},
 );

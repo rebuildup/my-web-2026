@@ -170,3 +170,58 @@ test('exits 2 when the policy is malformed', async (t) => {
 	assert.equal(result.status, 2);
 	assert.match(result.stderr, /server_only_packages must be an array of strings/);
 });
+
+/**
+ * A graph the gate cannot read is not a clean bundle.
+ *
+ * The gate exists to remove a silent green, so the negative controls
+ * here are the point of the suite: a chunk whose `modules` key is
+ * missing, and a graph that carries no module id at all, must both
+ * fail closed instead of reporting `pass`.
+ */
+test('exits 2 when a chunk carries no modules array', async (t) => {
+	const dir = await mkdtemp(resolve(tmpdir(), 'my-web-server-only-no-modules-'));
+	t.after(() => rm(dir, { recursive: true, force: true }));
+
+	const graphPath = resolve(dir, 'bundle-graph.json');
+	await writeFile(
+		graphPath,
+		`${JSON.stringify(
+			{
+				schema_version: 1,
+				chunks: { 'assets/index.js': { is_entry: true } },
+			},
+			null,
+			'\t',
+		)}\n`,
+	);
+	const policyPath = await writePolicy(dir);
+
+	const result = runGate(graphPath, policyPath);
+
+	assert.equal(result.status, 2);
+	assert.match(result.stderr, /has no `modules` array/);
+	assert.doesNotMatch(result.stdout, /"verdict": "pass"/);
+});
+
+test('exits 2 when the graph carries no module id at all', async (t) => {
+	const dir = await mkdtemp(resolve(tmpdir(), 'my-web-server-only-empty-graph-'));
+	t.after(() => rm(dir, { recursive: true, force: true }));
+
+	const graphPath = resolve(dir, 'bundle-graph.json');
+	await writeFile(
+		graphPath,
+		`${JSON.stringify(
+			{ schema_version: 1, chunks: { 'assets/index.js': { is_entry: true, modules: [] } } },
+			null,
+			'\t',
+		)}\n`,
+	);
+	const policyPath = await writePolicy(dir);
+
+	const result = runGate(graphPath, policyPath);
+
+	assert.equal(result.status, 2);
+	assert.match(result.stderr, /carries no module id at all/);
+	assert.doesNotMatch(result.stdout, /"verdict": "pass"/);
+});

@@ -138,6 +138,9 @@ describe('assetInventoryTable', () => {
 		// capture unreproducible.
 		const read = parseAssetInventoryValue({
 			schema: 'asset-license-inventory.v1',
+			// Issue #728: the record states WHEN it was reviewed, so the
+			// projection can only be built from a record that carries one.
+			reviewedAt: '2026-10-19',
 			assets: [],
 		});
 		expect(read.ok).toBe(true);

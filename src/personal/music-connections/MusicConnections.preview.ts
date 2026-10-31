@@ -113,7 +113,7 @@ export const MUSIC_CONNECTIONS = {
 			'典拠: Issue #525 が引用する Miro の見出し語「好きなもの > 音楽 > DTM/好きなアーティスト/ボカロ/ネット音楽」',
 		verification: '機械検証: scripts/check-music-connections-preview-parity.test.mjs',
 		preview: 'プレビュー: src/personal/music-connections/MusicConnections.stories.tsx',
-	},
+	} satisfies InfluenceDocument,
 	sections: [
 		{
 			heading: '1. 目的とこの文書が解く問題',

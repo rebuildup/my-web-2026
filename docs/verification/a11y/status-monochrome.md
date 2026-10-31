@@ -189,11 +189,17 @@ emulate** した（story 側を 2 つに増やしていない）。
 
 ## 既知の制約
 
-- ローカルの Storybook dev preview はこのリポジトリで起動できない
-  （Storybook 8.6 と Vite 7 の非互換。iframe が
-  `@id/__x00__virtual:/@storybook/builder-vite/vite-app.js` を 404 で落とす）。
-  本 Issue のスクリーンショットは同じ fixture 構成を静的 render して撮影した。
-  Storybook 自体の修正は別 Issue の領域。
+- **Storybook dev preview は起動できる。** 2026-10-31 に実測した結果
+  （`pnpm exec storybook dev --port 6019`）: dev server は起動し、`/index.html` と
+  `/iframe.html` はともに 200、`@id/__x00__virtual:/@storybook/builder-vite/vite-app.js`
+  も 200 で落ちることはない。Chromium で `iframe.html?id=home-statustiles--monochrome` を
+  開くと story の本文が描画され、console error は 0 件である。起動時に出る
+  `Missing required secrets for Worker "my-web-2026"` と `[Better Auth]: Base URL is not set`
+  は `@cloudflare/vite-plugin` と better-auth の警告であって、起動も描画も妨げない。
+  **この記録が以前いた「Storybook 8.6 と Vite 7 の非互換で iframe が 404 を落とす」という
+  制約は再現しなかったため、訂正して削除した（Issue #737）。**
+  本 Issue のスクリーンショットは、Storybook で描画できることは確認したが、
+  同じ fixture 構成を静的 render して撮影したものである。
 
 - **スクリーンショットと 8px ラスタライズ測定は、repository から再生成できない。**
   上の 6 枚は「Storybook fixture と同構成の静的 render」からの撮影であり、

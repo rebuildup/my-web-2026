@@ -679,7 +679,7 @@ export const FLAT_VS_DEPTH_SECTIONS: readonly FlatVsDepthSection[] = [
 		candidateIds: [],
 		notes: [
 			'Miro の付箋の内容そのもの（Issue 本文の引用以外の情報）は未確認（owner 確認待ち）。',
-			'本番がバージョン 0.7.0 を表示している点は観測済み。repository の release-0-8-0 との差分は未確認（owner 確認待ち）。',
+			'本番が:main のリリース版を表示している点は観測済み。repository のリリースブランチとの差分は未確認（owner 確認待ち）。',
 			'改善候補を適用すべきかどうかは owner の判断（保留）。',
 		],
 		decisions: [],

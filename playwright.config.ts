@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { isLocalOrigin } from './scripts/_local-origin.mjs';
+
 /**
  * Playwright configuration for my-web-2026.
  *
@@ -75,7 +77,7 @@ export default defineConfig({
 	// throws if it did not. Production runs against
 	// `https://rebuildup.dev`, which already owns its D1 and has no
 	// local state directory to check, so it is skipped there.
-	globalSetup: BASE_URL.startsWith('http://127.0.0.1') ? './e2e/global-setup.ts' : undefined,
+	globalSetup: isLocalOrigin(BASE_URL) ? './e2e/global-setup.ts' : undefined,
 	timeout: 30_000,
 	expect: { timeout: 5_000 },
 	fullyParallel: true,
@@ -154,7 +156,7 @@ export default defineConfig({
 		// each other — and this suite never fails here because no
 		// Storybook is listening.
 		'**/axe-storybook.spec.ts',
-		...(BASE_URL.startsWith('http://127.0.0.1')
+		...(isLocalOrigin(BASE_URL)
 			? LOCAL_SMOKE
 				? ['**/prod-portfolio.spec.ts']
 				: ['**/prod-*.spec.ts']
@@ -191,7 +193,7 @@ export default defineConfig({
 	// exits non-zero without starting the server, the URL never becomes
 	// ready, and Playwright fails the run — the gate stays red rather
 	// than quietly running against an unprepared database (Issue #262).
-	webServer: BASE_URL.startsWith('http://127.0.0.1')
+	webServer: isLocalOrigin(BASE_URL)
 		? {
 				command: `node scripts/e2e-local-bootstrap.mjs --port=${PORT}`,
 				url: BASE_URL,

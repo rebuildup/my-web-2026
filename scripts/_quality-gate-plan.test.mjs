@@ -138,6 +138,9 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
 	'pnpm run a11y:image-alt:check',
+	// Issue #400: the text reflow / resize-text contract, declared in
+	// `quality/profile.yaml` right after the image-alt gate.
+	'pnpm run a11y:reflow:check',
 	'pnpm run a11y:language-of-parts:check',
 	// Issue #398: the heading-outline / landmark contract. It runs
 	// right after the other `a11y` contracts, so an outline finding is

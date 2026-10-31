@@ -207,6 +207,8 @@
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
 		"a11y:image-alt:check": "node scripts/check-a11y-image-alt.mjs",
 		"capture:a11y-image-alt": "node scripts/capture-a11y-image-alt.mjs",
+		"a11y:reflow:check": "node scripts/check-a11y-reflow.mjs",
+		"capture:a11y-reflow": "node scripts/capture-a11y-reflow.mjs",
 		"a11y:table:code:check": "node scripts/check-table-code-a11y.mjs",
 		"a11y:heading-landmarks:check": "node scripts/check-a11y-heading-landmarks.mjs",
 		"capture:a11y-heading-landmarks": "node scripts/capture-a11y-heading-landmarks.mjs",

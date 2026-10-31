@@ -6,7 +6,9 @@
 		"scripts/_no-wrangler-resolver.mjs",
 		"scripts/check-knip.mjs",
 		"scripts/run-deploy-inner.mjs",
+		"scripts/fixtures/**/*.tsx",
 		"scripts/*.test.mjs",
+		"scripts/fixtures/a11y-image-alt/**/*.tsx",
 		"test/fixtures/content/stale-review/src/fixture/page.tsx",
 		"src/cloudflare/workers-stub.ts"
 	],

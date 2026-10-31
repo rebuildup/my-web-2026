@@ -119,6 +119,10 @@ const EXPECTED_FAST_PLAN = [
 	// review-pending finding is read next to the other copy findings.
 	'pnpm run copy:stale:check',
 	'pnpm run publication:check',
+	// Issue #734: the sitemap-membership cross-check runs right after the
+	// publication ledger it compares against the sitemap generator, so a
+	// disagreement is read next to the ledger finding it belongs to.
+	'pnpm run sitemap:ledger:check',
 	'pnpm run content:links:check',
 	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',
@@ -133,9 +137,44 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run knip:check',
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
+	// Issue #396: the icon-button accessible-name contract, declared in
+	// `quality/profile.yaml` right after the reduced-motion gate.
+	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
+	'pnpm run a11y:image-alt:check',
+	// Issue #400: the text reflow / resize-text contract, declared in
+	// `quality/profile.yaml` right after the image-alt gate.
+	'pnpm run a11y:reflow:check',
 	'pnpm run a11y:language-of-parts:check',
+	// Issue #398: the heading-outline / landmark contract. It runs
+	// right after the other `a11y` contracts, so an outline finding is
+	// read next to the other accessibility findings.
+	'pnpm run a11y:heading-landmarks:check',
+	// Issue #410: the WCAG 2.2 A/AA manual review matrix, declared in
+	// `quality/profile.yaml` right after the heading / landmark gate.
+	// Both read the accessibility contract of the shipped surfaces; this
+	// one reads the RECORD of the judgements a machine cannot make. The
+	// position is deliberately NOT right after the colour-contrast gate,
+	// so a gate that needs that position does not collide with this one.
+	'pnpm run a11y:wcag-review-matrix:check',
 	'pnpm run css:check',
+	// Issue #399: the colour-contrast AA contract. It runs right after the
+	// CSS gate, because both read the shipped token / stylesheet layer.
+	'pnpm run a11y:contrast:check',
+	// Issue #405: the live-region / status-message contract, declared in
+	// `quality/profile.yaml` right after the contrast gate.
+	'pnpm run a11y:live-region:check',
+	// Issue #395: the focus visibility / focus-not-obscured contract. It
+	// runs right after the colour gate, because both read the shipped
+	// source and the shipped stylesheet.
+	'pnpm run a11y:focus-visible:check',
+	// Issue #392: the offline half of the Storybook story axe audit. It
+	// sits with the other accessibility gates, right after the contrast
+	// contract, and it is a pure Node gate — the browser half
+	// (`a11y:axe-storybook:e2e`) needs a Storybook server and is
+	// therefore not part of the offline fast plan. The browser half runs
+	// in CI, in the dedicated `storybook axe` job.
+	'pnpm run a11y:axe-storybook:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

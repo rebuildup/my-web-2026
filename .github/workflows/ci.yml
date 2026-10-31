@@ -84,12 +84,23 @@ jobs:
       # `not applicable` and passes. A pull request that changes it
       # without a recorded owner decision resolves to `not run`
       # (NEEDS REVIEW) and fails, which is the point of the gate.
+      #
+      # Issue #686 — the base ref is fetched WITH its history
+      # (`--unshallow`), not as a depth-1 snapshot. The gate's diff
+      # base is the pull request's merge base, which is an ancestor of
+      # the base branch tip; a depth-1 fetch leaves that commit out of
+      # the object store, and the gate then cannot diff the change set
+      # it is asked to judge (`fatal: bad object` → exit 2) as soon as
+      # ONE merge lands on the base branch. The gate script itself is
+      # unchanged: it stays fail-closed when the change set is unknown.
       - name: Copy editorial approval gate
         if: github.event_name == 'pull_request'
         env:
           COPY_APPROVAL_BASE: ${{ github.base_ref }}
         run: |
-          git fetch --no-tags --depth=1 origin \
+          git fetch --no-tags --unshallow origin \
+            "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}" \
+            || git fetch --no-tags origin \
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}"
           pnpm run copy:approval:check
       # Issue #425 — the Japanese copy review-target report. This is a
@@ -104,14 +115,19 @@ jobs:
       #
       # Like the #506 step it judges a diff, so it is a pull request
       # step, and the base ref is fetched because actions/checkout is a
-      # depth-1 clone.
+      # depth-1 clone. Issue #686 — the base ref is fetched WITH its
+      # history, for the same reason as the #506 step above: the diff
+      # base is the merge base, and a depth-1 snapshot does not carry
+      # that commit.
       - name: Japanese copy review targets
         if: github.event_name == 'pull_request'
         env:
           COPY_REVIEW_BASE: ${{ github.base_ref }}
         run: |
           set -o pipefail
-          git fetch --no-tags --depth=1 origin \
+          git fetch --no-tags --unshallow origin \
+            "+refs/heads/${COPY_REVIEW_BASE}:refs/remotes/origin/${COPY_REVIEW_BASE}" \
+            || git fetch --no-tags origin \
             "+refs/heads/${COPY_REVIEW_BASE}:refs/remotes/origin/${COPY_REVIEW_BASE}"
           mkdir -p .tmp
           pnpm run copy:diff:report -- \
@@ -144,12 +160,12 @@ jobs:
       #
       # Two independent failure contracts:
       #   - Blocking critical/high advisories FAIL the build while the
-      #     declaration says `enforcement: block` (Issue #645). The one
-      #     outstanding advisory (`braces`, no published patched
-      #     release) is covered by one dated, tracked exception record
-      #     (tracking Issue #669); an expired record blocks again.
-      #     Remediating or approving is an owner decision tracked in
-      #     docs/runbook/dependency-advisories.md §6.
+      #     declaration says `enforcement: block` (Issue #645). The
+      #     exception ledger is empty, so every critical/high finding
+      #     blocks; a record that matches no advisory is reported as
+      #     stale and has to be removed, and an expired record blocks
+      #     again. Remediating or approving is an owner decision
+      #     tracked in docs/runbook/dependency-advisories.md §6.
       #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
       #     mode. A registry outage must never be reported as a clean
       #     dependency tree, so this step is not `continue-on-error`.
@@ -243,3 +259,54 @@ jobs:
           name: dist-cloudflare-${{ github.sha }}
           path: dist-cloudflare/
           retention-days: 7
+
+  # Issue #392 — the Storybook axe audit as its own job.
+  #
+  # The offline gate (`pnpm run a11y:axe-storybook:check`) only checks
+  # that the manifest, the ledger and the fixtures agree. It never
+  # renders a story, so it can never observe a violation. The only
+  # device that can is the browser audit
+  # (`e2e/a11y/axe-storybook.spec.ts`), and until this job existed no
+  # job ran it: a pull request could ship a violation with every check
+  # green, because the static gate cannot see one.
+  #
+  # The job runs UNCONDITIONALLY, on purpose. A story's rendered output
+  # can change through a component, a dependency, a Storybook config or
+  # a token — not only through a `.stories.tsx` diff — so a diff-based
+  # or label-based condition would leave exactly the hole this job
+  # closes. The cost is runner time; the benefit is that no pull
+  # request reaches `main` without being measured.
+  #
+  # The lifecycle — start the server on loopback, wait for the origin,
+  # wait until a story actually RENDERS (the cold start of a fresh
+  # checkout optimises the Vite dependencies on the first preview
+  # requests), run the suite, print the server log when the audit
+  # fails — lives in `scripts/run-storybook-axe-audit.mjs`, not in
+  # this YAML (AGENTS.md §5: no validation logic hidden in workflow
+  # YAML). The step below only starts the job and aggregates its
+  # result, and the same script runs locally with the same verdict.
+  storybook-axe:
+    name: storybook axe
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { submodules: recursive }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22.18 }
+      # corepack is forbidden in this repository (see ADR-0003).
+      # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
+      # directly from pnpm's release CDN; it does not use corepack.
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with: { version: 12.3.4 }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # Browser binaries install with sudo on GitHub Actions runners.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Storybook axe audit
+        run: pnpm run a11y:axe-storybook:ci

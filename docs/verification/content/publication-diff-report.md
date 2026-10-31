@@ -11,7 +11,7 @@
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
-| Sitemap target URLs | 13 |
+| Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 19 |
 | External hosts | 33 |
 | First-party hosts | 0 |
@@ -23,6 +23,7 @@
 - `/`
 - `/about`
 - `/contact`
+- `/design-system`
 - `/portfolio`
 - `/portfolio/aulymo`
 - `/portfolio/multi-slicer`
@@ -31,8 +32,6 @@
 - `/portfolio/sciencearts-optim-internship-2026`
 - `/portfolio/tastile`
 - `/tools`
-- `/tools/prototype`
-- `/tools/readmark`
 
 ## Publicly reachable URLs (the compared surface)
 
@@ -76,13 +75,13 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/admin/keys` | `/admin/keys` | internal | no | `src/routes/admin.keys.tsx` |
 | `/admin/login` | `/admin/login` | public | no | `src/routes/admin.login.tsx` |
 | `/contact` | `/contact` | public | yes | `src/routes/contact.tsx` |
-| `/design-system` | `/design-system` | public | no | `src/routes/design-system.tsx` |
+| `/design-system` | `/design-system` | public | yes | `src/routes/design-system.tsx` |
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
-| `/tools/$slug` | — | public | yes | `src/routes/tools.$slug.tsx` |
+| `/tools/$slug` | — | public | no | `src/routes/tools.$slug.tsx` |
 
 ## Approved transition against the previous snapshot
 

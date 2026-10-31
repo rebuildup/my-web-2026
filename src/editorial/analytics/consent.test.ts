@@ -218,6 +218,12 @@ describe('isAnalyticsMountPath', () => {
 	// because an SSR render never contains the tag on any route, so an
 	// assertion against rendered HTML cannot tell a working gate from a
 	// missing one — this table can.
+	//
+	// The table is a ROUTER-PARITY table (Issue #700): every row is a
+	// path TanStack Router resolves one way, and the gate has to
+	// resolve it the same way. `test/integration/analytics-admin-path-
+	// parity.test.ts` runs the same paths through the real Worker, so
+	// the rows here and the router's own answers cannot drift apart.
 	it.each([
 		['/', true],
 		['/portfolio', true],
@@ -228,6 +234,7 @@ describe('isAnalyticsMountPath', () => {
 		['/admin', false],
 		['/admin/', false],
 		['/admin/login', false],
+		['/admin/keys', false],
 		['/admin/invitations/accept', false],
 		// TanStack Router matches static segments case-insensitively,
 		// so these render the admin surface and must be excluded too —
@@ -235,12 +242,54 @@ describe('isAnalyticsMountPath', () => {
 		['/ADMIN', false],
 		['/Admin/Login', false],
 		['/ADMIN/INVITATIONS/ACCEPT', false],
+		// The router percent-decodes the pathname before matching, so
+		// these reach the admin screen too (`%61` is `a`). A gate that
+		// compared the raw string would let their document URL reach
+		// GA4 through the initial `gtag('config', …)` hit.
+		['/%61dmin', false],
+		['/%61dmin/keys', false],
+		['/%61DMIN/KEYS', false],
 		// A bare prefix match would swallow this future route; the
 		// rule is `/admin` or `/admin/…` exactly.
 		['/administration', true],
 		['/administrator-guide', true],
+		['/adminish', true],
+		['/ADMINISH', true],
+		// The router answers a doubled slash with a canonicalisation,
+		// not with the admin screen, so this path is not the admin
+		// surface and must not be excluded from measurement.
+		['//admin', true],
+		['//admin/keys', true],
+		// Reserved separators stay encoded, so the router answers
+		// these with its 404 surface rather than the admin screen.
+		['/admin%2Fkeys', true],
+		['/%2Fadmin', true],
+		// `decodeURI` turns `%25` into a literal `%` in ONE pass, so the
+		// path still carries the escaped `a` — not the admin surface.
+		['/%2561dmin/keys', true],
+		// A malformed escape makes the decode throw. The request is
+		// answered with a 400 before route matching, and the gate must
+		// not throw on the way to that answer: it falls back to the raw
+		// pathname, so an ESCAPED admin prefix is not the admin
+		// surface, while a literal one still is.
+		['/%61dmin/%ZZ', true],
+		['/%E0%A4%A/admin', true],
+		['/admin/%ZZ', false],
 	])('answers %s -> %s', (pathname, expected) => {
 		expect(isAnalyticsMountPath(pathname)).toBe(expected);
+	});
+
+	it('never rewrites the document consent state', () => {
+		// The path decision and the consent decision are two different
+		// questions. A visitor who granted consent on a public page and
+		// then opened the admin surface keeps the recorded decision —
+		// the gate stops the measurement, it does not forget the
+		// answer, so returning to a public page measures again.
+		__resetDocumentAnalyticsConsentForTests();
+		setDocumentAnalyticsConsent('granted');
+		expect(isAnalyticsMountPath('/%61dmin/keys')).toBe(false);
+		expect(getDocumentAnalyticsConsent()).toBe('granted');
+		__resetDocumentAnalyticsConsentForTests();
 	});
 });
 

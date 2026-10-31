@@ -18,6 +18,9 @@
  *     grepped) without reconstructing the log format. Use it for
  *     "this event happened and this is what we know about it"
  *     statements; every field still passes through redaction.
+ *     `event` and `at` are **reserved**: the logger owns them, so a
+ *     caller field of the same name is moved to `caller_event` /
+ *     `caller_at` instead of overwriting the record's meaning.
  *
  * Both shapes are lossy by design. A call site that needs more than
  * the redacted record has to log a purpose-built, minimal shape
@@ -38,6 +41,14 @@ export interface AuditLogger {
 	/**
 	 * Emit a structured audit record: one line of JSON carrying
 	 * `event`, `at`, and the redacted `fields`.
+	 *
+	 * `event` and `at` are **reserved**: the record's event name and
+	 * timestamp are owned by the logger, so a caller field of the
+	 * same name can never overwrite them (that would falsify what
+	 * happened and when). A colliding field is preserved under
+	 * `caller_event` / `caller_at` instead of being dropped, so the
+	 * information is still readable — just not under the reserved
+	 * name.
 	 */
 	audit(event: string, fields?: Record<string, unknown>): void;
 	debug(message: string, ...details: readonly unknown[]): void;
@@ -66,6 +77,62 @@ const LEVEL_METHOD: Record<LogLevel, 'debug' | 'log' | 'warn' | 'error'> = {
 	warn: 'warn',
 	error: 'error',
 };
+
+/**
+ * Keys the audit record owns. A caller field may not take them:
+ * `event` names what happened and `at` says when, so a caller that
+ * could overwrite them could falsify an incident report.
+ */
+const RESERVED_AUDIT_KEYS = ['event', 'at'] as const;
+
+/**
+ * Where a caller field that collides with a reserved key is kept.
+ *
+ * The collision is **rejected**, not silently ignored: the value is
+ * preserved under a different key so nothing disappears, and the
+ * reserved key keeps its logger-owned meaning.
+ */
+const RESERVED_AUDIT_FALLBACK: Record<(typeof RESERVED_AUDIT_KEYS)[number], string> = {
+	event: 'caller_event',
+	at: 'caller_at',
+};
+
+/**
+ * Move every reserved-key collision out of the caller's field bag.
+ *
+ * `Object.defineProperty` is used instead of assignment because an
+ * own `__proto__` key (which `JSON.parse` produces from an untrusted
+ * body) would otherwise mutate the result's PROTOTYPE instead of
+ * being carried as data.
+ *
+ * A collision is renamed, never dropped: the caller's value stays in
+ * the record, it just cannot take the reserved name. If the caller
+ * already used the fallback name itself, a numbered variant is used
+ * so no value is lost either way.
+ */
+function withoutReservedKeys(fields: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	const define = (key: string, value: unknown): void => {
+		Object.defineProperty(out, key, {
+			value,
+			enumerable: true,
+			writable: true,
+			configurable: true,
+		});
+	};
+	for (const key of Object.keys(fields)) {
+		if (!(RESERVED_AUDIT_KEYS as readonly string[]).includes(key)) define(key, fields[key]);
+	}
+	for (const key of RESERVED_AUDIT_KEYS) {
+		if (!Object.hasOwn(fields, key)) continue;
+		let target = RESERVED_AUDIT_FALLBACK[key];
+		for (let suffix = 2; Object.hasOwn(out, target); suffix += 1) {
+			target = `${RESERVED_AUDIT_FALLBACK[key]}_${suffix}`;
+		}
+		define(target, fields[key]);
+	}
+	return out;
+}
 
 /**
  * Redact one detail argument. `Error` values collapse to
@@ -113,10 +180,12 @@ function emitWithCorrelation(
 export function createAuditLogger(scope: string): AuditLogger {
 	return {
 		audit(event: string, fields: Record<string, unknown> = {}): void {
+			// The record's own metadata is spread FIRST so a caller
+			// field can never overwrite `event` / `at`.
 			const record = redactLogValue({
 				event,
 				at: new Date().toISOString(),
-				...fields,
+				...withoutReservedKeys(fields),
 			});
 			// `JSON.stringify` of a redacted record cannot throw for the
 			// shapes `redactLogValue` produces (plain objects, arrays,

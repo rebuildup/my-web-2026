@@ -1,4 +1,4 @@
-import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
+import type { EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import type { ReactionAggregate } from '../../http/reactions/schema';
@@ -10,6 +10,26 @@ import type { HomeReactionsData } from './load';
 import { addHomeReaction, removeHomeReaction } from './load';
 
 const MAX_RECORDED_CHIPS = 8;
+
+/**
+ * `emoji-picker-react` v4 exports `EmojiStyle` and `Theme` as **string
+ * enums**, so importing them as values is a runtime edge: it pulls the
+ * whole 335 KB library into the shared client entry chunk and defeats the
+ * `lazy()` split below, which is the one thing that keeps the picker out
+ * of first paint. The enum members' runtime values are plain strings, so
+ * these two literals carry exactly the same information without the eager
+ * edge.
+ *
+ * The duplication is not allowed to drift: `widget.test.tsx` asserts both
+ * literals against the library's own enum members, so a library upgrade
+ * that renames or re-values a member fails the test instead of shipping a
+ * picker with the wrong style.
+ *
+ * Exported so that test can assert against the library without the
+ * widget module importing the library's values.
+ */
+export const EMOJI_STYLE_NATIVE = 'native' as EmojiStyle;
+export const THEME_AUTO = 'auto' as Theme;
 
 /**
  * Widget-side diagnostics go through the shared redacting logger
@@ -283,8 +303,8 @@ export function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 				<Suspense fallback={<PickerSkeleton />}>
 					<EmojiPicker
 						onEmojiClick={handleSelect}
-						emojiStyle={EmojiStyle.NATIVE}
-						theme={Theme.AUTO}
+						emojiStyle={EMOJI_STYLE_NATIVE}
+						theme={THEME_AUTO}
 						skinTonesDisabled
 						searchPlaceholder="thumbs_up や :smile: などで検索"
 						lazyLoadEmojis

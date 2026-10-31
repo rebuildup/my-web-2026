@@ -95,23 +95,16 @@ advisory data fails it with exit `3`.
   "blockingSeverities": ["critical", "high"],
   "reportedSeverities": ["moderate", "low", "info"],
   "dataUnavailable": "fail",
-  "exceptions": [
-    {
-      "advisoryId": "GHSA-vfj7-8cjw-p6xm",
-      "package": "braces",
-      "severity": "high",
-      "reason": "…",
-      "approvedBy": "repository owner (Issue #645)",
-      "trackingIssue": 669,
-      "expiresOn": "2027-01-31"
-    }
-  ]
+  "exceptions": []
 }
 ```
 
 That is the shape the repository ships today: the gate is **blocking**
-(Issue #645) and it carries exactly one exception, the one advisory
-whose patched version does not exist ([§6](#6-the-live-state--block)).
+(Issue #645) and it carries **no exception at all**, so every
+`critical` / `high` finding blocks the build
+([§6](#6-the-live-state--block)). An empty ledger is the strictest
+state; a record may only be added with an owner approval, and it has to
+name its grounds, an approver, a tracking Issue and an expiry date.
 
 - `blockingSeverities` / `reportedSeverities` — the severity policy. A
   severity has exactly one meaning; listing it in both is rejected. An
@@ -301,13 +294,17 @@ direction), but it is no longer what the repository runs.
 | --------------------------------------------------- | --------------- | ------------------------------------------------------------------------ |
 | `GHSA-f2ph-cmg5-wxc8` (critical)                    | `storybook`, `@storybook/core` | the whole `@storybook/*` set moved to `8.6.19` (patched `>=8.6.19`)     |
 | `GHSA-587h-7wmj-h5pm` (high)                        | `vite`          | `7.3.6` → `7.3.7` (patched `>=7.3.7`), inside the `7.x` line the tree already runs |
+| `GHSA-965c-763c-88jm` (critical), `GHSA-r4xp-prcw-77qf` (high) | `better-auth` | runtime dependency, `1.7.5` → `1.7.7` floor (the tree resolves `1.7.14`) |
+| `GHSA-mrhx-c7xc-m3w5` (high)                        | `zod`           | runtime dependency, `4.6.5` → `4.6.6` floor; the two `@cloudflare/config` copies that pin `zod` exactly are lifted by the `zod` override |
+| `GHSA-834v-8h66-3h79` (high)                        | `happy-dom`     | devDependency (Vitest's DOM implementation), `20.8.9` → `21.0.4` (patched `>=21.0.4`) |
+| `GHSA-2m5v-pch6-74hx`, `GHSA-4w7w-5xrc-9h26`, `GHSA-qrxm-fqhp-jwvm`, `GHSA-xjj6-f33q-929c` (high) | `undici` | dev-dependency path only, `7.29.1` → `7.30.1` (patched `>=7.30.1`) through the `undici` override, because every `miniflare` copy in the tree pins `undici` exactly |
 
-### The one exception that remains
+### No exception is on record
 
-`braces@3.0.3` (`GHSA-vfj7-8cjw-p6xm`, high) has **no published
-patched version** — npm reports `patched_versions_unpublished` — so
-there is nothing to upgrade to. It is accepted by exactly one reviewed
-record in the declaration:
+The declaration carries **no exception**, so every `critical` / `high`
+finding blocks the build. The one record it used to carry — listed here
+so the decision stays auditable — was retired on 2026-10-28 (Issue
+#704):
 
 | field          | value                                                                                     |
 | -------------- | ----------------------------------------------------------------------------------------- |
@@ -318,19 +315,20 @@ record in the declaration:
 | `trackingIssue`| `669`                                                                                     |
 | `expiresOn`    | `2027-01-31`                                                                              |
 
-The grounds are in the record itself: the only dependency paths are
-`.>@pandacss/dev>@pandacss/node>fast-glob>micromatch>braces` and
-`.>@pandacss/dev>@pandacss/postcss>@pandacss/node>fast-glob>micromatch>braces`,
-both `dev: true`, and `braces` / `micromatch` / `fast-glob` are absent
-from the Worker runtime bundle — the stack-exhaustion denial of service
-(CWE-674) has no production path. The follow-up is tracked in
-[#669](https://github.com/rebuildup/my-web-2026/issues/669).
+The record was retired because the advisory it accepted **was withdrawn
+upstream**: the GitHub Advisory Database lists `GHSA-vfj7-8cjw-p6xm` as
+a *Withdrawn Advisory* (`withdrawn_at: 2026-10-23`), so the registry
+advisory endpoint no longer returns it and `pnpm audit --json` reports no
+`braces` advisory at all. The gate listed the record under `exception
+records with no matching advisory`, and the repair table in
+[§5](#5-abnormal-observation-and-repair) answers that observation with
+"delete the record; a stale exception is not a free pass".
 
-The record is retired when a patched `braces` is published, when the
-dependency path changes, or when the dependency is dropped. Until then
-the finding stays **visible** in every run: the gate prints it under
-`approved exceptions in force`, with the reason, the approver, the
-expiry and the remaining days.
+Retiring the record does not soften the gate — an empty ledger is the
+strictest state. If the advisory is published again, the gate fails
+closed on `braces` and a new record needs a fresh owner approval, with
+grounds, an approver, a tracking Issue and an expiry date: this
+repository writes no approval on the owner's behalf.
 
 ### When an exception expires
 

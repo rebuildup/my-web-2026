@@ -109,7 +109,7 @@ describe('evaluateListenerGrowth', () => {
 			Object.fromEntries(
 				Array.from({ length: 6 }, (_, cycle) => [
 					cycle,
-					{ liveGlobal: 146 + cycle, liveConnected: 3 },
+					{ liveGlobal: 147 + cycle, liveConnected: 3 },
 				]),
 			),
 			5,

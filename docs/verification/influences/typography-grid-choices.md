@@ -95,6 +95,6 @@ capture script は `package.json` に登録していない（並列 PR の confl
 
 ## 7. 残存の未決事項
 
-- **`pnpm run knip:check` が本 script を unused file として報告する。** `knip.json` の entry は `scripts/*.test.mjs` を含み、`package.json` の scripts から参照されるファイルも entry 扱いになるため、`package.json` に登録するか、`scripts/*.test.mjs`（pure 関数の unit test）を足す必要がある。どちらも本 PR の「作成してよい 3 ファイル」枠外のため、**意図的に未修正**。§5 の `node scripts/...` で実行できる。
+- **`pnpm run knip:check` は green（141 findings / 141 baselined / 0 new）。** `knip.json` の entry には `scripts/*.test.mjs` が含まれるため、`scripts/capture-typography-grid-choices.test.mjs` が本 script を import する時点で本 script は unused 扱いにならない。`package.json` の scripts には登録していない（並列 PR との conflict を避けるため）。§5 の `node scripts/...` で実行できる。
 - `src/personal/**` は新しい owner ディレクトリとして未登録（owner 登録は別 PR）。本 Issue の範囲は「記録の文書 + 単独 preview + 一致検証 + 検証画像」であり、owner 登録そのものは含めない。
 - Miro の付箋本文は閲覧できないため、付箋内の詳細・時系列・数値・評価・軸の優先順位は本文側で「未確認（owner 確認待ち）」と明示してある。確認後に本文を書き換える場合、本文と preview の parity gate が落ちるため、preview データも同時に更新する必要がある。

@@ -1,6 +1,8 @@
 {
-	"_schema": 1,
+	"_schema": 2,
 	"updated_with": "scripts/check-knip.mjs --update",
+	"ceiling": 141,
+	"ceiling_rationale": "Issue #733 (V-6): these 141 unused-code findings are recorded debt from the 0.8.0 line, tracked for a separate cleanup ticket. The ceiling is the debt as it stood when the rule was introduced. The recorded debt may shrink below it; growing it is a hand-edited change to this file that carries a new reason, so no pull request can turn unused code into an accepted baseline merely by running `pnpm run knip:update`.",
 	"findings": [
 		"devDependencies package.json gifenc",
 		"devDependencies package.json wrangler",
@@ -131,7 +133,6 @@
 		"types src/editorial/structured-data/index.ts StructuredDataRouteCoverage",
 		"types src/editorial/structured-data/index.ts StructuredDataRouteStatus",
 		"types src/editorial/structured-data/index.ts StructuredDataValidation",
-		"types src/editorial/tokens.ts RawTokens",
 		"types src/home/access/load.ts GetCountOutput",
 		"types src/home/access/load.ts RecordHitOutput",
 		"types src/home/public.ts Capability",

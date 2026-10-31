@@ -24,12 +24,21 @@
  *
  * Why a generated harness instead of `storybook dev`
  * ---------------------------------------------------
- * `storybook dev` cannot serve this repository's stories: the
- * `@storybook/react-vite` builder merges the project's `vite.config.ts`,
- * whose `@cloudflare/vite-plugin` takes over the dev server and then
- * refuses to start without the Worker's runtime secrets. The same
- * reason is recorded in `scripts/capture-error-state-gallery.mjs`
- * (Issue #501) and `scripts/capture-a11y-table-code.mjs` (Issue #407).
+ * `pnpm run build-storybook` in this repository emits a MANAGER-ONLY
+ * static build (no `iframe.html`): the `@storybook/react-vite` builder
+ * merges the project's `vite.config.ts`, and the `@cloudflare/vite-plugin`
+ * + TanStack Start plugins in it take over the output. That defect is
+ * recorded in `scripts/capture-error-state-gallery.mjs` (Issue #501)
+ * and `scripts/capture-a11y-table-code.mjs` (Issue #407).
+ *
+ * `storybook dev` itself DOES start and DOES render the stories
+ * (measured 2026-10-31: `pnpm exec storybook dev --port 6013` serves
+ * the index and `iframe.html?id=<story id>` renders the story; the
+ * `Missing required secrets for Worker "my-web-2026"` line it prints
+ * is a warning, not a startup failure). The capture still uses a
+ * harness so that it does not depend on a long-lived dev server, so
+ * that the DOM assertions run inside the same command as the capture,
+ * and so that its result does not depend on the Storybook builder.
  * The harness below imports the SHIPPED story module and renders the
  * shipped story's OWN `render` output — the very tree Storybook
  * renders for that story — through a local Vite build, so the capture

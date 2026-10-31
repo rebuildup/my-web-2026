@@ -16,8 +16,11 @@
  *     Content, level A);
  *   - the visitor can control playback (SC 2.1.1 Keyboard, level A);
  *   - a work whose caption source is NOT verified is not presented as
- *     playable — the gate is FAIL-CLOSED: the caption source counts as
- *     verified only when the markup says so, so silence cannot be read as
+ *     playable — the gate is FAIL-CLOSED: a caption source counts as
+ *     verified only when the GATE established it (the file the caption
+ *     track points at exists in the repository, it is a valid WebVTT
+ *     document and it carries a caption cue) AND the author declared the
+ *     status, so neither silence nor a bare claim can be read as
  *     "confirmed".
  *
  * The Issue is explicit that no video content exists yet in the shipped
@@ -37,10 +40,17 @@
  *   video-without-controls
  *       A playable `<video>` has no `controls`, so a keyboard user cannot
  *       start, pause or seek it. (SC 2.1.1)
- *   video-playable-without-verified-caption
- *       A playable `<video>` carries a caption track but does not declare
- *       `data-caption-status="verified"`, so a work whose caption source
- *       is undetermined is presented as playable. (SC 1.2.2)
+ *   video-playable-without-declared-verified-caption
+ *       A playable `<video>` carries a caption track but does not DECLARE
+ *       `data-caption-status="verified"`. The declaration is the author's
+ *       claim; the gate never reads it as a proof. (SC 1.2.2)
+ *   video-caption-source-unverified
+ *       The gate could not VERIFY the caption source of a playable
+ *       `<video>`: the file the `<track>` points at does not exist in the
+ *       repository, is not a valid WebVTT document, carries no caption
+ *       cue, or cannot be judged statically at all. A declaration is not a
+ *       proof, so a caption source the gate cannot establish is not a
+ *       verified one. (SC 1.2.2)
  *
  * What "decorative" means is defined once, in {@link isDecorativeVideo}:
  * a background video is exempt from captions and controls only when it is
@@ -70,6 +80,24 @@
  * reported differently, so a reader can tell "the author decided this" from
  * "the gate cannot read this".
  *
+ * Declared vs. verified
+ * ---------------------
+ * The two words carry one meaning each, everywhere in this gate:
+ *
+ *   DECLARED — the author wrote a value into the markup. It is a CLAIM.
+ *   VERIFIED — the GATE established the fact itself.
+ *
+ * `data-caption-status="verified"` is a DECLARATION: it says the author
+ * stands behind the caption source. It does not make the caption source
+ * verified. What the gate verifies is the SOURCE itself — that the file
+ * the caption `<track>` points at exists in the repository, that it is a
+ * valid WebVTT document, and that it carries at least one caption cue.
+ *
+ * A static pass of this gate therefore establishes a verified caption
+ * SOURCE. It does NOT establish that the captions belong to this video,
+ * that they are accurate, or that they stay available — those stay human
+ * evaluation.
+ *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
  * This gate decides MARKUP. It cannot decide whether a caption is accurate
@@ -81,8 +109,8 @@
  * 2 = the repository could not be scanned.
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, lineAt, stripComments, toRepoPath } from './_source-scan.mjs';
 
@@ -123,7 +151,8 @@ export const RULES = [
 	'video-without-caption-track',
 	'video-without-text-alternative',
 	'video-without-controls',
-	'video-playable-without-verified-caption',
+	'video-playable-without-declared-verified-caption',
+	'video-caption-source-unverified',
 	'video-without-audio-description',
 ];
 
@@ -132,7 +161,8 @@ export const WCAG_BY_RULE = {
 	'video-without-caption-track': '1.2.2',
 	'video-without-text-alternative': '1.1.1',
 	'video-without-controls': '2.1.1',
-	'video-playable-without-verified-caption': '1.2.2',
+	'video-playable-without-declared-verified-caption': '1.2.2',
+	'video-caption-source-unverified': '1.2.2',
 	'video-without-audio-description': '1.2.5',
 };
 
@@ -153,9 +183,50 @@ export const AD_STATUS_PROVIDED = 'provided';
 export const AD_STATUS_NOT_REQUIRED = 'not-required';
 export const DESCRIPTION_TRACK_KIND = 'descriptions';
 
-/** The attribute (and its one accepted value) that verifies a caption source. */
+/**
+ * The attribute that DECLARES the caption status, and the values it may
+ * carry.
+ *
+ * `verified` is the only value that stands for "the author stands behind
+ * this caption source". It is a DECLARATION: the gate never reads it as
+ * a proof — what the gate verifies is the caption SOURCE itself (see
+ * {@link CAPTION_SOURCE_STATES}). The constant is named for the
+ * DECLARED value, so no reader can mistake the author's claim for a fact
+ * the gate established.
+ *
+ * `awaiting` is the author's own word for "the caption source is not
+ * confirmed yet"; `unavailable` is the runtime demotion the browser
+ * capture writes when the caption resource fails to load. Neither is a
+ * verification, and a playable video carrying either is a violation.
+ */
 export const CAPTION_STATUS_ATTRIBUTE = 'data-caption-status';
-export const CAPTION_STATUS_VERIFIED = 'verified';
+export const CAPTION_STATUS_DECLARED_VERIFIED = 'verified';
+export const CAPTION_STATUS_AWAITING = 'awaiting';
+export const CAPTION_STATUS_UNAVAILABLE = 'unavailable';
+
+/**
+ * The states the GATE can be in about a caption source.
+ *
+ * `verified` is the only state that lets a video pass: the gate read the
+ * file and established that it exists, that it is a valid WebVTT
+ * document, and that it carries a caption cue. Every other state is a
+ * fact the gate could not establish, and the gate is fail-closed, so it
+ * is reported as a violation rather than as a pass.
+ */
+export const CAPTION_SOURCE_STATES = {
+	/** The gate established the file: it exists, it is WebVTT, it has a cue. */
+	verified: 'verified',
+	/** The repository holds no file for the caption `src`. */
+	missing: 'missing',
+	/** The file exists but is not a valid WebVTT document. */
+	notWebvtt: 'not-webvtt',
+	/** The file is a valid WebVTT document with no cue: a placeholder. */
+	empty: 'empty',
+	/** The `src` cannot be judged statically (a remote URL, a runtime value). */
+	undecidable: 'undecidable',
+	/** The video carries no caption track at all. */
+	none: 'none',
+};
 
 /**
  * The accessible-name attributes that give a video its text alternative.
@@ -261,7 +332,9 @@ export const FIXTURE_EXPECTATIONS = {
 		'01-without-caption-track.tsx': ['video-without-caption-track'],
 		'02-without-text-alternative.tsx': ['video-without-text-alternative'],
 		'03-without-controls.tsx': ['video-without-controls'],
-		'04-playable-without-verified-caption.tsx': ['video-playable-without-verified-caption'],
+		'04-playable-without-declared-verified-caption.tsx': [
+			'video-playable-without-declared-verified-caption',
+		],
 		'05-without-audio-description.tsx': ['video-without-audio-description'],
 		'06-dynamic-src.tsx': ['video-without-caption-track'],
 		'07-dynamic-controls.tsx': ['video-without-controls'],
@@ -272,18 +345,24 @@ export const FIXTURE_EXPECTATIONS = {
 		'12-spread-overrides-earlier-attributes.tsx': [
 			'video-without-text-alternative',
 			'video-without-controls',
-			'video-playable-without-verified-caption',
+			'video-playable-without-declared-verified-caption',
 			'video-without-audio-description',
 		],
+		'13-caption-source-missing.tsx': ['video-caption-source-unverified'],
+		'14-caption-source-not-webvtt.tsx': ['video-caption-source-unverified'],
+		'15-caption-source-empty.tsx': ['video-caption-source-unverified'],
+		'16-caption-source-undecidable.tsx': ['video-caption-source-unverified'],
+		'17-caption-source-remote.tsx': ['video-caption-source-unverified'],
 	},
 };
 
 /** Things this gate deliberately does not decide. */
 export const HUMAN_EVALUATION = [
 	'whether a caption is accurate, complete and in the right language (SC 1.2.2 quality)',
+	'whether the caption file corresponds to the video it is attached to (the gate verifies that the file exists, is a valid WebVTT document and carries a cue; it does not read the cues)',
 	'whether a video needs audio description at all (SC 1.2.3 A / SC 1.2.5 AA depend on visual-only information; the gate checks that the DECISION is declared, not that it is right)',
 	'whether the poster image represents the work it introduces (SC 1.1.1 quality)',
-	'whether the caption source is hard enough to remain available (the `verified` marker is a claim)',
+	'whether the caption source is hard enough to remain available (the gate verifies the file in the repository at gate time; the delivery of it is an operational fact)',
 	'a real screen-reader / caption-rendering pass (VoiceOver / NVDA / the browser caption renderer)',
 ];
 
@@ -625,6 +704,186 @@ export function hasSourceChild(children) {
 }
 
 /* ------------------------------------------------------------------ *
+ * the caption source (over the filesystem)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Whether a `<track>` is a caption track (pure).
+ *
+ * A `<track>` whose `kind` is omitted defaults to `subtitles`, which is
+ * a different track and does not satisfy SC 1.2.2.
+ */
+export function isCaptionTrack(track) {
+	return (attributeValue(attributeOf(track, 'kind')) ?? '').toLowerCase() === CAPTION_TRACK_KIND;
+}
+
+/**
+ * The roots a caption `src` is looked up in, in order.
+ *
+ * A site-absolute path (`/captions/example.en.vtt`) is a URL the site
+ * serves, so the repository owns it when the file sits in the
+ * static-asset root (`public/`, which the Worker serves at the site
+ * root) or at the repository root. A repository-relative path
+ * (`captions/example.en.vtt`) is looked up at the repository root.
+ */
+export function captionSourceRoots({ repoRoot = REPO_ROOT, publicRoot = null } = {}) {
+	const staticRoot = publicRoot ?? join(repoRoot, 'public');
+	return { repoRoot, publicRoot: staticRoot };
+}
+
+/**
+ * Inspect one caption file and say what the gate established about it.
+ *
+ * The three facts are the WebVTT contract itself: the file must be named
+ * `*.vtt`, it must start with the `WEBVTT` magic header, and it must
+ * carry at least one cue — a file with only a header is a placeholder,
+ * not a caption track.
+ */
+export function inspectCaptionFile(path, declaredSrc = null) {
+	const label = declaredSrc ?? path;
+	const name = path.slice(path.lastIndexOf('/') + 1);
+	let content = '';
+	try {
+		content = readFileSync(path, 'utf8');
+	} catch {
+		return {
+			state: CAPTION_SOURCE_STATES.undecidable,
+			detail: `the caption source "${label}" could not be read, so the gate cannot verify it`,
+			path,
+		};
+	}
+	if (content.charCodeAt(0) === 0xfeff) content = content.slice(1);
+	const firstLine = content.split(/\r?\n/, 1)[0] ?? '';
+	if (!/^WEBVTT(?:[ \t].*)?$/.test(firstLine)) {
+		return {
+			state: CAPTION_SOURCE_STATES.notWebvtt,
+			detail: `the caption source "${label}" is not a WebVTT document: the file does not start with the "WEBVTT" header`,
+			path,
+		};
+	}
+	if (!name.toLowerCase().endsWith('.vtt')) {
+		return {
+			state: CAPTION_SOURCE_STATES.notWebvtt,
+			detail: `the caption source "${label}" is not a WebVTT document: the file name does not end in ".vtt"`,
+			path,
+		};
+	}
+	const hasCue = /^\s*(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}\s+-->/m.test(content);
+	if (!hasCue) {
+		return {
+			state: CAPTION_SOURCE_STATES.empty,
+			detail: `the caption source "${label}" carries no caption cue, so it is a placeholder rather than a caption track`,
+			path,
+		};
+	}
+	return {
+		state: CAPTION_SOURCE_STATES.verified,
+		detail: `the caption source "${label}" is a WebVTT document with a caption cue`,
+		path,
+	};
+}
+
+/**
+ * Build the resolver that turns a caption `src` into a gate verdict.
+ *
+ * The resolver is injected rather than imported, so the browser capture
+ * can point it at the harness it serves and a test can point it at a
+ * temporary directory. The default resolves against this repository.
+ */
+export function createCaptionSourceResolver({ repoRoot = REPO_ROOT, publicRoot = null } = {}) {
+	const roots = captionSourceRoots({ repoRoot, publicRoot });
+	return function resolveCaptionSource(src) {
+		const value = typeof src === 'string' ? src.trim() : '';
+		if (value === '') {
+			return {
+				state: CAPTION_SOURCE_STATES.missing,
+				detail: 'the caption track declares no `src`, so there is no caption source to verify',
+				path: null,
+			};
+		}
+		if (/^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('//')) {
+			return {
+				state: CAPTION_SOURCE_STATES.undecidable,
+				detail: `the caption \`src\` "${value}" is a remote URL, and a static gate cannot fetch it, so the caption source is UNDECIDABLE here`,
+				path: null,
+			};
+		}
+		const candidates = value.startsWith('/')
+			? [roots.publicRoot, roots.repoRoot]
+			: [roots.repoRoot];
+		const relativePath = value.startsWith('/') ? value.slice(1) : value;
+		let escaped = false;
+		for (const root of candidates) {
+			const candidate = resolve(root, relativePath);
+			if (candidate !== root && !candidate.startsWith(`${root}${sep}`)) {
+				escaped = true;
+				continue;
+			}
+			if (!existsSync(candidate)) continue;
+			if (!statSync(candidate).isFile()) continue;
+			return inspectCaptionFile(candidate, value);
+		}
+		if (escaped) {
+			return {
+				state: CAPTION_SOURCE_STATES.undecidable,
+				detail: `the caption \`src\` "${value}" points outside the repository, so the caption source is UNDECIDABLE here`,
+				path: null,
+			};
+		}
+		return {
+			state: CAPTION_SOURCE_STATES.missing,
+			detail: `the caption \`src\` "${value}" points at no file in the repository (looked in the static-asset root "${toRepoPath(roots.publicRoot, roots.repoRoot)}" and the repository root)`,
+			path: null,
+		};
+	};
+}
+
+/**
+ * The resolver the gate uses when nobody injects one: this repository.
+ */
+export const DEFAULT_CAPTION_SOURCE_RESOLVER = createCaptionSourceResolver();
+
+/**
+ * What the gate established about the caption source of a video.
+ *
+ * `none` when the video carries no caption track, the resolver's verdict
+ * otherwise. When several caption tracks are shipped, the first one the
+ * gate could NOT verify decides: one unverified source is enough.
+ */
+export function captionSourceState(tracks, resolveCaptionSource = DEFAULT_CAPTION_SOURCE_RESOLVER) {
+	const captionTracks = tracks.filter(isCaptionTrack);
+	if (captionTracks.length === 0) {
+		return {
+			state: CAPTION_SOURCE_STATES.none,
+			detail: 'the video carries no caption track, so there is no caption source',
+			path: null,
+		};
+	}
+	const results = captionTracks.map((track) => {
+		const attribute = attributeOf(track, 'src');
+		if (!attribute) {
+			return {
+				state: CAPTION_SOURCE_STATES.missing,
+				detail: 'the caption track declares no `src`, so there is no caption source to verify',
+				path: null,
+			};
+		}
+		const value = attributeValue(attribute);
+		if (value === null) {
+			return {
+				state: CAPTION_SOURCE_STATES.undecidable,
+				detail:
+					'the caption `src` is a runtime value, so the gate cannot read the caption source and it is UNDECIDABLE here',
+				path: null,
+			};
+		}
+		return resolveCaptionSource(value);
+	});
+	const unverified = results.find((result) => result.state !== CAPTION_SOURCE_STATES.verified);
+	return unverified ?? results[0];
+}
+
+/* ------------------------------------------------------------------ *
  * the video contract (pure)
  * ------------------------------------------------------------------ */
 
@@ -708,7 +967,12 @@ export function posterState(attributes) {
 }
 
 /** The facts of one video (pure). */
-export function videoFacts({ attributes, tracks = [], hasSource = false }) {
+export function videoFacts({
+	attributes,
+	tracks = [],
+	hasSource = false,
+	resolveCaptionSource = DEFAULT_CAPTION_SOURCE_RESOLVER,
+}) {
 	const playable = playableState(attributes, hasSource);
 	const decorative = decorativeState(attributes);
 	const controls = booleanState(attributes, 'controls');
@@ -716,6 +980,7 @@ export function videoFacts({ attributes, tracks = [], hasSource = false }) {
 	const muted = booleanState(attributes, 'muted');
 	const caption = optionalStringState(attributes, CAPTION_STATUS_ATTRIBUTE);
 	const ad = optionalStringState(attributes, AD_STATUS_ATTRIBUTE);
+	const captionSource = captionSourceState(tracks, resolveCaptionSource);
 
 	// The attributes whose value the gate could NOT decide. They are
 	// reported separately from a static `false`, so a reader can tell
@@ -732,6 +997,7 @@ export function videoFacts({ attributes, tracks = [], hasSource = false }) {
 	const nameAttribute = NAME_ATTRIBUTES.find((name) => stringState(attributes, name) === null);
 	if (nameAttribute) undecidable.push(nameAttribute);
 	if (caption.undecidable) undecidable.push(CAPTION_STATUS_ATTRIBUTE);
+	if (captionSource.state === CAPTION_SOURCE_STATES.undecidable) undecidable.push('caption src');
 	if (ad.undecidable) undecidable.push(AD_STATUS_ATTRIBUTE);
 
 	return {
@@ -740,11 +1006,9 @@ export function videoFacts({ attributes, tracks = [], hasSource = false }) {
 		hasControls: controls === true,
 		hasPoster: poster === true,
 		hasName: hasTextAlternative(attributes),
-		captionTracks: tracks.filter(
-			(track) =>
-				(attributeValue(attributeOf(track, 'kind')) ?? '').toLowerCase() === CAPTION_TRACK_KIND,
-		).length,
+		captionTracks: tracks.filter(isCaptionTrack).length,
 		captionStatus: caption.value,
+		captionSource,
 		descriptionTracks: tracks.filter(
 			(track) =>
 				(attributeValue(attributeOf(track, 'kind')) ?? '').toLowerCase() === DESCRIPTION_TRACK_KIND,
@@ -768,7 +1032,8 @@ export const UNDECIDABLE_CONSEQUENCE = {
 	'aria-label': 'the video is treated as unnamed',
 	'aria-labelledby': 'the video is treated as unnamed',
 	title: 'the video is treated as unnamed',
-	'data-caption-status': 'the caption source counts as unverified',
+	'data-caption-status': 'the declared caption status counts as unverified',
+	'caption src': 'the caption source counts as unverified',
 	'data-audio-description-status': 'the audio-description disposition counts as undecided',
 };
 
@@ -798,9 +1063,10 @@ function nameNote(facts) {
  * helper decides), and it is never exempt from the risk that a reader
  * cannot perceive the content — that is a human judgement.
  */
-export function evaluateVideo(element) {
+export function evaluateVideo(element, options = {}) {
 	const { attributes, tracks = [], hasSource = false, line = null, file = null } = element;
-	const facts = videoFacts({ attributes, tracks, hasSource });
+	const resolveCaptionSource = options.resolveCaptionSource ?? DEFAULT_CAPTION_SOURCE_RESOLVER;
+	const facts = videoFacts({ attributes, tracks, hasSource, resolveCaptionSource });
 	const violations = [];
 	if (facts.decorative) return { facts, violations };
 
@@ -832,12 +1098,27 @@ export function evaluateVideo(element) {
 	if (
 		facts.playable &&
 		facts.captionTracks > 0 &&
-		facts.captionStatus !== CAPTION_STATUS_VERIFIED
+		facts.captionStatus !== CAPTION_STATUS_DECLARED_VERIFIED
 	) {
 		violations.push({
-			rule: 'video-playable-without-verified-caption',
-			wcag: WCAG_BY_RULE['video-playable-without-verified-caption'],
-			message: `a playable <video> carries a caption track but does not declare ${CAPTION_STATUS_ATTRIBUTE}="${CAPTION_STATUS_VERIFIED}" (saw ${facts.captionStatus === null ? 'nothing' : `"${facts.captionStatus}"`}): a work whose caption source is undetermined is presented as playable (SC 1.2.2)${undecidableNote(facts, CAPTION_STATUS_ATTRIBUTE)}`,
+			rule: 'video-playable-without-declared-verified-caption',
+			wcag: WCAG_BY_RULE['video-playable-without-declared-verified-caption'],
+			message: `a playable <video> carries a caption track but does not DECLARE ${CAPTION_STATUS_ATTRIBUTE}="${CAPTION_STATUS_DECLARED_VERIFIED}" (saw ${facts.captionStatus === null ? 'nothing' : `"${facts.captionStatus}"`}): the caption status is a DECLARATION the author writes, not a VERIFICATION the gate establishes — a work whose caption source is undetermined must not be presented as playable (SC 1.2.2)${undecidableNote(facts, CAPTION_STATUS_ATTRIBUTE)}`,
+		});
+	}
+	if (
+		facts.playable &&
+		facts.captionTracks > 0 &&
+		facts.captionSource.state !== CAPTION_SOURCE_STATES.verified
+	) {
+		const declared =
+			facts.captionStatus === CAPTION_STATUS_DECLARED_VERIFIED
+				? `DECLARES ${CAPTION_STATUS_ATTRIBUTE}="${CAPTION_STATUS_DECLARED_VERIFIED}"`
+				: `DECLARES ${facts.captionStatus === null ? 'no caption status at all' : `"${facts.captionStatus}"`}`;
+		violations.push({
+			rule: 'video-caption-source-unverified',
+			wcag: WCAG_BY_RULE['video-caption-source-unverified'],
+			message: `the caption source of a playable <video> is NOT verified by the gate (the author ${declared}): ${facts.captionSource.detail} — a declaration is not a proof, so this gate establishes no VERIFIED caption source for this work (SC 1.2.2)${undecidableNote(facts, 'caption src')}`,
 		});
 	}
 	const adProvided = facts.adStatus === AD_STATUS_PROVIDED && facts.descriptionTracks > 0;
@@ -858,18 +1139,21 @@ export function evaluateVideo(element) {
  * Comments are removed first, so a `<video>` named in a doc comment is
  * documentation rather than a violation.
  */
-export function scanViolationsInFile({ relativePath, source }) {
+export function scanViolationsInFile({ relativePath, source, resolveCaptionSource }) {
 	const code = stripComments(source);
 	const violations = [];
 	const videos = [];
 	for (const tag of findVideoTags(code)) {
-		const evaluation = evaluateVideo({
-			attributes: tag.attributes,
-			tracks: findTrackTags(tag.children),
-			hasSource: hasSourceChild(tag.children),
-			line: tag.line,
-			file: relativePath,
-		});
+		const evaluation = evaluateVideo(
+			{
+				attributes: tag.attributes,
+				tracks: findTrackTags(tag.children),
+				hasSource: hasSourceChild(tag.children),
+				line: tag.line,
+				file: relativePath,
+			},
+			{ resolveCaptionSource },
+		);
 		videos.push({ line: tag.line, ...evaluation.facts });
 		for (const violation of evaluation.violations) {
 			violations.push({
@@ -961,6 +1245,7 @@ export function auditFixtureFiles(entries) {
 export function auditFixture(repoRoot = REPO_ROOT) {
 	const violations = [];
 	const entries = [];
+	const resolveCaptionSource = createCaptionSourceResolver({ repoRoot });
 	for (const [directory, expectations] of Object.entries(FIXTURE_EXPECTATIONS)) {
 		const absolute = join(repoRoot, FIXTURE_ROOT, directory);
 		const present = existsSync(absolute)
@@ -982,6 +1267,7 @@ export function auditFixture(repoRoot = REPO_ROOT) {
 			const evaluation = scanViolationsInFile({
 				relativePath,
 				source: readFileSync(join(absolute, name), 'utf8'),
+				resolveCaptionSource,
 			});
 			entries.push({
 				directory,
@@ -1031,6 +1317,7 @@ export function scanShippedSource(repoRoot = REPO_ROOT) {
 	const excluded = [];
 	const videos = [];
 	let filesScanned = 0;
+	const resolveCaptionSource = createCaptionSourceResolver({ repoRoot });
 	const scanRoot = join(repoRoot, SCAN_ROOT);
 	if (!existsSync(scanRoot)) {
 		throw new Error(`cannot scan the repository: ${SCAN_ROOT} is not a directory`);
@@ -1046,6 +1333,7 @@ export function scanShippedSource(repoRoot = REPO_ROOT) {
 		const result = scanViolationsInFile({
 			relativePath,
 			source: readFileSync(file, 'utf8'),
+			resolveCaptionSource,
 		});
 		violations.push(...result.violations);
 		videos.push(...result.videos.map((video) => ({ file: relativePath, ...video })));
@@ -1095,6 +1383,30 @@ export function renderGateSummary(evidence) {
 		for (const video of undecidable) {
 			lines.push(`    ${video.file}:${video.line} — ${video.undecidable.join(', ')}`);
 		}
+	}
+	lines.push('');
+	lines.push('declared vs verified:');
+	lines.push(
+		'  DECLARED — a value the author wrote into the markup (`data-caption-status="verified"`). A declaration is a claim, not evidence.',
+	);
+	lines.push(
+		'  VERIFIED — a fact the gate established itself (the caption source is a file in the repository, it is a valid WebVTT document and it carries a caption cue).',
+	);
+	lines.push(
+		'  A static pass of this gate establishes a verified caption SOURCE. It does NOT establish that the captions match the video, that they are accurate, or that they stay available — those stay human evaluation.',
+	);
+	const captionVideos = evidence.shipped.videos.filter((video) => video.captionTracks > 0);
+	const verifiedSources = captionVideos.filter(
+		(video) => video.captionSource?.state === CAPTION_SOURCE_STATES.verified,
+	);
+	lines.push(
+		`  ${captionVideos.length === verifiedSources.length ? 'ok  ' : 'FAIL'} ${'caption-source-verification'.padEnd(42)} ${verifiedSources.length} of ${captionVideos.length} caption source(s) VERIFIED by the gate (the rest are unverified or undecidable)`,
+	);
+	for (const video of captionVideos) {
+		const declared = video.captionStatus === null ? 'nothing' : `"${video.captionStatus}"`;
+		lines.push(
+			`    ${video.file}:${video.line} — DECLARED ${declared}; source ${video.captionSource?.state}: ${video.captionSource?.detail}`,
+		);
 	}
 	lines.push('');
 	lines.push('not machine-checked (human evaluation):');

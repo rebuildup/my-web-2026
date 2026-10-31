@@ -11,11 +11,16 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	AD_STATUS_PROVIDED,
+	CAPTION_SOURCE_STATES,
+	CAPTION_STATUS_ATTRIBUTE,
+	CAPTION_STATUS_AWAITING,
+	CAPTION_STATUS_DECLARED_VERIFIED,
 	CAPTION_TRACK_KIND,
 	FIXTURE_EXPECTATIONS,
 	FIXTURE_ROOT,
@@ -26,7 +31,9 @@ import {
 	attributeValue,
 	auditFixtureFiles,
 	booleanState,
+	captionSourceState,
 	collectEvidence,
+	createCaptionSourceResolver,
 	decorativeState,
 	evaluateVideo,
 	findTrackTags,
@@ -43,6 +50,20 @@ import {
 } from './check-a11y-video-caption.mjs';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname;
+
+/**
+ * The caption source the fixtures ship: a real WebVTT file of this
+ * repository, so the gate can VERIFY it.
+ */
+const CAPTION_SRC = 'scripts/fixtures/a11y-video-caption/captions/example.en.vtt';
+/** A caption source that is not in the repository. */
+const MISSING_CAPTION_SRC = 'scripts/fixtures/a11y-video-caption/captions/does-not-exist.vtt';
+/** A caption source that exists but is not a WebVTT document. */
+const NOT_WEBVTT_CAPTION_SRC = 'scripts/fixtures/a11y-video-caption/captions/not-webvtt.vtt';
+/** A caption source that is a WebVTT document with no cue. */
+const EMPTY_CAPTION_SRC = 'scripts/fixtures/a11y-video-caption/captions/placeholder.vtt';
+/** The audio-description track the fixtures ship. */
+const DESCRIPTION_SRC = 'scripts/fixtures/a11y-video-caption/captions/example.en.desc.vtt';
 
 /** Scan a source snippet the way the gate scans a file. */
 function scan(source) {
@@ -71,7 +92,7 @@ const GOOD = `<video
 	aria-label="A work"
 	data-caption-status="verified"
 	data-audio-description-status="provided"
-><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /><track kind="descriptions" src="/d.vtt" /></video>`;
+><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /><track kind="descriptions" src="${DESCRIPTION_SRC}" /></video>`;
 
 test('the attribute parser distinguishes a literal from an expression', () => {
 	const attributes = parseAttributes(
@@ -178,7 +199,7 @@ test('the text alternative needs an accessible name', () => {
 });
 
 test('a playable video with no caption track is a violation', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="descriptions" src="/d.vtt" /></video>`;
+	const source = `<video controls poster="/a.webp" aria-label="x" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="descriptions" src="${DESCRIPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 	assert.equal(facts.captionTracks, 0);
 	assert.deepEqual(
@@ -188,7 +209,7 @@ test('a playable video with no caption track is a violation', () => {
 });
 
 test('a video with no static / text alternative is a violation', () => {
-	const source = `<video controls data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /><track kind="descriptions" src="/d.vtt" /></video>`;
+	const source = `<video controls data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /><track kind="descriptions" src="${DESCRIPTION_SRC}" /></video>`;
 	const { violations } = evaluateVideo(videoInput(source));
 	assert.deepEqual(
 		violations.map((violation) => violation.rule),
@@ -197,7 +218,7 @@ test('a video with no static / text alternative is a violation', () => {
 });
 
 test('a playable video with no controls is a violation', () => {
-	const source = `<video poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /><track kind="descriptions" src="/d.vtt" /></video>`;
+	const source = `<video poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /><track kind="descriptions" src="${DESCRIPTION_SRC}" /></video>`;
 	const { violations } = evaluateVideo(videoInput(source));
 	assert.deepEqual(
 		violations.map((violation) => violation.rule),
@@ -205,18 +226,145 @@ test('a playable video with no controls is a violation', () => {
 	);
 });
 
-test('a playable video whose caption source is unverified is a violation', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /><track kind="descriptions" src="/d.vtt" /></video>`;
+test('a playable video that DECLARES no caption status is a violation', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /><track kind="descriptions" src="${DESCRIPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 	assert.equal(facts.captionStatus, null);
+	assert.equal(
+		facts.captionSource.state,
+		CAPTION_SOURCE_STATES.verified,
+		'the gate verified the caption source; only the DECLARATION is missing',
+	);
 	assert.deepEqual(
 		violations.map((violation) => violation.rule),
-		['video-playable-without-verified-caption'],
+		['video-playable-without-declared-verified-caption'],
 	);
 });
 
+test('a caption track that points at a file that does not exist is not a verified caption source', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${MISSING_CAPTION_SRC}" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionStatus, CAPTION_STATUS_DECLARED_VERIFIED);
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.missing);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-caption-source-unverified'],
+	);
+});
+
+test('a caption track that points at a file that is not valid WebVTT is not a verified caption source', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${NOT_WEBVTT_CAPTION_SRC}" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.notWebvtt);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-caption-source-unverified'],
+	);
+});
+
+test('a caption track that points at an empty caption file is a placeholder, not a caption source', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${EMPTY_CAPTION_SRC}" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.empty);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-caption-source-unverified'],
+	);
+});
+
+test('a caption src the gate cannot read statically is UNDECIDABLE, never verified', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src={captionUrl} /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.undecidable);
+	assert.ok(facts.undecidable.includes('caption src'));
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-caption-source-unverified'],
+	);
+	assert.match(violations[0].message, /UNDECIDABLE/);
+});
+
+test('a remote caption src is UNDECIDABLE, never verified', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="https://cdn.example.com/example.en.vtt" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.undecidable);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-caption-source-unverified'],
+	);
+});
+
+test('a declared caption status is a DECLARATION, not a verification', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${MISSING_CAPTION_SRC}" /></video>`;
+	const { violations } = evaluateVideo(videoInput(source));
+
+	assert.match(violations[0].message, /NOT verified by the gate/);
+	assert.match(violations[0].message, /a declaration is not a proof/);
+	assert.match(violations[0].message, /no VERIFIED caption source/);
+});
+
+test('a caption source the gate verified is a fact, not a claim', () => {
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionSource.state, CAPTION_SOURCE_STATES.verified);
+	assert.deepEqual(violations, []);
+});
+
+test('the caption status vocabulary: only "verified" stands for a verified caption source', () => {
+	assert.equal(CAPTION_STATUS_DECLARED_VERIFIED, 'verified');
+	assert.equal(CAPTION_STATUS_AWAITING, 'awaiting');
+	assert.equal(CAPTION_STATUS_ATTRIBUTE, 'data-caption-status');
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="awaiting" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
+	const { facts, violations } = evaluateVideo(videoInput(source));
+
+	assert.equal(facts.captionStatus, CAPTION_STATUS_AWAITING);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['video-playable-without-declared-verified-caption'],
+		'an awaiting caption source is a declaration of uncertainty, not a verification',
+	);
+});
+
+test('a caption source the gate cannot read is not verified, whatever the author declares', () => {
+	const tracks = findTrackTags('<track kind="captions" src="https://cdn.example.com/x.vtt" />');
+	const state = captionSourceState(tracks, () => ({
+		state: CAPTION_SOURCE_STATES.undecidable,
+		detail: 'the caption `src` is a remote URL',
+		path: null,
+	}));
+	assert.equal(state.state, CAPTION_SOURCE_STATES.undecidable);
+});
+
+test('the resolver reads the static-asset root, and calls a remote URL undecidable', () => {
+	const root = mkdtempSync(join(tmpdir(), 'a11y-video-caption-'));
+	try {
+		mkdirSync(join(root, 'public', 'captions'), { recursive: true });
+		writeFileSync(
+			join(root, 'public', 'captions', 'example.en.vtt'),
+			'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nA cue.\n',
+		);
+		const resolve = createCaptionSourceResolver({
+			repoRoot: root,
+			publicRoot: join(root, 'public'),
+		});
+
+		assert.equal(resolve('/captions/example.en.vtt').state, CAPTION_SOURCE_STATES.verified);
+		assert.equal(resolve('/captions/absent.vtt').state, CAPTION_SOURCE_STATES.missing);
+		assert.equal(resolve('https://cdn.example.com/x.vtt').state, CAPTION_SOURCE_STATES.undecidable);
+		assert.equal(resolve('/../outside.vtt').state, CAPTION_SOURCE_STATES.undecidable);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test('a playable video without an audio-description disposition is a violation (SC 1.2.3 A / SC 1.2.5 AA)', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 	assert.equal(facts.adStatus, null);
 	assert.deepEqual(
@@ -226,7 +374,7 @@ test('a playable video without an audio-description disposition is a violation (
 });
 
 test('a claimed audio description needs the descriptions track (fail-closed)', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="provided"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 	assert.equal(facts.descriptionTracks, 0);
 	assert.deepEqual(
@@ -236,14 +384,14 @@ test('a claimed audio description needs the descriptions track (fail-closed)', (
 });
 
 test('not-required is an accepted audio-description disposition', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 	assert.equal(facts.adStatus, 'not-required');
 	assert.deepEqual(violations, []);
 });
 
 test('an unknown audio-description disposition is not a decision', () => {
-	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="maybe"><source src="/a.mp4" /><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="maybe"><source src="/a.mp4" /><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	assert.deepEqual(rulesOf(source), ['video-without-audio-description']);
 });
 
@@ -278,6 +426,11 @@ test('the facts of a video are the whole contract', () => {
 		hasName: true,
 		captionTracks: 1,
 		captionStatus: 'verified',
+		captionSource: {
+			state: CAPTION_SOURCE_STATES.verified,
+			detail: `the caption source "${CAPTION_SRC}" is a WebVTT document with a caption cue`,
+			path: join(REPO_ROOT, CAPTION_SRC),
+		},
 		descriptionTracks: 1,
 		adStatus: AD_STATUS_PROVIDED,
 		undecidable: [],
@@ -298,7 +451,7 @@ test('a dynamic src does not skip the caption / controls / audio-description rul
 });
 
 test('a video that is not silenced is checked even when it is hidden from AT', () => {
-	const source = `<video muted={false} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video muted={false} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.decorative, false, 'muted={false} does not make the video decorative');
@@ -309,7 +462,7 @@ test('a video that is not silenced is checked even when it is hidden from AT', (
 });
 
 test('a muted value the gate cannot read is not read as silence', () => {
-	const source = `<video muted={isMuted} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video muted={isMuted} aria-hidden="true" poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.decorative, false);
@@ -321,7 +474,7 @@ test('a muted value the gate cannot read is not read as silence', () => {
 });
 
 test('controls={false} is not a control', () => {
-	const source = `<video controls={false} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls={false} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.hasControls, false);
@@ -333,7 +486,7 @@ test('controls={false} is not a control', () => {
 });
 
 test('a controls value the gate cannot read does not pass either', () => {
-	const source = `<video controls={isPlaying} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video controls={isPlaying} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.hasControls, false);
@@ -346,7 +499,7 @@ test('a controls value the gate cannot read does not pass either', () => {
 });
 
 test('a spread may carry any attribute, so the video is judged in the safe direction', () => {
-	const source = `<video {...props} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video {...props} poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.hasControls, false, 'the spread may carry `controls`');
@@ -358,7 +511,7 @@ test('a spread may carry any attribute, so the video is judged in the safe direc
 });
 
 test('attributes written after a spread are final', () => {
-	const source = `<video {...props} controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="/c.vtt" /></video>`;
+	const source = `<video {...props} controls poster="/a.webp" aria-label="x" data-caption-status="verified" data-audio-description-status="not-required" src="/a.mp4"><track kind="captions" src="${CAPTION_SRC}" /></video>`;
 	const { facts, violations } = evaluateVideo(videoInput(source));
 
 	assert.equal(facts.hasControls, true);
@@ -370,10 +523,25 @@ test('every rule the Issue names is a rule the gate knows', () => {
 		'video-without-caption-track',
 		'video-without-text-alternative',
 		'video-without-controls',
-		'video-playable-without-verified-caption',
+		'video-playable-without-declared-verified-caption',
+		'video-caption-source-unverified',
 		'video-without-audio-description',
 	]) {
 		assert.ok(RULES.includes(rule), `${rule} must be a known rule`);
+	}
+});
+
+test('the rule names keep "declared" and "verified" apart', () => {
+	// The rule about the AUTHOR'S claim names the DECLARATION.
+	assert.ok(RULES.includes('video-playable-without-declared-verified-caption'));
+	// The rule about the GATE'S own finding names the SOURCE.
+	assert.ok(RULES.includes('video-caption-source-unverified'));
+	// No rule may read the author's declaration as a verification.
+	for (const rule of RULES) {
+		assert.ok(
+			!/-without-verified-/.test(rule),
+			`${rule} must not read the author's declaration as a verification`,
+		);
 	}
 });
 
@@ -475,4 +643,27 @@ test('the report states what was left out of scope, and why', () => {
 
 	assert.match(report, /out of scope \(excluded from the shipped scan, with the reason\):/);
 	assert.match(report, /design-system/);
+});
+
+test('the report separates a DECLARED caption status from a VERIFIED caption source', () => {
+	const report = renderGateSummary(collectEvidence());
+
+	assert.match(report, /declared vs verified:/);
+	assert.match(report, /DECLARED — a value the author wrote into the markup/);
+	assert.match(report, /VERIFIED — a fact the gate established itself/);
+	assert.match(
+		report,
+		/A static pass of this gate establishes a verified caption SOURCE\. It does NOT establish that the captions match the video/,
+	);
+	assert.match(report, /caption-source-verification/);
+});
+
+test('the report says what the gate establishes about a caption source, and what it cannot', () => {
+	const report = renderGateSummary(collectEvidence());
+
+	assert.ok(
+		report.includes(
+			'whether the caption file corresponds to the video it is attached to (the gate verifies that the file exists, is a valid WebVTT document and carries a cue; it does not read the cues)',
+		),
+	);
 });

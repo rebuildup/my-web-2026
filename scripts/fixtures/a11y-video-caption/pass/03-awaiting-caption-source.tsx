@@ -6,6 +6,10 @@
  * is undetermined. It still carries a poster and an accessible name — and
  * because it is not playable, no audio-description disposition is demanded
  * yet. This file must produce NO violation.
+ *
+ * The caption `src` points at no file of this repository on purpose: the
+ * gate demands a VERIFIED caption source only of a PLAYABLE work, and
+ * this work is not playable while its caption source is unconfirmed.
  */
 export const AwaitingCaptionSource = () => (
 	<video

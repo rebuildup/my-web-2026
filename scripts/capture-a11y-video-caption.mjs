@@ -6,12 +6,12 @@
  *
  * What this captures
  * ------------------
- * One screen that renders the four states a `<video>` contract has to
- * survive — captioned, no caption track, a caption track whose resource
- * fails to load, and a playable video with no controls — plus the same
- * captioned video at 320 px. The verdict of each static case is computed
- * by the GATE's own `evaluateVideo`, so the browser half and the source
- * half cannot disagree about the contract.
+ * One screen that renders the five states a `<video>` contract has to
+ * survive — captioned, no caption track, no playback controls, a caption
+ * track whose resource fails to load, and no audio-description
+ * disposition — plus the same captioned video at 320 px. The verdict of
+ * each static case is computed by the GATE's own `evaluateVideo`, so the
+ * browser half and the source half cannot disagree about the contract.
  *
  * It is an ASSERTION, not only a screenshot. The caption track of one card
  * points at a resource that 404s; the capture reads the browser-reported
@@ -22,6 +22,9 @@
  *   - the failing caption track is NOT reported as an error, or
  *   - the video whose caption source failed still claims
  *     `data-caption-status="verified"` (the fail-closed core of the Issue),
+ *   - the caption SOURCE is not what the card claims: the gate reads the
+ *     file the track points at (a real WebVTT document for the working
+ *     card, no file at all for the failing one),
  *   - the 320 px layout changes the video facts.
  *
  * Safety
@@ -60,7 +63,12 @@ import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSyn
 import { createServer } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluateVideo, WCAG, WCAG_REFERENCE } from './check-a11y-video-caption.mjs';
+import {
+	WCAG,
+	WCAG_REFERENCE,
+	createCaptionSourceResolver,
+	evaluateVideo,
+} from './check-a11y-video-caption.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -72,7 +80,10 @@ export const CASES = [
 	{
 		id: 'caption-load-fails',
 		label: 'the caption resource fails to load',
-		expectRules: ['video-playable-without-verified-caption'],
+		expectRules: [
+			'video-playable-without-declared-verified-caption',
+			'video-caption-source-unverified',
+		],
 	},
 	{
 		id: 'no-audio-description',
@@ -100,6 +111,18 @@ export const DESCRIPTION_VTT =
 export const WCAG_MAPPING = WCAG;
 
 export const HARNESS_DIR = '.tmp/a11y-video-caption/harness';
+
+/**
+ * The caption-source resolver the capture points at the harness it serves.
+ *
+ * The gate verifies a caption SOURCE by reading the file: the harness
+ * writes a real WebVTT document and answers 404 for the missing one, so
+ * the same resolver the repository gate uses decides here — pointed at
+ * the harness root instead of the repository.
+ */
+export function harnessCaptionResolver(harnessDir = resolve(REPO_ROOT, HARNESS_DIR)) {
+	return createCaptionSourceResolver({ repoRoot: harnessDir, publicRoot: harnessDir });
+}
 
 /** Committed captures are WebP: width cap, quality, and a size budget. */
 export const SCREENSHOT_MAX_WIDTH = 1600;
@@ -337,7 +360,11 @@ export const READ_STATE = () => {
  *
  * `wide` and `narrow` are each a `READ_STATE` result.
  */
-export function evaluateObservation({ wide, narrow }) {
+export function evaluateObservation({
+	wide,
+	narrow,
+	resolveCaptionSource = harnessCaptionResolver(),
+}) {
 	const failures = [];
 	const rows = [];
 	const byId = (state) => new Map((state?.cases ?? []).map((entry) => [entry.id, entry]));
@@ -348,11 +375,14 @@ export function evaluateObservation({ wide, narrow }) {
 			failures.push(`the case ${expected.id} was not rendered`);
 			continue;
 		}
-		const { violations } = evaluateVideo({
-			attributes: entry.attributes,
-			tracks: entry.tracks,
-			hasSource: entry.hasSource,
-		});
+		const { violations } = evaluateVideo(
+			{
+				attributes: entry.attributes,
+				tracks: entry.tracks,
+				hasSource: entry.hasSource,
+			},
+			{ resolveCaptionSource },
+		);
 		const found = violations.map((violation) => violation.rule);
 		if (JSON.stringify(found) !== JSON.stringify(expected.expectRules)) {
 			failures.push(
@@ -428,8 +458,9 @@ export function headerSvg({ gate, verdict, width = SCREENSHOT_MAX_WIDTH }) {
 		'machine-checked: the audio-description disposition (data-audio-description-status) and the descriptions track, fail-closed',
 		'machine-checked: the working caption track reaches LOADED and the missing one reaches ERROR',
 		'machine-checked: the video whose caption source failed declines to claim data-caption-status="verified"',
+		"machine-checked: the caption SOURCE is read (the file exists, it is a valid WebVTT document, it carries a cue) — the declared status is the author's claim, the source is the gate's fact",
 		`machine-checked: gate ${gate.violations.length} violation(s) over ${gate.shipped.filesScanned} shipped .tsx file(s), ${gate.shipped.videosScanned} <video> element(s)`,
-		'not machine-checked: caption accuracy, whether a particular work needs an audio description (the human decision behind the disposition), the poster image, a screen-reader pass',
+		'not machine-checked: caption accuracy, whether the captions match the video, whether a particular work needs an audio description (the human decision behind the disposition), the poster image, a screen-reader pass',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}; SC ${WCAG_REFERENCE.sc} (${WCAG_REFERENCE.level}) is reference only`,
 		'',
 		...verdict.rows,

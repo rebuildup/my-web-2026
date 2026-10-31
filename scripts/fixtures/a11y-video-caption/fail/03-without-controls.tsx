@@ -13,10 +13,15 @@ export const WithoutControls = () => (
 		data-audio-description-status="provided"
 	>
 		<source src="/media/portfolio/example.mp4" type="video/mp4" />
-		<track kind="captions" src="/media/portfolio/example.en.vtt" srcLang="en" label="English" />
+		<track
+			kind="captions"
+			src="scripts/fixtures/a11y-video-caption/captions/example.en.vtt"
+			srcLang="en"
+			label="English"
+		/>
 		<track
 			kind="descriptions"
-			src="/media/portfolio/example.en.desc.vtt"
+			src="scripts/fixtures/a11y-video-caption/captions/example.en.desc.vtt"
 			srcLang="en"
 			label="Audio description"
 		/>

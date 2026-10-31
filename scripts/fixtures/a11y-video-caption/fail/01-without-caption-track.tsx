@@ -17,7 +17,7 @@ export const WithoutCaptionTrack = () => (
 		<source src="/media/portfolio/example.mp4" type="video/mp4" />
 		<track
 			kind="descriptions"
-			src="/media/portfolio/example.en.desc.vtt"
+			src="scripts/fixtures/a11y-video-caption/captions/example.en.desc.vtt"
 			srcLang="en"
 			label="Audio description"
 		/>

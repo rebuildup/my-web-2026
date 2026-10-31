@@ -15,6 +15,11 @@ export const WithoutAudioDescription = () => (
 		data-caption-status="verified"
 	>
 		<source src="/media/portfolio/example.mp4" type="video/mp4" />
-		<track kind="captions" src="/media/portfolio/example.en.vtt" srcLang="en" label="English" />
+		<track
+			kind="captions"
+			src="scripts/fixtures/a11y-video-caption/captions/example.en.vtt"
+			srcLang="en"
+			label="English"
+		/>
 	</video>
 );

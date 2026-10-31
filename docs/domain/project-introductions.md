@@ -110,6 +110,13 @@ README 構成変更として説明する。未知の理由は「状態を確認�
 - 許容遅延: **最大 24 時間 + workflow queue**。page は snapshot の `verifiedAt` を
   そのまま表示するので、遅延を「現在」と偽らない。
 - 内容が同じ日は commit しない。7 日経過したときだけ heartbeat として `verifiedAt` を更新する。
+- **publish の lease は remote の現在状態から読む**（Issue #739）。workflow は
+  `scripts/_projects-sync-push.mjs` を通して push する。このモジュールの lease は
+  `git ls-remote` の実測値であり、ローカルの remote-tracking ref に依存しない。
+  remote に branch が無い初回は「その ref が存在しないこと」を要求し，存在する場合は
+  「その sha のままであること」を要求する。push が拒否されたときは snapshot は
+  **公開されない**（committed snapshot は変わらないので `/projects/dotfiles` は
+  stale のまま残る）。次回の成功まで「最新」とは表示しない。
 - 同期 PR の base は repository variable `PROJECTS_SYNC_BASE_REF`（sprint cut 時に
   active な `release-x-y-z` を設定する）。未設定なら workflow は base を推測せず停止する。
 - workflow は merge / tag / release / deploy を行わない。PR の merge は人間の gate（AGENTS.md §6）。

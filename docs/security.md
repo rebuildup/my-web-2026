@@ -1036,7 +1036,7 @@ Strict-Transport-Security: max-age=31536000
 | 実行時スイート | HTTPS での SSR / 外部境界 / リダイレクトが正確に意図した値を 1 つだけ持つこと、http では 0 個であること、値に `includeSubDomains` / `preload` が無いこと | `test/integration/hsts-transport-security.test.ts`（workerd pool） |
 | 静的 gate | 宣言が 1 箇所だけであること、`max-age` が許可域（1 日〜2 年）であること、未知 directive が無いこと、`includeSubDomains` / `preload` が無いこと、コード全体のリテラルが canonical と一致すること | `scripts/check-hsts-policy.mjs`（fixture は `scripts/check-hsts-policy.test.mjs`） |
 | E2E（local） | `pnpm preview`（`http://127.0.0.1:3000`）の応答に HSTS が無いこと。plaintext 配信を「HTTPS 化済み」に見せない | `e2e/smoke.spec.ts` |
-| E2E（production、read-only） | canonical origin の**各 surface**（`/` と `/api/v1/health`）がそれぞれ host-scoped な値であること | `e2e/prod-smoke.spec.ts`（手動 `workflow_dispatch` / `pnpm run e2e:prod`） |
+| E2E（production、read-only） | canonical origin の**各 surface**（`/` と `/api/v1/health`）がそれぞれ host-scoped な値であること | `e2e/prod-smoke.spec.ts`（`workflow_dispatch` 手動 / 毎日 schedule / `pnpm run e2e:prod`） |
 
 静的 gate 単体の実行:
 

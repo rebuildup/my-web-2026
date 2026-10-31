@@ -1,11 +1,13 @@
-import type { EmojiClickData } from 'emoji-picker-react';
+import { EmojiStyle, Theme, type EmojiClickData } from 'emoji-picker-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CatalogEntry } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import {
+	EMOJI_STYLE_NATIVE,
 	REACTION_ERROR_MESSAGES,
 	ReactionsWidget,
+	THEME_AUTO,
 	computeToggleState,
 	deriveSlugFromPicker,
 	describeMutationError,
@@ -378,5 +380,31 @@ describe('describeMutationError (Issue #456)', () => {
 		for (const reason of Object.keys(REACTION_ERROR_MESSAGES)) {
 			expect(describeMutationError(reason).length).toBeGreaterThan(0);
 		}
+	});
+});
+
+/**
+ * Issue #724 — the picker style constants are string literals rather
+ * than library enum members, because importing `EmojiStyle` / `Theme` as
+ * VALUES pulls the whole 335 KB `emoji-picker-react` library into the
+ * shared client entry chunk and defeats the `lazy()` split that keeps
+ * the picker out of first paint.
+ *
+ * The duplication is only safe while it is pinned to the library's own
+ * enum members, so this suite asserts the equality at runtime: a library
+ * upgrade that renames or re-values `EmojiStyle.NATIVE` / `Theme.AUTO`
+ * fails here instead of shipping a picker with the wrong style.
+ *
+ * Importing the enum members as values is safe HERE and only here: a
+ * test file is never part of the client bundle.
+ */
+describe('picker style constants (Issue #724)', () => {
+	it('matches the library enum members it replaced', () => {
+		expect(EMOJI_STYLE_NATIVE).toBe(EmojiStyle.NATIVE);
+		expect(THEME_AUTO).toBe(Theme.AUTO);
+	});
+
+	it('keeps the "native" style, so no emoji image set is bundled or fetched', () => {
+		expect(EMOJI_STYLE_NATIVE).toBe('native');
 	});
 });

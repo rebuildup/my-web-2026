@@ -78,6 +78,50 @@ export async function measureEmittedFile(outDir, fileName, fallback) {
 }
 
 /**
+ * Normalise a Rollup module id into a stable, comparable key.
+ *
+ * Two shapes matter to the gates:
+ *
+ *   - a repository source file → `src:<repo-relative path>`
+ *   - a package                → `pkg:<package name>`
+ *
+ * The comparison has to survive pnpm's store layout, where the real
+ * package directory sits two `node_modules` levels down
+ * (`node_modules/.pnpm/<name>@<version>/node_modules/<name>/…`). Reading
+ * the segment AFTER the last `node_modules` therefore yields the package
+ * name for both the pnpm layout and a flat `node_modules/<name>` install.
+ *
+ * A query suffix (`?raw`, `?tsr-split=component`) is dropped: it selects
+ * how a module is loaded, not which module it is, and the server-only
+ * rules are about the module.
+ *
+ * @param {string} id Rollup module id
+ * @param {string} rootDir repository root, used to make repo ids relative
+ * @returns {string} `src:…`, `pkg:…` or `other:…`
+ */
+export function normalizeModuleId(id, rootDir) {
+	const normalized = id.split('\\').join('/').split('?')[0];
+	const marker = 'node_modules/';
+	const index = normalized.lastIndexOf(marker);
+	if (index !== -1) {
+		const segments = normalized.slice(index + marker.length).split('/');
+		const first = segments[0] ?? '';
+		const name = first.startsWith('@') ? `${first}/${segments[1] ?? ''}` : first;
+		return `pkg:${name.replace('+', '/')}`;
+	}
+	const repoRoot = rootDir.split('\\').join('/').replace(/\/+$/, '');
+	const srcIndex = normalized.indexOf(`${repoRoot}/src/`);
+	if (srcIndex !== -1) {
+		return `src:${normalized.slice(srcIndex + repoRoot.length + 5)}`;
+	}
+	const relativeSrc = normalized.indexOf('/src/');
+	if (relativeSrc !== -1) {
+		return `src:${normalized.slice(relativeSrc + 5)}`;
+	}
+	return `other:${normalized}`;
+}
+
+/**
  * Turn a Rollup output bundle into the graph the budget gate reads.
  *
  * @param {object} params
@@ -129,6 +173,15 @@ export async function buildClientBundleGraph({ bundle, outDir, rootDir }) {
 			css_bytes: importedCss.reduce((sum, css) => sum + (assets[css]?.bytes ?? 0), 0),
 			imports: [...output.imports].filter((dep) => bundle[dep]?.type === 'chunk'),
 			css: importedCss,
+			// The module ids Rollup put in this chunk, normalised. A byte
+			// budget says HOW BIG a chunk is; it cannot say WHAT is in it,
+			// so a server-only package that leaks into the browser graph
+			// shows up only as "the entry chunk grew". Recording the ids
+			// lets `scripts/check-client-bundle-server-only.mjs` name the
+			// offending module instead of leaving it to a size delta.
+			modules: Object.keys(output.modules ?? {})
+				.map((id) => normalizeModuleId(id, rootDir))
+				.sort(),
 		};
 	}
 

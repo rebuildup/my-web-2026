@@ -47,6 +47,13 @@
  *               diameter circle centred on the target must not intersect
  *               any other target's circle or bounding box. A claim the
  *               geometry refuses is a failure, not a pass.
+ *   equivalent — DECLARED with a reason AND the name of the equivalent
+ *               control, then CHECKED here: the named control has to be
+ *               on the same page and to meet the 24 × 24 minimum
+ *               itself. What the capture CANNOT check is that the other
+ *               control offers the same FUNCTION — that stays human
+ *               evaluation, and the artefact says so instead of
+ *               implying a machine verdict.
  *   user-agent / essential — DECLARED with a reason; the capture accepts
  *               the declaration and records it in the report.
  *
@@ -54,9 +61,12 @@
  * ---------------------------------
  * Whether a 24 px target is comfortable with a thumb, whether a spacing
  * exception is good design, whether a drag gesture is the right
- * interaction, and how the three surfaces feel on a real phone. Those
- * stay human evaluation, and the artefact says so on its face instead
- * of implying a machine verdict.
+ * interaction, whether a DECLARED alternative operation offers the same
+ * function as the drag gesture it replaces, whether the control an
+ * "equivalent" exception names offers the same function, and how the
+ * three surfaces feel on a real phone. Those stay human evaluation, and
+ * the artefact says so on its face instead of implying a machine
+ * verdict.
  *
  * Safety
  * ------
@@ -101,6 +111,7 @@ import {
 	MIN_TARGET_PX,
 	SHIPPED_EXCEPTIONS,
 	WCAG,
+	WCAG_DRAGGING,
 	collectEvidence,
 	renderGateSummary,
 } from './check-a11y-target-size.mjs';
@@ -130,6 +141,7 @@ export const HARNESS_VIEWPORT = { width: 1280, height: 900 };
 /** The WCAG 2.2 criteria this artefact speaks to, with their levels. */
 export const WCAG_MAPPING = [
 	{ sc: WCAG.sc, name: WCAG.name, level: WCAG.level },
+	{ sc: WCAG_DRAGGING.sc, name: WCAG_DRAGGING.name, level: WCAG_DRAGGING.level },
 	{ sc: '2.1.1', name: 'Keyboard', level: 'A' },
 	{ sc: '1.4.4', name: 'Resize Text', level: 'AA' },
 ];
@@ -260,6 +272,37 @@ export function spacingClaimHolds(target, others) {
 }
 
 /**
+ * Whether the "equivalent" exception's claim holds (pure).
+ *
+ * The claim the capture CAN check: the named control is on the same page
+ * and meets the 24 × 24 minimum itself. The claim it CANNOT check — that
+ * the other control offers the same FUNCTION — stays human evaluation,
+ * and the reason it returns never claims it.
+ */
+export function equivalentClaimHolds(declaration) {
+	const equivalent = declaration?.equivalent ?? null;
+	if (!equivalent) {
+		return { holds: false, reason: 'no equivalent control is named' };
+	}
+	if (!equivalent.found) {
+		return {
+			holds: false,
+			reason: `the named control "${equivalent.ref}" is not on the same page`,
+		};
+	}
+	if (!equivalent.meets) {
+		return {
+			holds: false,
+			reason: `the named control "${equivalent.ref}" measures ${Math.round(equivalent.width)} × ${Math.round(equivalent.height)} px, below the ${MIN_TARGET_PX} px minimum`,
+		};
+	}
+	return {
+		holds: true,
+		reason: `the named control "${equivalent.ref}" is on the same page and measures ${Math.round(equivalent.width)} × ${Math.round(equivalent.height)} px, so it meets the minimum itself`,
+	};
+}
+
+/**
  * Decide one measured target (pure).
  *
  * `verdict` is one of `compliant`, `compliant-by-exception` or
@@ -294,6 +337,16 @@ export function evaluateMeasuredTarget({ target, others, declaredException }) {
 					: `the target measures ${Math.round(width)} × ${Math.round(height)} px and declares the spacing exception, but the claim does not hold: a ${MIN_TARGET_PX} px circle centred on it intersects another target (SC ${WCAG.sc}, spacing)`,
 			};
 		}
+		if (declaredException.kind === 'equivalent') {
+			const claim = equivalentClaimHolds(declaredException);
+			return {
+				verdict: claim.holds ? 'compliant-by-exception' : 'violation',
+				exception: claim.holds ? 'equivalent' : null,
+				reason: claim.holds
+					? `the target measures ${Math.round(width)} × ${Math.round(height)} px, and the declared equivalent claim holds: ${claim.reason} (SC ${WCAG.sc}, equivalent). Whether that control offers the same FUNCTION is human evaluation, not proven here`
+					: `the target measures ${Math.round(width)} × ${Math.round(height)} px and declares the equivalent exception, but the claim does not hold: ${claim.reason} (SC ${WCAG.sc}, equivalent)`,
+			};
+		}
 		if (declaredException.kind === 'essential' || declaredException.kind === 'user-agent') {
 			return {
 				verdict: 'compliant-by-exception',
@@ -304,7 +357,7 @@ export function evaluateMeasuredTarget({ target, others, declaredException }) {
 		return {
 			verdict: 'violation',
 			exception: null,
-			reason: `the target measures ${Math.round(width)} × ${Math.round(height)} px and declares an exception that is not one of the four SC ${WCAG.sc} names`,
+			reason: `the target measures ${Math.round(width)} × ${Math.round(height)} px and declares an exception that is not one of the five SC ${WCAG.sc} names`,
 		};
 	}
 	return {
@@ -367,13 +420,21 @@ export function evaluateObservation(observation) {
 		// unchecked specimen is a specimen nobody looks at.
 		const expectedVerdict =
 			specimen.sizeVerdict ?? (specimen.expectation === 'fail' ? 'fail' : 'pass');
-		const declaredExceptions = specimen.exceptionKind
-			? specimen.targets.map((target) => ({
+		// A declaration written on a target is that target's own; a
+		// declaration written on the specimen reaches every target that
+		// does not carry one of its own.
+		const declaredExceptions = specimen.targets
+			.map((target) => {
+				const kind = target.exceptionKind ?? specimen.exceptionKind;
+				if (!kind) return null;
+				return {
 					targetId: target.id,
-					kind: specimen.exceptionKind,
-					reason: specimen.exceptionReason ?? '',
-				}))
-			: [];
+					kind,
+					reason: target.exceptionReason ?? specimen.exceptionReason ?? '',
+					equivalent: target.equivalent ?? null,
+				};
+			})
+			.filter((entry) => entry !== null);
 		const specimenRows = evaluateMeasuredTargets({
 			targets: specimen.targets,
 			declaredExceptions,
@@ -636,6 +697,32 @@ export function writeHarness(repoRoot = REPO_ROOT) {
 export const MEASURE_TARGETS = (selector) => {
 	const container = document.querySelector(selector);
 	if (!container) return { found: false, targets: [], hidden: 0 };
+	// The "equivalent" exception is a claim about ANOTHER control, so
+	// the capture has to find that control and measure it. The reference
+	// is an id or a selector; a reference that resolves to nothing is
+	// recorded as "not found" rather than guessed at.
+	const resolveEquivalent = (ref) => {
+		if (!ref) return null;
+		let element = null;
+		try {
+			element = document.getElementById(ref) ?? document.querySelector(ref);
+		} catch {
+			element = null;
+		}
+		if (!element) {
+			return { ref, found: false, width: null, height: null, meets: false, tag: null, id: null };
+		}
+		const rect = element.getBoundingClientRect();
+		return {
+			ref,
+			found: true,
+			width: rect.width,
+			height: rect.height,
+			meets: rect.width >= 24 && rect.height >= 24,
+			tag: element.tagName.toLowerCase(),
+			id: element.id ?? null,
+		};
+	};
 	const interactive = container.querySelectorAll(
 		'a[href], button, input, select, textarea, summary, [role="button"], [role="link"]',
 	);
@@ -667,6 +754,7 @@ export const MEASURE_TARGETS = (selector) => {
 			box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
 			exceptionKind: element.getAttribute('data-target-exception'),
 			exceptionReason: element.getAttribute('data-target-reason'),
+			equivalent: resolveEquivalent(element.getAttribute('data-target-equivalent')),
 		});
 		index += 1;
 	}
@@ -814,9 +902,10 @@ export function headerSvg({ observation, verdict, gate, width = SCREENSHOT_MAX_W
 		`shipped surfaces: ${(observation.surfaces ?? []).map((surface) => surface.label).join(' · ')}`,
 		`machine-checked: ${measured} shipped target(s) measured in Chromium, ${specimens} specimen target(s) measured`,
 		`machine-checked: the minimum is ${MIN_TARGET_PX} × ${MIN_TARGET_PX} CSS px (SC ${WCAG.sc} ${WCAG.name}, ${WCAG.level})`,
+		`machine-checked: the drag rule answers to SC ${WCAG_DRAGGING.sc} ${WCAG_DRAGGING.name} — a drag gesture must DECLARE an alternative operation`,
 		`machine-checked: green = meets the minimum, red = misses it, dashed circle = the ${MIN_TARGET_PX} px minimum`,
 		`machine-checked: ${verdict.failures.length} failure(s); the static gate reports ${gate.violations.length} violation(s)`,
-		'not machine-checked: thumb comfort, whether a spacing exception is good design, a real device pass',
+		'not machine-checked: thumb comfort, whether a spacing exception is good design, whether a declared alternative offers the same function, a real device pass',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}`,
 	];
 	const rowTop = HEADER_PAD + 34;
@@ -1097,6 +1186,32 @@ async function captureSurface(context, surface, baseUrl, pngDir) {
 async function captureSpecimens(page, pngDir) {
 	await page.waitForSelector('[data-target-root]', { timeout: 20_000 });
 	const specimens = await page.evaluate(() => {
+		// The "equivalent" exception names another control, so the
+		// capture resolves the reference and measures the control it
+		// points at. A reference that resolves to nothing is recorded as
+		// "not found" rather than guessed at.
+		const resolveEquivalent = (ref) => {
+			if (!ref) return null;
+			let element = null;
+			try {
+				element = document.getElementById(ref) ?? document.querySelector(ref);
+			} catch {
+				element = null;
+			}
+			if (!element) {
+				return { ref, found: false, width: null, height: null, meets: false, tag: null, id: null };
+			}
+			const rect = element.getBoundingClientRect();
+			return {
+				ref,
+				found: true,
+				width: rect.width,
+				height: rect.height,
+				meets: rect.width >= 24 && rect.height >= 24,
+				tag: element.tagName.toLowerCase(),
+				id: element.id ?? null,
+			};
+		};
 		const sections = [...document.querySelectorAll('[data-target-case]')];
 		return sections.map((section) => {
 			const specimen = section.querySelector('[data-target-specimen]');
@@ -1124,6 +1239,11 @@ async function captureSpecimens(page, pngDir) {
 							element.getAttribute('data-target-reason') ??
 							specimen?.getAttribute('data-target-reason') ??
 							null,
+						equivalent: resolveEquivalent(
+							element.getAttribute('data-target-equivalent') ??
+								specimen?.getAttribute('data-target-equivalent') ??
+								null,
+						),
 					};
 				},
 			);

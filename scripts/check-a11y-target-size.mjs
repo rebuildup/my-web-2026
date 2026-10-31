@@ -15,8 +15,8 @@
  *
  *   1. THIS gate — the static half. It reads the shipped source and
  *      decides the DECLARED size of every interactive element on the
- *      surfaces the Issue names, and whether the surface offers a
- *      drag-only operation with no click (or keyboard) alternative.
+ *      surfaces the Issue names, and whether a drag gesture DECLARES an
+ *      alternative operation at all.
  *   2. `scripts/capture-a11y-target-size.mjs` — the browser half. It
  *      opens the same surfaces in Chromium, measures the real hit boxes,
  *      and applies the exceptions the source cannot settle (the inline
@@ -40,37 +40,58 @@
  * scope without a decision would make the report unreadable and would put
  * this Issue's name on another surface's defects.
  *
- * The rules
- * ---------
+ * The rules, and the criterion each one answers to
+ * ------------------------------------------------
  *   shipped-target-undersized
  *       A shipped target DECLARES a hit-area size below 24 CSS px. A
  *       declaration is a claim the author made; a claim that is too small
  *       is a defect whether the rendered box grows afterwards or not.
  *       (SC 2.5.8)
  *   shipped-drag-without-alternative
- *       A shipped target offers a drag gesture and no click (or keyboard)
- *       alternative. A pointer-only operation is unusable for a keyboard
- *       user, so the criterion's "Equivalent" exception does not apply.
- *       (SC 2.5.8, and the criterion's own pointer-gesture reasoning)
+ *       A shipped target DECLARES a drag gesture and DECLARES no
+ *       alternative operation for it. This rule answers to SC 2.5.7
+ *       Dragging Movements, NOT to SC 2.5.8: the requirement that a
+ *       dragging operation have a single-pointer alternative is the
+ *       dragging criterion's own, and attributing it to the size
+ *       criterion misstates both. (SC 2.5.7)
+ *       What the rule reads is the DECLARATION of an alternative
+ *       operation — an `onClick` attribute, a natively activatable
+ *       element, a keyboard-operable custom control. The presence of an
+ *       `onClick` attribute does NOT prove that the function can be
+ *       achieved with a single pointer: whether the alternative offers
+ *       the same FUNCTION is human evaluation, and the rule never claims
+ *       it.
  *   target-specimen-undersized
  *       A fixture specimen declares a size below 24 CSS px and does not
  *       declare a valid exception. (SC 2.5.8)
  *   target-specimen-exception-invalid
  *       A fixture specimen declares an exception that is not one of the
- *       four the criterion names, or declares it without a reason. An
- *       exception nobody can check is an exception nobody reads.
- *       (SC 2.5.8)
+ *       five the criterion names, or declares it without the evidence the
+ *       named exception requires — a reason for every exception, and for
+ *       the "equivalent" exception a reason AND the name of the
+ *       equivalent control. An exception nobody can check is an
+ *       exception nobody reads. (SC 2.5.8)
  *   target-specimen-drag-only
- *       A fixture specimen reproduces a drag-only operation with no click
- *       alternative. (SC 2.5.8)
+ *       A fixture specimen reproduces a drag operation with no declared
+ *       alternative operation. (SC 2.5.7)
  *   fixture-pass-no-specimen / fixture-pass-violation /
  *   fixture-fail-not-detected / fixture-fail-unexpected /
- *   fixture-file-missing / fixture-file-unexpected
+ *   fixture-fail-criterion-mismatch / fixture-file-missing /
+ *   fixture-file-unexpected
  *       The fixture must reproduce the states it stands for, or the gate
- *       is green for the wrong reason.
+ *       is green for the wrong reason. The CRITERION a fixture stands
+ *       for is part of that state: a drag fixture that reported the size
+ *       criterion would reproduce the drag defect under the wrong
+ *       criterion, and the gate reports that drift.
  *
- * The four exceptions of SC 2.5.8
+ * The five exceptions of SC 2.5.8
  * ------------------------------
+ * The criterion names FIVE exceptions, and this gate's vocabulary names
+ * the same five. An exception that is missing from the vocabulary is an
+ * exception the gate REJECTS when an author declares it — so a missing
+ * one is not a cosmetic gap: it turns a conformant target into a
+ * reported violation.
+ *
  *   inline
  *       The target is in a sentence, or its size is otherwise constrained
  *       by the line-height of non-target text. DECIDED BY MEASUREMENT: the
@@ -84,6 +105,21 @@
  *       shipped surface) declares the exception with a reason, and the
  *       capture then checks the claim against the rendered boxes. A claim
  *       the geometry does not support is a failure, not a pass.
+ *   equivalent
+ *       The function of the target can be achieved through a different
+ *       control on the same page that meets this criterion. DECIDED BY
+ *       DECLARATION WITH EVIDENCE, then CHECKED AGAINST THE PAGE: the
+ *       author declares the exception with a reason AND names the
+ *       equivalent control (an id or a selector), the static gate checks
+ *       the shape of that declaration, and the capture then checks the
+ *       claim it CAN check — that the named control is on the same page
+ *       and that it meets the minimum itself. A claim the page does not
+ *       support is a failure, not a pass, exactly like the spacing
+ *       exception. What NO half can check is that the other control
+ *       offers the same FUNCTION: that stays human evaluation and is
+ *       printed as such. A declaration with no named control is not an
+ *       exception at all — an exception nobody can check is an exception
+ *       nobody reads.
  *   user-agent control
  *       The size of the target is determined by the user agent and is not
  *       modified by the author. DECIDED BY DECLARATION, with a reason.
@@ -92,20 +128,25 @@
  *       DECLARATION, with a reason.
  *
  * A declaration without a reason is not an exception; it is a hole with a
- * label on it. `SHIPPED_EXCEPTIONS` is where a shipped surface declares
- * the two declaration-only exceptions, one row per (surface, selector,
- * kind, reason). It is printed with the report, empty or not, so a reader
- * can see that the list was looked at.
+ * label on it, and the "equivalent" declaration without a named control
+ * is no exception at all. `SHIPPED_EXCEPTIONS` is where a shipped surface
+ * declares the declaration-only exceptions, one row per (surface,
+ * selector, kind, reason), plus the name of the equivalent control for an
+ * "equivalent" row. It is printed with the report, empty or not, so a
+ * reader can see that the list was looked at.
  *
  * Machine-checked vs. human-evaluated
  * -----------------------------------
  * This gate decides DECLARATIONS: the size an element claims, the
- * exceptions an element declares, and whether a drag gesture has an
- * alternative. It cannot decide whether a 24 px target is easy to hit,
- * whether a spacing exception is good design, whether a drag gesture is
- * the right interaction at all, or how the surface feels on a phone.
- * Those stay human evaluation and are printed separately, never merged
- * into one green mark.
+ * exceptions an element declares, and whether a drag gesture DECLARES an
+ * alternative operation. It cannot decide whether a 24 px target is easy
+ * to hit, whether a spacing exception is good design, whether a drag
+ * gesture is the right interaction at all, whether a declared
+ * alternative offers the same FUNCTION as the gesture it replaces,
+ * whether the control an "equivalent" exception names offers the same
+ * FUNCTION, or how the surface feels on a phone. Those stay human
+ * evaluation and are printed separately, never merged into one green
+ * mark.
  *
  * Exit codes: 0 = every rule passes, 1 = at least one violation,
  * 2 = the repository could not be scanned.
@@ -119,8 +160,41 @@ import { REPO_ROOT, lineAt, stripComments, toRepoPath } from './_source-scan.mjs
 /** The Issue this gate belongs to. */
 export const ISSUE = '#401';
 
-/** The criterion every rule in this gate answers to. */
+/** The criterion the size rules in this gate answer to. */
 export const WCAG = { sc: '2.5.8', name: 'Target Size (Minimum)', level: 'AA' };
+
+/**
+ * The criterion the dragging rules in this gate answer to.
+ *
+ * SC 2.5.7 Dragging Movements is its own criterion: "All functionality
+ * that uses a dragging movement for operation can be achieved by a single
+ * pointer without dragging". A drag-only operation is a defect under
+ * THAT criterion, and attributing it to the size criterion misstates
+ * both — the two rules need their own references.
+ */
+export const WCAG_DRAGGING = { sc: '2.5.7', name: 'Dragging Movements', level: 'AA' };
+
+/**
+ * The criterion each rule answers to.
+ *
+ * A rule that is not a criterion rule at all (the fixture rules, which
+ * police the gate's own contract) carries no criterion: `null`.
+ */
+export const RULE_CRITERION = {
+	'shipped-target-undersized': WCAG.sc,
+	'shipped-drag-without-alternative': WCAG_DRAGGING.sc,
+	'target-specimen-undersized': WCAG.sc,
+	'target-specimen-exception-invalid': WCAG.sc,
+	'target-specimen-drag-only': WCAG_DRAGGING.sc,
+	'fixture-pass-no-specimen': null,
+	'fixture-pass-violation': null,
+	'fixture-fail-not-detected': null,
+	'fixture-fail-unexpected': null,
+	'fixture-fail-criterion-mismatch': null,
+	'fixture-file-missing': null,
+	'fixture-file-unexpected': null,
+	'shipped-surface-missing': null,
+};
 
 /**
  * The minimum size, in CSS px, of a pointer target.
@@ -141,6 +215,7 @@ export const RULES = [
 	'fixture-pass-violation',
 	'fixture-fail-not-detected',
 	'fixture-fail-unexpected',
+	'fixture-fail-criterion-mismatch',
 	'fixture-file-missing',
 	'fixture-file-unexpected',
 ];
@@ -323,10 +398,17 @@ export const SPACING_PROPERTIES = {
 };
 
 /**
- * The four exceptions SC 2.5.8 names, and how each one is decided.
+ * The five exceptions SC 2.5.8 names, and how each one is decided.
  *
- * `measured` means the browser settles it; `declared` means the author
+ * `measured` means the browser settles it; `measured-after-declaration`
+ * means the author claims it with evidence and the browser then checks
+ * the claim against the rendered page; `declared` means the author
  * claims it with a reason and the gate checks the claim's shape.
+ *
+ * The criterion names five exceptions. A vocabulary that names four is
+ * not a cosmetic gap: an exception the gate does not know is an
+ * exception the gate REJECTS when an author declares it, so a conformant
+ * target is reported as a violation.
  */
 export const EXCEPTION_KINDS = {
 	inline: {
@@ -338,6 +420,13 @@ export const EXCEPTION_KINDS = {
 		decided: 'measured-after-declaration',
 		describe:
 			"a 24 CSS px diameter circle centred on the target does not intersect any other target's circle or bounding box",
+	},
+	equivalent: {
+		decided: 'measured-after-declaration',
+		describe:
+			'the function of the target can be achieved through a different control on the same page that meets this criterion',
+		evidence:
+			'a reason, AND the name of the equivalent control (an id or a selector) — the capture checks that the named control is on the same page and meets the minimum itself',
 	},
 	'user-agent': {
 		decided: 'declared',
@@ -355,9 +444,12 @@ export const EXCEPTION_KINDS = {
  *
  * One row per (surface, selector, kind, reason). The reason is part of
  * the row on purpose: an exception without a reason is a hole the next
- * editor will widen without knowing. The list is empty today — the
- * shipped surfaces need no declaration-only exception — and it is printed
- * with the report either way, so a reader can see that it was looked at.
+ * editor will widen without knowing. A row of the "equivalent" kind
+ * carries one more field — `equivalent`, the name of the control that
+ * offers the same function — because that exception is not a claim about
+ * the target alone. The list is empty today — the shipped surfaces need
+ * no declaration-only exception — and it is printed with the report
+ * either way, so a reader can see that it was looked at.
  */
 export const SHIPPED_EXCEPTIONS = [];
 
@@ -366,6 +458,16 @@ export const EXCEPTION_ATTRIBUTE = 'data-target-exception';
 
 /** The attribute a fixture specimen uses to declare its exception reason. */
 export const REASON_ATTRIBUTE = 'data-target-reason';
+
+/**
+ * The attribute a specimen uses to name the equivalent control.
+ *
+ * The value is an id (`menu-button`) or a selector (`#menu-button`,
+ * `.menu-button`). The "equivalent" exception is a claim about ANOTHER
+ * control, so the claim has to name it: a declaration with no named
+ * control is not an exception at all.
+ */
+export const EQUIVALENT_ATTRIBUTE = 'data-target-equivalent';
 
 /** The attribute that names a fixture specimen. */
 export const SPECIMEN_ATTRIBUTE = 'data-target-specimen';
@@ -390,6 +492,10 @@ export const FIXTURE_ROOT = 'scripts/fixtures/a11y-target-size';
  * `sizeVerdict` — what the browser half must measure for the file:
  * `pass` (every target in the specimen meets the criterion) or `fail`
  * (at least one target does not).
+ * `criterion` — the WCAG success criterion the fixture stands for. The
+ * criterion is part of the state the fixture reproduces: a drag fixture
+ * that reported the size criterion would reproduce the drag defect under
+ * the wrong criterion, and the gate reports that drift.
  *
  * The two columns are separate because the two halves judge different
  * things: a drag-only specimen is a static defect and a compliant box,
@@ -397,17 +503,35 @@ export const FIXTURE_ROOT = 'scripts/fixtures/a11y-target-size';
  */
 export const FIXTURE_EXPECTATIONS = {
 	pass: {
-		'01-minimum-target.tsx': { exportName: 'MinimumTarget', staticRules: [], sizeVerdict: 'pass' },
+		'01-minimum-target.tsx': {
+			exportName: 'MinimumTarget',
+			staticRules: [],
+			sizeVerdict: 'pass',
+			criterion: WCAG.sc,
+		},
 		'02-oversized-target.tsx': {
 			exportName: 'OversizedTarget',
 			staticRules: [],
 			sizeVerdict: 'pass',
+			criterion: WCAG.sc,
 		},
-		'03-inline-target.tsx': { exportName: 'InlineTarget', staticRules: [], sizeVerdict: 'pass' },
+		'03-inline-target.tsx': {
+			exportName: 'InlineTarget',
+			staticRules: [],
+			sizeVerdict: 'pass',
+			criterion: WCAG.sc,
+		},
 		'04-spacing-exception.tsx': {
 			exportName: 'SpacingException',
 			staticRules: [],
 			sizeVerdict: 'pass',
+			criterion: WCAG.sc,
+		},
+		'05-equivalent-exception.tsx': {
+			exportName: 'EquivalentException',
+			staticRules: [],
+			sizeVerdict: 'pass',
+			criterion: WCAG.sc,
 		},
 	},
 	fail: {
@@ -415,16 +539,31 @@ export const FIXTURE_EXPECTATIONS = {
 			exportName: 'UndersizedTarget',
 			staticRules: ['target-specimen-undersized'],
 			sizeVerdict: 'fail',
+			criterion: WCAG.sc,
 		},
 		'02-tight-neighbours.tsx': {
 			exportName: 'TightNeighbours',
 			staticRules: [],
 			sizeVerdict: 'fail',
+			criterion: WCAG.sc,
 		},
 		'03-drag-only.tsx': {
 			exportName: 'DragOnlyTarget',
 			staticRules: ['target-specimen-drag-only'],
 			sizeVerdict: 'pass',
+			criterion: WCAG_DRAGGING.sc,
+		},
+		'04-equivalent-claim-unsupported.tsx': {
+			exportName: 'EquivalentClaimUnsupported',
+			staticRules: [],
+			sizeVerdict: 'fail',
+			criterion: WCAG.sc,
+		},
+		'05-equivalent-without-control.tsx': {
+			exportName: 'EquivalentWithoutControl',
+			staticRules: ['target-specimen-exception-invalid', 'target-specimen-undersized'],
+			sizeVerdict: 'fail',
+			criterion: WCAG.sc,
 		},
 	},
 };
@@ -434,6 +573,8 @@ export const HUMAN_EVALUATION = [
 	'whether a 24 px target is comfortable to hit with a thumb on a phone',
 	'whether the spacing exception is a good design decision rather than a lucky measurement',
 	'whether a drag gesture is the right interaction at all, or whether the click alternative should be the only one',
+	'whether a DECLARED alternative operation offers the same function as the drag gesture it replaces — the static check reads the declaration, never the function',
+	'whether the control an "equivalent" exception names offers the same function as the target it replaces — the capture checks that the control is on the page and meets the minimum, never that it is equivalent',
 	'how the picker, the nav and the filter feel under a slow tap or a tremor',
 	'a real device pass (a physical phone, a stylus, a trackpad)',
 ];
@@ -836,12 +977,17 @@ export function dragAffordancesOf(attributes) {
 }
 
 /**
- * Whether a drag affordance has a click (or keyboard) alternative (pure).
+ * Whether a drag affordance DECLARES an alternative operation (pure).
  *
  * The alternative may be the element's own click handler, a natively
  * activatable control, or a keyboard-operable custom control.
+ *
+ * What this returns is a DECLARATION, not a proof. The presence of an
+ * `onClick` attribute says that an alternative operation was declared,
+ * not that the alternative offers the same FUNCTION — only a human can
+ * say that, and the rule never claims it.
  */
-export function hasClickAlternative(tag, attributes) {
+export function declaresAlternativeOperation(tag, attributes) {
 	if (attributes.some((attribute) => attribute.name === 'onClick')) return true;
 	if (['button', 'input', 'select', 'textarea', 'summary'].includes(tag)) return true;
 	if (tag === 'a' && hasAttribute(attributes, 'href')) return true;
@@ -849,6 +995,16 @@ export function hasClickAlternative(tag, attributes) {
 		attributes.some((attribute) => attribute.name === 'onKeyDown') &&
 		attributes.some((attribute) => attribute.name === 'tabIndex');
 	return keyboardOperable;
+}
+
+/**
+ * The message of a drag violation (pure).
+ *
+ * It says what the rule read — a DECLARATION — and what it did not —
+ * the FUNCTION — so a reader never takes the record for a proof.
+ */
+export function dragViolationMessage(affordances) {
+	return `the target offers a drag gesture (${affordances.join(', ')}) and DECLARES no alternative operation; the static check reads the DECLARATION only, so whether the alternative offers the same FUNCTION is human evaluation, not proven here (SC ${WCAG_DRAGGING.sc})`;
 }
 
 /**
@@ -880,18 +1036,30 @@ export function declaredSize(declarations) {
 /**
  * The exception a specimen (or a shipped surface) declares (pure).
  *
- * `valid` is false when the declared kind is not one of the four the
- * criterion names, or when the declaration carries no reason.
+ * `valid` is false when the declared kind is not one of the five the
+ * criterion names, when the declaration carries no reason, or when the
+ * "equivalent" exception names no equivalent control. The last one is
+ * the criterion's own requirement: the exception is a claim about a
+ * DIFFERENT control, so the claim has to name it. A declaration with no
+ * named control is not an exception at all.
  */
 export function readDeclaredException(attributes) {
 	const kind = attributeValue(attributes, EXCEPTION_ATTRIBUTE);
-	if (kind === null) return { kind: null, reason: null, valid: true, declared: false };
+	if (kind === null) {
+		return { kind: null, reason: null, equivalent: null, valid: true, declared: false };
+	}
 	const reason = attributeValue(attributes, REASON_ATTRIBUTE);
+	const equivalent =
+		kind === 'equivalent' ? attributeValue(attributes, EQUIVALENT_ATTRIBUTE) : null;
 	const known = Object.hasOwn(EXCEPTION_KINDS, kind);
+	const hasReason = typeof reason === 'string' && reason.trim().length > 0;
+	const namesControl =
+		kind !== 'equivalent' || (typeof equivalent === 'string' && equivalent.trim().length > 0);
 	return {
 		kind,
 		reason,
-		valid: known && typeof reason === 'string' && reason.trim().length > 0,
+		equivalent,
+		valid: known && hasReason && namesControl,
 		declared: true,
 	};
 }
@@ -925,14 +1093,14 @@ export function evaluateTarget({ relativePath, tag, attributes, declarations }) 
 		});
 	}
 	const affordances = dragAffordancesOf(attributes);
-	if (affordances.length > 0 && !hasClickAlternative(tag, attributes)) {
+	if (affordances.length > 0 && !declaresAlternativeOperation(tag, attributes)) {
 		violations.push({
 			rule: 'shipped-drag-without-alternative',
 			file: relativePath,
 			line: null,
-			wcag: WCAG.sc,
+			wcag: WCAG_DRAGGING.sc,
 			affordances,
-			message: `the target offers a drag gesture (${affordances.join(', ')}) and no click or keyboard alternative; a pointer-only operation cannot be used with a keyboard`,
+			message: dragViolationMessage(affordances),
 		});
 	}
 	const verdict =
@@ -957,14 +1125,14 @@ export function evaluateShippedSource({ relativePath, source }) {
 		// keyboard user cannot reach. So every element that declares a
 		// drag affordance is checked, interactive or not.
 		const affordances = dragAffordancesOf(tag.attributes);
-		if (affordances.length > 0 && !hasClickAlternative(tag.tag, tag.attributes)) {
+		if (affordances.length > 0 && !declaresAlternativeOperation(tag.tag, tag.attributes)) {
 			violations.push({
 				rule: 'shipped-drag-without-alternative',
 				file: relativePath,
 				line: tag.line,
-				wcag: WCAG.sc,
+				wcag: WCAG_DRAGGING.sc,
 				affordances,
-				message: `the target offers a drag gesture (${affordances.join(', ')}) and no click or keyboard alternative; a pointer-only operation cannot be used with a keyboard`,
+				message: dragViolationMessage(affordances),
 			});
 		}
 		if (!isInteractiveTarget(tag.tag, tag.attributes)) continue;
@@ -1055,14 +1223,14 @@ export function describeSpecimen({ relativePath, source }) {
 			declarations,
 			size: declaredSize(declarations),
 			affordances: dragAffordancesOf(tag.attributes),
-			hasClickAlternative: hasClickAlternative(tag.tag, tag.attributes),
+			declaresAlternativeOperation: declaresAlternativeOperation(tag.tag, tag.attributes),
 			exception,
 		});
 	}
 	const specimenTag = containerTag;
 	const exception = specimenTag
 		? readDeclaredException(specimenTag.attributes)
-		: { kind: null, reason: null, valid: true, declared: false };
+		: { kind: null, reason: null, equivalent: null, valid: true, declared: false };
 	return {
 		relativePath,
 		specimenId: specimenMatch[1],
@@ -1074,28 +1242,58 @@ export function describeSpecimen({ relativePath, source }) {
 }
 
 /**
+ * The message of an invalid exception declaration (pure).
+ *
+ * The three ways a declaration can fail are three different defects, so
+ * they are three different messages: an exception the criterion does not
+ * name, an exception with no reason, and an "equivalent" exception that
+ * names no control.
+ */
+export function invalidExceptionMessage({ subject, kind, reason, equivalent }) {
+	if (!Object.hasOwn(EXCEPTION_KINDS, kind)) {
+		return `the ${subject} declares the exception "${kind}", which is not one of the five SC ${WCAG.sc} names (${Object.keys(EXCEPTION_KINDS).join(', ')})`;
+	}
+	if (typeof reason !== 'string' || reason.trim().length === 0) {
+		return `the ${subject} declares the "${kind}" exception without a reason; an exception nobody can check is an exception nobody reads`;
+	}
+	if (kind === 'equivalent' && (typeof equivalent !== 'string' || equivalent.trim().length === 0)) {
+		return `the ${subject} declares the "equivalent" exception without naming the equivalent control; a declaration with no named control is not an exception at all`;
+	}
+	return `the ${subject} declares the "${kind}" exception in a form the gate cannot read`;
+}
+
+/**
  * The violations of one fixture file (pure).
  *
  * The rules are about the DECLARATION: a specimen that declares a size
  * below the minimum has to declare an exception, and the exception has
- * to be one of the four the criterion names, with a reason.
+ * to be one of the five the criterion names, with a reason — and, for
+ * the "equivalent" exception, with the name of the equivalent control.
  */
 export function evaluateFixtureSource({ relativePath, source }) {
 	const specimen = describeSpecimen({ relativePath, source });
 	const violations = [];
-	if (specimen.exception.declared && !specimen.exception.valid) {
-		const known = Object.hasOwn(EXCEPTION_KINDS, specimen.exception.kind);
+	const invalidDeclaration = (subject, exception) => {
 		violations.push({
 			rule: 'target-specimen-exception-invalid',
 			file: relativePath,
 			line: null,
 			wcag: WCAG.sc,
-			message: known
-				? `the specimen declares the "${specimen.exception.kind}" exception without a reason; an exception nobody can check is an exception nobody reads`
-				: `the specimen declares the exception "${specimen.exception.kind}", which is not one of the four SC ${WCAG.sc} names (${Object.keys(EXCEPTION_KINDS).join(', ')})`,
+			message: invalidExceptionMessage({
+				subject,
+				kind: exception.kind,
+				reason: exception.reason,
+				equivalent: exception.equivalent,
+			}),
 		});
+	};
+	if (specimen.exception.declared && !specimen.exception.valid) {
+		invalidDeclaration('specimen', specimen.exception);
 	}
 	for (const target of specimen.targets) {
+		if (target.exception.declared && !target.exception.valid) {
+			invalidDeclaration(`target "${target.name}"`, target.exception);
+		}
 		const declaredException = target.exception.declared ? target.exception : specimen.exception;
 		const exceptionHonoured = declaredException.declared && declaredException.valid;
 		const undersized = [];
@@ -1118,14 +1316,14 @@ export function evaluateFixtureSource({ relativePath, source }) {
 				});
 			}
 		}
-		if (target.affordances.length > 0 && !target.hasClickAlternative) {
+		if (target.affordances.length > 0 && !target.declaresAlternativeOperation) {
 			violations.push({
 				rule: 'target-specimen-drag-only',
 				file: relativePath,
 				line: null,
-				wcag: WCAG.sc,
+				wcag: WCAG_DRAGGING.sc,
 				affordances: target.affordances,
-				message: `the specimen offers a drag gesture (${target.affordances.join(', ')}) and no click or keyboard alternative`,
+				message: `the specimen offers a drag gesture (${target.affordances.join(', ')}) and DECLARES no alternative operation; the static check reads the DECLARATION only, so whether the alternative offers the same FUNCTION is human evaluation, not proven here (SC ${WCAG_DRAGGING.sc})`,
 			});
 		}
 	}
@@ -1171,6 +1369,7 @@ export function auditFixtureFiles(entries) {
 				file: relativePath,
 				expected: [],
 				found,
+				criterion: expected.criterion ?? null,
 				sizeVerdict: expected.sizeVerdict,
 			});
 			continue;
@@ -1195,10 +1394,27 @@ export function auditFixtureFiles(entries) {
 				message: `the fail fixture reports ${unexpected.join(', ')}, which it does not stand for`,
 			});
 		}
+		// The criterion a fixture stands for is part of the state it
+		// reproduces: a drag fixture that reported the size criterion
+		// would reproduce the drag defect under the wrong criterion.
+		if (expected.criterion) {
+			for (const rule of found) {
+				const actual = RULE_CRITERION[rule] ?? null;
+				if (actual === expected.criterion) continue;
+				violations.push({
+					rule: 'fixture-fail-criterion-mismatch',
+					file: relativePath,
+					line: null,
+					wcag: actual,
+					message: `the fail fixture stands for SC ${expected.criterion}, but the rule "${rule}" reports ${actual === null ? 'no criterion' : `SC ${actual}`}; the defect is reproduced under the wrong criterion`,
+				});
+			}
+		}
 		rows.push({
 			file: relativePath,
 			expected: [...expected.staticRules],
 			found,
+			criterion: expected.criterion ?? null,
 			sizeVerdict: expected.sizeVerdict,
 		});
 	}
@@ -1352,7 +1568,21 @@ export function collectEvidence(repoRoot = REPO_ROOT) {
 		exceptions: SHIPPED_EXCEPTIONS,
 		humanEvaluation: HUMAN_EVALUATION,
 		wcag: WCAG,
+		wcagDragging: WCAG_DRAGGING,
+		ruleCriterion: RULE_CRITERION,
 	};
+}
+
+/**
+ * The label of one rule in the report, with the criterion it answers to.
+ *
+ * The criterion is part of the label, not a footnote: a drag defect
+ * reported under the size criterion misstates both, and a reader has to
+ * see the criterion next to the rule to notice that.
+ */
+export function ruleLabel(rule) {
+	const criterion = RULE_CRITERION[rule] ?? null;
+	return `${rule.padEnd(32)} ${(criterion ? `SC ${criterion}` : '—').padEnd(8)}`;
 }
 
 /** The human-readable report, with the two kinds of statement separated. */
@@ -1366,14 +1596,14 @@ export function renderGateSummary(evidence) {
 	lines.push('machine-checked:');
 	for (const surface of evidence.shipped.surfaces) {
 		lines.push(
-			`  ${surface.undersized === 0 ? 'ok  ' : 'FAIL'} ${'shipped-target-undersized'.padEnd(32)} ${surface.label}: ${surface.targets.length} target(s), ${surface.compliant} declared at or above ${MIN_TARGET_PX} px, ${surface.undersized} below, ${surface.undecided} not decidable from the source`,
+			`  ${surface.undersized === 0 ? 'ok  ' : 'FAIL'} ${ruleLabel('shipped-target-undersized')} ${surface.label}: ${surface.targets.length} target(s), ${surface.compliant} declared at or above ${MIN_TARGET_PX} px, ${surface.undersized} below, ${surface.undecided} not decidable from the source`,
 		);
 	}
 	const dragCount = evidence.shipped.violations.filter(
 		(violation) => violation.rule === 'shipped-drag-without-alternative',
 	).length;
 	lines.push(
-		`  ${dragCount === 0 ? 'ok  ' : 'FAIL'} ${'shipped-drag-without-alternative'.padEnd(32)} ${dragCount} drag-only operation(s) without a click or keyboard alternative`,
+		`  ${dragCount === 0 ? 'ok  ' : 'FAIL'} ${ruleLabel('shipped-drag-without-alternative')} ${dragCount} drag operation(s) with no DECLARED alternative operation (the declaration is read; whether the alternative offers the same FUNCTION is human evaluation)`,
 	);
 	for (const rule of [
 		'target-specimen-undersized',
@@ -1381,10 +1611,10 @@ export function renderGateSummary(evidence) {
 		'target-specimen-drag-only',
 	]) {
 		const count = evidence.fixture.rows.filter((row) => row.found.includes(rule)).length;
-		lines.push(`  ${'ok  '} ${rule.padEnd(32)} ${count} fixture(s) reproduce it`);
+		lines.push(`  ${'ok  '} ${ruleLabel(rule)} ${count} fixture(s) reproduce it`);
 	}
 	lines.push(
-		`  ${evidence.fixture.violations.length === 0 ? 'ok  ' : 'FAIL'} ${'fixture'.padEnd(32)} ${evidence.fixture.rows.length} fixture file(s) reproduce the states they stand for`,
+		`  ${evidence.fixture.violations.length === 0 ? 'ok  ' : 'FAIL'} ${ruleLabel('fixture')} ${evidence.fixture.rows.length} fixture file(s) reproduce the states they stand for`,
 	);
 	lines.push('');
 	lines.push('declared exceptions (SC 2.5.8):');
@@ -1393,6 +1623,9 @@ export function renderGateSummary(evidence) {
 	);
 	lines.push(
 		'  spacing         — declared with a reason, then checked against the rendered boxes by the capture',
+	);
+	lines.push(
+		'  equivalent      — declared with a reason AND the name of the equivalent control; the capture checks that the named control is on the same page and meets the minimum itself (that it offers the same FUNCTION is human evaluation)',
 	);
 	lines.push("  user-agent      — declared with a reason (the size is the user agent's)");
 	lines.push('  essential       — declared with a reason (the presentation is essential)');
@@ -1413,7 +1646,7 @@ export function renderGateSummary(evidence) {
 	lines.push('fixture expectations:');
 	for (const row of evidence.fixture.rows) {
 		lines.push(
-			`  ${row.file} — expected=[${row.expected.join(', ')}], found=[${row.found.join(', ')}], browser verdict=${row.sizeVerdict}`,
+			`  ${row.file} — expected=[${row.expected.join(', ')}], found=[${row.found.join(', ')}], criterion=SC ${row.criterion}, browser verdict=${row.sizeVerdict}`,
 		);
 	}
 	lines.push('');
@@ -1421,7 +1654,8 @@ export function renderGateSummary(evidence) {
 		lines.push(`violations (${evidence.violations.length}):`);
 		for (const entry of evidence.violations) {
 			const where = entry.line ? `${entry.file}:${entry.line}` : entry.file;
-			lines.push(`  [${entry.rule}] ${where} — ${entry.message}`);
+			const criterion = entry.wcag ? ` (SC ${entry.wcag})` : '';
+			lines.push(`  [${entry.rule}]${criterion} ${where} — ${entry.message}`);
 		}
 	} else {
 		lines.push('no violations');

@@ -13,13 +13,17 @@ import {
 	FIXTURE_EXPECTATIONS,
 	FIXTURE_ROOT,
 	MIN_TARGET_PX,
+	RULE_CRITERION,
 	SIZES,
 	SPACING,
 	SURFACES,
+	WCAG,
+	WCAG_DRAGGING,
 	auditFixtureFiles,
 	collectEvidence,
 	cssPropertyFor,
 	declaredSize,
+	declaresAlternativeOperation,
 	describeSpecimen,
 	dragAffordancesOf,
 	elementStyleDeclarations,
@@ -27,8 +31,8 @@ import {
 	evaluateShippedSource,
 	evaluateTarget,
 	findTags,
-	hasClickAlternative,
 	isInteractiveTarget,
+	readDeclaredException,
 	resolvePx,
 } from './check-a11y-target-size.mjs';
 
@@ -159,7 +163,7 @@ test('draggable="false" takes the drag away instead of offering one', () => {
 
 test('a keyboard-operable custom control is an alternative too', () => {
 	const tags = findTags('<div draggable tabIndex={0} onKeyDown={handle}>x</div>');
-	assert.equal(hasClickAlternative(tags[0].tag, tags[0].attributes), true);
+	assert.equal(declaresAlternativeOperation(tags[0].tag, tags[0].attributes), true);
 });
 
 test('a drag-only element is caught even when it is not an interactive target', () => {
@@ -338,13 +342,159 @@ test('the shipped surfaces of this Issue are the three it names', () => {
 	}
 });
 
-test('the four exceptions are the ones the criterion names', () => {
+test('the five exceptions are the ones the criterion names', () => {
 	assert.deepEqual(Object.keys(EXCEPTION_KINDS).sort(), [
+		'equivalent',
 		'essential',
 		'inline',
 		'spacing',
 		'user-agent',
 	]);
+});
+
+test('the drag rules answer to SC 2.5.7 and the size rules to SC 2.5.8', () => {
+	assert.equal(WCAG.sc, '2.5.8');
+	assert.equal(WCAG_DRAGGING.sc, '2.5.7');
+	assert.equal(RULE_CRITERION['shipped-drag-without-alternative'], '2.5.7');
+	assert.equal(RULE_CRITERION['target-specimen-drag-only'], '2.5.7');
+	assert.equal(RULE_CRITERION['shipped-target-undersized'], '2.5.8');
+	assert.equal(RULE_CRITERION['target-specimen-undersized'], '2.5.8');
+	assert.equal(RULE_CRITERION['target-specimen-exception-invalid'], '2.5.8');
+});
+
+test('a drag violation carries the dragging criterion, a size violation the size one', () => {
+	const dragSource = [
+		'export const Card = () => (',
+		'\t<div draggable onDragStart={() => {}}>drag me</div>',
+		');',
+	].join('\n');
+	const drag = evaluateShippedSource({ relativePath: 'src/example.tsx', source: dragSource });
+	assert.equal(drag.violations.length, 1);
+	assert.equal(drag.violations[0].rule, 'shipped-drag-without-alternative');
+	assert.equal(drag.violations[0].wcag, '2.5.7');
+
+	const sizeSource = [
+		'export const Card = () => (',
+		"\t<button className={css({ height: '4' })}>small</button>",
+		');',
+	].join('\n');
+	const size = evaluateShippedSource({ relativePath: 'src/example.tsx', source: sizeSource });
+	assert.equal(size.violations.length, 1);
+	assert.equal(size.violations[0].rule, 'shipped-target-undersized');
+	assert.equal(size.violations[0].wcag, '2.5.8');
+});
+
+test('a drag specimen carries the dragging criterion too', () => {
+	const source = `
+		<div data-target-specimen="s">
+			<div data-target-target="draggable" draggable onDragStart={() => {}}>A</div>
+		</div>
+	`;
+	const result = evaluateFixtureSource({ relativePath: 'fixture.tsx', source });
+	const drag = result.violations.find(
+		(violation) => violation.rule === 'target-specimen-drag-only',
+	);
+	assert.ok(drag);
+	assert.equal(drag.wcag, '2.5.7');
+});
+
+test('the drag rule says it reads a declaration, not a function', () => {
+	const source = [
+		'export const Card = () => (',
+		'\t<div draggable onDragStart={() => {}}>drag me</div>',
+		');',
+	].join('\n');
+	const result = evaluateShippedSource({ relativePath: 'src/example.tsx', source });
+	assert.match(result.violations[0].message, /DECLARATION/);
+	assert.match(result.violations[0].message, /human evaluation/);
+});
+
+test('a fixture that stands for another criterion than its rule reports is reported', () => {
+	const entries = [
+		{
+			directory: 'fail',
+			relativePath: 'fail/drag.tsx',
+			expected: {
+				staticRules: ['target-specimen-drag-only'],
+				sizeVerdict: 'pass',
+				criterion: WCAG_DRAGGING.sc,
+			},
+			evaluation: { violations: [{ rule: 'target-specimen-drag-only' }] },
+			specimen: { specimenId: 'drag', targets: [{}] },
+		},
+	];
+	assert.deepEqual(auditFixtureFiles(entries).violations, []);
+
+	const drifted = [
+		{
+			...entries[0],
+			expected: { ...entries[0].expected, criterion: WCAG.sc },
+		},
+	];
+	const rules = auditFixtureFiles(drifted).violations.map((violation) => violation.rule);
+	assert.ok(rules.includes('fixture-fail-criterion-mismatch'));
+});
+
+test('the equivalent exception needs a reason AND the name of the control', () => {
+	const both = readDeclaredException(
+		findTags(
+			'<button data-target-exception="equivalent" data-target-reason="the full-size button offers the same function" data-target-equivalent="#full-size-button">A</button>',
+		)[0].attributes,
+	);
+	assert.equal(both.valid, true);
+	assert.equal(both.equivalent, '#full-size-button');
+
+	const noControl = readDeclaredException(
+		findTags(
+			'<button data-target-exception="equivalent" data-target-reason="the full-size button offers the same function">A</button>',
+		)[0].attributes,
+	);
+	assert.equal(noControl.valid, false);
+
+	const noReason = readDeclaredException(
+		findTags(
+			'<button data-target-exception="equivalent" data-target-equivalent="#full-size-button">A</button>',
+		)[0].attributes,
+	);
+	assert.equal(noReason.valid, false);
+});
+
+test('an equivalent declaration without a named control is not an exception', () => {
+	const source = `
+		<div data-target-specimen="s">
+			<button
+				data-target-target="primary"
+				data-target-exception="equivalent"
+				data-target-reason="the same function is offered elsewhere on the page"
+				style={{ width: '16px', height: '16px' }}
+			>A</button>
+		</div>
+	`;
+	const result = evaluateFixtureSource({ relativePath: 'fixture.tsx', source });
+	const rules = result.violations.map((violation) => violation.rule);
+	assert.ok(rules.includes('target-specimen-exception-invalid'));
+	assert.ok(rules.includes('target-specimen-undersized'));
+});
+
+test('an equivalent declaration that names a control is a valid exception', () => {
+	const source = `
+		<div data-target-specimen="s">
+			<button
+				data-target-target="primary"
+				data-target-exception="equivalent"
+				data-target-reason="the full-size button offers the same function"
+				data-target-equivalent="#full-size-button"
+				style={{ width: '16px', height: '16px' }}
+			>A</button>
+			<button
+				id="full-size-button"
+				data-target-target="secondary"
+				style={{ width: '24px', height: '24px' }}
+			>B</button>
+		</div>
+	`;
+	const result = evaluateFixtureSource({ relativePath: 'fixture.tsx', source });
+	assert.deepEqual(result.violations, []);
 });
 
 test('the shipped surface of the repository declares no size below the minimum', () => {
@@ -363,7 +513,7 @@ test('the shipped surface of the repository declares no size below the minimum',
 test('the repository itself is clean: the gate reports no violation', () => {
 	const evidence = collectEvidence();
 	assert.deepEqual(evidence.violations, []);
-	assert.equal(evidence.fixture.rows.length, 7);
+	assert.equal(evidence.fixture.rows.length, 10);
 	for (const row of evidence.fixture.rows) {
 		assert.deepEqual(
 			[...row.found].sort(),
@@ -378,6 +528,6 @@ test('the roster names every fixture file that exists', () => {
 		(total, entries) => total + Object.keys(entries).length,
 		0,
 	);
-	assert.equal(expected, 7);
+	assert.equal(expected, 10);
 	assert.ok(FIXTURE_ROOT.startsWith('scripts/fixtures/'));
 });

@@ -22,6 +22,7 @@ import {
 	boxCentre,
 	circleIntersectsBox,
 	circlesIntersect,
+	equivalentClaimHolds,
 	escapeXml,
 	evaluateMeasuredTarget,
 	evaluateMeasuredTargets,
@@ -217,6 +218,69 @@ test('a declared essential exception is accepted, and recorded', () => {
 	assert.equal(result.exception, 'essential');
 });
 
+test('a declared equivalent exception is accepted only when the named control is there and meets the minimum', () => {
+	const small = target({
+		id: 'a',
+		width: 16,
+		height: 16,
+		box: { x: 0, y: 0, width: 16, height: 16 },
+	});
+	const declared = {
+		kind: 'equivalent',
+		reason: 'the full-size button offers the same function',
+		equivalent: { ref: '#full-size-button', found: true, width: 24, height: 24, meets: true },
+	};
+	const accepted = evaluateMeasuredTarget({
+		target: small,
+		others: [small],
+		declaredException: declared,
+	});
+	assert.equal(accepted.verdict, 'compliant-by-exception');
+	assert.equal(accepted.exception, 'equivalent');
+	assert.match(accepted.reason, /human evaluation/);
+
+	const absent = evaluateMeasuredTarget({
+		target: small,
+		others: [small],
+		declaredException: {
+			...declared,
+			equivalent: { ref: '#missing', found: false, width: null, height: null, meets: false },
+		},
+	});
+	assert.equal(absent.verdict, 'violation');
+	assert.equal(absent.exception, null);
+
+	const undersized = evaluateMeasuredTarget({
+		target: small,
+		others: [small],
+		declaredException: {
+			...declared,
+			equivalent: { ref: '#small', found: true, width: 16, height: 16, meets: false },
+		},
+	});
+	assert.equal(undersized.verdict, 'violation');
+});
+
+test('the equivalent claim needs a named control, and says which part it cannot check', () => {
+	assert.equal(equivalentClaimHolds({ kind: 'equivalent', reason: 'why' }).holds, false);
+	assert.equal(
+		equivalentClaimHolds({
+			kind: 'equivalent',
+			reason: 'why',
+			equivalent: { ref: '#a', found: true, width: 24, height: 24, meets: true },
+		}).holds,
+		true,
+	);
+	assert.match(
+		equivalentClaimHolds({
+			kind: 'equivalent',
+			reason: 'why',
+			equivalent: { ref: '#a', found: false, width: null, height: null, meets: false },
+		}).reason,
+		/not on the same page/,
+	);
+});
+
 test('the declared exception reaches the target it was written for, and no other', () => {
 	const rows = evaluateMeasuredTargets({
 		targets: [
@@ -261,9 +325,9 @@ test('a fail specimen that measures no violation fails the capture (the negative
 
 test('the fixture cases come from the gate roster, pass and fail', () => {
 	const cases = fixtureCases();
-	assert.equal(cases.length, 7);
-	assert.equal(cases.filter((entry) => entry.expectation === 'pass').length, 4);
-	assert.equal(cases.filter((entry) => entry.expectation === 'fail').length, 3);
+	assert.equal(cases.length, 10);
+	assert.equal(cases.filter((entry) => entry.expectation === 'pass').length, 5);
+	assert.equal(cases.filter((entry) => entry.expectation === 'fail').length, 5);
 	for (const entry of cases) {
 		assert.ok(entry.module.startsWith('scripts/fixtures/a11y-target-size/'));
 		assert.ok(entry.exportName.length > 0);
@@ -288,6 +352,7 @@ test('the served path cannot escape the served root', () => {
 test('the artefact geometry is one width wide', () => {
 	assert.equal(RENDER_WIDTH + GUTTER + PANEL_WIDTH, SCREENSHOT_MAX_WIDTH);
 	assert.equal(WCAG_MAPPING[0].sc, '2.5.8');
+	assert.equal(WCAG_MAPPING[1].sc, '2.5.7');
 });
 
 test('the header and the panel name what was measured and what was not', () => {

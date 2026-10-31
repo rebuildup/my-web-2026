@@ -229,6 +229,8 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/DesignSystemPage.tsx',
 	'src/routes/design-system/sections/CjkLineBreak.tsx',
 	'src/routes/design-system/sections/ColorSwatches.tsx',
+	'src/routes/design-system/sections/GrowthThroughMaking.preview.ts',
+	'src/routes/design-system/sections/GrowthThroughMaking.stories.tsx',
 	'src/routes/design-system/sections/ImageCls.tsx',
 	'src/routes/design-system/sections/InteractiveStates.tsx',
 	'src/routes/design-system/sections/ReactionPicker.tsx',

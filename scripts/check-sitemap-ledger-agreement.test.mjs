@@ -83,6 +83,46 @@ test('the ledger advertising a noindex route family is a violation', () => {
 	);
 });
 
+test('a declaration that does not say whether it is a sitemap target is a violation', () => {
+	// A `sitemap` that is neither true nor false is a claim nobody
+	// made: it lands in neither the "advertised" branch nor the "kept
+	// out" branch, so a typo in a new declaration used to pass the whole
+	// comparison with no violation at all.
+	const base = repositoryDeclarations();
+	const violations = compareSitemapDeclarations({
+		...base,
+		declarations: withLedgerEntry(base.declarations, '/about', { sitemap: undefined }),
+	});
+	assert.ok(violations.length > 0);
+	assert.ok(
+		violations.some(
+			(violation) =>
+				violation.code === 'ledger-sitemap-undeclared' && violation.subject === '/about',
+		),
+		JSON.stringify(violations),
+	);
+});
+
+test('a route family that does not say whether it is a sitemap target is a violation', () => {
+	// The dynamic half has the same hole: a route family whose
+	// `sitemap` is missing belongs to neither side of the comparison.
+	const base = repositoryDeclarations();
+	const violations = compareSitemapDeclarations({
+		...base,
+		declarations: withLedgerEntry(base.declarations, '/portfolio/$slug', {
+			sitemap: undefined,
+		}),
+	});
+	assert.ok(violations.length > 0);
+	assert.ok(
+		violations.some(
+			(violation) =>
+				violation.code === 'ledger-sitemap-undeclared' && violation.subject === '/portfolio/$slug',
+		),
+		JSON.stringify(violations),
+	);
+});
+
 test('the generator listing a path the ledger omits is a violation', () => {
 	const base = repositoryDeclarations();
 	const violations = compareSitemapDeclarations({
@@ -151,6 +191,32 @@ test('the gate fails on a ledger that disagrees, at the command line', () => {
 	assert.equal(run.status, 1, output);
 	assert.match(output, /disagree/);
 	assert.match(output, /\/design-system/);
+});
+
+test('the gate fails on a ledger that does not declare its sitemap membership', () => {
+	// The runner-level negative control for the undecided declaration:
+	// the gate has to RED, not merely compute a violation nobody reads.
+	const directory = mkdtempSync(join(tmpdir(), 'sitemap-ledger-undeclared-'));
+	const ledgerPath = join(directory, 'ledger.mjs');
+	const ledgerModulePath = join(REPO_ROOT, 'scripts/publication-surface.mjs').replace(/\\/g, '/');
+	writeFileSync(
+		ledgerPath,
+		[
+			`import { SURFACE_DECLARATIONS as base } from '${ledgerModulePath}';`,
+			'export const SURFACE_DECLARATIONS = base.map((entry) =>',
+			"  entry.id === '/about' ? { ...entry, sitemap: undefined } : entry,",
+			');',
+		].join('\n'),
+		'utf8',
+	);
+
+	const run = spawnSync(process.execPath, [...NODE_ARGS, SCRIPT, `--ledger=${ledgerPath}`], {
+		encoding: 'utf8',
+	});
+	const output = `${run.stdout}${run.stderr}`;
+	assert.equal(run.status, 1, output);
+	assert.match(output, /sitemap/);
+	assert.match(output, /\/about/);
 });
 
 test('the gate refuses an unknown option', () => {

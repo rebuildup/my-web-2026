@@ -59,7 +59,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * One disagreement between the two declarations.
  *
  * @typedef {object} SitemapAgreementViolation
- * @property {'ledger-only' | 'generator-only' | 'ledger-flags-included' | 'ledger-flags-excluded' | 'missing-ledger-entry' | 'missing-ledger-route'} code
+ * @property {'ledger-only' | 'generator-only' | 'ledger-flags-included' | 'ledger-flags-excluded' | 'missing-ledger-entry' | 'missing-ledger-route' | 'ledger-sitemap-undeclared'} code
  * @property {string} subject the path or route template the two sides disagree about
  * @property {string} message what one side says and what the other says
  */
@@ -141,6 +141,33 @@ export function compareSitemapDeclarations({ declarations, entries, exclusions, 
 			continue;
 		}
 		staticClaims.set(declaration.path, declaration);
+	}
+
+	// 0. A declaration that owns a URL has to say whether that URL is a
+	//    sitemap target. A `sitemap` that is neither `true` nor `false`
+	//    is a claim nobody made: it lands in neither the "the ledger
+	//    advertises it" branch nor the "the ledger keeps it out" branch,
+	//    so a typo in a new declaration slipped through the whole
+	//    comparison with `violations = []` and a green gate. The gate
+	//    exists to make "the two declarations disagree" visible, and an
+	//    undecided declaration is the disagreement this one missed.
+	for (const [path, declaration] of staticClaims) {
+		if (typeof declaration.sitemap !== 'boolean') {
+			violations.push({
+				code: 'ledger-sitemap-undeclared',
+				subject: path,
+				message: `the publication ledger does not say whether "${path}" is a sitemap target — \`sitemap\` must be true or false, and ${JSON.stringify(declaration.sitemap)} is neither. ${AUTHORITY_NOTE}`,
+			});
+		}
+	}
+	for (const [route, declaration] of routeClaims) {
+		if (typeof declaration.sitemap !== 'boolean') {
+			violations.push({
+				code: 'ledger-sitemap-undeclared',
+				subject: route,
+				message: `the publication ledger does not say whether the route family "${route}" is a sitemap target — \`sitemap\` must be true or false, and ${JSON.stringify(declaration.sitemap)} is neither. ${AUTHORITY_NOTE}`,
+			});
+		}
 	}
 
 	// 1. A path the ledger advertises must be in the document.

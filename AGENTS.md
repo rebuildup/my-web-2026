@@ -83,7 +83,11 @@ routes -> projects (Issue #621 — `/projects/dotfiles` loader + page compositio
 projects -> editorial (Issue #621 — display primitives only)
 personal -> editorial (Issue #709 — the personal-document preview owner
                    composes display primitives only; it reads no
-                   binding, no route and no peer obligation)
+                   binding, no route and no peer obligation. This is the
+                   one edge AGENTS.md §3 declares for it, so
+                   `scripts/check-architecture.mjs` enforces it as an
+                   ALLOWLIST: every other owner directory under `src/`
+                   is forbidden, including one that does not exist yet)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph

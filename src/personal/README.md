@@ -38,10 +38,16 @@ renders**: the data, and the component that renders it.
 
 4. **Dependency direction** — who may know this contract?
    `personal -> editorial` only. The owner composes `editorial`
-   display primitives and imports **no** route, no binding, no peer
-   obligation (`home`, `portfolio`, `about`, `http`, `cloudflare`) and
-   no other owner. `scripts/check-architecture.mjs` enforces that
-   direction.
+   display primitives and imports **no** route, no binding and **no**
+   other owner — not `home`, not `portfolio`, not `about`, not `http`,
+   not `cloudflare`, and not any owner added later.
+
+   `scripts/check-architecture.mjs` enforces that direction as an
+   **allowlist** (`allowedOwnerDependencies`), not as a denylist: every
+   owner directory under `src/` other than `editorial` is forbidden.
+   A denylist would have to name every owner, so an owner added to the
+   repository later would enter this one silently — the allowlist makes
+   the declared boundary the enforced one.
 
 5. **Lifecycle** — what is it born and removed with?
    Born with Issue #709, which introduces the owner together with its

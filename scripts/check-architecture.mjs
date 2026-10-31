@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,10 +97,10 @@ const forbiddenOwnerDependencies = new Map([
 	// making motivation, the brand naming record, the influence notes).
 	// It is a peer obligation to `home` / `portfolio` / `about`: it
 	// composes `editorial` display primitives and reads no route, no
-	// binding and no peer obligation. The documents themselves are
-	// Markdown under `docs/**`; this owner holds only what a preview
-	// renders.
-	['personal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// binding and no peer obligation. Its boundary is registered as an
+	// ALLOWLIST in `allowedOwnerDependencies` below, because AGENTS.md §3
+	// declares exactly one edge for it (`personal -> editorial`) and a
+	// denylist could not keep that true once a new peer owner appears.
 	// `legal` (Issue #497) owns the publication-rights review contract for
 	// the assets this repository ships and references: which rights
 	// holder, which licence and which evidence back a shipped byte, and
@@ -111,6 +111,22 @@ const forbiddenOwnerDependencies = new Map([
 	// exception: it imports the same rules, so the rules stay in `src/`.
 	['legal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'logging'])],
 ]);
+
+/**
+ * Owners whose boundary is an ALLOWLIST rather than a denylist.
+ *
+ * A denylist can only forbid the owners it names, so an owner added to
+ * the repository later would enter it silently. When AGENTS.md §3
+ * declares that an owner has exactly ONE permitted edge, the rule has
+ * to be an allowlist, or the declared boundary is not the enforced one.
+ *
+ * `personal` (Issue #709) is such an owner: AGENTS.md §3 declares
+ * `personal -> editorial` and nothing else. The personal-document
+ * preview renders display primitives and reads no route, no binding and
+ * no peer obligation, so every other owner directory is forbidden —
+ * including one that does not exist yet.
+ */
+const allowedOwnerDependencies = new Map([['personal', new Set(['editorial'])]]);
 
 /**
  * Directories whose contents are considered "parent" for the
@@ -163,6 +179,27 @@ function ownerOf(path, srcDirectory) {
 	const rel = relative(srcDirectory, path);
 	if (rel.startsWith('..')) return null;
 	return rel.split(sep)[0] ?? null;
+}
+
+/**
+ * Whether a first path segment under `src/` names an OWNER directory.
+ *
+ * `ownerOf` returns the first path segment of any file, so `src/styles.css`
+ * yields `styles.css` and `src/routeTree.gen.ts` yields
+ * `routeTree.gen.ts`. Those are files, not obligations. An allowlist rule
+ * has to tell the two apart, because it forbids everything that is not on
+ * the list — including a file that belongs to no owner at all.
+ *
+ * @param {string} name first path segment
+ * @param {string} srcDirectory the repository's `src/` directory
+ */
+function isOwnerDirectory(name, srcDirectory) {
+	if (!name) return false;
+	try {
+		return statSync(join(srcDirectory, name)).isDirectory();
+	} catch {
+		return false;
+	}
 }
 
 function isHomeStatusFile(path, srcDirectory) {
@@ -302,6 +339,9 @@ function boundaryImportViolations(source, fromFileRel) {
  *   - an owner may not depend on the owners registered for it in
  *     `forbiddenOwnerDependencies`, with the type-only edges and the
  *     `home/status` exception honoured;
+ *   - an owner registered in `allowedOwnerDependencies` may depend ONLY
+ *     on the owners listed there, so a peer owner that does not exist
+ *     yet cannot enter the graph unnoticed;
  *   - the parent may not import a Tool's source / package.json / build
  *     output, and a Tool may not import the parent's source.
  *
@@ -331,13 +371,14 @@ export function checkArchitecture(repoRoot) {
 	for (const file of sourceFiles(sourceRoot)) {
 		const fromOwner = ownerOf(file, sourceRoot);
 		const forbidden = forbiddenOwnerDependencies.get(fromOwner);
+		const allowed = allowedOwnerDependencies.get(fromOwner);
 		const isLeaf = leafOwners.has(fromOwner) && !isTestFile(file, sourceRoot);
 		// A leaf owner has NO entry in `forbiddenOwnerDependencies` — that
 		// is the POINT of a leaf: nothing forbids it from depending on
 		// another owner, because it may not depend on any of them. The
 		// leaf rule therefore has to be evaluated BEFORE the
 		// `forbidden`-based early return below, or it never runs.
-		if (!isLeaf && !forbidden) continue;
+		if (!isLeaf && !forbidden && !allowed) continue;
 
 		const source = readFileSync(file, 'utf8');
 		const staticImports = importStatements(source);
@@ -352,6 +393,29 @@ export function checkArchitecture(repoRoot) {
 				if (!toOwner || toOwner === fromOwner) continue;
 				errors.push(
 					`${relative(repoRoot, file)}: ${fromOwner} is a leaf obligation and must not depend on ${toOwner} (${specifier})`,
+				);
+			}
+		}
+
+		// An ALLOWLIST boundary (Issue #709): the owner may depend on the
+		// listed owners and on nothing else. The check is by owner
+		// DIRECTORY, so a peer owner that does not exist yet is forbidden
+		// too — that is the whole point of the allowlist over a denylist.
+		if (allowed) {
+			const permitted = [...allowed].join(', ');
+			const specifiers = [...staticImports.map((stmt) => stmt.specifier), ...runtimeImports];
+			for (const specifier of specifiers) {
+				const target = resolveInternalImport(file, specifier, sourceRoot);
+				if (!target) continue;
+				const toOwner = ownerOf(target, sourceRoot);
+				if (!toOwner || toOwner === fromOwner) continue;
+				// A file directly under `src/` (`styles.css`,
+				// `routeTree.gen.ts`) belongs to no owner, so it is not
+				// part of the obligation graph.
+				if (!isOwnerDirectory(toOwner, sourceRoot)) continue;
+				if (allowed.has(toOwner)) continue;
+				errors.push(
+					`${relative(repoRoot, file)}: ${fromOwner} may only depend on ${permitted} (saw ${specifier})`,
 				);
 			}
 		}

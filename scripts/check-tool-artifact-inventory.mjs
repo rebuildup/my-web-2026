@@ -562,6 +562,13 @@ export function main(argv) {
 	const reportFormat = parseArg(args, '--report');
 	const reportOut = parseArg(args, '--report-out');
 	const update = args.includes('--update');
+	// Issue #733 (V-2): the outbound rule can only be judged against the
+	// bytes that would actually be served. Without a built artefact the
+	// scan reports "not observed", which is not the same thing as
+	// "observed and clean" — so a gate that runs before the build would
+	// pass while checking nothing. `--require-observed` makes the
+	// observation itself a precondition.
+	const requireObserved = args.includes('--require-observed');
 	const root = rootArg === null ? repoRoot : resolve(process.cwd(), rootArg);
 
 	if (args.includes('--help') || args.includes('-h')) {
@@ -574,6 +581,7 @@ export function main(argv) {
 				'  --record=<file>       reviewed record path (default quality/tool-artifact-inventory.json)',
 				'  --report=<format>     markdown | json | html',
 				'  --report-out=<file>   write the report to a file instead of stdout',
+				'  --require-observed    fail when a shipped Tool’s artefact was not observed',
 				'',
 			].join('\n'),
 		);
@@ -601,6 +609,13 @@ export function main(argv) {
 	}
 
 	const result = collectToolInventory({ root, manifest, record });
+
+	// Issue #733 (V-2): a shipped Tool whose artefact was not observed
+	// was not checked. The verdict below would still be green, so the
+	// gap has to be named as a failure of its own.
+	const unobserved = requireObserved
+		? result.rows.filter((row) => row.shipped && row.outbound_status !== 'observed')
+		: [];
 
 	if (reportFormat !== null) {
 		const rendered =
@@ -638,9 +653,19 @@ export function main(argv) {
 			`${result.summary.shipped} shipped, ${result.summary.passed} pass, ${result.summary.warned} warn, ` +
 			`${result.summary.failed} fail, ${result.summary.inventoryOnly} inventory-only. Result: ${result.ok ? 'PASS' : 'FAIL'}`,
 	);
-	const stream = result.ok ? process.stdout : process.stderr;
+	if (unobserved.length > 0) {
+		lines.push(
+			`  [error] ARTEFACT_NOT_OBSERVED ${unobserved.length} shipped Tool(s) have no observed artefact: ` +
+				`${unobserved.map((row) => row.slug).join(', ')}`,
+		);
+		lines.push(
+			'      remedy: run the build first — the outbound rule is judged against the bytes that would be served',
+		);
+	}
+	const failed = !result.ok || unobserved.length > 0;
+	const stream = failed ? process.stderr : process.stdout;
 	stream.write(`${lines.join('\n')}\n`);
-	return result.ok ? 0 : 1;
+	return failed ? 1 : 0;
 }
 
 function invokedAsScript() {

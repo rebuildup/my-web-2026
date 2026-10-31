@@ -579,6 +579,10 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
+  The GitHub Actions workflow also runs it on a daily schedule
+  (Issue #733, V-4), so a broken deploy cannot sit unnoticed until
+  somebody remembers to look; the schedule is a diagnostic and never a
+  deploy path.
   In Smoke #2 (`pnpm run e2e:prod`, POST-deploy) it also registers the
   five representative routes (`/`, `/about`, `/portfolio`, `/tools`,
   `/api/v1/health`) and checks each one's HTTP response, short

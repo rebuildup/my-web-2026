@@ -125,6 +125,12 @@ legal -> editorial (Issue #497 — the asset rights-review obligation owns
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
+http -> i18n (Issue #700 — `isAdminPath` reads the request path through
+  `src/i18n/router-path.ts`, the one owner of "how a request path is
+  READ" (percent-decode, then case-fold, then an exact-namespace-or-
+  descendant match); the analytics mount gate in `editorial` obeys the
+  same rule, and `editorial` may not import `http`, so the shared rule
+  has to live in a leaf)
 http -> editorial (Issue #530 — the public API directory preview story
             and its fixture column type; display primitives only)
 http/media -> portfolio (Issue #634 — `GET /media/<key>` asks the portfolio
@@ -184,7 +190,13 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `*.spec.*` file under a leaf is exempt, so
   `src/i18n/fixtures.test.ts` can assert against
   the owner-owned grammars; implementation modules
-  are not exempt). Each obligation keeps
+  are not exempt). The rule is pinned by
+  `scripts/check-architecture.test.mjs`: until the
+  0.8.0 audit it was declared here but unreachable
+  in the checker (the leaf test sat behind an early
+  return that skipped every leaf owner), so a leaf
+  obligation could have imported another one without
+  the gate noticing. Each obligation keeps
   ownership of its own slug grammar:
   `src/reactions/slug-regex.ts` publishes
   `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
@@ -198,6 +210,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `src/i18n/glyphs.test.ts` (CI),
   `src/editorial/glyph-headings.stories.tsx` (preview) and
   `scripts/capture-glyph-coverage.mjs` (measured artefact) all read.
+  Issue #700 adds the request-path half: `src/i18n/router-path.ts`
+  owns **how a request path is READ** (percent-decode, then
+  case-fold, then an exact-namespace-or-descendant match) and
+  publishes the platform's request-path namespaces
+  (`ADMIN_SURFACE_NAMESPACE`). It is URL text policy — the same family
+  as the slug and display-text rules — and it is a leaf, so the HTTP
+  boundary (`src/http/admin-path.ts`, Issue #654) and the editorial
+  analytics mount gate (`src/editorial/analytics/consent.ts`,
+  Issue #495) can obey ONE rule without depending on each other:
+  `editorial` may not import `http` (AGENTS.md §3), so a rule both of
+  them need cannot live in the HTTP boundary. The route tree stays the
+  authority for WHICH routes exist;
+  `test/integration/analytics-admin-path-parity.test.ts` pins the
+  published namespace against the router's own route tree.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
@@ -367,8 +393,9 @@ origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-produ
 `routes[]` binding for the bare hostname live in the companion
 file `wrangler.production.jsonc`. Production delivery is owned by Cloudflare
 Workers Builds: pushes to `main` run the configured Cloudflare build command
-and production deploy command. GitHub Actions owns validation and the manual
-production-smoke workflow only; it must not deploy production. The local
+and production deploy command. GitHub Actions owns validation and the
+production-smoke workflow only (operator-triggered, plus a daily scheduled
+pass — Issue #733 V-4); it must not deploy production. The local
 `pnpm run deploy:production` command is a recovery/debugging fallback. The
 companion file exists because
 declaring `env.production` inside `wrangler.jsonc` causes wrangler
@@ -548,9 +575,10 @@ point is an open decision recorded in
 [`quality/profile.yaml`](quality/profile.yaml). The declaration runs
 `enforcement: block` (Issue #645), so that CI step fails the build on
 any `critical` / `high` advisory that no approved exception covers; the
-one exception still on record (`braces`, no published patched version)
-is dated, grounded and tracked (Issue #669), and an expired record
-blocks again. Operator reference:
+exception ledger is empty (the `braces` record was retired in Issue
+#704 when the advisory was withdrawn upstream), so every `critical` /
+`high` finding blocks, and an expired record would block again.
+Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 A second gate is deliberately **not** in the three entry points, and is
@@ -710,7 +738,10 @@ imported. The vendored set has two upstreams:
 - `rebuildup/project-init` — delivery / quality / runtime skills.
   Last reconciled against **0.1.1**; upstream has since moved to
   `release-0-6-0` (`52d3e64`). (`writing-discipline` is itself vendored
-  by project-init from the writing-skills upstream.)
+  by project-init from the writing-skills upstream.) One exception:
+  `herdr-runtime` is vendored from the **PR #135 head** (`48fb2f6`,
+  240 lines) — newer than upstream's merged `origin/main` (`0be0fcb`,
+  234 lines); see the fork table.
 - `rebuildup/design-skills` — design skills. Last reconciled against
   **0.3.0** (`release-0-3-0`).
 
@@ -728,10 +759,11 @@ canonical link:
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
 | `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
+| `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
 
 Upstream skills this repository **does not vendor**: `linear-release-control`
 (explicitly declined — it conflicts with §7's GitHub-Projects SoT),
-`herdr-runtime`, `orca-frontend` (both explicitly declined),
+`orca-frontend` (explicitly declined),
 `secrets-management`, `skill-selection`, `security-audit`,
 `agent-delivery-estimation`, `correctness-assurance`, `idea-discovery`.
 Re-evaluation candidates from Issue #647: `skill-selection`,
@@ -762,6 +794,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 - `skills/design-refinement/SKILL.md` — pre-implementation design refinement
 
 ### Runtime / recovery
+- `skills/herdr-runtime/SKILL.md` — Herdr as an optional Supervisor / session runtime
 - `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
 - `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery

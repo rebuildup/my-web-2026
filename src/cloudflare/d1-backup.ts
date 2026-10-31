@@ -33,6 +33,19 @@
  * in `docs/runbook/d1-backup-restore.md`; this repository runs that
  * procedure against a local fixture only.
  *
+ * The numeric boundary (Issue #701)
+ * --------------------------------
+ * A digest match is a proof of restorability only while the numbers it
+ * covers are the numbers that were stored. SQLite keeps an INTEGER as
+ * a 64-bit integer; the D1 JavaScript adapter hands the value over as a
+ * double, which cannot carry every int64. The rule that decides which
+ * numbers may enter a document — and the reason a value the adapter has
+ * already rounded is refused instead of written — lives in
+ * `src/cloudflare/d1-numeric.ts`, and the export, the parser and the
+ * restore's bind step all ask that one rule. A value outside it is
+ * refused, so the read-back comparison below compares values the
+ * document can be shown to carry.
+ *
  * Status-only
  * -----------
  * `D1RestoreResult` carries a verdict, a reason code and counts. It
@@ -41,6 +54,8 @@
  * its contents, and the operator report is designed to be pasted into
  * a PR. `formatD1RestoreReport` prints exactly those fields.
  */
+
+import { isD1BackupSafeNumber } from './d1-numeric';
 
 /** Marker stored in every backup so another JSON file cannot be restored by accident. */
 export const D1_BACKUP_FORMAT = 'my-web-2026.d1-backup';
@@ -152,6 +167,23 @@ export class D1BackupExportError extends Error {
 	}
 }
 
+/**
+ * A backup value the restore refuses to bind.
+ *
+ * Defence in depth (Issue #701): the parser already refuses a document
+ * carrying a number the backup rule rejects, so this error is not
+ * reachable through `parseD1Backup`. It exists because the bind step
+ * is the last place where a value becomes a statement parameter, and a
+ * value that reached it unexamined would be written back as a
+ * different integer than the document carries.
+ */
+class D1BackupUnsafeValueError extends Error {
+	constructor() {
+		super('d1_backup_restore:unsafe_value');
+		this.name = 'D1BackupUnsafeValueError';
+	}
+}
+
 /** Lowercase hex sha256, available in workerd and Node without a dependency. */
 async function sha256Hex(text: string): Promise<string> {
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -199,10 +231,13 @@ function isBlobValue(value: unknown): value is { $blob: string } {
 function encodeValue(value: unknown): D1BackupScalar {
 	if (value === null || typeof value === 'string') return value;
 	if (typeof value === 'number') {
-		// JSON has no NaN / Infinity. Writing one would silently become
-		// `null` in the document, so an unrepresentable value is an
-		// export failure rather than a quiet data change.
-		if (!Number.isFinite(value)) throw new D1BackupExportError('unsupported_value');
+		// The number rule (Issue #701) refuses two classes of value:
+		// JSON has no NaN / Infinity, and a number outside the safe
+		// integer range may be an int64 the adapter already rounded.
+		// Writing either would put a value in the document that the
+		// document cannot be shown to carry, so the export fails rather
+		// than writing a quiet data change.
+		if (!isD1BackupSafeNumber(value)) throw new D1BackupExportError('unsupported_value');
 		return value;
 	}
 	if (typeof value === 'boolean') return value ? 1 : 0;
@@ -220,7 +255,18 @@ function encodeValue(value: unknown): D1BackupScalar {
 
 /** Convert a backup value back into something a D1 bind accepts. */
 function decodeValue(value: D1BackupScalar): unknown {
-	if (!isBlobValue(value)) return value;
+	if (!isBlobValue(value)) {
+		// A number reaches the bind step only after the parser accepted
+		// it, so it is inside the rule the export enforces. The check
+		// is repeated because this is the last point where a value
+		// becomes a statement parameter: an unsafe integer bound here
+		// would be written back as a different integer than the
+		// document carries.
+		if (typeof value === 'number' && !isD1BackupSafeNumber(value)) {
+			throw new D1BackupUnsafeValueError();
+		}
+		return value;
+	}
 	const bytes = base64ToBytes(value.$blob);
 	return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
@@ -238,6 +284,11 @@ function quoteIdentifier(name: string): string {
  * Canonical projection used for the digest. Constructing the object in
  * a fixed key order makes the digest independent of how a JSON parser
  * happened to order the input object.
+ *
+ * The numbers in it are the numbers the rule in `d1-numeric.ts`
+ * admitted, and `JSON.stringify` emits the shortest representation
+ * that parses back to the same double — so the digest covers the value
+ * the document carries, not an approximation of it.
  */
 function canonical(backup: D1BackupWithoutDigest): unknown {
 	return {
@@ -432,7 +483,12 @@ function isScalar(value: unknown): value is D1BackupScalar {
 	// `JSON.parse('1e999')` yields `Infinity`, which the exporter can
 	// never produce and SQLite cannot store. Reject it here so an
 	// inapplicable document fails as `invalid_backup`, not at apply.
-	if (typeof value === 'number') return Number.isFinite(value);
+	//
+	// The same rule (Issue #701) rejects a number the exporter would
+	// have refused: a document edited to carry an int64-sized integer
+	// is as inapplicable as one edited to carry `Infinity`, and its
+	// digest — however well-formed — does not make it restorable.
+	if (typeof value === 'number') return isD1BackupSafeNumber(value);
 	return isBlobValue(value) && /^[A-Za-z0-9+/]*={0,2}$/.test(value.$blob);
 }
 
@@ -594,6 +650,49 @@ function failed(
 }
 
 /**
+ * Build the statements that restore a backup.
+ *
+ * The statements are built but not issued: `db.batch()` runs them as
+ * one transaction. Building them is where a row value becomes a bind
+ * parameter, so this is also where the number rule (Issue #701) is
+ * asked one last time — a value the rule rejects throws before any
+ * statement exists.
+ */
+function buildRestoreStatements(db: D1Database, backup: D1Backup): D1PreparedStatement[] {
+	// `defer_foreign_keys` keeps the drop/create order from mattering
+	// inside the batch, which is important when one restored table
+	// references another.
+	const statements: D1PreparedStatement[] = [db.prepare('PRAGMA defer_foreign_keys = ON')];
+	for (const table of [...backup.tables].reverse()) {
+		statements.push(db.prepare(`DROP TABLE IF EXISTS ${quoteIdentifier(table.name)}`));
+	}
+	for (const table of backup.tables) {
+		statements.push(db.prepare(table.createSql));
+	}
+	for (const index of backup.indexes) {
+		statements.push(db.prepare(index.createSql));
+	}
+	for (const table of backup.tables) {
+		const columns = table.columns.map(quoteIdentifier).join(', ');
+		const placeholders = table.columns.map(() => '?').join(', ');
+		for (const row of table.rows) {
+			// Written inline so `scripts/check-d1-sql-binding.mjs` sees the
+			// three interpolations and holds them to the allowlist: the
+			// table and column names are bare identifiers (validated by
+			// `isBareIdentifier`), and every value is bound.
+			statements.push(
+				db
+					.prepare(
+						`INSERT INTO ${quoteIdentifier(table.name)} (${columns}) VALUES (${placeholders})`,
+					)
+					.bind(...row.map(decodeValue)),
+			);
+		}
+	}
+	return statements;
+}
+
+/**
  * Restore a backup into `db`.
  *
  * Order (each step short-circuits):
@@ -625,35 +724,16 @@ export async function restoreD1Database(
 	const tableCount = backup.tables.length;
 	const rowCount = backupRowCount(backup);
 
-	// 4. One transaction. `defer_foreign_keys` keeps the drop/create
-	// order from mattering inside the batch, which is important when
-	// one restored table references another.
-	const statements: D1PreparedStatement[] = [db.prepare('PRAGMA defer_foreign_keys = ON')];
-	for (const table of [...backup.tables].reverse()) {
-		statements.push(db.prepare(`DROP TABLE IF EXISTS ${quoteIdentifier(table.name)}`));
-	}
-	for (const table of backup.tables) {
-		statements.push(db.prepare(table.createSql));
-	}
-	for (const index of backup.indexes) {
-		statements.push(db.prepare(index.createSql));
-	}
-	for (const table of backup.tables) {
-		const columns = table.columns.map(quoteIdentifier).join(', ');
-		const placeholders = table.columns.map(() => '?').join(', ');
-		for (const row of table.rows) {
-			// Written inline so `scripts/check-d1-sql-binding.mjs` sees the
-			// three interpolations and holds them to the allowlist: the
-			// table and column names are bare identifiers (validated by
-			// `isBareIdentifier`), and every value is bound.
-			statements.push(
-				db
-					.prepare(
-						`INSERT INTO ${quoteIdentifier(table.name)} (${columns}) VALUES (${placeholders})`,
-					)
-					.bind(...row.map(decodeValue)),
-			);
+	// 4. One transaction. The statements are built first, so a value
+	// the bind step refuses ends the run before a statement exists.
+	let statements: D1PreparedStatement[];
+	try {
+		statements = buildRestoreStatements(db, backup);
+	} catch (error) {
+		if (error instanceof D1BackupUnsafeValueError) {
+			return failed(D1_RESTORE_VERDICT.refused, 'invalid_backup', checks);
 		}
+		throw error;
 	}
 	try {
 		await db.batch(statements);
@@ -663,7 +743,11 @@ export async function restoreD1Database(
 	checks.push('apply');
 
 	// 5. Read back. A committed batch is not the claim; matching
-	// schema and rows are.
+	// schema and rows are. The comparison is a comparison of VALUES,
+	// and it is a proof of restorability only because the export
+	// refused every number the adapter could have rounded (Issue
+	// #701): within the admitted range, the number in the document is
+	// the number that was stored.
 	let readback: D1Backup;
 	try {
 		readback = await exportD1Backup(db, {

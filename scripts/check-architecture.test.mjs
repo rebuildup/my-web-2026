@@ -192,3 +192,80 @@ test('the real repository tree has no obligation-boundary violation', () => {
 
 	assert.deepEqual(errors, []);
 });
+
+test('an allowlisted owner that imports a peer owner fails', async (t) => {
+	const root = await makeFixture('my-web-arch-allowlist-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/personal/preview.ts',
+		["import { snapshot } from '../projects/snapshot';", 'export const preview = snapshot;'].join(
+			'\n',
+		),
+	);
+	await writeFixtureFile(root, 'src/projects/snapshot.ts', 'export const snapshot = 1;\n');
+
+	const errors = checkArchitecture(root);
+
+	assert.equal(errors.length, 1, `expected exactly one violation, got: ${JSON.stringify(errors)}`);
+	assert.match(errors[0], /personal may only depend on editorial/);
+	assert.match(errors[0], /src\/personal\/preview\.ts/);
+});
+
+test('an allowlisted owner that dynamic-imports a peer owner fails', async (t) => {
+	const root = await makeFixture('my-web-arch-allowlist-dynamic-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/personal/preview.ts',
+		[
+			'export async function load() {',
+			"  const { snapshot } = await import('../projects/snapshot');",
+			'  return snapshot;',
+			'}',
+		].join('\n'),
+	);
+	await writeFixtureFile(root, 'src/projects/snapshot.ts', 'export const snapshot = 1;\n');
+
+	const errors = checkArchitecture(root);
+
+	assert.equal(errors.length, 1, `expected exactly one violation, got: ${JSON.stringify(errors)}`);
+	assert.match(errors[0], /personal may only depend on editorial/);
+});
+
+test('an allowlisted owner that imports its permitted owner passes', async (t) => {
+	const root = await makeFixture('my-web-arch-allowlist-ok-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/personal/preview.ts',
+		[
+			"import { container } from '../editorial/primitives/container';",
+			'export const preview = container;',
+		].join('\n'),
+	);
+	await writeFixtureFile(
+		root,
+		'src/editorial/primitives/container.ts',
+		'export const container = 1;\n',
+	);
+
+	assert.deepEqual(checkArchitecture(root), []);
+});
+
+test('an allowlisted owner that imports a file belonging to no owner passes', async (t) => {
+	const root = await makeFixture('my-web-arch-allowlist-file-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/personal/preview.ts',
+		["import '../styles.css';", 'export const preview = 1;'].join('\n'),
+	);
+	await writeFixtureFile(root, 'src/styles.css', 'body { margin: 0; }\n');
+
+	assert.deepEqual(checkArchitecture(root), []);
+});

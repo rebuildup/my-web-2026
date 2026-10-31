@@ -81,6 +81,13 @@ routes -> keyboard (Issue #620 — read-only keyboard-layout reference; the
 keyboard -> editorial (Issue #620 — display primitives and semantic tokens only)
 routes -> projects (Issue #621 — `/projects/dotfiles` loader + page composition)
 projects -> editorial (Issue #621 — display primitives only)
+personal -> editorial (Issue #709 — the personal-document preview owner
+                   composes display primitives only; it reads no
+                   binding, no route and no peer obligation. This is the
+                   one edge AGENTS.md §3 declares for it, so
+                   `scripts/check-architecture.mjs` enforces it as an
+                   ALLOWLIST: every other owner directory under `src/`
+                   is forbidden, including one that does not exist yet)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
@@ -326,6 +333,18 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `pnpm run projects:check`; the scheduled refresh is
   `.github/workflows/projects-sync.yml`, whose PR base is the repository
   variable `PROJECTS_SYNC_BASE_REF` (the active release branch).
+- `src/personal/**` (Issue #709) owns the **structured display data and
+  the standalone preview** of the personal documents — the philosophy,
+  the making motivation, the brand naming record, the influence notes
+  — so that each document Issue can be completed by one fixture /
+  Storybook preview without a page composition. The documents
+  themselves are Markdown under `docs/**` (internal documentation);
+  this owner holds only what a preview renders. It is a peer to
+  `home/` / `portfolio/` / `about/`, composes `editorial` primitives,
+  and imports no route, no binding and no peer obligation. A preview is
+  a demo surface, so it stays outside the public-Japanese-copy gate for
+  the same reason `**/*.stories.tsx` does. See
+  `src/personal/README.md`.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),

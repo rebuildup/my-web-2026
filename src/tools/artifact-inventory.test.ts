@@ -597,7 +597,7 @@ describe('evaluateToolArtifactInventory — outbound references', () => {
 		expect(codes(result.findings)).not.toContain('OUTBOUND_UNDECLARED');
 	});
 
-	it('holds a host the reviewed set does not contain', () => {
+	it('refuses a host the reviewed set does not contain', () => {
 		const result = evaluateToolArtifactInventory(
 			baseInput({
 				reviewed: reviewedRecord(),
@@ -605,8 +605,23 @@ describe('evaluateToolArtifactInventory — outbound references', () => {
 			}),
 		);
 		expect(codes(result.findings)).toEqual(['OUTBOUND_UNDECLARED']);
-		expect(result.findings[0].severity).toBe('warn');
+		// Issue #733 (V-2): a Tool this repository builds and serves must
+		// not carry an external reference nobody reviewed. The remedy is
+		// the record regeneration, which shows the host in the diff.
+		expect(result.findings[0].severity).toBe('error');
 		expect(result.rows[0].outbound_new).toEqual(['example.com', 'metrics.example.org']);
+	});
+
+	it('holds, but does not refuse, an undeclared host of a Tool this repository does not serve', () => {
+		const result = evaluateToolArtifactInventory(
+			baseInput({
+				deliveryKind: 'host_disabled',
+				reviewed: reviewedRecord(),
+				outbound: { present: true, hosts: ['example.com'] },
+			}),
+		);
+		expect(codes(result.findings)).toEqual(['OUTBOUND_UNDECLARED']);
+		expect(result.findings[0].severity).toBe('warn');
 	});
 
 	it('holds a reviewed host the artefact no longer references', () => {

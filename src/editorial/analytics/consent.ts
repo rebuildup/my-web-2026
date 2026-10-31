@@ -53,6 +53,8 @@
  * what any jurisdiction requires of the site operator.
  */
 
+import { ADMIN_SURFACE_NAMESPACE, isPathInNamespace } from '../../i18n/router-path';
+
 /** `localStorage` key holding the recorded decision. */
 export const ANALYTICS_CONSENT_STORAGE_KEY = 'my-web-2026:analytics-consent';
 
@@ -282,16 +284,21 @@ export function analyticsMeasurementAllowed(
  * a future public route such as `/administration` is not silently
  * excluded from measurement.
  *
- * The comparison is case-insensitive because the router is: TanStack
- * Router matches static segments after `toLowerCase()`
- * (`caseSensitive: false` is the default, and `src/router.tsx` does
- * not override it). `/ADMIN/INVITATIONS/ACCEPT` therefore renders the
- * admin screen, and a case-sensitive check here would let its
- * invitation token reach GA4 through the document URL.
+ * The path is read the way the ROUTER reads it (Issue #700): the
+ * comparison is case-insensitive because TanStack Router matches
+ * static segments after `toLowerCase()` (`caseSensitive: false` is
+ * the default, and `src/router.tsx` does not override it), and the
+ * pathname is percent-decoded because the router decodes it before
+ * matching. `/ADMIN/INVITATIONS/ACCEPT` and `/%61dmin/keys` therefore
+ * render the admin screen, and a reader that does not decode would let
+ * their invitation token reach GA4 through the document URL.
+ *
+ * The reading rule itself is owned by `src/i18n/router-path.ts` — the
+ * same owner the Admin cache policy and the anomaly monitor obey, so
+ * the three surfaces cannot classify one request as two things.
  */
 export function isAnalyticsMountPath(pathname: string): boolean {
-	const normalised = pathname.toLowerCase();
-	return normalised !== '/admin' && !normalised.startsWith('/admin/');
+	return !isPathInNamespace(pathname, ADMIN_SURFACE_NAMESPACE);
 }
 
 /**

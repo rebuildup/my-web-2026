@@ -13,8 +13,24 @@ name: production smoke
 #
 # Or run locally:
 #   pnpm run e2e:prod
+#
+# Issue #733 (V-4) — the trigger is not only the operator. Before this
+# schedule the canonical production origin was checked only when a human
+# remembered to ask, so a broken deploy could sit unnoticed for as long as
+# nobody looked. The daily pass makes the production surface observable
+# without anyone being in the loop; the operator-triggered run stays,
+# because "the scheduled run passed" and "the deploy I just pushed works"
+# are different questions.
+#
+# The schedule is a diagnostic, never a deploy path: this workflow holds
+# no write scope and no repository secret, and it never deploys.
 on:
   workflow_dispatch: {}
+  schedule:
+    # 18:17 UTC — 03:17 JST. Deliberately not on the hour: the top of
+    # every hour is when every other scheduled workflow on the platform
+    # queues, and a production diagnostic does not need to compete.
+    - cron: '17 18 * * *'
 
 concurrency:
   group: prod-smoke-${{ github.workflow }}

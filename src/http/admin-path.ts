@@ -31,7 +31,7 @@
  * the boundary names it in its own terms.
  */
 
-import { ADMIN_SURFACE_NAMESPACE, isPathInNamespace } from '../i18n/router-path';
+import { ADMIN_SURFACE_NAMESPACE, isPathInNamespace } from '../i18n/router-path.ts';
 
 /**
  * Does this request path resolve to the Admin surface?

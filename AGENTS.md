@@ -716,7 +716,10 @@ imported. The vendored set has two upstreams:
 - `rebuildup/project-init` — delivery / quality / runtime skills.
   Last reconciled against **0.1.1**; upstream has since moved to
   `release-0-6-0` (`52d3e64`). (`writing-discipline` is itself vendored
-  by project-init from the writing-skills upstream.)
+  by project-init from the writing-skills upstream.) One exception:
+  `herdr-runtime` is vendored from the **PR #135 head** (`48fb2f6`,
+  240 lines) — newer than upstream's merged `origin/main` (`0be0fcb`,
+  234 lines); see the fork table.
 - `rebuildup/design-skills` — design skills. Last reconciled against
   **0.3.0** (`release-0-3-0`).
 
@@ -734,10 +737,11 @@ canonical link:
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
 | `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
+| `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
 
 Upstream skills this repository **does not vendor**: `linear-release-control`
 (explicitly declined — it conflicts with §7's GitHub-Projects SoT),
-`herdr-runtime`, `orca-frontend` (both explicitly declined),
+`orca-frontend` (explicitly declined),
 `secrets-management`, `skill-selection`, `security-audit`,
 `agent-delivery-estimation`, `correctness-assurance`, `idea-discovery`.
 Re-evaluation candidates from Issue #647: `skill-selection`,
@@ -768,6 +772,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 - `skills/design-refinement/SKILL.md` — pre-implementation design refinement
 
 ### Runtime / recovery
+- `skills/herdr-runtime/SKILL.md` — Herdr as an optional Supervisor / session runtime
 - `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
 - `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery

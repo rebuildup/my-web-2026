@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const srcRoot = join(root, 'src');
+
+/**
+ * The repository root this module checks by default.
+ *
+ * `checkArchitecture(repoRoot)` takes the root as an ARGUMENT so the
+ * rules can be exercised against a fixture tree
+ * (`scripts/check-architecture.test.mjs`). The default is the
+ * repository this file lives in, which is what the CLI uses.
+ */
+export const DEFAULT_REPO_ROOT = root;
 
 const legacyClassifierRoots = ['modules', 'design-system', 'platform'];
 
@@ -89,8 +98,8 @@ const forbiddenOwnerDependencies = new Map([
 	// what a reader is shown. It is a peer obligation, not a layer: it
 	// reads a committed record, composes `editorial` primitives, and
 	// touches no binding, no peer obligation, no route and no boundary.
-	// The gate (`scripts/check-asset-licenses.mjs`) is a consumer, not
-	// an exception: it imports the same rules, so the rules stay in `src/`.
+	// The gate (`scripts/check-asset-licenses.mjs`) is a consumer, not an
+	// exception: it imports the same rules, so the rules stay in `src/`.
 	['legal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'logging'])],
 ]);
 
@@ -119,8 +128,8 @@ const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
  */
 const leafOwners = new Set(['i18n', 'privacy']);
 
-function isTestFile(path) {
-	return /\.(test|spec)\.tsx?$/.test(relative(srcRoot, path).split(sep).join('/'));
+function isTestFile(path, srcDirectory) {
+	return /\.(test|spec)\.tsx?$/.test(relative(srcDirectory, path).split(sep).join('/'));
 }
 
 /**
@@ -141,20 +150,20 @@ function sourceFiles(directory) {
 	});
 }
 
-function ownerOf(path) {
-	const rel = relative(srcRoot, path);
+function ownerOf(path, srcDirectory) {
+	const rel = relative(srcDirectory, path);
 	if (rel.startsWith('..')) return null;
 	return rel.split(sep)[0] ?? null;
 }
 
-function isHomeStatusFile(path) {
-	const rel = relative(srcRoot, path).split(sep).join('/');
+function isHomeStatusFile(path, srcDirectory) {
+	const rel = relative(srcDirectory, path).split(sep).join('/');
 	return rel.startsWith('home/status/');
 }
 
-function resolveInternalImport(fromFile, specifier) {
+function resolveInternalImport(fromFile, specifier, srcDirectory) {
 	if (specifier.startsWith('.')) return resolve(dirname(fromFile), specifier);
-	if (specifier.startsWith('~/')) return resolve(srcRoot, specifier.slice(2));
+	if (specifier.startsWith('~/')) return resolve(srcDirectory, specifier.slice(2));
 	return null;
 }
 
@@ -192,91 +201,8 @@ function isTypeOnlyEdge(from, to) {
 	return typeOnlyEdges.some((edge) => edge.from === from && edge.to === to);
 }
 
-const errors = [];
-
-for (const name of legacyClassifierRoots) {
-	if (existsSync(join(srcRoot, name))) {
-		errors.push(
-			`src/${name}/ is a legacy classifier root. Reintroducing it requires an explicit ADR-0008 boundary decision.`,
-		);
-	}
-}
-
-for (const file of sourceFiles(srcRoot)) {
-	const fromOwner = ownerOf(file);
-	const forbidden = forbiddenOwnerDependencies.get(fromOwner);
-	if (!forbidden) continue;
-
-	const source = readFileSync(file, 'utf8');
-	const staticImports = importStatements(source);
-	const runtimeImports = runtimeImportSpecifiers(source);
-
-	if (leafOwners.has(fromOwner) && !isTestFile(file)) {
-		const specifiers = [...staticImports.map((stmt) => stmt.specifier), ...runtimeImports];
-		for (const specifier of specifiers) {
-			const target = resolveInternalImport(file, specifier);
-			if (!target) continue;
-			const toOwner = ownerOf(target);
-			if (!toOwner || toOwner === fromOwner) continue;
-			errors.push(
-				`${relative(root, file)}: ${fromOwner} is a leaf obligation and must not depend on ${toOwner} (${specifier})`,
-			);
-		}
-	}
-
-	for (const stmt of staticImports) {
-		const target = resolveInternalImport(file, stmt.specifier);
-		if (!target) continue;
-		const toOwner = ownerOf(target);
-		if (!toOwner || !forbidden.has(toOwner)) continue;
-
-		const allowedHomeStatusRuntimeDependency =
-			fromOwner === 'home' &&
-			isHomeStatusFile(file) &&
-			(toOwner === 'cloudflare' || toOwner === 'http');
-		if (allowedHomeStatusRuntimeDependency) continue;
-
-		if (isTypeOnlyEdge(fromOwner, toOwner) && stmt.isTypeOnly) continue;
-
-		if (isTypeOnlyEdge(fromOwner, toOwner)) {
-			errors.push(
-				`${relative(root, file)}: ${fromOwner} may only import types from ${toOwner} (saw runtime import: ${stmt.specifier})`,
-			);
-			continue;
-		}
-
-		errors.push(
-			`${relative(root, file)}: ${fromOwner} must not depend on ${toOwner} (${stmt.specifier})`,
-		);
-	}
-
-	for (const specifier of runtimeImports) {
-		const target = resolveInternalImport(file, specifier);
-		if (!target) continue;
-		const toOwner = ownerOf(target);
-		if (!toOwner || !forbidden.has(toOwner)) continue;
-
-		const allowedHomeStatusRuntimeDependency =
-			fromOwner === 'home' &&
-			isHomeStatusFile(file) &&
-			(toOwner === 'cloudflare' || toOwner === 'http');
-		if (allowedHomeStatusRuntimeDependency) continue;
-
-		errors.push(
-			`${relative(root, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,
-		);
-	}
-}
-
 /**
- * Tool-boundary rules (ADR-0006 §2):
- *   - parent MUST NOT import from `external/<slug>/src/**`
- *   - Tool source MUST NOT import from `../../src/**` of the parent
- *   - parent MUST NOT import from a Tool's `package.json` / build output
- *
- * Enforced in two passes: one over each parent source root, one over
- * each checked-out Tool submodule. Both passes share
- * `boundaryImportViolations`.
+ * Tool-boundary patterns (ADR-0006 §2 / §3).
  */
 const TOOL_SRC_PATTERN = /^external\/[a-z0-9][a-z0-9-]{0,127}\/src(\/|$)/;
 const PARENT_SRC_PATTERN = /^(\.\.\/)+src(\/|$)/;
@@ -357,41 +283,181 @@ function boundaryImportViolations(source, fromFileRel) {
 	return violations;
 }
 
-// Pass 1: parent source roots
-for (const rootName of parentSourceRoots) {
-	const dir = join(root, rootName);
-	if (!existsSync(dir)) continue;
-	for (const file of collectJsLikeFiles(dir)) {
-		const rel = relative(root, file);
-		const source = readFileSync(file, 'utf8');
-		errors.push(...boundaryImportViolations(source, rel));
-	}
-}
+/**
+ * Run every obligation-boundary rule against a repository tree.
+ *
+ * The rules are:
+ *
+ *   - a **leaf** obligation (`i18n`, `privacy`) may not depend on any
+ *     other owner, statically or at runtime;
+ *   - an owner may not depend on the owners registered for it in
+ *     `forbiddenOwnerDependencies`, with the type-only edges and the
+ *     `home/status` exception honoured;
+ *   - the parent may not import a Tool's source / package.json / build
+ *     output, and a Tool may not import the parent's source.
+ *
+ * The leaf rule is checked for EVERY file under a leaf owner, whether or
+ * not that owner appears in `forbiddenOwnerDependencies`. It used to be
+ * evaluated AFTER the `if (!forbidden) continue;` early return, and
+ * since no leaf owner is a key of that map the rule was unreachable:
+ * AGENTS.md §3 declared the leaf rule enforced while the code could
+ * never fire it. `scripts/check-architecture.test.mjs` pins the rule
+ * with a fixture so that shape cannot come back.
+ *
+ * @param {string} repoRoot repository root to check
+ * @returns {string[]} the violations, empty when the tree is clean
+ */
+export function checkArchitecture(repoRoot) {
+	const sourceRoot = join(repoRoot, 'src');
+	const errors = [];
 
-// Pass 2: each checked-out Tool submodule (best effort; submodules may
-// not be initialised in CI without `git submodule update --init`).
-const externalRoot = join(root, 'external');
-if (existsSync(externalRoot)) {
-	for (const entry of readdirSync(externalRoot, { withFileTypes: true })) {
-		if (!entry.isDirectory()) continue;
-		const toolRoot = join(externalRoot, entry.name);
-		const stat = statSync(toolRoot);
-		// Skip if it's a placeholder directory (not a real submodule).
-		if (!existsSync(join(toolRoot, '.git'))) continue;
-		const srcDir = join(toolRoot, 'src');
-		if (!existsSync(srcDir)) continue;
-		for (const file of collectJsLikeFiles(srcDir)) {
-			const rel = relative(root, file);
+	for (const name of legacyClassifierRoots) {
+		if (existsSync(join(sourceRoot, name))) {
+			errors.push(
+				`src/${name}/ is a legacy classifier root. Reintroducing it requires an explicit ADR-0008 boundary decision.`,
+			);
+		}
+	}
+
+	for (const file of sourceFiles(sourceRoot)) {
+		const fromOwner = ownerOf(file, sourceRoot);
+		const forbidden = forbiddenOwnerDependencies.get(fromOwner);
+		const isLeaf = leafOwners.has(fromOwner) && !isTestFile(file, sourceRoot);
+		// A leaf owner has NO entry in `forbiddenOwnerDependencies` — that
+		// is the POINT of a leaf: nothing forbids it from depending on
+		// another owner, because it may not depend on any of them. The
+		// leaf rule therefore has to be evaluated BEFORE the
+		// `forbidden`-based early return below, or it never runs.
+		if (!isLeaf && !forbidden) continue;
+
+		const source = readFileSync(file, 'utf8');
+		const staticImports = importStatements(source);
+		const runtimeImports = runtimeImportSpecifiers(source);
+
+		if (isLeaf) {
+			const specifiers = [...staticImports.map((stmt) => stmt.specifier), ...runtimeImports];
+			for (const specifier of specifiers) {
+				const target = resolveInternalImport(file, specifier, sourceRoot);
+				if (!target) continue;
+				const toOwner = ownerOf(target, sourceRoot);
+				if (!toOwner || toOwner === fromOwner) continue;
+				errors.push(
+					`${relative(repoRoot, file)}: ${fromOwner} is a leaf obligation and must not depend on ${toOwner} (${specifier})`,
+				);
+			}
+		}
+
+		if (!forbidden) continue;
+
+		for (const stmt of staticImports) {
+			const target = resolveInternalImport(file, stmt.specifier, sourceRoot);
+			if (!target) continue;
+			const toOwner = ownerOf(target, sourceRoot);
+			if (!toOwner || !forbidden.has(toOwner)) continue;
+
+			const allowedHomeStatusRuntimeDependency =
+				fromOwner === 'home' &&
+				isHomeStatusFile(file, sourceRoot) &&
+				(toOwner === 'cloudflare' || toOwner === 'http');
+			if (allowedHomeStatusRuntimeDependency) continue;
+
+			if (isTypeOnlyEdge(fromOwner, toOwner) && stmt.isTypeOnly) continue;
+
+			if (isTypeOnlyEdge(fromOwner, toOwner)) {
+				errors.push(
+					`${relative(repoRoot, file)}: ${fromOwner} may only import types from ${toOwner} (saw runtime import: ${stmt.specifier})`,
+				);
+				continue;
+			}
+
+			errors.push(
+				`${relative(repoRoot, file)}: ${fromOwner} must not depend on ${toOwner} (${stmt.specifier})`,
+			);
+		}
+
+		for (const specifier of runtimeImports) {
+			const target = resolveInternalImport(file, specifier, sourceRoot);
+			if (!target) continue;
+			const toOwner = ownerOf(target, sourceRoot);
+			if (!toOwner || !forbidden.has(toOwner)) continue;
+
+			const allowedHomeStatusRuntimeDependency =
+				fromOwner === 'home' &&
+				isHomeStatusFile(file, sourceRoot) &&
+				(toOwner === 'cloudflare' || toOwner === 'http');
+			if (allowedHomeStatusRuntimeDependency) continue;
+
+			errors.push(
+				`${relative(repoRoot, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,
+			);
+		}
+	}
+
+	// Tool-boundary rules (ADR-0006 §2 / §3), enforced in two passes:
+	// one over each parent source root, one over each checked-out Tool
+	// submodule. Both passes share `boundaryImportViolations`.
+	for (const rootName of parentSourceRoots) {
+		const dir = join(repoRoot, rootName);
+		if (!existsSync(dir)) continue;
+		for (const file of collectJsLikeFiles(dir)) {
+			const rel = relative(repoRoot, file);
 			const source = readFileSync(file, 'utf8');
 			errors.push(...boundaryImportViolations(source, rel));
 		}
 	}
+
+	// Pass 2: each checked-out Tool submodule (best effort; submodules may
+	// not be initialised in CI without `git submodule update --init`).
+	const externalRoot = join(repoRoot, 'external');
+	if (existsSync(externalRoot)) {
+		for (const entry of readdirSync(externalRoot, { withFileTypes: true })) {
+			if (!entry.isDirectory()) continue;
+			const toolRoot = join(externalRoot, entry.name);
+			// Skip if it's a placeholder directory (not a real submodule).
+			if (!existsSync(join(toolRoot, '.git'))) continue;
+			const srcDir = join(toolRoot, 'src');
+			if (!existsSync(srcDir)) continue;
+			for (const file of collectJsLikeFiles(srcDir)) {
+				const rel = relative(repoRoot, file);
+				const source = readFileSync(file, 'utf8');
+				errors.push(...boundaryImportViolations(source, rel));
+			}
+		}
+	}
+
+	return errors;
 }
 
-if (errors.length > 0) {
-	console.error('[architecture:check] obligation boundary violations:');
-	for (const error of errors) console.error(`- ${error}`);
-	process.exit(1);
+/**
+ * CLI entry point.
+ *
+ * `--root=<dir>` points the check at another tree;
+ * `scripts/check-architecture.test.mjs` uses it to exercise the rules
+ * against a fixture. Without it the repository this file lives in is
+ * checked.
+ *
+ * Exit codes: 0 = clean, 1 = violations, 2 = bad input.
+ */
+function main(argv) {
+	const rootArg = argv.find((arg) => arg.startsWith('--root='));
+	const repoRoot = rootArg ? resolve(rootArg.slice('--root='.length)) : DEFAULT_REPO_ROOT;
+
+	if (!existsSync(join(repoRoot, 'src'))) {
+		console.error(`[architecture:check] no src/ directory under ${repoRoot}`);
+		return 2;
+	}
+
+	const errors = checkArchitecture(repoRoot);
+	if (errors.length > 0) {
+		console.error('[architecture:check] obligation boundary violations:');
+		for (const error of errors) console.error(`- ${error}`);
+		return 1;
+	}
+
+	console.error('[architecture:check] obligation boundaries OK');
+	return 0;
 }
 
-console.error('[architecture:check] obligation boundaries OK');
+if (process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`) {
+	process.exitCode = main(process.argv.slice(2));
+}

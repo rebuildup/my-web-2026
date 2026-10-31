@@ -165,6 +165,7 @@
 		"verify:security-disclosure-screenshot": "node scripts/make-security-disclosure-report.mjs",
 		"verify:csp-report-only-screenshot": "node scripts/make-csp-report-only-report.mjs",
 		"bundle:budget:check": "node scripts/check-bundle-budget.mjs",
+		"bundle:server-only:check": "node scripts/check-client-bundle-server-only.mjs",
 		"security:cors:report": "node scripts/cors-preflight-report.mjs",
 		"ci:pins:check": "node scripts/check-workflow-pinning.mjs",
 		"ci:pins:report": "node scripts/workflow-pin-report.mjs",

@@ -336,7 +336,10 @@ describe('publication-surface — surface construction', () => {
 	it('expands only the sitemap-true declarations into the sitemap list', () => {
 		assert.ok(surface.sitemap.includes('/portfolio/alpha'));
 		assert.ok(surface.sitemap.includes('/portfolio/beta'));
-		assert.ok(surface.sitemap.includes('/tools/live'));
+		// Issue #734: the Tool shell declares `robots: noindex` in its own
+		// head, so the sitemap membership rule (b) keeps the tool pages
+		// out of the document even though they are publicly reachable.
+		assert.ok(!surface.sitemap.includes('/tools/live'));
 		assert.ok(!surface.sitemap.includes('/tools/later'));
 	});
 
@@ -345,15 +348,20 @@ describe('publication-surface — surface construction', () => {
 			surface.surfaces.some((s) => s.id === '/admin/login' && s.classification === 'public'),
 		);
 		assert.ok(!surface.sitemap.includes('/admin/login'));
-		assert.ok(!surface.sitemap.includes('/design-system'));
+		// Issue #734: `/design-system` is public, indexable and nav-linked,
+		// so it satisfies the same membership rule the sitemap generator
+		// applies and IS a sitemap target.
+		assert.ok(surface.sitemap.includes('/design-system'));
 	});
 
 	it('compares every reachable URL, not only the sitemap targets', () => {
-		// 5 static sitemap surfaces + 2 portfolio slugs + 1 integrated tool
+		// 6 static sitemap surfaces + 2 portfolio slugs. The integrated
+		// tool page is reachable but not a sitemap target (Issue #734).
 		assert.equal(surface.sitemap.length, 8);
 		for (const url of ['/admin/login', '/admin/invitations/accept', '/design-system']) {
 			assert.ok(surface.publicUrls.includes(url), url);
 		}
+		assert.ok(surface.publicUrls.includes('/tools/live'));
 		assert.ok(!surface.publicUrls.includes('/admin/keys'));
 	});
 
@@ -703,12 +711,17 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 			},
 		});
 		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
-		assert.equal(surface.sitemap.length, 5 + 4000 + 4000);
+		// Issue #734: six static sitemap surfaces (`/`, `/about`,
+		// `/contact`, `/design-system`, `/portfolio`, `/tools`) plus the
+		// 4000 portfolio slugs. The 4000 Tool shells are NOT sitemap
+		// targets — the shell declares `robots: noindex` in its own head.
+		assert.equal(surface.sitemap.length, 6 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
-		// The five public surfaces outside the sitemap: `/design-system`,
-		// `/admin/login`, `/admin/invitations/accept`, `/keyboard` (Issue
-		// #620) and `/projects/dotfiles` (Issue #621).
-		assert.equal(surface.publicUrls.length, surface.sitemap.length + 5);
+		// The public surfaces outside the sitemap: the four static ones
+		// (`/admin/login`, `/admin/invitations/accept`, `/keyboard`
+		// (Issue #620) and `/projects/dotfiles` (Issue #621)) plus the
+		// 4000 Tool shells the noindex rule keeps out.
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 4 + 4000);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

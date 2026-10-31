@@ -37,8 +37,11 @@ patchedDependencies:
 # is a runtime dependency rather than a toolchain package (the override
 # stays inside the 4.x major the tree already resolves, and the direct
 # dependency declares the same floor).
-# Reachability: every other entry is a build / test toolchain package
-# that is not reachable from the Worker runtime bundle.
+# Reachability: `zod` (runtime dependency) and `seroval` (reached
+# through `@tanstack/router-core`, and shipped to the client because the
+# router serialises its own payload) are runtime paths. Every other
+# entry is a build / test toolchain package that is not reachable from
+# the Worker runtime bundle.
 # `source-map-js` is the one production-path finding and is still
 # build-time only (`vite > postcss > source-map-js`).
 overrides:
@@ -80,6 +83,13 @@ overrides:
   # rather than downgraded to the 4.6.6 floor; still inside the 4.x
   # major the tree already resolves.
   zod: 4.6.7
+  # GHSA-7rv5-mrxv-xcr9 / GHSA-97r2-qh9m-474h / GHSA-wp97-x4hv-qvhp
+  # (high, <1.6.8). @tanstack/router-core pins seroval exactly, so the
+  # override is the only route to a patched copy. 1.6.8 is the lowest
+  # release that clears all three and stays on the 1.6 line the tree
+  # already resolves; `seroval-plugins` declares `seroval: ^1.0`, so the
+  # override is inside that dependent's range.
+  seroval: 1.6.8
   # GHSA-68fv-2mgg-jv7q (high); 1.2.1 -> 1.2.2, patch only.
   source-map-js: 1.2.2
   # GHSA-rj75-hqrm-r3gf (moderate) + GHSA-w9m9-85wc-3x92 (low);

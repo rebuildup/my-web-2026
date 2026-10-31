@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useId } from 'react';
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -168,9 +169,14 @@ function IdentityRow() {
 
 /** One section of the note. */
 function Card({ heading, points }: { heading: string; points: readonly string[] }) {
+	// `useId` guarantees a unique id per mounted card. The previous key
+	// was derived from the first bullet's length, which pointed at an id
+	// no element carried and collided between cards of equal length.
+	const headingId = useId();
+
 	return (
 		<section
-			aria-labelledby={`brand-name-card-${points[0]?.length ?? 0}`}
+			aria-labelledby={headingId}
 			className={css({
 				display: 'flex',
 				flexDirection: 'column',
@@ -180,6 +186,7 @@ function Card({ heading, points }: { heading: string; points: readonly string[] 
 			})}
 		>
 			<h3
+				id={headingId}
 				className={css({
 					margin: '0',
 					fontFamily: 'heading',

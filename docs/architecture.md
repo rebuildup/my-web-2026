@@ -116,10 +116,12 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 - `unicode.ts` — 表示本文ポリシー。byte-exact に保持し、比較用の NFC fold だけを行い、互換 fold が何を変えるかは報告する
 - `slug-identity.ts` — slug ポリシー。候補を owner の grammar で分類し（`non-ascii` は導出せずに拒否）、カタログの衝突を監査する
+- `router-path.ts` — **リクエスト path の読み方**のポリシー（Issue #700）。`decodeURI` → `toLowerCase` → namespace ちょうど or `/` 区切りの子孫。platform の request-path namespace（`ADMIN_SURFACE_NAMESPACE`）もここが公開する
 - `fixtures.ts` — 判断表。unit test・`scripts/check-i18n-policy.mjs`・検証 capture が共有する単一のデータ
 
 **leaf obligation**（repository 内の import なし）。`scripts/check-architecture.mjs` が強制する。
 slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` の `EMOJI_SLUG_GRAMMAR`、`portfolio/schema.ts` の `PORTFOLIO_SLUG_GRAMMAR`）。
+request path の読み方も同じ方針で 1 箇所に集約する（Issue #700）。`http/admin-path.ts`（Admin cache policy・anomaly surface）と `editorial/analytics/consent.ts`（GA4 mount 判定）が同じ owner を読む。`editorial` は `http` を import できないので、共通 rule は leaf 置于只能是ここ。どの route が存在するかの決定権は route tree にあり、公開した namespace は `test/integration/analytics-admin-path-parity.test.ts` が route tree と突き合わせる。
 決定記録は `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`、説明は `docs/domain/i18n.md`。
 
 ### `external-api/` (Issue #499)
@@ -238,6 +240,8 @@ routes ───────────────▶ portfolio
 home/reactions ──────▶ i18n
 reactions ───────────▶ i18n
 portfolio ───────────▶ i18n
+http ────────────────▶ i18n (request-path reading rule, Issue #700)
+editorial ───────────▶ i18n
 home/status ─────────▶ cloudflare
 home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
@@ -258,6 +262,7 @@ server ──────────────▶ editorial (SSR render-failu
 - `logging/` は他のどの obligation も知らない (leaf)。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
 - `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
+- `http/` と `editorial/` はどちらも `i18n/` の request-path 読み方の rule に従う (Issue #700)。片方に private な copy を作らない。
 - `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。
 - `legal/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。権利レビューは route に結線されず、規則は `src/legal/` にだけある。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。

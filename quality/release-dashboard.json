@@ -17,6 +17,8 @@
 			"dependency-advisory": "dependency-advisory",
 			"install-script-audit": "install-scripts",
 			"tools-provenance": "tools-provenance",
+			"tool-artefact-check": "tool-artefact",
+			"tool-artefact-observed": "tool-artefact-observed",
 			"workflow-pinning": "workflow-pinning",
 			"sbom-inventory": "sbom",
 			"wrangler-independence": "wrangler-independence",
@@ -311,6 +313,34 @@
 			"owner": "quality/profile.yaml#gates.fast"
 		},
 		{
+			"id": "tool-artefact",
+			"group": "gate",
+			"label": "tool artefact licence / dependency / outbound contract",
+			"state": "implemented",
+			"contract": "出荷する Tool のライセンス宣言・依存集合・outbound host 宣言を、レビュー済みの記録と照合する。",
+			"command": "pnpm run tools:artifact:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "成果物が無い状態では outbound 判定は未観測（unobserved）になるが、ライセンスと依存の照合自体は行える。"
+			},
+			"owner": "Issue #466"
+		},
+		{
+			"id": "tool-artefact-observed",
+			"group": "gate",
+			"label": "tool artefact outbound（実測必須）",
+			"state": "implemented",
+			"contract": "実際にビルドされた Tool 成果物に対して outbound host 宣言を検査する。成果物が無ければ「未観測」は合格ではなく不合格として扱う。",
+			"command": "pnpm run tools:artifact:check:observed",
+			"requirements": ["build"],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "ビルド済み成果物が無いと走らせようがないので NOT RUN。"
+			},
+			"owner": "Issue #733"
+		},
+		{
 			"id": "workflow-pinning",
 			"group": "gate",
 			"label": "GitHub Actions pin / token audit",
@@ -411,7 +441,9 @@
 			"contract": "機能単位ごとの資産・trust boundary・threat が、repository に実在する artefact を指し、台帳に secret 値を持たない。",
 			"command": "pnpm run threat:model:check",
 			"requirements": [],
-			"evidence": { "kind": "exit_code" },
+			"evidence": {
+				"kind": "exit_code"
+			},
 			"owner": "Issue #479"
 		},
 		{
@@ -463,7 +495,9 @@
 			"contract": "選択した ASVS 5.0 要件が、適用行すべてをリポジトリ内の証拠へ解決できる。",
 			"command": "pnpm run asvs:check",
 			"requirements": [],
-			"evidence": { "kind": "exit_code" },
+			"evidence": {
+				"kind": "exit_code"
+			},
 			"owner": "docs/verification/security/asvs-coverage.md"
 		},
 		{
@@ -474,7 +508,9 @@
 			"contract": "脆弱性報告から公開判断までの flow が runbook と ledger の両方で記録され、合成 fixture が duty 欠落と修正前の公開詳細を INCOMPLETE として返す。",
 			"command": "pnpm run security:disclosure:check",
 			"requirements": [],
-			"evidence": { "kind": "exit_code" },
+			"evidence": {
+				"kind": "exit_code"
+			},
 			"owner": "docs/runbook/security-disclosure.md"
 		},
 		{

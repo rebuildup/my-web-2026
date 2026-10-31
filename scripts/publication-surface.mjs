@@ -136,19 +136,30 @@ export const SURFACE_DECLARATIONS = [
 		path: null,
 		dynamic: 'integrated-tools',
 		classification: 'public',
-		sitemap: true,
+		// Issue #734. The shell declares `robots: noindex` in its own
+		// head, so rule (b) of the sitemap membership rule excludes it.
+		// The generator records the same decision as a SITEMAP_EXCLUSIONS
+		// entry; the two declarations now agree, and
+		// `scripts/check-sitemap-ledger-agreement.mjs` proves it.
+		sitemap: false,
 		files: ['src/routes/tools.$slug.tsx'],
 		reason:
-			'Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind.',
+			'Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind, but the shell declares `robots: noindex` in its own head, so it is not a sitemap target.',
 	},
 	{
 		id: '/design-system',
 		path: '/design-system',
 		classification: 'public',
-		sitemap: false,
+		// Issue #734. This surface satisfies all three rules of the
+		// sitemap membership rule (public, not noindex, nav-linked), and
+		// the generator lists it. The previous reason used breadcrumb
+		// suppression (SUPPRESS_BREADCRUMB_LEAF_IDS) as the ground, which
+		// conflated two different decisions: hiding a page from the
+		// breadcrumb trail is not a statement about the sitemap.
+		sitemap: true,
 		files: ['src/routes/design-system.tsx'],
 		reason:
-			'Publicly reachable showcase, but it is intentionally outside the editorial IA (SUPPRESS_BREADCRUMB_LEAF_IDS), so it is not a sitemap target.',
+			'Public, canonical, nav-linked showcase — it satisfies the same membership rule the sitemap generator applies, so it is a sitemap target.',
 	},
 	{
 		id: '/admin',

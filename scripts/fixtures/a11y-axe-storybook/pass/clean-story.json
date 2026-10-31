@@ -1,0 +1,12 @@
+{
+	"$comment": "Recorded axe-core result (Issue #392). A story whose measurement carries no violation at all: the verdict is `pass`. Recorded from the axe-core 4.14.0 `violations` result of the audit, reduced to the fields the decision reads. This file is a fixture, not a shipped surface.",
+	"story": "src/editorial/primitives/Badge.stories.tsx#Neutral",
+	"expect": {
+		"verdict": "pass",
+		"ruleIds": []
+	},
+	"baseline": [],
+	"axe": {
+		"violations": []
+	}
+}

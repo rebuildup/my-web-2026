@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
 	HTTP_STATUS_EXPECTATIONS,
 	checkProofWiring,
@@ -11,6 +14,8 @@ import {
 	summarize,
 	surfaceFromHtml,
 } from './_seo-status-contract.mjs';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Unit tests for the SEO HTTP status contract (Issue #419).
@@ -197,6 +202,107 @@ test('checkProofWiring fails on a missing file and on an uncited case', () => {
 	assert.deepEqual(
 		violations.map((violation) => violation.code),
 		['unproven-case', 'unproven-case'],
+	);
+});
+
+/**
+ * Issue #733 (V-5) — a proof file that mentions a case id proves nothing.
+ *
+ * The old check asked whether the id appears somewhere in the file, so an
+ * assertion could be deleted while the id survived as a comment and the
+ * gate stayed green. These are the negative controls that pin the tighter
+ * rule: only a test the runner can execute and name counts.
+ */
+test('checkProofWiring rejects a case that is only mentioned in a comment', () => {
+	const violations = checkProofWiring(
+		[
+			{
+				id: 'case-a',
+				route: '/',
+				proves: [{ layer: 'workerd', file: 'test/integration/exists.test.ts' }],
+			},
+		],
+		{
+			'test/integration/exists.test.ts': [
+				"// it('case-a', …) — the assertion was removed, the id stayed",
+				"it('case-b', …)",
+			].join('\n'),
+		},
+	);
+	assert.deepEqual(
+		violations.map((violation) => violation.code),
+		['unnamed-case'],
+	);
+	assert.match(violations[0].message, /no test there is named after it/);
+});
+
+test('checkProofWiring rejects a skipped or grouped declaration', () => {
+	for (const declaration of [
+		"test.skip('case-a', …)",
+		"it.skip('case-a', …)",
+		"test.describe('case-a', () => {})",
+	]) {
+		const violations = checkProofWiring(
+			[
+				{
+					id: 'case-a',
+					route: '/',
+					proves: [{ layer: 'workerd', file: 'test/integration/exists.test.ts' }],
+				},
+			],
+			{ 'test/integration/exists.test.ts': declaration },
+		);
+		assert.deepEqual(
+			violations.map((violation) => violation.code),
+			['unnamed-case'],
+			`"${declaration}" must not stand in for a proof`,
+		);
+	}
+});
+
+test('checkProofWiring accepts a title that continues after the case id', () => {
+	const violations = checkProofWiring(
+		[
+			{
+				id: 'case-a',
+				route: '/',
+				proves: [{ layer: 'browser', file: 'e2e/exists.spec.ts' }],
+			},
+		],
+		{ 'e2e/exists.spec.ts': "test('case-a renders as a normal page', async () => {})" },
+	);
+	assert.deepEqual(violations, []);
+});
+
+test('checkProofWiring does not accept a different id that starts with the case id', () => {
+	const violations = checkProofWiring(
+		[
+			{
+				id: 'public-home',
+				route: '/',
+				proves: [{ layer: 'workerd', file: 'test/integration/exists.test.ts' }],
+			},
+		],
+		{ 'test/integration/exists.test.ts': "it('public-homepage', …)" },
+	);
+	assert.deepEqual(
+		violations.map((violation) => violation.code),
+		['unnamed-case'],
+	);
+});
+
+test('the shipped proof files name every case they claim', () => {
+	const sources = {};
+	for (const entry of HTTP_STATUS_EXPECTATIONS) {
+		for (const proof of entry.proves) {
+			if (sources[proof.file] !== undefined) continue;
+			sources[proof.file] = readFileSync(join(REPO_ROOT, proof.file), 'utf8');
+		}
+	}
+	assert.deepEqual(
+		checkProofWiring(HTTP_STATUS_EXPECTATIONS, sources),
+		[],
+		'every claimed proof must name a test after the case',
 	);
 });
 

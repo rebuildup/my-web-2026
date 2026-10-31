@@ -574,14 +574,15 @@ export const FLAT_VS_DEPTH_SECTIONS: readonly FlatVsDepthSection[] = [
 		],
 	},
 	{
-		heading: 'flatness が不十分だった場面',
-		intent: '平坦な面だけでは成立しなかった画面。改善候補の根拠を観測事実から置く。',
+		heading: 'flatness が不十分だと考えられる場面（人による評価待ち）',
+		intent:
+			'平坦な面だけでは成立しなかったと考えられる画面。幾何の観測事実と編集上の仮説を分けて置き、判断は人による評価が出せるまで保留する。',
 		screenIds: ['case-home'],
 		candidateIds: [],
 		notes: [
 			'`https://rebuildup.dev/` は 6 セクションが同じ 96px padding で積まれ、区切りは 192px の余白だけである。',
 			'画面最大の type は h2 の 32px で、視線の止まり場 となるのは 141x96px の SVG motif だけである。',
-			'セクションの幾何が 5 回そのまま繰り返されるので、静的なセクションと重要なセクションの区別が数値で出ない。',
+			'セクションの幾何が 5 回そのまま繰り返されるので、セクション間の差が数値で出ない。',
 		],
 		decisions: [
 			{

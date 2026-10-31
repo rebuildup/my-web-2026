@@ -121,7 +121,7 @@ export const AUDIENCE_PURPOSE_SECTIONS: readonly AudiencePurposeSection[] = [
 		intent:
 			'目的軸ごとに、どの主張の種別を許し、どの主張を許さないかを表で固定する。訪問者が来の目的で、根拠と導線が変わる。',
 		matrix: {
-			caption: '目的軸ごとの主張の種別（可 / 条件付き / 不可）',
+			caption: '目的軸ごとの主張の種別（可 / 条件付き / 不可 / 未確認）',
 			columns: ['主張の種別', '就活', '差別化', '需要', 'ネット集客', '自慢'],
 			rows: [
 				[
@@ -152,7 +152,7 @@ export const AUDIENCE_PURPOSE_SECTIONS: readonly AudiencePurposeSection[] = [
 					'採用',
 					'可（背景と期間）',
 					'不可（採用の話はしない）',
-					'不可（別軸）',
+					'未確認（owner 確認待ち）',
 					'不可（流入を募らない）',
 					'不可（経歴は履歴で）',
 				],

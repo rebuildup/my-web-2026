@@ -13,7 +13,7 @@
 | capture 手段 | `node scripts/capture-audience-purpose-matrix.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
 | viewport / DPR | 1440 x 900 / 2（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 3741 px、**283 kB** WebP（quality 80、budget 300 kB） |
+| 生成物サイズ | 1440 x 3741 px、**284 kB** WebP（quality 80、budget 300 kB） |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 
@@ -33,7 +33,7 @@ capture は長-lived な dev server に依存しないため `.tmp/` に Vite ha
 
 1. **document title** — `訪問者目的別の編集方針（Issue #516）`。本文の `#` 見出しと同一の文字列。
 2. **7 つの section** — 見出しは本文の `##` 見出しと 1 文字ずつ一致する（§4 の parity gate が両者の集合・順序を固定する）。
-3. **表 1「目的軸ごとの主張の種別（可 / 条件付き / 不可）」** — §2 の表。行 = 主張の種別（誇示 / 事実 / 集客 / 採用）、列 = 目的軸（就活 / 差別化 / 需要 / ネット集客 / 自慢）。Miro の階層（哲学 > 見せたいものを作る > 就活 / 差別化 / 需要 / ネット集客 / 自慢）は **公開 copy ではなく編集用の軸** としてのみ使っている。
+3. **表 1「目的軸ごとの主張の種別（可 / 条件付き / 不可 / 未確認）」** — §2 の表。行 = 主張の種別（誇示 / 事実 / 集客 / 採用）、列 = 目的軸（就活 / 差別化 / 需要 / ネット集客 / 自慢）。Miro の階層（哲学 > 見せたいものを作る > 就活 / 差別化 / 需要 / ネット集客 / 自慢）は **公開 copy ではなく編集用の軸** としてのみ使っている。
 4. **表 2「3 つの導線が接続できる先と、そこに書いてよいこと」** — §4 の表。行 = 導線（実作品 / 履歴 / 問い合わせ）。接続先はこの repository に実在する公開 surface だけで、根拠の正本（`docs/personal/domain.md` / `src/contact/` の判定結果）を併記する。
 5. **35 個の箇条書き** — 各 section の 実例 / 反例 / 判断根拠 / 主張種別 / 決定 / 採用 / 保留。保留の項目は必ず「未確認（owner 確認待ち）」と書いてある。
 

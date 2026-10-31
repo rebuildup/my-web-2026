@@ -50,7 +50,8 @@
  *   node scripts/check-client-bundle-server-only.mjs --json
  *
  * Exit codes: 0 = no server-only module in the client bundle; 1 = at
- * least one offender; 2 = bad input (missing graph, malformed policy).
+ * least one offender; 2 = bad input (missing graph, malformed graph,
+ * malformed policy).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -98,6 +99,55 @@ export function collectModules(graph) {
 		}
 	}
 	return found;
+}
+
+/**
+ * Why a bundle graph cannot be inspected.
+ *
+ * The gate's whole claim is "no server-only module is in the browser
+ * bundle". A graph that does not carry module ids cannot support that
+ * claim: `chunk.modules ?? []` would turn a chunk whose `modules` key is
+ * missing into a chunk with no modules, the collected set would be
+ * empty, and the verdict would be `pass` — a green gate that inspected
+ * nothing. The graph is an input, so the input is checked before it is
+ * believed.
+ *
+ * @param {object} graph parsed bundle graph
+ * @returns {string[]} one message per problem; empty when the graph is inspectable.
+ */
+export function graphContractErrors(graph) {
+	const errors = [];
+	if (graph?.schema_version !== 1) {
+		errors.push(`unsupported bundle graph schema: ${graph?.schema_version}`);
+		return errors;
+	}
+	const chunks = graph.chunks;
+	if (typeof chunks !== 'object' || chunks === null || Array.isArray(chunks)) {
+		errors.push('the bundle graph has no `chunks` object');
+		return errors;
+	}
+	for (const [fileName, chunk] of Object.entries(chunks)) {
+		if (typeof chunk !== 'object' || chunk === null) {
+			errors.push(`chunk "${fileName}" is not an object`);
+			continue;
+		}
+		if (!Array.isArray(chunk.modules)) {
+			errors.push(
+				`chunk "${fileName}" has no \`modules\` array — a chunk the gate cannot read is a chunk the gate cannot clear`,
+			);
+			continue;
+		}
+		const bad = chunk.modules.filter((moduleId) => typeof moduleId !== 'string');
+		if (bad.length > 0) {
+			errors.push(`chunk "${fileName}" has ${bad.length} module id(s) that are not strings`);
+		}
+	}
+	if (errors.length === 0 && collectModules(graph).size === 0) {
+		errors.push(
+			'the bundle graph carries no module id at all — there is nothing to inspect, and "nothing to inspect" is not a pass',
+		);
+	}
+	return errors;
 }
 
 /**
@@ -178,9 +228,12 @@ function main(argv) {
 
 	const graph = readJson(graphPath, 'client bundle graph');
 	const policy = readJson(policyPath, 'client bundle policy');
-	if (graph.schema_version !== 1 || typeof graph.chunks !== 'object') {
+	const contractErrors = graphContractErrors(graph);
+	if (contractErrors.length > 0) {
+		console.error('[client-bundle-server-only] the bundle graph cannot be inspected:');
+		for (const error of contractErrors) console.error(`  - ${error}`);
 		console.error(
-			`[client-bundle-server-only] unsupported bundle graph schema: ${graph.schema_version}`,
+			'\n  Run `pnpm run build` again — the graph the build emits is the input this gate\n  reads. A graph it cannot read is not a clean bundle.',
 		);
 		return 2;
 	}

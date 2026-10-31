@@ -41,23 +41,28 @@
  * it reads two environment values and compares strings.
  */
 
+import { isLocalOrigin } from './_local-origin.mjs';
+
 /** The environment variable that acknowledges the lost coverage. */
 export const LOCAL_ONLY_ACK_ENV = 'E2E_LOCAL_ONLY_ACK';
 
 /**
  * Is the run pointed at a local origin?
  *
- * The predicate is deliberately the SAME one the specs already used
- * (`PLAYWRIGHT_BASE_URL` unset → the local default; otherwise the
- * origin must be `http://127.0.0.1`). Narrowing it here would change
- * which runs are considered local, and that is not this Issue's
- * business.
+ * The rule is owned by `scripts/_local-origin.mjs` — the same module
+ * the Playwright config reads — so the config and this guard cannot
+ * disagree about which origin is local. It is the same intent as the
+ * predicate the specs used before (`PLAYWRIGHT_BASE_URL` unset → the
+ * local default; otherwise a `http://127.0.0.1` origin), expressed as
+ * a parsed URL instead of a string prefix: `http://127.0.0.1.example.org`
+ * and `http://127.0.0.1@remote.example/` are not this machine, even
+ * though both start with the loopback spelling.
  *
  * @param {string | undefined} baseUrl the configured base URL
  * @returns {boolean}
  */
 export function isLocalBaseUrl(baseUrl) {
-	return baseUrl?.startsWith('http://127.0.0.1') ?? true;
+	return isLocalOrigin(baseUrl);
 }
 
 /**

@@ -24,6 +24,33 @@ test('the local predicate keeps the condition the specs already used', () => {
 	assert.equal(isLocalBaseUrl('http://localhost:3000'), false);
 });
 
+test('a loopback-shaped prefix is not a local origin', () => {
+	// The predicate used to be a string prefix, so both of these were
+	// "local" while pointing somewhere else entirely.
+	assert.equal(isLocalBaseUrl('http://127.0.0.1.example.org:3000'), false);
+	assert.equal(isLocalBaseUrl('http://127.0.0.1@remote.example/'), false);
+	// A URL that does not parse is not the local machine either — the
+	// local branch is the one that starts servers and seeds databases.
+	assert.equal(isLocalBaseUrl('not a url'), false);
+	assert.equal(isLocalBaseUrl(''), false);
+});
+
+test('a loopback-shaped origin cannot skip a local-only spec without the acknowledgement', () => {
+	// The guard is the point of the predicate: a lookalike origin must
+	// not be able to slip past it.
+	assert.throws(
+		() =>
+			assertLocalOnlySpecMaySkip({
+				baseUrl: 'http://127.0.0.1@remote.example/',
+				acknowledged: false,
+			}),
+		(error) => {
+			assert.match(error.message, /Refusing to skip silently/);
+			return true;
+		},
+	);
+});
+
 test('the acknowledgement is opt-in and explicit', () => {
 	assert.equal(localOnlyAcknowledged({}), false);
 	assert.equal(localOnlyAcknowledged({ [LOCAL_ONLY_ACK_ENV]: '0' }), false);

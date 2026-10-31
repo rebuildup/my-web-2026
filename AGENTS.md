@@ -187,7 +187,13 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `*.spec.*` file under a leaf is exempt, so
   `src/i18n/fixtures.test.ts` can assert against
   the owner-owned grammars; implementation modules
-  are not exempt). Each obligation keeps
+  are not exempt). The rule is pinned by
+  `scripts/check-architecture.test.mjs`: until the
+  0.8.0 audit it was declared here but unreachable
+  in the checker (the leaf test sat behind an early
+  return that skipped every leaf owner), so a leaf
+  obligation could have imported another one without
+  the gate noticing. Each obligation keeps
   ownership of its own slug grammar:
   `src/reactions/slug-regex.ts` publishes
   `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`

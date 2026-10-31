@@ -2,7 +2,6 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
-import { auth } from '../../cloudflare/auth/better-auth';
 import type { AdminSession } from './load';
 import { requireAdmin } from './require-admin';
 
@@ -273,6 +272,11 @@ export async function confirmStepUpImpl(
 	nowMs: number = Date.now(),
 ): Promise<StepUpStatus> {
 	try {
+		// Issue #724: resolved inside the function, not at module level —
+		// a module-level import would put the Better Auth server stack into
+		// the browser bundle of every client that reaches this file (the
+		// admin step-up panel is a client component).
+		const { auth } = await import('../../cloudflare/auth/better-auth');
 		await auth.api.verifyPassword({ headers, body: { password: data.password } });
 	} catch (error) {
 		if (isInvalidPassword(error)) {

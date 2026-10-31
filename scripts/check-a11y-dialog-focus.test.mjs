@@ -28,9 +28,12 @@ import {
 	closesPanelOnEscape,
 	collectEvidence,
 	declaresFocusHandBack,
+	escapeCloseLabel,
+	evaluateModalClose,
 	exclusionFor,
 	findOpeningTags,
 	hasClosePath,
+	hasExplicitCloseCall,
 	hasFocusReturnContract,
 	hasNonModalShowCall,
 	hasOpenAttribute,
@@ -38,6 +41,8 @@ import {
 	renderGateSummary,
 	rendersDisclosureMenu,
 	scanSource,
+	suppressesCancelDefault,
+	suppressesEscapeKeyClose,
 } from './check-a11y-dialog-focus.mjs';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname;
@@ -92,7 +97,11 @@ test('an <dialog> opened with showModal() and a close path is not a violation', 
 	assert.deepEqual(violations, []);
 });
 
-test('an <dialog> opened with showModal() and no close path is a keyboard trap', () => {
+test('a plain native modal is NOT a keyboard trap', () => {
+	// The user agent closes a modal `<dialog>` on `Escape`: the DEFAULT
+	// ACTION of the `cancel` event IS the close. A file that opens a
+	// modal and says nothing about closing it therefore has a close
+	// path, and the gate must not report a trap.
 	const { violations } = scan(
 		[
 			'export const A = () => <dialog ref={open}>x</dialog>;',
@@ -100,24 +109,131 @@ test('an <dialog> opened with showModal() and no close path is a keyboard trap',
 		].join('\n'),
 	);
 
+	assert.deepEqual(violations, []);
+});
+
+test('a modal whose native Escape close is suppressed and nothing replaces it IS a keyboard trap', () => {
+	// The `cancel` handler takes the user agent's default away
+	// (`preventDefault()`), and the file never closes the dialog itself.
+	// `Escape` therefore does not close it — a keyboard trap.
+	const { violations } = scan(
+		[
+			'export const A = () => <dialog ref={open} onCancel={handleCancel}>x</dialog>;',
+			'const open = (d) => d?.showModal();',
+			'const handleCancel = (event) => { event.preventDefault(); };',
+		].join('\n'),
+	);
+
 	assert.equal(violations.length, 1);
-	assert.equal(violations[0].rule, 'dialog-close-path-missing');
+	assert.equal(violations[0].rule, 'dialog-escape-close-missing');
 	assert.equal(violations[0].wcag, '2.1.2');
 });
 
-test('a close path is a way to close the dialog element itself', () => {
-	// The dialog element's own close method.
-	assert.equal(hasClosePath('dialog.close();'), true);
-	assert.equal(hasClosePath('dialogRef.current?.close();'), true);
-	// The `cancel` handler: the user agent fires it before it closes.
+test('a modal that suppresses the native Escape close but closes the dialog itself is NOT a keyboard trap', () => {
+	// The default is suppressed, but the file closes the dialog in the
+	// same handler: the modal still has a way out.
+	const { violations } = scan(
+		[
+			'export const A = () => <dialog ref={open} onCancel={handleCancel}>x</dialog>;',
+			'const open = (d) => d?.showModal();',
+			'const handleCancel = (event) => { event.preventDefault(); d?.close(); };',
+		].join('\n'),
+	);
+
+	assert.deepEqual(violations, []);
+});
+
+test('a modal whose Escape key press is swallowed and nothing replaces it IS a keyboard trap', () => {
+	// Preventing the default of the `Escape` key press stops the user
+	// agent from making the close request at all, so the `cancel` event
+	// is never dispatched.
+	const { violations } = scan(
+		[
+			'export const A = () => <dialog ref={open} onKeyDown={handleKeyDown}>x</dialog>;',
+			'const open = (d) => d?.showModal();',
+			'const handleKeyDown = (event) => {',
+			"\tif (event.key !== 'Escape') return;",
+			'\tevent.preventDefault();',
+			'};',
+		].join('\n'),
+	);
+
+	assert.equal(violations.length, 1);
+	assert.equal(violations[0].rule, 'dialog-escape-close-missing');
+});
+
+test('the native Escape default IS a close path until the file suppresses it', () => {
+	// Nothing in the file has to say "Escape closes this dialog" — the
+	// user agent does it.
+	assert.equal(hasClosePath('const open = (d) => d?.showModal();'), true);
 	assert.equal(hasClosePath('<dialog onCancel={close}>'), true);
 	assert.equal(hasClosePath('addEventListener("cancel", close)'), true);
-	// An `onClose` handler reacts to the close EVENT — it fires after the
-	// dialog is closed and cannot close it, and a bare `Escape` string
-	// says nothing about whether the dialog is closed.
-	assert.equal(hasClosePath('<dialog onClose={close}>'), false);
-	assert.equal(hasClosePath("if (event.key !== 'Escape') return;"), false);
-	assert.equal(hasClosePath('const open = (d) => d?.showModal();'), false);
+	assert.equal(hasClosePath('<dialog onClose={close}>'), true);
+	assert.equal(hasClosePath("if (event.key !== 'Escape') return;"), true);
+	// The file closes the dialog itself: that is a close path too, and
+	// it survives a suppressed default.
+	assert.equal(hasClosePath('dialog.close();'), true);
+	assert.equal(hasClosePath('dialogRef.current?.close();'), true);
+	// The default is suppressed and nothing replaces it: no way out.
+	assert.equal(hasClosePath('onCancel={(event) => { event.preventDefault(); }}'), false);
+	assert.equal(
+		hasClosePath('onCancel={(event) => { event.preventDefault(); dialog.close(); }}'),
+		true,
+	);
+});
+
+test('the gate reads whether the native cancel default is suppressed', () => {
+	// The default is taken away at the `cancel` event …
+	assert.equal(suppressesCancelDefault('onCancel={(event) => { event.preventDefault(); }}'), true);
+	assert.equal(
+		suppressesCancelDefault(
+			'const handleCancel = (event) => { event.preventDefault(); }; onCancel={handleCancel}',
+		),
+		true,
+	);
+	assert.equal(
+		suppressesCancelDefault(
+			'dialog.addEventListener("cancel", (event) => { event.preventDefault(); });',
+		),
+		true,
+	);
+	// … or not.
+	assert.equal(suppressesCancelDefault('onCancel={handleCancel}'), false);
+	assert.equal(suppressesCancelDefault('const open = (d) => d?.showModal();'), false);
+	// The key level: only an `Escape` handler swallows the `Escape`.
+	assert.equal(
+		suppressesEscapeKeyClose(
+			'onKeyDown={(event) => { if (event.key === "Escape") event.preventDefault(); }}',
+		),
+		true,
+	);
+	assert.equal(
+		suppressesEscapeKeyClose('onKeyDown={(event) => { event.preventDefault(); }}'),
+		false,
+	);
+	assert.equal(suppressesEscapeKeyClose('const open = (d) => d?.showModal();'), false);
+});
+
+test('the modal close is evaluated as native, explicit or none', () => {
+	const native = evaluateModalClose('const open = (d) => d?.showModal();');
+	assert.equal(native.state, 'native');
+	assert.equal(native.trap, false);
+	assert.equal(native.explicit, false);
+
+	const explicit = evaluateModalClose(
+		'const open = (d) => d?.showModal(); const close = (d) => d?.close();',
+	);
+	assert.equal(explicit.state, 'explicit');
+	assert.equal(explicit.trap, false);
+	assert.equal(explicit.explicit, true);
+
+	const none = evaluateModalClose(
+		'const handleCancel = (event) => { event.preventDefault(); }; onCancel={handleCancel}',
+	);
+	assert.equal(none.state, 'none');
+	assert.equal(none.trap, true);
+	assert.equal(hasExplicitCloseCall('const close = (d) => d?.close();'), true);
+	assert.equal(hasExplicitCloseCall('const open = (d) => d?.showModal();'), false);
 });
 
 test('an inert <dialog> that is never opened is not a modal', () => {
@@ -183,7 +299,7 @@ test('hasShowModalCall does not match a mention in prose', () => {
 test('every rule the Issue names is a rule the gate knows', () => {
 	for (const rule of [
 		'dialog-non-modal-open',
-		'dialog-close-path-missing',
+		'dialog-escape-close-missing',
 		'custom-dialog-focus-return-missing',
 		'menu-focus-return-missing',
 	]) {

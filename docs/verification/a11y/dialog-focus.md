@@ -59,7 +59,7 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | 対象 | 範囲 | 備考 |
 | --- | --- | --- |
 | `src/**/*.{ts,tsx}` | 出荷する JSX / TS のすべて | ネイティブ `<dialog>` と custom modal の宣言を読む |
-| ネイティブ `<dialog>` | `open` 属性 / `showModal()` / close 経路 | 契約は「`showModal()` で開き、**ダイアログ自身を閉じられる**（`dialog.close()` / `onCancel` / `cancel` listener）」 |
+| ネイティブ `<dialog>` | `open` 属性 / `showModal()` / `Escape` での閉鎖経路 | 契約は「`showModal()` で開き、**`Escape` で閉じられる**（ネイティブの `cancel` 既定動作、または明示的な `dialog.close()`）」 |
 | custom modal | `role="dialog"` / `aria-modal="true"`（`<dialog>` 以外の要素） | 契約は「`document.activeElement` を保存し `.focus()` で戻す」 |
 | 開閉メニュー（disclosure） | `aria-expanded` の trigger ＋ `hidden` の panel を持ち、`Escape` で閉じるもの | 契約は「閉じたあとに trigger へ focus を戻す」 |
 
@@ -80,7 +80,7 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 
 | 基準 | レベル | 該当箇所 | 判定方法 |
 | --- | --- | --- | --- |
-| SC 2.1.2 No Keyboard Trap | A | モーダルを開いている間の focus 拘束、閉じる経路、背景の inert | Chromium 実測（`:modal` / Tab 12 回 / 背景 focus / `Escape`）+ 静的 gate（`showModal()` と close 経路の宣言） |
+| SC 2.1.2 No Keyboard Trap | A | モーダルを開いている間の focus 拘束、閉じる経路、背景の inert | Chromium 実測（`:modal` / Tab 12 回 / 背景 focus / `Escape`）+ 静的 gate（`showModal()` と `Escape` での閉鎖経路） |
 | SC 2.4.3 Focus Order | A | 閉じたあとの focus 復帰（起動要素へ） | Chromium 実測（`document.activeElement`）+ 静的 gate（custom modal の focus-return 契約） |
 | SC 2.4.7 Focus Visible | AA | focus ring の**見た目** | 機械では判定しない（#399 / 人が評価） |
 
@@ -89,10 +89,29 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | rule | 意味 | 判定 |
 | --- | --- | --- |
 | `dialog-non-modal-open` | ネイティブ `<dialog>` を `open` 属性 / `show()` で開いている（UA の focus trap も focus 復帰も無い） | 違反 |
-| `dialog-close-path-missing` | `showModal()` で開く modal に、**ダイアログ自身を閉じる手段**が無い（`dialog.close()` / `onCancel` / `cancel` listener が無い）。`onClose` は **閉じた後の `close` イベント**の handler であり、閉じ手段には数えない | 違反 |
+| `dialog-escape-close-missing` | `showModal()` で開く modal が **ネイティブの `Escape` 閉鎖を無効化**している（`cancel` handler、または `Escape` キーの handler が `preventDefault()` を呼ぶ）が、**代替の閉じ手段**（`dialog.close()`）が無い。ネイティブ `<dialog>` の `cancel` イベントの既定動作は「閉じる」なので、`preventDefault()` でその既定を消すと `Escape` が効かなくなる（SC 2.1.2）。**素の `showModal()` だけはこの違反にならない**（ネイティブの既定が閉じ手段である） | 違反 |
 | `custom-dialog-focus-return-missing` | custom modal（`role="dialog"` / `aria-modal`）に focus-return 契約（`document.activeElement` の保存 + `.focus()`）が無い | 違反 |
 | `menu-focus-return-missing` | 開閉メニュー（disclosure）が `Escape` で閉じるのに、閉じたあとに trigger へ focus を戻す宣言が無い。panel が `hidden` になると focused element が accessibility tree から消え、focus が body に落ちる（SC 2.4.3 / SC 2.1.2）。宣言の読み方: **`aria-expanded` を持つ trigger が保持する ref に対して `.focus()` を呼んでいること**（同じファイルの無関係な `.focus()` は hand-back として数えない） | 違反 |
 | `fixture-pass-no-case` / `fixture-pass-violation` / `fixture-fail-not-detected` / `fixture-fail-unexpected` / `fixture-file-missing` / `fixture-file-unexpected` | fixture の目録と実体・期待の整合 | 違反（gate 自身の整合性） |
+
+### `Escape` での閉鎖をどう判定するか（ネイティブの既定）
+
+ネイティブ `<dialog>` の `cancel` イベントの**既定動作は「ダイアログを閉じ
+る」**である。つまり `showModal()` で開いた modal は、ファイルが閉じ手段を
+1 つも書かなくても `Escape` で閉じる。trap になるのは **ファイルがその既定
+を無効化してから、代替の閉じ手段を提供しなかった**ときだけである。gate は
+次の 3 状態を区別する。
+
+| 状態 | 判定 | 意味 |
+| --- | --- | --- |
+| ネイティブの既定が生きている | 違反でない | ファイルは `cancel` / `Escape` の既定を消していない。`Escape` で閉じる |
+| 既定を消すが代替がある | 違反でない | `preventDefault()` と明示的な `dialog.close()`。`Escape` を自分で閉じるので出оружは残す |
+| 既定を消して代替が無い | **違反** | `preventDefault()` のみ。`Escape` が効かない = keyboard trap |
+
+既定を無効化する形は 2 つある。`cancel` handler の中で `preventDefault()`
+を呼ぶ（`cancel` イベントが既定の閉鎖を取り消す）と、**`Escape` キー自体**
+の既定を `preventDefault()` で消す（UA が閉鎖要求を出さないので `cancel`
+が発火しない）である。どちらでも「`Escape` で閉じない」結果になる。
 
 ## fixture
 
@@ -103,11 +122,13 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | ファイル | 属 | 再現する状態 |
 | --- | --- | --- |
 | `pass/native-modal-contract.tsx` | pass | `showModal()` + `close()` + `onClose` のネイティブ modal |
+| `pass/native-modal-escape-default.tsx` | pass | `showModal()` だけの素の modal（`Escape` での閉鎖はネイティブの `cancel` 既定動作が行う） |
 | `pass/custom-modal-with-focus-return.tsx` | pass | `role="dialog"` + `document.activeElement` 保存 + `.focus()` 復帰 |
 | `pass/menu-with-focus-return.tsx` | pass | `aria-expanded` trigger ＋ `hidden` panel、`Escape` で閉じて trigger へ focus を戻す disclosure menu |
 | `fail/dialog-open-attribute.tsx` | fail | `open` 属性で開く（非 modal）→ `dialog-non-modal-open` |
 | `fail/dialog-non-modal-show.tsx` | fail | `show()` で開く（非 modal）→ `dialog-non-modal-open` |
-| `fail/dialog-no-close-path.tsx` | fail | `showModal()` があるが閉じる経路が無い → `dialog-close-path-missing` |
+| `fail/dialog-no-close-path.tsx` | fail | `showModal()` + `cancel` handler の `preventDefault()`、代替の閉じ手段が無い → `dialog-escape-close-missing` |
+| `fail/dialog-escape-key-suppressed.tsx` | fail | `showModal()` + `Escape` キーの `preventDefault()`（`cancel` は発火しない）、代替の閉じ手段が無い → `dialog-escape-close-missing` |
 | `fail/custom-modal-no-focus-return.tsx` | fail | `role="dialog"` で focus-return 契約が無い → `custom-dialog-focus-return-missing` |
 | `fail/menu-no-focus-return.tsx` | fail | `Escape` で閉じるが focus hand-back が無い disclosure menu → `menu-focus-return-missing` |
 
@@ -118,7 +139,7 @@ close 経路を消す / 独自実装で focus を戻さない）を赤にする*
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
 | `dialog-non-modal-open` | 出荷コードに `open` 属性 / `show()` で開く `<dialog>` が無い | コメント除去後のソース走査 |
-| `dialog-close-path-missing` | `showModal()` で開く modal に閉じる経路がある | 同上 |
+| `dialog-escape-close-missing` | `showModal()` で開く modal がネイティブの `Escape` 閉鎖を無効化していて、代替の `dialog.close()` が無い | 同上 |
 | `custom-dialog-focus-return-missing` | custom modal に focus-return 契約がある | 同上 |
 | `menu-focus-return-missing` | 開閉メニューが `Escape` で閉じるときに focus hand-back の宣言がある | 同上（コメント除去後のソース走査） |
 | fixture の再現 | `pass/` は違反 0、`fail/` は期待 rule ちょうど 1 | 同上（gate 自身が行う） |
@@ -161,8 +182,10 @@ capture は **同じ測定を 2 回** 走らせる:
 | --- | --- | --- |
 | A | `src/home/reactions/widget.tsx` の `dialog.showModal()` を `dialog.show()` に置き換え（非 modal にする） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-non-modal-open`）。`pnpm run capture:a11y-dialog-focus` も **exit 1**（`:modal` が false / 背景が inert でない / `Escape` で閉じない / focus が戻らない）で成果物を書かない |
 | B | `fail` fixture の期待 rule を 1 つ減らす | gate が **exit 1**（`fixture-fail-not-detected`） |
-| C | `src/home/reactions/widget.tsx` の `dialog.close()` を消す（ダイアログを閉じる手段を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-close-path-missing`） |
+| C | `src/home/reactions/widget.tsx` の `dialog.close()` を消す（ダイアログを閉じる手段を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`dialog-escape-close-missing`）。`Escape` キーの handler が `preventDefault()` でネイティブの既定を消しており、代替の `dialog.close()` も無いため、trap になる |
 | D | `src/editorial/nav/PublicNav.tsx` の `Escape` ハンドラから trigger への `.focus()` を外す（menu の focus hand-back を無くす） | `pnpm run a11y:dialog-focus:check` が **exit 1**（`menu-focus-return-missing`） |
+| E | `src/home/reactions/widget.tsx` に `cancel` handler を足して `preventDefault()` を呼ぶ（`dialog.close()` はそのまま残す） | `pnpm run a11y:dialog-focus:check` は **exit 0**（ネイティブの既定は消えるが、代替の `dialog.close()` があるため trap ではない） |
+| F | `src/home/reactions/widget.tsx` の `dialog.close()` と `Escape` ハンドラを両方外し、素の `showModal()` だけにする | `pnpm run a11y:dialog-focus:check` は **exit 0**（ネイティブの `cancel` 既定動作が `Escape` で閉じるため、trap ではない。**旧実装はこれを誤検知していた**） |
 
 注入はすべて revert 済み（`git status --porcelain` が空）。
 
@@ -213,20 +236,28 @@ capture は preview server を必要とする（`dist/client` が必要な場合
    **非モーダル**であり、モーダルではない（例: 通知、インラインの詳細）。
    モーダルでないなら対象外である。対象外にするには、その surface と理由を
    本 doc の「対象外」表に書く（理由の無い除外は成立しない）。
-2. **close 経路は本当に無いか。** `close()` を helper 経由で呼んでいる、
-   `onCancel` で閉じている、といった書き方は、いまの
-   `hasClosePath` では検出できない。その場合は検出器を広げる（`close()`
-   呼び出しの別名を読む）のであって、rule を消さない。
-   逆に **`onClose` だけを持つ実装は close 経路として数えない**
+2. **`Escape` での閉鎖は本当に無いか。** 本 gate が問うのは「ファイルが
+   ネイティブの `cancel` 既定動作（= `Escape` で閉じる）を無効化しているか、
+   かつ代替の `dialog.close()` が無いか」である。`close()` を helper 経由で
+   呼んでいる、といった書き方は、いまの `hasExplicitCloseCall` では検出でき
+   ない。その場合は検出器を広げる（`close()` 呼び出しの別名を読む）ので
+   あって、rule を消さない。
+   逆に **`onClose` だけを持つ実装は代替の閉じ手段として数えない**
    （`close` イベントはダイアログが閉じた**後**に発火するため、
-   閉じ手段にならない）。
-3. **custom modal の focus 復帰は別の形か。** `document.activeElement` を
+   閉じ手段にならない）。ただし `onClose` の有無自体は trap 判定に
+   影響しない（trap かどうかは `cancel` / `Escape` の既定が生きているか
+   で決まる）。
+3. **`preventDefault()` の抑制を検出できないか。** `cancel` handler や
+   `Escape` キーの handler が別ファイル（import された helper）にあり、
+   その実装をこの gate が読めない場合、抑制を見落とすことがある。検出器を
+   広げる（helper の実体を追う）のであって、rule を消さない。
+4. **custom modal の focus 復帰は別の形か。** `document.activeElement` を
    保存せず、`inert` 属性や `focus()` の別名で戻している実装は、検出器を
    広げる対象である。
-4. **gate の閾値を緩めて緑にする手順は禁止。** rule を消す、`open` 属性を
+5. **gate の閾値を緩めて緑にする手順は禁止。** rule を消す、`open` 属性を
    許可する、close 経路の判定を外す、といった変更で「緑にした」を報告しては
    ならない。対象の拡大縮小は本 doc に宣言してからコードを変える。
-5. **いずれも該当しない場合は owner へ判断を仰ぐ。** 判断が要るのは、
+6. **いずれも該当しない場合は owner へ判断を仰ぐ。** 判断が要るのは、
    「この surface を対象外にしてよいか」「この宣言を gate の対象から外して
    よいか」のように、**検査対象そのものの範囲**が変わる場合である。
 

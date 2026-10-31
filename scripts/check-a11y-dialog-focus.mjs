@@ -25,11 +25,20 @@
  *       user agent then does not trap the focus, does not close on
  *       `Escape` and does not return the focus to the invoker — the
  *       modal contract is absent (SC 2.1.2, SC 2.4.3).
- *   dialog-close-path-missing
- *       A native `<dialog>` is opened with `showModal()` but the file
- *       declares no close path (`close()`, `onClose`, `onCancel`, a
- *       `cancel`/`close` listener or an `Escape` handler). A modal with
- *       no way out is a keyboard trap (SC 2.1.2).
+ *   dialog-escape-close-missing
+ *       A native `<dialog>` is opened with `showModal()`, so the user
+ *       agent closes it when the user presses `Escape` — the DEFAULT
+ *       ACTION of the `cancel` event IS the close, and that default is
+ *       part of the native modal contract. The file then SUPPRESSES
+ *       that default (a `cancel` handler, or an `Escape` key handler,
+ *       calls `preventDefault()`) and declares no replacement close
+ *       path (`dialog.close()`). `Escape` no longer closes the dialog,
+ *       so the modal is a keyboard trap (SC 2.1.2).
+ *
+ *       A plain `showModal()` modal is NOT a violation: the native
+ *       default already closes it. The rule asks whether the file
+ *       BREAKS the default, not whether the file spells out a token
+ *       that closes the dialog.
  *   custom-dialog-focus-return-missing
  *       A CUSTOM modal (`role="dialog"`, or `aria-modal="true"` on a
  *       non-`<dialog>` element) declares no focus-return contract (a
@@ -82,7 +91,7 @@ export const WCAG = [
 /** The rule names, in report order. */
 export const RULES = [
 	'dialog-non-modal-open',
-	'dialog-close-path-missing',
+	'dialog-escape-close-missing',
 	'custom-dialog-focus-return-missing',
 	'menu-focus-return-missing',
 ];
@@ -152,13 +161,15 @@ export const FIXTURE_ROOT = 'scripts/fixtures/a11y-dialog-focus';
 export const FIXTURE_EXPECTATIONS = {
 	pass: {
 		'native-modal-contract.tsx': [],
+		'native-modal-escape-default.tsx': [],
 		'custom-modal-with-focus-return.tsx': [],
 		'menu-with-focus-return.tsx': [],
 	},
 	fail: {
 		'dialog-open-attribute.tsx': ['dialog-non-modal-open'],
 		'dialog-non-modal-show.tsx': ['dialog-non-modal-open'],
-		'dialog-no-close-path.tsx': ['dialog-close-path-missing'],
+		'dialog-no-close-path.tsx': ['dialog-escape-close-missing'],
+		'dialog-escape-key-suppressed.tsx': ['dialog-escape-close-missing'],
 		'custom-modal-no-focus-return.tsx': ['custom-dialog-focus-return-missing'],
 		'menu-no-focus-return.tsx': ['menu-focus-return-missing'],
 	},
@@ -250,24 +261,210 @@ export function hasNonModalShowCall(code) {
 }
 
 /**
- * Whether the source declares a way to close the dialog (pure).
+ * The index just past the `}` that matches the `{` at `open` (pure).
+ */
+export function matchBrace(code, open) {
+	let depth = 0;
+	for (let index = open; index < code.length; index += 1) {
+		const char = code[index];
+		if (char === '{') depth += 1;
+		else if (char === '}') {
+			depth -= 1;
+			if (depth === 0) return index + 1;
+		}
+	}
+	return -1;
+}
+
+/**
+ * The index just past the `)` that matches the `(` at `open` (pure).
+ */
+export function matchParen(code, open) {
+	let depth = 0;
+	for (let index = open; index < code.length; index += 1) {
+		const char = code[index];
+		if (char === '(') depth += 1;
+		else if (char === ')') {
+			depth -= 1;
+			if (depth === 0) return index + 1;
+		}
+	}
+	return -1;
+}
+
+/**
+ * Whether the file closes the dialog ITSELF (pure).
  *
- * The close path is what makes the modal escapable: a native `close()`
- * call, a React `onClose` / `onCancel` handler, a `cancel` / `close`
- * listener, or an `Escape` key handler. Without any of them a modal traps
- * the keyboard.
+ * A call to the dialog element's own `close()` method is a close path
+ * that does not depend on the user agent's `cancel` default, so it
+ * survives a file that suppresses that default.
+ */
+export function hasExplicitCloseCall(code) {
+	return /\.close\s*\(/.test(code);
+}
+
+/**
+ * The source of every `attribute={…}` handler expression (pure).
+ *
+ * `attribute` is a JSX attribute name (`onCancel`, `onKeyDown`). The
+ * source is the expression inside the braces, so an inline arrow
+ * function is read in place and a named handler is read as its name.
+ */
+export function jsxHandlerSources(code, attribute) {
+	const sources = [];
+	const pattern = new RegExp(`\\b${attribute}\\s*=\\s*\\{`, 'g');
+	for (const match of code.matchAll(pattern)) {
+		const open = code.indexOf('{', match.index);
+		const end = matchBrace(code, open);
+		sources.push(end === -1 ? code.slice(open + 1) : code.slice(open + 1, end - 1));
+	}
+	return sources;
+}
+
+/**
+ * The source of every `addEventListener('<event>', …)` handler (pure).
+ */
+export function listenerHandlerSources(code, eventName) {
+	const sources = [];
+	const pattern = /addEventListener\s*\(/g;
+	for (const match of code.matchAll(pattern)) {
+		const open = code.indexOf('(', match.index);
+		const end = matchParen(code, open);
+		if (end === -1) continue;
+		const args = code.slice(open + 1, end - 1);
+		const comma = args.indexOf(',');
+		if (comma === -1) continue;
+		const name = args
+			.slice(0, comma)
+			.trim()
+			.replace(/^['"`]|['"`]$/g, '');
+		if (name !== eventName) continue;
+		sources.push(args.slice(comma + 1));
+	}
+	return sources;
+}
+
+/**
+ * The body of the function `name` is bound to, or null (pure).
+ *
+ * A handler that is written as a named function (`const handleCancel =
+ * …` / `function handleCancel(…)`) is read through this, so the rule
+ * sees what the handler DOES and not only that a name exists.
+ */
+export function functionBodyFor(code, name) {
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const definition = new RegExp(`\\b(?:const|let|var|function)\\s+${escaped}\\b`).exec(code);
+	if (!definition) return null;
+	const after = code.slice(definition.index);
+	const arrow = after.indexOf('=>');
+	const brace = after.indexOf('{');
+	if (arrow !== -1 && (brace === -1 || arrow < brace)) {
+		const start = definition.index + arrow + 2;
+		const rest = code.slice(start);
+		const bodyStart = start + (rest.length - rest.trimStart().length);
+		if (code[bodyStart] === '{') {
+			const end = matchBrace(code, bodyStart);
+			return end === -1 ? null : code.slice(bodyStart + 1, end - 1);
+		}
+		const semicolon = code.indexOf(';', start);
+		return code.slice(start, semicolon === -1 ? code.length : semicolon);
+	}
+	if (brace === -1) return null;
+	const end = matchBrace(code, definition.index + brace);
+	return end === -1 ? null : code.slice(definition.index + brace + 1, end - 1);
+}
+
+/**
+ * The handler source plus the bodies of the functions it names (pure).
+ *
+ * A handler written inline is read as it is; a handler that is a name
+ * is resolved to the function that name is bound to, so
+ * `onCancel={handleCancel}` is read as the body of `handleCancel`.
+ */
+export function resolveHandlerText(code, source) {
+	let text = source;
+	for (const identifier of source.match(/[A-Za-z_$][\w$]*/g) ?? []) {
+		const body = functionBodyFor(code, identifier);
+		if (body) text += `\n${body}`;
+	}
+	return text;
+}
+
+/**
+ * Whether the file SUPPRESSES the user agent's `cancel` default (pure).
+ *
+ * A modal `<dialog>` closes on `Escape` because the DEFAULT ACTION of
+ * the `cancel` event is to close it. A `cancel` handler that calls
+ * `preventDefault()` takes that default away, so the dialog stays open
+ * unless the file closes it another way.
+ */
+export function suppressesCancelDefault(code) {
+	for (const source of [
+		...jsxHandlerSources(code, 'onCancel'),
+		...listenerHandlerSources(code, 'cancel'),
+	]) {
+		if (/preventDefault\s*\(/.test(resolveHandlerText(code, source))) return true;
+	}
+	return false;
+}
+
+/**
+ * Whether the file SUPPRESSES the user agent's `Escape` close at the
+ * KEY level (pure).
+ *
+ * Preventing the default of the `Escape` key press stops the user agent
+ * from making the close request at all, so the `cancel` event is never
+ * dispatched and the native close never happens.
+ */
+export function suppressesEscapeKeyClose(code) {
+	for (const source of [
+		...jsxHandlerSources(code, 'onKeyDown'),
+		...listenerHandlerSources(code, 'keydown'),
+	]) {
+		const text = resolveHandlerText(code, source);
+		if (!/['"`]Escape['"`]/.test(text)) continue;
+		if (/preventDefault\s*\(/.test(text)) return true;
+	}
+	return false;
+}
+
+/**
+ * What the file does to the modal's `Escape` close (pure).
+ *
+ * `native`   — the user agent's default is intact, so `Escape` closes
+ *              the dialog. This is the normal native modal.
+ * `explicit` — the file closes the dialog itself (`dialog.close()`).
+ * `none`     — the default is suppressed and nothing replaces it: the
+ *              modal is a keyboard trap.
+ *
+ * The verdict is per FILE: the handlers and the `close()` call of a
+ * file are read together, the way a reader reads the file.
+ */
+export function evaluateModalClose(code) {
+	const cancelSuppressed = suppressesCancelDefault(code);
+	const escapeSuppressed = suppressesEscapeKeyClose(code);
+	const explicit = hasExplicitCloseCall(code);
+	const suppressed = cancelSuppressed || escapeSuppressed;
+	return {
+		cancelSuppressed,
+		escapeSuppressed,
+		explicit,
+		suppressed,
+		trap: suppressed && !explicit,
+		state: explicit ? 'explicit' : suppressed ? 'none' : 'native',
+	};
+}
+
+/**
+ * Whether the modal can be closed by the keyboard (pure).
+ *
+ * The close path is the USER AGENT's default (`Escape` → `cancel` →
+ * close) unless the file takes that default away, and the file's own
+ * `close()` call always is one. So a file is a trap only when it
+ * suppresses the default AND declares no replacement.
  */
 export function hasClosePath(code) {
-	// The dialog element's OWN close method (`dialog.close()`). This is
-	// the path the shipped picker uses: the `Escape` handler prevents the
-	// user agent's default and lets the state change drive `close()`.
-	if (/\.close\s*\(/.test(code)) return true;
-	// The `cancel` handler: the user agent fires `cancel` BEFORE it
-	// closes the dialog, so a handler that closes the dialog is a close
-	// path.
-	if (/\bonCancel\s*=/.test(code)) return true;
-	if (/addEventListener\(\s*['"]cancel['"]/.test(code)) return true;
-	return false;
+	return !evaluateModalClose(code).trap;
 }
 
 /**
@@ -396,6 +593,7 @@ export function scanSource({ relativePath, source }) {
 	const menus = [];
 	const showModal = hasShowModalCall(code);
 	const nonModalShow = hasNonModalShowCall(code);
+	const close = evaluateModalClose(code);
 	const closePath = hasClosePath(code);
 
 	for (const tag of findOpeningTags(code, 'dialog')) {
@@ -408,6 +606,7 @@ export function scanSource({ relativePath, source }) {
 			nonModal,
 			modal: !nonModal && showModal,
 			closePath,
+			escapeClose: close.state,
 		});
 		if (nonModal) {
 			violations.push({
@@ -420,14 +619,14 @@ export function scanSource({ relativePath, source }) {
 			});
 			continue;
 		}
-		if (showModal && !closePath) {
+		if (showModal && close.trap) {
 			violations.push({
-				rule: 'dialog-close-path-missing',
+				rule: 'dialog-escape-close-missing',
 				file: relativePath,
 				line: tag.line,
 				wcag: '2.1.2',
 				message:
-					'this `<dialog>` is opened with `showModal()` but the file declares no close path (`dialog.close()`, an `onCancel` handler or a `cancel` listener); a modal with no way out is a keyboard trap (SC 2.1.2)',
+					'this `<dialog>` is opened with `showModal()`, but the file suppresses the native `Escape` close (a `cancel` handler, or an `Escape` key handler, calls `preventDefault()`) and declares no replacement close path (`dialog.close()`); `Escape` therefore does not close the dialog, so the modal is a keyboard trap (SC 2.1.2)',
 			});
 		}
 	}
@@ -641,6 +840,13 @@ export function collectEvidence(repoRoot = REPO_ROOT) {
 	};
 }
 
+/** How the modal's `Escape` close is described in the report (pure). */
+export function escapeCloseLabel(state) {
+	if (state === 'native') return 'native (Escape closes the dialog)';
+	if (state === 'explicit') return 'explicit (dialog.close())';
+	return 'NONE — the native default is suppressed and nothing replaces it';
+}
+
 /** The human-readable report, with the two kinds of statement separated. */
 export function renderGateSummary(evidence) {
 	const lines = [];
@@ -665,7 +871,9 @@ export function renderGateSummary(evidence) {
 			: dialog.modal
 				? 'modal (showModal)'
 				: 'inert (never opened)';
-		lines.push(`  - ${dialog.file}:${dialog.line} — ${mode}, close path: ${dialog.closePath}`);
+		lines.push(
+			`  - ${dialog.file}:${dialog.line} — ${mode}, escape close: ${escapeCloseLabel(dialog.escapeClose)}`,
+		);
 	}
 	lines.push('');
 	lines.push('disclosure menu inventory:');

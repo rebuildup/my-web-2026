@@ -638,7 +638,19 @@ export function evaluateToolArtifactInventory(input: ToolInventoryInput): ToolIn
 			findings.push(
 				finding(
 					'OUTBOUND_UNDECLARED',
-					'warn',
+					// Issue #733 (V-2): a Tool this repository builds and
+					// serves must not carry an external reference nobody
+					// reviewed. The static scan cannot tell a live request
+					// from a bundled documentation link, so the finding is
+					// not "this Tool phones home" — it is "the shipped bytes
+					// reference a host the reviewed record does not list".
+					// The remedy is the same shape as the license /
+					// dependency drift findings: regenerate the record and
+					// review the diff, which shows exactly which host
+					// appeared. A Tool that is not shipped by this
+					// repository keeps the warning, because its bytes are
+					// not published here.
+					isShippedDelivery(input.deliveryKind) ? 'error' : 'warn',
 					input.slug,
 					`the collected artefact references host(s) absent from the reviewed set: ${newHosts.join(', ')}`,
 					'review the references (a live request and a bundled library documentation link are indistinguishable to a static scan), then re-run `pnpm run tools:artifact:update`',

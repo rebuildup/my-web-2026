@@ -185,6 +185,71 @@ describe('the gate', () => {
 		assert.match(run.stderr, /unreadable record/);
 	});
 
+	// Issue #728. `reviewedAt` is a claim about the past — "the owner
+	// read this on that day". A future date cannot be true, so the
+	// record is refused. The sibling ledger
+	// (`quality/stale-content-review.json`) already refused one; this
+	// ledger did not, and the two disagreed about the same question.
+	it('fails when the record claims a review date in the future', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify({
+				...recordFor(),
+				reviewedAt: '2099-01-01',
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /J006/);
+		assert.match(output, /未来/);
+	});
+
+	it('fails when the review date is not a calendar day', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify({
+				...recordFor(),
+				reviewedAt: '2026-13-40',
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /reviewedAt/);
+		assert.match(output, /YYYY-MM-DD/);
+	});
+
+	it('fails when the review date is missing entirely', () => {
+		// Omit the field rather than deleting it: the point of this case is
+		// that the RECORD carries no review date, so the shape itself has to
+		// lack the key.
+		const { reviewedAt: _reviewedAt, ...record } = recordFor();
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify(record),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /reviewedAt/);
+	});
+
 	it('fails closed on a record whose shape drifted', () => {
 		const root = makeFixture({
 			'public/icons/one.png': 'bytes',

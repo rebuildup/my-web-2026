@@ -28,9 +28,11 @@
 
 ### なぜ `storybook dev` ではなく harness なのか
 
-`storybook dev` はこのリポジトリの story を配信できない。`.storybook/main.ts` はプロジェクトの `vite.config.ts` を merge し、その中の `@cloudflare/vite-plugin` が dev server を接管してから Worker の runtime secret を要求して起動に失敗する（実測: `Missing required secrets for Worker "my-web-2026"`）。同じ理由を `scripts/capture-error-state-gallery.mjs`（#501）と `scripts/capture-a11y-table-code.mjs`（#407）が記録している。
+`storybook dev` 自体は **起動でき、story も描画できる**（2026-10-31 に実測: `pnpm exec storybook dev --port 6013` → index 200、`iframe.html?id=<story id>` が story の本文を描画。起動時に `Missing required secrets for Worker "my-web-2026"` と表示されるが、これは `@cloudflare/vite-plugin` が出す警告であって dev server の起動を止めない）。この repository は既に `pnpm run a11y:axe-storybook:ci` で Storybook dev 上の story に axe をかけている。
 
-そのため capture は `.tmp/` に Vite harness を生成し、**shipped story module を直接 import** して、その story の `render:` が返すツリーを描画する。この story は `component` + `args` ではなく `render:` を宣言しているため、harness は「同等の component/args の組」ではなく **story が返す render 出力そのもの** を描画する。harness が描くものは「Copied した preview」ではなく「shipping されている preview そのもの」なので、capture と Storybook surface は乖離しない。
+一方で **`pnpm run build-storybook` はこの repository では manager-only の静的ビルドになる**（`@storybook/react-vite` builder がプロジェクトの `vite.config.ts` を merge し、Cloudflare / TanStack Start plugin が preview の出力先を取る。出力に `iframe.html` が無く `sb-manager/` しか残らない — 2026-10-31 に再実測）。同じ事実を `scripts/capture-error-state-gallery.mjs`（#501）と `scripts/capture-a11y-table-code.mjs`（#407）が記録している。
+
+capture は長-lived な dev server に依存しないため `.tmp/` に Vite harness を生成し、**shipped story module を直接 import** して、その story の `render:` が返すツリーを描画する。この story は `component` + `args` ではなく `render:` を宣言しているため、harness は「同等の component/args の組」ではなく **story が返す render 出力そのもの** を描画する。harness が描くものは「Copied した preview」ではなく「shipping されている preview そのもの」なので、capture と Storybook surface は乖離しない。
 
 ### なぜ WebP なのか
 

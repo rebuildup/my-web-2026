@@ -14,7 +14,8 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
@@ -159,6 +160,50 @@ test('a step that points at a surface that is gone is reported', () => {
 	const ledger = ledgerCopy();
 	ledger.steps[0].surface.path = 'src/routes/does-not-exist.tsx';
 	assert.equal(rulesOf(ledger).includes('step-surface-missing'), true);
+});
+
+test('a path that escapes the repository is refused, even when the sibling directory shares the repository prefix', () => {
+	const base = mkdtempSync(join(tmpdir(), 'a11y-screenreader-steps-'));
+	try {
+		const root = join(base, 'repo');
+		const sibling = join(base, 'repo-private');
+		mkdirSync(root, { recursive: true });
+		mkdirSync(sibling, { recursive: true });
+		writeFileSync(join(sibling, 'evidence.tsx'), 'export const Evidence = 1;\n');
+
+		// The escape lands on a real file, and its path starts with the
+		// repository root as a STRING — the case a prefix comparison
+		// cannot tell apart from a path inside the repository.
+		assert.equal(join(sibling, 'evidence.tsx').startsWith(root), true);
+		assert.equal(repoFileExists('../repo-private/evidence.tsx', root), false);
+		assert.equal(readRepoFile('../repo-private/evidence.tsx', root), null);
+
+		// A file that really is inside the repository is still found.
+		writeFileSync(join(root, 'inside.tsx'), 'export const Inside = 1;\n');
+		assert.equal(repoFileExists('inside.tsx', root), true);
+		assert.equal(readRepoFile('inside.tsx', root), 'export const Inside = 1;\n');
+
+		// The repository root itself is a directory, not a reviewable surface.
+		assert.equal(repoFileExists('.', root), false);
+		assert.equal(repoFileExists('..', root), false);
+
+		// The gate stays fail-closed: a step that points outside the
+		// repository is a violation, never a pass.
+		const ledger = ledgerCopy();
+		ledger.steps[0].surface.path = '../repo-private/evidence.tsx';
+		const violations = evaluateStep(ledger.steps[0], {
+			ledger,
+			exists: (path) => repoFileExists(path, root),
+			readFile: (path) => readRepoFile(path, root),
+			today: TODAY,
+		});
+		assert.equal(
+			violations.some((violation) => violation.rule === 'step-surface-missing'),
+			true,
+		);
+	} finally {
+		rmSync(base, { recursive: true, force: true });
+	}
 });
 
 test('a step that points at a story export that is gone is reported', () => {

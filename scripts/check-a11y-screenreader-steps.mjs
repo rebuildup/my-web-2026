@@ -90,7 +90,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -710,18 +710,61 @@ export function readFixtureFiles(repoRoot = REPO_ROOT) {
 	return { pass: read(FIXTURE_PASS_DIR), fail: read(FIXTURE_FAIL_DIR) };
 }
 
+/**
+ * Whether an absolute path lies inside the repository (pure).
+ *
+ * Containment is decided on PATH SEGMENTS, never on characters. A
+ * string-prefix test is not a containment test: with the repository at
+ * `/work/repo`, the sibling directory `/work/repo-private` starts with
+ * the string `/work/repo`, so a prefix guard lets `../repo-private/…`
+ * pass and a file that lives OUTSIDE the repository is accepted as an
+ * in-repository surface. That is exactly what this gate exists to
+ * refuse.
+ *
+ * The decision is therefore made with `relative(root, absolute)`:
+ *
+ *   - an empty result is the repository root itself — a directory, not
+ *     a reviewable surface, so it is refused;
+ *   - a result that starts with `..` (as a segment) is outside;
+ *   - an absolute result is on a different root.
+ */
+export function isInsideRepository(absolute, repoRoot = REPO_ROOT) {
+	const root = resolve(repoRoot);
+	const target = resolve(absolute);
+	const inside = relative(root, target);
+	if (inside === '') return false;
+	if (isAbsolute(inside)) return false;
+	if (inside === '..' || inside.startsWith(`..${sep}`)) return false;
+	return true;
+}
+
+/**
+ * The absolute path of a repository-relative path (or null).
+ *
+ * The path is resolved against the repository root, so `..` segments
+ * are collapsed before the containment decision is made, and the result
+ * is kept only when it is really inside the repository.
+ */
+export function resolveInsideRepository(path, repoRoot = REPO_ROOT) {
+	if (typeof path !== 'string' || path === '') return null;
+	const root = resolve(repoRoot);
+	const absolute = resolve(root, path);
+	if (!isInsideRepository(absolute, root)) return null;
+	return absolute;
+}
+
 /** Read a repository-relative file (or null). */
 export function readRepoFile(path, repoRoot = REPO_ROOT) {
-	const absolute = join(repoRoot, path);
+	const absolute = resolveInsideRepository(path, repoRoot);
+	if (absolute === null) return null;
 	if (!existsSync(absolute)) return null;
 	return readFileSync(absolute, 'utf8');
 }
 
-/** Whether a repository-relative path exists. */
+/** Whether a repository-relative path exists inside the repository. */
 export function repoFileExists(path, repoRoot = REPO_ROOT) {
-	if (typeof path !== 'string' || path === '') return false;
-	const absolute = resolve(repoRoot, path);
-	if (!absolute.startsWith(resolve(repoRoot))) return false;
+	const absolute = resolveInsideRepository(path, repoRoot);
+	if (absolute === null) return false;
 	return existsSync(absolute);
 }
 

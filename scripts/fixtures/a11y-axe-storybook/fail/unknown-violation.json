@@ -1,0 +1,26 @@
+{
+	"$comment": "Recorded axe-core result (Issue #392). A story whose measurement carries a violation the ledger does NOT record: the verdict is `fail`, which the contract rejects. The rule named in `expect.ruleIds` is the one the audit has to detect — a fixture that stopped reporting it would make the audit blind to that rule without anything going red. This file is a fixture, not a shipped surface.",
+	"story": "src/home/access/tiles.stories.tsx#Mid",
+	"expect": {
+		"verdict": "fail",
+		"ruleIds": ["image-alt"]
+	},
+	"baseline": [],
+	"axe": {
+		"violations": [
+			{
+				"ruleId": "image-alt",
+				"impact": "critical",
+				"help": "Images must have alternate text",
+				"tags": ["cat.text-alternatives", "wcag2a", "wcag111"],
+				"nodes": [
+					{
+						"target": "#storybook-root > img",
+						"html": "<img src=\"/digit-4.svg\">",
+						"summary": "Fix any of the following: Element does not have an alt attribute"
+					}
+				]
+			}
+		]
+	}
+}

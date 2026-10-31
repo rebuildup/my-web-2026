@@ -122,6 +122,45 @@ describe('parseAssetInventoryValue', () => {
 		expect(codes(result)).toContain('J003');
 	});
 
+	// Issue #728. `reviewedAt` is a claim about a day that has already
+	// happened. A record dated in the future claims a review that cannot
+	// have occurred, so the reader fails closed on it — the same rule the
+	// sibling stale-copy gate applies to its own registry.
+	it('refuses a review date in the future', () => {
+		const result = parseAssetInventoryValue(inventory([VALID_ASSET]), {
+			today: '2026-10-18',
+		});
+		expect(result.ok).toBe(false);
+		expect(codes(result)).toContain('J006');
+		expect(result.findings.some((item) => item.message.includes('未来'))).toBe(true);
+	});
+
+	it('refuses a review date that is not a calendar day', () => {
+		const result = parseAssetInventoryValue(
+			inventory([VALID_ASSET], { reviewedAt: '2026-13-40' }),
+			{
+				today: '2026-10-19',
+			},
+		);
+		expect(result.ok).toBe(false);
+		expect(result.findings.some((item) => item.message.includes('YYYY-MM-DD'))).toBe(true);
+	});
+
+	it('refuses a record that states no review date at all', () => {
+		const { reviewedAt: _reviewedAt, ...withoutDate } = inventory([VALID_ASSET]);
+		const result = parseAssetInventoryValue(withoutDate, { today: '2026-10-19' });
+		expect(result.ok).toBe(false);
+		expect(result.findings.some((item) => item.message.includes('reviewedAt'))).toBe(true);
+	});
+
+	it('accepts a review date that is today, and rejects one day later', () => {
+		const today = parseAssetInventoryValue(inventory([VALID_ASSET]), { today: '2026-10-19' });
+		expect(today.ok).toBe(true);
+		const tomorrow = parseAssetInventoryValue(inventory([VALID_ASSET]), { today: '2026-10-18' });
+		expect(tomorrow.ok).toBe(false);
+		expect(codes(tomorrow)).toContain('J006');
+	});
+
 	it('names the offending field rather than failing the whole file silently', () => {
 		const broken = { ...VALID_ASSET, license: { ...VALID_ASSET.license, spdx: 'free' } };
 		const result = parseAssetInventoryValue(inventory([broken]));

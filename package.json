@@ -126,6 +126,7 @@
 		"publication:redaction:check": "node scripts/check-publication-redaction.mjs",
 		"publication:redaction:write": "node scripts/check-publication-redaction.mjs --write",
 		"publication:check": "node scripts/check-publication-diff.mjs",
+		"sitemap:ledger:check": "node --experimental-strip-types scripts/check-sitemap-ledger-agreement.mjs",
 		"content:links:check": "node --experimental-strip-types scripts/check-content-links.mjs",
 		"content:links:report": "node --experimental-strip-types scripts/content-link-report.mjs",
 		"perf:d1-query-plan:report": "node scripts/d1-query-plan-report.mjs",

@@ -148,6 +148,12 @@ export default defineConfig({
 	testIgnore: [
 		'**/compat/**',
 		'**/viewport/**',
+		// Issue #392: the Storybook axe audit measures Storybook, not the
+		// application preview this config starts. It has its own config
+		// (`playwright.storybook.config.ts`), so the two suites never run
+		// each other — and this suite never fails here because no
+		// Storybook is listening.
+		'**/axe-storybook.spec.ts',
 		...(BASE_URL.startsWith('http://127.0.0.1')
 			? LOCAL_SMOKE
 				? ['**/prod-portfolio.spec.ts']

@@ -122,6 +122,12 @@ legal -> editorial (Issue #497 — the asset rights-review obligation owns
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
+http -> i18n (Issue #700 — `isAdminPath` reads the request path through
+  `src/i18n/router-path.ts`, the one owner of "how a request path is
+  READ" (percent-decode, then case-fold, then an exact-namespace-or-
+  descendant match); the analytics mount gate in `editorial` obeys the
+  same rule, and `editorial` may not import `http`, so the shared rule
+  has to live in a leaf)
 http -> editorial (Issue #530 — the public API directory preview story
             and its fixture column type; display primitives only)
 http/media -> portfolio (Issue #634 — `GET /media/<key>` asks the portfolio
@@ -195,6 +201,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `src/i18n/glyphs.test.ts` (CI),
   `src/editorial/glyph-headings.stories.tsx` (preview) and
   `scripts/capture-glyph-coverage.mjs` (measured artefact) all read.
+  Issue #700 adds the request-path half: `src/i18n/router-path.ts`
+  owns **how a request path is READ** (percent-decode, then
+  case-fold, then an exact-namespace-or-descendant match) and
+  publishes the platform's request-path namespaces
+  (`ADMIN_SURFACE_NAMESPACE`). It is URL text policy — the same family
+  as the slug and display-text rules — and it is a leaf, so the HTTP
+  boundary (`src/http/admin-path.ts`, Issue #654) and the editorial
+  analytics mount gate (`src/editorial/analytics/consent.ts`,
+  Issue #495) can obey ONE rule without depending on each other:
+  `editorial` may not import `http` (AGENTS.md §3), so a rule both of
+  them need cannot live in the HTTP boundary. The route tree stays the
+  authority for WHICH routes exist;
+  `test/integration/analytics-admin-path-parity.test.ts` pins the
+  published namespace against the router's own route tree.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.

@@ -272,6 +272,11 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 		// case variant renders the admin screen; the tracker must stay
 		// inert for it too (Issue #495 review S1).
 		trackRoutePageView(state, '/ADMIN/KEYS');
+		// The router percent-decodes the pathname before matching, so
+		// the escaped variant renders the same admin screen and must
+		// stay inert as well (Issue #700).
+		trackRoutePageView(state, '/%61dmin/keys');
+		trackRoutePageView(state, '/%61DMIN/KEYS');
 		expect(gtag).toHaveBeenCalledTimes(1);
 		for (const call of gtag.mock.calls) {
 			const params = call[2] as { page_path: string };

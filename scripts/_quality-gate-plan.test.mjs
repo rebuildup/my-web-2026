@@ -162,6 +162,12 @@ const EXPECTED_FAST_PLAN = [
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
 	'pnpm run a11y:dialog-focus:check',
+	// Issue #402: the screen-reader procedure ledger, declared in
+	// `quality/profile.yaml` right after the contrast gate. It reads the
+	// committed ledger of the manual review and keeps the RECORD honest
+	// (complete step, existing surface, no automated audit passed off as
+	// a human screen-reader verification).
+	'pnpm run a11y:screenreader-steps:check',
 	// Issue #405: the live-region / status-message contract, declared in
 	// `quality/profile.yaml` right after the contrast gate.
 	'pnpm run a11y:live-region:check',
@@ -176,6 +182,12 @@ const EXPECTED_FAST_PLAN = [
 	// therefore not part of the offline fast plan. The browser half runs
 	// in CI, in the dedicated `storybook axe` job.
 	'pnpm run a11y:axe-storybook:check',
+	// Issue #408: the prerecorded-video caption / text-alternative
+	// contract, declared in `quality/profile.yaml` right after the
+	// focus-visible gate. The position is deliberately NOT right after the
+	// colour-contrast gate, so it does not collide with the gates that
+	// already claim that position.
+	'pnpm run a11y:video-caption:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

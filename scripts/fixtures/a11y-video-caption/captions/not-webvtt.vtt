@@ -1,0 +1,4 @@
+This file is not a WebVTT document.
+
+It has no "WEBVTT" header and no cue, so a browser cannot render it as a
+caption track and the gate cannot verify it as a caption source.

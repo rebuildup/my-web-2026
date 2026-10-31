@@ -386,13 +386,30 @@ gates:
       # Issue #406: the modal / menu focus contract. The shipped picker is a
       # native <dialog>; the gate reads the source and fails a <dialog> that
       # is opened with the `open` attribute (no user-agent focus trap and no
-      # focus return), a modal with no declared close path, a custom
-      # `role="dialog"` with no focus-return contract, and a disclosure menu
-      # that closes on Escape without handing the focus back to its trigger.
+      # focus return), a <dialog> whose Escape close path is suppressed
+      # (a cancel / Escape handler calling `preventDefault()` without
+      # `dialog.close()`, so the native default close no longer applies),
+      # a custom `role="dialog"` with no focus-return contract, and a
+      # disclosure menu that closes on Escape without handing the focus back
+      # to its trigger.
       # The focus trap and the focus return are the user agent's when
       # `showModal()` is used. Offline, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-dialog-focus`.
       - 'pnpm run a11y:dialog-focus:check' # modal / menu focus contract (Issue #406)
+      # Issue #402: the screen-reader procedure ledger. The gate reads
+      # `quality/screenreader-steps.json` and decides only whether the
+      # RECORD of the manual review is intact: that every step names the
+      # operation, the surface, the assistive technology, the environment
+      # and the expected announcement, that every surface still exists,
+      # and that no automated audit (the axe run of Issue #393) is
+      # passed off as a human screen-reader verification. A step that has
+      # not been performed carries no observation and is NOT a violation:
+      # a green run means "the ledger is intact", never "the site was
+      # read aloud". Pure Node text analysis (no browser, no binding, no
+      # network). The browser half of the same evidence is
+      # `pnpm run capture:a11y-screenreader-steps`, an artefact capture
+      # and therefore not a fast gate.
+      - 'pnpm run a11y:screenreader-steps:check' # screen reader procedure ledger (Issue #402)
       # Issue #405: the live-region / status-message contract (WCAG 2.2
       # SC 4.1.3 Status Messages, level AA, and SC 4.1.2 Name, Role,
       # Value, level A). Every explicit live region in `src/**` must not be
@@ -431,6 +448,22 @@ gates:
       # in CI instead, in the dedicated `storybook axe` job
       # (scripts/run-storybook-axe-audit.mjs), unconditionally.
       - 'pnpm run a11y:axe-storybook:check' # Storybook story axe audit, offline half (Issue #392)
+      # Issue #408: the prerecorded-video contract (WCAG 2.2 SC 1.2.2
+      # Captions (Prerecorded), level A, SC 1.2.3 Audio Description or Media
+      # Alternative (Prerecorded), level A, SC 1.2.5 Audio Description
+      # (Prerecorded), level AA, SC 1.1.1 Non-text Content, level A, and
+      # SC 2.1.1 Keyboard, level A). A shipped `<video>` must caption its
+      # speech, carry a poster and an accessible name, expose controls, and
+      # NOT be presented as playable while its caption source is unverified
+      # (`data-caption-status="verified"` is the only proof — fail closed).
+      # Its audio-description decision must be declared too, fail closed:
+      # `provided` with a real `<track kind="descriptions">`, or
+      # `not-required` when a human decided the work needs none.
+      # No `<video>` ships yet, so this fixes the contract for the first one.
+      # Pure Node text analysis, so it costs a source walk. The browser half
+      # of the same evidence is `pnpm run capture:a11y-video-caption`, an
+      # artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:video-caption:check' # prerecorded video caption / text alternative contract (Issue #408)
       # Issue #504: the published app-icon contract. Its own test
       # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
       # above, by the same discovery rule as every other script test —

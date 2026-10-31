@@ -116,6 +116,78 @@ describe('createAuditLogger — no canary survives', () => {
 	});
 });
 
+describe('createAuditLogger — audit() reserves event and at', () => {
+	// `event` names what happened and `at` says when. A caller that
+	// could overwrite them could falsify an incident report, so the
+	// logger owns both.
+	it('does not let a caller field overwrite the event name', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.audit('boundary.request.failed', {
+			event: 'forged.event',
+			status: 500,
+		});
+		const payload = JSON.parse((records[0]?.text ?? '').slice('[boundary] '.length)) as Record<
+			string,
+			unknown
+		>;
+		expect(payload.event).toBe('boundary.request.failed');
+		expect(payload.caller_event).toBe('forged.event');
+		expect(payload.status).toBe(500);
+	});
+
+	it('does not let a caller field overwrite the timestamp', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		const before = Date.now();
+		logger.audit('boundary.request.failed', { at: '1999-01-01T00:00:00.000Z' });
+		const payload = JSON.parse((records[0]?.text ?? '').slice('[boundary] '.length)) as Record<
+			string,
+			unknown
+		>;
+		expect(payload.at).not.toBe('1999-01-01T00:00:00.000Z');
+		expect(payload.caller_at).toBe('1999-01-01T00:00:00.000Z');
+		expect(typeof payload.at).toBe('string');
+		const stamped = Date.parse(String(payload.at));
+		expect(Number.isNaN(stamped)).toBe(false);
+		expect(stamped).toBeGreaterThanOrEqual(before - 1000);
+		expect(stamped).toBeLessThanOrEqual(Date.now() + 1000);
+	});
+
+	it('keeps the reserved keys first, so the record stays greppable', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('auth.email');
+		logger.audit('email.stub', { event: 'forged', at: 'forged', to: 'person@example.invalid' });
+		const payload = JSON.parse((records[0]?.text ?? '').slice('[auth.email] '.length)) as Record<
+			string,
+			unknown
+		>;
+		expect(Object.keys(payload).slice(0, 2)).toEqual(['event', 'at']);
+		expect(payload.event).toBe('email.stub');
+	});
+
+	it('redacts a forged event name too', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.audit('boundary.request.failed', { event: `Bearer ${CANARY_TOKEN}` });
+		const line = records[0]?.text ?? '';
+		expect(line).not.toContain(CANARY_TOKEN);
+	});
+
+	it('loses neither value when the caller also used the fallback name', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.audit('real.event', { event: 'forged', caller_event: 'mine' });
+		const payload = JSON.parse((records[0]?.text ?? '').slice('[boundary] '.length)) as Record<
+			string,
+			unknown
+		>;
+		expect(payload.event).toBe('real.event');
+		expect(payload.caller_event).toBe('mine');
+		expect(payload.caller_event_2).toBe('forged');
+	});
+});
+
 describe('createAuditLogger — the correlation channel', () => {
 	it('writes a minted id so the record stays greppable, and redacts everything else', () => {
 		const records = captureConsole();

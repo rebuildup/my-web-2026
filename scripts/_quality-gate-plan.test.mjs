@@ -119,6 +119,10 @@ const EXPECTED_FAST_PLAN = [
 	// review-pending finding is read next to the other copy findings.
 	'pnpm run copy:stale:check',
 	'pnpm run publication:check',
+	// Issue #734: the sitemap-membership cross-check runs right after the
+	// publication ledger it compares against the sitemap generator, so a
+	// disagreement is read next to the ledger finding it belongs to.
+	'pnpm run sitemap:ledger:check',
 	'pnpm run content:links:check',
 	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',
@@ -168,6 +172,13 @@ const EXPECTED_FAST_PLAN = [
 	// runs right after the colour gate, because both read the shipped
 	// source and the shipped stylesheet.
 	'pnpm run a11y:focus-visible:check',
+	// Issue #392: the offline half of the Storybook story axe audit. It
+	// sits with the other accessibility gates, right after the contrast
+	// contract, and it is a pure Node gate — the browser half
+	// (`a11y:axe-storybook:e2e`) needs a Storybook server and is
+	// therefore not part of the offline fast plan. The browser half runs
+	// in CI, in the dedicated `storybook axe` job.
+	'pnpm run a11y:axe-storybook:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',

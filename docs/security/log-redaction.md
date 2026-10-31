@@ -38,6 +38,33 @@ src/logging/logger.ts   src/** で console に触れてよい唯一の module
    循環参照の検出、class instance (`Headers` など getter を持つ型) は
    歩かない。`Error` は `{ name, message }` に畳み、stack は落とす。
 
+### `Error.name` は allowlist / redaction を通す (#702)
+
+`Error.prototype.name` は通常の書き込み可能な string property なので、
+catch 側でも `err.name = 'Bearer mk_…'` と書けば、名前 field に
+credential を滑り込ませられる。`redactErrorName()` は fail-closed で
+3 段の判定を行う。
+
+1. 標準の allowlist (`Error` / `TypeError` / `DOMException` / …) はそのまま。
+2. それ以外の名前は通常の text redaction を通す (credential 形・email・
+   不透明 blob は置換される)。
+3. 残った文字列が「素の識別子」(先頭英字 / 以後英数字と `_` / 64 文字以下)
+   でなければ `[redacted-error-name]` に落とす。
+
+これにより、このリポジトリ独自の error class (`BoundaryInputError` 等) は
+読みやすいまま残しつつ、smuggle された値 Names は operator に読めない。
+class instance の constructor name も同じ判定を通す (own `constructor`
+property で任意の文字列を差せるため)。
+
+### audit record の予約 key (`event` / `at`) (#702)
+
+`audit(event, fields)` の `event` と `at` は **logger が所有する予約
+key** である。event 名と時刻は「何が起きたか / いつ起きたか」そのもの
+なので、caller の field に同じ名前で上書きされると incident report を
+偽装できてしまう。`fields` の `event` / `at` は予約 key を **拒否**され、
+`caller_event` / `caller_at` として保存される (値は消さない。予約された
+名前の下には出ない)。
+
 ### correlation token (唯一の例外)
 
 `#457` が公開する request id (`X-Request-Id` / 5xx body) は

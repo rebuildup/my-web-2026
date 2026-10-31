@@ -2,6 +2,7 @@
 
 | Artefact | Issue | What it proves |
 | --- | --- | --- |
+| `axe-storybook-pass-fail.webp` | #392 | the Storybook story audit of the rendered DOM — one row per audited story (verdict, known / new violation counts, rule id with its WCAG tags, element count), with the pass half (a story as shipped) and the fail half (the same story with one injected `<img>` that axe-core reports as `image-alt`) photographed side by side, so the audit is shown to be neither blind nor permissive. `axe-storybook.md` is the write-up |
 | `axe-route-report.webp` | #393 | the public-route axe-core audit of the rendered DOM — one row per audited route (verdict, known / new violation counts, rule id with its WCAG tags, element count) with one real violating element captured on the page, so a tolerated violation is visible and not only tabulated. `axe-route-report.md` is the write-up |
 | `mixed-language-content.webp` | #409 | the shipped language-of-parts gallery in four states (mixed-language body / document-language-only body / refused parts / the same body at 320 px), with the WCAG 2.2 mapping table that separates the machine-checked rows from the human ones. `mixed-language-content.md` is the write-up |
 | `table-code-mobile.webp` | #407 | the shipped `DataTable` / `CodeBlock` fixture in its four states at 375 px, with caption / per-cell `scope` / confined scroll / keyboard scrolling measured in Chromium. `table-code.md` is the write-up |

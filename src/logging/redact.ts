@@ -36,7 +36,10 @@
  *     length are capped so a hostile payload cannot flood the log.
  *   - Errors collapse to `{ name, message }` with the message
  *     redacted; stacks and `cause` chains are dropped because both
- *     can carry request context from a framework.
+ *     can carry request context from a framework. The NAME is
+ *     attacker-controllable (`err.name = 'Bearer …'`), so it is
+ *     allowlisted / redacted by `redactErrorName` instead of being
+ *     written verbatim.
  */
 
 /** Replacement for a value hidden by its KEY name. */
@@ -49,6 +52,11 @@ export const REDACTED_TOKEN = '[redacted-token]';
 export const REDACTED_BLOB = '[redacted-blob]';
 /** Replacement for a correlation token that is not provably safe. */
 export const REDACTED_CORRELATION = '[redacted-correlation]';
+/**
+ * Replacement for an error name that is neither allowlisted nor
+ * provably a plain identifier.
+ */
+export const REDACTED_ERROR_NAME = '[redacted-error-name]';
 
 /**
  * Shape of a correlation token **this repository minted**: 128 bits of
@@ -175,6 +183,67 @@ export function redactEmailAddress(address: string): string {
 	return address.length === 0 ? address : REDACTED_EMAIL;
 }
 
+/**
+ * Error names that are known to carry no runtime data.
+ *
+ * Why an allowlist exists
+ * -----------------------
+ * `Error.prototype.name` is an ordinary writable string property.
+ * Anyone who can reach the `catch` site can set it, and an upstream
+ * that echoes a request back can put anything there
+ * (`err.name = 'Bearer mk_…'`). The name used to be written to the
+ * log verbatim, so a hostile or sloppy upstream could smuggle a
+ * credential into an operator-visible record under a key that reads
+ * like a type name.
+ */
+const ALLOWED_ERROR_NAMES: ReadonlySet<string> = new Set([
+	'Error',
+	'TypeError',
+	'RangeError',
+	'SyntaxError',
+	'ReferenceError',
+	'EvalError',
+	'URIError',
+	'AggregateError',
+	'DOMException',
+	'AbortError',
+	'TimeoutError',
+	'HttpError',
+	'NonError',
+]);
+
+/**
+ * A name that looks like a class / error identifier: a letter, then
+ * letters, digits or underscores, at most 64 characters.
+ *
+ * This is the second gate for a name that is NOT on the allowlist.
+ * It keeps this repository's own error classes (`BoundaryInputError`,
+ * `KanataParseError`, …) readable without a coupling from this leaf
+ * module to the modules that declare them, while refusing anything
+ * that could be a smuggled value.
+ */
+const SAFE_ERROR_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+/**
+ * Decide whether an error NAME may appear verbatim in a log record.
+ *
+ * Three steps, fail-closed:
+ *   1. An allowlisted standard name is kept.
+ *   2. Any other name is routed through the ordinary text redaction,
+ *      so a credential shape (`Bearer …`, `sk_…`, a long opaque blob,
+ *      an e-mail address) is masked.
+ *   3. What survives must still look like a plain identifier. A
+ *      masked or otherwise non-identifier result becomes
+ *      `[redacted-error-name]` — the operator learns that the name was
+ *      untrustworthy without learning what it said.
+ */
+export function redactErrorName(name: unknown): string {
+	if (typeof name !== 'string' || name.length === 0) return REDACTED_ERROR_NAME;
+	if (ALLOWED_ERROR_NAMES.has(name)) return name;
+	const redacted = truncate(redactLogText(name));
+	return SAFE_ERROR_NAME_PATTERN.test(redacted) ? redacted : REDACTED_ERROR_NAME;
+}
+
 function truncate(text: string): string {
 	if (text.length <= MAX_STRING_LENGTH) return text;
 	return `${text.slice(0, MAX_STRING_LENGTH)}…(+${text.length - MAX_STRING_LENGTH} chars)`;
@@ -224,8 +293,13 @@ function redactUnknown(value: unknown, depth: number, seen: Set<object>): unknow
 		// Class instances (Headers, Request, Response, D1 rows, …) can
 		// carry arbitrary state behind getters. Log the class name
 		// instead of walking them.
-		const name = (value as { constructor?: { name?: string } }).constructor?.name;
-		return `[${name ?? 'object'}]`;
+		// The class name is attacker-reachable in the same way
+		// `Error.name` is: an own `constructor` property can carry
+		// any string, so it goes through the same name contract.
+		const rawName = (value as { constructor?: { name?: unknown } }).constructor?.name;
+		const name =
+			typeof rawName === 'string' && rawName.length > 0 ? redactErrorName(rawName) : 'object';
+		return `[${name}]`;
 	}
 
 	seen.add(object);
@@ -274,7 +348,7 @@ export interface RedactedError {
 export function redactLogError(error: unknown): RedactedError {
 	if (error instanceof Error) {
 		const message = truncate(redactLogText(error.message));
-		return { name: error.name, message };
+		return { name: redactErrorName(error.name), message };
 	}
 	return { name: 'NonError', message: truncate(redactLogText(stringifyUnknown(error))) };
 }

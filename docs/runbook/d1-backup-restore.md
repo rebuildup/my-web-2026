@@ -21,18 +21,25 @@
 | 3 | **read-back が一致したときだけ** `restored` と報告する | 復元後にもう一度 export して比較 |
 | 4 | schema は SQLite が記録した `CREATE` 文を**そのまま**再作成する | `sqlite_master.sql` を保持 |
 | 5 | 出力は verdict / reason code / 件数だけ | `formatD1RestoreReport` |
+| 6 | **保存されていた値を復元できない数値は、書き戻さない**（Issue #701） | [`src/cloudflare/d1-numeric.ts`](../../src/cloudflare/d1-numeric.ts) の数値規則（export / parse / bind の 3 箇所が同じ規則を参照する） |
 
 危険な帰結は「復元が何もしないこと」ではない。**バックアップの一部だけが
 書かれ、テーブルは存在するが行が欠けている状態**である。その状態は
 クエリに応答し、欠落は後から「違うページ」として現れる。だから
 unreadable / partial / digest 不一致は手順の一部であり、抜け道ではない。
 
+6 番目も同じ種類の危険を避ける。**値が丸められたのに復元成功と報告される
+状態**は、行が存在してクエリに応答し、桁が 1 つ違う形で後から現れる。
+だから「digest が一致した」だけでは復元成功の根拠にならない。
+
 ## 2. 適用範囲と禁止事項
 
 - この repository が自動実行するのは **local fixture のみ**:
   [`test/integration/d1-backup-restore.test.ts`](../../test/integration/d1-backup-restore.test.ts)
   が workerd の local `env.DB` に対して seed → export → drop → import →
-  read-back を行う。
+  read-back を行う。整数精度の境界は
+  [`test/integration/d1-backup-integer-precision.test.ts`](../../test/integration/d1-backup-integer-precision.test.ts)
+  が同じ binding に対して検証する（Issue #701）。
 - **production の D1 に対して export / import / drop を実行しない。**
   canonical な production database id を引数に取る操作は、この手順の
   対象外である。`pnpm run db:migrate:apply:production` も使わない。
@@ -76,6 +83,24 @@ suite は 7 ケースを実行する。
 最後のケースが「半端に書かない」ことの証明である。同じ batch に入れた
 `CREATE TABLE` と先行 INSERT も、失敗した INSERT と一緒に rollback され、
 テーブルは 1 つも残らない。
+
+### 3.1.1 整数精度の fixture（Issue #701）
+
+同じ `pnpm run d1:backup:proof` が
+[`test/integration/d1-backup-integer-precision.test.ts`](../../test/integration/d1-backup-integer-precision.test.ts)
+も実行する。比較の基準は **fixture に書かれたリテラル**であり、export した
+文書の値ではない。export した値と比較すると、両者が同じ丸め後の値を持つの
+で通ってしまうため。
+
+| 入力 | 期待 |
+| --- | --- |
+| ±(2^53 − 1) / REAL / NULL | export → drop → import → `restored`。fixture のリテラルと一致 |
+| ±2^53 / SQLite int64 上下限 | export が `unsupported_value` で失敗。行は変更されない |
+| digest が正しくても整数が安全範囲外の文書 | `invalid_backup`（exit 2）。テーブルは 1 つも作られない |
+
+規則そのものは
+[`src/cloudflare/d1-numeric.test.ts`](../../src/cloudflare/d1-numeric.test.ts)
+（unit）が境界値を固定する。
 
 ### 3.2 実テスト DB での operator 手順
 
@@ -200,15 +225,74 @@ report は verdict / reason / 件数 / checks だけを描画する。
   Cloudflare の export surface で取得した SQL を別途検証する。
 - **INTEGER が IEEE-754 の安全範囲を超える値は export が失敗する**。
   丸めた値を黙って書き戻すより、`unsupported_value` で止まる方を選ぶ。
+  規則の詳細は §7。
+- **保存された値の型（INTEGER / REAL）は復元されないことがある**。保証
+  されるのは*数値*の一致であり、SQLite の列 affinity が bind した値の
+  型を決める。値は厳密に一致する。
 - **外部キー**は batch 内で `PRAGMA defer_foreign_keys = ON` を先頭に
   置く。batch の外に参照がある schema は、テスト DB を分けて検証する。
+
+## 7. 整数の精度境界（Issue #701）
+
+SQLite は INTEGER を 64-bit 整数で保存する。D1 の JavaScript アダプタは
+数値列を `number`（IEEE-754 double）として返す。この 2 つの表現は
+±(2^53 − 1) を外れた int64 で**一致しない**。実装の `encodeValue()` は
+`Number.isFinite()` だけで number を受理していたため、
+±(2^53 − 1) を超える値は丸められた上で export され、digest も read-back
+比較もその丸め後の値を使っていた。**digest が一致しても、保存されていた
+int64 が復元できたことの証明にはならない。**
+
+### 規則
+
+数値は次の 3 経路すべてで同じ判定を通る
+（[`src/cloudflare/d1-numeric.ts`](../../src/cloudflare/d1-numeric.ts)）。
+
+| 値 | 判定 | 根拠 |
+| --- | --- | --- |
+| 安全整数（\|v\| ≤ 2^53 − 1） | 受理 | この範囲の int64 は double が正確に保持できるので、アダプタの値は保存されていた整数そのもの |
+| 有限の小数 | 受理 | int64 は必ず整数 double に変換される。小数を作れるのは REAL だけ。REAL は double として保存されるため値は厳密 |
+| 安全範囲外の整数値 | **拒否** | 丸められた int64 である可能性があり、文書がどちらの int64 だったかを示せない |
+| 非有限値（NaN / Infinity） | **拒否** | JSON が表現しない |
+
+拒否は片側（fail-closed）で、**復元できたはずの値まで拒否する**。規則は
+1 本の線（2^53 − 1）で描き、2^53 を超える整数値は REAL であっても拒否する。
+規則が判断できるのは**値だけ**である（列の storage class は adapter 経由で
+値に含まれない）。int64 範囲外の値は REAL 確定であるとして 2 本目の線を
+引けば該当ケースは救えるが、主張・証明・監査が 1 つ増えるだけで、Issue が
+求める検査は safe integer である。復元できたはずの値を拒否する代償は、
+復元できない値を受け入れる代償より小さい。
+
+### 失敗時の挙動
+
+| 経路 | 結果 | DB の状態 |
+| --- | --- | --- |
+| export | `D1BackupExportError('unsupported_value')` | 文書を作らない。部分バックアップを作らない |
+| parse | `invalid_backup`（exit 2） | 1 文も届かない |
+| restore の bind | `invalid_backup`（exit 2） | 文書を作り終える前に fail-closed。1 文も発行されない |
+
+### adapter 制約（記録）
+
+損失は **SQLite ではなく JavaScript アダプタ**で起こる。SQLite 自身は
+int64 を正確に保持し（SQLite の JSON surface は 9223372036854775807 を
+正確に印字する）、アダプタだけが 2^63 として返す。この module はその値を
+「それらしい数字」として書かず、拒否する。
+
+**この module は、JS の `number` を通らない経路の代替ではない。** int64 を
+テキストとして書く Cloudflare 側の export surface（§3.2 の operator 手順）
+がこの種のデータベースに対する operator 経路である。実データ損失の発生は
+未確認であり、本 Issue は「損失が起きている証拠」ではなく「丸めた値を
+成功扱いしない契約」を作るためのものである。
 
 ## 参照
 
 - [`src/cloudflare/d1-backup.ts`](../../src/cloudflare/d1-backup.ts) —
   export / parse / restore の契約（status-only）。
+- [`src/cloudflare/d1-numeric.ts`](../../src/cloudflare/d1-numeric.ts) —
+  D1 と JavaScript の数値境界の規則（Issue #701）。
 - [`test/integration/d1-backup-restore.test.ts`](../../test/integration/d1-backup-restore.test.ts) —
-  local workerd D1 に対する 6 ケース。
+  local workerd D1 に対する 7 ケース。
+- [`test/integration/d1-backup-integer-precision.test.ts`](../../test/integration/d1-backup-integer-precision.test.ts) —
+  整数精度の fixture（Issue #701）。
 - [`scripts/make-d1-backup-restore-report.mjs`](../../scripts/make-d1-backup-restore-report.mjs) —
   検証レポートと WebP の生成元。
 - [`docs/verification/security/d1-backup-restore.webp`](../verification/security/d1-backup-restore.webp) —

@@ -12,6 +12,15 @@
  * is resolved (dependency removed, export deleted, entrypoint wired),
  * and let the diff in that PR show exactly which findings disappeared.
  *
+ * Issue #733 (V-6) adds a **ceiling**: the baseline is recorded debt,
+ * and a debt that can grow without limit is not a debt but a budget
+ * nobody decided. The baseline file carries `ceiling` (the number of
+ * findings the repository tolerates) and `ceiling_rationale` (why that
+ * number is the number). `--update` refuses to write a baseline larger
+ * than the ceiling, so growing the recorded debt is an explicit, hand
+ * edited change a reviewer can see — never a side effect of running a
+ * command.
+ *
  * Usage:
  *   node scripts/check-knip.mjs                  # diff against baseline
  *   node scripts/check-knip.mjs --update         # rewrite the baseline
@@ -24,6 +33,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { baselineDocument, baselineViolations, planBaselineUpdate } from './_knip-baseline.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -122,23 +132,36 @@ const issues = runKnip();
 const current = issues.flatMap(normalizeEntry).sort();
 const currentSet = new Set(current);
 
+/**
+ * The rationale a baseline written from scratch carries.
+ *
+ * The rationale is the human sentence attached to a policy number; it is
+ * never generated from the findings themselves, because a number that
+ * explains itself is not a decision anybody made.
+ */
 if (update) {
+	// The ceiling is read, never raised: `--update` may shrink the recorded
+	// debt, but it may not grow it. Growing it is a hand edit of
+	// `quality/knip-baseline.json` that a reviewer sees in the diff.
+	let previous = null;
+	try {
+		previous = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
+	} catch {
+		previous = null;
+	}
+	const plan = planBaselineUpdate(previous, current);
+	if (!plan.allowed) {
+		console.error(`::error::${plan.reason}`);
+		process.exit(1);
+	}
 	mkdirSync(dirname(BASELINE_PATH), { recursive: true });
 	writeFileSync(
 		BASELINE_PATH,
-		`${JSON.stringify(
-			{
-				_schema: 1,
-				// Regenerate with `pnpm run knip:update`. Do not hand-edit to
-				// silence findings: remove the underlying cause instead (Issue #531).
-				updated_with: 'scripts/check-knip.mjs --update',
-				findings: current,
-			},
-			null,
-			'\t',
-		)}\n`,
+		`${JSON.stringify(baselineDocument({ ...plan, findings: current }), null, '\t')}\n`,
 	);
-	console.log(`knip baseline updated: ${current.length} findings -> quality/knip-baseline.json`);
+	console.log(
+		`knip baseline updated: ${current.length} findings (ceiling ${plan.ceiling}) -> quality/knip-baseline.json`,
+	);
 	process.exit(0);
 }
 
@@ -147,8 +170,10 @@ if (update) {
 // legitimately carry no baseline (meaning "no debt recorded yet"), but a
 // malformed one is still an error.
 let baseline = { findings: [] };
+let baselineRead = false;
 try {
 	baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
+	baselineRead = true;
 } catch (error) {
 	const missing = error?.code === 'ENOENT';
 	if (!missing || rootIdx === -1) {
@@ -158,13 +183,26 @@ try {
 		process.exit(1);
 	}
 }
+
+// Issue #733 (V-6): a recorded debt without a ceiling is unbounded. The
+// ceiling is checked here as well as in `--update`, so a hand-edited
+// baseline that grew past it is rejected instead of accepted.
+if (baselineRead) {
+	const violations = baselineViolations(baseline);
+	if (violations.length > 0) {
+		for (const violation of violations) console.error(`::error::${violation}`);
+		process.exit(1);
+	}
+}
 const baselineSet = new Set(baseline.findings);
 
 const added = current.filter((e) => !baselineSet.has(e));
 const resolved = [...baselineSet].filter((e) => !currentSet.has(e));
 
 console.log(
-	`knip: ${current.length} findings (${baselineSet.size} baselined, ${added.length} new)`,
+	`knip: ${current.length} findings (${baselineSet.size} baselined, ${added.length} new${
+		baselineRead ? `, ceiling ${baseline.ceiling}` : ''
+	})`,
 );
 
 if (resolved.length > 0) {

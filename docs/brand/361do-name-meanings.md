@@ -117,7 +117,7 @@ Issue #521 は「不採用案を含む note」を求めている。しかし現�
 <!-- preview: held -->
 
 - 一致検証: `node --experimental-strip-types --test scripts/check-brand-name-meanings-preview-parity.test.mjs`（`pnpm run test` が `scripts/*.test.mjs` を discovery する）。
-- 撮影: `node scripts/capture-brand-name-meanings.mjs`（Storybook の story を Playwright で開き、fullPage スクリーンショットを WebP 化して `docs/verification/brand/361do-name-meanings.webp` に書く）。
+- 撮影: `node scripts/capture-brand-name-meanings.mjs`（shipped story module を Vite harness で描画し、Playwright で fullPage スクリーンショットを撮って WebP 化し、`docs/verification/brand/361do-name-meanings.webp` に書く）。
 - preview: `src/personal/brand-naming/BrandNameMeanings.stories.tsx`（story id `personal-brand-naming-brandnamemeanings--standard`）。
 - preview データ: `src/personal/brand-naming/BrandNameMeanings.preview.ts`。
 - 状態: 標準 / 空 / 狭幅 の 3 状態。Issue #380 の preview 契約が挙げる「失敗」状態は、この Note が外部依存を持たない静的な記録であるため該当しない。

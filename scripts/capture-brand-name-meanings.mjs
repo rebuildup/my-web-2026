@@ -17,14 +17,21 @@
  * The brief asks for the screenshot to come from the Storybook story,
  * and it does: the harness imports the SHIPPED story module and
  * renders that story's own `render()` output, so the capture and the
- * Storybook surface cannot drift apart. The Storybook SERVER cannot be
- * used to take it, though: `pnpm exec storybook dev` in this repository
- * merges the project's `vite.config.ts`, whose `@cloudflare/vite-plugin`
- * requires Worker secrets and refuses to start without them — the
- * same defect that makes `pnpm run build-storybook` emit a manager-only
- * build (recorded in `scripts/capture-error-state-gallery.mjs`,
- * Issue #501). The harness is the repository's established answer to
- * that defect, so this capture follows it.
+ * Storybook surface cannot drift apart.  * `pnpm run build-storybook` in this repository emits a MANAGER-ONLY
+ * static build (no `iframe.html`): the `@storybook/react-vite` builder
+ * merges the project's `vite.config.ts`, and the `@cloudflare/vite-plugin`
+ * + TanStack Start plugins in it take over the output. That defect is
+ * recorded in `scripts/capture-error-state-gallery.mjs` (Issue #501)
+ * and `scripts/capture-a11y-table-code.mjs` (Issue #407).
+ *
+ * `storybook dev` itself DOES start and DOES render the stories
+ * (measured 2026-10-31: `pnpm exec storybook dev --port 6013` serves
+ * the index and `iframe.html?id=<story id>` renders the story; the
+ * `Missing required secrets for Worker "my-web-2026"` line it prints
+ * is a warning, not a startup failure). The capture still uses a
+ * harness so that it does not depend on a long-lived dev server, so
+ * that the DOM assertions run inside the same command as the capture,
+ * and so that its result does not depend on the Storybook builder.
  *
  * Safety
  * ------

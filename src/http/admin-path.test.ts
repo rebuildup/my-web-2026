@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { isAdminPath } from './admin-path';
 
 /**
- * Admin path classification (Issue #654).
+ * Admin path classification (Issue #654, Issue #700).
  *
  * The table below is the contract. It is deliberately a table rather
  * than a handful of examples because the rule is a *parity* rule: the
  * cache policy and the anomaly monitor must classify a path exactly the
  * way TanStack Router resolves it, and every row records one resolution
  * question the router answers differently from a naive prefix match.
+ *
+ * The rule itself — how a request path is READ — is owned by
+ * `src/i18n/router-path.ts` (Issue #700) and is shared with the
+ * analytics mount gate, so the two surfaces cannot classify one request
+ * as two things. This file pins the boundary's own use of it.
  *
  * The router's matching inputs, verified at the Worker entry in
  * `test/integration/html-cache-policy.test.ts`:
@@ -70,6 +75,10 @@ describe('isAdminPath', () => {
 		// classifier must not throw on the way to that answer.
 		['/%61dmin/%ZZ', false],
 		['/%E0%A4%A/admin', false],
+		// The raw fallback keeps a LITERAL admin prefix: only the
+		// escaped one is lost, so this path is still the admin surface
+		// (the request itself is answered with a 400).
+		['/admin/%ZZ', true],
 		// Everything outside the admin namespace.
 		['/', false],
 		['/about', false],

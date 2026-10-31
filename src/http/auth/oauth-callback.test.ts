@@ -138,6 +138,25 @@ async function signedStateCookie(state: string): Promise<string> {
 }
 
 /**
+ * The `verification` identifier Better Auth stores a database-backed
+ * OAuth state under.
+ *
+ * Since 1.7.7 the identifier is namespaced (`auth-state:<state>`), and
+ * that namespace IS the fix for GHSA-965c-763c-88jm (critical) and
+ * GHSA-r4xp-prcw-77qf (high): an OAuth `state` can no longer be read
+ * as a magic-link token, because the magic-link lookup never sees the
+ * namespaced identifier. The upstream helper is
+ * `getAuthStateVerificationIdentifier()` in better-auth's `state.ts`;
+ * it is not re-exported from the package entry point, so the scheme is
+ * reproduced here. If a future Better Auth changes the scheme, the
+ * callback cases below fail with `state_mismatch` — that is the signal
+ * to update this fixture, not a regression in this Worker.
+ */
+function stateVerificationIdentifier(state: string): string {
+	return `auth-state:${state}`;
+}
+
+/**
  * Write the server-side half of the binding: the `verification` row
  * Better Auth reads the PKCE `codeVerifier` and the post-sign-in
  * `callbackURL` from.
@@ -151,7 +170,7 @@ async function seedState(seed: SeededState): Promise<void> {
 	)
 		.bind(
 			`verif-${seed.state}`,
-			seed.state,
+			stateVerificationIdentifier(seed.state),
 			JSON.stringify({
 				callbackURL: seed.callbackURL,
 				codeVerifier: 'fixture-code-verifier-not-a-real-pkce-secret',

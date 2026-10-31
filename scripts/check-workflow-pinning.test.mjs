@@ -108,12 +108,14 @@ describe('repository workflows', () => {
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
 		assert.equal(audit.summary.workflows, 5);
-		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x6)
+		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x6,
+		//           plus the Storybook axe job's checkout, setup-node, pnpm,
+		//           cache — Issue #392)
 		// + compat.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
 		// + viewport.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + projects-sync.yml (checkout, setup-node, pnpm)
-		assert.equal(audit.summary.pins, 33);
+		assert.equal(audit.summary.pins, 37);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -138,6 +140,10 @@ describe('repository workflows', () => {
 		assert.deepEqual(effective.sort(), [
 			'compat:map:contents=read',
 			'prod-smoke:map:contents=read',
+			// The Storybook axe job (Issue #392) inherits the workflow-level
+			// `contents: read`; a job with no token scope of its own is
+			// still audited.
+			'storybook-axe:map:contents=read',
 			'sync:map:contents=write,pull-requests=write',
 			'validate:map:contents=read',
 			'viewport:map:contents=read',
@@ -955,7 +961,11 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 33);
+		// 37 = the pinned `uses:` entries across the five workflows. The
+		// Storybook axe job (Issue #392) added four of them to ci.yml
+		// (checkout, setup-node, pnpm setup, cache) and reuses the same
+		// pins, so no new action entered the manifest.
+		assert.equal(parsed.summary.pins, 37);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

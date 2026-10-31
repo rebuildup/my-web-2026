@@ -1,0 +1,34 @@
+{
+	"$comment": "Recorded axe-core result (Issue #392). A story whose measurement carries a violation the ledger RECORDS: the verdict is `baseline`, which the contract accepts (a tolerated violation is not a new one). The ledger entry inside this fixture is the shape `e2e/a11y/axe-storybook-baseline.json` uses. This file is a fixture, not a shipped surface.",
+	"story": "src/home/status/tiles.stories.tsx#MixedHealth",
+	"expect": {
+		"verdict": "baseline",
+		"ruleIds": ["color-contrast"]
+	},
+	"baseline": [
+		{
+			"story": "src/home/status/tiles.stories.tsx#MixedHealth",
+			"ruleId": "color-contrast",
+			"nodes": ["#storybook-root > ul > li > span"],
+			"reason": "The `muted` text token on the `subtle` surface measures below the 4.5:1 AA threshold (WCAG 2.2 SC 1.4.3). Changing the token is a design decision that belongs to the `editorial` obligation, not to this audit.",
+			"recordedAt": "2026-10-23"
+		}
+	],
+	"axe": {
+		"violations": [
+			{
+				"ruleId": "color-contrast",
+				"impact": "serious",
+				"help": "Elements must meet minimum color contrast ratio thresholds",
+				"tags": ["cat.color", "wcag2aa", "wcag143"],
+				"nodes": [
+					{
+						"target": "#storybook-root > ul > li > span",
+						"html": "<span class=\"muted\">2 days ago</span>",
+						"summary": "Fix any of the following: Element has insufficient color contrast of 4.34:1 (foreground color is #77776a, background color is #f3f1e8, expected contrast ratio is 4.5:1)."
+					}
+				]
+			}
+		]
+	}
+}

@@ -421,10 +421,21 @@ gates them.
 
 ```bash
 pnpm run tools:artifact:check                     # the gate (validate:fast, and the build)
+pnpm run tools:artifact:check:observed            # the same gate, but the artefact must exist (validate:integration)
 pnpm run tools:artifact:update                    # regenerate the reviewed record, then re-run
 node scripts/check-tool-artifact-inventory.mjs --report=markdown
 node scripts/check-tool-artifact-inventory.mjs --report=html --report-out=.tmp/tool-artifact-inventory.html
 ```
+
+The two check scripts differ in one thing. `tools:artifact:check` runs
+in `validate:fast`, which is offline and read-only: it can read the
+reviewed record, but it cannot see the bytes a build would serve, so
+the outbound-host rule is **unobserved** rather than satisfied.
+`tools:artifact:check:observed` runs in `validate:integration`, after
+`build:production`, and treats the observation itself as a
+precondition: a shipped Tool whose artefact was never produced is
+`ARTEFACT_NOT_OBSERVED`, not a pass. "Unobserved" is not "observed
+and clean" (Issue #733, V-2).
 
 What it proves, per Tool:
 

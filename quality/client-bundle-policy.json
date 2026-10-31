@@ -1,0 +1,16 @@
+{
+	"schema_version": 1,
+	"issue": 724,
+	"purpose": "Server-only code must not reach the browser bundle. `scripts/check-client-bundle-server-only.mjs` reads this file and fails the build when a listed package or source path appears in any chunk the client build emitted.",
+	"server_only_packages": [
+		"better-auth",
+		"@better-auth/api-key",
+		"@better-auth/core",
+		"@better-auth/kysely-adapter",
+		"@better-auth/telemetry",
+		"better-call",
+		"kysely",
+		"drizzle-orm"
+	],
+	"server_only_module_prefixes": ["src/cloudflare/auth/"]
+}

@@ -182,7 +182,7 @@
 				"id": "/design-system",
 				"path": "/design-system",
 				"classification": "public",
-				"sitemap": false,
+				"sitemap": true,
 				"dynamic": null,
 				"files": [
 					"src/routes/design-system.tsx"
@@ -190,7 +190,7 @@
 				"urls": [
 					"/design-system"
 				],
-				"reason": "Publicly reachable showcase, but it is intentionally outside the editorial IA (SUPPRESS_BREADCRUMB_LEAF_IDS), so it is not a sitemap target."
+				"reason": "Public, canonical, nav-linked showcase — it satisfies the same membership rule the sitemap generator applies, so it is a sitemap target."
 			},
 			{
 				"id": "/keyboard",
@@ -271,7 +271,7 @@
 				"id": "/tools/$slug",
 				"path": null,
 				"classification": "public",
-				"sitemap": true,
+				"sitemap": false,
 				"dynamic": "integrated-tools",
 				"files": [
 					"src/routes/tools.$slug.tsx"
@@ -280,13 +280,14 @@
 					"/tools/prototype",
 					"/tools/readmark"
 				],
-				"reason": "Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind."
+				"reason": "Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind, but the shell declares `robots: noindex` in its own head, so it is not a sitemap target."
 			}
 		],
 		"sitemap": [
 			"/",
 			"/about",
 			"/contact",
+			"/design-system",
 			"/portfolio",
 			"/portfolio/aulymo",
 			"/portfolio/multi-slicer",
@@ -294,9 +295,7 @@
 			"/portfolio/project-init",
 			"/portfolio/sciencearts-optim-internship-2026",
 			"/portfolio/tastile",
-			"/tools",
-			"/tools/prototype",
-			"/tools/readmark"
+			"/tools"
 		],
 		"publicUrls": [
 			"/",

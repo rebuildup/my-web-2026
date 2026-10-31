@@ -260,7 +260,18 @@ for (const tool of targetTools) {
 		continue;
 	}
 	const inventoryFindings = evaluateToolForBuild({ root, tool, record }).findings;
-	const blocking = inventoryFindings.filter((item) => item.severity === 'error');
+	// Issue #733 (V-2): the outbound rule is judged against the COLLECTED
+	// artefact, and this step runs before the Tool is built — there is no
+	// fresh artefact to judge yet (a stale one from an earlier build may
+	// still be on disk, and it must not decide this build). So an outbound
+	// finding cannot block here. It blocks in the gate that runs against
+	// the bytes that would be served —
+	// `pnpm run tools:artifact:check --require-observed` in the
+	// integration gate — where the remedy (regenerate the record, review
+	// the diff) is available.
+	const blocking = inventoryFindings.filter(
+		(item) => item.severity === 'error' && !OUTBOUND_FINDING_CODES.has(item.code),
+	);
 	for (const item of inventoryFindings) {
 		if (OUTBOUND_FINDING_CODES.has(item.code)) continue;
 		console.error(`[build-tools]   [${item.severity}] ${item.code}: ${item.message}`);

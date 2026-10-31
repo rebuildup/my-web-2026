@@ -4,10 +4,12 @@ import {
 	REDACTED_BLOB,
 	REDACTED_CORRELATION,
 	REDACTED_EMAIL,
+	REDACTED_ERROR_NAME,
 	REDACTED_TOKEN,
 	isSensitiveKey,
 	redactCorrelationId,
 	redactEmailAddress,
+	redactErrorName,
 	redactLogError,
 	redactLogText,
 	redactLogValue,
@@ -186,6 +188,65 @@ describe('redactLogError', () => {
 			name: 'NonError',
 			message: `Bearer ${REDACTED_TOKEN}`,
 		});
+	});
+});
+
+describe('redactErrorName — an attacker-controllable name', () => {
+	// `Error.prototype.name` is an ordinary writable string property,
+	// so `err.name = 'Bearer …'` is a one-line leak into an
+	// operator-visible record. The name must never be trusted.
+	it('masks a name that carries a credential', () => {
+		const error = new Error('boom');
+		error.name = 'Bearer mk_canary_secret_0000';
+		const out = redactLogError(error);
+		expect(out.name).toBe(REDACTED_ERROR_NAME);
+		expect(out.name).not.toContain('mk_canary_secret_0000');
+	});
+
+	it.each([
+		['an api key prefix', 'sk_live_canary_00000000'],
+		['an opaque blob', 'K7xQm2Zr9Tp4Lv6Nc8Bd1Ws5Yh0Ju3Ee'],
+		['an email address', 'canary.person@example.invalid'],
+		['a query secret', 'token=canary-token-abcdef123456'],
+	])('masks a name carrying %s', (_label, name) => {
+		expect(redactErrorName(name)).toBe(REDACTED_ERROR_NAME);
+	});
+
+	it('masks a name that is not a plain identifier', () => {
+		expect(redactErrorName('upstream failed (status=502)')).toBe(REDACTED_ERROR_NAME);
+		expect(redactErrorName('')).toBe(REDACTED_ERROR_NAME);
+		expect(redactErrorName(undefined)).toBe(REDACTED_ERROR_NAME);
+		expect(redactErrorName(42)).toBe(REDACTED_ERROR_NAME);
+	});
+
+	it('keeps an allowlisted standard name', () => {
+		expect(redactErrorName('Error')).toBe('Error');
+		expect(redactErrorName('TypeError')).toBe('TypeError');
+	});
+
+	it('keeps an identifier-shaped custom error name', () => {
+		class BoundaryInputError extends Error {
+			constructor(message: string) {
+				super(message);
+				this.name = 'BoundaryInputError';
+			}
+		}
+		expect(redactErrorName('BoundaryInputError')).toBe('BoundaryInputError');
+		expect(redactLogError(new BoundaryInputError('bad input')).name).toBe('BoundaryInputError');
+	});
+
+	it('masks a hostile class-instance name', () => {
+		class Holder {}
+		const hostile: Record<string, unknown> = Object.create(Holder.prototype);
+		Object.defineProperty(hostile, 'constructor', {
+			value: { name: 'Bearer mk_canary_secret_0000' },
+			enumerable: true,
+			writable: true,
+			configurable: true,
+		});
+		const out = redactLogValue(hostile);
+		expect(String(out)).not.toContain('mk_canary_secret_0000');
+		expect(out).toBe(`[${REDACTED_ERROR_NAME}]`);
 	});
 });
 

@@ -63,28 +63,13 @@ export function parseArgs(argv) {
 	return out;
 }
 
-/** Relative luminance of an `rgb(r, g, b)` string. */
-export function relativeLuminance(color) {
-	const match = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(color ?? '');
-	if (!match) return null;
-	const channel = (raw) => {
-		const s = Number(raw) / 255;
-		return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-	};
-	return 0.2126 * channel(match[1]) + 0.7152 * channel(match[2]) + 0.0722 * channel(match[3]);
-}
-
-/** WCAG contrast ratio between two `rgb()` strings (null when unparsable). */
-export function contrastRatio(foreground, background) {
-	const a = relativeLuminance(foreground);
-	const b = relativeLuminance(background);
-	if (a === null || b === null) return null;
-	return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
-}
-
 /**
  * The in-page collector. It runs inside the browser and returns plain data,
  * so the report is reproducible and diffable.
+ *
+ * `page.evaluate` serialises this function into the page, so it cannot
+ * close over module scope: the luminance and contrast maths it needs is
+ * repeated inside it (`contrastRatioLocal` below) rather than imported.
  */
 const COLLECTOR = () => {
 	const visible = (el) => {
@@ -218,6 +203,14 @@ const COLLECTOR = () => {
 		if (!el) return null;
 		return contrastRatioLocal(style(el).color, canvas);
 	};
+	/**
+	 * WCAG contrast ratio between two `rgb()` strings.
+	 *
+	 * The same maths as `scripts/check-a11y-contrast.mjs` uses for the
+	 * contrast gate. It is repeated here rather than imported because
+	 * this function is serialised into the page by `page.evaluate` and
+	 * therefore has no access to the module scope.
+	 */
 	function contrastRatioLocal(fg, bg) {
 		const lum = (color) => {
 			const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(color ?? '');

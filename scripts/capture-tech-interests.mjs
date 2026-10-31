@@ -120,7 +120,7 @@ export const SCREENSHOT_BUDGET_BYTES = 300 * 1024;
  * raised to fit a bigger picture. The artefact is encoded narrower
  * instead: the same page, downsampled, stays inside the budget.
  */
-export const ARTEFACT_WIDTH = 860;
+export const ARTEFACT_WIDTH = 840;
 
 /** The device pixel ratio of the capture (the artefact is downsampled). */
 export const SCREENSHOT_DEVICE_SCALE_FACTOR = 1;

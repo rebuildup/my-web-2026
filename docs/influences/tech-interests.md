@@ -36,6 +36,7 @@ AI・OS・言語・フレームワーク・ライブラリに対する技術関�
 - 試した: 触れて評価したが、出荷済み作品にも現在のツールチェーンにも使っていない。評価記録だけが残っているものもこの状態に入る。
 - 好き / 関心: 関心はあるが、利用の記録がこのリポジトリ内に存在しない。
 - 4 状態は排他で、同じ対象が 2 つの状態に同時に現れることはない。根拠が複数あるときは、より強い関係（現在使用 > 制作で使った > 試した > 好き / 関心）を採る。
+- 現在使用は「記録が存在する」ことだけでは成立しない。採用記録（adoption）や実 $HOME への配置のような肯定的な記録で支えられるときだけ成立する。存在記録しかない対象は、より弱い状態に置く。
 
 状態の主観性と owner の権限については [`docs/personal/knowledge-model.md`](../personal/knowledge-model.md) が正本である。この inventory は「assert / close subjective state は proposal only」という規則の下で、**観察と記録**だけを行う。owner が明示していない好みを、記録の側に増やすことはしない。
 
@@ -155,15 +156,7 @@ AI・OS・言語・フレームワーク・ライブラリに対する技術関�
 - 分類: OS
 - 観測日: 2026-10-20
 - 根拠: `src/keyboard/sources/manifest.json`
-- 備考: keyboard 設定と agent 設定の両方で macOS 用の経路が採用されている。
-
-### `Windows`
-
-- 状態: 現在使用
-- 分類: OS
-- 観測日: 2026-10-20
-- 根拠: `src/projects/snapshots/dotfiles.json`
-- 備考: agent launcher に Windows 用の entry script がある。
+- 備考: keyboard manifest の adoption 記録が mac-kanata（role: pc-setup-adopted）を採用 ref として宣言している。構成が存在するのではなく、採用が記録されている。
 
 ### `Kanata`
 
@@ -298,6 +291,14 @@ AI・OS・言語・フレームワーク・ライブラリに対する技術関�
 - 根拠: `src/keyboard/sources/manifest.json`
 - 備考: 取得・解析して snapshot に取り込んだ Windows 側の設定。採用 ref として選ばれているのは macOS 側だけで、installer が更新されるまで自動追随しない。
 
+### `Windows`
+
+- 状態: 試した
+- 分類: OS
+- 観測日: 2026-10-20
+- 根拠: `src/projects/snapshots/dotfiles.json`
+- 備考: agent launcher に Windows 用の PowerShell entry script がある。対応のための記録であって、いま Windows を開発環境として使っている記録ではない。keyboard manifest の採用 ref も macOS 側だけ。
+
 ### `OpenRouter / DeepSeek / MiniMax / OpenCode Zen`
 
 - 状態: 試した
@@ -390,5 +391,6 @@ AI・OS・言語・フレームワーク・ライブラリに対する技術関�
 - my-web-2025 時代に別の styling を使っていた時期があったかどうか。
 - Cursor の現在の使用状況。記録に名前がないことは「使っていない」ことの証拠ではない。
 - 各 AI モデルの最新版番号。観測日ごとに記録する対象であり、agent は最新と主張しない。
+- Windows をいま手元の開発環境として使っているか。dotfiles に Windows 用の entry script があることは対応の記録にすぎず、採用の記録ではない。
 
 これらは未確認のまま残す。埋められるのは owner が結果を書いてからであり、agent が推測で埋めることではない。

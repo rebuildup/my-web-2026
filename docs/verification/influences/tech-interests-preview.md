@@ -12,18 +12,18 @@
 | 描画対象 | `src/personal/tech-interests/TechInterests.stories.tsx` の `Default` story（story 自身の `render:` が返すツリーをそのまま描画） |
 | capture 手段 | `node scripts/capture-tech-interests.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
-| viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影。描画後のページ高は 12245 CSS px） |
-| 生成物サイズ | 860 x 7313 px、**290 kB** WebP（quality 80、budget 300 kB） |
+| viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影。描画後のページ高は 12260 CSS px） |
+| 生成物サイズ | 840 x 7152 px、**286 kB** WebP（quality 80、budget 300 kB） |
 | 画的範囲 | **ページ全体**（切り抜きはしていない。§3 の gate は DOM 全体を見るので、画像の画素数と検証範囲は一致しない） |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 
-### なぜ 860 px 幅なのか（budget に対して）
+### なぜ 840 px 幅なのか（budget に対して）
 
-1440 px の viewport でページ全体を描いて 1440 px 幅のまま WebP 化すると **budget を超える**（実測 900 px 幅で 312 kB、budget 300 kB）。budget は上げない。
+1440 px の viewport でページ全体を描いて 1440 px 幅のまま WebP 化すると **budget を超える**（実測 1440 px 幅で 671 kB、900 px 幅で 321 kB、budget 300 kB）。budget は上げない。
 
 - viewport を狭めても解決しない。content span は `Container`（`maxWidth: 1024px`）で上限を持つため、viewport を狭めても本文の幅は 1024 px のままで、**文書は長くなる**。WebP の size は本文の画素数でほぼ決まるので、狭い viewport は容量の節約にならない。
-- そこで **画像の画素数を絞る** 方を選んだ。1440 px viewport で描いた full-page PNG を 860 px 幅へ downsample して符号化すると、**画面の全体**が 290 kB に収まる（本文の 16 px は約 9.5 px になる。viewer で拡大すれば読める）。
+- そこで **画像の画素数を絞る** 方を選んだ。1440 px viewport で描いた full-page PNG を 840 px 幅へ downsample して符号化すると、**画面の全体**が 286 kB に収まる（本文の 16 px は約 9.3 px になる。viewer で拡大すれば読める）。
 
 つまり「画面を一部だけ撮る」のではなく「**画面全体を、budget に収まる倍率で**撮る」選択である。assertion（§3）は画像の画素数に依らず DOM 全体を見るので、文書の途中が欠けていても capture は落ちる。
 
@@ -45,14 +45,16 @@ capture は長-lived な dev server に依存しないため `.tmp/` に Vite ha
 
 1. **document title** — `技術関心 inventory`。
 2. **状態の定義** — 4 状態の凡例（`現在使用` / `制作で使った` / `試した` / `好き / 関心`）。
-3. **現在の推奨（20 件）** — `CURRENT_RECOMMENDATIONS` から導出した一覧。
+3. **現在の推奨（19 件）** — `CURRENT_RECOMMENDATIONS` から導出した一覧。
 4. **10 個の section** — 見出しは `TECH_INTEREST_SECTIONS[].heading` と一致する（§3 の gate が集合と順序を固定する）。
 5. **各 section の summary** — 記録の `##` 直後の段落。
 6. **各 section の point** — 記録の箇条書きそのもの。
 7. **35 件の entry card（section 側）** — 名前、状態ラベル、カテゴリラベル、観測日、根拠、備考。
 8. **保留（置き換わった観察 2 件）** — `SUPERSEDED_OBSERVATIONS` と、それを置き換えた観察。
 
-`現在使用` の 20 件は §3 の `現在の推奨` 一覧にも同じ形で並ぶため、画面に現れる entry card は section 側 35 件 + current 側 20 件 + held 側 2 件 = 57 枚になる。これは重複であって欠落ではない（現在の推奨は「置き換わっていない `現在使用` の観察」というデータから導出された別の一覧である）。
+`現在使用` の 19 件は §3 の `現在の推奨` 一覧にも同じ形で並ぶため、画面に現れる entry card は section 側 35 件 + current 側 19 件 + held 側 2 件 = 56 枚になる。これは重複であって欠落ではない（現在の推奨は「置き換わっていない `現在使用` の観察」というデータから導出された別の一覧である）。
+
+この artefact は `Windows` の状態を `現在使用` から `試した` に直したあとの preview を撮ったものである（対応の記録と採用の記録の区別は `docs/influences/tech-interests.md` §2 / §5 / §10）。
 
 ## 3. 機械で検証した項目
 
@@ -66,7 +68,7 @@ capture は長-lived な dev server に依存しないため `.tmp/` に Vite ha
 | section point | 各 section の `<li>` に preview データの `points` がすべて含まれる |
 | entry | 各 section の entry が `name` / 状態ラベル `INTEREST_STATE_LABELS[state]` / カテゴリラベル `INTEREST_CATEGORY_LABELS[category]` / 観測日 `observedOn` を描画している |
 | entry の過不足 | section に preview データにない entry が混ざっていない |
-| 現在の推奨 | 見出しが `現在の推奨（20 件）`、render された entry 数が `CURRENT_RECOMMENDATIONS.length` と一致、各 entry の名前・状態ラベル・観測日が一致 |
+| 現在の推奨 | 見出しが `現在の推奨（19 件）`、render された entry 数が `CURRENT_RECOMMENDATIONS.length` と一致、各 entry の名前・状態ラベル・観測日が一致 |
 | 保留 | 見出しが `保留（置き換わった観察 2 件）`、render された entry 数が `SUPERSEDED_OBSERVATIONS.length` と一致、各 entry の名前・観測日が一致 |
 | 置き換わった観察の隔離 | 保留の entry が `現在の推奨` 側に現れない（`Wrangler` / `@cloudflare/vite-plugin 1.x` が current に出ない） |
 | inventory 全体 | `TECH_INTEREST_ENTRIES` の全 35 件が、いずれかの section に名前・状態ラベル・観測日つきで render されている |
@@ -99,8 +101,8 @@ capture script は `package.json` に登録していない（並列 PR の confl
 - 記録の**文言**が正しいか、状態の判定が妥当か（機械的には「preview データがそのまま描画されている」ことしか確認していない）。
 - 10 個の section の並びが**読み順**として自然か。
 - 4 状態の定義が、実際の関心と合っているか。
-- `現在の推奨` に含まれる 20 件が、記録上の「いま使っている」と称してよいか。
-- artifact の 860 px 幅の縮小が、レビュー時に読みやすさとして妥当か。
+- `現在の推奨` に含まれる 19 件が、記録上の「いま使っている」と称してよいか。
+- artifact の 840 px 幅の縮小が、レビュー時に読みやすさとして妥当か。
 
 ## 7. 残存の未決事項
 

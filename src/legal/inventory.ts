@@ -67,6 +67,20 @@ export interface AssetInventoryReadResult {
 	readonly ok: boolean;
 }
 
+/**
+ * Options the reader accepts.
+ *
+ * `today` is "what day is it" for the record's own `reviewedAt` check.
+ * It is an option rather than a hidden `new Date()` so the check is
+ * deterministic: a test can say "today is 2026-10-31" and assert the
+ * verdict, instead of a verdict that quietly changes when the calendar
+ * does.
+ */
+export interface AssetInventoryReadOptions {
+	/** `YYYY-MM-DD`. Defaults to the current UTC calendar day. */
+	readonly today?: string;
+}
+
 function shapeFinding(subject: string, message: string, remedy: string): AssetReviewFinding {
 	return { code: 'J004', severity: 'error', subject, message, remedy };
 }
@@ -89,6 +103,34 @@ function isoDayOrNull(value: unknown): value is string | null {
 	if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
 	const parsed = Date.parse(`${value}T00:00:00.000Z`);
 	return Number.isFinite(parsed) && new Date(parsed).toISOString().startsWith(value);
+}
+
+/** A `YYYY-MM-DD` string that is a real calendar day. */
+function isIsoDay(value: string): boolean {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+	const parsed = Date.parse(`${value}T00:00:00.000Z`);
+	return Number.isFinite(parsed) && new Date(parsed).toISOString().startsWith(value);
+}
+
+/** The current UTC calendar day, as `YYYY-MM-DD`. */
+function currentUtcDay(): string {
+	return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * The day the reader judges "is this in the future?" against.
+ *
+ * A caller-supplied `today` that is not a calendar day is a programming
+ * error, not a record error, so it throws instead of quietly falling
+ * back to the real clock — a fallback would make the verdict depend on
+ * the machine rather than on the input.
+ */
+function resolveToday(options: AssetInventoryReadOptions | undefined): string {
+	if (options?.today === undefined) return currentUtcDay();
+	if (!isIsoDay(options.today)) {
+		throw new RangeError(`today must be YYYY-MM-DD, received "${options.today}"`);
+	}
+	return options.today;
 }
 
 function stringArray(value: unknown): value is string[] {
@@ -284,7 +326,10 @@ function readRecord(
  * Shape problems are findings rather than a thrown error so the review
  * screen can render what is broken instead of failing to mount.
  */
-export function parseAssetInventoryValue(value: unknown): AssetInventoryReadResult {
+export function parseAssetInventoryValue(
+	value: unknown,
+	options?: AssetInventoryReadOptions,
+): AssetInventoryReadResult {
 	if (!isPlainObject(value)) {
 		return {
 			schema: null,
@@ -332,6 +377,32 @@ export function parseAssetInventoryValue(value: unknown): AssetInventoryReadResu
 		return { schema, records: [], findings, ok: false };
 	}
 
+	// The record's own review date (Issue #728). `reviewedAt` is a claim
+	// about the PAST — "the owner read this on that day". A date in the
+	// future is a claim that cannot be true, so the record is refused
+	// rather than read. Without this check the sibling ledger
+	// (`quality/stale-content-review.json`, whose reader already refuses
+	// a future review date) and this one disagreed about the same
+	// question.
+	const today = resolveToday(options);
+	if (typeof value.reviewedAt !== 'string' || !isIsoDay(value.reviewedAt)) {
+		findings.push(
+			shapeFinding(
+				'quality/asset-license-inventory.json#reviewedAt',
+				`reviewedAt "${String(value.reviewedAt)}" は YYYY-MM-DD の日付ではありません。`,
+				'レビューした日を YYYY-MM-DD で記録する。',
+			),
+		);
+	} else if (value.reviewedAt > today) {
+		findings.push({
+			code: 'J006',
+			severity: 'error',
+			subject: 'quality/asset-license-inventory.json#reviewedAt',
+			message: `reviewedAt "${value.reviewedAt}" は今日 (${today}) より未来です。`,
+			remedy: '実際にレビューした日を記録する。未来の日付は「読んだ日」を表せません。',
+		});
+	}
+
 	const records: AssetLicenseRecord[] = [];
 	(value.assets as unknown[]).forEach((asset, index) => {
 		const { record, problems } = readRecord(asset, index);
@@ -354,7 +425,10 @@ export function parseAssetInventoryValue(value: unknown): AssetInventoryReadResu
 }
 
 /** Validate the record file's text (the gate's entry point). */
-export function parseAssetInventory(text: string): AssetInventoryReadResult {
+export function parseAssetInventory(
+	text: string,
+	options?: AssetInventoryReadOptions,
+): AssetInventoryReadResult {
 	let value: unknown;
 	try {
 		value = JSON.parse(text);
@@ -374,7 +448,7 @@ export function parseAssetInventory(text: string): AssetInventoryReadResult {
 			ok: false,
 		};
 	}
-	return parseAssetInventoryValue(value);
+	return parseAssetInventoryValue(value, options);
 }
 
 /**

@@ -119,6 +119,10 @@ const EXPECTED_FAST_PLAN = [
 	// review-pending finding is read next to the other copy findings.
 	'pnpm run copy:stale:check',
 	'pnpm run publication:check',
+	// Issue #734: the sitemap-membership cross-check runs right after the
+	// publication ledger it compares against the sitemap generator, so a
+	// disagreement is read next to the ledger finding it belongs to.
+	'pnpm run sitemap:ledger:check',
 	'pnpm run content:links:check',
 	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',

@@ -192,6 +192,15 @@ gates:
       # surface the repository actually ships; a publicly reachable URL
       # may not disappear without a recorded transition.
       - 'pnpm run publication:check'
+      # Issue #734: the publication ledger and the sitemap generator
+      # answer the same question — "which paths belong in the sitemap?"
+      # — independently, and nothing compared them. They drifted
+      # (`/design-system` was excluded by the ledger while the
+      # generator listed it; `/tools/<slug>` was advertised by the
+      # ledger while the generator excluded it) with every gate green.
+      # The generator emits the document, so it is the authority; this
+      # gate fails when the ledger disagrees with it.
+      - 'pnpm run sitemap:ledger:check'
       # Issue #434: pre-publication link and image gate. Internal 404,
       # unsafe schemes and missing image alt stop the release; external
       # links are not dereferenced in CI, and their live failures are
@@ -480,6 +489,14 @@ gates:
       # + `build:cf:verify` (Build Output completeness: Worker bundle +
       # Tool artifacts + mode).
       - 'pnpm run build:production'
+      # Issue #733 (V-2): the Tool artefact inventory is judged against the
+      # bytes that would be served, so it runs against the build that
+      # produced them. `--require-observed` makes the observation itself a
+      # precondition: a build that never produced the artefact leaves the
+      # outbound rule unobserved, and "unobserved" is not "observed and
+      # clean". The fast gate still runs the same check in its tolerant
+      # form, because the fast gate is offline and read-only by contract.
+      - 'pnpm run tools:artifact:check:observed'
       # Issue #475: a credential can reach the deploy artifact through
       # build-time inlining even when no source file matches, so the freshly
       # built bundle is a second scan surface.
@@ -726,6 +743,51 @@ personal_data_review:
     - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'
     - 'the corpus is synthetic; real Miro / legacy-site / Notion imports arrive through the same shape but are not committed here (docs/personal/knowledge-model.md: no private data in the public repository)'
     - 'the corpus may hold synthetic fixtures only, so E005 has no sanctioned way to pass for a real published contact value: the only coverage is an owner-approved corpus record, and the corpus may not carry private data. The site publishes no e-mail today, so nothing is broken; the tension is an owner decision'
+
+# Issue #734 — the publication ledger and the sitemap generator both
+# answer "which paths belong in the sitemap?", and they are two
+# INDEPENDENT declarations. Independent declarations are only worth
+# something if they are compared: before this gate nothing compared
+# them, so they drifted apart while every other gate stayed green.
+#
+# The generator (`src/http/seo/sitemap.ts`) emits the document a crawler
+# receives and states its own membership rule, so it is the AUTHORITY.
+# The ledger (`scripts/publication-surface.mjs`) is the independent
+# classification that has to agree with it. This gate is the comparison.
+sitemap_ledger_agreement:
+  ledger: 'scripts/publication-surface.mjs (SURFACE_DECLARATIONS[].sitemap)'
+  generator: 'src/http/seo/sitemap.ts (SITEMAP_ENTRIES / SITEMAP_EXCLUSIONS / SITEMAP_DYNAMIC_ROUTES)'
+  command: 'pnpm run sitemap:ledger:check'
+  tests: 'node --test scripts/check-sitemap-ledger-agreement.test.mjs'
+  gate: fast
+  gate_placement: >-
+    gates.fast, after `pnpm run publication:check` and before `pnpm run
+    content:links:check` (the neighbouring steps are named rather than an
+    absolute index, so inserting another gate does not invalidate this
+    note).
+  documentation: 'docs/verification/content/publication-surface.md'
+  authority: >-
+    the generator owns the document; the ledger must agree with it. The
+    gate never rewrites either side — a disagreement is a review item,
+    because deciding which surface belongs in the sitemap is a
+    publication decision.
+  rules:
+    - 'a path the ledger marks `sitemap: true` must be listed by the generator'
+    - 'a path the ledger marks `sitemap: false` must NOT be listed by the generator, and must carry an explicit generator exclusion — a surface kept out "for no recorded reason" is how the two declarations drifted apart'
+    - 'every path the generator lists must be claimed `sitemap: true` by the ledger'
+    - 'a route family the ledger marks `sitemap: true` must be emitted by the generator as a dynamic route'
+    - 'a route family the ledger marks `sitemap: false` must be an explicit generator exclusion'
+    - 'every dynamic route the generator emits must be claimed by the ledger'
+  false_pass_guards:
+    - 'the comparison is pure and takes both declarations as arguments, so a test can feed it a disagreement without touching the repository'
+    - 'the negative controls re-create the two shapes this Issue closed (a ledger entry flipped to `sitemap: false` for a listed path, and to `sitemap: true` for an excluded route family) and require a violation'
+    - 'a runner-level negative control writes a mutated ledger module and requires the CLI to exit 1 with the disagreement named — a gate that computes a violation nobody reads proves nothing'
+    - 'the root shell (`/__root__`) owns no URL and is exempt; the comparison normalises a trailing slash so `/admin/` and `/admin` are one route'
+    - 'an exclusion with `kind: prefix` covers the route and everything below it, so the whole `/admin` family is compared by one recorded exclusion'
+    - 'an unknown CLI option exits 2 (input error), never 0'
+  known_limits:
+    - 'the comparison is between two in-process declarations; it does not fetch `/sitemap.xml` and does not prove what the deployed Worker serves'
+    - 'the generator is a pure module (no binding, no network), which is what makes this gate offline and credential-free — but it also means a runtime route change that the generator does not model would not be caught here'
 
 # Issue #492 — the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two

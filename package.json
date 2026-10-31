@@ -216,6 +216,8 @@
 		"capture:a11y-heading-landmarks": "node scripts/capture-a11y-heading-landmarks.mjs",
 		"capture:a11y:table-code": "node scripts/capture-a11y-table-code.mjs",
 		"a11y:contrast:check": "node --experimental-strip-types scripts/check-a11y-contrast.mjs",
+		"a11y:dialog-focus:check": "node scripts/check-a11y-dialog-focus.mjs",
+		"capture:a11y-dialog-focus": "node scripts/capture-a11y-dialog-focus.mjs",
 		"a11y:screenreader-steps:check": "node scripts/check-a11y-screenreader-steps.mjs",
 		"capture:a11y-screenreader-steps": "node scripts/capture-a11y-screenreader-steps.mjs",
 		"a11y:live-region:check": "node scripts/check-a11y-live-region.mjs",

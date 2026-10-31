@@ -383,6 +383,19 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #406: the modal / menu focus contract. The shipped picker is a
+      # native <dialog>; the gate reads the source and fails a <dialog> that
+      # is opened with the `open` attribute (no user-agent focus trap and no
+      # focus return), a <dialog> whose Escape close path is suppressed
+      # (a cancel / Escape handler calling `preventDefault()` without
+      # `dialog.close()`, so the native default close no longer applies),
+      # a custom `role="dialog"` with no focus-return contract, and a
+      # disclosure menu that closes on Escape without handing the focus back
+      # to its trigger.
+      # The focus trap and the focus return are the user agent's when
+      # `showModal()` is used. Offline, status-only. The browser half of the
+      # same evidence is `pnpm run capture:a11y-dialog-focus`.
+      - 'pnpm run a11y:dialog-focus:check' # modal / menu focus contract (Issue #406)
       # Issue #402: the screen-reader procedure ledger. The gate reads
       # `quality/screenreader-steps.json` and decides only whether the
       # RECORD of the manual review is intact: that every step names the

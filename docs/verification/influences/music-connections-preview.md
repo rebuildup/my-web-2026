@@ -19,7 +19,7 @@
 
 ### なぜ `storybook dev` ではなく harness なのか
 
-`storybook dev` はこのリポジトリの story を配信できない。`.storybook/main.ts` はプロジェクトの `vite.config.ts` を merge し、その中の `@cloudflare/vite-plugin` が dev server を接管してから Worker の runtime secret を要求して起動に失敗する（実測: `Missing required secrets for Worker "my-web-2026"`）。同じ理由を `scripts/capture-error-state-gallery.mjs`（#501）と `scripts/capture-audience-purpose-matrix.mjs`（#516）が記録している。
+`storybook dev` はこのリポジトリの story を配信できない。`.storybook/main.ts` はプロジェクトの `vite.config.ts` を merge し、その中の `@cloudflare/vite-plugin` が dev server を接管してから Worker の runtime secret を要求して起動に失敗する（実測: `Missing required secrets for Worker "my-web-2026"`）。同じ理由を `scripts/capture-error-state-gallery.mjs`（#501）と `scripts/capture-a11y-table-code.mjs`（#407）が記録している。
 
 そのため capture は `.tmp/` に Vite harness を生成し、**shipped story module を直接 import** して、story 自身の `render()` が出力するものをレンダリングする。harness が描くものは「Copied した preview」ではなく「shipping されている preview そのもの」なので、capture と Storybook surface は乖離しない。
 

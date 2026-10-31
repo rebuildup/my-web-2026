@@ -771,7 +771,7 @@
 			"id": "personal",
 			"root": "src/personal",
 			"min_files": 1,
-			"role": "Personal editorial policy previews: the audience-purpose matrix data and its Storybook story (Issue #516). Nothing here ships to a browser, but the files are scanned like every other `src/**` file so a preview that grows a browser-feature adoption is caught here rather than at review"
+			"role": "Personal editorial policy previews: the repository-internal preview modules that render an editorial decision for review. Nothing here ships to a browser, but the files are scanned like every other `src/**` file so a preview that grows a browser-feature adoption is caught here rather than at review"
 		},
 		{
 			"id": "app-shell",

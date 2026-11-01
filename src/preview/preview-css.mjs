@@ -237,8 +237,7 @@ const STRUCTURE = {
 export function parsePreview(search) {
 	const params = new URLSearchParams(search ?? '');
 	const rawDir = (params.get('direction') ?? '').toLowerCase();
-	const direction =
-		rawDir === 'b' ? 'b' : rawDir === 'c' ? 'c' : rawDir === 'a' ? 'a' : 'a';
+	const direction = rawDir === 'b' ? 'b' : rawDir === 'c' ? 'c' : rawDir === 'a' ? 'a' : 'a';
 	const theme = (params.get('theme') ?? '').toLowerCase() === 'light' ? 'light' : 'dark';
 	// `?direction=` present at all turns the preview on; without it the page
 	// renders exactly as released, so the owner can compare against reality.

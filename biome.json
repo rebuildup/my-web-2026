@@ -20,7 +20,8 @@
 			"src/routeTree.gen.ts",
 			"external",
 			"docs/verification/content",
-			"src/keyboard/sources"
+			"src/keyboard/sources",
+			"public/preview-assets"
 		]
 	},
 	"formatter": {

@@ -205,6 +205,29 @@ function ComparePage() {
 	);
 }
 
+/**
+ * A specimen is a page body, not a page: the app's consent notice is chrome and
+ * would otherwise render six times, each pinned to its own iframe's bottom —
+ * i.e. floating in the middle of the board. Same-origin iframes, so the node is
+ * removed from the child document and re-removed if React renders it again.
+ */
+function stripConsent(event: React.SyntheticEvent<HTMLIFrameElement>): void {
+	const doc = event.currentTarget.contentDocument;
+	if (!doc?.body) return;
+	const strip = () => {
+		for (const el of doc.querySelectorAll('[data-testid="analytics-consent"]')) el.remove();
+	};
+	strip();
+	const observer = new MutationObserver(strip);
+	observer.observe(doc.body, { childList: true, subtree: true });
+	(
+		window as unknown as { __boardConsentObservers?: MutationObserver[] }
+	).__boardConsentObservers ??= [];
+	(
+		window as unknown as { __boardConsentObservers: MutationObserver[] }
+	).__boardConsentObservers.push(observer);
+}
+
 function Frame({
 	src,
 	title,
@@ -232,6 +255,7 @@ function Frame({
 				title={title}
 				src={src}
 				loading="lazy"
+				onLoad={stripConsent}
 				style={{
 					display: 'block',
 					width: w,

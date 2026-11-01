@@ -64,7 +64,9 @@ function swapIcons(root: ParentNode): void {
 		const trail = GLYPH_RE.exec(original);
 		if (!trail) continue;
 		node.data = original.replace(GLYPH_RE, '');
-		node.after(makeIcon(GLYPHS[trail[1]], false));
+		// The Worker DOM typings shadow lib.dom's ParentNode, so the sibling
+		// insertion is done through a narrow structural cast.
+		(node as unknown as { after: (n: Node) => void }).after(makeIcon(GLYPHS[trail[1]], false));
 		if (!node.data.trim()) node.data = node.data.replace(/\s+$/, '');
 	}
 }
@@ -82,10 +84,12 @@ export function PreviewMount({ on }: { on: boolean }) {
 			if (band) {
 				const root = document.getElementById('app-root');
 				const anchor = root?.querySelector('nav');
-				if (anchor && anchor.nextElementSibling !== band) anchor.after(band);
-				else if (!anchor && root && root.firstElementChild !== band) root.prepend(band);
+				const after = (el: unknown, n: Node) => (el as { after: (x: Node) => void }).after(n);
+				const prepend = (el: unknown, n: Node) => (el as { prepend: (x: Node) => void }).prepend(n);
+				if (anchor && anchor.nextElementSibling !== band) after(anchor, band);
+				else if (!anchor && root && root.firstElementChild !== band) prepend(root, band);
 			}
-			swapIcons(document.body);
+			swapIcons(document.body as unknown as ParentNode);
 		};
 
 		// React 19 hydrates the document incrementally: a DOM edit made from an
@@ -101,7 +105,7 @@ export function PreviewMount({ on }: { on: boolean }) {
 			observer = new MutationObserver(() => {
 				// Coalesce: a render produces many mutations, one pass is enough.
 				requestAnimationFrame(() => {
-					if (!cancelled) swapIcons(document.body);
+					if (!cancelled) swapIcons(document.body as unknown as ParentNode);
 				});
 			});
 			observer.observe(document.body, { childList: true, subtree: true, characterData: true });

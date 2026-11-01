@@ -1,8 +1,8 @@
 # 資産の権利 / 出典 / ライセンス検証 — 記録
 
-- 判定: **WARN** / 記録: `quality/asset-license-inventory.json` / 監査対象ファイル: 107
-- 資産記録 13 件（公開可 9 / 保留 2 / 提供者条件 2）
-- 記録済みファイル 107 / 未記録 0 / findings 8（error 0 / warn 2 / info 6）
+- 判定: **WARN** / 記録: `quality/asset-license-inventory.json` / 監査対象ファイル: 115
+- 資産記録 14 件（公開可 10 / 保留 2 / 提供者条件 2）
+- 記録済みファイル 115 / 未記録 0 / findings 8（error 0 / warn 2 / info 6）
 
 | 判定 | 記録 id | 種別 | 対象ファイル | 由来 | 公開状態 |
 | --- | --- | --- | --- | --- | --- |
@@ -17,6 +17,7 @@
 | publishable | `share-procon2026-fonts-material-symbols` | font | 1 | third-party-bundled | published |
 | hold | `share-procon2026-pdfs` | document | 6 | unknown-provenance | published |
 | hold | `share-procon2026-images` | image | 35 | unknown-provenance | published |
+| publishable | `pet-melty-sprites` | artwork | 8 | repository-authored | published |
 | provider-terms | `web-fonts-google` | font | 0 | third-party-referenced | published |
 | provider-terms | `tool-webfont-typekit` | font | 0 | third-party-referenced | published |
 

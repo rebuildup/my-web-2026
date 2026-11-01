@@ -99,6 +99,20 @@ export const COUNTER_ROLL_MOTION = 'counter-roll';
 export const CURRENT_LOCATION_CHANGE_MOTION = 'current-location-change';
 
 /**
+ * The `data-motion` value the companion character's greeting uses
+ * (Issue #274).
+ *
+ * Unlike `COUNTER_ROLL_MOTION`, this one is never automatic: the frame
+ * strip is still until a visitor presses the trigger, plays once, and
+ * returns to the still frame. Under reduced motion the component emits
+ * neither the strip nor the trigger, so this hook has no element to
+ * name — the stylesheet selector is the backstop for markup produced
+ * without a client preference read (an SSR document replayed from
+ * cache, a Storybook build that pinned nothing).
+ */
+export const PET_REACTION_MOTION = 'pet-reaction';
+
+/**
  * Read the preference once, outside React.
  *
  * Returns `false` wherever the query cannot be asked — the Worker

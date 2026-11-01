@@ -7,6 +7,7 @@ import {
 	SYSTEM_SERVICES,
 	getCurrentProjects,
 	getHomeCounter,
+	getHomeDataSource,
 	getHomeReactions,
 	getHomeSystemStatus,
 	recordHomeHit,
@@ -33,10 +34,14 @@ export const Route = createFileRoute('/')({
 		// never disagree about which day they describe (Issue #316).
 		const observedAt = new Date().toISOString();
 		const today = observedAt.slice(0, 10);
-		const [statuses, reactions, counter, projects] = await Promise.all([
+		const [statuses, reactions, counter, dataSource, projects] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
+			// Issue #377 — which data source this runtime reads. The
+			// home renders an indicator for every mode except the
+			// deployed production Worker.
+			getHomeDataSource(),
 			getCurrentProjects({ data: { today } }),
 		]);
 		return {
@@ -56,6 +61,7 @@ export const Route = createFileRoute('/')({
 			// *now*, and a claim that changes without a commit cannot be
 			// reviewed. There is no runtime fetch here.
 			projects,
+			dataSource,
 		};
 	},
 	/**

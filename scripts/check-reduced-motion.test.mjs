@@ -48,8 +48,8 @@ test('parseReducedMotionBlocks finds the shipped blocks and keeps their line num
 	const css = readFileSync(new URL(`../${SHIPPED_STYLESHEET}`, import.meta.url), 'utf8');
 	const blocks = parseReducedMotionBlocks(css);
 	// The shape, not the count: a new motion surface adds a component block
-	// (Issue #316 added the current-projects marker) without editing this
-	// test, so the count itself would only ever be a number to bump. What has
+	// (Issue #316 added the current-projects marker, Issue #274 the companion
+	// character's greeting) without anyone having to bump a number. What has
 	// to stay true is one universal floor plus one named block per opt-out.
 	assert.ok(blocks.length >= 2, 'the floor and at least one component opt-out');
 	assert.equal(
@@ -68,6 +68,12 @@ test('parseReducedMotionBlocks finds the shipped blocks and keeps their line num
 			`${SHIPPED_STYLESHEET}:${block.startLine} names no data-motion hook`,
 		);
 	}
+	// The component scopes are named as well as shaped, so a swap (one
+	// surface replaced by another, shape unchanged) still fails. The
+	// inventory states WHICH opt-outs exist; adding a surface means adding
+	// its hook here, which is a claim about the page, not a number to bump.
+	const scoped = blocks.flatMap((block) => [...motionHooksIn(block.body)]).sort();
+	assert.deepEqual(scoped, ['counter-roll', 'current-location-change', 'pet-reaction']);
 });
 
 test('parseReducedMotionBlocks matches nested braces rather than stopping at the inner one', () => {

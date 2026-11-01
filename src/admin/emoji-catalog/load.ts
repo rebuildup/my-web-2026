@@ -84,6 +84,10 @@ export const insertCatalogEntryFn = createServerFn({ method: 'POST' })
 		const { requireAdmin } = await import('../auth/require-admin');
 		const { env } = await import('cloudflare:workers');
 		const session = await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data.
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:emoji-catalog:insert');
 		const slug = validateSlug(data.slug);
 		const codepoint = validateCodepoint(data.codepoint);
 		try {
@@ -109,6 +113,10 @@ export const rebindCatalogEntryFn = createServerFn({ method: 'POST' })
 		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
 		const { env } = await import('cloudflare:workers');
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data.
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:emoji-catalog:rebind');
 		const slug = validateSlug(data.slug);
 		const codepoint = validateCodepoint(data.codepoint);
 		const result = await rebindCatalogEntry(env.DB, { slug, codepoint }, Date.now());
@@ -121,6 +129,10 @@ export const setCatalogEntryEnabledFn = createServerFn({ method: 'POST' })
 		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
 		const { env } = await import('cloudflare:workers');
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data.
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:emoji-catalog:set-enabled');
 		const slug = validateSlug(data.slug);
 		const result = await setCatalogEntryEnabled(
 			env.DB,
@@ -136,6 +148,10 @@ export const removeCatalogEntryFn = createServerFn({ method: 'POST' })
 		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
 		const { env } = await import('cloudflare:workers');
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data.
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:emoji-catalog:remove');
 		const slug = validateSlug(data.slug);
 		const result = await removeCatalogEntry(env.DB, slug);
 		return { removed: result.removed };

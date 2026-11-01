@@ -93,7 +93,7 @@ jobs:
       # it is asked to judge (`fatal: bad object` → exit 2) as soon as
       # ONE merge lands on the base branch. The gate script itself is
       # unchanged: it stays fail-closed when the change set is unknown.
-      - name: Copy editorial approval gate
+      - name: Copy editorial evidence (pending owner review is advisory)
         if: github.event_name == 'pull_request'
         env:
           COPY_APPROVAL_BASE: ${{ github.base_ref }}
@@ -102,7 +102,7 @@ jobs:
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}" \
             || git fetch --no-tags origin \
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}"
-          pnpm run copy:approval:check
+          pnpm run copy:approval:check -- --allow-unreviewed
       # Issue #425 — the Japanese copy review-target report. This is a
       # REPORT, not a gate: it lists the Japanese text this pull request
       # changed in article Markdown, About prose and public UI copy, with

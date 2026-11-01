@@ -1203,6 +1203,30 @@ test('the report separates the ledger structure from the audited quality', () =>
 	assert.match(report, /applicable-and-verified: 0/);
 });
 
+test('the report does not turn an open Issue into an unfixed axe violation', () => {
+	const report = renderGateSummary(collectEvidence({ today: TODAY, repoRoot: REPO_ROOT }));
+	assert.doesNotMatch(report, /still-open quality item/);
+	assert.match(report, /hold 0 entries/);
+	assert.match(report, /not for a recorded axe violation/);
+});
+
+test('the report reads the recorded axe-violation state from the ledger', () => {
+	const matrix = validMatrix();
+	matrix.releaseAssessment = {
+		...(matrix.releaseAssessment ?? {}),
+		knownAxeViolations: {
+			issue: '#718',
+			state: 'fixed',
+			recordedViolations: 0,
+			ledgers: ['e2e/a11y/axe-baseline.json'],
+		},
+	};
+	const evidence = { ...collectEvidence({ today: TODAY, repoRoot: REPO_ROOT }), matrix };
+	const report = renderGateSummary(evidence);
+	assert.match(report, /e2e\/a11y\/axe-baseline\.json/);
+	assert.match(report, /hold 0 entries/);
+});
+
 /* ------------------------------------------------------------------ *
  * the command line
  * ------------------------------------------------------------------ */

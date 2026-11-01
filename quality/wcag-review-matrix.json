@@ -14,10 +14,12 @@
 		"scopeDecisionsApplicableUnverified": 12,
 		"knownAxeViolations": {
 			"issue": "#718",
-			"state": "open",
-			"ledgers": ["e2e/a11y/axe-baseline.json", "e2e/a11y/axe-storybook-baseline.json"]
+			"state": "fixed",
+			"recordedViolations": 0,
+			"ledgers": ["e2e/a11y/axe-baseline.json", "e2e/a11y/axe-storybook-baseline.json"],
+			"note": "The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers now hold 0 records. Issue #718 stays open for the MANUAL audit items below, not for a recorded axe violation. An open Issue is not an unfixed violation — read \"recordedViolations\" for that."
 		},
-		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 22 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The known axe-core violations tracked by Issue #718 are a separate, still-open quality item. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
+		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 22 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers hold 0 records, so Issue #718 remains open for the manual items above rather than for a recorded axe violation. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
 	},
 	"states": [
 		{

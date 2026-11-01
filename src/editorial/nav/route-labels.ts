@@ -36,6 +36,23 @@
 export const BREADCRUMB_ORIGIN = 'https://rebuildup.dev' as const;
 
 /**
+ * The root of every rendered chain (Issue #778).
+ *
+ * Until #778 the chain started at the leaf's nearest LABELED ancestor,
+ * so a top-level page such as `/about` rendered one segment with no
+ * link at all — the trail could not reach Home. The root is synthetic:
+ * `__root__` is a layout route, not a destination, so it is declared
+ * here instead of being read from a match. The label is the same
+ * 「ホーム」 that `PublicNav` publishes, so the two nav surfaces name
+ * the same destination the same way.
+ */
+export const BREADCRUMB_ROOT = Object.freeze({
+	routeId: '__root__',
+	label: 'ホーム',
+	href: '/',
+});
+
+/**
  * Route IDs whose leaf presence suppresses breadcrumbs entirely.
  * See file header for the suppression rationale.
  */
@@ -73,6 +90,21 @@ export interface RouteLabel {
 		loaderData: unknown;
 	}) => string | undefined;
 	dropOnMissingLoaderData?: boolean;
+	/**
+	 * Section this route belongs to, when the route tree cannot express
+	 * it (Issue #778).
+	 *
+	 * `/portfolio/$slug` and `/portfolio/` are SIBLINGS under this
+	 * router, so visiting a project produces no `/portfolio/` match and
+	 * the chain lost its section segment. Declaring the parent here
+	 * keeps the visible chain (and the JSON-LD) accurate without
+	 * inventing a nested layout route.
+	 *
+	 * `href` is explicit because the parent's route ID carries the
+	 * index-route trailing slash (`/portfolio/`) while the published
+	 * URL does not (`/portfolio`).
+	 */
+	parent?: { routeId: string; href: string };
 }
 
 /**
@@ -93,6 +125,9 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 		// already filtered out). The visible label is sourced from
 		// the project title when available.
 		label: 'Project',
+		// Issue #778: the detail page is a sibling of the index, so
+		// the section segment has to be declared rather than matched.
+		parent: { routeId: '/portfolio/', href: '/portfolio' },
 		resolve: ({ loaderData }) => {
 			const data = loaderData as { project?: { title?: string; slug?: string } } | undefined;
 			return data?.project?.title ?? data?.project?.slug;

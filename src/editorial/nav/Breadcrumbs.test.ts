@@ -34,6 +34,9 @@ function match(
 
 const root = match('__root__', '/');
 
+/** Issue #778 — every rendered chain starts at Home. */
+const HOME = { routeId: '__root__', label: 'ホーム', href: '/' };
+
 describe('resolveBreadcrumbChain — leaf suppression', () => {
 	it.each(['/', '/admin/login', '/admin/invitations_/accept', '/design-system'])(
 		'suppresses when leaf is %s',
@@ -57,7 +60,7 @@ describe('resolveBreadcrumbChain — leaf suppression', () => {
 describe('resolveBreadcrumbChain — chain construction', () => {
 	it('returns the static label for a simple top-level route', () => {
 		const chain = resolveBreadcrumbChain([root, match('/about', '/about')]);
-		expect(chain).toEqual([{ routeId: '/about', label: 'About', href: '/about' }]);
+		expect(chain).toEqual([HOME, { routeId: '/about', label: 'About', href: '/about' }]);
 	});
 
 	it('skips unlabeled intermediate matches (e.g. /admin layout)', () => {
@@ -67,6 +70,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			match('/admin/invitations', '/admin/invitations'),
 		]);
 		expect(chain).toEqual([
+			HOME,
 			{ routeId: '/admin', label: 'Admin', href: '/admin/invitations' },
 			{ routeId: '/admin/invitations', label: '招待', href: '/admin/invitations' },
 		]);
@@ -84,6 +88,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			),
 		]);
 		expect(chain).toEqual([
+			HOME,
 			{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio/aulymo' },
 			{
 				routeId: '/portfolio/$slug',
@@ -104,7 +109,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 				{ slug: 'foo' },
 			),
 		]);
-		expect(chain?.[1]?.label).toBe('foo');
+		expect(chain?.[2]?.label).toBe('foo');
 	});
 
 	it('resolves /tools/$slug from loaderData.display_name', () => {
@@ -119,6 +124,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			),
 		]);
 		expect(chain).toEqual([
+			HOME,
 			{ routeId: '/tools/', label: 'Tools', href: '/tools/multi-slicer' },
 			{
 				routeId: '/tools/$slug',
@@ -136,12 +142,15 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	// routes.
 	it('matches /tools/ index routeId (Issue #196 — trailing slash)', () => {
 		const chain = resolveBreadcrumbChain([root, match('/tools/', '/tools')]);
-		expect(chain).toEqual([{ routeId: '/tools/', label: 'Tools', href: '/tools' }]);
+		expect(chain).toEqual([HOME, { routeId: '/tools/', label: 'Tools', href: '/tools' }]);
 	});
 
 	it('matches /portfolio/ index routeId (Issue #196 — trailing slash)', () => {
 		const chain = resolveBreadcrumbChain([root, match('/portfolio/', '/portfolio')]);
-		expect(chain).toEqual([{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio' }]);
+		expect(chain).toEqual([
+			HOME,
+			{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio' },
+		]);
 	});
 
 	it('returns null when the only match is root', () => {
@@ -158,7 +167,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		]);
 		// Only `/admin` carries a label, so the chain has one item
 		// — the admin dashboard's own breadcrumb is just "Admin".
-		expect(chain).toEqual([{ routeId: '/admin', label: 'Admin', href: '/admin' }]);
+		expect(chain).toEqual([HOME, { routeId: '/admin', label: 'Admin', href: '/admin' }]);
 	});
 
 	it('handles missing loaderData on dynamic routes without throwing', () => {
@@ -168,7 +177,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			match('/portfolio/$slug', '/portfolio/x', undefined, { slug: 'x' }),
 		]);
 		// No resolver output → falls back to the static `Project` label.
-		expect(chain?.[1]?.label).toBe('Project');
+		expect(chain?.[2]?.label).toBe('Project');
 	});
 
 	it('drops /tools/$slug from the chain when loaderData is undefined (Issue #183)', () => {
@@ -183,7 +192,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			match('/tools/', '/tools/unknown'),
 			match('/tools/$slug', '/tools/unknown', undefined, { slug: 'unknown' }),
 		]);
-		expect(chain).toEqual([{ routeId: '/tools/', label: 'Tools', href: '/tools/unknown' }]);
+		expect(chain).toEqual([HOME, { routeId: '/tools/', label: 'Tools', href: '/tools/unknown' }]);
 	});
 
 	it('still includes /tools/$slug in the chain when loaderData is present', () => {
@@ -201,7 +210,62 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 				},
 			),
 		]);
-		expect(chain?.[1]?.label).toBe('ProtoType');
+		expect(chain?.[2]?.label).toBe('ProtoType');
+	});
+});
+
+describe('resolveBreadcrumbChain — root (Issue #778)', () => {
+	it('starts every chain at Home so a top-level page is reachable from its own trail', () => {
+		const chain = resolveBreadcrumbChain([root, match('/contact', '/contact')]);
+		expect(chain?.[0]).toEqual(HOME);
+		expect(chain).toHaveLength(2);
+	});
+
+	it('keeps Home out of the trailing segment so the leaf still carries aria-current', () => {
+		const chain = resolveBreadcrumbChain([root, match('/about', '/about')]);
+		// The last item is the current page; the root is always first.
+		expect(chain?.at(-1)?.routeId).toBe('/about');
+	});
+
+	it('contributes the portfolio section when the index match is absent (sibling routes)', () => {
+		// The real router never produces a `/portfolio/` match while
+		// `/portfolio/<slug>` is displayed — the two routes are
+		// siblings. Before Issue #778 the chain was the project title
+		// alone; the section came from a match that does not exist.
+		const chain = resolveBreadcrumbChain([
+			root,
+			match(
+				'/portfolio/$slug',
+				'/portfolio/my-web-2026',
+				{ project: { title: 'my-web-2026', slug: 'my-web-2026' } },
+				{ slug: 'my-web-2026' },
+			),
+		]);
+		expect(chain).toEqual([
+			HOME,
+			{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio' },
+			{ routeId: '/portfolio/$slug', label: 'my-web-2026', href: '/portfolio/my-web-2026' },
+		]);
+	});
+
+	it('does not duplicate the portfolio section when the index match IS present', () => {
+		const chain = resolveBreadcrumbChain([
+			root,
+			match('/portfolio/', '/portfolio/aulymo'),
+			match(
+				'/portfolio/$slug',
+				'/portfolio/aulymo',
+				{ project: { title: 'Aulymo', slug: 'aulymo' } },
+				{ slug: 'aulymo' },
+			),
+		]);
+		expect(chain?.filter((item) => item.routeId === '/portfolio/')).toHaveLength(1);
+	});
+
+	it('still returns null for suppressed leaves (root is not added to an empty chain)', () => {
+		for (const leaf of ['/', '/design-system', '/admin/login', '/admin/invitations_/accept']) {
+			expect(resolveBreadcrumbChain([root, match(leaf, leaf)])).toBeNull();
+		}
 	});
 });
 

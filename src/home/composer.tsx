@@ -6,16 +6,18 @@ import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
+import { CurrentProjects } from './current/CurrentProjects';
+import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
+import type { DataSourceDescriptor } from './status/data-source';
 import type { SystemService, SystemServiceStatus } from './status/health';
 import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
-import type { DataSourceDescriptor } from './status/data-source';
 
 export interface HomePageData {
 	capabilities: readonly Capability[];
@@ -31,6 +33,15 @@ export interface HomePageData {
 	incidents?: readonly KnownIncident[];
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
+	/**
+	 * The current-project records (Issue #316). Optional, and the
+	 * default is the EMPTY list: a route that forgets them publishes
+	 * the "nothing is published" sentence rather than a stale one.
+	 * Every record is composed from committed artefacts (the owner's
+	 * roster and the generated git snapshot) — there is no runtime
+	 * fetch for this section.
+	 */
+	projects?: readonly CurrentProjectRecord[];
 	/**
 	 * Issue #377 — which data source the runtime is reading. The
 	 * indicator renders only outside the deployed production Worker,
@@ -64,6 +75,7 @@ export interface HomePageProps {
  *
  * Reading order (Issue #31 spread):
  *   - Hero             (page entry; own 4/8 grid)
+ *   - 00 — Now         (current projects; committed snapshot, Issue #316)
  *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
  *   - 02 — System status (binding probes; spread SectionHeading)
  *   - 03 — Reactions   (visitor emoji reactions against home-page)
@@ -107,6 +119,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</a>
 			<Hero />
 			<main id="main">
+				<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 				{data.dataSource ? (
 					<Container>
 						<DataSourceBadge source={data.dataSource} />

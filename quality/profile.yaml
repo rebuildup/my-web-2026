@@ -89,6 +89,14 @@ gates:
       # and reports freshness as an advisory. A hand-edited snapshot
       # that claims it is current cannot pass this gate.
       - 'pnpm run projects:check'
+      # Issue #316: the committed home git-facts snapshot behind the
+      # "現在地 / Where I am now" section. Offline and read-only: it
+      # re-validates the shape, the tracked-project allowlist, the commit
+      # ids, the calendar and the counts — so a hand-edited snapshot cannot
+      # claim a start date or a commit count the file does not support.
+      # Freshness is an advisory, because a red build cannot make a
+      # repository history younger; the section prints the day it measured.
+      - 'pnpm run current:facts:check'
       # Issue #719: the committed keyboard-layout snapshot. Offline and
       # read-only: it re-validates that the recorded provenance still
       # matches the committed bytes (digest, byte count, adoption ref),

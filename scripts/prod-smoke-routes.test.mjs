@@ -58,7 +58,7 @@ const FIXTURES = {
 	'/': {
 		title: 'my-web-2026',
 		h1Text: 'my-web-2026',
-		unmatchedProbes: { sixSections: false, reactionsDisabled: true },
+		unmatchedProbes: { homeSections: false, reactionsDisabled: true },
 	},
 	'/about': {
 		title: 'fixture — About',
@@ -431,7 +431,7 @@ describe('resolveDefaultState — classification of the documented branches', ()
 	it('returns null when a probe was never observed — an unmeasured route is never green', () => {
 		const home = findRepresentativeRoute('/');
 		assert.equal(resolveDefaultState(home, {}), null);
-		assert.equal(resolveDefaultState(home, { sixSections: true }), null);
+		assert.equal(resolveDefaultState(home, { homeSections: true }), null);
 	});
 });
 

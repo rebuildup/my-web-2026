@@ -352,6 +352,22 @@
 }
 
 /*
+ * Layer 2, the current-projects change marker (Issue #316,
+ * `animationName: currentLocationChange` in
+ * `src/home/current/CurrentProjects.tsx`). The marker is a statement about
+ * the data — "this row changed since you last looked" — so it is NOT
+ * removed under the preference; only its one-time fade is. The
+ * component branch already emits no `animation-name` when the preference is
+ * on; this selector is the stylesheet half of the same decision, so a
+ * future refactor that drops the branch still cannot animate the marker.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="current-location-change"]) {
+		animation: none !important;
+	}
+}
+
+/*
  * Layer 2, the companion character's greeting (`animation: petReaction`
  * in `src/editorial/pet/PetSprite.tsx`). The element does not exist in
  * a reduced-motion render — the component emits neither the strip nor

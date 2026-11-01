@@ -5,6 +5,7 @@ import {
 	HomePage,
 	KNOWN_INCIDENTS,
 	SYSTEM_SERVICES,
+	getCurrentProjects,
 	getHomeCounter,
 	getHomeDataSource,
 	getHomeReactions,
@@ -27,7 +28,13 @@ import {
 export const Route = createFileRoute('/')({
 	loader: async () => {
 		await recordHomeHit({ data: {} });
-		const [statuses, reactions, counter, dataSource] = await Promise.all([
+		// The base date the current-projects section computes every
+		// derived value against. One `observedAt` serves both the status
+		// tiles and the section, so "3 日前" and the status snapshot can
+		// never disagree about which day they describe (Issue #316).
+		const observedAt = new Date().toISOString();
+		const today = observedAt.slice(0, 10);
+		const [statuses, reactions, counter, dataSource, projects] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
@@ -35,18 +42,25 @@ export const Route = createFileRoute('/')({
 			// home renders an indicator for every mode except the
 			// deployed production Worker.
 			getHomeDataSource(),
+			getCurrentProjects({ data: { today } }),
 		]);
 		return {
 			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,
 			statuses,
-			observedAt: new Date().toISOString(),
+			observedAt,
 			// Issue #502: the committed incident records. There is no
 			// runtime fetch here on purpose — the published list is
 			// exactly what the repository holds.
 			incidents: KNOWN_INCIDENTS,
 			reactions,
 			counter,
+			// Issue #316: the current-project records. Composed from
+			// committed artefacts only (the owner's roster plus the
+			// generated git snapshot) — the section makes a claim about
+			// *now*, and a claim that changes without a commit cannot be
+			// reviewed. There is no runtime fetch here.
+			projects,
 			dataSource,
 		};
 	},

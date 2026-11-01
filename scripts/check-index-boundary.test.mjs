@@ -64,6 +64,7 @@ const ORIGIN = CANONICAL_ORIGIN;
 const FIXTURE_ROUTES = [
 	['/', './routes/index'],
 	['/about', './routes/about'],
+	['/compare', './routes/compare'],
 	['/contact', './routes/contact'],
 	['/design-system', './routes/design-system'],
 	['/keyboard', './routes/keyboard'],
@@ -132,7 +133,7 @@ function routeFileSources(routes = FIXTURE_ROUTES) {
 		) {
 			source += `const links = [{ rel: 'canonical', href: '${ORIGIN}${path}' }];\n`;
 		}
-		if (path === '/admin' || path === '/tools/$slug') {
+		if (path === '/admin' || path === '/tools/$slug' || path === '/compare') {
 			source += NOINDEX_META;
 		}
 		sources.set(file, source);

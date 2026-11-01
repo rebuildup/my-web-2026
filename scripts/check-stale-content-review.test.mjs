@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
 	cpSync,
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
@@ -15,7 +16,10 @@ import { dirname, join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	ARTICLE_REVIEW_STATUSES,
+	ARTICLE_SOURCE_STATUSES,
 	CLASSIFICATIONS,
+	DEFAULT_ARTICLE_SOURCES,
 	DIMENSIONS,
 	FIXTURE_DIR,
 	REGISTRY_PATH,
@@ -24,7 +28,10 @@ import {
 	detectLocale,
 	detectTimeTokens,
 	evaluateRegistry,
+	markdownSegments,
 	provenanceState,
+	runReview,
+	validateArticleSources,
 	validateRegistry,
 } from './check-stale-content-review.mjs';
 
@@ -541,5 +548,343 @@ describe('check-stale-content-review — the provenance of a review record (Issu
 		);
 		assert.ok(problems.some((problem) => problem.includes('provenance.kind')));
 		assert.ok(problems.some((problem) => problem.includes('provenance.recordedBy')));
+	});
+});
+
+/**
+ * The public article source inventory (Issue #723).
+ *
+ * The gate used to read only the Issue #506 public copy surfaces, so a
+ * green gate could mean "no article prose was examined at all". The
+ * inventory makes the difference visible: a source that is declared but
+ * absent, a source that cannot be read offline and a source that
+ * exists but was not scanned are all named, and none of them may pass
+ * as "reviewed".
+ */
+function writeArticleFixture({ surface = false } = {}) {
+	const workdir = mkdtempSync(join(tmpdir(), 'stale-articles-'));
+	mkdirSync(join(workdir, 'content/articles'), { recursive: true });
+	mkdirSync(join(workdir, 'content/blog'), { recursive: true });
+	mkdirSync(join(workdir, 'src'), { recursive: true });
+	writeFileSync(
+		join(workdir, 'surfaces.json'),
+		JSON.stringify(
+			{
+				version: 1,
+				publicCopyGlobs: surface ? ['src/**'] : [],
+				excludeGlobs: [],
+			},
+			null,
+			2,
+		),
+		'utf8',
+	);
+	writeFileSync(
+		join(workdir, 'registry.json'),
+		JSON.stringify(
+			{ version: 1, freshnessWindowDays: 90, locales: ['ja'], expressions: [] },
+			null,
+			2,
+		),
+		'utf8',
+	);
+	writeFileSync(
+		join(workdir, 'articles.json'),
+		JSON.stringify(
+			{
+				version: 1,
+				sources: [
+					{
+						id: 'fixture-articles',
+						kind: 'repository',
+						globs: ['content/articles/**/*.md'],
+						routes: ['/portfolio/<slug>'],
+						description: 'The committed article Markdown of the fixture.',
+					},
+					{
+						id: 'fixture-absent',
+						kind: 'repository',
+						globs: ['content/blog/**/*.md'],
+						routes: [],
+						description: 'A declared source whose files do not exist.',
+					},
+					{
+						id: 'fixture-unreadable',
+						kind: 'repository',
+						globs: ['content/blog/**/*.txt'],
+						routes: [],
+						description: 'A declared source whose file type this gate cannot read.',
+					},
+					{
+						id: 'fixture-external',
+						kind: 'external',
+						location: 'the D1 rows of the fixture',
+						routes: ['/portfolio'],
+						description: 'A source outside the repository.',
+					},
+				],
+			},
+			null,
+			2,
+		),
+		'utf8',
+	);
+	writeFileSync(
+		join(workdir, 'content/articles/one.md'),
+		'# 記事\n\nこの本文は現在coefficientの更新を述べています。\n',
+		'utf8',
+	);
+	writeFileSync(join(workdir, 'content/blog/old.txt'), '今は blog の本文です。\n', 'utf8');
+	if (surface) {
+		writeFileSync(
+			join(workdir, 'src/page.tsx'),
+			'export const Page = () => <p>現在のページです。</p>;\n',
+			'utf8',
+		);
+	}
+	return workdir;
+}
+
+function runArticleFixture(workdir, extra = []) {
+	return runCli(
+		[
+			`--root=${workdir}`,
+			`--registry=${join(workdir, 'registry.json')}`,
+			`--surfaces=${join(workdir, 'surfaces.json')}`,
+			`--article-sources=${join(workdir, 'articles.json')}`,
+			'--japanese-surfaces=none',
+			`--today=${TODAY}`,
+			...extra,
+		],
+		{ cwd: workdir },
+	);
+}
+
+describe('check-stale-content-review — the public article source inventory', () => {
+	it('lists every declared source of the live repository', () => {
+		const result = runCli(['--format=json']);
+		assert.equal(result.status, 0);
+		const report = JSON.parse(result.stdout);
+		const records = report.articleInventory.sources;
+		assert.equal(records.length, DEFAULT_ARTICLE_SOURCES.sources.length);
+		for (const record of records) {
+			assert.ok(
+				ARTICLE_SOURCE_STATUSES.includes(record.status),
+				`unexpected source status ${record.status}`,
+			);
+			assert.ok(
+				ARTICLE_REVIEW_STATUSES.includes(record.reviewStatus),
+				`unexpected review status ${record.reviewStatus}`,
+			);
+		}
+	});
+
+	it('reports the committed portfolio prose as scanned and covered', () => {
+		const report = JSON.parse(runCli(['--format=json']).stdout);
+		const seed = report.articleInventory.sources.find((record) => record.id === 'portfolio-seed');
+		assert.equal(seed.status, 'scanned');
+		assert.equal(seed.exists, 'yes');
+		assert.equal(seed.files, 1);
+		assert.equal(seed.scannedFiles, 1);
+		assert.equal(seed.readableOffline, 'yes');
+		assert.ok(seed.expressions >= 1, 'the seed holds a time-sensitive expression');
+		assert.ok(seed.recorded >= 1, 'the shipped registry covers the seed expression');
+		assert.equal(seed.reviewStatus, 'covered');
+		assert.deepEqual(seed.routes, ['/portfolio', '/portfolio/<slug>']);
+	});
+
+	it('records a declared but absent source as absent, not as reviewed', () => {
+		const report = JSON.parse(runCli(['--format=json']).stdout);
+		for (const id of ['content-articles', 'content-blog']) {
+			const record = report.articleInventory.sources.find((entry) => entry.id === id);
+			assert.equal(record.status, 'declared-but-absent', `${id} must be absent`);
+			assert.equal(record.exists, 'no');
+			assert.equal(record.files, 0);
+			assert.equal(record.scanned, 'no');
+			assert.equal(record.readableOffline, 'unknown', 'there is nothing to read');
+			assert.equal(record.recorded, 0);
+			assert.equal(record.reviewStatus, 'not-applicable');
+		}
+	});
+
+	it('records a source it cannot read offline as unobserved, never as pass', () => {
+		const report = JSON.parse(runCli(['--format=json']).stdout);
+		for (const id of ['portfolio-d1-rows', 'notion-import']) {
+			const record = report.articleInventory.sources.find((entry) => entry.id === id);
+			assert.equal(record.status, 'unobserved', `${id} must be unobserved`);
+			assert.equal(record.readableOffline, 'no');
+			assert.equal(record.scanned, 'no');
+			assert.equal(record.exists, 'unknown');
+		}
+	});
+
+	it('says in the report that a green gate is not an audit of the articles', () => {
+		const result = runCli([]);
+		assert.match(result.stdout, /it does NOT mean the article surfaces were audited/);
+		assert.match(result.stdout, /declared-but-absent/);
+		assert.match(result.stdout, /unobserved/);
+	});
+
+	it('keeps the live queue green through the article scan', () => {
+		const surfaces = readJson(join(REPO_ROOT, 'quality/copy-editorial-surfaces.json'));
+		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
+		const { result } = runReview({
+			root: REPO_ROOT,
+			surfaces,
+			registry,
+			today: TODAY,
+			articleSources: DEFAULT_ARTICLE_SOURCES,
+			japaneseSurfaces: readJson(join(REPO_ROOT, 'quality/japanese-copy-review-surfaces.json')),
+		});
+		assert.deepEqual(result.queue, [], 'the shipped registry must have no waiting expression');
+		assert.deepEqual(result.articleOutstanding, []);
+	});
+
+	it('never writes the owner registry', () => {
+		const before = readFileSync(join(REPO_ROOT, REGISTRY_PATH), 'utf8');
+		runCli(['--format=json']);
+		runCli([]);
+		assert.equal(readFileSync(join(REPO_ROOT, REGISTRY_PATH), 'utf8'), before);
+	});
+});
+
+describe('check-stale-content-review — the inventory is fail-closed on the difference', () => {
+	it('shows a declared but absent source instead of omitting it', () => {
+		const workdir = writeArticleFixture();
+		try {
+			const result = runArticleFixture(workdir, ['--format=json']);
+			assert.equal(result.status, 0);
+			const report = JSON.parse(result.stdout);
+			const ids = report.articleInventory.sources.map((record) => record.id);
+			assert.ok(ids.includes('fixture-absent'), 'the absent source must be in the inventory');
+			const absent = report.articleInventory.sources.find(
+				(record) => record.id === 'fixture-absent',
+			);
+			assert.equal(absent.status, 'declared-but-absent');
+			assert.equal(absent.files, 0);
+			assert.equal(absent.scanned, 'no');
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('shows a present but unscanned source as unscanned', () => {
+		const workdir = writeArticleFixture();
+		try {
+			const result = runArticleFixture(workdir, ['--format=json']);
+			const report = JSON.parse(result.stdout);
+			const unreadable = report.articleInventory.sources.find(
+				(record) => record.id === 'fixture-unreadable',
+			);
+			assert.equal(unreadable.status, 'unobserved');
+			assert.equal(unreadable.files, 1, 'the file exists');
+			assert.equal(unreadable.scannedFiles, 0, 'but the gate cannot read it');
+			assert.equal(unreadable.scanned, 'no');
+			assert.match(unreadable.reasons.join(' '), /cannot read/);
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('scans the committed article Markdown and reports it', () => {
+		const workdir = writeArticleFixture();
+		try {
+			const result = runArticleFixture(workdir, ['--format=json']);
+			const report = JSON.parse(result.stdout);
+			const articles = report.articleInventory.sources.find(
+				(record) => record.id === 'fixture-articles',
+			);
+			assert.equal(articles.status, 'scanned');
+			assert.equal(articles.files, 1);
+			assert.equal(articles.scannedFiles, 1);
+			assert.equal(articles.expressions, 1);
+			assert.equal(articles.recorded, 0);
+			assert.equal(articles.reviewStatus, 'outstanding');
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('reports an expression without an owner record as outstanding, not as a failure', () => {
+		const workdir = writeArticleFixture();
+		try {
+			const result = runArticleFixture(workdir, ['--format=json']);
+			assert.equal(result.status, 0, 'an article expression without a record is not a failure');
+			const report = JSON.parse(result.stdout);
+			assert.equal(report.articleOutstanding.length, 1);
+			assert.equal(report.articleOutstanding[0].status, 'unrecorded');
+			assert.equal(report.articleOutstanding[0].path, 'content/articles/one.md');
+			assert.deepEqual(report.queue, []);
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('keeps the failing queue for the public copy surfaces', () => {
+		const workdir = writeArticleFixture({ surface: true });
+		try {
+			const result = runArticleFixture(workdir, ['--format=json']);
+			assert.equal(result.status, 1, 'a public copy surface without a record still fails');
+			const report = JSON.parse(result.stdout);
+			assert.equal(report.queue.length, 1);
+			assert.equal(report.queue[0].path, 'src/page.tsx');
+			assert.equal(report.articleOutstanding.length, 1);
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('keeps the article report free of the article body', () => {
+		const workdir = writeArticleFixture();
+		try {
+			const result = runArticleFixture(workdir);
+			assert.match(result.stdout, /content\/articles\/one\.md/);
+			assert.ok(
+				!result.stdout.includes('coefficient'),
+				'the report names the file, it does not quote the article body',
+			);
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('exits 2 on a malformed article source declaration', () => {
+		const workdir = writeArticleFixture();
+		try {
+			writeFileSync(
+				join(workdir, 'articles.json'),
+				JSON.stringify({ version: 1, sources: [{ id: 'broken', kind: 'repository' }] }),
+				'utf8',
+			);
+			const result = runArticleFixture(workdir);
+			assert.equal(result.status, 2);
+			assert.match(result.stderr, /article source declaration cannot be read/);
+		} finally {
+			rmSync(workdir, { recursive: true, force: true });
+		}
+	});
+
+	it('validates the shipped article source declaration', () => {
+		const { problems } = validateArticleSources(DEFAULT_ARTICLE_SOURCES);
+		assert.deepEqual(problems, []);
+	});
+});
+
+describe('check-stale-content-review — the Markdown article unit', () => {
+	it('reads a paragraph as one segment and strips the markup', () => {
+		const segments = markdownSegments('# 見出し\n\n- 箇条書きの本文です。\n');
+		assert.equal(segments.length, 0, 'a paragraph without a time token is not a segment');
+	});
+
+	it('skips a fenced code block', () => {
+		const segments = markdownSegments('```\nコードの現在は無視されます\n```\n');
+		assert.deepEqual(segments, []);
+	});
+
+	it('joins the lines of one paragraph', () => {
+		const segments = markdownSegments('現在の状態は\n二行にわたります。\n');
+		assert.equal(segments.length, 1);
+		assert.equal(segments[0].text, '現在の状態は 二行にわたります。');
+		assert.equal(segments[0].locale, 'ja');
 	});
 });

@@ -261,6 +261,19 @@ gates:
       # Issue #566: this one step is now `vitest run` plus the discovered
       # `scripts/*.test.mjs` suite (scripts/run-script-tests.mjs), so a new
       # script test needs no edit to this list.
+      #
+      # Issue #721: the rollback rehearsal is now EXERCISED, not only
+      # rendered: `scripts/_rollback-fixture.test.mjs` and
+      # `scripts/_rollback-rehearsal.test.mjs` drive the documented
+      # failure paths against a disposable local fixture (state before →
+      # failure injection → rollback decision → restore → state after),
+      # with negative controls that must fail. Both files are
+      # `scripts/*.test.mjs`, so they are discovered by the `test`
+      # component below by convention — the rehearsal is therefore
+      # inside `gates.fast` without a new component line, and the
+      # pinned plan in `scripts/_quality-gate-plan.test.mjs` stays
+      # intact. The operator-facing entry point is
+      # `pnpm run rollback:rehearsal:check`.
       - 'pnpm run test' # vitest run (unit + integration SELF) + scripts/*.test.mjs
       # Issue #419: the SEO HTTP STATUS contract. Offline and
       # read-only like the index boundary above, but it answers a
@@ -383,6 +396,18 @@ gates:
       # Offline, credential-free, status-only. The browser half of the
       # same evidence is `pnpm run capture:a11y-contrast`.
       - 'pnpm run a11y:contrast:check' # colour contrast AA contract (Issue #399)
+      # Issue #401: the tap / click target size contract (WCAG 2.2
+      # SC 2.5.8 Target Size (Minimum), level AA). The three surfaces
+      # Issue #401 names - the reaction picker, the nav, the filter -
+      # must not DECLARE a hit area below 24 x 24 CSS px; a drag gesture
+      # has to carry a click (or keyboard) alternative; and every
+      # exception the criterion names (inline / spacing / user-agent
+      # control / essential) has to be declared with a reason instead of
+      # being ignored in silence. Pure Node source analysis, so it costs
+      # a source walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y-target-size`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:target-size:check' # tap / click target size contract (Issue #401)
       # Issue #406: the modal / menu focus contract. The shipped picker is a
       # native <dialog>; the gate reads the source and fails a <dialog> that
       # is opened with the `open` attribute (no user-agent focus trap and no

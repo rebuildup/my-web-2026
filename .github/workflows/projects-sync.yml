@@ -94,7 +94,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore(projects): refresh the dotfiles introduction snapshot'
-          git push --force-with-lease origin "$BRANCH"
+          # Issue #739: the lease is resolved from the REMOTE's current
+          # state, not from a local remote-tracking ref. The plain
+          # `--force-with-lease` form expected the destination branch
+          # not to exist (the workflow never fetched it), so every run
+          # after the first was rejected with `stale info` and the
+          # snapshot silently went stale.
+          node scripts/_projects-sync-push.mjs push --remote origin --branch "$BRANCH"
           echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: open or update the review pull request
         if: steps.commit.outputs.changed == 'true'

@@ -77,11 +77,11 @@ test.describe('public nav — presence on opt-in pages', () => {
 			await expect(page.locator('h1').first()).toBeVisible();
 			await expect(page.locator('h1').first()).toContainText(route.h1);
 
-			// The six links are present, in order. The desktop strip
-			// maps `PUBLIC_NAV_ITEMS` straight onto `<a>` elements —
-			// there is no `<li>` wrapper, so the selector targets the
-			// `<a>` children directly.
-			const desktopLinks = nav.locator('[data-testid="public-nav-desktop"] > a');
+			// The six links are present, in order. The desktop strip is a
+			// real list: every entry is an `<li>` holding one `<a>`
+			// (Issue #718 — WCAG 2.2 SC 1.3.1), so the selector targets
+			// the `<a>` inside each list item.
+			const desktopLinks = nav.locator('[data-testid="public-nav-desktop"] > li > a');
 			for (const [i, href] of NAV_ROSTER.entries()) {
 				await expect(desktopLinks.nth(i)).toHaveAttribute('href', href);
 			}

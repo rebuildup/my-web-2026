@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 19 |
 | External hosts | 33 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -207,5 +207,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/compare
 

@@ -1041,6 +1041,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/compare",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/compare.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/contact",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -1295,13 +1304,21 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://rebuildup.dev/compare"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://rebuildup.dev/compare"
+			}
+		]
 	}
 }

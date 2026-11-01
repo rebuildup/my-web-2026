@@ -1,11 +1,15 @@
 import { env } from 'cloudflare:workers';
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense, lazy } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
 import '../styles.css';
 // Issue #764 comparison preview (WORKTREE ONLY — delete with the worktree).
-import { PreviewMount } from '../preview/PreviewMount';
+// Lazy on purpose: the harness must not add bytes to the shipped shell, so the
+// module is only fetched on a `?direction=` URL, after hydration.
+const PreviewMount = lazy(() =>
+	import('../preview/PreviewMount').then((m) => ({ default: m.PreviewMount })),
+);
 import { parsePreview } from '../preview/preview-css.mjs';
 
 /**
@@ -326,7 +330,11 @@ function RootComponent() {
 				{/* Issue #764: the palette stylesheet is linked from the head
 				    script above (see its comment); this only handles the DOM
 				    work React cannot express. */}
-				<PreviewMount on={preview.on} />
+				{preview.on ? (
+					<Suspense fallback={null}>
+						<PreviewMount on />
+					</Suspense>
+				) : null}
 			</body>
 		</html>
 	);

@@ -84,6 +84,10 @@
 		"/keyboard": {
 			"initial_js_bytes": 665000,
 			"initial_css_bytes": 50000
+		},
+		"/compare": {
+			"initial_js_bytes": 655000,
+			"initial_css_bytes": 50000
 		}
 	},
 	"tool_iframe": {

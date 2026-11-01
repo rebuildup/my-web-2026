@@ -17,19 +17,24 @@ import { NAV_ROSTER } from './nav-roster';
  *     entries, `/design-system` added by Issue #181.
  *   - Issue #288 removed the nav (and breadcrumbs) from every Tools
  *     surface (`/tools`, `/tools/<slug>`, and the 404 / disabled
- *     states) — the Tools pages are now an exclusion, like `/`.
+ *     states). Issue #785 restores them on the `/tools` INDEX only
+ *     (owner instruction 2026-11-01: the index had no header and no
+ *     breadcrumb trail); the `/tools/<slug>` shell, the disabled
+ *     placeholder and the 404 keep #288's full-height, chrome-free
+ *     arrangement.
  *
  * Scopes:
  *   1. `/` does NOT mount the nav (the #199 contract).
  *   2. The nav renders on every remaining opt-in page (`/about`,
- *      `/contact`, `/portfolio`, `/design-system`).
+ *      `/contact`, `/portfolio`, `/tools`, `/design-system`).
  *   3. The six canonical nav items are present, in order.
  *   4. The active route is announced via `aria-current="page"` on
  *      exactly one link.
  *   5. Home → Tools one click is still possible, via the
  *      capabilities card rather than the nav.
  *   6. The nav does NOT appear on `/admin/*` (admin owns its own
- *      chrome) nor on the Tools surfaces (Issue #288).
+ *      chrome) nor on the `/tools/<slug>` shell and its 404 surface
+ *      (Issue #288).
  *   7. The mobile affordance collapses the nav below the `md`
  *      breakpoint.
  */
@@ -37,12 +42,13 @@ import { NAV_ROSTER } from './nav-roster';
 /**
  * Pages that opt into `PublicNav`. `/portfolio/<slug>` fixtures
  * depend on published D1 rows, so they are not part of this loop.
- * The Tools surfaces deliberately do NOT opt in any more — see the
- * Issue #288 exclusion describe below.
+ * `/tools` opts in since Issue #785; the per-Tool shell does NOT —
+ * see the Issue #288 exclusion describe below.
  */
 const NAV_OPT_IN_PAGES: ReadonlyArray<{ path: string; h1: RegExp }> = [
 	{ path: '/about', h1: /木村友亮/ },
 	{ path: '/contact', h1: /Contact/ },
+	{ path: '/tools', h1: /ツール/ },
 	{ path: '/portfolio', h1: /主要な制作物/ },
 	{ path: '/design-system', h1: /Design System/ },
 ];
@@ -139,17 +145,18 @@ test.describe('public nav — Home → Tools one-click (Issue #168)', () => {
 	});
 });
 
-test.describe('public nav — Tools exclusion (Issue #288)', () => {
-	// The Tools surfaces render no header chrome: neither PublicNav
-	// nor the breadcrumb header. The iframe shell wants the full
-	// viewport, and the index treats its own <header> as content.
-	test('is NOT mounted on /tools', async ({ page }) => {
+test.describe('public nav — Tools exclusion (Issue #288, narrowed by #785)', () => {
+	// The per-Tool shell and its 404 keep #288's chrome-free
+	// arrangement so the iframe can use the full viewport. The INDEX
+	// opts back in since #785: the owner read it as a page with no
+	// header and no breadcrumb trail.
+	test('is mounted on /tools (Issue #785 restores the index chrome)', async ({ page }) => {
 		const res = await page.goto('/tools');
 		expect(res?.status()).toBe(200);
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
-		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
-		// The index still owns its content-level <h1>.
-		await expect(page.locator('h1').first()).toContainText(/Tools/);
+		await expect(page.locator('nav[aria-label="Public"]')).toBeVisible();
+		await expect(page.locator('nav[aria-label="パンくず"]')).toBeVisible();
+		// The page keeps its own content-level <h1> under the chrome.
+		await expect(page.locator('h1').first()).toContainText(/ツール/);
 	});
 
 	test('is NOT mounted on /tools/<slug> (iframe shell)', async ({ page }) => {

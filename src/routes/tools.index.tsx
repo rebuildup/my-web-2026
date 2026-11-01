@@ -438,7 +438,6 @@ function ToolRow({ tool }: { tool: ManifestTool }) {
 						fontSize: 'sm',
 						fontWeight: '500',
 						color: 'text.accent',
-						whiteSpace: 'nowrap',
 						paddingBlock: '1',
 					})}
 				>
@@ -478,7 +477,12 @@ function DisabledToolRow({ tool }: { tool: ManifestTool }) {
 					})}
 				>
 					<span className={toolTitle}>{tool.display_name}</span>
-					<span className={badge}>準備中</span>
+					{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
+					    asserts a host_disabled row by (Issue #195); the
+					    visible word stays Japanese. */}
+					<span data-tool-badge="coming-soon" className={badge}>
+						準備中
+					</span>
 				</span>
 				<span className={toolDescription}>{tool.description_ja}</span>
 			</span>

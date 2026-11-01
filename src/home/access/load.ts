@@ -4,6 +4,8 @@ import { getRequestUrl } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { GetCountOutput, RecordHitOutput } from '../../http/access-counter/schema';
 import { createAuditLogger } from '../../logging/logger';
+import { readProductionCounter } from './production-read';
+import type { DataSourceDescriptor } from '../status/data-source';
 
 const accessLogger = createAuditLogger('home.access');
 
@@ -51,6 +53,12 @@ export interface HomeAccessEnv {
 	MY_WEB_2026_CONSUMER_API_KEY?: string;
 	MY_WEB_2026_COUNTER_KEY?: string;
 	BETTER_AUTH_URL?: string;
+	/** Issue #377 — read directly in the production-readonly dev mode. */
+	DB?: D1Database;
+	/** Issue #377 — the development data source. */
+	MY_WEB_2026_DATA_SOURCE?: string;
+	/** Issue #186 — the mock gate of the external boundary. */
+	LOCAL_API_MODE?: string;
 }
 
 /**
@@ -73,7 +81,18 @@ export async function recordHomeHitImpl(
 	input: { session_id?: string },
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
-): Promise<{ ok: boolean; reason?: 'api_key_unconfigured' | 'upstream_error' | 'rate_limited' }> {
+	dataSource?: DataSourceDescriptor,
+): Promise<{
+	ok: boolean;
+	reason?: 'api_key_unconfigured' | 'upstream_error' | 'rate_limited' | 'production_readonly';
+}> {
+	// Issue #377 — while the runtime is bound to production data, the
+	// page-view counter must NOT be incremented. The self-call below
+	// would reach the production counter; the external boundary
+	// refuses it, but the home does not even attempt it.
+	if (dataSource?.write_policy === 'read-only') {
+		return { ok: false, reason: 'production_readonly' };
+	}
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
 	const key = envLike.MY_WEB_2026_COUNTER_KEY ?? HOME_COUNTER_KEY_DEFAULT;
@@ -110,8 +129,33 @@ export async function getHomeCounterImpl(
 	ctx: HomeAccessRequestContext,
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
+	dataSource?: DataSourceDescriptor,
 ): Promise<HomeCounterData> {
 	const key = envLike.MY_WEB_2026_COUNTER_KEY ?? HOME_COUNTER_KEY_DEFAULT;
+	// Issue #377 — in the production-readonly development mode the
+	// API path cannot answer (the development API key is not a row in
+	// the production database, and every API answer is scoped to the
+	// calling principal), so the count is read straight from the
+	// binding. See `src/home/access/production-read.ts`.
+	if (dataSource?.production_binding_read) {
+		const db = envLike.DB;
+		if (!db) {
+			return { key, count: 0, first_hit: null, last_hit: null, enabled: false };
+		}
+		try {
+			const payload = await readProductionCounter(db, key);
+			return {
+				key,
+				count: payload.count,
+				first_hit: payload.first_hit,
+				last_hit: payload.last_hit,
+				enabled: true,
+			};
+		} catch (err) {
+			accessLogger.error('production counter read failed', err);
+			return { key, count: 0, first_hit: null, last_hit: null, enabled: true };
+		}
+	}
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) {
 		return { key, count: 0, first_hit: null, last_hit: null, enabled: false };
@@ -151,14 +195,35 @@ export const recordHomeHit = createServerFn({ method: 'POST' })
 	.validator(HitInput)
 	.handler(async ({ data }): Promise<{ ok: boolean; reason?: string }> => {
 		const envLike = env as unknown as HomeAccessEnv;
-		return recordHomeHitImpl(envLike, readRequestContext(), data, getRequestUrl().origin);
+		// The data-source rule is reached with a dynamic import INSIDE
+		// the handler body: the architecture gate allows only
+		// `home/status -> cloudflare`, and the start compiler plugin
+		// removes the handler body from the client build.
+		const { resolveHomeDataSource } = await import('../status/data-source');
+		const dataSource = await resolveHomeDataSource(envLike);
+		return recordHomeHitImpl(
+			envLike,
+			readRequestContext(),
+			data,
+			getRequestUrl().origin,
+			undefined,
+			dataSource,
+		);
 	});
 
 export const getHomeCounter = createServerFn({ method: 'GET' })
 	.validator(GetInput)
 	.handler(async (): Promise<HomeCounterData> => {
 		const envLike = env as unknown as HomeAccessEnv;
-		return getHomeCounterImpl(envLike, readRequestContext(), getRequestUrl().origin);
+		const { resolveHomeDataSource } = await import('../status/data-source');
+		const dataSource = await resolveHomeDataSource(envLike);
+		return getHomeCounterImpl(
+			envLike,
+			readRequestContext(),
+			getRequestUrl().origin,
+			undefined,
+			dataSource,
+		);
 	});
 
 // Re-export the upstream types so the rest of the home does not need

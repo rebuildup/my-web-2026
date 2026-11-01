@@ -1,5 +1,7 @@
 import type { PortfolioEnv, PortfolioLoader } from './contract';
 import { composeMediaUrl } from './media';
+import { compareProjects } from './notion/publish';
+import { notionProjects } from './notion/reader';
 import {
 	type ListPortfolioProjectsOptions,
 	type PortfolioAdjacent,
@@ -98,35 +100,76 @@ export const D1_BATCH_ID_CHUNK = 100;
  * Maximum D1 statements `listPortfolioProjects` may issue for a
  * page of `pageSize` projects. See `PORTFOLIO_DETAIL_QUERY_BUDGET`
  * for the reasoning behind the shape.
+ *
+ * `cmsMerged` adds exactly one statement: the narrow `slug` projection that
+ * decides which slugs the CMS may NOT contribute. A slug held by both
+ * sources resolves to the D1 row in `loadPortfolioProject`, and the list has
+ * to make the same choice or it renders two cards for one URL
+ * (Issue #765).
  */
-export function portfolioListQueryBudget(pageSize: number): number {
+export function portfolioListQueryBudget(pageSize: number, cmsMerged = false): number {
 	const size = Number.isFinite(pageSize) ? Math.max(0, Math.floor(pageSize)) : 0;
-	if (size === 0) return 1; // empty page: the page query alone
-	return 1 + 2 * Math.ceil(size / D1_BATCH_ID_CHUNK);
+	const slugProjection = cmsMerged ? 1 : 0;
+	if (size === 0) return 1 + slugProjection; // empty page: the page query alone
+	return 1 + slugProjection + 2 * Math.ceil(size / D1_BATCH_ID_CHUNK);
 }
 
-export function createD1PortfolioLoader(env: PortfolioEnv): PortfolioLoader {
+/**
+ * Loader construction options.
+ *
+ * `cmsProjects` exists for two reasons, and neither is a production
+ * override: it is how a test reaches the merge path (the bundled snapshot
+ * is empty until a Notion database is connected), and it keeps the source
+ * of CMS rows at ONE place — the factory — instead of a module constant
+ * every method reaches for.
+ */
+export interface PortfolioLoaderOptions {
+	readonly cmsProjects?: readonly PortfolioProject[];
+}
+
+export function createD1PortfolioLoader(
+	env: PortfolioEnv,
+	options: PortfolioLoaderOptions = {},
+): PortfolioLoader {
+	// The CMS rows are resolved ONCE, at construction, and passed down. That
+	// is what makes the merge testable: a caller (or a test) can hand in a
+	// fixed list instead of the bundled snapshot, and every method then
+	// exercises the same merge code the deployment runs.
+	const cms = options.cmsProjects ?? notionProjects();
 	return {
-		loadPortfolioProject: (slug) => loadPortfolioProjectImpl(env, slug),
-		loadPortfolioAdjacent: (slug) => loadPortfolioAdjacentImpl(env, slug),
-		listPortfolioProjects: (opts) => listPortfolioProjectsImpl(env, opts),
-		listPublishedProjectIndex: () => listPublishedProjectIndexImpl(env),
+		loadPortfolioProject: (slug) => loadPortfolioProjectImpl(env, slug, cms),
+		loadPortfolioAdjacent: (slug) => loadPortfolioAdjacentImpl(env, slug, cms),
+		listPortfolioProjects: (opts) => listPortfolioProjectsImpl(env, opts ?? {}, cms),
+		listPublishedProjectIndex: () => listPublishedProjectIndexImpl(env, cms),
 	};
 }
 
 async function loadPortfolioProjectImpl(
 	env: PortfolioEnv,
 	slug: string,
+	cms: readonly PortfolioProject[],
 ): Promise<PortfolioProject | null> {
 	const db = env.DB;
-	if (!db) return null;
+	if (!db)
+		return withMediaUrlsOrNull(
+			env,
+			cms.find((project) => project.slug === slug),
+		);
 	const row = await db
 		.prepare(
 			"SELECT * FROM portfolio_project WHERE slug = ?1 AND status = 'published' AND visibility = 'public'",
 		)
 		.bind(slug)
 		.first<PortfolioProjectRow>();
-	if (!row) return null;
+	if (!row) {
+		// CMS fallback (Issue #765). `cms` is already filtered to
+		// `published` + `public` by the same rule this module enforces, so a
+		// draft CMS page is not reachable through a direct slug either.
+		return withMediaUrlsOrNull(
+			env,
+			cms.find((project) => project.slug === slug),
+		);
+	}
 	// Defence in depth: even if a future query path drops the
 	// SQL filter, `isVisible` still refuses non-public rows.
 	if (!isVisible(row)) return null;
@@ -158,9 +201,60 @@ async function loadPortfolioProjectImpl(
 async function loadPortfolioAdjacentImpl(
 	env: PortfolioEnv,
 	slug: string,
+	cms: readonly PortfolioProject[],
 ): Promise<PortfolioAdjacent> {
 	const db = env.DB;
-	if (!db) return { prev: null, next: null };
+	if (!db) return adjacentFromSnapshot(slug, cms);
+	if (cms.length > 0) {
+		// Merged path (Issue #765). Adjacency is a question about the
+		// ordering, not about a table, so when the CMS contributes rows the
+		// ordering has to be computed over the union. One narrow projection
+		// replaces the two row-value neighbour queries; the public-visibility
+		// predicate stays inline exactly as it does in every other query
+		// here, so an unlisted row still cannot surface as a neighbour.
+		const result = await db
+			.prepare(
+				`SELECT slug, title, pinned, display_order, updated_at, id FROM portfolio_project
+				 WHERE status = 'published' AND visibility = 'public'`,
+			)
+			.all<
+				Pick<
+					PortfolioProjectRow,
+					'slug' | 'title' | 'pinned' | 'display_order' | 'updated_at' | 'id'
+				>
+			>();
+		const entries: OrderableEntry[] = (result.results ?? []).map((row) => ({
+			slug: row.slug,
+			title: row.title,
+			pinned: row.pinned === 1,
+			displayOrder: row.display_order,
+			updatedAt: row.updated_at,
+			id: row.id,
+		}));
+		// Issue #765 — a slug both sources hold belongs to the D1 row here
+		// for the same reason it does in `loadPortfolioProject`. This query
+		// has no LIMIT, so the set is complete and the ordering never
+		// contains one slug twice.
+		const d1Slugs = new Set(entries.map((entry) => entry.slug));
+		for (const project of cms) {
+			if (d1Slugs.has(project.slug)) continue;
+			entries.push({
+				slug: project.slug,
+				title: project.title,
+				pinned: project.pinned,
+				displayOrder: project.displayOrder,
+				updatedAt: project.updatedAt,
+				id: project.id,
+			});
+		}
+		entries.sort(compareProjects);
+		const index = entries.findIndex((entry) => entry.slug === slug);
+		if (index === -1) return { prev: null, next: null };
+		return {
+			prev: index > 0 ? toAdjacentRef(entries[index - 1]) : null,
+			next: index + 1 < entries.length ? toAdjacentRef(entries[index + 1]) : null,
+		};
+	}
 	const target = await db
 		.prepare(
 			"SELECT pinned, display_order, updated_at, id FROM portfolio_project WHERE slug = ?1 AND status = 'published' AND visibility = 'public'",
@@ -222,12 +316,65 @@ function toAdjacentRef(row: Pick<PortfolioProjectRow, 'slug' | 'title'>): Portfo
 	return { slug: row.slug, title: row.title };
 }
 
+/** A row of the merged ordering: D1 and CMS rows share these six fields. */
+interface OrderableEntry {
+	slug: string;
+	title: string;
+	pinned: boolean;
+	displayOrder: number;
+	updatedAt: number;
+	id: string;
+}
+
+/** Adjacency from the CMS alone, for the case where D1 is unbound. */
+function adjacentFromSnapshot(slug: string, cms: readonly PortfolioProject[]): PortfolioAdjacent {
+	const entries: OrderableEntry[] = cms.map((project) => ({
+		slug: project.slug,
+		title: project.title,
+		pinned: project.pinned,
+		displayOrder: project.displayOrder,
+		updatedAt: project.updatedAt,
+		id: project.id,
+	}));
+	entries.sort(compareProjects);
+	const index = entries.findIndex((entry) => entry.slug === slug);
+	if (index === -1) return { prev: null, next: null };
+	return {
+		prev: index > 0 ? toAdjacentRef(entries[index - 1]) : null,
+		next: index + 1 < entries.length ? toAdjacentRef(entries[index + 1]) : null,
+	};
+}
+
+/** Compose the media origin onto a project that did not come from D1. */
+function withMediaUrls(env: PortfolioEnv, project: PortfolioProject): PortfolioProject {
+	return {
+		...project,
+		media: project.media.map((media) => ({
+			...media,
+			url: composeMediaUrl(env, media.r2Key),
+		})),
+	};
+}
+
+/** `withMediaUrls` for a lookup that may have found nothing. */
+function withMediaUrlsOrNull(
+	env: PortfolioEnv,
+	project: PortfolioProject | undefined,
+): PortfolioProject | null {
+	return project === undefined ? null : withMediaUrls(env, project);
+}
+
 async function listPortfolioProjectsImpl(
 	env: PortfolioEnv,
-	opts: ListPortfolioProjectsOptions = {},
+	opts: ListPortfolioProjectsOptions,
+	cms: readonly PortfolioProject[],
 ): Promise<PortfolioListPage> {
 	const db = env.DB;
-	if (!db) return emptyPage();
+	if (!db) {
+		return cms.length > 0
+			? { projects: cms.map((project) => withMediaUrls(env, project)), nextCursor: null }
+			: emptyPage();
+	}
 	const limit = clampLimit(opts.limit);
 
 	const cursor = decodeCursorOrNull(opts.cursor);
@@ -268,8 +415,25 @@ async function listPortfolioProjectsImpl(
 	const binds: Array<string | number> = [];
 	if (cursor) binds.push(...cursorBinds(cursor));
 	binds.push(fetchLimit);
-	const result = await stmt.bind(...binds).all<PortfolioProjectRow>();
+	// Issue #765 — the cross-source slug rule. The narrow `slug` projection
+	// is issued only when the CMS actually contributes rows, and it runs
+	// concurrently with the page query, so the merge costs no extra round
+	// trip. Without it the merged list would carry a slug that D1 already
+	// owns: `loadPortfolioProject` answers with the D1 row, so two cards
+	// would point at one URL.
+	const [result, d1SlugResult] = await Promise.all([
+		stmt.bind(...binds).all<PortfolioProjectRow>(),
+		cms.length > 0
+			? db
+					.prepare(
+						`SELECT slug FROM portfolio_project
+						 WHERE status = 'published' AND visibility = 'public'`,
+					)
+					.all<Pick<PortfolioProjectRow, 'slug'>>()
+			: Promise.resolve(null),
+	]);
 	const rawRows = result.results ?? [];
+	const d1Slugs = new Set((d1SlugResult?.results ?? []).map((row) => row.slug));
 
 	const pageRows = rawRows.length > limit ? rawRows.slice(0, limit) : rawRows;
 	const hasMore = rawRows.length > limit;
@@ -298,7 +462,7 @@ async function listPortfolioProjectsImpl(
 		),
 	]);
 
-	const projects: PortfolioProject[] = filteredRows.map((row) => {
+	const d1Projects: PortfolioProject[] = filteredRows.map((row) => {
 		const media = mediaByProject.get(row.id) ?? [];
 		return rowToProject(
 			row,
@@ -307,17 +471,38 @@ async function listPortfolioProjectsImpl(
 		);
 	});
 
-	// Build nextCursor from the LAST returned row (post-filter)
-	// because facet filtering can change which row is "last" —
-	// we always advance from the last row the caller actually saw.
-	const lastRow = filteredRows[filteredRows.length - 1];
+	// CMS merge (Issue #765, ADR-0018 §2.2). The bundled snapshot is a
+	// second source of rows, not a second publication boundary: every record
+	// it offers has already passed `isPublicRecord` in `notion/publish.ts`,
+	// and it is ordered with the same canonical key the D1 query uses, so a
+	// caller paging through the list sees one ordering rather than two.
+	//
+	// The D1 page was fetched with `limit + 1`, which is enough to place the
+	// union's first `limit` rows: a CMS row may interleave anywhere, but a D1
+	// row beyond this page cannot outrank every row already on it.
+	const cursorMarker = cursor
+		? { pinned: cursor.p === 1, displayOrder: cursor.d, updatedAt: cursor.u, id: cursor.i }
+		: null;
+	const cmsProjects = cms
+		.filter((project) => !d1Slugs.has(project.slug))
+		.filter((project) => cursorMarker === null || compareProjects(project, cursorMarker) > 0)
+		.filter((project) => (facetFilter ? facetFilter.some((f) => project.facets.includes(f)) : true))
+		.map((project) => withMediaUrls(env, project));
+
+	const merged =
+		cmsProjects.length > 0 ? [...d1Projects, ...cmsProjects].sort(compareProjects) : d1Projects;
+	const projects = merged.length > limit ? merged.slice(0, limit) : merged;
+
+	// Advance from the last row the caller actually saw. With a CMS merge the
+	// last row may come from either source; both carry the same four keys.
+	const lastProject = projects[projects.length - 1];
 	const nextCursor =
-		hasMore && lastRow
+		(hasMore || merged.length > limit) && lastProject
 			? encodeCursor({
-					p: lastRow.pinned,
-					d: lastRow.display_order,
-					u: lastRow.updated_at,
-					i: lastRow.id,
+					p: lastProject.pinned ? 1 : 0,
+					d: lastProject.displayOrder,
+					u: lastProject.updatedAt,
+					i: lastProject.id,
 				})
 			: null;
 
@@ -348,9 +533,12 @@ function emptyPage(): PortfolioListPage {
  */
 async function listPublishedProjectIndexImpl(
 	env: PortfolioEnv,
+	cms: readonly PortfolioProject[],
 ): Promise<readonly PortfolioProjectIndexEntry[]> {
 	const db = env.DB;
-	if (!db) return [];
+	if (!db) {
+		return cms.map((project) => ({ slug: project.slug, updatedAt: project.updatedAt }));
+	}
 	const result = await db
 		.prepare(
 			`SELECT slug, updated_at, visibility, status FROM portfolio_project
@@ -360,9 +548,18 @@ async function listPublishedProjectIndexImpl(
 		.all<Pick<PortfolioProjectRow, 'slug' | 'updated_at' | 'visibility' | 'status'>>();
 	const rows = result.results ?? [];
 	const entries: PortfolioProjectIndexEntry[] = [];
+	const d1Slugs = new Set<string>();
 	for (const row of rows) {
 		if (!isVisible(row)) continue;
+		d1Slugs.add(row.slug);
 		entries.push({ slug: row.slug, updatedAt: row.updated_at });
+	}
+	// CMS rows are part of the public URL identity too (Issue #765): a
+	// sitemap that omits them would advertise a site smaller than it is.
+	// A slug D1 already owns is not added again — one URL, one entry.
+	for (const project of cms) {
+		if (d1Slugs.has(project.slug)) continue;
+		entries.push({ slug: project.slug, updatedAt: project.updatedAt });
 	}
 	return entries;
 }

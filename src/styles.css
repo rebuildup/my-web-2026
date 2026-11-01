@@ -212,25 +212,33 @@
 	}
 
 	/*
-	 * Focus compensation for the fixed consent surface (Issue #395).
+	 * Focus compensation for the fixed bottom-anchored surfaces
+	 * (Issue #395, Issue #274).
 	 *
 	 * WCAG 2.2 SC 2.4.11 Focus Not Obscured (Minimum, AA): when a
 	 * component receives keyboard focus, it is not entirely hidden by
-	 * author-created content. The analytics consent surface is
-	 * `position: fixed` at the bottom of the viewport, and the browser
-	 * scrolls a focused element to the edge of the viewport — the bottom
-	 * edge is where that surface is. Without a compensation, a focused
-	 * element near the end of the page can end up entirely behind it.
+	 * author-created content. Two surfaces are `position: fixed` at the
+	 * bottom of the viewport — the analytics consent surface and the
+	 * companion character — and the browser scrolls a focused element to
+	 * the edge of the viewport, which is the bottom edge. Without a
+	 * compensation, a focused element near the end of the page can end up
+	 * entirely behind them.
 	 *
 	 * `scroll-padding` on the scrolling element (the document) is
 	 * the mechanism: the browser keeps a focused element clear of the
-	 * reserved space when it scrolls it into view. The reserved height
-	 * is published by the surface itself
-	 * (`--analytics-consent-offset`, set from the rendered height in
-	 * `src/editorial/analytics/AnalyticsConsent.tsx`), so the
-	 * compensation follows the surface instead of guessing a number.
-	 * Without the surface on the page the variable is absent and the
-	 * fallback reserves nothing.
+	 * reserved space when it scrolls it into view. Each surface publishes
+	 * the height it occupies —
+	 * `--analytics-consent-offset` from the rendered height in
+	 * `src/editorial/analytics/AnalyticsConsent.tsx`, and
+	 * `--pet-overlay-offset` from the resting inset plus the full frame in
+	 * `src/editorial/pet/PetSprite.tsx` — so the compensation follows the
+	 * surfaces instead of guessing a number. Without a surface on the page
+	 * its variable is absent and the fallback reserves nothing.
+	 *
+	 * `max()` rather than a sum: the character's resting band sits above
+	 * the consent toggle rather than stacking on it (see
+	 * `docs/domain/pet-companion.md` §5.2), so the space needed from the
+	 * bottom edge is the taller of the two, not both together.
 	 *
 	 * The shorthand is used rather than the `scroll-padding-bottom`
 	 * longhand, because the longhand is not in this repository's CSS
@@ -248,17 +256,23 @@
 	 * declaration and fails the gate.
 	 */
 	:root {
-		scroll-padding: 0 0 var(--analytics-consent-offset, 0px) 0;
+		scroll-padding: 0 0 max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px)) 0;
 	}
 
 	body {
 		background-color: var(--colors-bg-canvas);
 		/*
-		 * The room the fixed surface needs at the end of the document.
+		 * The room the fixed surfaces need at the end of the document.
 		 * The band is the canvas colour — the footer has no background of
 		 * its own — so the reserved space reads as page, not as a seam.
+		 *
+		 * The companion raises this band on the pages it appears on, which
+		 * is a visible amount of space at the end of Home and `/about`.
+		 * That is the cost of the contract, not an accident: the character
+		 * is a fixed overlay by the owner's instruction, and a fixed
+		 * bottom overlay must reserve its own footprint.
 		 */
-		padding-bottom: var(--analytics-consent-offset, 0px);
+		padding-bottom: max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px));
 	}
 
 	/*
@@ -333,6 +347,22 @@
  */
 @media (prefers-reduced-motion: reduce) {
 	:where([data-motion="counter-roll"]) img {
+		animation: none !important;
+	}
+}
+
+/*
+ * Layer 2, the companion character's greeting (`animation: petReaction`
+ * in `src/editorial/pet/PetSprite.tsx`). The element does not exist in
+ * a reduced-motion render — the component emits neither the strip nor
+ * its trigger, so there is nothing to opt out. This selector is the
+ * backstop for markup produced without a client preference read (an
+ * SSR document replayed from cache, a Storybook build that pinned
+ * nothing), and it is what makes the pairing verifiable by
+ * `scripts/check-reduced-motion.mjs` rather than by inspection.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="pet-reaction"]) {
 		animation: none !important;
 	}
 }

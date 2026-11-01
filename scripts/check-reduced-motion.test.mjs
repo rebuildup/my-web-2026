@@ -47,11 +47,20 @@ import {
 test('parseReducedMotionBlocks finds the shipped blocks and keeps their line numbers', () => {
 	const css = readFileSync(new URL(`../${SHIPPED_STYLESHEET}`, import.meta.url), 'utf8');
 	const blocks = parseReducedMotionBlocks(css);
-	assert.equal(blocks.length, 2);
+	// Three shipped blocks: the universal floor, the access counter's
+	// digit roll (`counter-roll`) and the companion character's greeting
+	// (`pet-reaction`, Issue #274). The count is the assertion that a new
+	// motion surface did not arrive in the stylesheet unnoticed — the
+	// gate's own pairing check is what proves each one names a real hook.
+	assert.equal(blocks.length, 3);
 	for (const block of blocks) {
 		assert.ok(block.startLine > 0);
 		assert.equal(css.split('\n')[block.startLine - 1].includes(REDUCED_MOTION_MEDIA), true);
 	}
+	// The two component scopes are named here as well as counted, so a
+	// swap (one surface replaced by another, count unchanged) still fails.
+	const scoped = blocks.flatMap((block) => [...motionHooksIn(block.body)]).sort();
+	assert.deepEqual(scoped, ['counter-roll', 'pet-reaction']);
 });
 
 test('parseReducedMotionBlocks matches nested braces rather than stopping at the inner one', () => {

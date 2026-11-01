@@ -113,10 +113,10 @@
 		{
 			"path": "/projects/dotfiles",
 			"public": true,
-			"status": "not-implemented",
-			"expectedTypes": [],
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/projects/dotfiles",
-			"note": "GitHub の公開 README から生成した snapshot を表示する project introduction。breadcrumb を置かないため BreadcrumbList は emit せず、SoftwareSourceCode 等の表現は上流リポジトリの metadata を owning する別 surface の ticket とする。"
+			"note": "GitHub の公開 README から生成した snapshot を表示する project introduction。Issue #791 でパンくずを置いたため BreadcrumbList を emit する（SoftwareSourceCode 等の表現は上流リポジトリの metadata を owning する別 surface の ticket とする）。"
 		},
 		{
 			"path": "/admin/**",

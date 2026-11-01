@@ -56,9 +56,21 @@ function ComparePage() {
 
 	return (
 		<div style={{ minHeight: '100vh', background: '#101215', color: '#e8ecf3' }}>
-			{/* The board is an internal comparison surface: no consent card, and
-			    the shell's body keeps the board's ground instead of white. */}
-			<style>{'body{background:#101215}section[class*="pos_fixed"]{display:none!important}'}</style>
+			{/* The specimen iframes strip their own copy (see `stripConsent`), so the
+			    board owns exactly one notice. It rides at the bottom of the board's
+			    viewport, drawn with the agreed full-width band look (no border, no
+			    radius, surface fill) rather than the current floating card. */}
+			<style
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: static board CSS
+				dangerouslySetInnerHTML={{
+					__html: `body{background:#101215}
+section[class*="pos_fixed"]{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;z-index:60!important;padding:14px max(20px,calc((100vw - 960px)/2))!important;background:#161B22!important;color:#e8ecf3!important;font:13px/1.5 ui-sans-serif,system-ui,sans-serif}
+section[class*="pos_fixed"]>*{max-width:960px;margin-inline:auto}
+section[class*="pos_fixed"] p{color:#9aa4b2!important;margin:0 0 4px!important}
+section[class*="pos_fixed"] h2{font-size:15px!important;line-height:1.4!important;margin:0 0 6px!important;color:#e8ecf3!important}
+section[class*="pos_fixed"] button{background:#262B33!important;color:#e8ecf3!important;border:0!important;border-radius:0!important;padding:6px 12px!important;font:600 12px/1.2 inherit!important;margin-inline-end:8px!important}`,
+				}}
+			/>
 			<header
 				style={{
 					position: 'sticky',

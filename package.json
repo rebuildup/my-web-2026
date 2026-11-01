@@ -75,6 +75,7 @@
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
 		"verify:status-incident-screenshot": "node scripts/capture-status-incident-context.mjs",
 		"capture:rollback-rehearsal": "node scripts/capture-rollback-rehearsal.mjs",
+		"rollback:rehearsal:check": "node --test scripts/_rollback-rehearsal.test.mjs scripts/_rollback-fixture.test.mjs",
 		"storybook": "storybook dev -p 6006",
 		"test": "vitest run && node scripts/run-script-tests.mjs",
 		"test:client": "vitest --config vitest.client.config.ts run",

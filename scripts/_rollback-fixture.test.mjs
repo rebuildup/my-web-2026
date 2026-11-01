@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+	FIXTURE_CURRENT_RELEASE,
 	LEGACY_BINDING_NAME,
 	RESTORE,
 	RESTORE_OPERATIONS,
@@ -41,8 +42,8 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 describe('rollback fixture — the state model', () => {
 	it('starts from a known-good state with a previous successful release', () => {
 		const state = createFixtureState();
-		assert.equal(state.currentRelease, '0.8.0');
-		assert.equal(state.deployedRelease, '0.8.0');
+		assert.equal(state.currentRelease, FIXTURE_CURRENT_RELEASE);
+		assert.equal(state.deployedRelease, FIXTURE_CURRENT_RELEASE);
 		assert.equal(state.mergedRelease, null);
 		assert.equal(state.lifecycle, 'open');
 		assert.equal(state.phaseB.flipRan, true);
@@ -61,7 +62,7 @@ describe('rollback fixture — the state model', () => {
 	it('merges a patch into the state without losing the rest', () => {
 		const merged = applyPatch(createFixtureState(), { build: { status: 'failed' } });
 		assert.equal(merged.build.status, 'failed');
-		assert.equal(merged.currentRelease, '0.8.0');
+		assert.equal(merged.currentRelease, FIXTURE_CURRENT_RELEASE);
 		assert.equal(merged.bindings.length, 2);
 	});
 
@@ -102,7 +103,7 @@ describe('rollback fixture — the fixture is file-backed', () => {
 			assert.equal(existsSync(join(dir, 'releases.json')), true);
 			assert.equal(existsSync(join(dir, 'operations.json')), true);
 			const reloaded = readFixture(dir);
-			assert.equal(reloaded.currentRelease, '0.8.0');
+			assert.equal(reloaded.currentRelease, FIXTURE_CURRENT_RELEASE);
 			assert.deepEqual(readOperations(dir), []);
 		} finally {
 			rmDir(dir);

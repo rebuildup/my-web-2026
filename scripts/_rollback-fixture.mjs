@@ -59,6 +59,38 @@ export const FIXTURE_DIR_PREFIX = 'rollback-rehearsal-fixture-';
 export const FIXTURE_STATE_VERSION = 1;
 
 /**
+ * The release identifiers the simulation uses.
+ *
+ * They are DERIVED, never written as literals: the repository forbids a
+ * release literal in an active script surface, and a hard-coded release
+ * number here would also go stale on the next release. The current
+ * release comes from `package.json#version` — the single source of truth
+ * (AGENTS.md §1) — and the candidate is the next minor of it.
+ */
+export const FIXTURE_CURRENT_RELEASE = readProjectVersion();
+
+/** The candidate release the simulation merges but has not deployed. */
+export const FIXTURE_CANDIDATE_RELEASE = bumpMinor(FIXTURE_CURRENT_RELEASE);
+
+/** Read the current project version from `package.json`. */
+function readProjectVersion() {
+	const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+	if (typeof manifest.version !== 'string') {
+		throw new Error('package.json does not declare a version');
+	}
+	return manifest.version;
+}
+
+/** The next minor release of a semantic version. */
+function bumpMinor(version) {
+	const parts = version.split('.');
+	if (parts.length !== 3) return version;
+	const minor = Number(parts[1]);
+	if (!Number.isInteger(minor)) return version;
+	return `${parts[0]}.${minor + 1}.0`;
+}
+
+/**
  * The closed signal vocabulary.
  *
  * A signal is an OBSERVABLE property of the simulated state. The
@@ -130,11 +162,21 @@ export function createFixtureState(overrides = {}) {
 	const base = {
 		version: FIXTURE_STATE_VERSION,
 		releases: [
-			{ version: '0.8.0', commit: '1111111', role: 'previous-good', artifact: 'sha256:previous' },
-			{ version: '0.9.0', commit: '2222222', role: 'candidate', artifact: 'sha256:candidate' },
+			{
+				version: FIXTURE_CURRENT_RELEASE,
+				commit: '1111111',
+				role: 'previous-good',
+				artifact: 'sha256:previous',
+			},
+			{
+				version: FIXTURE_CANDIDATE_RELEASE,
+				commit: '2222222',
+				role: 'candidate',
+				artifact: 'sha256:candidate',
+			},
 		],
-		currentRelease: '0.8.0',
-		deployedRelease: '0.8.0',
+		currentRelease: FIXTURE_CURRENT_RELEASE,
+		deployedRelease: FIXTURE_CURRENT_RELEASE,
 		mergedRelease: null,
 		bindings: [LEGACY_BINDING_NAME, VERSIONED_BINDING_NAME],
 		lifecycle: 'open',
@@ -298,7 +340,11 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 				legacyBindingBound: true,
 				versionedBindingBound: true,
 			},
-			state: { deployedRelease: '0.8.0', mergedRelease: null, currentRelease: '0.8.0' },
+			state: {
+				deployedRelease: FIXTURE_CURRENT_RELEASE,
+				mergedRelease: null,
+				currentRelease: FIXTURE_CURRENT_RELEASE,
+			},
 		},
 	},
 	{
@@ -328,7 +374,11 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 				legacyBindingBound: true,
 				versionedBindingBound: false,
 			},
-			state: { mergedRelease: null, deployedRelease: '0.8.0', currentRelease: '0.8.0' },
+			state: {
+				mergedRelease: null,
+				deployedRelease: FIXTURE_CURRENT_RELEASE,
+				currentRelease: FIXTURE_CURRENT_RELEASE,
+			},
 		},
 	},
 	{
@@ -337,8 +387,8 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 		failureClass: 'failed-smoke',
 		title: 'The post-deploy smoke fails; the legacy fallback is still bound',
 		before: createFixtureState({
-			mergedRelease: '0.9.0',
-			deployedRelease: '0.9.0',
+			mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+			deployedRelease: FIXTURE_CANDIDATE_RELEASE,
 			smokes: { transition: 'pass', postDeploy: 'pass', manual: 'not-run' },
 		}),
 		inject: { smokes: { postDeploy: 'fail' } },
@@ -363,7 +413,11 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 				versionedBindingBound: true,
 				deleteLegacyOnlyRan: false,
 			},
-			state: { mergedRelease: '0.9.0', deployedRelease: '0.9.0', lifecycle: 'open' },
+			state: {
+				mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+				deployedRelease: FIXTURE_CANDIDATE_RELEASE,
+				lifecycle: 'open',
+			},
 		},
 	},
 	{
@@ -372,8 +426,8 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 		failureClass: 'post-delete-recheck',
 		title: 'The re-check fails after the legacy binding was deleted',
 		before: createFixtureState({
-			mergedRelease: '0.9.0',
-			deployedRelease: '0.9.0',
+			mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+			deployedRelease: FIXTURE_CANDIDATE_RELEASE,
 			bindings: [VERSIONED_BINDING_NAME],
 			phaseB: { flipRan: true, deleteLegacyOnlyRan: true },
 			smokes: { transition: 'pass', postDeploy: 'pass', manual: 'pass' },
@@ -397,7 +451,11 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 				legacyBindingBound: true,
 				versionedBindingBound: true,
 			},
-			state: { mergedRelease: '0.9.0', deployedRelease: '0.9.0', lifecycle: 'open' },
+			state: {
+				mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+				deployedRelease: FIXTURE_CANDIDATE_RELEASE,
+				lifecycle: 'open',
+			},
 		},
 	},
 	{
@@ -406,8 +464,8 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 		failureClass: 'post-deploy-regression',
 		title: 'A visitor-facing regression is reported after the deploy window',
 		before: createFixtureState({
-			mergedRelease: '0.9.0',
-			deployedRelease: '0.9.0',
+			mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+			deployedRelease: FIXTURE_CANDIDATE_RELEASE,
 			smokes: { transition: 'pass', postDeploy: 'pass', manual: 'pass' },
 		}),
 		inject: { regression: { reported: true, surface: '/admin' } },
@@ -427,7 +485,11 @@ export const SIMULATION_SCENARIOS = Object.freeze([
 				legacyBindingBound: true,
 				versionedBindingBound: true,
 			},
-			state: { mergedRelease: '0.9.0', deployedRelease: '0.9.0', lifecycle: 'open' },
+			state: {
+				mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+				deployedRelease: FIXTURE_CANDIDATE_RELEASE,
+				lifecycle: 'open',
+			},
 		},
 	},
 ]);
@@ -443,8 +505,8 @@ export const UNKNOWN_FAILURE_SCENARIO = Object.freeze({
 	pathId: null,
 	title: 'A failure class the decision logic does not recognise',
 	before: createFixtureState({
-		mergedRelease: '0.9.0',
-		deployedRelease: '0.9.0',
+		mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+		deployedRelease: FIXTURE_CANDIDATE_RELEASE,
 		smokes: { transition: 'pass', postDeploy: 'pass', manual: 'pass' },
 	}),
 	inject: { smokes: { unknown: 'fail' } },
@@ -465,8 +527,8 @@ export const UNSATISFIABLE_RESTORE_SCENARIO = Object.freeze({
 	pathId: 'post-delete-recheck-failure',
 	title: 'The documented restore condition cannot be satisfied',
 	before: createFixtureState({
-		mergedRelease: '0.9.0',
-		deployedRelease: '0.9.0',
+		mergedRelease: FIXTURE_CANDIDATE_RELEASE,
+		deployedRelease: FIXTURE_CANDIDATE_RELEASE,
 		bindings: [VERSIONED_BINDING_NAME],
 		phaseB: { flipRan: true, deleteLegacyOnlyRan: true },
 		infisicalAuditCopy: false,

@@ -691,6 +691,22 @@ export function formatAuditReport(audit, context = {}) {
 }
 
 /**
+ * The provenance git short sha a rendered artefact prints next to the
+ * `head` label (`git rev-parse --short=12 HEAD`).
+ *
+ * A 12-character hexadecimal sha is all digits about 0.36% of the time
+ * (`(10/16)^12`), and a bare digit run is exactly what the
+ * `long-digit-run` rule exists to catch. The sha is neither an
+ * identifier nor a credential — it is the commit the artefact was
+ * generated from — so the rule needs one narrow exception.
+ *
+ * The exception is narrow on purpose: 7 to 12 hexadecimal characters
+ * directly after the `head` label. A credential is longer than 12
+ * characters, and no account identifier is printed with this label.
+ */
+const PROVENANCE_SHORT_SHA = /\bhead [0-9a-f]{7,12}\b/g;
+
+/**
  * The mechanical anonymization guard: report every pattern hit as
  * `{ id, line }` and **never** the matched text. A scanner whose finding
  * quotes the value it found is a disclosure channel (AGENTS.md §4).
@@ -703,7 +719,12 @@ export function findSensitiveInText(text) {
 	const findings = [];
 	text.split('\n').forEach((line, index) => {
 		for (const pattern of SENSITIVE_PATTERNS) {
-			if (pattern.re.test(line)) findings.push({ id: pattern.id, line: index + 1 });
+			// The digit-run rule is the only one that reads a git short
+			// sha as a secret. Every other rule still sees the line as it
+			// is, so masking the sha here cannot hide a credential.
+			const subject =
+				pattern.id === 'long-digit-run' ? line.replace(PROVENANCE_SHORT_SHA, 'head <sha>') : line;
+			if (pattern.re.test(subject)) findings.push({ id: pattern.id, line: index + 1 });
 		}
 	});
 	return findings;

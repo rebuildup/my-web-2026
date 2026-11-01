@@ -86,9 +86,11 @@ facet は**作品が何であるか**しか言っておらず、「この人が�
 
 ### 未作成 1 件
 
-`FlashBeat-BGM`。旧 `content_tags` に対応する facet が 1 つも無いため
+`FlashBeat-BGM`。旧 `content_tags` には `Cubase` / `DTM` の 2 つがあるが、分類成果物
+（Issue #78）はどちらも facet 語彙に写像しておらず、facet は 0 件である。そのため
 `Facets`（必須、`develop`/`video`/`design`/`other` のいずれか 1 つ以上）が埋まらず、
 `role` も表から導けない。`other` を機械的に当てると「分類済み」に見えてしまうので当てていない。
+facet の写像は分類側（Issue #78）の権限なので、ここでは決めない。
 **未移行 + 理由**として台帳に残す。
 
 旧 body の画像ブロックによる拒否（`image_block_unsupported`）は **0 件**。

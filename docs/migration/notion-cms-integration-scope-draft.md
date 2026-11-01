@@ -3,7 +3,9 @@
 > Status: **提案**。`quality/integration-scope.json` は **owner が編集する宣言** であり、
 > allowlist entry は owner 専権（AGENTS.md §6 / `docs/runbook/issue-lifecycle.md`）。
 > この文書は差分を提示するだけで、ledger・roster・workflow のいずれも変更しない。
-> 実装は [`ADR-0018`](../adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md) の承認後。
+> 実装は [`ADR-0018`](../adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md)（Accepted
+> 2026-11-01）に従う。この文書自体はなお **提案** であり、`quality/integration-scope.json` の
+> 変更は owner 専権のまま。
 
 ## 1. gate が実際に要求していること（実測）
 

@@ -17,6 +17,8 @@ import {
 	readActorIdFromCookieHeader,
 } from './cookie';
 import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
+import { readProductionReactionAggregates } from './production-read';
+import type { DataSourceDescriptor } from '../status/data-source';
 
 const reactionsLogger = createAuditLogger('home.reactions');
 
@@ -145,7 +147,12 @@ export interface HomeReactionsData {
 
 export interface HomeReactionMutationResult {
 	ok: boolean;
-	reason?: 'api_key_unconfigured' | 'upstream_error' | 'invalid_body' | 'rate_limited';
+	reason?:
+		| 'api_key_unconfigured'
+		| 'upstream_error'
+		| 'invalid_body'
+		| 'rate_limited'
+		| 'production_readonly';
 	created?: boolean;
 	deleted?: boolean;
 }
@@ -158,6 +165,10 @@ export interface HomeReactionsEnv {
 	MY_WEB_2026_REACTIONS_TARGET?: string;
 	BETTER_AUTH_URL?: string;
 	DB?: D1Database;
+	/** Issue #377 — the development data source. */
+	MY_WEB_2026_DATA_SOURCE?: string;
+	/** Issue #186 — the mock gate of the external boundary. */
+	LOCAL_API_MODE?: string;
 }
 
 export interface HomeReactionsRequestContext {
@@ -239,7 +250,39 @@ export async function getHomeReactionsImpl(
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 	db: D1Database | null = (envLike.DB ?? null) as D1Database | null,
+	dataSource?: DataSourceDescriptor,
 ): Promise<HomeReactionsData> {
+	// Issue #377 — in the production-readonly development mode the
+	// API path cannot answer (the development API key is not a row in
+	// the production database, and every API answer is scoped to the
+	// calling principal), so the aggregates are read straight from the
+	// binding. The catalog was already read from the binding, so the
+	// widget shows the production emoji catalogue as well.
+	if (dataSource?.production_binding_read) {
+		const catalog = db ? await loadCatalogDegraded(db) : [];
+		if (!db) {
+			return {
+				target_key: target,
+				aggregates: [],
+				viewer_reactions: [],
+				catalog,
+				enabled: false,
+			};
+		}
+		try {
+			const aggregates = await readProductionReactionAggregates(db, target);
+			return {
+				target_key: target,
+				aggregates,
+				viewer_reactions: [],
+				catalog,
+				enabled: true,
+			};
+		} catch (err) {
+			reactionsLogger.error('production reaction aggregate read failed', err);
+			return { target_key: target, aggregates: [], viewer_reactions: [], catalog, enabled: true };
+		}
+	}
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) {
 		reactionsLogger.warn('consumer API key not configured — returning empty');
@@ -326,9 +369,18 @@ export async function addHomeReactionImpl(
 	actorId: string,
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
+	dataSource?: DataSourceDescriptor,
 ): Promise<HomeReactionMutationResult> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
+	// Issue #377 — while the runtime is bound to production data, the
+	// reaction write (and the catalogue auto-register below, which
+	// writes D1 directly) must not happen. The external boundary
+	// refuses the upstream call, but the catalogue write would happen
+	// BEFORE that call, so the home refuses the whole operation here.
+	if (dataSource?.write_policy === 'read-only') {
+		return { ok: false, reason: 'production_readonly' };
+	}
 	if (input.kind === 'emoji') {
 		let slug: string;
 		try {
@@ -419,9 +471,15 @@ export async function removeHomeReactionImpl(
 	actorId: string,
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
+	dataSource?: DataSourceDescriptor,
 ): Promise<HomeReactionMutationResult> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
+	// Issue #377 — see `addHomeReactionImpl`: no write while the
+	// runtime is bound to production data.
+	if (dataSource?.write_policy === 'read-only') {
+		return { ok: false, reason: 'production_readonly' };
+	}
 	if (input.kind === 'emoji') {
 		try {
 			const catalog = await loadCatalogForWrite(envLike);
@@ -471,7 +529,21 @@ export const getHomeReactions = createServerFn({ method: 'GET' })
 	.handler(async ({ data }): Promise<HomeReactionsData> => {
 		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
-		return getHomeReactionsImpl(envLike, readRequestContext(), data.target, getRequestUrl().origin);
+		// The data-source rule is reached with a dynamic import INSIDE
+		// the handler body: the architecture gate allows only
+		// `home/status -> cloudflare`, and the start compiler plugin
+		// removes the handler body from the client build.
+		const { resolveHomeDataSource } = await import('../status/data-source');
+		const dataSource = await resolveHomeDataSource(envLike);
+		return getHomeReactionsImpl(
+			envLike,
+			readRequestContext(),
+			data.target,
+			getRequestUrl().origin,
+			undefined,
+			undefined,
+			dataSource,
+		);
 	});
 
 export const addHomeReaction = createServerFn({ method: 'POST' })
@@ -485,7 +557,17 @@ export const addHomeReaction = createServerFn({ method: 'POST' })
 		// see `addHomeReactionImpl` for the rationale).
 		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 		if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
-		const result = await addHomeReactionImpl(envLike, ctx, data, actorId, getRequestUrl().origin);
+		const { resolveHomeDataSource } = await import('../status/data-source');
+		const dataSource = await resolveHomeDataSource(envLike);
+		const result = await addHomeReactionImpl(
+			envLike,
+			ctx,
+			data,
+			actorId,
+			getRequestUrl().origin,
+			undefined,
+			dataSource,
+		);
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;
 	});
@@ -498,12 +580,16 @@ export const removeHomeReaction = createServerFn({ method: 'POST' })
 		const ctx = readRequestContext();
 		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 		if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
+		const { resolveHomeDataSource } = await import('../status/data-source');
+		const dataSource = await resolveHomeDataSource(envLike);
 		const result = await removeHomeReactionImpl(
 			envLike,
 			ctx,
 			data,
 			actorId,
 			getRequestUrl().origin,
+			undefined,
+			dataSource,
 		);
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;

@@ -50,11 +50,15 @@ export const PET_CONSENT_GAP_PX = 12;
  * The bottom inset for a consent surface that occupies
  * `consentOffsetPx` of the viewport's bottom edge.
  *
- * `consentOffsetPx` is the PUBLISHED value, which the consent surface
- * already computes as `ceil(height + 12)` — its own focus-compensation
- * gap is included. Adding the sprite's own 12 px gap therefore leaves
- * 24 px of visible clearance above a band, which is the measured result
- * in `docs/verification/visual/pet-companion/`.
+ * `consentOffsetPx` is the PUBLISHED value, which is the space the
+ * surface itself occupies: the band is flush with the bottom edge, so
+ * it publishes `ceil(height)`, while the floating status pill publishes
+ * `ceil(height + 12)` because its own 12 px gap is part of the space it
+ * covers. Adding the sprite's 12 px gap therefore leaves 12 px of
+ * visible clearance above a band, which is the measured result in
+ * `docs/verification/visual/pet-companion/` (band 198 px -> inset
+ * 210 px at 1440, band 341.2 px -> published 342 px -> inset 354 px at
+ * 390).
  *
  * `max()`, not a sum: with the surface collapsed to its pill the
  * formula must land back on the ordinary resting inset (a 48 px pill

@@ -195,7 +195,7 @@ owner 指示（2026-11-01、`OWNER-2026-11-01-2.md`）:
 | 位置 | `position: fixed`。スクロールに追従し、本文の流れから独立する |
 | 実体 | **スプライトの実体（96 × 104 CSS px）ちょうどの 1 ボックス**。全画面の透明レイヤーは敷かない |
 | ポインタ | `pointer-events` はそのボックスにだけ乗る。下のリンク・ボタン・スクロールは奪わない |
-| 初期位置 | 画面右下（`inset-block-end` = **同意面の公開値 + 12 px（= 面の可視上端 + 24 px）**、最低 72 px / `inset-inline-end: 24px`） — 下端だけ持ち上げる理由は直後と §5.2.1 |
+| 初期位置 | 画面右下（`inset-block-end` = **同意面の公開値 + 12 px（帯のとき可視上端 + 12 px）**、最低 72 px / `inset-inline-end: 24px`） — 下端だけ持ち上げる理由は直後と §5.2.1 |
 | 面 | Home（`src/home/composer.tsx`）と `/about`（`src/about/components/AboutPage.tsx`）。同じコンポーネントを 1 個ずつ描く |
 | 重なり順 | `z-index: 30`（同意バナーの 20 より上、モーダルはこのリポジトリに無い） |
 
@@ -218,13 +218,15 @@ sticky なヘッダがあり、右上に浮かせるとナビゲーションの�
 
 ### 5.2.1 同意面との結合（Issue #783）
 
-Issue #783 は同意パネルを**下辺全幅の帯**にする。帯は `position: fixed` で高さが
-実測 198 px（1440 幅）/ 341 px（390 幅）あり、素の休息位置（下 72 px）は帯の**内側**に落ちる。
+Issue #783 は同意パネルを**下辺全幅の帯**にし、`release-0-8-1`（#796、`6b3be737`）で
+出荷された。帯は `position: fixed; inset-inline: 0; bottom: 0` で、高さは実測
+198 px（1440 幅）/ 341.2 px（390 幅）。素の休息位置（下 72 px）は帯の**内側**に落ちる。
 390 幅では帯の操作ボタンが全幅で縦積みになるため、装飾が「許可する / 拒否する」を覆う。
 
-同意面は既に `--analytics-consent-offset`（`src/editorial/analytics/consent.ts`
+同意面は `--analytics-consent-offset`（`src/editorial/analytics/consent.ts`
 が名前を持ち、`AnalyticsConsent.tsx` が `:root` に publish する）で
-**自面の高さ + 12 px**（focus compensation 用の余白込み）を公開している。
+**自面が占める高さ**を公開している。帯は下辺に接しているので `ceil(height)`、
+浮いているピルは自分の 12 px の間隔を含めて `ceil(height + 12)`。
 ペットはその**読み手**になるだけでよい。
 
 ```text
@@ -235,13 +237,14 @@ Issue #783 は同意パネルを**下辺全幅の帯**にする。帯は `positi
 | --- | ---: | ---: | ---: | ---: |
 | 無し（SSR / hydration 前 / 対象外ページ） | — | 無し（0） | **72 px** | — |
 | 畳んだピル（判断済み） | 36 | 48（36 + 12） | **72 px**（60 < 72 なので従来どおり） | 24 px（下端 828 / ピル上端 852） |
-| 帯（未確定、1440） | 198 | 210 | **222 px** | **24 px**（下端 678 / 帯上端 702） |
-| 帯（未確定、390） | 341 | 353 | **365 px** | **24 px**（下端 479 / 帯上端 503） |
+| 帯（未確定、1440） | 198 | 198 | **210 px** | **12 px**（下端 690 / 帯上端 702） |
+| 帯（未確定、390） | 341.2 | 342 | **354 px** | **12.8 px**（下端 490 / 帯上端 502.8） |
 
-- publish 値は既に 12 px を含むため、式の `+ 12px` を足すと帯の可視上端からは
-  **24 px** 空く。12 px で足りるかは見た目の判断なので、実測値として
-  `docs/verification/visual/pet-companion/consent-*.webp` と
-  `.tmp/pet-consent/measurements.json` に残し、owner / supervisor に返す。
+- 帯は自分の高さだけを公開するので、式の `+ 12px` がそのまま可視の間隔になる。
+  ピルだけは publish 値が自分の間隔を含むため 24 px 空くが、ピルの block-end は
+  72 px の床に戻るので実際に動くのは帯のときだけ。
+- 実測値は `docs/verification/visual/pet-companion/consent-*.webp` と
+  `.tmp/pet-consent/measurements-real-band.json` に残す。
 
 - `max()` であって和ではない。ピルは 60 なので 72 に戻り、帯だけが押し上げる。
   式は `src/editorial/pet/position.ts` の `restingBlockEndInset()` が唯一の実装で、
@@ -261,8 +264,8 @@ Issue #783 は同意パネルを**下辺全幅の帯**にする。帯は `positi
 - `pet-position.v1` は**移動可能域に対する比率**なので、箱の高さが変わっても
   同じ相対位置に戻る。帯が出た後に復元すると「下」は「帯の直上」を意味する。
 - `--pet-overlay-offset`（focus compensation、§5.6）も同じ値で再 publish する:
-  `blockEnd + 104`。実測では同意面なし / ピルが 176 px、帯（1440）が 326 px、
-  帯（390）が 469 px。
+  `blockEnd + 104`。実測では同意面なし / ピルが 176 px、帯（1440）が 314 px、
+  帯（390）が 458 px。
 
 ### 5.3 退避 — 本文を覆い続けない
 
@@ -342,7 +345,7 @@ owner 指示:
 | 画像 | `alt=""`（装飾）。`a11y:image-alt:check` の PASS 形 |
 | フォーカス | **しない。** ボタンが無いのでフォーカス可能な子孫も無い |
 | キーボード操作 | 提供しない。位置の変更はポインタ操作の副産物で、キーボード利用者はこの装飾を必要としない |
-| フォーカス済み要素の遮蔽 | WCAG 2.2 SC 2.4.11。`--pet-overlay-offset`（**現在の**下端インセット + フレーム 104 px。同意面が無ければ 72 + 104 = 176 px、帯（1440）なら 222 + 104 = 326 px、帯（390）なら 365 + 104 = 469 px）を mount 中だけ publish し、`src/styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費する。`scripts/check-a11y-focus-visible.mjs` が両端の存在を強制する |
+| フォーカス済み要素の遮蔽 | WCAG 2.2 SC 2.4.11。`--pet-overlay-offset`（**現在の**下端インセット + フレーム 104 px。同意面が無ければ 72 + 104 = 176 px、帯（1440）なら 210 + 104 = 314 px、帯（390）なら 354 + 104 = 458 px）を mount 中だけ publish し、`src/styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費する。`scripts/check-a11y-focus-visible.mjs` が両端の存在を強制する |
 
 「不可視」は読み上げ・フォーカスの話で、視覚的にも消すという意味ではない
 （owner は相棒として見せることを求めている）。`aria-hidden` を付けた要素の中に

@@ -159,24 +159,22 @@ describe('pet position × analytics consent surface (Issue #783)', () => {
 	});
 
 	it('clears a full-width band by the published height plus the gap', () => {
-		// The measured band heights of the #783 branch are 198 px at 1440
-		// and 341 px at 390. The consent surface publishes `ceil(height +
-		// 12)` — its own focus-compensation gap — so the property this
-		// function receives is 210 / 353, and the sprite adds its own
-		// 12 px, leaving 24 px of visible clearance above the band.
-		expect(restingBlockEndInset(210)).toBe(222);
-		expect(restingBlockEndInset(353)).toBe(365);
+		// The shipped band (Issue #783) is 198 px tall at 1440 and 341.2 px
+		// at 390, and it is flush with the bottom edge, so the property this
+		// function receives is `ceil(height)` — 198 / 342. The sprite adds
+		// its own 12 px, leaving 12 px of visible clearance above the band.
+		expect(restingBlockEndInset(198)).toBe(210);
+		expect(restingBlockEndInset(342)).toBe(354);
 	});
 
 	it('never puts the resting position inside the band', () => {
 		for (const width of [1440, 390]) {
 			const viewport = width === 1440 ? { width: 1440, height: 900 } : { width: 390, height: 844 };
-			const bandHeight = width === 1440 ? 198 : 341;
+			// The published value is `ceil(height)`: 198 at 1440, 342 at 390.
+			const bandHeight = width === 1440 ? 198 : 342;
 			const insets: PetTravelInsets = {
 				inline: PET_POSITION_MARGIN,
-				// The surface publishes height + 12, which is what the
-				// component reads; the sprite then adds its own gap.
-				blockEnd: restingBlockEndInset(bandHeight + 12),
+				blockEnd: restingBlockEndInset(bandHeight),
 			};
 			// The deepest legal position is the bottom of the travel box.
 			const deepest = clampPosition({ x: 0, y: 99_999 }, viewport, BOX, insets);
@@ -189,7 +187,7 @@ describe('pet position × analytics consent surface (Issue #783)', () => {
 	it('re-maps a stored ratio when the band appears without ending up under it', () => {
 		const viewport = { width: 1440, height: 900 };
 		const bare: PetTravelInsets = { inline: 24, blockEnd: PET_REST_INSET_BLOCK_END };
-		const band: PetTravelInsets = { inline: 24, blockEnd: restingBlockEndInset(198 + 12) };
+		const band: PetTravelInsets = { inline: 24, blockEnd: restingBlockEndInset(198) };
 
 		// The visitor dragged the character to the bottom of the page before
 		// any consent surface was shown.
@@ -206,13 +204,13 @@ describe('pet position × analytics consent surface (Issue #783)', () => {
 	it('keeps a ratio relative when only the bottom edge moves', () => {
 		const viewport = { width: 1440, height: 900 };
 		const bare: PetTravelInsets = { inline: 24, blockEnd: 72 };
-		const band: PetTravelInsets = { inline: 24, blockEnd: 222 };
+		const band: PetTravelInsets = { inline: 24, blockEnd: 210 };
 		const middle = ratioToPosition({ xRatio: 0.5, yRatio: 0.5 }, viewport, BOX, bare);
 		const lifted = ratioToPosition({ xRatio: 0.5, yRatio: 0.5 }, viewport, BOX, band);
 		expect(lifted.x).toBeCloseTo(middle.x, 6);
 		// Half of a shorter travel box is higher up, and stays at half.
 		const bareHalf = 24 + (viewport.height - BOX.height - 72 - 24) / 2;
-		const bandHalf = 24 + (viewport.height - BOX.height - 222 - 24) / 2;
+		const bandHalf = 24 + (viewport.height - BOX.height - 210 - 24) / 2;
 		expect(middle.y).toBeCloseTo(bareHalf, 6);
 		expect(lifted.y).toBeCloseTo(bandHalf, 6);
 	});
@@ -221,7 +219,7 @@ describe('pet position × analytics consent surface (Issue #783)', () => {
 		// A short landscape phone with a tall band: there is nowhere above
 		// the surface, so the character must not be pushed off-screen.
 		const viewport = { width: 640, height: 400 };
-		const insets: PetTravelInsets = { inline: 24, blockEnd: restingBlockEndInset(341 + 12) };
+		const insets: PetTravelInsets = { inline: 24, blockEnd: restingBlockEndInset(342) };
 		const clamped = clampPosition({ x: 300, y: 380 }, viewport, BOX, insets);
 		expect(clamped.y).toBe(0);
 		expect(ratioToPosition({ xRatio: 0, yRatio: 1 }, viewport, BOX, insets).y).toBe(0);

@@ -53,6 +53,15 @@ declare global {
 			// unset in production; default behavior (env.LOCAL_API_MODE
 			// !== 'mock') runs the production boundary unchanged.
 			LOCAL_API_MODE?: string;
+			// Issue #377 — the development data source. Declared ONLY
+			// in development (`cloudflare.config.ts` is mode-aware), so
+			// its ABSENCE is what identifies the deployed production
+			// Worker. In development it always carries a value
+			// (`local` by default, `production-readonly` when the
+			// operator opted in with `pnpm dev:production-data`).
+			// `src/cloudflare/data-source.ts` owns the rule; this
+			// declaration only teaches the type checker the name.
+			MY_WEB_2026_DATA_SOURCE?: string;
 		}
 	}
 
@@ -64,6 +73,8 @@ declare global {
 	// both surfaces so `c.env.LOCAL_API_MODE` typechecks.
 	interface Env {
 		LOCAL_API_MODE?: string;
+		// Issue #377 — see the namespaced declaration above.
+		MY_WEB_2026_DATA_SOURCE?: string;
 		GOOGLE_ANALYTICS_MEASUREMENT_ID: string;
 	}
 }

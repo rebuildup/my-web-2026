@@ -113,6 +113,12 @@ home/access -> http/access-counter (schema types only)
 home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
 admin -> logging (Issue #467 — admin image diagnostics)
+admin -> cloudflare (Issue #377 — the development data-source contract
+                      `src/cloudflare/data-source.ts`; the admin write
+                      paths ask it whether the runtime may write, and
+                      refuse with a stable reason when it may not. The
+                      module is binding-free: it reads the env value,
+                      never a binding)
 reactions -> cloudflare (env.DB at SSR time)
 http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
@@ -231,7 +237,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
-- `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
+- `src/cloudflare/**` owns Cloudflare-specific runtime behavior. It
+  also owns the **development data-source contract** (Issue #377):
+  `src/cloudflare/data-source.ts` decides which data the runtime is
+  reading (the local copy / the canned mock / the production D1 and
+  R2 reached through `remoteBindings`) and whether the runtime may
+  write. The rule is a property of the Cloudflare runtime, so the
+  module is binding-free and the three consumers — the external HTTP
+  boundary (`http`), the admin write paths (`admin`) and the home's
+  development indicator (`home/status`) — ask ONE module instead of
+  restating it. The mode is carried by one development-only binding,
+  `MY_WEB_2026_DATA_SOURCE`, whose ABSENCE identifies the deployed
+  production Worker; an unrecognised value fails closed (writes are
+  refused and the development screen says so). See
+  `docs/runbook/development-data-source.md`.
 - `src/http/**` owns the external HTTP boundary. It also owns the
   request anomaly contract (Issue #481):
   `src/http/middleware/anomaly-monitor.ts` decides whether the

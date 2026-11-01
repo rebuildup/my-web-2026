@@ -96,6 +96,11 @@ export const uploadReactionImage = createServerFn({ method: 'POST' })
 	.validator(UploadInput)
 	.handler(async ({ data }): Promise<AdminImage> => {
 		const session = await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (the upload would put bytes into the
+		// production R2 bucket).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:images:upload');
 		return uploadReactionImageImpl({
 			contentType: data.contentType,
 			filename: data.filename,
@@ -163,6 +168,11 @@ export const deleteReactionImage = createServerFn({ method: 'POST' })
 	.validator(DeleteImageInput)
 	.handler(async ({ data }): Promise<{ deleted: boolean }> => {
 		await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (the delete would remove a production R2
+		// object and its D1 row).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:images:delete');
 		try {
 			await deleteImage(env.DB, env.MEDIA, data.id);
 			return { deleted: true };

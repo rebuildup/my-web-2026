@@ -94,7 +94,16 @@ facet は**作品が何であるか**しか言っておらず、「この人が�
 `Facets`（必須、`develop`/`video`/`design`/`other` のいずれか 1 つ以上）が埋まらず、
 `role` も表から導けない。`other` を機械的に当てると「分類済み」に見えてしまうので当てていない。
 facet の写像は分類側（Issue #78）の権限なので、ここでは決めない。
-**未移行 + 理由**として台帳に残す。
+
+台帳には **未移行 + 理由** として明示してある。
+
+- `portfolio-notion-pages.json` の当該行: `state: "unmigrated"` / `reason: "no_facet"`
+- `portfolio-2025-inventory.json` の当該行: `notion_page: "unmigrated"` /
+  `notion_page_reason: "no_facet"`
+- 理由コードは閉じた集合（`scripts/audit-legacy-portfolio.mjs#UNMIGRATED_REASONS`）。
+  未知の state、または理由の無い `unmigrated` 行は**台帳に載せない**
+  （「移行しなかった」だけを書いた行は、この台帳が防ぎたい半端な事実そのもの）。
+- 集計: `by_notion_page: { recorded: 68, unmigrated: 1, null: 82 }`
 
 旧 body の画像ブロックによる拒否（`image_block_unsupported`）は **0 件**。
 69 件の `markdown_pages.body` に画像記法（`![…](…)` / `<img>`）は 1 件も無く、
@@ -129,6 +138,18 @@ slug が一致する移行レコード 3 件は、仮に後で公開しても D1
 （`git grep notionProjects origin/main -- src/` が 0 件）。つまり現在の本番は
 Notion を読む経路を持たず、公開面は書き込みの内容から独立している。
 
+環境の明示: 上の実測は**本番** `https://rebuildup.dev` のもの。ローカルの
+`:3000` は miniflare の D1 が空なので一覧 **0 件**になり、これは本番と矛盾しない。
+「ローカルで見えない」は「公開されていない」の証拠にならないため、数字には必ず環境を添える。
+
+### slug 衝突（owner 判断・未解決）
+
+上の実測で 200 だった 3 件は、いずれも移行済みレコードと slug が一致する既存 D1 行である。
+現行規則は「`src/portfolio/load.ts` は slug 衝突で D1 を優先する」なので、この 3 件は
+**公開しても D1 行に隠れる**。選択肢は (a) 移行側の slug を付け替える（旧サイトの URL を捨てる）
+/ (b) D1 行を畳んで移行側に寄せる（本文・画像の移し替えが要る）の 2 つで、
+**どちらも選ばず** owner の決定として台帳 `open_decisions` に残している。
+
 ## 6. まだ公開できない理由
 
 | 停止条件 | 件数 | 解く主体 |
@@ -145,5 +166,6 @@ Notion を読む経路を持たず、公開面は書き込みの内容から独�
 `portfolio-2025-inventory.json#items[].notion_page` に `recorded` を刻む
 （既定のパスなので追加引数は不要）。**id は載せない。**
 
-現状 `by_notion_page: { recorded: 68, null: 83 }`、`by_role_source: { facet-derived: 64, owner-recorded: 4, null: 83 }`。
+現状 `by_notion_page: { recorded: 68, unmigrated: 1, null: 82 }`、
+`by_role_source: { facet-derived: 64, owner-recorded: 4, null: 83 }`。
 `new_url` は 151 件すべて `null`（公開 URL は移行ではなく公開が決める）。

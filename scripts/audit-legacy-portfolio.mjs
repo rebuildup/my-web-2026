@@ -140,12 +140,35 @@ export function inventoryAssetIds(inventory) {
 	return ids;
 }
 
+/** The states a legacy id can be in once the migration has seen it. */
+export const NOTION_PAGE_STATES = Object.freeze(['recorded', 'unmigrated']);
+
 /**
- * Read the migration-state record: which legacy ids now have a Notion page.
+ * Why a legacy item has no Notion page. Closed on purpose.
+ *
+ * A free-text reason lets "we could not" read as "we chose not to", and
+ * both read as "nothing to see here". Every code below names a fact that
+ * blocks the migration and an owner who can unblock it:
+ *
+ *   - `no_facet` — the Issue #78 classification maps none of the item's
+ *     tags onto the facet vocabulary, so `Facets` (required by the mapper)
+ *     cannot be filled and no role can be derived. The mapping belongs to
+ *     the classification, not to this script.
+ */
+export const UNMIGRATED_REASONS = Object.freeze(['no_facet']);
+
+/**
+ * Read the migration-state record: which legacy ids now have a Notion page,
+ * and which ones were seen and deliberately left behind.
  *
  * The file carries a STATE per legacy id, never a page id — the id stays in
  * Notion (Issue #766 charter, report format 4). A missing file is not an
  * error: it means no page has been recorded yet.
+ *
+ * A row is dropped when its state is unknown or when it claims
+ * `unmigrated` without one of `UNMIGRATED_REASONS`. "It was not migrated"
+ * with no cause is exactly the half-fact this ledger exists to prevent, so
+ * the row would be worse than absent.
  */
 export function readNotionPages(path) {
 	if (!existsSync(path)) return null;
@@ -155,7 +178,10 @@ export function readNotionPages(path) {
 	for (const page of pages) {
 		if (typeof page?.legacy_id !== 'string' || page.legacy_id.length === 0) continue;
 		const state = typeof page.state === 'string' ? page.state : 'recorded';
-		map.set(page.legacy_id, state);
+		if (!NOTION_PAGE_STATES.includes(state)) continue;
+		const reason = state === 'unmigrated' ? (page.reason ?? null) : null;
+		if (state === 'unmigrated' && !UNMIGRATED_REASONS.includes(reason)) continue;
+		map.set(page.legacy_id, { state, reason });
 	}
 	return map.size > 0 ? map : null;
 }
@@ -201,6 +227,7 @@ export const LEGACY_FACET_ROLES = Object.freeze({
  */
 export const OPEN_DECISIONS = Object.freeze([
 	'Display label: the public surface labels the `Role` field "Role" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit ("Role: Video production"), which the derivation does not claim — it names the kind of work. Whether the label becomes "Type"/"種類" is an owner decision; no public page is affected while every migrated page is Draft.',
+	"Slug collision: three migrated projects derive the same slug as a row that D1 already serves — aulymo-v01, aulymo-v02, multislicer. The current rule is that src/portfolio/load.ts resolves a collision in favour of D1, so a migrated record with one of these slugs stays hidden from /portfolio and from /portfolio/<slug> even after it is published. Either (a) the migrated slugs are changed, which abandons the old-site URL, or (b) the D1 rows are retired in favour of the migrated records, which means moving their text and media first. This ledger chooses neither; the choice is the owner's, and it is a public-URL decision, not a migration detail.",
 ]);
 
 /**
@@ -336,6 +363,7 @@ function measureDatabase(
 		const contentId = typeof content?.id === 'string' ? content.id : null;
 		const mediaBucket = mediaByContent.get(contentId) ?? { files: 0, bytes: 0 };
 		const legacyKey = contentId ?? dbFile.replace(/^content-/, '').replace(/\.db$/, '');
+		const notionPage = notionPages?.get(legacyKey) ?? null;
 		return {
 			id: contentId ?? legacyKey,
 			db: dbFile,
@@ -366,10 +394,12 @@ function measureDatabase(
 			external_videos: Number(classificationRow?.external_video_count ?? 0),
 			rights: rightsStateFor(legacyKey, inventoryIds),
 			// The migration column records a STATE, never an identifier: the
-			// Notion page id stays in Notion (Issue #766). `null` means no
-			// page was created; `recorded` means one exists and the ledger
-			// heard about it through `--notion-pages`.
-			notion_page: notionPages?.get(legacyKey) ?? null,
+			// Notion page id stays in Notion (Issue #766). `null` means the
+			// migration has not seen this item; `recorded` means a page
+			// exists; `unmigrated` means it was seen and left behind on
+			// purpose, and `notion_page_reason` says why.
+			notion_page: notionPage?.state ?? null,
+			notion_page_reason: notionPage?.reason ?? null,
 			// The new public URL is decided by publication, not by migration.
 			new_url: null,
 		};

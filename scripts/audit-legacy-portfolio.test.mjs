@@ -333,7 +333,7 @@ describe('buildInventory', () => {
 			classificationPath: 'docs/migration/portfolio-2025-to-2026-classification.json',
 			classification,
 			inventory,
-			notionPages: new Map([['published', 'recorded']]),
+			notionPages: new Map([['published', { state: 'recorded', reason: null }]]),
 			now: '2026-11-01T00:00:00.000Z',
 			openDatabase,
 		});
@@ -353,8 +353,38 @@ describe('buildInventory', () => {
 
 	it('records the decisions it does not own instead of answering them', () => {
 		assert.ok(Array.isArray(document.open_decisions));
-		assert.equal(document.open_decisions.length, 1);
+		assert.equal(document.open_decisions.length, 2);
 		assert.match(document.open_decisions[0], /Display label/);
+	});
+
+	it('names the three colliding slugs and both ways out, without picking one', () => {
+		const [decision] = document.open_decisions.filter((entry) => /^Slug collision/.test(entry));
+		assert.ok(decision, 'the slug collision has to be an open decision');
+		for (const slug of ['aulymo-v01', 'aulymo-v02', 'multislicer']) {
+			assert.ok(decision.includes(slug), `${slug} is one of the collisions`);
+		}
+		// The rule, not a preference: D1 wins, so the migrated row stays hidden.
+		assert.match(decision, /load\.ts resolves a collision in favour of D1/);
+		assert.match(decision, /\(a\) the migrated slugs are changed/);
+		assert.match(decision, /\(b\) the D1 rows are retired/);
+		assert.match(decision, /chooses neither/);
+	});
+
+	it('stamps an unmigrated item with the reason it was left behind', () => {
+		const withUnmigrated = buildInventory({
+			sourcePath: source,
+			sourceHead: 'a'.repeat(40),
+			classificationPath: 'docs/migration/portfolio-2025-to-2026-classification.json',
+			classification,
+			inventory,
+			notionPages: new Map([['published', { state: 'unmigrated', reason: 'no_facet' }]]),
+			now: '2026-11-01T00:00:00.000Z',
+			openDatabase,
+		});
+		const row = withUnmigrated.items.find((item) => item.id === 'published');
+		assert.equal(row.notion_page, 'unmigrated');
+		assert.equal(row.notion_page_reason, 'no_facet');
+		assert.deepEqual(withUnmigrated.counts.by_notion_page, { unmigrated: 1, null: 1 });
 	});
 
 	it('does not mistake an owner-recorded role for a derived one', () => {
@@ -392,7 +422,44 @@ describe('readNotionPages', () => {
 			}),
 		);
 		const pages = readNotionPages(path);
-		assert.deepEqual([...pages.entries()], [['a', 'recorded']]);
+		assert.deepEqual([...pages.entries()], [['a', { state: 'recorded', reason: null }]]);
+	});
+
+	it('keeps the reason for an item that was deliberately left behind', () => {
+		const path = join(dir, 'unmigrated.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				schema: 'portfolio-notion-pages.v1',
+				pages: [
+					{ legacy_id: 'left-behind', state: 'unmigrated', reason: 'no_facet' },
+					{ legacy_id: 'written', state: 'recorded' },
+				],
+			}),
+		);
+		const pages = readNotionPages(path);
+		assert.deepEqual(pages.get('left-behind'), { state: 'unmigrated', reason: 'no_facet' });
+		// A migrated row never carries a reason, whatever the file says.
+		assert.deepEqual(pages.get('written'), { state: 'recorded', reason: null });
+	});
+
+	it('drops a row whose state or reason it cannot vouch for', () => {
+		const path = join(dir, 'unverifiable.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				schema: 'portfolio-notion-pages.v1',
+				pages: [
+					// "Not migrated, no reason" is a half fact: worse than absent.
+					{ legacy_id: 'no-reason', state: 'unmigrated' },
+					{ legacy_id: 'made-up-reason', state: 'unmigrated', reason: 'felt-like-it' },
+					{ legacy_id: 'unknown-state', state: 'maybe' },
+					{ legacy_id: 'kept', state: 'recorded' },
+				],
+			}),
+		);
+		const pages = readNotionPages(path);
+		assert.deepEqual([...pages.keys()], ['kept']);
 	});
 });
 

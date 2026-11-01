@@ -1791,6 +1791,41 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-679",
+			"pr": 679,
+			"base": "main",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-11-01",
+			"decision": "approved",
+			"fingerprint": "sha256:d4b873f8ac4354db082b8cf1e49029ac23e12d0d6743ba6bc21e1fb226bb0877",
+			"proposal": {
+				"tool": "pi (minimax) editorial pass, run through herdr agent aud-a",
+				"ran": true,
+				"summary": "編集補助を 1 セグメントに実行（2026-11-01）。推敲 4 件。案1: `${capability.labelJa} / ${capability.label}を開く` — 可視テキスト「{label}を開く」と空白差なしで連続一致させる案。案2: `${capability.label}を開く（${capability.labelJa}）` — 括弧で囲う案。案3: aria-label を廃し、不可視テキストで accessible name を本文から生成する案。案4: 可視テキスト自体を `${capability.labelJa} / ${capability.label} を開く` に変える案。観察: (1) 「〜を開く」の直前の空白以外に日本語としての破綻はない。(2) 「 / 」（前後に半角空白）による英日併記は既存の `src/editorial/nav/PublicNav.tsx` の `${item.labelJa} / ${item.labelEn}` と `src/about/components/AboutPage.tsx` の「キーボード配列 / Keyboard」と矛盾しない。(3) 数値・否定・許可・状態の主張を accessible name に新たに含んでいない（リンクは live な capability にだけ描画され、公開済み/未公開の主張も含まれない）。(4) スクリーンリーダーでは「/」の読み上げに差が出る。(5) 上記 4 案が候補。",
+				"disposition": "推敲 4 件のうち採用は 0 件。owner は 2026-11-01 にこの change set を「英日併記の記法として可」として承認し、現行の形（`${capability.labelJa} / ${capability.label} を開く`）を維持した。案1 は accessible name が可視テキストと空白差なしで連続一致する案だが、ブラウザ実測（axe-core 4.14.0 の `label-content-name-mismatch`）で 1 違反になり SC 2.5.3 を満たさないことを確認したため採用しない。実測の内訳は「現行の形 → 0 違反 / 修正前（`${capability.labelJa} を開く`）→ 1 違反 / 案1（`${capability.labelJa} / ${capability.label}を開く`）→ 1 違反」。この対照により、テストが違反を検知できることと現行の形が違反_triggerしないことの両方を確認した。案3・案4 は訪問者に見える文言そのものを変えるため、この change set の範囲を超える owner 決裁事項であり採用しない。この change set では文言を変更しない。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/capabilities/grid.tsx",
+					"before": "${capability.labelJa} を開く",
+					"after": "${capability.labelJa} / ${capability.label} を開く",
+					"verdict": "intentional",
+					"note": "capability カードのリンクの accessible name に、可視テキストである英字名を加えた変更。表示テキスト「{label}を開く」とカードの可见ラベルは変更しておらず、不可視の文字列だけが対象である。追加された英字名はリンクが指す capability の名前そのものなので、数値・否定・許可・状態に関する新しい主張を含まない。「/」は既存の英日併記の記法と一致し、日本語話者・英語話者の双方にとって対象が明確になる。WCAG 2.2 SC 2.5.3（Label in Name）の違反を、実装側で消除するための意図的な変更である。"
+				}
+			],
+			"provenance": {
+				"kind": "owner-review",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/749",
+				"recordedBy": "Claude Code (agent)",
+				"ownerConfirmation": "confirmed",
+				"evidence": [
+					"2026-11-01、repository owner がこの change set を「英日併記の記法として可」として承認した（agent へのレビュー依頼への回答）。",
+					"owner の判断は Issue #749 のコメントとして残す。gate が検査するのは reference の「形」だけで、reference が誰の comment を指すかは証明しない。owner が自分のアカウントでコメントを投稿したら、この reference をそのコメント URL に置き換える。agent が owner の判断を代筆したコメントは artefact として数えない（runbook §3.4）。",
+					"編集補助（pi）の出力は evidence であり、承認ではない。採決は owner が行い、採否の根拠は comparisons と disposition に記した。"
+				]
+			}
 		}
 	]
 }

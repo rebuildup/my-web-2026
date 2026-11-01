@@ -3,9 +3,7 @@
 	"version": 1,
 	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner. Since Issue #720 the gate also reports the provenance of each record: a record an automated side wrote is reported as awaiting owner confirmation, never as an owner review, and the gate never re-dates a record — re-classification is the only thing it does to this registry.",
 	"freshnessWindowDays": 90,
-	"locales": [
-		"ja"
-	],
+	"locales": ["ja"],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",

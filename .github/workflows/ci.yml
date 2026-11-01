@@ -198,10 +198,14 @@ jobs:
       # The token is the workflow's own read-only `github.token`; it is
       # never printed, and the script reports issue numbers and titles
       # only.
+      # The window follows the ledger's own audited date, so the gate
+      # covers exactly the population the ledger claims to own. A fixed
+      # `--since` here would either miss later closures or pull in
+      # pre-audit history the ledger makes no claim about.
       - name: Issue closure audit
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: pnpm run issue:closure:audit -- --since=2026-10-01
+        run: pnpm run issue:closure:audit
       # The HTML report is derived from the lockfile's resolved package
       # set and public advisory metadata only — no credential, so the
       # artifact carries the same posture as the Cloudflare bundle below.

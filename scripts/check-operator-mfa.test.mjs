@@ -390,6 +390,19 @@ describe('operator MFA audit — the anonymization guard', () => {
 		assert.ok(findings.some((finding) => finding.id === 'long-digit-run'));
 	});
 
+	it('keeps the word boundary of the digit-run rule', () => {
+		// A digit run inside an alphanumeric identifier is not a digit run:
+		// the rule has always required a word boundary, and the allow-list
+		// comparison must not widen it.
+		assert.deepEqual(findSensitiveInText('commit: a123456789b'), []);
+		assert.deepEqual(findSensitiveInText('build a123456789012b'), []);
+		assert.ok(
+			findSensitiveInText('commit: 123456789012').some(
+				(finding) => finding.id === 'long-digit-run',
+			),
+		);
+	});
+
 	it('passes the rendered report for every fixture', () => {
 		for (const name of FIXTURE_NAMES) {
 			const read = readFixture(readFileSync(join(FIXTURE_DIR, name), 'utf8'));

@@ -726,7 +726,7 @@ export function findSensitiveInText(text, { allow = [] } = {}) {
 				// a longer run that merely contains an allowed token is still
 				// reported: masking the token out of the line would leave a
 				// credential that embeds the sha invisible to the rule.
-				for (const run of line.match(/\d{9,}/g) ?? []) {
+				for (const run of line.match(/\b\d{9,}\b/g) ?? []) {
 					if (!allowed.has(run)) findings.push({ id: pattern.id, line: index + 1 });
 				}
 				continue;

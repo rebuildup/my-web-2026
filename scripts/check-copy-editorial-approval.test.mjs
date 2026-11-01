@@ -41,8 +41,9 @@ const FIXTURE_DIR = join(REPO_ROOT, 'test/fixtures/copy/editorial-approval');
  * Fixture coverage for the public Japanese copy editorial approval gate
  * (Issue #506).
  *
- * The gate's whole value is that an unreviewed change of public copy
- * cannot pass, so the committed fixtures resolve to the four states the
+ * Strict CLI fails unreviewed changes; PR CI reports those as pending
+ * without blocking integration and E2E. The committed fixtures still resolve to
+ * the four states the
  * report distinguishes: `pass`, `fail`, `not run` (NEEDS REVIEW) and
  * `not applicable`. A scanner regression must not be able to collapse
  * two of them into one — the test asserts the verdict AND the three

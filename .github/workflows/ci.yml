@@ -67,33 +67,16 @@ jobs:
             echo "::error::PRs into main must have head_ref matching ^release-[0-9]+-[0-9]+-[0-9]+$ (got: $HEAD_REF)"
             exit 1
           fi
-      # Issue #506 — the public Japanese copy editorial approval gate.
-      # A change to the Japanese text a visitor reads is an editorial
-      # change, so the change set is extracted from this pull request's
-      # diff and matched against the owner approval records in
-      # quality/copy-editorial-approvals.json. The editing aid's output
-      # is evidence; only an owner decision approves.
+      # Issue #761 — report public Japanese changes without making a
+      # missing owner-comment artefact a prerequisite for integration,
+      # security checks, or E2E. Unconfirmed is not approved; the CLI
+      # still reports NEEDS REVIEW and emits a CI warning. A recorded
+      # rejection, stale fingerprint, or unreadable diff still fails.
+      # The independent Japanese copy review-targets report is retained.
       #
-      # It is a PULL REQUEST gate, not a release gate: it judges a diff,
-      # and a diff only exists against a base branch. The base ref is
-      # fetched here because actions/checkout is a depth-1 clone and the
-      # base commit is not in it. `COPY_APPROVAL_BASE` is the gate's own
-      # variable; GITHUB_BASE_REF is the GitHub-provided fallback.
-      #
-      # A pull request that changes no public Japanese copy resolves to
-      # `not applicable` and passes. A pull request that changes it
-      # without a recorded owner decision resolves to `not run`
-      # (NEEDS REVIEW) and fails, which is the point of the gate.
-      #
-      # Issue #686 — the base ref is fetched WITH its history
-      # (`--unshallow`), not as a depth-1 snapshot. The gate's diff
-      # base is the pull request's merge base, which is an ancestor of
-      # the base branch tip; a depth-1 fetch leaves that commit out of
-      # the object store, and the gate then cannot diff the change set
-      # it is asked to judge (`fatal: bad object` → exit 2) as soon as
-      # ONE merge lands on the base branch. The gate script itself is
-      # unchanged: it stays fail-closed when the change set is unknown.
-      - name: Copy editorial approval gate
+      # Issue #686 — fetch the base ref with history to compare the PR's
+      # own change set (checkout alone is depth-1).
+      - name: Copy editorial evidence (pending owner review is advisory)
         if: github.event_name == 'pull_request'
         env:
           COPY_APPROVAL_BASE: ${{ github.base_ref }}
@@ -102,7 +85,7 @@ jobs:
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}" \
             || git fetch --no-tags origin \
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}"
-          pnpm run copy:approval:check
+          pnpm run copy:approval:check -- --allow-unreviewed
       # Issue #425 — the Japanese copy review-target report. This is a
       # REPORT, not a gate: it lists the Japanese text this pull request
       # changed in article Markdown, About prose and public UI copy, with

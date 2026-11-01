@@ -914,6 +914,13 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 `;
 }
 
+export function exitCodeForVerdict(verdict, { allowUnreviewed = false } = {}) {
+	if (verdict === 'pass' || verdict === 'not applicable') return 0;
+	if (verdict === 'not run') return allowUnreviewed ? 0 : 1;
+	if (verdict === 'fail') return 1;
+	return 2;
+}
+
 function parseArgs(argv) {
 	const options = {
 		base: null,
@@ -924,6 +931,7 @@ function parseArgs(argv) {
 		format: 'text',
 		out: null,
 		printFingerprint: false,
+		allowUnreviewed: false,
 	};
 	for (const arg of argv) {
 		// `pnpm run <script> -- <args>` forwards the separator; the runbook
@@ -937,6 +945,7 @@ function parseArgs(argv) {
 		else if (arg.startsWith('--out=')) options.out = arg.slice('--out='.length);
 		else if (arg.startsWith('--format=')) options.format = arg.slice('--format='.length);
 		else if (arg === '--print-fingerprint') options.printFingerprint = true;
+		else if (arg === '--allow-unreviewed') options.allowUnreviewed = true;
 		else throw new Error(`unknown option: ${arg}`);
 	}
 	return options;
@@ -1027,7 +1036,12 @@ export function main(argv, { env = process.env } = {}) {
 		process.stdout.write(rendered);
 	}
 
-	return result.verdict === 'pass' || result.verdict === 'not applicable' ? 0 : 1;
+	if (options.allowUnreviewed && result.verdict === 'not run') {
+		process.stdout.write(
+			'::warning title=Public copy review pending::Owner review is unconfirmed; technical CI continues. This is not an approval.\n',
+		);
+	}
+	return exitCodeForVerdict(result.verdict, { allowUnreviewed: options.allowUnreviewed });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

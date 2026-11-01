@@ -1716,15 +1716,31 @@ copy_editorial_approval:
   surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs and no excludeGlobs)'
   ledger: 'quality/copy-editorial-approvals.json (owner approval records, matched to a change set by fingerprint)'
   command: 'pnpm run copy:approval:check'
+  ci_command: 'pnpm run copy:approval:check -- --allow-unreviewed'
   screenshot_command: 'pnpm run verify:copy-editorial-approval-screenshot'
   tests: 'node --test scripts/check-copy-editorial-approval.test.mjs'
   fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,rejected,stale-approval,not-applicable}.json'
   gate: ci
   gate_placement: >-
-    the `Copy editorial approval gate` step of the CI `validate` job
+    the `Copy editorial evidence (pending owner review is advisory)`
+    step of the CI `validate` job
     (.github/workflows/ci.yml), before `validate:integration`. It runs
     on `pull_request` events only: a push to a release branch has no
     pull request diff to judge.
+  gate_placement_reason: >-
+    the gate needs the base branch, and actions/checkout is a depth-1
+    clone, so the step fetches the base ref explicitly. The step is
+    read-only: it diffs two refs and reads two JSON files.
+  ci_severity: >-
+    Issue #761 — the required PR step runs the CLI in advisory mode for
+    the `not run` (NEEDS REVIEW) verdict only: it emits a CI warning and
+    exits 0, so integration validation, dependency audits and Playwright
+    E2E are not blocked by a missing owner comment. The default CLI
+    invocation stays strict (exit 1 on `not run`), an explicit rejection
+    or an inconsistent record still fails (exit 1), and an unreadable
+    diff still fails closed (exit 2). The advisory mode never writes an
+    owner decision: a record nobody confirmed stays
+    `agent-recorded / unconfirmed`, and the report says so.
   gate_placement_reason: >-
     the gate needs the base branch, and actions/checkout is a depth-1
     clone, so the step fetches the base ref explicitly. The step is

@@ -124,16 +124,19 @@ contracts:
    lowercase slug (`/tools/prototype`). The canonical URL itself
    remains lowercase — this is URL tolerance, not a
    canonicalisation contract.
-2. **404 → empty state, no double chrome.** When the slug is
+2. **404 → empty state, no misleading breadcrumb.** When the slug is
    genuinely unknown (loader throws `notFound()`), the route's
    `notFoundComponent` renders `ToolNotFound` — a SectionHeading
    with the eyebrow "404", a bilingual explanation, and a link
    back to `/tools`. The breadcrumb chain also drops the
    `/tools/$slug` leaf when the loader throws
    (`dropOnMissingLoaderData: true` in
-   `src/editorial/nav/route-labels.ts`), so the visible chrome
-   stops at "Home > Tools" instead of misleadingly showing a stub
-   "Tool" leaf.
+   `src/editorial/nav/route-labels.ts`). Because the route tree is
+   flat (no parent `/tools` layout route), that leaf is the only
+   labeled match, so the chain resolves to nothing and the
+   breadcrumb is not rendered at all on this state — the
+   measured DOM is nav 1 / breadcrumb 0 (Issue #785). The
+   `PublicNav` above it is what gets the visitor out.
 
 The 404 path is a meaningful surface, not a blank page with the
 default `<p>Not Found</p>` string.

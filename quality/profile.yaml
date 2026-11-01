@@ -554,6 +554,16 @@ gates:
       # still published is a warning, because unpublishing it is an owner
       # publication decision this gate records rather than takes.
       - 'pnpm run assets:license:check'
+      # Issue #741: issue-closure evidence gate. Offline, status-only:
+      # every closure the repository records in
+      # quality/issue-closure-ledger.json must carry a state from the
+      # closure vocabulary, evidence a reader can open (or a written
+      # decision reason where the state needs one), and a truthful author
+      # mark — an agent-written record may not claim owner confirmation it
+      # cannot point at. The 2026-10-31 sweep closed 132 issues with one
+      # templated comment; that template is refused as evidence (E006).
+      # The gate counts states, never a score of closed issues.
+      - 'pnpm run issue:closure:check'
     cost_class: cheap
     trigger: local + every CI run
 

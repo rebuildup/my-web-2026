@@ -203,6 +203,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run integration:scope:check',
 	'pnpm run tools:artifact:check',
 	'pnpm run assets:license:check',
+	'pnpm run issue:closure:check',
 ];
 
 describe('runPlan', () => {
@@ -418,12 +419,14 @@ describe('the repository plan', () => {
 		// beside it, so every historical step keeps the position — and
 		// therefore the failure path — it already had: Issue #464 added
 		// `integration:scope:check` BEFORE that merge-base tail, Issue #497
-		// added `assets:license:check` AFTER it.
-		assert.deepEqual(plan('fast').slice(-4), [
+		// added `assets:license:check` AFTER it, and Issue #741 added
+		// `issue:closure:check` after that.
+		assert.deepEqual(plan('fast').slice(-5), [
 			'pnpm run release:gate:check',
 			'pnpm run integration:scope:check',
 			'pnpm run tools:artifact:check',
 			'pnpm run assets:license:check',
+			'pnpm run issue:closure:check',
 		]);
 	});
 

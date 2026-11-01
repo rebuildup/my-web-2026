@@ -13,6 +13,8 @@
 		"app:icons:check": "node scripts/check-app-icons.mjs",
 		"architecture:check": "node scripts/check-architecture.mjs",
 		"assets:license:check": "node scripts/check-asset-licenses.mjs",
+		"issue:closure:check": "node scripts/check-issue-closure.mjs",
+		"issue:closure:audit": "node scripts/check-issue-closure-remote.mjs",
 		"assets:license:report": "node scripts/check-asset-licenses.mjs --report=html --report-out=.tmp/asset-license-review.html",
 		"assets:license:doc": "node scripts/check-asset-licenses.mjs --report=markdown --report-out=docs/verification/legal/asset-license-review-report.md",
 		"capture:asset-license-review": "node scripts/capture-asset-license-review.mjs",

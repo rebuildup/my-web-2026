@@ -688,6 +688,35 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   scope.
 - See `skills/github-delivery/SKILL.md` for the full procedure.
 
+### Issue closure requires evidence (Issue #741)
+
+- **Closing an Issue is not the same as finishing it.** An Issue may be
+  closed only when its **own acceptance criteria** are met, or when its
+  state is recorded truthfully as *not* met (planned-unimplemented /
+  partial / unassessed / deferred / rejected) **with a written reason**.
+- **A merged PR, a green CI run, a written document, a release
+  integration, or an agent's own report are NOT evidence** that the
+  original goal was reached. Evidence is the artefact that satisfies the
+  acceptance criteria, citable by repository path, PR, commit or URL.
+- **Release integration is not completion.** "merged into
+  `release-x-y-z`" says the change shipped, not that the goal was met.
+- **The number of closed Issues is not a metric.** A sweep that closes
+  many Issues at once is a defect signal. Never report Issue counts as
+  progress, and never close Issues to make a backlog look tidy.
+- **An agent may record what it did; it may not certify the goal.**
+  A record written by an agent stays `ownerConfirmation:
+  "unconfirmed"` until a traceable owner artefact (a review, an issue
+  comment, a decision record) points at it. The owner may not be
+  simulated, and an approval record may never be fabricated.
+- Every closure the repository knows about is recorded in
+  `quality/issue-closure-ledger.json` and checked by
+  `pnpm run issue:closure:check` (offline, part of `validate:fast`) and
+  `pnpm run issue:closure:audit` (network, CI step). The canonical
+  procedure is [`docs/runbook/issue-lifecycle.md`](docs/runbook/issue-lifecycle.md).
+- Background for the rule: the 2026-10-31 sweep closed 132 Issues with
+  one templated comment; the per-Issue audit is
+  `docs/verification/backlog/closure-audit-2026-10-31.md`.
+
 ## 7. Recovery
 
 Native session resume is an optimisation. Canonical recovery is from
@@ -756,7 +785,7 @@ canonical link:
 
 | Skill | Why it is forked |
 | --- | --- |
-| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. |
+| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. **Issue #741 adds a third local divergence**: the Done criteria and the bulk-landing clause now require per-issue acceptance-criteria **evidence** before an Issue is closed (`docs/runbook/issue-lifecycle.md`). The 2026-10-31 sweep happened because the pre-amendment skill made "landed on the release trunk → close the Issue" a step with no evidence step, so a blanket sync would restore the rule that caused the incident. |
 | `worktree-workflow` | Pinned to this repo's `.config/wt.toml` (Issue #284); upstream's additions assume a Rust/Cargo build this repository does not have. |
 | `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |

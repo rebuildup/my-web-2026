@@ -72,6 +72,9 @@ facet は**作品が何であるか**しか言っておらず、「この人が�
 
 68 件はすべて Draft なので、どちらを選んでも公開面は現時点で変化していない。
 
+この未決事項は台帳 `portfolio-2025-inventory.json#open_decisions` にも 1 行で残している
+（生成器 `scripts/audit-legacy-portfolio.mjs#OPEN_DECISIONS`）。**agent が答える項目ではない。**
+
 ## 4. 書き込み結果
 
 | 区分 | 件数 | 理由 |

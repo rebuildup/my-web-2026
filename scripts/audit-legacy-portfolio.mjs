@@ -194,6 +194,16 @@ export const LEGACY_FACET_ROLES = Object.freeze({
 });
 
 /**
+ * Decisions the migration depends on but does not own. Recorded in the
+ * ledger so they are visible where the rows are, not only in a run log.
+ * Nothing here is a guess this script made — each is a question for the
+ * owner, and the ledger says so rather than picking an answer.
+ */
+export const OPEN_DECISIONS = Object.freeze([
+	'Display label: the public surface labels the `Role` field "Role" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit ("Role: Video production"), which the derivation does not claim — it names the kind of work. Whether the label becomes "Type"/"種類" is an owner decision; no public page is affected while every migrated page is Draft.',
+]);
+
+/**
  * Which facet wins when an item carries several. Fixed, not ranked per
  * item: `develop` first because it is the narrowest claim, then the medium,
  * then presentation, with `other` as the fallback. Pinned by a test.
@@ -503,6 +513,7 @@ export function buildInventory({
 			unrecorded: items.filter((item) => item.rights === 'unrecorded').length,
 		},
 		problems,
+		open_decisions: [...OPEN_DECISIONS],
 		content_digest: inventoryDigest(items),
 		items,
 	};

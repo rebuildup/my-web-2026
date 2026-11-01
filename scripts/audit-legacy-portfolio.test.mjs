@@ -351,6 +351,12 @@ describe('buildInventory', () => {
 		assert.deepEqual(document.counts.by_role_source, { 'facet-derived': 1, null: 1 });
 	});
 
+	it('records the decisions it does not own instead of answering them', () => {
+		assert.ok(Array.isArray(document.open_decisions));
+		assert.equal(document.open_decisions.length, 1);
+		assert.match(document.open_decisions[0], /Display label/);
+	});
+
 	it('does not mistake an owner-recorded role for a derived one', () => {
 		const withOwnerRole = buildInventory({
 			sourcePath: source,

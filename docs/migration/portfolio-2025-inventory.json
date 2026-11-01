@@ -1,6 +1,6 @@
 {
 	"schema": "portfolio-2025-inventory.v1",
-	"generated_at": "2026-11-01T14:24:24.456Z",
+	"generated_at": "2026-11-01T14:36:48.965Z",
 	"source": {
 		"path": "/Users/rebui/work/my-web-2026/.reference/my-web-2025",
 		"head": "ed1b9dff8d1e2c8df33dd747a0f5cdae3d7d00c2",
@@ -51,6 +51,9 @@
 		"unrecorded": 151
 	},
 	"problems": [],
+	"open_decisions": [
+		"Display label: the public surface labels the `Role` field \"Role\" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit (\"Role: Video production\"), which the derivation does not claim — it names the kind of work. Whether the label becomes \"Type\"/\"種類\" is an owner decision; no public page is affected while every migrated page is Draft."
+	],
 	"content_digest": "sha256:adbd510071b5843474b5a757e9dea17fae0bc1f4cb77e3eb2bfd11eb0b1b6600",
 	"items": [
 		{

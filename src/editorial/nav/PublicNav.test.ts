@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isActiveRoute, PUBLIC_NAV_ITEMS } from './PublicNav';
+import { isActiveRoute, NAV_STRIP_QUERY, PUBLIC_NAV_ITEMS } from './PublicNav';
 
 /**
  * `isActiveRoute` — pure predicate powering the nav's `aria-current`
@@ -61,5 +61,36 @@ describe('isActiveRoute — public nav active-route predicate', () => {
 	it('PUBLIC_NAV_ITEMS covers the documented canonical roster', () => {
 		const targets = PUBLIC_NAV_ITEMS.map((i) => i.to);
 		expect(targets).toEqual(['/', '/portfolio', '/tools', '/about', '/contact', '/design-system']);
+	});
+});
+
+/**
+ * Issue #777 — the desktop strip's collapse rule.
+ *
+ * The bug the rule exists to prevent is a *text-size* bug: at the
+ * reader's 110% text size the six-item strip needed more room than the
+ * 1024px bar had, and `flex-wrap` split it into two rows. A viewport
+ * `@media` query cannot see that, because its `em` resolves against the
+ * initial font size and keeps reporting the same pixel width while the
+ * labels grow. The rule must therefore be a CONTAINER query measured in
+ * `em`; this test pins both halves of that decision so a future edit
+ * cannot quietly reintroduce the viewport variant.
+ */
+describe('NAV_STRIP_QUERY — desktop strip collapse rule', () => {
+	it('is a container query, so it tracks the nav font size rather than the viewport', () => {
+		expect(NAV_STRIP_QUERY).toMatch(/^@container\s*\(min-width:\s*[\d.]+em\)$/);
+	});
+
+	it('is not a @media query and is not expressed in px', () => {
+		expect(NAV_STRIP_QUERY).not.toContain('@media');
+		expect(NAV_STRIP_QUERY).not.toContain('px');
+	});
+
+	it('collapses below the width the six-item roster needs at 100% text size', () => {
+		// 44em >= the measured 673px of chrome (six labels + brand + row
+		// gap + editorial padding), so the strip is never asked to fit
+		// in less room than its own contents need.
+		const em = Number(NAV_STRIP_QUERY.match(/\(min-width:\s*([\d.]+)em\)/)?.[1]);
+		expect(em).toBeGreaterThanOrEqual(42);
 	});
 });

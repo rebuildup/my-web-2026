@@ -21,8 +21,13 @@ import { css } from '../../../styled-system/css';
  *     matching `<a>`. Active styling is colour + weight + underline;
  *     the `aria-current` attribute is the programmatic signal so
  *     screen readers identify it independently of the visual cue.
- *   - Mobile (below the `md` breakpoint — 768px) collapses into a
- *     `<button>` with `aria-expanded` / `aria-controls`. The panel
+ *   - The compact menu takes over when the Japanese roster no longer
+ *     fits one line — below 44em of the nav's own font size (Issue
+ *     #777). That threshold is a container query, not a viewport
+ *     breakpoint, so it follows the reader's text size: the strip
+ *     never wraps onto a second row.
+ *   - The compact menu is a `<button>` with `aria-expanded` /
+ *     `aria-controls`. The panel
  *     is closed by default; `Escape` and a route change both close
  *     it; clicking a link inside the panel closes it as well.
  *     `Escape` hands the focus back to the trigger, so closing the
@@ -100,6 +105,26 @@ export interface PublicNavProps {
 }
 
 const NAV_LABEL_TEXT = 'Public';
+
+/**
+ * Width, in the nav's own `em`, at or above which the desktop strip
+ * renders and the compact menu steps out (Issue #777).
+ *
+ * The threshold is expressed in `em` and asked of a CONTAINER query,
+ * not the viewport, because the failure it prevents is a *text* one:
+ * at the reader's 110% text size the six-item strip needed more room
+ * than the bar had and `flex-wrap` split it into two rows. A viewport
+ * `@media` query cannot see that — its `em` resolves against the
+ * initial font size, so it keeps reporting the same pixel width while
+ * the labels grow. A container query's `em` resolves against this
+ * nav's own computed font size, so 44em is ~704px at 100% and
+ * ~1408px at 200%: the roster collapses into the menu exactly when it
+ * would no longer fit on one line.
+ *
+ * 44em is the smallest value that fits the six labels plus the brand,
+ * the row gap and the editorial padding at 100% text size.
+ */
+export const NAV_STRIP_QUERY = '@container (min-width: 44em)';
 
 /**
  * Header bar + collapsible mobile panel. See module docstring for
@@ -180,12 +205,21 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 				borderBlockEndColor: 'border.subtle',
 				borderBlockEndStyle: 'solid',
 				backgroundColor: 'bg.canvas',
+				// Issue #777: the strip's collapse threshold is a
+				// container query (see NAV_STRIP_QUERY), so the nav is
+				// the query container for the strip, the trigger and the
+				// panel alike.
+				containerType: 'inline-size',
 			})}
 		>
 			<div
 				className={css({
 					width: '100%',
-					maxWidth: '1024px',
+					// Issue #777: rem, not px. The bar used to stay 1024px
+					// while every label grew with the reader's text size,
+					// so the chrome was the only thing on the page that
+					// did not scale with its own contents.
+					maxWidth: '64rem',
 					marginInline: 'auto',
 					paddingInline: { base: '4', md: '6', lg: '8' },
 					paddingBlock: { base: '3', md: '4' },
@@ -229,21 +263,17 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						margin: '0',
 						padding: '0',
 						listStyle: 'none',
-						// Issue #300: at `gap: 6` the six items need
-						// 931.5px but only 880.4px sit between the brand
-						// and the Container edge, so every item flex-
-						// shrank and the JP labels broke mid-word
-						// (「ホー/ム」). Below `lg` the decorative EN labels
-						// step out (they stay on the link's aria-label and
-						// in the mobile panel) so a row fits with room;
-						// at `lg`+ gap 3 brings the full roster onto one
-						// measured line (871.5px <= 880.4px). flex-wrap
-						// stays as the degradation path — whole items to a
-						// second row, never torn words.
-						gap: { md: '6', lg: '3' },
-						flexWrap: 'wrap',
+						// Issue #777: one gap, one line. The strip has no
+						// second row to fall back to — when 44em of text
+						// does not fit, it is not rendered at all and the
+						// compact menu takes over (see NAV_STRIP_QUERY).
+						// `flex-wrap: nowrap` makes that contract
+						// explicit: a reader never sees the roster split
+						// across two lines.
+						gap: '5',
+						flexWrap: 'nowrap',
 						alignItems: 'center',
-						md: { display: 'flex' },
+						[NAV_STRIP_QUERY]: { display: 'flex' },
 					})}
 				>
 					{/* Issue #718: the desktop strip is a real list, so every
@@ -290,7 +320,10 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						fontSize: 'sm',
 						fontWeight: '600',
 						cursor: 'pointer',
-						md: { display: 'none' },
+						// Issue #777: the trigger and the strip are two
+						// faces of the same decision, so both read the
+						// same container query.
+						[NAV_STRIP_QUERY]: { display: 'none' },
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
 							outlineOffset: '2px',
@@ -316,7 +349,7 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 					borderBlockStartStyle: 'solid',
 					paddingInline: { base: '4', md: '6' },
 					paddingBlock: '4',
-					md: { display: 'none' },
+					[NAV_STRIP_QUERY]: { display: 'none' },
 				})}
 			>
 				<ul
@@ -355,9 +388,9 @@ interface NavLinkProps {
 	 */
 	onNavigate?: () => void;
 	/**
-	 * `desktop` (default) renders a horizontally-padded inline link
-	 * with the eyebrow EN label on hover; `mobile` renders a
-	 * full-width row.
+	 * `desktop` (default) renders the Japanese label alone in the
+	 * horizontal strip; `mobile` renders a full-width row that also
+	 * carries the EN eyebrow (Issue #777).
 	 */
 	variant?: 'desktop' | 'mobile';
 }
@@ -409,23 +442,30 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 			})}
 		>
 			<span lang="ja">{item.labelJa}</span>
-			<span
-				aria-hidden="true"
-				lang="en"
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-					color: 'text.muted',
-					// Issue #300: decorative EN eyebrow in the desktop strip
-					// shows from `lg` (where the full roster fits one line);
-					// the mobile panel keeps it at every width.
-					display: isMobile ? 'inline' : { base: 'none', lg: 'inline' },
-				})}
-			>
-				{item.labelEn}
-			</span>
+			{/*
+			 * Issue #777: the EN label is a *mobile panel* affordance.
+			 * On the desktop strip it was a second, decorative copy of
+			 * the same destination inside the same link — six extra text
+			 * runs that bought ~380px of row width and no information
+			 * (the EN name is still on the link's `aria-label`, so a
+			 * screen reader announces it exactly once either way). The
+			 * strip now carries one label per destination.
+			 */}
+			{isMobile && (
+				<span
+					aria-hidden="true"
+					lang="en"
+					className={css({
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						letterSpacing: '0.04em',
+						textTransform: 'uppercase',
+						color: 'text.muted',
+					})}
+				>
+					{item.labelEn}
+				</span>
+			)}
 		</a>
 	);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Breadcrumbs, resolveBreadcrumbChain } from './Breadcrumbs';
-import { BREADCRUMB_ORIGIN, SUPPRESS_BREADCRUMB_LEAF_IDS } from './route-labels';
+import { BREADCRUMB_ORIGIN, ROUTE_LABELS, SUPPRESS_BREADCRUMB_LEAF_IDS } from './route-labels';
 
 /**
  * `resolveBreadcrumbChain` unit tests — pure helper coverage.
@@ -77,6 +77,47 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			label: 'dotfiles',
 			href: '/projects/dotfiles',
 		});
+	});
+
+	/**
+	 * Issue #791 — the label must not read `loaderData`.
+	 *
+	 * Issue #787 found the opposite failure one route over: the
+	 * `/tools/$slug` resolver was written against the pre-#465 loader
+	 * shape (`loaderData` WAS the Tool record) and silently rendered the
+	 * `Tool` placeholder once the loader started returning a wrapper. The
+	 * class of bug is "a leaf label that depends on a loader shape nobody
+	 * pinned".
+	 *
+	 * `/projects/dotfiles` has no such dependency, and this test keeps it
+	 * that way: with no loader data (a throwing loader), with the real
+	 * view payload, and with a shape the route never produces, the leaf
+	 * is the same static label. It also proves the entry is not
+	 * `dropOnMissingLoaderData`, which would silently delete the segment
+	 * instead of mislabeling it.
+	 */
+	it('labels /projects/dotfiles without reading loaderData', () => {
+		const view = {
+			state: 'fresh',
+			repository: { owner: 'rebuildup', name: 'dotfiles' },
+			commit: '0'.repeat(40),
+		};
+		for (const loaderData of [undefined, view, { tool: { display_name: 'wrong shape' } }]) {
+			const chain = resolveBreadcrumbChain([
+				root,
+				match('/projects/dotfiles', '/projects/dotfiles', loaderData),
+			]);
+			expect(chain?.at(-1)?.label).toBe('dotfiles');
+		}
+	});
+
+	/**
+	 * The registry entry for the leaf carries no resolver, so no future
+	 * loader-shape change can move this label without a visible diff to
+	 * the registry (and a failing test here).
+	 */
+	it('keeps the /projects/dotfiles label static in the registry', () => {
+		expect(ROUTE_LABELS['/projects/dotfiles']).toEqual({ label: 'dotfiles' });
 	});
 
 	it('skips unlabeled intermediate matches (e.g. /admin layout)', () => {

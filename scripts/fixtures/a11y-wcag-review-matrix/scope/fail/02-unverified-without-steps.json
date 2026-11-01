@@ -1,0 +1,15 @@
+{
+	"$comment": "Negative control for Issue #722. An `applicable-unverified` decision without a reproduction plan is an open hole, not a decision: nobody can tell what the outstanding work is. The gate must refuse it with `scope-unverified-missing-review-plan`.",
+	"decisions": [
+		{
+			"sc": "3.2.3",
+			"level": "AA",
+			"name": "Consistent Navigation",
+			"disposition": "applicable-unverified",
+			"reason": "ページを越えたナビゲーションがある。順序が全画面で一致するかは未判定。",
+			"evidence": "公開ナビを表示する全画面でリンクの相対順序を記録する。",
+			"reviewer": "owner"
+		}
+	],
+	"$expects": ["scope-unverified-missing-review-plan"]
+}

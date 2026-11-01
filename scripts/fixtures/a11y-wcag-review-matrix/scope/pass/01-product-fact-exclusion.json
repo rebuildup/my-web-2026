@@ -1,0 +1,14 @@
+{
+	"$comment": "Positive control for Issue #722. A `not-applicable` decision that names a fact about the published product is accepted: the site ships no prerecorded audio-only content, and that is checkable from the repository.",
+	"decisions": [
+		{
+			"sc": "1.2.1",
+			"level": "A",
+			"name": "Audio-only and Video-only (Prerecorded)",
+			"disposition": "not-applicable",
+			"reason": "事前録音の音声・動画だけのコンテンツを出荷していない。",
+			"evidence": "`src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く、事前録音のメディアを同梱する Tool も無い。"
+		}
+	],
+	"$expects": []
+}

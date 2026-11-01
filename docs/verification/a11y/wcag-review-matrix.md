@@ -1,4 +1,4 @@
-# WCAG 2.2 A/AA の手動検査表と、その記録を管理する gate（Issue #410）
+# WCAG 2.2 A/AA の手動検査表と、その記録を管理する gate（Issue #410 / Issue #722）
 
 > 検証対象: **機械では判定できない WCAG 2.2 A/AA の項目**について、
 > どの surface の **どの state** を、**誰が** 判断したかを記録する表と、
@@ -8,6 +8,7 @@
 > - 表（機械可読）: `quality/wcag-review-matrix.json`
 > - gate: `scripts/check-a11y-wcag-review-matrix.mjs`
 > - gate の fixture: `scripts/fixtures/a11y-wcag-review-matrix/{pass,fail}/`
+> - 適用範囲の決定の fixture: `scripts/fixtures/a11y-wcag-review-matrix/scope/{pass,fail}/`
 > - 検証画像: `docs/verification/a11y/wcag-review-matrix.webp`
 
 ## この Issue が追加したもの
@@ -20,6 +21,20 @@
 
 この Issue が追加したのは、その判定を **誰が・いつ・どの環境で・結果として** 記録したか
 を保持する **表** と、その表が壊れていないことを **機械で** 検査する gate である。
+
+**Issue #722 が追加したもの**は、**表の外側にある 25 基準の「決定」**の
+**記録** である。それまでは **理由が 1 つ**（多くの場合
+「この表に検査項目が無い」）しか無く、**「適用外」と「見ていない」が
+区別できなかった**。今は **区分（disposition）** が **3 通り** の
+どれかで **必ず** 決着し、
+- `not-applicable` は **製品についての事実**（証跡）を要求し、
+- `applicable-unverified` は **検査者と再現手順** を要求し、
+- `applicable-and-verified` は **人間の実測記録** を要求する（このリポジトリには無い）。
+
+**「この表に項目が無い」は適用外の理由にならない。** それは「見ていない」という
+宣言であり、gate は `scope-exclusion-not-a-product-fact` で red にする。
+併せて、**台帳の構造が green** であることと **監査された品質が pass であること**を
+**別の こと** として報告する（下の「リリース評価」）。
 
 ### 中核の規則: 「機械で合格」と「人が確認済み」は別の state
 
@@ -106,7 +121,9 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 
 - この表が扱うのは **30 個**（A 15 個 + AA 15 個）。
 - 残りの **25 個**（A 16 個 + AA 9 個）は **表の外側の決定**として
-  下の「適用範囲の決定」に記す。
+  下の「適用範囲の決定」に記す。**那里的 25 個は 1 つ残らず
+  「意味のある区分」を持つ**（`not-applicable` / `applicable-unverified` /
+  `applicable-and-verified`）。**空欄も「表に項目が無い」も無い。**
 - **2 つのリスト（表の語彙 + 適用範囲の決定）の和集合が母集合と一致すること**を
   gate が **両方向**（漏れ / 余剰）で検査する
   （`criterion-universe-mismatch`）。つまり **基準が 1 つも黙って消えない**。
@@ -162,8 +179,8 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 
 | 種類 | 対象 | 書く場所 | 検査される rule |
 | --- | --- | --- | --- |
-| 表の適用外 | 語彙にある A/AA の基準のうち、この表が覆わないもの（今は 1.2.2 / 1.2.4 / 3.3.7） | 表の `excluded` | `criterion-undisposed` / `criterion-exclusion-reason-missing` / `criterion-conflict` |
-| スコープの決定 | 語彙の **外側** にある A/AA の基準（下の 25 個） | この文書の「適用範囲の決定」 | `scope-decision-doc-mismatch` / `criterion-universe-mismatch` |
+| 表の適用外 | 語彙にある A/AA の基準のうち、この表が覆わないもの（今は 1.2.2 / 1.2.4 / 3.3.7） | 表の `excluded` | `criterion-undisposed` / `criterion-exclusion-reason-missing` / `criterion-conflict` / `scope-exclusion-not-a-product-fact` |
+| スコープの決定 | 語彙の **外側** にある A/AA の基準（下の 25 個） | この文書の「適用範囲の決定」 | `scope-decision-doc-mismatch` / `criterion-universe-mismatch` / `scope-disposition-invalid` / `scope-exclusion-not-a-product-fact` / `scope-unverified-missing-review-plan` / `scope-verified-without-review-record` |
 
 **どちらが単一の事実源か**:
 
@@ -171,7 +188,11 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
   受け付ける。語彙に無い番号を書くと `item-sc-unknown` で red になる。
 - **25 個のリストと理由の事実源は gate の定数 `SCOPE_DECISIONS`** であり、
   下の表は **その写し** である。ずれると `scope-decision-doc-mismatch` で red になる
-  （表の SC 番号・レベル・名前・理由が 1 つでも違えば red）。
+  （表の SC 番号・レベル・名前・**区分**・理由・証跡・検査者・手順が
+  1 つでも違えば red）。
+- **どちらのリストも「表に項目が無い」を理由にしてはいけない。**
+  `excluded` の理由も `SCOPE_DECISIONS` の理由も **製品についての事実** で
+  なければ `scope-exclusion-not-a-product-fact` で red になる。
 - **レベルと名前の事実源は `WCAG_22_A_AA_UNIVERSE`** であり、
   2 つのリストはそこから **参照する**（書き写さない）。だから
   「表の語彙」と「適用範囲の決定」が同じ基準について **違うレベル** を
@@ -183,38 +204,105 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 
 ### 適用範囲の決定（表の外側にある 25 基準）
 
-WCAG 2.2 の Level A / AA の基準のうち、**この表が扱わない 25 基準** と
-その理由。**これは表の `excluded` とは別の決着**である（上の表を参照）。
-**事実源は gate の定数 `SCOPE_DECISIONS`** で、この表はその写し。
-1 つでも違えば `scope-decision-doc-mismatch` で gate が red になる。
+WCAG 2.2 の Level A / AA の基準のうち、**この表が扱わない 25 基準** と、
+**その基準についての決定（disposition）**。**これは表の `excluded` とは別の決着**である
+（上の表を参照）。**事実源は gate の定数 `SCOPE_DECISIONS`** で、この表はその写し。
+SC 番号・レベル・名前・**区分**・理由・証跡・検査者・手順の **1 つでも違えば**
+`scope-decision-doc-mismatch` で gate が red になる。
 
-| SC | レベル | 名前 | 理由 |
+#### 区分（disposition）の語彙 — 「見ていない」を「適用外」にしない
+
+適用範囲の判断には **3 通りしかなく**、25 基準の **どれか 1 つ** を必ず持つ。
+**空欄は無い。**
+
+| 区分 | 意味 | 必須のフィールド | 閉じ方 |
 | --- | --- | --- | --- |
-| 1.2.1 | A | Audio-only and Video-only (Prerecorded) | 事前録音の音声・動画だけのコンテンツを出荷していない。 |
-| 1.2.3 | A | Audio Description or Media Alternative (Prerecorded) | 事前録音の映像を出荷していない（1.2.1 と同じ理由）。 |
-| 1.2.5 | AA | Audio Description (Prerecorded) | 事前録音の映像・音声を出荷していないため、音声説明の代替手段を用意しない（1.2.1 と同じ理由）。 |
-| 1.3.3 | A | Sensory Characteristics | 感覚的な特徴だけに頼って指示する表現を使っていない。 |
-| 1.4.2 | A | Audio Control | 2 秒以上鳴り止まない音が自動再生する UI を持たない。 |
-| 1.4.5 | AA | Images of Text | 画像の中に文字を埋め込む表現を使っていない。 |
-| 2.1.4 | A | Character Key Shortcuts | 1 文字のショートカットキーを使う操作を用意していない。 |
-| 2.2.1 | A | Timing Adjustable | 時間の制限のある操作を用意していない。 |
-| 2.2.2 | A | Pause, Stop, Hide | 2 秒以上動き続ける自動更新アニメーションを使っていない。 |
-| 2.3.1 | A | Three Flashes or Below Threshold | 1 秒間に 3 回以上点滅する表現を使っていない。 |
-| 2.4.4 | A | Link Purpose (In Context) | リンクの目的を文脈ごとに検査する項目をこの表に持たない。 |
-| 2.4.5 | AA | Multiple Ways | 複数の到達経路を検査する項目をこの表に持たない。 |
-| 2.5.1 | A | Pointer Gestures | パス操作（スワイプなど）を使う操作を用意していない。 |
-| 2.5.2 | A | Pointer Cancellation | 単一のポインタ操作だけで操作できる UI に絞っている。 |
-| 2.5.3 | A | Label in Name | アクセシブル名の検査は SC 4.1.2 側に集約している。 |
-| 2.5.4 | A | Motion Actuation | 端末を振って操作する機能を持たない。 |
-| 2.5.7 | AA | Dragging Movements | ドラッグで操作する UI（スライダーなど）を持たない。 |
-| 3.2.1 | A | On Focus | フォーカスしただけで自動で開く UI を持たない。 |
-| 3.2.2 | A | On Input | 入力値の変更で画面が自動で切り替わる UI を持たない。 |
-| 3.2.3 | AA | Consistent Navigation | ページを越えたナビゲーションの順序を検査する項目をこの表に持たない。 |
-| 3.2.4 | AA | Consistent Identification | 同じ機能の名称がページを越えて揃っているかを検査する項目をこの表に持たない。 |
-| 3.2.6 | A | Consistent Help | ヘルプの置き方の検査項目をこの表に持たない。 |
-| 3.3.3 | AA | Error Suggestion | エラーメッセージの修正提案を個別に検査する項目をこの表に持たない。 |
-| 3.3.4 | AA | Error Prevention (Legal, Financial, Data) | 法的 / 財務 / データの送信を扱う入力が無い。 |
-| 3.3.8 | AA | Accessible Authentication (Minimum) | 認証は管理画面の対象で、この表（公開画面と story）は扱わない。 |
+| `not-applicable` | **出荷している制品が** その基準の対象を持たない | 理由 + 証跡（**製品についての事実**） | 製品についての事実だけで閉じる。理由が「この表に項目が無い」なら **red** |
+| `applicable-unverified` | 基準は公開サイトに当てはまるが **誰も見ていない** | 理由 + 証跡（何をすれば閉じるか）+ 検査者 + 手順 | **人が** 手順どおりに確認して初めて閉じる |
+| `applicable-and-verified` | 当てはまり、**人が実測した** | 理由 + 証跡 + 検査者 + 手順 + 実測記録 | 人間の実測記録があるときだけ成立する |
+
+**このリポジトリの `applicable-and-verified` は 0 件である。**
+owner の実測記録が 1 件も無いので、**この状態を書き込むことは許されない**
+（`scope-verified-without-review-record` で red にする）。
+
+**「この表に検査項目が無い」「担当者が居ない」は適用外の理由にならない。**
+それは「見ていない」という宣言であって、適用範囲の議論ではない。
+gate は理由と証跡の文言をパターンで判定し、`scope-exclusion-not-a-product-fact`
+で red にする。負の対照 fixture は
+`scripts/fixtures/a11y-wcag-review-matrix/scope/fail/01-table-coverage-exclusion.json`
+（削除した「…をこの表に持たない」という文言そのものを再現している）。
+
+**`applicable-unverified` には「誰が・どうやるか」が要る。**
+`reviewer`（役割。agent ではない）と `steps`（人が再現できる手順）が
+無いと `scope-unverified-missing-review-plan` で red にする
+（負の対照 fixture: `scope/fail/02-unverified-without-steps.json`）。
+
+#### 25 基準の決定
+
+| SC | レベル | 名前 | 区分 | 理由 | 証跡 | 検査者 | 手順 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1.2.1 | A | Audio-only and Video-only (Prerecorded) | not-applicable | 事前録音の音声・動画だけのコンテンツを出荷していない。 | `src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く（`src/editorial/reduced-motion.ts` の該当箇所は将来の自動再生メディアを検出する条文）、事前録音のメディアを同梱する Tool も無い（`src/tools/manifest.json` にメディアの記載が無い）。 | — | — |
+| 1.2.3 | A | Audio Description or Media Alternative (Prerecorded) | not-applicable | 事前録音の映像を出荷していない（1.2.1 と同じ理由）。 | 1.2.1 と同じ。`src/**` に `<video>` 要素が無く、事前録音の映像を同梱する Tool も無い。 | — | — |
+| 1.2.5 | AA | Audio Description (Prerecorded) | not-applicable | 事前録音の映像・音声を出荷していないため、音声説明の代替手段を用意しない（1.2.1 と同じ理由）。 | 1.2.1 と同じ。`src/**` に `<video>` / `<audio>` 要素が無く、事前録音の映像・音声を同梱する Tool も無い。 | — | — |
+| 1.3.3 | A | Sensory Characteristics | applicable-unverified | 感覚的な特徴（位置・形・色・音）に依存した指示の候補が 1 件ある。ホームのリアクション欄の空表示は「下のボタンから送ってみましょう」と位置で指示している（`src/home/reactions/widget.tsx`）。ただしコントロールの種類「ボタン」も併記しているため、位置だけに依存しているかは未判定。 | 公開画面の指示文を人が読み、感覚的な特徴だけで操作を特定している文が 1 件も無いことを確認する。候補は上記の空表示文と、各フォームの説明文。 | owner | 開発サーバーを起動して `/` を開き、リアクション欄が空のときの文言を読む（`src/home/reactions/widget.tsx`）。<br>`/about`・`/contact`・`/portfolio`・`/tools` を開き、指示文が位置・形・色・音のどれか 1 つにだけ依存していないか読む。<br>位置だけに依存する文があれば、その文がコントロールの種類や役割を併記しているかを判断する。<br>判定と根拠（該当した文と併記の有無）を記録する。 |
+| 1.4.2 | A | Audio Control | not-applicable | 2 秒以上鳴り止まない音が自動再生する UI を持たない。 | `src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く、音声を自動再生するコードも無い。 | — | — |
+| 1.4.5 | AA | Images of Text | applicable-unverified | 文字を画像として描画している箇所がある。ホームのアクセスカウンタは数字を WebP の 1 枚ずつ（`src/home/digits/*.webp`）で描画している。 | カウンタの桁を実際のテキスト（等幅数字）に置き換えられるか、例外（特定の表示上の必然性）が成立するかを人が判断する。 | owner | `/` を開き、アクセスカウンタの桁が `<img>` 画像で描画されていることを確認する（`src/home/digits/*.webp`）。<br>桁を囲む `role="img"` の `aria-label` が数値を読み上げられることを確認する。<br>桁をテキスト描画（`font-variant-numeric: tabular-nums`）に置き換えられるかを判断する。<br>置き換え可能なら例外は成立しない。判定と根拠を記録する。 |
+| 2.1.4 | A | Character Key Shortcuts | not-applicable | 1 文字のショートカットキーを使う操作を用意していない。 | `src/**` の keydown ハンドラは `Escape`・矢印キー・`Home` / `End` のみで、単一文字のショートカットは無い（`src/editorial/nav/PublicNav.tsx`、`src/keyboard/components/KeyboardPage.tsx`、`src/home/reactions/widget.tsx`）。 | — | — |
+| 2.2.1 | A | Timing Adjustable | applicable-unverified | 時間の制限のある操作を 1 つ出荷している。管理画面の API キー発行には 5 分の step-up 確認窓（`STEP_UP_MAX_AGE_SECONDS` = 300）が残り、窓が切れると発行できなくなる。公開画面には時間制限が無いが、管理画面を適合の主張の範囲に含めるかどうかの判断がまだ無い。 | step-up 窓が SC 2.2.1 の「内容による時間の制限」に当たるかどうかと、管理画面を適合の主張の範囲に含めるかどうかを判断する。 | owner | 管理画面にログインして `/admin/keys` を開き、step-up 確認（パスワード確認）の窓が 5 分であることを表示していることを確認する（`src/admin/keys/step-up-panel.tsx`）。<br>窓が切れたあとの挙動（step-up が失われ、発行できなくなる等）を確認する。<br>認証前の画面（`/`・`/about`・`/contact`・`/portfolio`・`/tools`・`/admin/login`・`/admin/invitations_/accept`）に時間制限のある操作が無いかを確認する。<br>管理画面を適合の主張に含めるかどうか、含める場合はこの窓が SC 2.2.1 に当たるかを判断し、判定と根拠を記録する。 |
+| 2.2.2 | A | Pause, Stop, Hide | not-applicable | 2 秒以上動き続ける自動更新アニメーションを使っていない。 | `src/**` で発行される `animation-name` はカウンタの桁ロールアップ（320 ms）のみで、無限ループも 5 秒を超える自動更新も無い（`src/home/access/tiles.tsx`）。 | — | — |
+| 2.3.1 | A | Three Flashes or Below Threshold | not-applicable | 1 秒間に 3 回以上点滅する表現を使っていない。 | `src/**` に点滅するアニメーションが無く、唯一のアニメーション（カウンタの桁ロールアップ）は 320 ms で 1 回だけ再生される（`src/home/access/tiles.tsx`）。 | — | — |
+| 2.4.4 | A | Link Purpose (In Context) | applicable-unverified | リンクの目的が文脈だけでは判断しにくい可能性がある。リンク文言だけの記録はできるが、文脈ごとの判断は人がする必要がある（例: 「Portfolio を開く」「記録を開く / Open the record」「← Previous」）。 | 各公開画面のリンク文言を、リンク先を見ずに記録し、直前の文・ページの主題・リンク文言だけで目的が分かるかを判断する。 | owner | 公開画面（`/`・`/about`・`/contact`・`/portfolio`・`/portfolio/my-web-2026`・`/tools`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を 1 枚ずつ開く。<br>各ページのリンク文言を、リンク先を見ずにそのまま記録する。<br>各リンクが「リンク文言 + 直前の文 + ページの主題」だけで目的が分かるかを判断する。<br>判断できないリンクがあれば、文言と前後の文を添えて報告し、判定を記録する。 |
+| 2.4.5 | AA | Multiple Ways | applicable-unverified | 複数の到達経路を出す必要がある。公開ナビ（`src/editorial/nav/PublicNav.tsx`）と `GET /sitemap.xml` は同じ URL 群を advertise するが、公開ナビを表示しない画面がある（`/`・`/tools`・`/tools/<slug>`）。公開ナビからも内部リンクからも到達できず、Sitemap にも無い URL があれば、到達経路は 1 通りしかない。 | 各公開 URL について、公開ナビ・内部リンク・サイトマップの何通りで到達できるかを数え、1 通りしかない URL を洗い出す。 | owner | `GET /sitemap.xml` を取得し、掲載されている URL を記録する。<br>各公開 URL について、(a) 公開ナビ、(b) 内部リンク、(c) サイトマップ のうち何通りで到達できるかを記録する。<br>1 通りしかない URL を洗い出す（`/projects/dotfiles` が候補）。<br>判定と、1 通りしかない URL が有ればその URL を記録する。 |
+| 2.5.1 | A | Pointer Gestures | not-applicable | パス操作（スワイプなど）を使う操作を用意していない。 | `src/**` に `touchstart` / `touchmove` やパスベクトルのハンドラが無い。 | — | — |
+| 2.5.2 | A | Pointer Cancellation | not-applicable | 単一のポインタ操作だけで操作できる UI に絞っている。 | `src/**` に複数ポインタ（マルチタッチ）の操作が無い。`onPointer*` と `touch*` のハンドラ自体が無い。 | — | — |
+| 2.5.3 | A | Label in Name | applicable-unverified | 可視ラベルとアクセシブル名の不一致が既知の違反として残っている。`/` の capability リンクは可視テキストが「Portfolio を開く」で `aria-label` は「ポートフォリオ を開く」、`/portfolio` の facet ボタンも可視テキストと `aria-label` が食い違う（`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch`）。 | 可視テキストが `aria-label` に含まれるかを全リンク・ボタンで判断し、食い違う箇所を洗い出す。 | owner | `pnpm run a11y:axe:check` を実行し、`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch` 記録（`/` の `a[aria-label="ポートフォリオ を開く"]` と `/portfolio` の facet ボタン）を確認する。<br>`/` の capability リンクごとに、可視テキストと `aria-label` を突き合わせる。<br>`/portfolio` の facet ボタンごとに、可視テキストと `aria-label` を突き合わせる。<br>不一致ごとに `aria-label` を直すか可視テキストを直すかを判断し、判定と該当箇所を記録する。 |
+| 2.5.4 | A | Motion Actuation | not-applicable | 端末を振って操作する機能を持たない。 | `src/**` に `DeviceMotion` / `DeviceOrientation` を使うコードが無い。 | — | — |
+| 2.5.7 | AA | Dragging Movements | not-applicable | ドラッグで操作する UI（スライダーなど）を持たない。 | `src/**` にドラッグ操作のハンドラが無い。`draggable="false"`（`src/home/access/tiles.tsx`）は画像のドラッグ抑止で、ドラッグ操作の提供ではない。 | — | — |
+| 3.2.1 | A | On Focus | not-applicable | フォーカスしただけで自動で開く UI を持たない。 | `src/**` に `onFocus` / `onFocusCapture` のハンドラが無い。 | — | — |
+| 3.2.2 | A | On Input | not-applicable | 入力値の変更で画面が自動で切り替わる UI を持たない。 | `src/**` の `onChange` は制御された入力の状態更新だけで、ページ遷移・フォーカス移動・別の表示の生成を起こさない（`src/routes/admin.emoji-catalog.tsx`、`src/routes/admin.keys.tsx`、`src/admin/invitations/accept-view.tsx`）。 | — | — |
+| 3.2.3 | AA | Consistent Navigation | applicable-unverified | ページを越えたナビゲーションがある。公開ナビは全画面で共通の 1 つのコンポーネント（`src/editorial/nav/PublicNav.tsx`）だが、公開ナビを表示しない画面もある（`/`・`/tools`・`/tools/<slug>`）。順序が全画面で一致するかは未判定。 | 公開ナビを表示する全画面でリンクの相対順序を記録し、一致するかを確認する。 | owner | 公開ナビを表示する画面（`/about`・`/contact`・`/portfolio`・`/portfolio/my-web-2026`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を開く。<br>各画面の `<nav>` 内のリンク順序を左から右へ記録する。<br>記録した順序が全画面で一致するかを確認する。<br>公開ナビを表示しない画面（`/`・`/tools`・`/tools/<slug>`）が他の画面と同じ順序の経路を提供しているかを確認する。<br>順序が異なる画面があれば、その画面と該当箇所を記録する。 |
+| 3.2.4 | AA | Consistent Identification | applicable-unverified | 同じ機能の名称がページを越えて揃っているかを確認する必要がある。公開ナビのラベルとパンくずのラベルは複数の画面で使われる（`src/editorial/nav/route-labels.ts`）。揃っているかは未判定。 | 同じ機能に付けられる名称（例: 「お問い合わせ / Contact」「Portfolio」）を画面間で突き合わせ、揃っていない機能を洗い出す。 | owner | 公開ナビを表示する全画面を開く。<br>同じ機能（ナビ項目・パンくず・ページの主題）が画面を越えて同じ名称で示されているかを比較する。<br>名称が異なる機能があれば、その機能名と画面を記録する。 |
+| 3.2.6 | A | Consistent Help | applicable-unverified | 助け（問い合わせ）の入口がある。`/contact` への入口がホームの Contact 節と公開ナビにあり、その位置が画面によって異なる可能性がある。相対順序が揃っているかは未判定。 | 各公開画面に助けの入口があるか、ある場合その位置（何番目のリンクか・何の直後か）を記録して比較する。 | owner | 公開画面（`/`・`/about`・`/contact`・`/portfolio`・`/tools`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を開き、助けの入口（`/contact` へのリンク）があるかを記録する。<br>入口がある画面について、その位置（何番目のリンクか・何の直後か）を記録する。<br>位置が画面間で揃っているかを確認する。<br>揃っていない画面があれば、その画面と位置を記録する。 |
+| 3.3.3 | AA | Error Suggestion | applicable-unverified | 入力の拒否メッセージを持つフォームがある。`/admin/invitations_/accept` は `FAILURE_COPY`（`src/admin/invitations/accept-view.tsx`）で修正の提案を含む文言を持つが、`/admin/login` は Better Auth の 401 を受けて独自のパスワードエラーを描かない。すべての拒否に提案が揃っているかは未判定。 | 各拒否状態のメッセージが修正の提案を含むかを確認し、提案が欠けている拒否を洗い出す。 | owner | `/admin/invitations_/accept` を開き、無効なトークン・期限切れ・使用済み・メールアドレス重複・パスワード不足の各状態を再現する（`FAILURE_COPY` の各文言）。<br>各メッセージが修正の提案を含むか（例: 「管理者から再発行を受けてください」「8 文字以上」）を記録する。<br>`/admin/login` で誤ったパスワードを投入し、画面のフィードバックを記録する（`src/routes/admin.login.tsx` は Better Auth の 401 を受けて独自のエラーを描かない）。<br>提案が欠けている拒否があれば、判定と該当文言を記録する。 |
+| 3.3.4 | AA | Error Prevention (Legal, Financial, Data) | applicable-unverified | データを送信する入力がある。管理画面の招待作成・API キー発行・画像登録はデータを変更するが、送信前の確認・送信後の取り消し・入力値の確認のいずれかが SC 3.3.4 の例外に当たるかは未判定。 | 各送信が SC 3.3.4 の対象（法的・財務・利用者制御可能データ）に当たるかを確認し、3 つの例外のいずれかで満たされるかを判断する。 | owner | 管理画面のデータ送信面（`/admin/invitations` の招待作成、`/admin/keys` の API キー発行、`/admin/images` の画像登録）を開く。<br>各送信が SC 3.3.4 の対象に当たるか（法的・財務・利用者制御可能データの変更か）を判断する。<br>変更前の確認・変更後の取り消し（招待の revoke、キーと画像の削除）が用意されているかを画面上で確認する。<br>3 つの例外のいずれかで満たされるかを判断し、判定と根拠を記録する。 |
+| 3.3.8 | AA | Accessible Authentication (Minimum) | applicable-unverified | 認証の画面を公開している。`/admin/login` はメールアドレスとパスワードの認証で、記憶テストや謎解きは無いが、貼り付け可否とパスワードマネージャ対応は未判定。 | 貼り付け可否・パスワードマネージャの挿入可否・認知機能テストの有無を人が確認する。 | owner | `/admin/login` を開く。<br>パスワード欄とメールアドレス欄をそれぞれクリックして貼り付け（Cmd / Ctrl + V）し、貼り付けが拒否されないことを確認する。<br>パスワードマネージャが値を挿入できるかを確認する（`autoComplete="username"` / `current-password`）。<br>記憶テスト・謎解きのような認知機能テストが要求されていないことを確認する。<br>3 点が満たされているかを判断し、判定と根拠を記録する。 |
+
+#### この 25 基準の集計（2026-11-01 時点）
+
+| 区分 | 件数 | 中身 |
+| --- | --- | --- |
+| `not-applicable` | **13** | いずれも **出荷している制品についての事実** を理由に持つ（事前録音メディアが無い / 単一文字ショートカットが無い / 公開画面に時間制限が無い / 点滅が無い / パス操作が無い / ドラッグが無い / 端末を振る操作が無い / フォーカスで開く UI が無い / 入力値で画面が切り替わらない …） |
+| `applicable-unverified` | **12** | いずれも **検査者と手順** を持ち、**まだ誰も見ていない** |
+| `applicable-and-verified` | **0** | 人間の実測記録が 1 件も無い（owner の作業待ち） |
+
+#### Issue #722 で変わったところ
+
+**「表に項目が無い」を理由にしていた基準は、すべて `applicable-unverified` に変わった。**
+Issue #722 が名指しした 6 基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 / 3.3.3）に加え、
+同じ種類の理由を持っていた 2.5.3 と 3.3.8 も `applicable-unverified` になった。
+
+さらに、**リポジトリと矛盾していた理由が 3 件** 見つかった（前 reasons は
+「製品についての事実」を名乗っていたが、実装が別のことをしていた）。
+
+| SC | 前の理由 | 何が矛盾していたか | 今の区分 |
+| --- | --- | --- | --- |
+| 1.3.3 | 「感覚的な特徴だけに頼って指示する表現を使っていない」 | ホームのリアクション欄の空表示が「下のボタンから送ってみましょう」と **位置で指示している**（`src/home/reactions/widget.tsx`）。位置 **だけ** に依存しているかは人が判定する | `applicable-unverified` |
+| 1.4.5 | 「画像の中に文字を埋め込む表現を使っていない」 | ホームのアクセスカウンタは数字を **WebP のビットマップ** で描画している（`src/home/digits/*.webp`）— 文字を画像で描画している。テキスト描画に置き換えられるかは人が判定する | `applicable-unverified` |
+| 2.2.1 | 「時間の制限のある操作を用意していない」 | 管理画面の API キー発行には **5 分の step-up 確認窓** がある（`STEP_UP_MAX_AGE_SECONDS` = 300）。公開画面には無いが、管理画面を適合の主張の範囲に含めるかどうかの判断がまだ無い | `applicable-unverified` |
+
+2.5.3 には **既知の違反** が残っている。`/` の capability リンクは
+可視テキストが「Portfolio を開く」で `aria-label` は「ポートフォリオ を開く」、
+`/portfolio` の facet ボタンも可視テキストと `aria-label` が食い違う
+（`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch`、**Issue #718 が追跡中**）。
+この **既知の違反** は Issue #718 の追跡対象であり、この gate は **閉じない**。
+
+#### この表の「対象範囲」の読み方
+
+- この表が対象とするのは **canonical origin が返す公開画面** と **story**、
+  および **認証なしで到達できる管理画面の入口**（`/admin/login`、`/admin/invitations_/accept`）。
+- **認証済み管理画面の内部**（`/admin/*`）は、この表の公開スコープの **外側** にある。
+  2.2.1 と 3.3.4 の review plan は、この **スコープ判断そのもの** を owner に託している。
+- どちらの扱いにするかは **owner の決定** であり、agent が勝手に決めない。
 
 ### state（検査の対象状態）
 
@@ -328,6 +416,40 @@ WCAG 2.2 の Level A / AA の基準のうち、**この表が扱わない 25 基
 （`method` は `human` のまま）。`a11y:axe:check` は preview サーバを要する
 ので **fast gate ではなく release lane** で走る。
 
+## リリース評価（台帳の構造と、監査された品質は別のもの）
+
+gate の出力は **2 つを分けて** 報告する。**混ぜない。**
+
+| 評価 | 2026-11-01 時点の値 | 何を意味するか |
+| --- | --- | --- |
+| **台帳の構造** | **green** | すべての基準に **意味のある区分** がある / 適用範囲の決定が文書と一致する / fixture が期待どおりに振る舞う |
+| **監査された品質** | **not passed** | 手動項目は **22 件が未実施**、人が確認した項目は **0 件**、表の外側の基準は **12 件が適用だが未検証** |
+
+**「台帳が green」は「このサイトが WCAG 2.2 AA に適合している」ことを意味しない。**
+`auto-pass` の 5 項目は **npm の gate が判定した** 記録であって、
+**人が確認した** 記録ではない。
+**gate は、ブラウザやスクリーンリーダーの挙動について，人的確認の代用には
+ならない**（画面上の読み順・キーボード経路・文脈の中のリンクの読みやすさは、
+機械の gate では判定できない）。
+
+### 何を証拠として «closed» にするか
+
+| 対象 | 閉じる条件 | 閉じないもの |
+| --- | --- | --- |
+| **台帳の構造** | すべての基準に区分があり、適用範囲の決定が gate の定数と文書で一致し、fixture が期待どおりに振る舞う | — |
+| **表の 1 項目** | 人が review を行い `review.state` を `human-verified`（または `human-failed`）に書き、`reviewer`・`performedAt`・`environment`・`result` の **4 つ** を **すべて** 書く。証跡が review 窓（365 日）を越えると `item-evidence-stale` で red になる | `auto-pass`（機械の pass）、日付だけを書き換える |
+| **表の外の 1 基準**（`not-applicable`） | **出荷している制品についての事実**（証跡）があること | 「この表に項目が無い」「担当者が居ない」 |
+| **表の外の 1 基準**（`applicable-unverified`） | 手順どおりに **人が** 確認し、その結果を記録すること。記録が無い限り `applicable-unverified` のまま | gate の green |
+| **表の外の 1 基準**（`applicable-and-verified`） | **人間の実測記録**（`verifiedBy` と `verifiedAt`）があること | 記録が無いまま書いていただけの記述 |
+| **AA 準拠の主張** | **手動項目が 1 件残らず `human-verified`** で、その行が **この表を正確に指している** ときだけ | `auto-pass` だけの台帳 |
+
+**未実施の項目は「未実施」のまま報告する。** 「不合格」とも「合格」とも書かない。
+**Issue #718 が追跡している既知の axe 違反**（`e2e/a11y/axe-baseline.json` と
+`e2e/a11y/axe-storybook-baseline.json`）は **別の、未解決の品質項目** であり、
+この gate はそれを **閉じても許さない**（ excuse もしない）。
+台帳に `releaseAssessment.aaAuditComplete: true` と書いた場合は
+`release-assessment-unbacked` で red になる。
+
 ## 必須フィールド（fail-closed）
 
 | フィールド | 必須 | 意味 |
@@ -372,7 +494,12 @@ WCAG 2.2 の Level A / AA の基準のうち、**この表が扱わない 25 基
 | `criterion-conflict` | 同じ基準が覆われ、かつ適用外 |
 | `criterion-universe-mismatch` | A/AA の母集合（55 個）のどれかが、表の語彙と適用範囲の決定の **どちらでも決着していない**（または obsolete な基準を並べている） |
 | `compliance-claim-unbacked` | 人の確認が無いまま AA 準拠を主張している |
-| `scope-decision-doc-mismatch` | 適用範囲の決定（表の外側にある基準）が gate の定数と文書で食い違っている |
+| `scope-decision-doc-mismatch` | 適用範囲の決定（表の外側にある基準）が gate の定数と文書で食い違っている（SC 番号・レベル・名前・**区分**・理由・証跡・検査者・手順の **どれか 1 つ** でも違う） |
+| `scope-disposition-invalid` | 適用範囲の決定に区分が無い / 区分が 3 種類のどちらでもない / 区分が要求するフィールドが欠落 / 区分が禁じるフィールドを持つ |
+| `scope-exclusion-not-a-product-fact` | `not-applicable` の理由や証跡が「**この表に項目が無い**」「担当者が居ない」という **「見ていない」宣言** で、**製品についての事実** になっていない（表の `excluded` にも同じ規則が効く） |
+| `scope-unverified-missing-review-plan` | `applicable-unverified` に **検査者** か **再現手順** が無い |
+| `scope-verified-without-review-record` | `applicable-and-verified` に **人間の実測記録** が無い（このリポジトリには 1 件も無い） |
+| `release-assessment-unbacked` | 台帳のリリース評価が「AA 監査は完了」と書いているのに、記録がそうでない（未実施項目がある / 人が 1 つも確認していない / 適用だが未検証の基準がある） |
 | `fixture-expectation-mismatch` | fixture が自分の期待どおりに振る舞っていない |
 | `fixture-contract-missing` | fixture が読めない / ディレクトリが空 |
 
@@ -402,6 +529,7 @@ the site conforms to WCAG 2.2 AA.` と明示される。
 | `fail/10-conflicting-criterion.json` | `criterion-conflict` |
 | `fail/11-claim-predicate-without-qualifier.json` | `compliance-claim-unbacked` |
 | `fail/12-claim-negated-in-another-clause.json` | `compliance-claim-unbacked` |
+| `fail/13-release-assessment-unbacked.json` | `release-assessment-unbacked`（台帳が「AA 監査は完了」と書いているのに記録がそうでない） |
 
 fixture 集合は **完全一致** で管理する（1 個落としても
 `fixture-expectation-mismatch` で gate が red になる）。
@@ -417,6 +545,31 @@ fixture 集合は **完全一致** で管理する（1 個落としても
 比べる。gate を 「2099 年」 に走らせても fixture の判定は変わらない
 （実行日は **リポジトリ自身の表**の鮮さだけを決める）。
 
+### 適用範囲の決定の fixture（Issue #722）
+
+表の **外側** にある 25 基準の判定は `quality/wcag-review-matrix.json` に無い
+（事実源は gate の定数 `SCOPE_DECISIONS`）。だから **判定そのものを fixture で
+固定する**。この fixture 集合も完全一致で管理する。
+
+| fixture | 期待 |
+| --- | --- |
+| `scope/pass/01-product-fact-exclusion.json` | 違反 0 件（製品についての事実で閉じる `not-applicable` は受理する） |
+| `scope/fail/01-table-coverage-exclusion.json` | `scope-exclusion-not-a-product-fact`（「…をこの表に持たない」「検査項目が無い」） |
+| `scope/fail/02-unverified-without-steps.json` | `scope-unverified-missing-review-plan`（`applicable-unverified` に手順が無い） |
+| `scope/fail/03-verified-without-review-record.json` | `scope-verified-without-review-record`（`applicable-and-verified` に人間の実測記録が無い） |
+
+**負の対照は gate 自身でも実行できる。** `--scope-decisions=<path>` で
+判定ファイルを差し込むと、そのファイルに対して同じ rule が働く。
+
+```bash
+node scripts/check-a11y-wcag-review-matrix.mjs \
+  --scope-decisions=scripts/fixtures/a11y-wcag-review-matrix/scope/fail/01-table-coverage-exclusion.json
+echo "exit=$?"   # 1
+```
+
+この option は **判定だけ** を差し替える（文書の表は常に **出荷している
+判定** と照合する）。
+
 ## 誤検知・誤陰性を見つけたときの解除手順
 
 | 状況 | 対応 |
@@ -430,7 +583,11 @@ fixture 集合は **完全一致** で管理する（1 個落としても
 | 人が確認した項目を記録したい | `review.state` を `human-verified`（または `human-failed`）にし、**検査者・実施日・環境・結果** を **すべて** 書く。1 つでも空なら red |
 | 検査した時期が古くなった | 検査を **再実施** して `performedAt` を更新する。**日付だけ書き換えてはならない**（`item-evidence-stale` が red になる） |
 | 主張の語句を誤検知した | その行に **述語に隣接した** 否定・禁止の修飾語があるか確認する。語句の **列挙** だけなら `CLAIM_QUALIFIERS` による言及扱いで red にならない。修飾語が **別の節** にある場合は **主張のまま** なので、文の作り直しか記録の追加が必要 |
-| 適用範囲の決定（表の外側にある基準）がずれた | gate の定数 `SCOPE_DECISIONS` とこの文書の表を **どちらかに合わせて** 揃える。番号・レベル・名前・理由の 1 つでも違えば `scope-decision-doc-mismatch` で red になる |
+| 適用範囲の決定（表の外側にある基準）がずれた | gate の定数 `SCOPE_DECISIONS` とこの文書の表を **どちらかに合わせて** 揃える。番号・レベル・名前・**区分**・理由・証跡・検査者・手順の 1 つでも違えば `scope-decision-doc-mismatch` で red になる |
+| 適用範囲の決定の理由が「この表に項目が無い」になっている | **製品についての事実** に書き換える — その基準が **当たらなくなった** 事情を **出荷している制品** について述べる（例: 「事前録音の音声・動画を出荷していない」）。**表の項目が足りないことでは閉じない。** 書き換えられないなら `applicable-unverified` にして **検査者と手順** を書く（`scope-exclusion-not-a-product-fact`） |
+| `applicable-unverified` に手順が無い | **人が再現できる手順**（どの画面を開き、何を見て、どう判定するか）を `steps` に書く。検査者が分からないなら `reviewer` に役割を書く（`scope-unverified-missing-review-plan`） |
+| `applicable-and-verified` を書きたい | **書けない。** 人間の実測記録（`verifiedBy` と `verifiedAt`）が無い。owner が実測して記録に残すまで `applicable-unverified` のままにする（`scope-verified-without-review-record`） |
+| 台帳が「AA 監査は完了」と書いているのに、記録がそうなっていない | `releaseAssessment.aaAuditComplete` を `false` に戻す。未実施の項目がある / 人が 1 つも確認していない / 適用だが未検証の基準がある のどれか 1 つでも該当する間は `true` は書けない（`release-assessment-unbacked`） |
 | 母集合に無い基準が表や適用範囲の決定に混ざった | `WCAG_22_A_AA_UNIVERSE`（仕様と照合した保存書き起こし）を **仕様と照合し直して** 更新する。`criterion-universe-mismatch` で red になる |
 | 消えた基準が黙って抜けている | 消えた基準は **表の語彙** か **適用範囲の決定** の **どちらかに残す**。両方から消えると `criterion-universe-mismatch` で red になる（**黙って無視はできない**） |
 | 主張の検出が新しい言い回しを拾わない | `CLAIM_PATTERNS` にパターンを足す。**修飾語（否定）が隣接している** 場合は「言及」なので red にならない |
@@ -470,6 +627,10 @@ node --test scripts/_quality-gate-plan.test.mjs
 node scripts/check-a11y-wcag-review-matrix.mjs --today=2026-10-23
 node scripts/check-a11y-wcag-review-matrix.mjs --today 2026-10-23
 node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/wcag-review-matrix.json
+# 適用範囲の決定を差し替えて、判定の rule を負の対照として実行する
+node scripts/check-a11y-wcag-review-matrix.mjs \
+  --scope-decisions=scripts/fixtures/a11y-wcag-review-matrix/scope/fail/01-table-coverage-exclusion.json
+echo "exit=$?"   # 1 (scope-exclusion-not-a-product-fact)
 # 表が読めないとき（存在しないパス）は判断できないので終了コード 2
 node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/does-not-exist.json; echo "exit=$?"
 ```
@@ -481,6 +642,16 @@ node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/does-not-exist.j
   gate はその **記録** を管理する。**gate は代理で検査しない。**
 - **`not-reviewed` は「不合格」ではない。** 「まだ見ていない」を
   「失敗した」とは書かない。gate の出力は `outstanding` として数える。
+- **表の外側の 25 基準のうち 12 基準は `applicable-unverified`（未検証）。**
+  `not-applicable` 13 件は **製品についての事実** で閉じているが、
+  `applicable-unverified` の 12 件は **まだ誰も見ていない**。
+  **gate が緑であることは、この 12 件が閉じていることを意味しない。**
+- **`applicable-and-verified` は 0 件。** owner の実測記録が 1 件も無いので、
+  この状態を書き込むことは許されない（`scope-verified-without-review-record`）。
+- **Issue #718 が追跡している既知の axe 違反は別の項目。** 例えば
+  `label-content-name-mismatch`（`/` の capability リンクと `/portfolio` の
+  facet ボタン）は **SC 2.5.3 の既知の違反** として記録されている。
+  この gate は **それを閉じない**。台帳の構造と、監査された品質は別のものです。
 - **`auto-pass` の 5 項目は「その範囲」に限る。** 例えば
   `icon-button-names` は `src/**` のアイコンボタンの **名前** だけを扱う。
   基準全体の適合ではない。

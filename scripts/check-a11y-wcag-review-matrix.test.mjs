@@ -24,6 +24,7 @@ import {
 	CLAIM_PATTERNS,
 	CLAIM_QUALIFIERS,
 	EXPECTED_FIXTURE_FILES,
+	EXPECTED_SCOPE_FIXTURE_FILES,
 	FIXTURE_FAIL_DIR,
 	FIXTURE_PASS_DIR,
 	FIXTURE_REFERENCE_DATE,
@@ -32,6 +33,8 @@ import {
 	REVIEW_STATES,
 	RULES,
 	SCOPE_DECISIONS,
+	SCOPE_DISPOSITIONS,
+	SCOPE_FIXTURE_ROOT,
 	WCAG_22_A_AA_UNIVERSE,
 	WCAG_22_CRITERIA,
 	WCAG_22_OBSOLETE_CRITERIA,
@@ -39,6 +42,8 @@ import {
 	auditFixtures,
 	auditMatrix,
 	auditScopeDecisions,
+	auditScopeDispositions,
+	auditScopeFixtures,
 	auditSurfaceTarget,
 	citesCanonicalMatrix,
 	collectClaimSurfaceFiles,
@@ -51,6 +56,8 @@ import {
 	findClaimMatches,
 	findClaims,
 	isIsoDate,
+	loadScopeDecisions,
+	looksLikeTableCoverageReason,
 	parseOptions,
 	parseScopeDecisionTable,
 	renderGateSummary,
@@ -179,6 +186,11 @@ test('the rules the gate can report are the documented ones', () => {
 		'criterion-universe-mismatch',
 		'compliance-claim-unbacked',
 		'scope-decision-doc-mismatch',
+		'scope-disposition-invalid',
+		'scope-exclusion-not-a-product-fact',
+		'scope-unverified-missing-review-plan',
+		'scope-verified-without-review-record',
+		'release-assessment-unbacked',
 		'fixture-expectation-mismatch',
 		'fixture-contract-missing',
 	]) {
@@ -943,7 +955,58 @@ test('the scope decisions hold every A/AA criterion the table does not carry', (
 		assert.ok(['A', 'AA'].includes(decision.level), `SC ${decision.sc} needs an A/AA level`);
 		assert.ok(decision.name.length > 0, `SC ${decision.sc} needs a name`);
 		assert.ok(decision.reason.length > 0, `SC ${decision.sc} needs a reason`);
+		assert.ok(decision.evidence.length > 0, `SC ${decision.sc} needs an evidence`);
 	}
+});
+
+test('every scope decision carries a disposition with meaning', () => {
+	for (const decision of SCOPE_DECISIONS) {
+		assert.ok(
+			SCOPE_DISPOSITIONS.includes(decision.disposition),
+			`SC ${decision.sc} needs one of ${SCOPE_DISPOSITIONS.join(' / ')}`,
+		);
+		if (decision.disposition === 'not-applicable') {
+			assert.ok(decision.reviewer === undefined, `SC ${decision.sc} must not name a reviewer`);
+			assert.ok(decision.steps === undefined, `SC ${decision.sc} must not carry steps`);
+			continue;
+		}
+		assert.ok(
+			typeof decision.reviewer === 'string' && decision.reviewer.length > 0,
+			`SC ${decision.sc} must name who reviews it`,
+		);
+		assert.ok(
+			Array.isArray(decision.steps) && decision.steps.length > 0,
+			`SC ${decision.sc} must carry reproduction steps`,
+		);
+		for (const step of decision.steps) {
+			assert.ok(typeof step === 'string' && step.trim().length > 0, 'a step must be readable');
+		}
+	}
+});
+
+test('no criterion claims to be applicable-and-verified without a human record', () => {
+	const verified = SCOPE_DECISIONS.filter(
+		(decision) => decision.disposition === 'applicable-and-verified',
+	);
+	assert.deepEqual(
+		verified.map((decision) => decision.sc),
+		[],
+		'no owner measurement exists in this repository, so no criterion may claim to be verified',
+	);
+});
+
+test('the disposition counts are the ones the release assessment states', () => {
+	const counts = Object.fromEntries(
+		SCOPE_DISPOSITIONS.map((id) => [
+			id,
+			SCOPE_DECISIONS.filter((decision) => decision.disposition === id).length,
+		]),
+	);
+	assert.equal(counts['not-applicable'], 13);
+	assert.equal(counts['applicable-unverified'], 12);
+	assert.equal(counts['applicable-and-verified'], 0);
+	const evidence = collectEvidence({ today: TODAY, repoRoot: REPO_ROOT });
+	assert.deepEqual(evidence.dispositionCounts, counts);
 });
 
 test('the documentation states the scope decisions the gate holds', () => {
@@ -952,11 +1015,192 @@ test('the documentation states the scope decisions the gate holds', () => {
 
 test('a scope decision the documentation does not state is reported', () => {
 	const rows = parseScopeDecisionTable(
-		'| SC | レベル | 名前 | 理由 |\n| --- | --- | --- | --- |\n| 1.2.1 | A | Audio-only | a reason |\n',
+		'| SC | レベル | 名前 | 区分 | 理由 | 証跡 | 検査者 | 手順 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| 1.2.1 | A | Audio-only | not-applicable | a reason | an evidence | — | — |\n',
 	);
 	assert.equal(rows.length, 1);
 	const problems = compareScopeDecisions(rows);
 	assert.ok(problems.length > 0, 'a partial scope table is a mismatch');
+});
+
+test('a documented scope decision with another disposition is reported', () => {
+	const rows = parseScopeDecisionTable(
+		[
+			'| SC | レベル | 名前 | 区分 | 理由 | 証跡 | 検査者 | 手順 |',
+			'| --- | --- | --- | --- | --- | --- | --- | --- |',
+			'| 1.2.1 | A | Audio-only | not-applicable | a reason | an evidence | — | — |',
+		].join('\n'),
+	);
+	const problems = compareScopeDecisions(rows, [
+		{
+			sc: '1.2.1',
+			level: 'A',
+			name: 'Audio-only',
+			disposition: 'applicable-unverified',
+			reason: 'a reason',
+			evidence: 'an evidence',
+			reviewer: 'owner',
+			steps: ['a step'],
+		},
+	]);
+	assert.ok(
+		problems.some((problem) => problem.includes('disposition')),
+		'a different disposition is a mismatch',
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * the dispositions (Issue #722)
+ * ------------------------------------------------------------------ */
+
+test('"we have no item for it" is not an applicability argument', () => {
+	for (const text of [
+		'リンクの目的を文脈ごとに検査する項目をこの表に持たない。',
+		'複数の到達経路を検査する項目をこの表に持たない。',
+		'ヘルプの置き方の検査項目をこの表に持たない。',
+		'この表に検査項目が無い。',
+		'There is no item in this table for it.',
+		'No owner is assigned to it.',
+	]) {
+		assert.ok(
+			looksLikeTableCoverageReason(text),
+			`"${text}" must be recognised as an admission that nobody looked`,
+		);
+	}
+});
+
+test('a fact about the published product is not a table-coverage reason', () => {
+	for (const text of [
+		'事前録音の音声・動画だけのコンテンツを出荷していない。',
+		'`src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く、事前録音のメディアを同梱する Tool も無い。',
+		'`src/**` の keydown ハンドラは `Escape`・矢印キー・`Home` / `End` のみで、単一文字のショートカットは無い。',
+	]) {
+		assert.ok(
+			!looksLikeTableCoverageReason(text),
+			`"${text}" is a product fact and must be accepted`,
+		);
+	}
+});
+
+test('a "not applicable" decision that only says the table has no item is refused', () => {
+	const violations = auditScopeDispositions([
+		{
+			sc: '2.4.4',
+			disposition: 'not-applicable',
+			reason: 'リンクの目的を文脈ごとに検査する項目をこの表に持たない。',
+			evidence: 'この表に検査項目が無い。',
+		},
+	]);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['scope-exclusion-not-a-product-fact', 'scope-exclusion-not-a-product-fact'],
+	);
+});
+
+test('an "applicable but unverified" decision without steps is refused', () => {
+	const violations = auditScopeDispositions([
+		{
+			sc: '3.2.3',
+			disposition: 'applicable-unverified',
+			reason: 'ページを越えたナビゲーションがある。',
+			evidence: 'リンクの相対順序を記録する。',
+			reviewer: 'owner',
+		},
+	]);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['scope-unverified-missing-review-plan'],
+	);
+});
+
+test('an "applicable and verified" decision without a human record is refused', () => {
+	const violations = auditScopeDispositions([
+		{
+			sc: '2.4.6',
+			disposition: 'applicable-and-verified',
+			reason: '見出しの文言がそのセクションを説明している。',
+			evidence: 'すべての見出しを読んだ。',
+			reviewer: 'owner',
+			steps: ['すべての公開画面の見出しを読む。'],
+		},
+	]);
+	assert.deepEqual(
+		violations.map((violation) => violation.rule),
+		['scope-verified-without-review-record', 'scope-verified-without-review-record'],
+	);
+});
+
+test('the shipped scope decisions break no rule', () => {
+	assert.deepEqual(auditScopeDispositions(SCOPE_DECISIONS), []);
+});
+
+test('the scope fixtures are exactly the expected set and behave as they declare', () => {
+	const audited = auditScopeFixtures({ repoRoot: REPO_ROOT });
+	assert.deepEqual(audited.violations, []);
+	assert.equal(
+		audited.files.length,
+		EXPECTED_SCOPE_FIXTURE_FILES.pass.length + EXPECTED_SCOPE_FIXTURE_FILES.fail.length,
+	);
+	for (const [expectation, expected] of Object.entries(EXPECTED_SCOPE_FIXTURE_FILES)) {
+		const directory = resolve(REPO_ROOT, SCOPE_FIXTURE_ROOT, expectation);
+		const found = readdirSync(directory)
+			.filter((name) => name.endsWith('.json'))
+			.sort();
+		assert.deepEqual(found, [...expected].sort(), `${directory} must hold exactly its fixtures`);
+	}
+});
+
+test('the negative controls make the gate red with the new rule ids', () => {
+	for (const [fixture, rule] of [
+		['01-table-coverage-exclusion.json', 'scope-exclusion-not-a-product-fact'],
+		['02-unverified-without-steps.json', 'scope-unverified-missing-review-plan'],
+		['03-verified-without-review-record.json', 'scope-verified-without-review-record'],
+	]) {
+		const path = resolve(REPO_ROOT, SCOPE_FIXTURE_ROOT, 'fail', fixture);
+		const result = spawnSync(
+			process.execPath,
+			[
+				resolve(REPO_ROOT, 'scripts/check-a11y-wcag-review-matrix.mjs'),
+				`--scope-decisions=${path}`,
+				'--quiet',
+			],
+			{ cwd: REPO_ROOT, encoding: 'utf8' },
+		);
+		assert.equal(result.status, 1, `${fixture} must make the gate red`);
+		assert.match(result.stderr, new RegExp(rule), `${fixture} must report ${rule}`);
+	}
+});
+
+test('a scope decision file is read as data', () => {
+	const path = resolve(REPO_ROOT, SCOPE_FIXTURE_ROOT, 'pass', '01-product-fact-exclusion.json');
+	const decisions = loadScopeDecisions(path);
+	assert.equal(decisions.length, 1);
+	assert.deepEqual(auditScopeDispositions(decisions), []);
+});
+
+test('the ledger does not claim that the AA audit is complete', () => {
+	const matrix = validMatrix();
+	matrix.releaseAssessment = { aaAuditComplete: true };
+	const rules = rulesOf(matrix);
+	assert.ok(rules.includes('release-assessment-unbacked'));
+});
+
+test('the repository ledger states that the audit is not complete', () => {
+	const evidence = collectEvidence({ today: TODAY, repoRoot: REPO_ROOT });
+	assert.equal(evidence.matrix.releaseAssessment.aaAuditComplete, false);
+	assert.equal(evidence.matrix.releaseAssessment.humanReviewOutstanding, evidence.outstanding);
+});
+
+test('the report separates the ledger structure from the audited quality', () => {
+	const report = renderGateSummary(collectEvidence({ today: TODAY, repoRoot: REPO_ROOT }));
+	assert.match(report, /release assessment \(the ledger's structure and the audited quality/);
+	assert.match(report, /ledger structure: GREEN/);
+	assert.match(report, /audited quality: NOT PASSED/);
+	assert.match(report, /this is NOT a WCAG 2\.2 AA audit/);
+	assert.match(report, /the outstanding manual items are outstanding/);
+	assert.match(report, /Issue #718/);
+	assert.match(report, /not-applicable: 13/);
+	assert.match(report, /applicable-unverified: 12/);
+	assert.match(report, /applicable-and-verified: 0/);
 });
 
 /* ------------------------------------------------------------------ *
@@ -1045,8 +1289,21 @@ test('every rule the fixtures can produce is exercised by a fixture', () => {
 		'item-evidence-stale',
 		'state-uncovered',
 		'criterion-conflict',
+		'release-assessment-unbacked',
 	]) {
 		assert.ok(produced.has(rule), `a fixture must produce ${rule}`);
+	}
+});
+
+test('every scope rule is exercised by a scope fixture', () => {
+	const audited = auditScopeFixtures({ repoRoot: REPO_ROOT, today: TODAY });
+	const produced = new Set(audited.files.flatMap((file) => file.produced));
+	for (const rule of [
+		'scope-exclusion-not-a-product-fact',
+		'scope-unverified-missing-review-plan',
+		'scope-verified-without-review-record',
+	]) {
+		assert.ok(produced.has(rule), `a scope fixture must produce ${rule}`);
 	}
 });
 

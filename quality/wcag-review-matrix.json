@@ -1,10 +1,24 @@
 {
-	"$comment": "WCAG 2.2 A/AA manual review matrix (Issue #410). The record of the judgements a machine cannot make. The gate (scripts/check-a11y-wcag-review-matrix.mjs) reads it and decides only whether the RECORD is intact — that every criterion is either covered by an item or excluded with a reason, that every item says who decides it, that every performed review carries a reviewer, a date, an environment and a result, and that no document claims WCAG 2.2 AA conformance on the strength of an automatic pass. The matrix is owner data: it is read by the gate and written by the reviewer. The write-up is docs/verification/a11y/wcag-review-matrix.md.",
+	"$comment": "WCAG 2.2 A/AA manual review matrix (Issue #410, Issue #722). The record of the judgements a machine cannot make. The gate (scripts/check-a11y-wcag-review-matrix.mjs) reads it and decides only whether the RECORD is intact — that every criterion is either covered by an item or excluded with a reason, that every item says who decides it, that every performed review carries a reviewer, a date, an environment and a result, that no document claims WCAG 2.2 AA conformance on the strength of an automatic pass, and that the criteria outside this table carry a DISPOSITION with meaning (a product fact, or an explicit 'applicable but unverified' with a reviewer and a reproduction plan). The matrix is owner data: it is read by the gate and written by the reviewer. The write-up is docs/verification/a11y/wcag-review-matrix.md; the dispositions of the 25 criteria outside this table live in that document's mirror, scripts/check-a11y-wcag-review-matrix.mjs#SCOPE_DECISIONS.",
 	"version": 1,
-	"issue": "#410",
-	"updatedAt": "2026-10-23",
+	"issue": "#410, #722",
+	"updatedAt": "2026-11-01",
 	"reviewWindowDays": 365,
-	"policy": "A `machine` item is decided by an npm gate: the record says which one, and the gate's own verdict is the evidence. A `human` item is decided by a person: the record says who was responsible, and — once the review has happened — who performed it, when, in which environment and with which result. The two states are different on purpose: `auto-pass` and `human-verified` never mean the same thing, and a green run of the gate says the TABLE is intact, not that the site conforms to WCAG 2.2 AA. A review older than the review window has to be made again. The procedure is docs/verification/a11y/wcag-review-matrix.md.",
+	"policy": "A `machine` item is decided by an npm gate: the record says which one, and the gate's own verdict is the evidence. A `human` item is decided by a person: the record says who was responsible, and — once the review has happened — who performed it, when, in which environment and with which result. The two states are different on purpose: `auto-pass` and `human-verified` never mean the same thing, and a green run of the gate says the TABLE is intact, not that the site conforms to WCAG 2.2 AA. A review older than the review window has to be made again. Issue #722 adds the release assessment below: the ledger's structure and the audited quality are two different things, and the ledger states which of them it has. The procedure is docs/verification/a11y/wcag-review-matrix.md.",
+	"releaseAssessment": {
+		"aaAuditComplete": false,
+		"ledgerStructure": "green",
+		"auditedQuality": "not-passed",
+		"humanReviewOutstanding": 22,
+		"humanReviewVerified": 0,
+		"scopeDecisionsApplicableUnverified": 12,
+		"knownAxeViolations": {
+			"issue": "#718",
+			"state": "open",
+			"ledgers": ["e2e/a11y/axe-baseline.json", "e2e/a11y/axe-storybook-baseline.json"]
+		},
+		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 22 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The known axe-core violations tracked by Issue #718 are a separate, still-open quality item. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
+	},
 	"states": [
 		{
 			"id": "normal",

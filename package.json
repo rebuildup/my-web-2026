@@ -172,6 +172,8 @@
 		"verification:write-rate-limit": "node scripts/capture-write-rate-limit-report.mjs",
 		"copy:i18n:check": "node scripts/check-copy-i18n.mjs",
 		"keyboard:sync": "node scripts/sync-keyboard-layout.mjs",
+		"keyboard:check": "node scripts/sync-keyboard-layout.mjs --check",
+		"keyboard:publish": "node scripts/_keyboard-sync-publish.mjs",
 		"verify:keyboard-screenshot": "node scripts/make-keyboard-verification-report.mjs",
 		"copy:approval:check": "node scripts/check-copy-editorial-approval.mjs",
 		"verify:copy-editorial-approval-screenshot": "node scripts/make-copy-editorial-approval-report.mjs",

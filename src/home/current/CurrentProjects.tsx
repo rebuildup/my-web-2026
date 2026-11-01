@@ -75,8 +75,20 @@ export interface CurrentProjectsProps {
 	today: string;
 }
 
+// Every style in this module is built at module scope, and every `css()` call
+// carries a `@__PURE__` annotation. That annotation is load-bearing, not a
+// style choice: Rollup keeps a module that is reachable from the shared client
+// entry when its evaluation has a side effect it cannot prove away, even when
+// the only importer is the `/` route component that the route splitter
+// excludes. Without the annotation this whole section shipped in the entry
+// chunk that every route downloads (Issue #776: 626,488 B base -> 639,798 B
+// measured on the branch). With it, Rollup drops the module from the entry and
+// keeps it in `/`'s own chunk (629,522 B entry, section paid for only by `/`).
+// A module-scope `css()` is the normal pattern in this repository; it only has
+// to be annotatable where an excluded importer is the sole edge to the entry.
+
 /** The shared link treatment — the home capabilities grid's link. */
-const linkClassName = css({
+const linkClassName = /* @__PURE__ */ css({
 	display: 'inline-flex',
 	alignItems: 'center',
 	gap: '2',
@@ -96,7 +108,7 @@ const linkClassName = css({
 	},
 });
 
-const summaryClassName = css({
+const summaryClassName = /* @__PURE__ */ css({
 	margin: '0',
 	marginBlockEnd: '8',
 	fontFamily: 'sans',
@@ -105,7 +117,7 @@ const summaryClassName = css({
 	lineHeight: '1.6',
 });
 
-const listClassName = css({
+const listClassName = /* @__PURE__ */ css({
 	display: 'flex',
 	flexDirection: 'column',
 	margin: '0',
@@ -113,14 +125,14 @@ const listClassName = css({
 	listStyle: 'none',
 });
 
-const groupClassName = css({
+const groupClassName = /* @__PURE__ */ css({
 	display: 'block',
 	'&:not(:first-child)': {
 		marginBlockStart: '10',
 	},
 });
 
-const groupHeadingClassName = css({
+const groupHeadingClassName = /* @__PURE__ */ css({
 	display: 'flex',
 	alignItems: 'baseline',
 	gap: '3',
@@ -135,7 +147,7 @@ const groupHeadingClassName = css({
 	color: 'text.muted',
 });
 
-const rowClassName = css({
+const rowClassName = /* @__PURE__ */ css({
 	paddingBlock: '5',
 	borderBlockEnd: '1px solid {colors.border.subtle}',
 	'&:last-child': {
@@ -143,14 +155,14 @@ const rowClassName = css({
 	},
 });
 
-const rowHeaderClassName = css({
+const rowHeaderClassName = /* @__PURE__ */ css({
 	display: 'flex',
 	flexWrap: 'wrap',
 	alignItems: 'baseline',
 	gap: '3',
 });
 
-const nameClassName = css({
+const nameClassName = /* @__PURE__ */ css({
 	margin: '0',
 	fontFamily: 'heading',
 	fontSize: 'xl',
@@ -160,7 +172,7 @@ const nameClassName = css({
 	letterSpacing: '-0.01em',
 });
 
-const statusClassName = css({
+const statusClassName = /* @__PURE__ */ css({
 	margin: '0',
 	marginBlockStart: '2',
 	fontFamily: 'sans',
@@ -169,7 +181,7 @@ const statusClassName = css({
 	lineHeight: '1.6',
 });
 
-const metaListClassName = css({
+const metaListClassName = /* @__PURE__ */ css({
 	display: 'grid',
 	gridTemplateColumns: { base: '1fr', md: '7rem 1fr' },
 	columnGap: '4',
@@ -181,12 +193,12 @@ const metaListClassName = css({
 	lineHeight: '1.6',
 });
 
-const metaLabelClassName = css({
+const metaLabelClassName = /* @__PURE__ */ css({
 	color: 'text.muted',
 	fontVariantNumeric: 'tabular-nums',
 });
 
-const metaValueClassName = css({
+const metaValueClassName = /* @__PURE__ */ css({
 	display: 'flex',
 	flexWrap: 'wrap',
 	alignItems: 'baseline',
@@ -196,13 +208,13 @@ const metaValueClassName = css({
 	fontVariantNumeric: 'tabular-nums',
 });
 
-const sourceTagClassName = css({
+const sourceTagClassName = /* @__PURE__ */ css({
 	fontSize: 'xs',
 	color: 'text.muted',
 	letterSpacing: '0.04em',
 });
 
-const levelTagClassName = css({
+const levelTagClassName = /* @__PURE__ */ css({
 	fontFamily: 'sans',
 	fontSize: 'xs',
 	fontWeight: '600',
@@ -210,7 +222,7 @@ const levelTagClassName = css({
 	color: 'text.muted',
 });
 
-const emptyClassName = css({
+const emptyClassName = /* @__PURE__ */ css({
 	margin: '0',
 	fontFamily: 'sans',
 	fontSize: 'md',

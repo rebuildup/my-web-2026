@@ -14,6 +14,9 @@ import { css } from '../../../styled-system/css';
  * Accessibility contract:
  *
  *   - `<nav aria-label="Public">` is the only top-level landmark.
+ *   - The desktop strip and the mobile panel are real lists: every
+ *     entry is an `<li>` inside the `<ul>` (WCAG 2.2 SC 1.3.1 —
+ *     Issue #718). The link text itself never changes.
  *   - The active route is announced via `aria-current="page"` on the
  *     matching `<a>`. Active styling is colour + weight + underline;
  *     the `aria-current` attribute is the programmatic signal so
@@ -243,8 +246,17 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						md: { display: 'flex' },
 					})}
 				>
+					{/* Issue #718: the desktop strip is a real list, so every
+					    entry is an `<li>` (WCAG 2.2 SC 1.3.1 — a `<ul>` may
+					    only contain `<li>`). The `<li>` is `display: flex` so
+					    the link keeps exactly the box it had when the `<a>`
+					    was the flex item itself: the `<li>` generates no
+					    line box, so the row's height, the item widths and
+					    the wrap threshold are unchanged. */}
 					{PUBLIC_NAV_ITEMS.map((item) => (
-						<NavLink key={item.to} item={item} isActive={isActiveRoute(resolvedPath, item.to)} />
+						<li key={item.to} className={css({ display: 'flex' })}>
+							<NavLink item={item} isActive={isActiveRoute(resolvedPath, item.to)} />
+						</li>
 					))}
 				</ul>
 

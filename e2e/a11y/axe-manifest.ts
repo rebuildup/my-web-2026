@@ -98,43 +98,43 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 	{
 		path: '/',
 		title: 'my-web-2026 — rebuildup.dev',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Home — the entry surface every visitor meets first.',
 	},
 	{
 		path: '/about',
 		title: '木村友亮 / Yusuke Kimura — About',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'About — the approved person identity rendered as a document.',
 	},
 	{
 		path: '/keyboard',
 		title: 'キーボード配列 — 大西配列と Kanata',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Keyboard — the read-only layout reference (Issue #620).',
 	},
 	{
 		path: '/contact',
 		title: 'Contact — rebuildup.dev',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Contact — the form surface a visitor writes into.',
 	},
 	{
 		path: '/portfolio',
 		title: 'Portfolio — rebuildup.dev',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Portfolio list — the published project index.',
 	},
 	{
 		path: '/portfolio/my-web-2026',
 		title: 'my-web-2026 — Personal Web Platform on Cloudflare Workers — Portfolio',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Portfolio detail — the seeded sample slug of /portfolio/$slug.',
 	},
 	{
 		path: '/projects/dotfiles',
 		title: 'dotfiles — rebuildup.dev',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Project introduction — the committed snapshot surface (Issue #621).',
 	},
 	{
@@ -146,7 +146,7 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 	{
 		path: '/design-system',
 		title: 'Design System — rebuildup.dev',
-		expect: 'baseline',
+		expect: 'pass',
 		note: 'Design system showcase — the editorial primitives rendered together.',
 	},
 	{

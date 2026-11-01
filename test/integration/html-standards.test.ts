@@ -71,7 +71,7 @@ import { seedPortfolioRow } from './fixtures/portfolio-d1';
  * their FAILURE fallbacks rather than the live numbers and the live emoji
  * list. What is validated is therefore the failure-state document: the
  * shell, the nav, the editorial primitives, the picker's SSR markup (the
- * three shipped waivers match it, or this suite would fail with
+ * shipped waivers match it, or this suite would fail with
  * `waiver.unused`), the portfolio documents and the design-system route.
  * The success-state markup of the counter and the reaction list is NOT
  * covered here; it is what `--live <baseUrl>` against a running server

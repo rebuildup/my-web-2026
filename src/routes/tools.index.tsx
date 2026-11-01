@@ -126,8 +126,15 @@ const TOOL_PREVIEWS: Readonly<
 	prototype: {
 		src: '/tools/prototype/overview.webp',
 		alt: 'ProtoType のタイトル画面。中央に Game Start、左にゲーム・ランキング・サイト設定のメニューが並んでいる。',
+		// The capture is the Tool FRAME's box, not the page: at the
+		// script's 1440 × 900 context the frame is 811 px tall (900 minus
+		// the 62 px nav and the 27 px breadcrumb band), and the 1200 px
+		// width is that box scaled by 1200/1440. Restoring the chrome
+		// (Issue #785) changed this ratio; the numbers here are the
+		// committed file's real dimensions, so a stale pair cannot
+		// reserve the wrong box and shift the card on load.
 		width: 1200,
-		height: 750,
+		height: 676,
 	},
 };
 

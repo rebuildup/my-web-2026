@@ -89,10 +89,10 @@
 		{
 			"path": "/tools",
 			"public": true,
-			"status": "not-implemented",
-			"expectedTypes": [],
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/tools",
-			"note": "Issue #288 で breadcrumb chrome を撤去した surface。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
+			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner が index について「ヘッダーがない。パンくずリストもない。」と指摘したため、index だけ breadcrumb leaf を emit する。/tools/<slug> の shell は #288 のまま（ヘッダーなし・iframe 全高）。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
 		},
 		{
 			"path": "/tools/[slug]",

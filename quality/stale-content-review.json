@@ -1,7 +1,7 @@
 {
-	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner.",
+	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner. Since Issue #720 every record also carries a `provenance` block: a review date is a RECORDED CLAIM about when the owner read the expression, and only a record whose provenance names a traceable owner artefact (kind=owner-review + a reference + ownerConfirmation=confirmed) may be presented as an owner review. The shipped records were filled in by an automated side on the basis of merge permission (the owner's own Issue #437 comment says so), so they are classified agent-recorded / unconfirmed and the gate reports them as awaiting owner confirmation. The audit is docs/verification/governance/approval-provenance.md.",
 	"version": 1,
-	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner.",
+	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner. Since Issue #720 the gate also reports the provenance of each record: a record an automated side wrote is reported as awaiting owner confirmation, never as an owner review, and the gate never re-dates a record — re-classification is the only thing it does to this registry.",
 	"freshnessWindowDays": 90,
 	"locales": ["ja"],
 	"excludedPaths": [
@@ -26,6 +26,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Rendered only when no slug of `experienceSlugs` (src/about/data.ts:73) resolves to a public project (src/about/load.ts, resolveExperience). The three slugs are seeded in src/portfolio/seed.ts, so while those D1 rows stay public this sentence is not the rendered one. Which sentence is rendered cannot be confirmed from the repository alone — the D1 rows are the source of truth."
 		},
 		{
@@ -36,6 +54,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Heading of the `/about` \"Current\" section (src/about/components/AboutPage.tsx:561). Its content is `ABOUT_DATA.current` (src/about/data.ts:74-80) — the list of what the owner is working on at the time of reading. The wording is the owner's; the mixed Japanese / English label is not a typography question."
 		},
 		{
@@ -46,6 +82,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Description of the same section (src/about/components/AboutPage.tsx:562). The half-year horizon matches the freshness guidance of src/about/data.ts:28-33, where the `current` / `future` rows carry the lowest stability of the three horizons."
 		},
 		{
@@ -56,6 +110,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Legend under the \"Current\" section (src/about/components/AboutPage.tsx:632). The two lists it explains are `ABOUT_DATA.future.active` and `ABOUT_DATA.future.parked` (src/about/data.ts:81-90)."
 		},
 		{
@@ -66,6 +138,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "First entry of `ABOUT_DATA.future.parked` (src/about/data.ts:88). The state it claims — the commissioned video / design production mode is parked — is a decision record rather than a measurement, and it changes when the owner reopens the mode."
 		},
 		{
@@ -76,6 +166,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Intro paragraph of `/contact` (src/contact/page.tsx:107). True against src/contact/channels.json and the freshness gate of src/contact/schema.ts:67 (FRESHNESS_WINDOW_DAYS = 30). On 2026-10-22 the GitHub channels are still inside that window (verified_at 2026-09-27), so the sentence holds until 2026-10-27 unless the channels are re-verified."
 		},
 		{
@@ -86,6 +194,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
 		},
 		{
@@ -96,6 +222,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Secondary paragraph of `/contact` (src/contact/page.tsx:123). It states a permission: this page does not accept commission requests, and the published channels are the only route it names (src/contact/channels.json). The permission itself is unchanged by the freshness window; only the channel list moves."
 		},
 		{
@@ -106,6 +250,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Section title of the channel list (src/contact/page.tsx:139). The list it titles is `getVisibleChannels()` (src/contact/public.ts:52), i.e. the entries that pass the 30-day gate of src/contact/schema.ts:67."
 		},
 		{
@@ -116,6 +278,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Empty state of the channel list (src/contact/page.tsx:330), rendered only when `getVisibleChannels()` returns nothing (src/contact/public.ts:52). On 2026-10-22 the GitHub channels are still inside the 30-day window, so this is not the rendered sentence; it becomes the rendered one on 2026-10-27 unless the channels are re-verified."
 		},
 		{
@@ -126,6 +306,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Continuation of the empty state (src/contact/page.tsx:331). It names the file that holds the channel entries (src/contact/channels.json) and the two fields the schema requires (`active`, `verified_at` — src/contact/schema.ts)."
 		},
 		{
@@ -136,6 +334,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Description of the home composer section (src/home/composer.tsx:142). The channels it names are the same entries as `/contact` (src/contact/channels.json, filtered by src/contact/public.ts:52); the three purposes are the `purpose` values of src/contact/schema.ts."
 		},
 		{
@@ -146,6 +362,29 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "5232039589d71f63983f22e2e9d879b3810ed515",
+						"note": "the commit that refreshed this record"
+					},
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "status セクション (SectionHeading) の説明文 (src/home/status/tiles.tsx:129)。各 binding と外部境界の最新到達性を createServerFn で観測したスナップショットとして示し、観測できなかった状態を「未観測」として到達障害と区別して表示することを述べる。実装が保証しているのは観測値が得られない state が unreachable とは別に存在すること (src/home/status/health.ts の health = 'unobserved'、src/home/status/tiles.tsx の 'unobserved' ラベル) で、この文はその区別を人に伝える表現になっている。"
 		},
 		{
@@ -156,6 +395,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Evidence note of the `my-web-2026` seed entry (src/portfolio/seed.ts:140). The published text interpolates `EVIDENCE_AS_OF_2026_01` (src/portfolio/seed.ts:71), i.e. 2026-01, and the sentence itself says the download count and the current sale status change over time. The recorded expression is the source text, so the interpolation placeholder is part of the match; the rendered month changes with the constant, not with the copy."
 		},
 		{
@@ -166,6 +423,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "Meta description of the `/contact` route (src/routes/contact.tsx:41). Same evidence as the other contact entries: src/contact/channels.json and the 30-day gate of src/contact/schema.ts:67."
 		},
 		{
@@ -176,6 +451,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "鮮度ラベルの unavailable の表示 (src/projects/DotfilesIntroductionPage.tsx:50)。鮮度は evaluateFreshness (src/projects/snapshot.ts:105) が判定し、snapshot の availability が public でない場合に unavailable を返す。このラベルが述べるのは snapshot が上流の現在の状態を反映していないという状態そのものであり、公開されている内容の正誤や件数には言及しない。"
 		},
 		{
@@ -186,6 +479,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "鮮度が stale のときの注記 (src/projects/DotfilesIntroductionPage.tsx:719)。stale は verify 済みの日時から MAX_AGE_HOURS (src/projects/types.ts:24、336 時間) を超えた場合に判定される (src/projects/snapshot.ts:113)。この文は表示している内容が最新ではない可能性があると述べるだけで、snapshot の中身が誤っているとは述べていない。"
 		},
 		{
@@ -196,6 +507,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "snapshot を読み込めない場合の本文 (src/projects/DotfilesIntroductionPage.tsx:749)。読み込みに失敗したときだけ描画される節で、再同期が終わるまで内容を出さないことと、最新の情報は上流リポジトリで確認できることを述べている。取得の失敗という状態についての説明であり、公開されている内容そのものが古いということではない。"
 		},
 		{
@@ -206,6 +535,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "reason が not-found / not-public の場合の表示 (src/projects/unavailable-copy.ts:11-12、NOT_PUBLIC)。リポジトリが公開されていないという状態と、表示している内容が最新ではないという状態の 2 つを述べている。公開状態は同期が記録した availability が根拠であり、この文だけからリポジトリの実状態は確認できない。"
 		},
 		{
@@ -216,6 +563,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "archived / ref-mismatch / readme-shape の reason と、理由が記録されていない場合の fallback が共通で使う接尾句 (src/projects/unavailable-copy.ts:14、NOT_CURRENT_SUFFIX)。表示している内容が最新ではないという状態だけを述べており、その理由や影響範囲は含まない。"
 		},
 		{
@@ -226,6 +591,24 @@
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
 			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
 		}
 	]

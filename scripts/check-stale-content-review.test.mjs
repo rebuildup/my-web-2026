@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
 	cpSync,
 	mkdtempSync,
@@ -9,7 +10,6 @@ import {
 	statSync,
 	writeFileSync,
 } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { describe, it } from 'node:test';
@@ -24,6 +24,7 @@ import {
 	detectLocale,
 	detectTimeTokens,
 	evaluateRegistry,
+	provenanceState,
 	validateRegistry,
 } from './check-stale-content-review.mjs';
 
@@ -444,5 +445,101 @@ describe('check-stale-content-review — the shipped registry', () => {
 		const result = evaluateRegistry({ segments, registry, today: TODAY });
 		assert.deepEqual(result.queue, [], 'the shipped registry must have no waiting expression');
 		assert.ok(result.entries.length > 0, 'the live tree must carry time-sensitive expressions');
+	});
+
+	it('carries a provenance on every record and reports the two populations', () => {
+		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
+		for (const record of registry.expressions) {
+			assert.ok(record.provenance, `${record.id} must carry a provenance`);
+			assert.ok(['owner-review', 'agent-recorded', 'unverified'].includes(record.provenance.kind));
+			assert.ok(['confirmed', 'unconfirmed'].includes(record.provenance.ownerConfirmation));
+			if (record.provenance.kind === 'owner-review') {
+				assert.ok(
+					typeof record.provenance.reference === 'string' && record.provenance.reference.length > 0,
+					`${record.id} claims an owner review and must name the artefact`,
+				);
+			}
+		}
+		const result = evaluateRegistry({ segments: [], registry, today: TODAY });
+		assert.equal(result.provenanceSummary.records, registry.expressions.length);
+		assert.equal(result.provenanceSummary.missingProvenance, 0);
+		assert.equal(
+			result.provenanceSummary.ownerConfirmed + result.provenanceSummary.awaitingConfirmation,
+			result.provenanceSummary.records,
+		);
+	});
+});
+
+describe('check-stale-content-review — the provenance of a review record (Issue #720)', () => {
+	it('separates an owner-confirmed record from one an automated side wrote', () => {
+		const confirmed = provenanceState({
+			provenance: {
+				kind: 'owner-review',
+				reference: 'https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-1',
+				recordedBy: 'rebuildup',
+				ownerConfirmation: 'confirmed',
+			},
+		});
+		assert.equal(confirmed.ownerConfirmed, true);
+		assert.match(confirmed.label, /owner-confirmed/);
+
+		const agent = provenanceState({
+			provenance: {
+				kind: 'agent-recorded',
+				reference: null,
+				recordedBy: 'agent',
+				ownerConfirmation: 'unconfirmed',
+			},
+		});
+		assert.equal(agent.ownerConfirmed, false);
+		assert.match(agent.label, /awaiting owner confirmation/);
+
+		const missing = provenanceState({});
+		assert.equal(missing.ownerConfirmed, false);
+		assert.match(missing.label, /no provenance recorded/);
+	});
+
+	it('never presents an unconfirmed record as an owner review', () => {
+		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
+		const surfaces = readJson(join(REPO_ROOT, 'quality/copy-editorial-surfaces.json'));
+		const { segments } = collectSegments(REPO_ROOT, surfaces, {
+			excludedPaths: registry.excludedPaths ?? [],
+			excludedExpressions: registry.excludedExpressions ?? [],
+		});
+		const result = evaluateRegistry({ segments, registry, today: TODAY });
+		for (const entry of result.entries) {
+			if (!entry.record) continue;
+			const state = provenanceState(entry.record);
+			if (!state.ownerConfirmed) {
+				assert.match(state.label, /awaiting owner confirmation|no provenance recorded/);
+			}
+		}
+	});
+
+	it('reports the two populations in the human report', () => {
+		const result = runFixtureCli();
+		assert.equal(result.status, 1);
+		assert.match(result.stdout, /owner-confirmed 0, awaiting owner confirmation 3/);
+		assert.match(
+			result.stdout,
+			/owner confirmation: (awaiting owner confirmation|no provenance recorded)/,
+		);
+	});
+
+	it('fails closed on a malformed provenance', () => {
+		const { problems } = validateRegistry(
+			{
+				...fixtureRegistry,
+				expressions: [
+					{
+						...fixtureRegistry.expressions[0],
+						provenance: { kind: 'made-up', recordedBy: 42 },
+					},
+				],
+			},
+			{ today: TODAY },
+		);
+		assert.ok(problems.some((problem) => problem.includes('provenance.kind')));
+		assert.ok(problems.some((problem) => problem.includes('provenance.recordedBy')));
 	});
 });

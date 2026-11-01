@@ -23,6 +23,36 @@
  *   4. It classifies each one and emits a **review queue** for the
  *      entries that are waiting for a human.
  *
+ * The provenance of a record (Issue #720)
+ * --------------------------------------
+ * A review date in the registry is a **recorded claim** about when the
+ * owner read the sentence. `reviewedBy: "owner"` is a claim the
+ * registry makes about itself, so the gate does not take it at face
+ * value: it reads the record's `provenance` block instead
+ *
+ * ```jsonc
+ * "provenance": {
+ *   "kind": "owner-review" | "agent-recorded" | "unverified",
+ *   "reference": "<a GitHub review / issue comment URL, or null>",
+ *   "recordedBy": "<who wrote this record: 'agent' | a handle>",
+ *   "ownerConfirmation": "confirmed" | "unconfirmed"
+ * }
+ * ```
+ *
+ * and reports the two populations separately: **owner-confirmed**
+ * records (a traceable owner artefact backs the claim) and records
+ * **awaiting owner confirmation** (an automated side wrote them — they
+ * are evidence that a review was prepared, never that the owner
+ * approved it). The gate never presents an unconfirmed record as an
+ * owner review, and it never re-dates a record: re-classification is
+ * the only thing this gate does to the registry.
+ *
+ * The limit of what can be proven mechanically: the gate checks the
+ * *shape* of a reference, not who wrote the thing it points at. A
+ * reference is a claim about a human action; the repository records the
+ * claim and cannot independently prove it. See
+ * `docs/verification/governance/approval-provenance.md`.
+ *
  * The four classifications
  * ------------------------
  *   - `current`      — a record exists and its review date is inside
@@ -103,8 +133,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+	OWNER_CONFIRMATIONS,
+	PROVENANCE_KINDS,
 	SURFACES_PATH,
 	classifyFile,
+	evaluateProvenance,
 	extractSegments,
 	hasJapanese,
 	matchesGlob,
@@ -523,6 +556,33 @@ export function validateRegistry(registry, { today }) {
 					`record ${label}: reviewedAt (${record.reviewedAt}) is later than today (${today})`,
 				);
 			}
+			// The provenance block (Issue #720) is optional in the sense
+			// that a record without one is *reported* as awaiting owner
+			// confirmation — but a malformed one is a malformed record,
+			// and this gate fails closed on malformed records.
+			if (record.provenance !== undefined && record.provenance !== null) {
+				const provenance = record.provenance;
+				if (typeof provenance !== 'object' || Array.isArray(provenance)) {
+					problems.push(`record ${label}: provenance must be an object`);
+				} else {
+					if (!PROVENANCE_KINDS.includes(provenance.kind)) {
+						problems.push(
+							`record ${label}: provenance.kind must be one of ${PROVENANCE_KINDS.join(' / ')} (found ${JSON.stringify(provenance.kind)})`,
+						);
+					}
+					if (!OWNER_CONFIRMATIONS.includes(provenance.ownerConfirmation)) {
+						problems.push(
+							`record ${label}: provenance.ownerConfirmation must be one of ${OWNER_CONFIRMATIONS.join(' / ')} (found ${JSON.stringify(provenance.ownerConfirmation)})`,
+						);
+					}
+					if (typeof provenance.reference !== 'string' && provenance.reference !== null) {
+						problems.push(`record ${label}: provenance.reference must be a string or null`);
+					}
+					if (typeof provenance.recordedBy !== 'string' || provenance.recordedBy.length === 0) {
+						problems.push(`record ${label}: provenance.recordedBy must be a non-empty string`);
+					}
+				}
+			}
 		}
 	}
 	return { problems };
@@ -572,6 +632,19 @@ export function evaluateRegistry({ segments, registry, today }) {
 		(record) => !matchedRecords.has(`${record.path} ${record.expression}`),
 	);
 
+	// The provenance summary (Issue #720). A record whose provenance
+	// cannot be traced is not presented as an owner review: the date it
+	// carries is a recorded claim, and the report says so.
+	let ownerConfirmed = 0;
+	let awaitingConfirmation = 0;
+	let missingProvenance = 0;
+	for (const record of expressions) {
+		const provenance = evaluateProvenance(record);
+		if (!provenance.present) missingProvenance += 1;
+		if (provenance.ownerConfirmed) ownerConfirmed += 1;
+		else awaitingConfirmation += 1;
+	}
+
 	const counts = { current: 0, stale: 0, unrecorded: 0, 'not-scanned': 0 };
 	for (const entry of entries) counts[entry.status] += 1;
 
@@ -590,6 +663,37 @@ export function evaluateRegistry({ segments, registry, today }) {
 		queue,
 		orphanRecords,
 		counts,
+		provenanceSummary: {
+			records: expressions.length,
+			ownerConfirmed,
+			awaitingConfirmation,
+			missingProvenance,
+		},
+	};
+}
+
+/**
+ * The human wording of one record's provenance (Issue #720).
+ *
+ * `reviewedBy: "owner"` in the registry is a **claim** the registry
+ * makes about itself. The provenance block is what the gate reads, and
+ * an unconfirmed provenance is reported as such — the report never
+ * presents the record as an owner review.
+ */
+export function provenanceState(record) {
+	const provenance = evaluateProvenance(record);
+	if (!provenance.present) {
+		return {
+			ownerConfirmed: false,
+			label: 'no provenance recorded — awaiting owner confirmation',
+		};
+	}
+	if (provenance.ownerConfirmed) {
+		return { ownerConfirmed: true, label: 'owner-confirmed' };
+	}
+	return {
+		ownerConfirmed: false,
+		label: `awaiting owner confirmation (kind=${provenance.kind}, recordedBy=${provenance.recordedBy ?? '—'}, reference=${provenance.reference ?? 'none'})`,
 	};
 }
 
@@ -623,6 +727,11 @@ export function renderText(result) {
 	lines.push(
 		`  time-sensitive expressions: ${result.entries.length}  (current ${result.counts.current}, review pending ${result.counts.stale + result.counts.unrecorded}, not scanned ${result.counts['not-scanned']})`,
 	);
+	if (result.provenanceSummary) {
+		lines.push(
+			`  review records: ${result.provenanceSummary.records}  (owner-confirmed ${result.provenanceSummary.ownerConfirmed}, awaiting owner confirmation ${result.provenanceSummary.awaitingConfirmation})`,
+		);
+	}
 	lines.push('');
 	if (result.queue.length === 0) {
 		lines.push(
@@ -638,6 +747,9 @@ export function renderText(result) {
 			lines.push(`  [${entry.status}] ${entry.path}:${entry.line}`);
 			lines.push(`      expression: ${entry.text}`);
 			lines.push(`      ${age} · dimension: ${entry.record ? entry.record.dimension : '—'}`);
+			if (entry.record) {
+				lines.push(`      owner confirmation: ${provenanceState(entry.record).label}`);
+			}
 		}
 	}
 	if (result.orphanRecords.length > 0) {
@@ -657,6 +769,16 @@ export function renderText(result) {
 	);
 	lines.push('  - review pending the expression waits for the owner to read it again.');
 	lines.push('  - not scanned   the locale is not opted in, so no review date is required for it.');
+	lines.push('');
+	lines.push('What the owner confirmation line means:');
+	lines.push(
+		'  - a review date in the registry is a RECORDED CLAIM about when the owner read the sentence.',
+	);
+	lines.push('  - "owner-confirmed" means a traceable owner artefact backs that claim.');
+	lines.push(
+		'  - "awaiting owner confirmation" means the record was written by an automated side: it is evidence',
+	);
+	lines.push('    that a review was prepared, never that the owner approved it (Issue #720).');
 	lines.push('');
 	lines.push('What this gate does not do:');
 	lines.push('  - it does not decide whether a sentence is correct;');
@@ -678,6 +800,7 @@ export function renderJson(result) {
 			locales: result.locales,
 			notScannedLocales: result.notScannedLocales,
 			counts: result.counts,
+			provenanceSummary: result.provenanceSummary ?? null,
 			entries: result.entries.map((entry) => ({
 				path: entry.path,
 				line: entry.line,
@@ -688,6 +811,7 @@ export function renderJson(result) {
 				reviewedAt: entry.record ? entry.record.reviewedAt : null,
 				daysSince: entry.daysSince,
 				recordId: entry.record ? entry.record.id : null,
+				ownerConfirmation: entry.record ? provenanceState(entry.record).label : null,
 			})),
 			queue: result.queue.map((entry) => ({
 				path: entry.path,
@@ -822,7 +946,13 @@ export function renderHtml(result, { sourceSha = null, skipped = [] } = {}) {
 		<div><b>${result.entries.length}</b><span>time-sensitive expressions</span></div>
 		<div><b>${result.counts.current}</b><span>current</span></div>
 		<div><b>${result.counts.stale + result.counts.unrecorded}</b><span>review pending</span></div>
-		<div><b>${result.counts['not-scanned']}</b><span>not scanned</span></div>
+	<div><b>${result.counts['not-scanned']}</b><span>not scanned</span></div>
+		${
+			result.provenanceSummary
+				? `<div><b>${result.provenanceSummary.ownerConfirmed}</b><span>owner-confirmed review records</span></div>
+		<div><b>${result.provenanceSummary.awaitingConfirmation}</b><span>awaiting owner confirmation</span></div>`
+				: ''
+		}
 	</div>
 	<p class="meta">
 		today <code>${escapeHtml(result.today)}</code> · freshness window
@@ -858,7 +988,7 @@ export function renderHtml(result, { sourceSha = null, skipped = [] } = {}) {
 <section>
 	<h2>How to read this report</h2>
 	<dl class="legend">
-		<dt>current</dt><dd>a record exists and its review date is inside the freshness window.</dd>
+	<dt>current</dt><dd>a record exists and its review date is inside the freshness window. The date is a recorded claim about when the owner read the sentence; the provenance counts above say whether an owner artefact backs it (Issue #720).</dd>
 		<dt>review pending</dt><dd>the expression waits for the owner to read it again: either the recorded date has passed the window, or no record covers the text.</dd>
 		<dt>not scanned</dt><dd>the locale is not opted in, so no review date is required for it. It is reported, never silently dropped.</dd>
 	</dl>

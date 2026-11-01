@@ -36,10 +36,13 @@
  *
  * Artefacts
  * ---------
- * Issue #377 names PNG paths (`mock-source.png`,
- * `production-readonly-source.png`) and this repository commits its
- * verification screenshots as WebP (Issue #495 and later). Both are
- * written: the PNG at the path the issue names, the WebP next to it.
+ * This repository commits its verification screenshots as WebP (Issue
+ * #495 and later); PNG is never committed. Issue #377 names PNG paths, so
+ * the artefact keeps the NAME and changes the encoding: `mock-source.webp`
+ * and `production-readonly-source.webp`. Playwright writes its PNG into a
+ * scratch directory, `sharp` encodes the WebP next to the committed
+ * prefix, and the scratch PNG is deleted — the repository gets one file
+ * per state, not two copies of the same picture.
  *
  * Usage:
  *   node scripts/capture-dev-data-source.mjs --mode=<mock|read-only-guard>
@@ -48,8 +51,9 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
@@ -163,12 +167,21 @@ async function capture({ origin, mode, outPrefix }) {
 				`the indicator reported write-policy=${observed.writePolicy}, expected ${expected.expectedWritePolicy}`,
 			);
 		}
-		const pngPath = resolve(REPO_ROOT, `${outPrefix}.png`);
 		const webpPath = resolve(REPO_ROOT, `${outPrefix}.webp`);
-		mkdirSync(dirname(pngPath), { recursive: true });
-		await indicator.screenshot({ path: pngPath });
-		await sharp(pngPath).webp({ quality: 80 }).toFile(webpPath);
-		return { observed, pngPath, webpPath };
+		mkdirSync(dirname(webpPath), { recursive: true });
+		// The PNG Playwright writes is an intermediate, not an artefact: the
+		// repository commits verification screenshots as WebP only, so the
+		// encoding file lives in a scratch directory and is deleted after
+		// `sharp` has read it. A failure still removes it (the `finally`).
+		const scratch = mkdtempSync(join(tmpdir(), 'capture-dev-data-source-'));
+		try {
+			const pngPath = join(scratch, 'capture.png');
+			await indicator.screenshot({ path: pngPath });
+			await sharp(pngPath).webp({ quality: 80 }).toFile(webpPath);
+		} finally {
+			rmSync(scratch, { recursive: true, force: true });
+		}
+		return { observed, webpPath };
 	} finally {
 		await browser.close();
 	}
@@ -192,7 +205,7 @@ async function main() {
 		origin,
 		expected: MODES[options.mode],
 		observed: result.observed,
-		artefacts: [result.pngPath, result.webpPath],
+		artefacts: [result.webpPath],
 		devServerLog: log.join('').slice(-4000),
 	};
 	if (options.jsonOut) {
@@ -203,7 +216,6 @@ async function main() {
 	process.stdout.write(
 		`[capture-dev-data-source] mode=${options.mode} source=${result.observed.source} write-policy=${result.observed.writePolicy}\n`,
 	);
-	process.stdout.write(`[capture-dev-data-source] wrote ${result.pngPath}\n`);
 	process.stdout.write(`[capture-dev-data-source] wrote ${result.webpPath}\n`);
 }
 

@@ -9,8 +9,8 @@ the suites named at the end.
 
 | File | State | How it was captured |
 | --- | --- | --- |
-| `mock-source.png` / `mock-source.webp` | `Mock data` — the boundary answers from canned fixtures | `pnpm dev:mock`, live dev server |
-| `production-readonly-source.png` / `production-readonly-source.webp` | `Production-readonly mode` — every write refused | `pnpm dev:read-only-guard`, live dev server |
+| `mock-source.webp` | `Mock data` — the boundary answers from canned fixtures | `pnpm dev:mock`, live dev server |
+| `production-readonly-source.webp` | `Production-readonly mode` — every write refused | `pnpm dev:read-only-guard`, live dev server |
 
 Both were captured with
 `node scripts/capture-dev-data-source.mjs --mode=<mode>`. The script
@@ -43,9 +43,15 @@ once the remote mode is reachable.
 
 ## Format
 
-Issue #377 names PNG paths; this repository commits its verification
-screenshots as WebP (Issue #495 and later). Both are written, so the
-issue's paths exist and the repository convention is kept.
+WebP only. This repository commits its verification screenshots as
+compressed WebP (Issue #495 and later), and PNG is committed only for
+an explicit exception such as an icon. Issue #377 names PNG paths; the
+artefact keeps the name and changes the encoding, so the two states are
+`mock-source.webp` and `production-readonly-source.webp`.
+
+The capture writes Playwright's PNG into a scratch directory, encodes
+the WebP next to the committed prefix, and deletes the scratch file, so
+the repository cannot end up with two copies of the same picture.
 
 ## What enforces the contract
 

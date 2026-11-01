@@ -59,6 +59,17 @@ export default defineConfig({
 					'60%': { opacity: '1' },
 					'100%': { transform: 'translateY(0)', opacity: '1' },
 				},
+				// The companion character's greeting (`src/editorial/pet/
+				// PetSprite.tsx`, Issue #274). The strip holds four
+				// 96 px-wide frames, so translating it by three frame
+				// widths (-75 % of a 384 px strip) and stepping with
+				// `steps(4, jump-none)` lands exactly on frames 1, 2, 3
+				// and 4 — no blank cell, and the final step holds the
+				// last pose instead of sliding past it.
+				petReaction: {
+					from: { transform: 'translateX(0)' },
+					to: { transform: 'translateX(-75%)' },
+				},
 			},
 		},
 	},

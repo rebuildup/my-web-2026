@@ -50,6 +50,7 @@
 		"format:check": "biome format .",
 		"generate:dev-vars": "node scripts/generate-dev-vars.mjs",
 		"generate:digits": "node scripts/generate-counter-digits.mjs",
+		"generate:pets": "node scripts/build-pet-sprites.mjs",
 		"infisical:bootstrap": "node scripts/infisical-bootstrap.mjs",
 		"infisical:bootstrap:api": "node scripts/infisical-bootstrap-api.mjs",
 		"infisical:bootstrap:cf": "node scripts/infisical-bootstrap-cf.mjs",

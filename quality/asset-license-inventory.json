@@ -375,6 +375,44 @@
 			"externalHosts": []
 		},
 		{
+			"id": "pet-melty-sprites",
+			"kind": "artwork",
+			"title": "相棒キャラクター Melty のスプライト（Web 配信用ストリップ 2 種）",
+			"summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから静止フレームと waving の 4 フレームストリップを導出する。",
+			"covers": ["public/pets/melty/**"],
+			"publicPaths": ["/pets/melty/idle-rest.webp", "/pets/melty/waving.webp"],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"owner は 2026-11-01 に、Melty を自身のオリジナルキャラクターとして作成・所有していると申告した（owner attestation）。",
+					"資産単位のライセンス識別子は主張しない（NOASSERTION）。リポジトリ全体の LICENSE が適用される範囲はその文書の記述に従う。",
+					"生成モデル提供者の利用条件の本文はこのリポジトリでは取得していない（validate:fast はオフライン契約）。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-01",
+				"note": "根拠は docs/verification/legal/pet-melty-rights-review.md §1 の owner attestation。提供者条件の本文は未取得のままで、確認したことにはしない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "docs/verification/legal/pet-melty-rights-review.md",
+					"sha256": "c5a224f33d6fab2b6d1758d11ea0b77c47516649c80b07e977706afa76e03566"
+				},
+				{ "kind": "repository-file", "path": "docs/domain/pet-companion.md" },
+				{ "kind": "repository-file", "path": "scripts/build-pet-sprites.mjs" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
 			"id": "web-fonts-google",
 			"kind": "font",
 			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New）",

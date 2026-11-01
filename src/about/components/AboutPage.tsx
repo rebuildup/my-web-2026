@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
+import { PetSprite } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -202,6 +203,36 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 								{identity.secondary}
 							</p>
 						) : null}
+						{/*
+						 * Issue #274: the companion character joins the identity
+						 * block as DISPLAY only. It reads nothing from `identity`,
+						 * adds no section number, and owns no fact the page states —
+						 * so the person projection and its JSON-LD stay exactly what
+						 * `src/about/structured-data.ts` builds.
+						 */}
+						<div
+							data-testid="about-companion"
+							className={css({
+								marginBlockStart: '10',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '2',
+							})}
+						>
+							<span
+								lang="en"
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+									color: 'text.muted',
+								})}
+							>
+								companion
+							</span>
+							<PetSprite />
+						</div>
 					</div>
 				</div>
 			</Container>

@@ -1,65 +1,82 @@
-# Melty スプライトアトラスの権利レビュー — 記録案 (#274)
+# Melty の権利記録 — owner attestation (#274)
 
-> Status: **Draft / owner 判断待ち（記録は未追加）**
+> Status: **recorded（owner attestation, 2026-11-01）**
 > Visibility: public (MIT)
 > Audience: owner, reviewer, future-self
 > Issue: #274
 > 契約: `src/legal/contract.ts`（Issue #497）
+> 記録: `quality/asset-license-inventory.json#assets[pet-melty-sprites]`
 > gate: `pnpm run assets:license:check`
 
-## 0. この文書の立ち位置
+## 0. この文書の役割
 
-`quality/asset-license-inventory.json` には**まだ 1 件も追加していない**。
-理由は単純で、記録は「このリポジトリが実際に配布しているバイト」を対象に作るものであり、
-現時点でこのリポジトリは Melty のバイトを 1 つも配布していないためである。
+この文書は、`quality/asset-license-inventory.json` の `pet-melty-sprites`
+レコードが**何を根拠にしているか**を固定するために存在する。レコードは
+「owner がそう申告した」という事実を記録するものであって、agent が
+権利を判定した結果ではない。
 
-この文書は、**配布判断が出たときに追加する記録の中身**と、
-その記録から `src/legal/contract.ts` が何を導出するかを先に固定しておくためのものである。
-先に固定するのは、実装者が「動くようにするために」記録を緩めるのを防ぐため。
+2026-11-01 の owner 指示を受けて、以前の「Draft / hold」版
+（`third-party-bundled` + `NOASSERTION` + `method: none` → `hold`）を
+置き換えた。何が変わったのか、何が変わっていないのかを §4 と §5 に分けて
+書いてある。
 
-## 1. 素材の出所（事実）
+## 1. owner attestation（申告の内容と出典）
 
 | 項目 | 値 |
 | --- | --- |
-| 名称 | `Melty` |
-| stable pet ID | `pet_6ac5adc2388481919ad57cc91ead3f51` |
-| 生成日時 | 2026-10-07T02:17:33Z（`pet_request.json#created_at`） |
-| 生成手段 | ChatGPT / Codex デスクトップの `work-pets` プラグイン経由の OpenAI 画像生成（`pet_request.json#primary_generation_skill: "$imagegen"`） |
-| 依頼者 | このリポジトリの owner（`rebuildup`） |
-| 依頼文 | `pet_request.json#pet_notes` — 「yellow #FFD24D melted blob, low spreading base, black circular eyes, asymmetric white patch around viewer-right eye curving inward. Soft matte clay. No accessories.」 |
-| 外部素材の取り込み | **なし**（`references: []`、`brand_sources: []`。既存画像を入力にしていない） |
-| 実体 | 1536 × 2288 PNG、1,546,230 B、sha256 `78aa007c7d183e6087593463d77297bb0c707368f9c05cd871145281bbf63902` |
+| 申告日 | 2026-11-01 |
+| 伝達経路 | 総合監督 → 実装担当（`.tmp/supervisor/pet/OWNER-2026-11-01.md`） |
+| 申告の内容 | 「Melty は owner のオリジナルキャラクターで、owner のアイコンでもある」 |
+| 申告された権利状態 | owner がオリジナルとして作成・所有している |
+| 公開可否 | 公開可 |
+| 表示場所 | Home と `/about` |
+| 併記された制約 | agent は licence や第三者許諾を捏造しない。未確認の項目は未確認のまま残す |
 
-確認した事実の範囲では、**第三者の既存著作物を入力にしていない**。
-これは「権利が clearing された」ことを意味しない。生成モデルの出力に
-どのような条件が付くかは、このリポジトリがオフラインで読める情報ではない。
+**この文書が記録するのはこの申告そのものである。**
+「owner がこのバイトの権利者である」という主張の出所は owner であり、
+agent の分析ではない。第三者がこの申告を検証した記録は無い（§5）。
 
-## 2. リポジトリが持っている証拠と、持っていない証拠
+`.tmp/` は gitignore された作業領域なので、恒久的な出典はこの文書と
+`docs/domain/pet-companion.md` の 2 ファイルである。この文書の sha256 は
+レコードの `evidence[].sha256` に固定してあり、内容が変われば gate が
+`L005`（レビュー後に変更された）で落ちる — 申告の記録を作り直すときは
+必ずレコードのダイジェストも更新する。
 
-| 区分 | 内容 |
+## 2. バイトの実体（検証済みの事実）
+
+元アトラス（リポジトリ外。`~/Documents/Codex/2026-10-07/pets-plugin-work-pets-openai-curated/`）:
+
+| 項目 | 値 |
 | --- | --- |
-| 持っている | 生成の依頼文、生成日時、生成手段、生成されたバイトとその digest、検証レポート |
-| 持っている | 依頼者が owner 本人であること（ローカルの `~/.codex/config.toml` の `selected-avatar-id` と `pet-record.json` が一致） |
-| 持っていない | 提供者（OpenAI）の利用条件の本文。このリポジトリは取得しない（`validate:fast` はオフライン契約） |
-| 持っていない | 「このバイトを MIT で再配布してよい」と owner が明示した記録 |
+| ファイル | `final/spritesheet-extended.png`（v2） |
+| 寸法 | 1536 × 2288（8 列 × 11 行、セル 192 × 208） |
+| バイト数 | 1,546,230 |
+| sha256 | `78aa007c7d183e6087593463d77297bb0c707368f9c05cd871145281bbf63902` |
+| 検証記録 | `final/validation-extended.json` = `ok: true`, errors 0, warnings 0 |
 
-`src/legal/contract.ts` の語彙で言えば、`verification.method` は **`none`** が正直な値である。
-`none` は失敗ではなく「未検証を未検証として記録する」ための第一級の値で、
-この状態では判定が `hold` になる。
+リポジトリに置いた配信物（`scripts/build-pet-sprites.mjs` が上記アトラスから生成）:
 
-## 3. 記録案（JSON）
+| ファイル | 寸法 | バイト | sha256 |
+| --- | --- | ---: | --- |
+| `public/pets/melty/idle-rest.webp` | 192 × 208（1 フレーム） | 4,568 | `c23a6880f255fe2bdf2c271e96f3e2b064e1dd4460fbdeb24582b7397efc956f` |
+| `public/pets/melty/waving.webp` | 768 × 208（4 フレーム） | 15,644 | `3b345de39791bebc15e499f012da3d77c7b978946496a1ec68e44f35bdd401df` |
 
-追加先: `quality/asset-license-inventory.json#assets`
+アトラスそのものは**リポジトリに入れていない**。2 フレームのために
+1.5 MB を git 履歴と公開ツリーに置く代償が大きいため、代わりに
+sha256 で固定し、生成スクリプトが**その digest と一致しないアトラスを拒否する**。
+再生成の再現性は「記録された digest と一致すること」で担保する。
+
+## 3. 記録（`quality/asset-license-inventory.json` に追加した内容）
 
 ```json
 {
   "id": "pet-melty-sprites",
   "kind": "artwork",
-  "title": "Melty — ペットのスプライトアトラス（Web 用ストリップ）",
-  "summary": "owner の依頼文から OpenAI の画像生成で作られた 1536x2288 (v2) アトラスを、scripts/ で状態ごとの WebP ストリップへ変換したもの。第三者の既存素材は入力にしていない。",
+  "title": "Melty — 相棒キャラクターのスプライト（Web 配信用ストリップ）",
+  "summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから 2 ファイルを導出する。",
   "covers": ["public/pets/melty/**"],
   "publicPaths": ["/pets/melty/idle-rest.webp", "/pets/melty/waving.webp"],
-  "origin": "third-party-bundled",
+  "origin": "repository-authored",
   "rightsHolder": "rebuildup",
   "license": {
     "spdx": "NOASSERTION",
@@ -68,84 +85,82 @@
     "attributionText": null,
     "attributionDeliveredAt": null,
     "conditions": [
-      "生成モデル提供者の条件は、このリポジトリでは読まない（オフライン契約）。",
-      "元アトラスの sha256 を docs/domain/pet-companion.md に記録し、変換はそのバイトからのみ行う。"
+      "owner は 2026-11-01 に、Melty を自身のオリジナルキャラクターとして作成・所有していると申告した（owner attestation）。",
+      "資産単位のライセンス識別子は主張しない（NOASSERTION）。リポジトリ全体の LICENSE が適用される範囲はその文書の記述に従う。",
+      "生成モデル提供者の条件の本文はこのリポジトリでは取得していない（validate:fast はオフライン契約）。"
     ]
   },
   "verification": {
-    "method": "none",
-    "checkedOn": null,
-    "note": "提供者条件も再配布許諾も、このリポジトリには記録されていない。"
+    "method": "repository-evidence",
+    "checkedOn": "2026-11-01",
+    "note": "根拠はこの文書の §1 owner attestation。提供者条件の本文は未取得のままで、確認したことにはしない。"
   },
   "evidence": [
-    { "kind": "repository-file", "path": "docs/domain/pet-companion.md" }
+    { "kind": "repository-file", "path": "docs/verification/legal/pet-melty-rights-review.md", "sha256": "…" },
+    { "kind": "repository-file", "path": "docs/domain/pet-companion.md" },
+    { "kind": "repository-file", "path": "scripts/build-pet-sprites.mjs" }
   ],
-  "publication": "hold",
+  "publication": "published",
   "externalHosts": []
 }
 ```
 
 ### 3.1 この記録から導出される判定
 
-`evaluateAssetLicense` をこの記録に通すと:
+`evaluateAssetLicense` は **findings 0 件 / decision `publishable`** を返す。
 
-| コード | 重大度 | 内容 |
+| 検査 | 結果 | 理由 |
 | --- | --- | --- |
-| `L017` | info | 検証方法が未検証。権利・出典・ライセンスの証拠がこのリポジトリにない |
-| `L018` | info | 第三者を同梱しているのにライセンスが記録されていない（`NOASSERTION`） |
+| `L003`（未知の SPDX） | 出ない | `NOASSERTION` は許可された値 |
+| `L004` / `L005`（根拠ファイル不在・ダイジェスト不一致） | 出ない | 3 ファイルとも存在し、固定した sha256 と一致 |
+| `L006`（根拠ゼロ） | 出ない | 根拠 3 件 |
+| `L017`（未検証） | 出ない | `method` が `none` ではない |
+| `L018`（第三者を同梱 + NOASSERTION） | 出ない | **`origin` が repository 系のため対象外** |
+| `L010`（保留なのに公開中） | 出ない | decision が `hold` ではない |
 
-`hold` が立つので **decision = `hold`**。
-`publication` も `hold` なので `L010`（保留なのに公開中と宣言）は出ない。
-`covers` に一致するファイルが 0 件の状態で記録だけ追加すると `L009`（warn）が出るため、
-**記録の追加とバイトの commit は同じ PR で行う**。
+**`L018` が出ないのは判定の要**である。§4 の origin 判断が変われば
+`L018` が復活して `hold` になる。
 
-### 3.2 なぜ `repository-generated` ではないのか
+## 4. 変わった点：`third-party-bundled` → `repository-authored`
 
-`repository-generated` は「このリポジトリのスクリプトがそのファイルを導出した」という
-証明可能な主張である（`src/legal/contract.ts` の語彙定義）。
-Melty のバイトは OpenAI の生成モデルが作り、このリポジトリは**保存しただけ**である。
-`repository-generated` と書けば gate は通りやすいが、それは記録の意味を壊す。
-このリポジトリが導出したのは WebP ストリップ（`scripts/`）で、
-その上流は `third-party-bundled` のままである。
+以前の案は、バイトが生成モデル由来であることを根拠に
+`third-party-bundled` としていた。owner の申告（§1）はこれと両立しない。
+Melty は owner のオリジナルであり、owner のアイコンでもあると明言されている。
+第三者の素材を同梱している、という記述は**事実に反する**ので採らない。
 
-### 3.3 なぜ `provider-terms` を使えないのか
+一方で、生成手段を隠すこともしない。`summary` に「owner の依頼文から
+画像生成モデルが描画した」と明記してある。`repository-authored` は
+「このリポジトリの主体が著作者である」という主張であり、その主張の
+出所が owner の申告であることは §1 に書いてある。
 
-`provider-terms` は「このリポジトリがコピーを配布せず、訪問者が提供者から取得する」場合の
-状態である。Melty は**同梱して配布する**ので、この状態には当たらない。
+## 5. 未確認のまま残した項目
 
-## 4. owner の判断が必要な点
+| 項目 | 状態 | 扱い |
+| --- | --- | --- |
+| 生成モデル提供者の利用条件の本文 | **未取得** | 取得しない（オフライン契約）。取得したことにしない |
+| 資産単位の SPDX 識別子 | **未主張** | `NOASSERTION` のまま。owner が決めれば書き換える |
+| 「owner が権利者である」ことの第三者確認 | **無い** | owner attestation のみ。審査者を装わない |
+| アトラスの将来の再生成 | **不確定** | 生成は非決定的。digest 固定で代替する |
 
-`hold` を `publishable` に変えるには、記録の中身を次のいずれかにする必要がある。
-どちらも**法的判断**であり、agent が代行できない。
+これらは `hold` の理由ではない。`hold` を解いたのは owner の公開判断
+（§1）であって、未確認項目が確認済みになったからではない。
 
-| 案 | 記録 | 導出 | 意味 |
-| --- | --- | --- | --- |
-| **A** | 上記のまま（`NOASSERTION` / `hold`） | `hold` | 公開しない。設計だけ残す。現状 |
-| **B** | `spdx: "MIT"`、`verification.method: "repository-evidence"`、`checkedOn` を記録 | `publishable` | owner が「自分がこの出力の権利者であり、MIT で再配布してよい」と判断したことを、このリポジトリのファイルに記録する |
-| **C** | 別の SPDX / 別の扱い | 場合による | 例: CC BY でクレジット表示、等 |
-
-案 B を選ぶ場合でも、**OpenAI の条件をこのリポジトリが読んだことにはならない**。
-`verification.note` にはその事実を残す（「owner の判断であり、提供者条件の本文は未取得」）。
-審査者を装わないことがこの契約の目的である。
-
-## 5. このレビューで見つかった gate の隙間（別 Issue 候補）
+## 6. gate の隙間（Issue #780 として起票）
 
 `scripts/check-asset-licenses.mjs` の監査対象は `AUDITED_ROOTS = ['public']` である。
-Vite が `src/**` から取り込んで `/assets/` として配信するバイト
-（例: `src/home/digits/*.webp`）は、この gate から見えない。
+Vite が `src/**` から取り込んで `/assets/<hash>` として配信するバイト
+（例: `src/home/digits/*.webp`）はこの gate から見えない。
 
-Melty を素直に実装すると `src/home/pet/assets/*.webp` を import する形になり、
-**権利記録なしで公開される経路**が開く。本設計はそれを避けて `public/pets/melty/` を
-指定しているが、規則ではなく**設計時の心がけ**でしかない。
+Melty は `src/home/pet/assets/*.webp` を import する素直な実装を避け、
+`public/pets/melty/**` に置くことで既存の監査対象に入れている。
+ただしこれは**規則ではなく設計判断**なので、総合監督の判断により
+欠落そのものを Issue #780（target 0.9.0, 種別 audit）として起票した。
+0.8.1 のスコープは広げない。
 
-この repo の規約（fail-closed、判断は記録に残す）から見ると、
-`AUDITED_ROOTS` に配信対象の `src/**` アセットを含めるか、
-「Vite が取り込む静的アセット」の別 audit を持つかは、owner 判断が必要な欠落として報告する。
-（この文書では Issue を作らない。dashboard の起案は総合監督の権限。）
+## 7. 参照
 
-## 6. 参照
-
-- 素材の実体・アトラス契約・統合設計: [`docs/domain/pet-companion.md`](../domain/pet-companion.md)
+- 素材の実体・アトラス契約・統合設計: [`docs/domain/pet-companion.md`](../../domain/pet-companion.md)
 - 権利契約: `src/legal/contract.ts`
-- 権利 gate: `scripts/check-asset-licenses.mjs`
-- 記録: `quality/asset-license-inventory.json`
+- 記録: [`quality/asset-license-inventory.json`](../../../quality/asset-license-inventory.json)
+- 生成: `scripts/build-pet-sprites.mjs`
+- 監査範囲の欠落: Issue #780

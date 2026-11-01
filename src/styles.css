@@ -336,3 +336,19 @@
 		animation: none !important;
 	}
 }
+
+/*
+ * Layer 2, the companion character's greeting (`animation: petReaction`
+ * in `src/editorial/pet/PetSprite.tsx`). The element does not exist in
+ * a reduced-motion render — the component emits neither the strip nor
+ * its trigger, so there is nothing to opt out. This selector is the
+ * backstop for markup produced without a client preference read (an
+ * SSR document replayed from cache, a Storybook build that pinned
+ * nothing), and it is what makes the pairing verifiable by
+ * `scripts/check-reduced-motion.mjs` rather than by inspection.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="pet-reaction"]) {
+		animation: none !important;
+	}
+}

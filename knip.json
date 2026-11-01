@@ -5,6 +5,7 @@
 		"scripts/_no-wrangler-hook.mjs",
 		"scripts/_no-wrangler-resolver.mjs",
 		"scripts/check-knip.mjs",
+		"scripts/generate-preview-css.mjs",
 		"scripts/run-deploy-inner.mjs",
 		"scripts/fixtures/**/*.tsx",
 		"scripts/*.test.mjs",

@@ -10,12 +10,7 @@
  * it never turns a page render into an outbound request.
  */
 
-import type {
-	CurrentProjectFacts,
-	CurrentProjectsSource,
-	ProjectFactSource,
-	RosterEntry,
-} from './types';
+import type { CurrentProjectFacts, CurrentProjectsSource, RosterEntry } from './types';
 
 /**
  * One project's record inside the generated git snapshot.
@@ -50,9 +45,6 @@ export interface GitFactsSnapshot {
 	readonly windowDays: number;
 	readonly projects: Readonly<Record<string, GitSnapshotProject>>;
 }
-
-/** The label a fact carries for each source. Re-exported for convenience. */
-export type { ProjectFactSource };
 
 /**
  * The owner's handwritten values, as a source.

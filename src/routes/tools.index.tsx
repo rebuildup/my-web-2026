@@ -325,7 +325,12 @@ const cardLinkStyles = {
 	minWidth: '0',
 	color: 'inherit',
 	textDecoration: 'none',
-	borderRadius: '4px',
+	// `sm` is the 4 px radii token. The literal `4px` this used to carry
+	// emitted a second utility for the same value (`.bdr_4px` next to the
+	// existing `.bdr_sm`), which is 28 B of shared CSS every route pays
+	// for; the token maps onto the class the rest of the platform already
+	// ships.
+	borderRadius: 'sm',
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '4px',
@@ -333,7 +338,6 @@ const cardLinkStyles = {
 	_hover: {
 		'& [data-tool-title]': {
 			textDecoration: 'underline',
-			textUnderlineOffset: '3px',
 		},
 		'& [data-tool-cta]': {
 			color: 'text.default',
@@ -381,6 +385,12 @@ const toolTitle = css({
 	color: 'text.default',
 	lineHeight: '1.25',
 	letterSpacing: '-0.01em',
+	// Declared on the element rather than inside the card's `_hover`
+	// block: the offset only has an effect once the hover rule draws the
+	// underline, and a static declaration is one plain utility instead of
+	// a second compound `:hover [data-tool-title]` selector (~78 B of
+	// shared CSS for the same rendering).
+	textUnderlineOffset: '3px',
 });
 
 const toolDescription = css({

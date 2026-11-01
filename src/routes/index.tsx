@@ -11,6 +11,16 @@ import {
 	getHomeSystemStatus,
 	recordHomeHit,
 } from '../home/public';
+import type { CurrentProject } from '../home/public';
+
+/**
+ * The published current-projects snapshot (Issue #316).
+ *
+ * The value is committed to the repository, so the type is stated
+ * here once: the route hands the home page a `readonly` list of
+ * `CurrentProject`, and the page decides what may be published.
+ */
+const projects: readonly CurrentProject[] = CURRENT_PROJECTS;
 
 /**
  * TanStack Start route binding for the canonical home surface.
@@ -48,7 +58,7 @@ export const Route = createFileRoute('/')({
 			// makes a claim about *now*, and a claim that changes
 			// without a commit cannot be reviewed. There is no
 			// runtime fetch here.
-			projects: CURRENT_PROJECTS,
+			projects,
 		};
 	},
 	/**

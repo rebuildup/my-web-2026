@@ -2,8 +2,8 @@ export { HomePage } from './composer';
 export type { HomePageData } from './composer';
 export { CAPABILITIES } from './capabilities/registry';
 export type { Capability } from './capabilities/capability';
-export { CURRENT_PROJECTS, MAX_CURRENT_PROJECTS } from './current/projects';
-export type { CurrentProject, CurrentProjectLink } from './current/projects';
+export { CURRENT_PROJECTS } from './current/projects';
+export type { CurrentProject } from './current/projects';
 export {
 	addHomeReaction,
 	getHomeReactions,

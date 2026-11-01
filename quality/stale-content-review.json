@@ -610,6 +610,72 @@
 				]
 			},
 			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
+		},
+		{
+			"id": "home-current-projects-heading",
+			"path": "src/home/current/CurrentProjects.tsx",
+			"expression": "現在地 / Where I am now",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
+						"note": "the commit that introduced the section this expression belongs to"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
+						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
+					}
+				]
+			},
+			"note": "The heading of the home \"現在地 / Where I am now\" section (src/home/current/CurrentProjects.tsx:89, Issue #316). The section publishes a committed snapshot of the projects the owner is working on, so the heading itself is a claim about *now* and decays with it. OWNER REVIEW PENDING: the owner has not read this wording yet. The mixed Japanese / English label follows the convention of the other home section headings (src/home/capabilities/grid.tsx) and is not a typography question."
+		},
+		{
+			"id": "home-current-projects-empty",
+			"path": "src/home/current/CurrentProjects.tsx",
+			"expression": "現在、公開中の進行中のプロジェクトはありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
+						"note": "the commit that introduced the section this expression belongs to"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
+						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
+					}
+				]
+			},
+			"note": "The fail-closed sentence of the home current-projects section (src/home/current/CurrentProjects.tsx:105): when the snapshot publishes nothing, the section says so in one sentence instead of rendering an empty list. It mirrors the about page's own empty sentence (src/about/components/AboutPage.tsx). OWNER REVIEW PENDING: the owner has not read this wording yet."
 		}
 	]
 }

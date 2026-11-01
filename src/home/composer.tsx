@@ -5,6 +5,8 @@ import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
+import { CurrentProjects } from './current/CurrentProjects';
+import type { CurrentProject } from './current/projects';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
 import { Hero } from './hero';
@@ -28,6 +30,14 @@ export interface HomePageData {
 	incidents?: readonly KnownIncident[];
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
+	/**
+	 * The current-projects snapshot (Issue #316). Optional, and the
+	 * default is the empty list: a route that forgets the snapshot
+	 * publishes the "nothing is published" sentence rather than a
+	 * stale one. The data itself is committed to the repository —
+	 * there is no runtime fetch for this section.
+	 */
+	projects?: readonly CurrentProject[];
 }
 
 export interface HomePageProps {
@@ -55,6 +65,7 @@ export interface HomePageProps {
  *
  * Reading order (Issue #31 spread):
  *   - Hero             (page entry; own 4/8 grid)
+ *   - 00 — Now         (current projects; committed snapshot, Issue #316)
  *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
  *   - 02 — System status (binding probes; spread SectionHeading)
  *   - 03 — Reactions   (visitor emoji reactions against home-page)
@@ -92,6 +103,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</a>
 			<Hero />
 			<main id="main">
+				<CurrentProjects projects={data.projects} />
 				<CapabilitiesGrid capabilities={data.capabilities} />
 				<StatusTiles
 					services={data.services}

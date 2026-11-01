@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
 	CAPABILITIES,
+	CURRENT_PROJECTS,
 	HOME_REACTIONS_TARGET,
 	HomePage,
 	KNOWN_INCIDENTS,
@@ -42,6 +43,12 @@ export const Route = createFileRoute('/')({
 			incidents: KNOWN_INCIDENTS,
 			reactions,
 			counter,
+			// Issue #316: the current-projects snapshot. It is
+			// committed to the repository on purpose — the section
+			// makes a claim about *now*, and a claim that changes
+			// without a commit cannot be reviewed. There is no
+			// runtime fetch here.
+			projects: CURRENT_PROJECTS,
 		};
 	},
 	/**

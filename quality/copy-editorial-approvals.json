@@ -1,7 +1,7 @@
 {
-	"$comment": "Owner editorial approval ledger (Issue #506). One record per approved change set of public Japanese copy. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision.",
+	"$comment": "Owner editorial approval ledger (Issue #506). One record per approved change set of public Japanese copy. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision. Since Issue #720 it must also carry a provenance that names a traceable owner artefact — a record that only says \"approved\" is reported as awaiting owner confirmation.",
 	"version": 1,
-	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. The procedure is in docs/runbook/copy-editorial-approval.md.",
+	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. Since Issue #720 a record also names its provenance: an approval counts as an owner approval only when a traceable owner artefact backs it. The procedure is in docs/runbook/copy-editorial-approval.md and the audit of the shipped records is in docs/verification/governance/approval-provenance.md.",
 	"record_shape": {
 		"id": "stable identifier of the record (e.g. `pr-512`)",
 		"pr": "the pull request number the record belongs to",
@@ -11,7 +11,8 @@
 		"decision": "approved | rejected",
 		"fingerprint": "sha256:… — the change set fingerprint printed by `pnpm run copy:approval:check -- --print-fingerprint`",
 		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`). `ran` records that the tool was run, not how many suggestions it produced: a change with no suggestions is still `ran: true`.",
-		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)"
+		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)",
+		"provenance": "the provenance of the decision (Issue #720). `kind` is owner-review | agent-recorded | unverified; `reference` is a traceable owner artefact (a GitHub review / issue comment URL) or null; `recordedBy` names who wrote the record; `ownerConfirmation` is confirmed | unconfirmed. Only kind=owner-review with a reference and ownerConfirmation=confirmed counts as an owner approval — a record an automated side wrote is evidence that a review was prepared, never that the owner approved it. `evidence` lists what was checked when the classification was made."
 	},
 	"records": [
 		{
@@ -64,7 +65,30 @@
 					"verdict": "intentional",
 					"note": "ルート /keyboard の meta description。文中の 5 つの主張を実装と突き合わせた: macOS / Windows は manifest の platform が macos / windows の 2 件; 「実際のキー位置」は src/keyboard/geometry.ts が物理配列順で描画すること; read-only は loader が commit 済み snapshot のみを読み、リクエスト時に外部へ出ないこと; hidutil のベース差し替えは geometry.ts の注記 (US ANSI の物理キー位置を hidutil が先に大西配列へ変換) と一致; Kanata の HUB / 記号 / 自動化レイヤーは types.ts の group 'hub' / 'symbols' / 'automation' と format.ts の label に存在; Space 長押しと Shift 長押しの分岐は format.ts の「タップで Space、長押しで HUB レイヤー」と hub-o に属する左 Shift に対応する。いずれも false な主張を含まない。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "b12e0adfefaf8ca14b3ba9117dbf8bb39f1c4c85",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/620#issuecomment-6337328849",
+						"note": "the owner-account comment states the editorial gate fingerprint and that it is PASS. It states that the record exists; it does not adjudicate the copy."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
+						"note": "the owner-account comment states that the approval records were written by an agent on the basis of the owner merge permission."
+					}
+				]
+			}
 		},
 		{
 			"id": "pr-655",
@@ -543,7 +567,30 @@
 					"verdict": "intentional",
 					"note": "route /projects/dotfiles の meta description。rebuildup/dotfiles がユーザー設定・エージェント共通設定の固定・Infisical を介した実行時 secret 注入を担い、OS とパッケージの provisioning が pc-setup の担当であるという役割分担が、upstream README の lead と route  Loader の doc に一致する。2 つのリポジトリはどちらも公開 (HTTP 200) で、存在しない名前を書いていない。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "b12e0adfefaf8ca14b3ba9117dbf8bb39f1c4c85",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-review",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/655#pullrequestreview-5579990146",
+						"note": "the owner review on the pull request that introduced this record. Its verdict is REQUEST_CHANGES and it states that the pending copy approval is out of the review scope, so it does not confirm this copy decision."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/621#issuecomment-6337570432",
+						"note": "the owner-account comment states that the editorial approval record was written by an agent on the basis of the owner merge permission (編集レビュー承認レコードは owner の記録項目です。agent がマージ権限を根拠に代理で書き込みました)."
+					}
+				]
+			}
 		},
 		{
 			"id": "pr-644",
@@ -700,7 +747,30 @@
 					"verdict": "intentional",
 					"note": "未選択状態の表示値。unsetStatus に対応し、許可でも拒否でもない第 3 の状態を明示している。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "b12e0adfefaf8ca14b3ba9117dbf8bb39f1c4c85",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/495#issuecomment-6334517047",
+						"note": "the owner-account comment states that the public Japanese copy editorial review is recorded in pr-644 and that the copy gate is PASS. It states that the record exists; it does not adjudicate the copy."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
+						"note": "the owner-account comment states that the approval records were written by an agent on the basis of the owner merge permission."
+					}
+				]
+			}
 		},
 		{
 			"id": "pr-663",
@@ -759,7 +829,30 @@
 					"verdict": "intentional",
 					"note": "status セクション (SectionHeading) の説明文「各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。」。before の 2 文は変更されておらず (等価)、追加された第 3 文が主張する区別は実装で実在する: src/home/status/tiles.tsx で snapshot entry の不在は health = 'unobserved' になり ('unreachable' への fallback ではない)、src/home/status/health.ts で SystemServiceHealth に 'unobserved' が独立した状態として追加され、HEALTH_LABEL は 'not observed'、UNOBSERVED_DETAIL は 'No reading was returned for this service.'、StateMark は 'unobserved' に専用のシルエット (壊れた輪) を持つ。したがって「no reading」と「unreachable (読みの失敗)」は別状態として別ラベル・別シルエット・別詳細で描画される。既存 2 文の主張は変更していない。owner 向けの観察 (事実誤認ではない): (a) 日本語の「未観測」は visitor markup に描画されない表示語であり (badge は英語 \"not observed\")、引用符が literal なラベルを連想させる。(b)「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装に正確に対応する。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "7d67b0c25ef3db9c04b12ff77816cb2de210ec4d",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/619#issuecomment-6342648329",
+						"note": "the owner-account comment on the release pull request lists pr-663 among the records that resolve the copy editorial approval gate. It states that the records exist; it does not adjudicate the copy."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
+						"note": "the owner-account comment states that the approval records were written by an agent on the basis of the owner merge permission."
+					}
+				]
+			}
 		},
 		{
 			"id": "pr-667",
@@ -797,7 +890,25 @@
 					"verdict": "intentional",
 					"note": "各エントリの「外部送信」の直後に置く送信者一覧の見出し。台帳の `transfer.senders` を 1 行ずつ描画する項目のラベルで、実体 (各送信者の名前と送る値) は registry が所有する。component 自身は送信者を判定せず、`senders` が空のエントリにはこの項目を描画しない。fail-closed な公開の原則 (registry の published entry のみ描画) はこの追加でも変わらない。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "520fdc37ee3e26407a117512e41b2b21ba579542",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
+						"note": "the owner-account comment states the editorial gate fingerprint, that the approval record pr-667 was added, and that the record was written by an agent on the basis of the owner merge permission."
+					}
+				]
+			}
 		},
 		{
 			"id": "pr-619",
@@ -1656,7 +1767,30 @@
 					"verdict": "intentional",
 					"note": "prototype ツールの purpose.ja（line 36）。manifest の privacy.purpose.ja と完全一致し、外部サービス接続（Google Fonts / Adobe Typekit / Google Apps Script）の主張がマニフェストの third_party_origins と整合。intentional。"
 				}
-			]
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "54a7d97f488165d66f5c06fb7b47f30e51d28b33",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/619#issuecomment-6342648329",
+						"note": "the owner-account comment on the release pull request states that the copy editorial approval gate is resolved because owner records exist. It states that the records exist; it does not adjudicate the copy."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
+						"note": "the owner-account comment states that the approval records were written by an agent on the basis of the owner merge permission (承認レコードは owner のマージ許可を根拠に agent が代理で書いています)."
+					}
+				]
+			}
 		}
 	]
 }

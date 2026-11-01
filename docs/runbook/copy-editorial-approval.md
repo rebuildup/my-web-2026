@@ -67,10 +67,16 @@ gate が主張するのは **証拠** だけである — 「この変更には 
 | `proposal` | 編集補助 (yomiyasu と同種) を変更文面に対して実行し、その提案を**採否した** | `records[].proposal` |
 | `semantic` | 原文と変更後の文面を **意味として** 突き合わせた | `records[].comparisons[]` |
 | `approval` | owner が **採否** した (approved / rejected) | `records[].decision` / `reviewer` / `reviewedAt` |
+| `approval` の **前提** | その判断が **owner のものである**ことを裏付ける traceable な artefact | `records[].provenance` (Issue #720) |
 
 **編集補助の出力は evidence であり、approval ではない。** `proposal` だけが整った
 record でも `approval` が無ければ verdict は `not run` のまま。
 これが Issue の「Skill や AI の実行結果だけで自動合格にしない」の実装である。
+
+**Issue #720 以降、`approval` は provenance を要求する。** 「approved」と書かれた
+record は **owner の承認の証拠ではない**。owner がその判断を行ったことを述べる
+**traceable な artefact**（GitHub の review / issue comment）があるときだけ
+owner 承認として数える。
 
 ### 3.3 3 つの dimension が `pass` になる条件
 
@@ -78,10 +84,44 @@ record でも `approval` が無ければ verdict は `not run` のまま。
 | --- | --- |
 | `proposal` | `ran: true` かつ `summary` と `disposition` が空でない |
 | `semantic` | 変更された **全 segment** に `verdict` (equivalent / intentional) と `note` を持つ比較がある |
-| `approval` | `decision: "approved"` かつ `reviewer` と `reviewedAt` がある |
+| `approval` | `decision: "approved"` かつ `reviewer` と `reviewedAt` があり、**かつ** `provenance` が owner 承認として成立する |
 
 `decision: "rejected"` は `approval` dimension が `fail` になる。
 `fingerprint` が一致しない record は **別文面の承認** なので `fail` (stale) になる。
+
+### 3.4 provenance — 「approved」と書かれた record の owner-ness (Issue #720)
+
+`approval` dimension が pass になるには、record が **provenance** を持つ必要がある。
+
+```jsonc
+"provenance": {
+  "kind": "owner-review" | "agent-recorded" | "unverified",
+  "reference": "<GitHub の review / issue comment の URL, または null>",
+  "recordedBy": "<この record を書いた側: 'agent' | 識別子>",
+  "ownerConfirmation": "confirmed" | "unconfirmed"
+}
+```
+
+| 状態 | gate の扱い | rule id |
+| --- | --- | --- |
+| `kind: "owner-review"` + `reference` あり + `ownerConfirmation: "confirmed"` | **owner 承認**。`approval` = pass | — |
+| `kind: "agent-recorded"` / `ownerConfirmation: "unconfirmed"` | **owner 確認待ち**。`approval` = not run、verdict = NEEDS REVIEW | `approval-owner-confirmation-missing` |
+| `provenance` が無い / 壊れている | **拒否**。`approval` = not run、verdict = NEEDS REVIEW | `approval-provenance-missing` |
+| `kind: "owner-review"` だが `reference` が無い | owner 承認として数えない | `approval-owner-confirmation-missing` |
+
+**gate が数えないもの**: 「record が存在すること」「gate が PASS であること」を
+述べるだけの artefact。「owner が record を確認・訂正する前提で運用する」といった
+**代理書き込みの告白**も、owner 判断の artefact ではない。
+
+**gate が報告するもの**: 台帳全体を **owner 確認済み** と **owner 確認待ち** に
+分けて数え、copy gate の出力には
+
+```
+approval ledger: 6 record(s) — owner-confirmed 0, awaiting owner confirmation 6
+change sets waiting for an owner decision: 6
+```
+
+と出る。**green であることと「owner 承認がある」ことは別の主張**である。
 
 **推敲案が 0 件でも `ran: true` として記録する。** `ran` は「工具を実行したか」の
 記録であり、提案の多さではない。工具を **実行しなかった** 場合は `not run` のまま
@@ -126,6 +166,12 @@ pnpm run copy:approval:check -- --base=release-0-7-0 --print-fingerprint
 	"reviewer": "<owner の識別子>",
 	"reviewedAt": "2026-10-20",
 	"decision": "approved",
+	"provenance": {
+		"kind": "owner-review",
+		"reference": "<owner の review / issue comment の URL>",
+		"recordedBy": "<owner の識別子>",
+		"ownerConfirmation": "confirmed"
+	},
 	"fingerprint": "sha256:<4.1-4 で出力された値>",
 	"proposal": {
 		"tool": "yomiyasu",
@@ -148,11 +194,39 @@ pnpm run copy:approval:check -- --base=release-0-7-0 --print-fingerprint
 `comparisons[]` は **変更された segment 1 つ 1 つ** に対応する。1 つでも欠けると
 `semantic` dimension は `not run` になる。
 
+`provenance` は **その判断が owner のものである**ことを示す欄である
+(Issue #720)。`reference` には **owner がその判断を述べた review / issue comment
+の URL** を書く。owner 自身が読まずに agent が書いた record には
+`kind: "agent-recorded"` / `ownerConfirmation: "unconfirmed"` を書き、
+gate はそれを **owner 確認待ち** として報告する（`approval` dimension が
+`not run` になり、verdict は NEEDS REVIEW になる）。
+
+**「gate が PASS だった」ことは owner 承認の根拠にならない。** gate は
+「その record が owner の artefact を指しているか」しか見ていない。
+
 ### 4.4 再確認
 
 ```bash
 pnpm run copy:approval:check -- --base=release-0-7-0   # verdict: PASS
 ```
+
+### 4.5 agent が書いた record を owner 確認済みにする (Issue #720)
+
+`provenance.kind` が `agent-recorded` の record は、**owner 承認ではない**。
+owner 確認済みにする手順は:
+
+1. 該当 PR の変更された公開日本語を **原文と並べて** 読む。
+2. その判断を **PR review または issue comment** として残す（traceable な
+   artefact。gate が `reference` に指すのはこの URL）。
+3. 該当 record の `provenance` を `kind: "owner-review"` /
+   `reference: "<その URL>"` / `recordedBy: "<owner の識別子>"` /
+   `ownerConfirmation: "confirmed"` に更新する。
+
+**fingerprint は変えない。** 変更集合が変わっていない限り fingerprint は
+変わらない。`decision` は `approved` のままでよい（既に判断が記録されて
+いるなら）。**「gate が PASS だったから」で `ownerConfirmation` を
+`confirmed` にしてはならない** — それは owner 自身の artefact でなければならない
+ならない。
 
 ## 5. fingerprint とは
 
@@ -206,6 +280,15 @@ fingerprint は変わらない。
 - **gate は reviewer の同一性を検証しない。** `reviewer` は記録された文字列で
   あり、その人物が owner であることの証明ではない。**実際の権限は PR review に
   ある** — AGENTS.md §6 のとおり、release PR の merge は owner しか行わない。
+- **gate は reference の「指している先」を検証しない (Issue #720)。** gate は
+  reference の **形**（文字列として存在するか、review / comment らしい形か）
+  だけを見る。**GitHub 上のそのコメントを gate は読まない**（offline /
+  status-only が gate の契約である）。**reference は人間行動についての主張**で
+  あり、repository はその主張を **記録する** が **独立に証明はしない**。
+  したがって「owner 承認がある」と書かれることと「owner 承認がある」ことは
+  別である。台帳全体の監査は
+  [`docs/verification/governance/approval-provenance.md`](../verification/governance/approval-provenance.md)
+  にある。
 - **base ref の解決に既定値がない。** `--base` / `COPY_APPROVAL_BASE` /
   `GITHUB_BASE_REF` の順で解決し、どれも無ければ exit 2（入力エラー）である。
   誤った base に対する verdict を出さないためである。
@@ -235,12 +318,13 @@ node --test scripts/check-copy-editorial-approval.test.mjs
 pnpm run verify:copy-editorial-approval-screenshot -- --base=origin/release-0-7-0
 ```
 
-fixture は `test/fixtures/copy/editorial-approval/` に 5 件ある。
+fixture は `test/fixtures/copy/editorial-approval/` に 6 件ある。
 
 | fixture | verdict | 何を証明するか |
 | --- | --- | --- |
-| `approved.json` | `pass` | 完全な承認記録がある変更集合 |
+| `approved.json` | `pass` | 完全な承認記録がある変更集合（provenance は owner-review + reference） |
 | `needs-review.json` | `not run` | 記録が無い変更集合は pass にならない |
+| `agent-recorded.json` | `not run` | agent が書いた記録（`ownerConfirmation: "unconfirmed"`）は owner 承認にならない (Issue #720) |
 | `rejected.json` | `fail` | owner が拒否した変更集合 |
 | `stale-approval.json` | `fail` | 別の文面への承認は流用できない |
 | `not-applicable.json` | `not applicable` | 公開日本語が変わらない PR はレビュー不要 |

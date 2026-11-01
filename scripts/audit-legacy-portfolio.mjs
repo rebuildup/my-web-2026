@@ -6,6 +6,7 @@
  *   node scripts/audit-legacy-portfolio.mjs --source=.reference/my-web-2025
  *   node scripts/audit-legacy-portfolio.mjs --source=… --format=json
  *   node scripts/audit-legacy-portfolio.mjs --source=… --check   # drift gate
+ *   node scripts/audit-legacy-portfolio.mjs --notion-pages=<path>  # migration state
  *
  * What this script is FOR: the migration ledger
  * (`docs/migration/notion-migration-ledger.md`) has to say, per legacy
@@ -42,7 +43,9 @@
  *
  * The input directory is a gitignored reference clone (AGENTS.md §9), so
  * this script is an operator tool: it is not part of `validate:fast` and
- * cannot run in CI.
+ * cannot run in CI. Because it writes with `JSON.stringify`, run
+ * `pnpm run format` after regenerating — the committed file is
+ * biome-formatted, and `format:check` is the first gate.
  */
 
 import { createHash } from 'node:crypto';
@@ -56,6 +59,7 @@ const INVENTORY_SCHEMA = 'portfolio-2025-inventory.v1';
 const DEFAULT_SOURCE = '.reference/my-web-2025';
 const DEFAULT_CLASSIFICATION = 'docs/migration/portfolio-2025-to-2026-classification.json';
 const DEFAULT_OUT = 'docs/migration/portfolio-2025-inventory.json';
+const DEFAULT_NOTION_PAGES = 'docs/migration/portfolio-notion-pages.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -129,6 +133,26 @@ export function inventoryAssetIds(inventory) {
 	return ids;
 }
 
+/**
+ * Read the migration-state record: which legacy ids now have a Notion page.
+ *
+ * The file carries a STATE per legacy id, never a page id — the id stays in
+ * Notion (Issue #766 charter, report format 4). A missing file is not an
+ * error: it means no page has been recorded yet.
+ */
+export function readNotionPages(path) {
+	if (!existsSync(path)) return null;
+	const parsed = readJson(path);
+	const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
+	const map = new Map();
+	for (const page of pages) {
+		if (typeof page?.legacy_id !== 'string' || page.legacy_id.length === 0) continue;
+		const state = typeof page.state === 'string' ? page.state : 'recorded';
+		map.set(page.legacy_id, state);
+	}
+	return map.size > 0 ? map : null;
+}
+
 /** Stable digest over the items, so `--check` can name drift cheaply. */
 export function inventoryDigest(items) {
 	return `sha256:${createHash('sha256').update(JSON.stringify(items)).digest('hex')}`;
@@ -153,7 +177,7 @@ function hasTable(db, name) {
  * Measure one legacy database. Returns the ledger row plus the counts the
  * summary needs. `data` is never selected — only its length.
  */
-function measureDatabase(db, { dbFile, classificationRow, inventoryIds }) {
+function measureDatabase(db, { dbFile, classificationRow, inventoryIds, notionPages = null }) {
 	const contents = hasTable(db, 'contents')
 		? db
 				.prepare(
@@ -225,8 +249,12 @@ function measureDatabase(db, { dbFile, classificationRow, inventoryIds }) {
 			markdown_pages: markdownPages,
 			external_videos: Number(classificationRow?.external_video_count ?? 0),
 			rights: rightsStateFor(legacyKey, inventoryIds),
-			// 未決定の 2 列。どちらも agent は埋めない。
-			notion_page: null,
+			// The migration column records a STATE, never an identifier: the
+			// Notion page id stays in Notion (Issue #766). `null` means no
+			// page was created; `recorded` means one exists and the ledger
+			// heard about it through `--notion-pages`.
+			notion_page: notionPages?.get(legacyKey) ?? null,
+			// The new public URL is decided by publication, not by migration.
 			new_url: null,
 		};
 	});
@@ -256,6 +284,7 @@ export function buildInventory({
 	classificationPath,
 	classification,
 	inventory,
+	notionPages = null,
 	now,
 	openDatabase,
 }) {
@@ -279,6 +308,7 @@ export function buildInventory({
 				dbFile,
 				classificationRow: byDb.get(dbFile) ?? null,
 				inventoryIds,
+				notionPages,
 			});
 			if (!measured.hasContentRow) emptyDatabases += 1;
 			for (const row of measured.rows) items.push(row);
@@ -318,6 +348,11 @@ export function buildInventory({
 		const key = item.publication ?? 'unclassified';
 		byPublication[key] = (byPublication[key] ?? 0) + 1;
 	}
+	const byNotionPage = {};
+	for (const item of items) {
+		const key = item.notion_page ?? 'null';
+		byNotionPage[key] = (byNotionPage[key] ?? 0) + 1;
+	}
 
 	return {
 		schema: INVENTORY_SCHEMA,
@@ -340,6 +375,7 @@ export function buildInventory({
 			without_classification: withoutClassification,
 			by_state: byState,
 			by_publication: byPublication,
+			by_notion_page: byNotionPage,
 			media_mime: mediaMime,
 		},
 		rights: {
@@ -401,7 +437,9 @@ export function diffInventories(previous, next) {
 		}
 	}
 	if ((previous?.source?.head ?? null) !== (next.source?.head ?? null)) {
-		differences.push(`source.head: ${previous?.source?.head ?? 'none'} → ${next.source?.head ?? 'none'}`);
+		differences.push(
+			`source.head: ${previous?.source?.head ?? 'none'} → ${next.source?.head ?? 'none'}`,
+		);
 	}
 	return differences;
 }
@@ -423,6 +461,9 @@ function printSummary(inventory, outPath) {
 			.map(([key, value]) => `${key}=${value}`)
 			.join(' ')}`,
 		`  rights          recorded=${rights.recorded} unrecorded=${rights.unrecorded}`,
+		`  notion pages    ${Object.entries(counts.by_notion_page)
+			.map(([key, value]) => `${key}=${value}`)
+			.join(' ')}`,
 		`  digest          ${inventory.content_digest}`,
 	];
 	if (problems.length > 0) lines.push(`  problems        ${problems.length}`);
@@ -433,8 +474,15 @@ function printSummary(inventory, outPath) {
 async function main() {
 	const flags = parseArgs(process.argv.slice(2));
 	const sourcePath = String(flags.get('source') ?? join(root, DEFAULT_SOURCE));
-	const classificationPath = String(flags.get('classification') ?? join(root, DEFAULT_CLASSIFICATION));
-	const outPath = flags.get('out') === undefined ? join(root, DEFAULT_OUT) : String(flags.get('out'));
+	const classificationPath = String(
+		flags.get('classification') ?? join(root, DEFAULT_CLASSIFICATION),
+	);
+	const outPath =
+		flags.get('out') === undefined ? join(root, DEFAULT_OUT) : String(flags.get('out'));
+	const notionPagesPath =
+		flags.get('notion-pages') === undefined
+			? join(root, DEFAULT_NOTION_PAGES)
+			: String(flags.get('notion-pages'));
 	const format = String(flags.get('format') ?? 'summary');
 	const check = flags.get('check') === true;
 
@@ -463,12 +511,15 @@ async function main() {
 	const inventoryRecordPath = join(root, 'quality/asset-license-inventory.json');
 	const inventory = existsSync(inventoryRecordPath) ? readJson(inventoryRecordPath) : null;
 
+	const notionPages = readNotionPages(notionPagesPath);
+
 	const document = buildInventory({
 		sourcePath,
 		sourceHead: resolveHead(sourcePath),
 		classificationPath,
 		classification,
 		inventory,
+		notionPages,
 		now: new Date().toISOString(),
 		openDatabase: (file) => new DatabaseSync(file, { readOnly: true }),
 	});

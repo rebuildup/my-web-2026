@@ -1,6 +1,6 @@
 {
 	"schema": "portfolio-2025-inventory.v1",
-	"generated_at": "2026-11-01T12:40:24.326Z",
+	"generated_at": "2026-11-01T14:12:29.882Z",
 	"source": {
 		"path": "/Users/rebui/work/my-web-2026/.reference/my-web-2025",
 		"head": "ed1b9dff8d1e2c8df33dd747a0f5cdae3d7d00c2",
@@ -29,6 +29,10 @@
 			"pending_owner": 60,
 			"unclassified": 91
 		},
+		"by_notion_page": {
+			"null": 147,
+			"recorded": 4
+		},
 		"media_mime": {
 			"image/png": 258,
 			"image/jpeg": 33,
@@ -42,14 +46,12 @@
 		"unrecorded": 151
 	},
 	"problems": [],
-	"content_digest": "sha256:a35edb5973d2f2310318a5e12f73b5139fcb70afb027d518292e1edced2e9267",
+	"content_digest": "sha256:cf69482f4a767432ea933f882212a84513d3c2651254c561ba275edeabde6e80",
 	"items": [
 		{
 			"id": "alice",
 			"db": "content-alice.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705695648",
 			"visibility": "public",
 			"status": "published",
@@ -57,11 +59,7 @@
 			"updated_at": "2025-11-06T10:19:17.631Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -76,9 +74,7 @@
 		{
 			"id": "aulymo_v02",
 			"db": "content-aulymo_v02.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705999051",
 			"visibility": "public",
 			"status": "published",
@@ -86,10 +82,7 @@
 			"updated_at": "2025-11-06T10:24:50.900Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -98,16 +91,13 @@
 			"markdown_pages": 1,
 			"external_videos": 1,
 			"rights": "unrecorded",
-			"notion_page": null,
+			"notion_page": "recorded",
 			"new_url": null
 		},
 		{
 			"id": "aulymo_v03",
 			"db": "content-aulymo_v03.db",
-			"facets": [
-				"design",
-				"develop"
-			],
+			"facets": ["design", "develop"],
 			"old_url": "/content/aulymo_v03",
 			"visibility": "public",
 			"status": "published",
@@ -115,10 +105,7 @@
 			"updated_at": "2025-11-06T10:49:55.608Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -127,15 +114,13 @@
 			"markdown_pages": 1,
 			"external_videos": 0,
 			"rights": "unrecorded",
-			"notion_page": null,
+			"notion_page": "recorded",
 			"new_url": null
 		},
 		{
 			"id": "aulymo-v01",
 			"db": "content-aulymo-v01.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705868178",
 			"visibility": "public",
 			"status": "published",
@@ -143,10 +128,7 @@
 			"updated_at": "2025-11-08T13:02:06.688Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -155,15 +137,13 @@
 			"markdown_pages": 1,
 			"external_videos": 1,
 			"rights": "unrecorded",
-			"notion_page": null,
+			"notion_page": "recorded",
 			"new_url": null
 		},
 		{
 			"id": "bansankai",
 			"db": "content-bansankai.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/bansankai",
 			"visibility": "public",
 			"status": "published",
@@ -171,11 +151,7 @@
 			"updated_at": "2025-11-24T09:06:20.011Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -190,10 +166,7 @@
 		{
 			"id": "baramoji",
 			"db": "content-baramoji.db",
-			"facets": [
-				"design",
-				"develop"
-			],
+			"facets": ["design", "develop"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -201,11 +174,7 @@
 			"updated_at": "2026-08-12T08:13:54.131Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -220,9 +189,7 @@
 		{
 			"id": "blue-white-design",
 			"db": "content-blue-white-design.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753705553752",
 			"visibility": "public",
 			"status": "published",
@@ -230,11 +197,7 @@
 			"updated_at": "2025-11-06T10:17:16.323Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -249,9 +212,7 @@
 		{
 			"id": "Border",
 			"db": "content-Border.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753840034006",
 			"visibility": "public",
 			"status": "published",
@@ -259,11 +220,7 @@
 			"updated_at": "2025-11-06T10:36:12.814Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -278,9 +235,7 @@
 		{
 			"id": "cclub-brochure-2024",
 			"db": "content-cclub-brochure-2024.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753705521159",
 			"visibility": "public",
 			"status": "published",
@@ -288,11 +243,7 @@
 			"updated_at": "2025-11-06T10:12:11.887Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -307,9 +258,7 @@
 		{
 			"id": "cclub-brochure-2025",
 			"db": "content-cclub-brochure-2025.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753706214241",
 			"visibility": "public",
 			"status": "published",
@@ -317,11 +266,7 @@
 			"updated_at": "2025-11-08T13:14:48.544Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -336,9 +281,7 @@
 		{
 			"id": "ch4nge",
 			"db": "content-ch4nge.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/ch4nge",
 			"visibility": "public",
 			"status": "published",
@@ -346,11 +289,7 @@
 			"updated_at": "2025-11-06T11:48:57.256Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 5,
 				"bytes": 5561015
@@ -365,10 +304,7 @@
 		{
 			"id": "code-type",
 			"db": "content-code-type.db",
-			"facets": [
-				"design",
-				"develop"
-			],
+			"facets": ["design", "develop"],
 			"old_url": "/content/portfolio-1753706148196",
 			"visibility": "public",
 			"status": "published",
@@ -376,11 +312,7 @@
 			"updated_at": "2025-11-06T10:29:23.046Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -395,9 +327,7 @@
 		{
 			"id": "design-001",
 			"db": "content-design-001.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753839404106",
 			"visibility": "public",
 			"status": "published",
@@ -405,11 +335,7 @@
 			"updated_at": "2025-11-06T10:34:39.302Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -424,9 +350,7 @@
 		{
 			"id": "dounika",
 			"db": "content-dounika.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705545464",
 			"visibility": "public",
 			"status": "published",
@@ -434,11 +358,7 @@
 			"updated_at": "2025-11-06T10:12:30.175Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -453,9 +373,7 @@
 		{
 			"id": "FlashBeat",
 			"db": "content-FlashBeat.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753696188231",
 			"visibility": "public",
 			"status": "published",
@@ -463,11 +381,7 @@
 			"updated_at": "2025-11-06T10:06:02.877Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -490,11 +404,7 @@
 			"updated_at": "2025-11-06T10:06:14.791Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -509,9 +419,7 @@
 		{
 			"id": "FlashBeat-OP",
 			"db": "content-FlashBeat-OP.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753697544895",
 			"visibility": "public",
 			"status": "published",
@@ -519,11 +427,7 @@
 			"updated_at": "2025-11-06T10:06:33.108Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -538,11 +442,7 @@
 		{
 			"id": "FoldLayers",
 			"db": "content-FoldLayers.db",
-			"facets": [
-				"design",
-				"develop",
-				"video"
-			],
+			"facets": ["design", "develop", "video"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -550,11 +450,7 @@
 			"updated_at": "2026-08-12T09:08:38.378Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -569,9 +465,7 @@
 		{
 			"id": "homura",
 			"db": "content-homura.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/homura",
 			"visibility": "public",
 			"status": "published",
@@ -579,11 +473,7 @@
 			"updated_at": "2025-11-06T11:00:06.391Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 9,
 				"bytes": 7580553
@@ -598,9 +488,7 @@
 		{
 			"id": "hurahu",
 			"db": "content-hurahu.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705731016",
 			"visibility": "public",
 			"status": "published",
@@ -608,11 +496,7 @@
 			"updated_at": "2025-11-08T12:59:01.836Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -627,9 +511,7 @@
 		{
 			"id": "icon-tegaki-anime",
 			"db": "content-icon-tegaki-anime.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -637,11 +519,7 @@
 			"updated_at": "2026-08-15T08:46:01.110Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 3,
 				"bytes": 613204
@@ -656,9 +534,7 @@
 		{
 			"id": "isogasii-demo",
 			"db": "content-isogasii-demo.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705617995",
 			"visibility": "public",
 			"status": "published",
@@ -666,11 +542,7 @@
 			"updated_at": "2025-11-06T10:18:02.104Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -685,9 +557,7 @@
 		{
 			"id": "isogasii-editor",
 			"db": "content-isogasii-editor.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705628729",
 			"visibility": "public",
 			"status": "published",
@@ -695,11 +565,7 @@
 			"updated_at": "2025-11-06T10:18:25.985Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -714,9 +580,7 @@
 		{
 			"id": "kaben",
 			"db": "content-kaben.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753706048587",
 			"visibility": "public",
 			"status": "published",
@@ -724,11 +588,7 @@
 			"updated_at": "2025-11-08T13:08:59.107Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -743,9 +603,7 @@
 		{
 			"id": "kakumei",
 			"db": "content-kakumei.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/kakumei",
 			"visibility": "public",
 			"status": "published",
@@ -753,11 +611,7 @@
 			"updated_at": "2025-11-06T11:03:26.612Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 7,
 				"bytes": 10851783
@@ -772,10 +626,7 @@
 		{
 			"id": "kosen-fes-2025",
 			"db": "content-kosen-fes-2025.db",
-			"facets": [
-				"design",
-				"develop"
-			],
+			"facets": ["design", "develop"],
 			"old_url": "/content/kosen-fes-2025",
 			"visibility": "public",
 			"status": "published",
@@ -783,11 +634,7 @@
 			"updated_at": "2025-11-08T15:23:12.498Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 27,
 				"bytes": 9336938
@@ -802,9 +649,7 @@
 		{
 			"id": "kosen-fes2025-ending",
 			"db": "content-kosen-fes2025-ending.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/kosen-fes2025-ending",
 			"visibility": "public",
 			"status": "published",
@@ -812,11 +657,7 @@
 			"updated_at": "2025-11-24T13:47:49.668Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 8,
 				"bytes": 11725662
@@ -831,9 +672,7 @@
 		{
 			"id": "kosen-procon-pv",
 			"db": "content-kosen-procon-pv.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705784056",
 			"visibility": "public",
 			"status": "published",
@@ -841,11 +680,7 @@
 			"updated_at": "2025-11-08T13:16:09.175Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -860,9 +695,7 @@
 		{
 			"id": "lhaplus",
 			"db": "content-lhaplus.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705921393",
 			"visibility": "public",
 			"status": "published",
@@ -870,11 +703,7 @@
 			"updated_at": "2025-11-08T13:03:51.215Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -889,9 +718,7 @@
 		{
 			"id": "LiteGlow",
 			"db": "content-LiteGlow.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753840319431",
 			"visibility": "public",
 			"status": "published",
@@ -899,11 +726,7 @@
 			"updated_at": "2025-11-06T14:31:05.774Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -918,9 +741,7 @@
 		{
 			"id": "m5_clock",
 			"db": "content-m5_clock.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/m5_clock",
 			"visibility": "public",
 			"status": "published",
@@ -928,11 +749,7 @@
 			"updated_at": "2025-12-15T23:38:36.933Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 5,
 				"bytes": 1862471
@@ -947,9 +764,7 @@
 		{
 			"id": "mawaru",
 			"db": "content-mawaru.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705824026",
 			"visibility": "public",
 			"status": "published",
@@ -957,11 +772,7 @@
 			"updated_at": "2025-11-08T13:01:12.990Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -2839,9 +2650,7 @@
 		{
 			"id": "meikai",
 			"db": "content-meikai.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705810537",
 			"visibility": "public",
 			"status": "published",
@@ -2849,11 +2658,7 @@
 			"updated_at": "2025-11-08T13:00:20.232Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -2868,9 +2673,7 @@
 		{
 			"id": "moumoku",
 			"db": "content-moumoku.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705712152",
 			"visibility": "public",
 			"status": "published",
@@ -2878,11 +2681,7 @@
 			"updated_at": "2025-11-06T10:19:30.224Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -2897,11 +2696,7 @@
 		{
 			"id": "MultiSlicer",
 			"db": "content-MultiSlicer.db",
-			"facets": [
-				"design",
-				"develop",
-				"video"
-			],
+			"facets": ["design", "develop", "video"],
 			"old_url": "/content/portfolio-1753839555107",
 			"visibility": "public",
 			"status": "published",
@@ -2909,10 +2704,7 @@
 			"updated_at": "2025-11-06T14:00:23.127Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -2921,15 +2713,13 @@
 			"markdown_pages": 1,
 			"external_videos": 1,
 			"rights": "unrecorded",
-			"notion_page": null,
+			"notion_page": "recorded",
 			"new_url": null
 		},
 		{
 			"id": "my-first-blender",
 			"db": "content-my-first-blender.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705653809",
 			"visibility": "public",
 			"status": "published",
@@ -2937,11 +2727,7 @@
 			"updated_at": "2025-11-06T10:18:53.309Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -2956,9 +2742,7 @@
 		{
 			"id": "my-sns-icon",
 			"db": "content-my-sns-icon.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -2966,11 +2750,7 @@
 			"updated_at": "2026-08-15T08:43:36.608Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 3,
 				"bytes": 99985
@@ -2985,9 +2765,7 @@
 		{
 			"id": "my-web-2025",
 			"db": "content-my-web-2025.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/my-web-2025",
 			"visibility": "public",
 			"status": "published",
@@ -2995,11 +2773,7 @@
 			"updated_at": "2025-12-15T23:19:50.537Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 5,
 				"bytes": 612541
@@ -3014,9 +2788,7 @@
 		{
 			"id": "netu",
 			"db": "content-netu.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705752680",
 			"visibility": "public",
 			"status": "published",
@@ -3024,11 +2796,7 @@
 			"updated_at": "2025-11-06T10:19:57.580Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3043,9 +2811,7 @@
 		{
 			"id": "NullOto",
 			"db": "content-NullOto.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/NullOto",
 			"visibility": "public",
 			"status": "published",
@@ -3053,11 +2819,7 @@
 			"updated_at": "2025-11-24T13:47:17.949Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 25,
 				"bytes": 33084180
@@ -3072,9 +2834,7 @@
 		{
 			"id": "oneself",
 			"db": "content-oneself.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705958241",
 			"visibility": "public",
 			"status": "published",
@@ -3082,11 +2842,7 @@
 			"updated_at": "2025-11-08T13:05:09.522Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3101,9 +2857,7 @@
 		{
 			"id": "ooame",
 			"db": "content-ooame.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705469624",
 			"visibility": "public",
 			"status": "published",
@@ -3111,11 +2865,7 @@
 			"updated_at": "2025-11-06T10:07:42.726Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3130,9 +2880,7 @@
 		{
 			"id": "pomodoroom",
 			"db": "content-pomodoroom.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/pomodoroom",
 			"visibility": "public",
 			"status": "published",
@@ -3140,11 +2888,7 @@
 			"updated_at": "2025-12-15T23:38:24.189Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 6,
 				"bytes": 712363
@@ -3182,9 +2926,7 @@
 		{
 			"id": "propose",
 			"db": "content-propose.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/propose",
 			"visibility": "public",
 			"status": "published",
@@ -3192,11 +2934,7 @@
 			"updated_at": "2025-11-06T11:45:46.696Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 4,
 				"bytes": 3302897
@@ -3211,9 +2949,7 @@
 		{
 			"id": "ProtoType",
 			"db": "content-ProtoType.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753706120147",
 			"visibility": "public",
 			"status": "published",
@@ -3221,11 +2957,7 @@
 			"updated_at": "2025-11-08T13:12:02.387Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3240,9 +2972,7 @@
 		{
 			"id": "ProtoType-brochure",
 			"db": "content-ProtoType-brochure.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/ProtoType-brochure",
 			"visibility": "public",
 			"status": "published",
@@ -3250,11 +2980,7 @@
 			"updated_at": "2025-11-08T12:55:35.350Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3269,9 +2995,7 @@
 		{
 			"id": "red-black-design",
 			"db": "content-red-black-design.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753705569200",
 			"visibility": "public",
 			"status": "published",
@@ -3279,11 +3003,7 @@
 			"updated_at": "2025-11-06T10:17:39.551Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3298,9 +3018,7 @@
 		{
 			"id": "reel-2024",
 			"db": "content-reel-2024.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705889177",
 			"visibility": "public",
 			"status": "published",
@@ -3308,11 +3026,7 @@
 			"updated_at": "2025-11-08T13:03:08.019Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3327,10 +3041,7 @@
 		{
 			"id": "reel-2025",
 			"db": "content-reel-2025.db",
-			"facets": [
-				"design",
-				"video"
-			],
+			"facets": ["design", "video"],
 			"old_url": "/content/reel-2025",
 			"visibility": "public",
 			"status": "published",
@@ -3338,11 +3049,7 @@
 			"updated_at": "2026-01-16T12:44:37.344Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3357,9 +3064,7 @@
 		{
 			"id": "RGBDelay",
 			"db": "content-RGBDelay.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -3367,11 +3072,7 @@
 			"updated_at": "2026-08-12T08:23:53.702Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3386,9 +3087,7 @@
 		{
 			"id": "seishun",
 			"db": "content-seishun.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -3396,11 +3095,7 @@
 			"updated_at": "2026-08-12T05:51:16.033Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 4,
 				"bytes": 5483130
@@ -3415,9 +3110,7 @@
 		{
 			"id": "sep_color",
 			"db": "content-sep_color.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705971770",
 			"visibility": "public",
 			"status": "published",
@@ -3425,11 +3118,7 @@
 			"updated_at": "2025-11-08T13:06:18.649Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3444,10 +3133,7 @@
 		{
 			"id": "shinkansen",
 			"db": "content-shinkansen.db",
-			"facets": [
-				"develop",
-				"video"
-			],
+			"facets": ["develop", "video"],
 			"old_url": "/content/portfolio-1753705763745",
 			"visibility": "public",
 			"status": "published",
@@ -3455,11 +3141,7 @@
 			"updated_at": "2025-11-06T10:20:17.699Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3474,9 +3156,7 @@
 		{
 			"id": "stretch_v02",
 			"db": "content-stretch_v02.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753706133707",
 			"visibility": "public",
 			"status": "published",
@@ -3484,11 +3164,7 @@
 			"updated_at": "2025-11-06T10:28:57.952Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3503,9 +3179,7 @@
 		{
 			"id": "stretch-v01",
 			"db": "content-stretch-v01.db",
-			"facets": [
-				"develop"
-			],
+			"facets": ["develop"],
 			"old_url": "/content/portfolio-1753705948545",
 			"visibility": "public",
 			"status": "published",
@@ -3513,11 +3187,7 @@
 			"updated_at": "2025-11-06T10:22:52.337Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3532,9 +3202,7 @@
 		{
 			"id": "tegaki-anime",
 			"db": "content-tegaki-anime.db",
-			"facets": [
-				"design"
-			],
+			"facets": ["design"],
 			"old_url": "/content/portfolio-1753706194107",
 			"visibility": "public",
 			"status": "published",
@@ -3542,11 +3210,7 @@
 			"updated_at": "2025-11-08T13:13:11.316Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3561,9 +3225,7 @@
 		{
 			"id": "test-otu-1-3q",
 			"db": "content-test-otu-1-3q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753695303368",
 			"visibility": "public",
 			"status": "published",
@@ -3586,9 +3248,7 @@
 		{
 			"id": "test-otu-2-2q",
 			"db": "content-test-otu-2-2q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705501944",
 			"visibility": "public",
 			"status": "published",
@@ -3611,9 +3271,7 @@
 		{
 			"id": "test-otu-2-3q",
 			"db": "content-test-otu-2-3q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705850489",
 			"visibility": "public",
 			"status": "published",
@@ -3636,9 +3294,7 @@
 		{
 			"id": "test-otu-2-4q",
 			"db": "content-test-otu-2-4q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753706010674",
 			"visibility": "public",
 			"status": "published",
@@ -3661,9 +3317,7 @@
 		{
 			"id": "test-otu-3-1q",
 			"db": "content-test-otu-3-1q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753840532952",
 			"visibility": "public",
 			"status": "published",
@@ -3686,9 +3340,7 @@
 		{
 			"id": "test-otu-3-2q",
 			"db": "content-test-otu-3-2q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1754408713848",
 			"visibility": "public",
 			"status": "published",
@@ -3711,9 +3363,7 @@
 		{
 			"id": "test-otu-3-3q",
 			"db": "content-test-otu-3-3q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/test-otu-3-3q",
 			"visibility": "public",
 			"status": "published",
@@ -3736,9 +3386,7 @@
 		{
 			"id": "test-otu-4-1q",
 			"db": "content-test-otu-4-1q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -3761,9 +3409,7 @@
 		{
 			"id": "test-otu-4-2q",
 			"db": "content-test-otu-4-2q.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": null,
 			"visibility": "public",
 			"status": "published",
@@ -3786,9 +3432,7 @@
 		{
 			"id": "tokimeki",
 			"db": "content-tokimeki.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/tokimeki",
 			"visibility": "public",
 			"status": "published",
@@ -3796,11 +3440,7 @@
 			"updated_at": "2025-11-15T03:31:28.755Z",
 			"migration_class": "rewrite_required",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3815,9 +3455,7 @@
 		{
 			"id": "ugoita",
 			"db": "content-ugoita.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753705448392",
 			"visibility": "public",
 			"status": "published",
@@ -3825,11 +3463,7 @@
 			"updated_at": "2025-11-06T10:07:08.538Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3844,9 +3478,7 @@
 		{
 			"id": "usoto",
 			"db": "content-usoto.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-draft-test",
 			"visibility": "public",
 			"status": "published",
@@ -3854,11 +3486,7 @@
 			"updated_at": "2025-11-08T12:58:24.730Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0
@@ -3873,9 +3501,7 @@
 		{
 			"id": "yukikate",
 			"db": "content-yukikate.db",
-			"facets": [
-				"video"
-			],
+			"facets": ["video"],
 			"old_url": "/content/portfolio-1753706090299",
 			"visibility": "public",
 			"status": "published",
@@ -3883,11 +3509,7 @@
 			"updated_at": "2025-11-08T13:09:32.674Z",
 			"migration_class": "eligible",
 			"publication": "pending_owner",
-			"publication_blockers": [
-				"role_missing",
-				"media_missing",
-				"no_mappable_section"
-			],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
 			"media": {
 				"files": 0,
 				"bytes": 0

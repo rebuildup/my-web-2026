@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, describe, it } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { after, describe, it } from 'node:test';
 import {
 	buildInventory,
 	diffInventories,
@@ -12,6 +12,7 @@ import {
 	inventoryDigest,
 	listLegacyDatabases,
 	parseArgs,
+	readNotionPages,
 	rightsStateFor,
 } from './audit-legacy-portfolio.mjs';
 
@@ -62,12 +63,21 @@ function makeLegacyDatabase(file, { content, media = [], extraAsset = false }) {
 		);
 	}
 	if (extraAsset) {
-		db.exec('create table content_assets (id integer primary key autoincrement, content_id text, src text);');
+		db.exec(
+			'create table content_assets (id integer primary key autoincrement, content_id text, src text);',
+		);
 		db.exec("insert into content_assets (content_id, src) values ('x', '/media/a.png')");
 	}
-	const insert = db.prepare('insert into media (id, content_id, mime_type, data) values (?, ?, ?, ?)');
+	const insert = db.prepare(
+		'insert into media (id, content_id, mime_type, data) values (?, ?, ?, ?)',
+	);
 	for (const [index, row] of media.entries()) {
-		insert.run(`m${index}`, row.contentId ?? null, row.mime ?? 'image/png', Buffer.alloc(row.bytes ?? 0));
+		insert.run(
+			`m${index}`,
+			row.contentId ?? null,
+			row.mime ?? 'image/png',
+			Buffer.alloc(row.bytes ?? 0),
+		);
 	}
 	db.close();
 }
@@ -134,7 +144,10 @@ describe('rights state', () => {
 	});
 
 	it('treats a missing or malformed inventory as recording nothing', () => {
-		assert.equal(rightsStateFor('portfolio/x.png', inventoryAssetIds(null)).valueOf(), 'unrecorded');
+		assert.equal(
+			rightsStateFor('portfolio/x.png', inventoryAssetIds(null)).valueOf(),
+			'unrecorded',
+		);
 		assert.equal(inventoryAssetIds({ assets: 'nope' }).size, 0);
 	});
 });
@@ -231,6 +244,46 @@ describe('buildInventory', () => {
 		});
 		assert.equal(again.content_digest, document.content_digest);
 	});
+
+	it('stamps only the migration state it is told, never an identifier', () => {
+		const withPages = buildInventory({
+			sourcePath: source,
+			sourceHead: 'a'.repeat(40),
+			classificationPath: 'docs/migration/portfolio-2025-to-2026-classification.json',
+			classification,
+			inventory,
+			notionPages: new Map([['published', 'recorded']]),
+			now: '2026-11-01T00:00:00.000Z',
+			openDatabase,
+		});
+		const row = withPages.items.find((item) => item.id === 'published');
+		assert.equal(row.notion_page, 'recorded');
+		// The new URL is a publication decision, not a migration one.
+		assert.equal(row.new_url, null);
+		assert.deepEqual(withPages.counts.by_notion_page, { recorded: 1, null: 1 });
+	});
+});
+
+describe('readNotionPages', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'legacy-notion-pages-'));
+	after(() => rmSync(dir, { recursive: true, force: true }));
+
+	it('reads a state per legacy id and treats a missing file as "nothing recorded"', () => {
+		assert.equal(readNotionPages(join(dir, 'absent.json')), null);
+	});
+
+	it('ignores an entry with no legacy id or a non-object row', () => {
+		const path = join(dir, 'pages.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				schema: 'portfolio-notion-pages.v1',
+				pages: [{ legacy_id: 'a', state: 'recorded' }, { state: 'recorded' }, null],
+			}),
+		);
+		const pages = readNotionPages(path);
+		assert.deepEqual([...pages.entries()], [['a', 'recorded']]);
+	});
 });
 
 describe('diffInventories', () => {
@@ -249,7 +302,10 @@ describe('diffInventories', () => {
 		const next = {
 			...base,
 			content_digest: 'sha256:different',
-			items: [{ id: 'a', status: 'draft' }, { id: 'b', status: 'published' }],
+			items: [
+				{ id: 'a', status: 'draft' },
+				{ id: 'b', status: 'published' },
+			],
 		};
 		const differences = diffInventories(base, next);
 		assert.ok(differences.includes('changed: a'));

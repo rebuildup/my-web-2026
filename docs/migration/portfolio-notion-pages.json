@@ -1,0 +1,11 @@
+{
+	"schema": "portfolio-notion-pages.v1",
+	"comment": "Which legacy items have a Notion page (Issue #766). Records a STATE, never a page id: the id stays in Notion. `state: recorded` means a page exists and was written Draft/Draft, so nothing is public. The audit reads this file and stamps `notion_page` in portfolio-2025-inventory.json; it decides nothing about publication.",
+	"recorded_at": "2026-11-01",
+	"pages": [
+		{ "legacy_id": "aulymo-v01", "state": "recorded", "status": "draft", "visibility": "draft" },
+		{ "legacy_id": "aulymo_v02", "state": "recorded", "status": "draft", "visibility": "draft" },
+		{ "legacy_id": "aulymo_v03", "state": "recorded", "status": "draft", "visibility": "draft" },
+		{ "legacy_id": "MultiSlicer", "state": "recorded", "status": "draft", "visibility": "draft" }
+	]
+}

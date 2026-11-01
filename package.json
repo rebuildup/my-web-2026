@@ -294,6 +294,7 @@
 		"@cloudflare/vite-plugin": "2.0.0-beta.sha-c82c3efb3",
 		"@cloudflare/vitest-plugin": "^1.0.0",
 		"@infisical/cli": "0.43.137",
+		"@notionhq/notion-mcp-server": "^2.6.1",
 		"@pandacss/dev": "^1.12.1",
 		"@playwright/test": "^1.63.0",
 		"@storybook/addon-docs": "^8.6.19",

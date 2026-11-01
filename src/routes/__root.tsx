@@ -217,7 +217,7 @@ export const Route = createRootRoute({
 				// per-query attribute rendered through the component tree
 				// fails React 19 hydration in this shell).
 				children:
-					'(function(){try{var p=new URLSearchParams(location.search);var d=(p.get("direction")||"").toLowerCase();if(d!=="a"&&d!=="b"&&d!=="c")return;var t=(p.get("theme")||"").toLowerCase()==="light"?"light":"dark";var mode=p.get("pv")||"both";if(mode==="both"||mode==="link"){var h="/preview-assets/dir-"+d+"-"+t+".css";var e=document.createElement("link");e.id="preview-css";e.rel="stylesheet";e.href=h;document.head.appendChild(e)}if(mode==="both"||mode==="attr"){document.documentElement.setAttribute("data-preview",d+"-"+t)}}catch(e){}})();',
+					'(function(){try{var p=new URLSearchParams(location.search);var d=(p.get("direction")||"").toLowerCase();if(d!=="a"&&d!=="b"&&d!=="c")return;var t=(p.get("theme")||"").toLowerCase()==="light"?"light":"dark";var h="/preview-assets/dir-"+d+"-"+t+".css";if(document.getElementById("preview-css"))return;var e=document.createElement("link");e.id="preview-css";e.rel="stylesheet";e.href=h;document.head.appendChild(e)}catch(e){}})();',
 			},
 			{
 				// Applies the non-blocking font stylesheet above. Written to

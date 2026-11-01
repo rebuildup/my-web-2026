@@ -88,17 +88,39 @@ export function PreviewMount({ on }: { on: boolean }) {
 			swapIcons(document.body);
 		};
 
-		place();
-		const observer = new MutationObserver(() => {
-			// Coalesce: a render produces many mutations, one pass is enough.
-			requestAnimationFrame(() => {
-				if (!cancelled) swapIcons(document.body);
+		// React 19 hydrates the document incrementally: a DOM edit made from an
+		// effect while hydration is still running is read back by React as a
+		// server/client text mismatch ("server rendered text didn't match the
+		// client") and the whole tree is regenerated. So the first pass waits
+		// until the document has loaded AND the main thread is idle, which is
+		// after the hydration commit; only then does the observer take over.
+		let observer: MutationObserver | null = null;
+		const start = () => {
+			if (cancelled) return;
+			place();
+			observer = new MutationObserver(() => {
+				// Coalesce: a render produces many mutations, one pass is enough.
+				requestAnimationFrame(() => {
+					if (!cancelled) swapIcons(document.body);
+				});
 			});
-		});
-		observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+			observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+		};
+		const schedule = () => {
+			const idle = (
+				window as Window & {
+					requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+				}
+			).requestIdleCallback;
+			if (idle) idle(start, { timeout: 800 });
+			else setTimeout(start, 400);
+		};
+		if (document.readyState === 'complete') schedule();
+		else window.addEventListener('load', schedule, { once: true });
+
 		return () => {
 			cancelled = true;
-			observer.disconnect();
+			observer?.disconnect();
 		};
 	}, [on]);
 	return null;

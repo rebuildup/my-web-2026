@@ -107,6 +107,28 @@ facet の写像は分類側（Issue #78）の権限なので、ここでは決�
 - `sync-portfolio-notion.mjs --dry-run` の refusal は 0。語彙は mapper と一致した。
 - rights は 151/151 `unrecorded` のまま。権利記録なしに公開できるものは 1 件も無い。
 
+### 実測（2026-11-01、status-only）
+
+`https://rebuildup.dev` に対する読み取りのみ。slug は公開コンテンツであり、
+id・token・secret は出力していない。
+
+| 対象 | 実測値 |
+| --- | --- |
+| `GET /portfolio` | 200、一覧 3 件（`aulymo-v01` / `aulymo-v02` / `multislicer`） |
+| `GET /portfolio/<移行 68 slug>` | **404 が 65 / 200 が 3** |
+
+200 だった 3 件は**上の一覧と同じ 3 slug**で、いずれも移行前から D1 に存在する行。
+`src/portfolio/load.ts` は slug 衝突で D1 を優先する（CMS は前面に出ない）。
+したがって**移行によって公開面に新たに現れた件数は 0**。
+
+公開面は「0 件」ではなく **3 件**で、その 3 件は移行前から同じ。この 3 件と
+slug が一致する移行レコード 3 件は、仮に後で公開しても D1 行に隠れるため、
+公開判断の前に slug を付け替えるか D1 側を畳むかを owner が決める必要がある。
+
+配備済みの `origin/main` には `src/portfolio/notion/**` が存在しない
+（`git grep notionProjects origin/main -- src/` が 0 件）。つまり現在の本番は
+Notion を読む経路を持たず、公開面は書き込みの内容から独立している。
+
 ## 6. まだ公開できない理由
 
 | 停止条件 | 件数 | 解く主体 |

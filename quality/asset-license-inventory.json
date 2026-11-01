@@ -441,6 +441,96 @@
 			"publication": "published",
 			"externalHosts": ["use.typekit.net"],
 			"delegatedTo": "tools:artifact:check (Issue #466)"
+		},
+{
+			"id": "preview-harness-stylesheets",
+			"kind": "config",
+			"title": "Issue #764 比較ハーネスの生成 CSS（6 ファイル）",
+			"summary": "scripts/generate-preview-css.mjs が src/preview/preview-css.mjs と src/preview/preview-palettes.mjs から生成する方向別スタイルシート。ハーネス（/compare と ?direction=）だけが読み、製品のページは参照しない。",
+			"covers": [
+				"public/preview-assets/*.css"
+			],
+			"publicPaths": [
+				"/preview-assets/dir-a-dark.css",
+				"/preview-assets/dir-a-light.css",
+				"/preview-assets/dir-b-dark.css",
+				"/preview-assets/dir-b-light.css",
+				"/preview-assets/dir-c-dark.css",
+				"/preview-assets/dir-c-light.css"
+			],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"生成元は repository 内の src/preview/** のみ（外部入力なし）。",
+					"ハーネスと一緒に削除される一時ファイルで、release ブランチには入らない。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-02",
+				"note": "生成スクリプトと入力がリポジトリ内にあり、pnpm run preview:css が 6 ファイルを決定的に生成する。権利判断ではなく生成物の所在の記録。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "scripts/generate-preview-css.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/preview/preview-css.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/preview/preview-palettes.mjs"
+				}
+			],
+			"publication": "unpublished",
+			"externalHosts": []
+		},
+{
+			"id": "preview-harness-material-symbols",
+			"kind": "font",
+			"title": "比較ハーネスのアイコン用 woff2（1 個）",
+			"summary": "src/preview/preview-css.mjs の @font-face が /preview-assets/material-symbols-rounded.woff2 として参照する。ハーネスのアイコン表示専用で、取得経路の記録がリポジトリ内に無い。",
+			"covers": [
+				"public/preview-assets/material-symbols-rounded.woff2"
+			],
+			"publicPaths": [
+				"/preview-assets/material-symbols-rounded.woff2"
+			],
+			"origin": "unknown-provenance",
+			"rightsHolder": null,
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"取得経路とライセンスをこのリポジトリでは確認していない。",
+					"ハーネスと一緒に削除される一時ファイルで、release ブランチには入らない。"
+				]
+			},
+			"verification": {
+				"method": "none",
+				"checkedOn": null,
+				"note": "ハーネス準備時に置いたファイルで、配布元の記録を残していない。権利判断はしていない（未確認のまま非公開扱い）。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "public/preview-assets/material-symbols-rounded.woff2",
+					"sha256": "83059af5cc1b220baf12b606c8431a06f1a2e745e5c9e4c9b98e55af83a7b9db"
+				}
+			],
+			"publication": "unpublished",
+			"externalHosts": []
 		}
 	]
 }

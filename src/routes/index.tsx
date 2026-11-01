@@ -5,10 +5,10 @@ import {
 	HomePage,
 	KNOWN_INCIDENTS,
 	SYSTEM_SERVICES,
+	getCurrentProjects,
 	getHomeCounter,
 	getHomeReactions,
 	getHomeSystemStatus,
-	loadCurrentProjects,
 	recordHomeHit,
 } from '../home/public';
 
@@ -37,7 +37,7 @@ export const Route = createFileRoute('/')({
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
-			loadCurrentProjects(today),
+			getCurrentProjects({ data: { today } }),
 		]);
 		return {
 			capabilities: CAPABILITIES,

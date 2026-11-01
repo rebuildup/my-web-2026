@@ -69,8 +69,3 @@ export const currentProjectsLoader = createCurrentProjectsLoader(PROJECT_ROSTER,
 export function currentProjectsFor(today: string): readonly CurrentProjectRecord[] {
 	return composeRecords(PROJECT_ROSTER, [HANDWRITTEN, GIT], today);
 }
-
-/** The published records the route hands the page. */
-export function loadCurrentProjects(today: string): Promise<readonly CurrentProjectRecord[]> {
-	return currentProjectsLoader.loadCurrentProjects(today);
-}

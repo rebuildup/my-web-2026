@@ -364,7 +364,7 @@ describe('operator MFA audit — the anonymization guard', () => {
 		// A 12-character hexadecimal sha is all digits about 0.36% of the
 		// time, and the digit-run rule cannot tell it from a secret.
 		const provenance =
-			'Issue #469 · my-web-2026 0.8.0 · head 637725805045 · 生成 2026-11-01T05:34:43.315Z';
+			'Issue #469 · my-web-2026 <version> · head 637725805045 · 生成 2026-11-01T05:34:43.315Z';
 		assert.deepEqual(findSensitiveInText(provenance), []);
 		assertNoSensitiveInText(provenance);
 	});

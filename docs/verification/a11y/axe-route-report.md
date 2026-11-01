@@ -18,7 +18,7 @@
 | --- | --- |
 | `e2e/a11y/axe-manifest.ts` | 監査したルートの明示的な記録。-route / 期待する title / 期待する判定 / skip 理由を持つ。**nav roster から自動生成しない**（監査した範囲を自動生成すると、監査記録として反証できなくなるため） |
 | `e2e/a11y/axe-public-routes.spec.ts` | manifest の各ルートを Chromium で開き、axe-core で WCAG 2.2 A/AA の違反を収集し、宣言・実測・台帳の 3 者を突き合わせる |
-| `e2e/a11y/axe-baseline.json` | 既知の既存違反の台帳（1 違反 1 レコード） |
+| `e2e/a11y/axe-baseline.json` | 既知の既存違反の台帳（1 違反 1 レコード）。**Issue #718 で記録されていた 10 レコードは実装側で直して削除した。現在 0 レコード** |
 | `scripts/capture-a11y-axe-routes.mjs` | ゲート自身の実測結果から検証画像（WebP）を作る |
 
 判定は 4 段構えで、**どれかが 1 つでも red なら spec が落ちる**。
@@ -131,10 +131,14 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 | SC 3.3.2 Labels or Instructions | A | `form-field-multiple-labels` |
 | SC 4.1.2 Name, Role, Value | A | `aria-allowed-attr`, `aria-braille-equivalent`, `aria-command-name`, `aria-conditional-attr`, `aria-deprecated-role`, `aria-hidden-focus`, `aria-input-field-name`, `aria-prohibited-attr`, `aria-required-attr`, `aria-roledescription`, `aria-roles`, `aria-tab-name`, `aria-toggle-field-name`, `aria-tooltip-name`, `aria-valid-attr`, `aria-valid-attr-value`, `button-name`, `duplicate-id-aria`, `frame-title`, `frame-title-unique`, `input-button-name`, `label`, `nested-interactive`, `select-name`, `summary-name` |
 
-実際に今回の実測で観測された rule は `list` / `definition-list`（SC 1.3.1）と
+2026-10-23 の実測で観測された rule は `list` / `definition-list`（SC 1.3.1）と
 `label-content-name-mismatch`（SC 2.5.3）の **3 種類**。`color-contrast`
 （SC 1.4.3）は Issue #399（PR #681）の muted token 修正で **解消済み** で、
 実測では 1 件も観測されない。
+
+**2026-11-01（Issue #718）の実測では違反は 1 件も観測されない**（10 route すべて
+`pass`）。上の 3 種類の rule は **実装側で直した**（内訳は §「今回の増減」、
+詳細は [`axe-known-violations.md`](axe-known-violations.md)）。
 
 ## 機械検査と人間の評価の区別
 
@@ -174,50 +178,45 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 - セレクタは React の `useId` が生成する id（`_R_…`）を `«id»` に正規化して
   比較する（リビルドで id が変わっても台帳が壊れないため）。
 
-### 今回の増減
+### 今回の増減（Issue #718 で更新）
 
 | 項目 | 件数 |
 | --- | --- |
-| 今回記録した違反（route × rule） | 10 |
-| 今回記録した違反（要素単位） | 14 |
-| 今回直した違反 | 0 |
-| 今回削除した台帳レコード | 7 |
+| 今回記録した違反（route × rule） | **0** |
+| 今回記録した違反（要素単位） | **0** |
+| 今回直した違反 | **10**（要素数 14） |
+| 今回削除した台帳レコード | **10** |
 
-内訳（route × rule）:
+**Issue #718（2026-11-01）** が、2026-10-23 に記録していた 10 レコード
+（要素数 14）を **実装側で直して削除した**。改正の詳細は
+[`axe-known-violations.md`](axe-known-violations.md) に記録した。
 
-| route | rule | 要素数 | 理由 |
-| --- | --- | --- | --- |
-| `/` | `definition-list` | 1 | home の status リストが `<dl>` の直下に `<div>` を置いている（SC 1.3.1 の content model 違反） |
-| `/` | `label-content-name-mismatch` | 2 | `aria-label` が可視テキストを含まない（SC 2.5.3） |
-| `/about` | `list` | 1 | デスクトップ nav が `<ul>` の直下に `<a>` を置いている（SC 1.3.1） |
-| `/keyboard` | `list` | 1 | 同上（nav） |
-| `/contact` | `list` | 1 | 同上（nav） |
-| `/portfolio` | `label-content-name-mismatch` | 4 | facet フィルタボタンの `aria-label` が可視テキストを含まない（SC 2.5.3） |
-| `/portfolio` | `list` | 1 | 同上（nav） |
-| `/portfolio/my-web-2026` | `list` | 1 | 同上（nav） |
-| `/projects/dotfiles` | `list` | 1 | 同上（nav） |
-| `/design-system` | `list` | 1 | 同上（nav） |
-| `/tools` | — | 0 | 違反なし（pass） |
-| `/admin/login` | — | 0 | 違反なし（pass） |
+内訳（route × rule・修正前）:
+
+| route | rule | 要素数 | 理由 | 所有者 | 直し方 |
+| --- | --- | --- | --- | --- | --- |
+| `/` | `definition-list` | 1 | home の status リストが `<dl>` の group に badge 用の `<div>` を置いていた（SC 1.3.1 の content model 違反） | `home` | `src/home/status/tiles.tsx` — badge の wrapper を `<dd>` にした |
+| `/` | `label-content-name-mismatch` | 2 | `aria-label` が可視テキストを含まない（SC 2.5.3） | `home` | `src/home/capabilities/grid.tsx` — `aria-label` に可視の EN ラベルを含めた |
+| `/about` `/keyboard` `/contact` `/portfolio` `/portfolio/my-web-2026` `/projects/dotfiles` `/design-system` | `list` | 各 1 | デスクトップ nav が `<ul>` の直下に `<a>` を置いていた（SC 1.3.1） | `editorial` | `src/editorial/nav/PublicNav.tsx` — 各項目を `<li>` で包んだ |
+| `/portfolio` | `label-content-name-mismatch` | 4 | facet フィルタボタンの `aria-label` が可視テキストを含まない（SC 2.5.3） | `portfolio` | `src/portfolio/components/FacetFilter.tsx` — `aria-label` に可視の JA ラベルを含めた |
+
+修正後の実測（2026-11-01）: **10 route すべてで violation 0 件 / node 0 件**。
+台帳は **0 レコード**、manifest の 10 route はすべて `pass`。
 
 ### 台帳の更新履歴
 
 | 日付 | 変更 | 理由 |
 | --- | --- | --- |
 | 2026-10-23 | `axe-baseline.json` を version 1 → 2。`color-contrast` の 7 レコード（要素数 39）を削除 | Issue #399（PR #681）が muted 文字 token を `neutral.500`（`bg.subtle` 上で 4.34:1）から `neutral.600` へ変え、SC 1.4.3 の `color-contrast` 違反が **すべて解消** した。実測に対応しなくなったレコードを残すと、gate の陳腐化検出（「直った違反のレコードは削除せよ」）が赤くなる。これは **設計どおりの挙動** で、Issue #692 でレコードを削除して解消した |
+| 2026-11-01 | `list` 7 件 / `definition-list` 1 件 / `label-content-name-mismatch` 6 件の計 **10 レコード（要素数 14）を削除**。manifest の 8 route の `expect` を `baseline` → `pass` に | Issue #718 が **実装側で違反を直した**（`editorial` の nav markup、`home` の status リストと capability link、`portfolio` の facet chip）。視覚は pixel 比較で不変であることを確認した（§「負の対照」と `axe-known-violations.md` §5）。**空の台帳が恒久 green にはなっていない**ことは、nav の markup を意図的に戻した再ビルドで gate が red になることを確認した |
 
-この 7 レコードの削除は「違反を直した」ことによるもので、台帳を空にして
-恒久 green にする回避ではない。
+2026-10-23 の 7 レコード削除も、2026-11-01 の 10 レコード削除も、どちらも
+「違反を直した」ことによるもので、台帳を空にして恒久 green にする回避ではない。
 
-**この Issue は違反を直していない。** 残っているのは `list` / `definition-list`
-（SC 1.3.1、`editorial` のデスクトップ nav markup と `home` の status リストの
-見出し構造）と `label-content-name-mismatch`（SC 2.5.3、`portfolio` の facet
-ボタン）で、所有者は `editorial` / `home` / `portfolio`。token の
-`color-contrast`（SC 1.4.3）は Issue #399（PR #681）の muted token 修正で
-**解消済み** であり、この Issue が直したのではなく台帳から消えただけである。
-本 Issue の目的は「新しい違反が release candidate で fail すること」であって
-「初日から 0 違反にすること」ではない。修正は別 Issue の主題として、
-**このゲートが red にならないように見えるだけの恒久 green にはしない**。
+**台帳が空になったのであって、ゲートが緩んだのではない。** 2026-11-01 の
+実測では 10 route すべてで違反が観測されない（`pass`）。このゲートの目的は
+「新しい違反が release candidate で fail すること」であり、Issue #718 は
+記録されていた違反を実装側で直して、この目的を **台帳の穴で覆わない** ようにした。
 
 ## 誤検知・誤陰性を見つけたときの扱い
 
@@ -239,11 +238,10 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 - 中身: **ゲート自身の JSON レポート**（`e2e/a11y/axe-public-routes.spec.ts` が
   添付する route ごとの実測 summary）から描いた監査表（route / 判定 /
   台帳の既知件数と新規件数 / rule id と WCAG タグ / 要素数）と、
-  実際に違反した **1 件の要素のスクリーンショット**を並べてある
-- 図の 1 件は「最初の違反のある route の、最初の rule の最初の node」なので、
-  再生成後（Issue #692）は `/` の `definition-list`
-  （`.min-w_0.flex-d_column.d_flex > dl`、home の status リスト）になる。
-  `color-contrast` は Issue #399 で解消したため選ばれない
+  実際に違反した要素のスクリーンショットを並べてある
+- **Issue #718 で違反が 0 件になったため、要素のスクリーンショットの図は
+  含まれない**（生成スクリプトは「違反のある route が 1 つもない」場合は
+  図を省き、監査表だけを描く。2026-11-01 再生成：10 route 実測 / 58 kB）
 - 失敗条件: 出力パスが `.webp` でなければ拒否（PNG は書かない）。
   中間 PNG は `.tmp/` に作り、最後に削除する
 

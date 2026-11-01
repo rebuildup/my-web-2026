@@ -688,6 +688,35 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   scope.
 - See `skills/github-delivery/SKILL.md` for the full procedure.
 
+### Issue closure requires evidence (Issue #741)
+
+- **Closing an Issue is not the same as finishing it.** An Issue may be
+  closed only when its **own acceptance criteria** are met, or when its
+  state is recorded truthfully as *not* met (planned-unimplemented /
+  partial / unassessed / deferred / rejected) **with a written reason**.
+- **A merged PR, a green CI run, a written document, a release
+  integration, or an agent's own report are NOT evidence** that the
+  original goal was reached. Evidence is the artefact that satisfies the
+  acceptance criteria, citable by repository path, PR, commit or URL.
+- **Release integration is not completion.** "merged into
+  `release-x-y-z`" says the change shipped, not that the goal was met.
+- **The number of closed Issues is not a metric.** A sweep that closes
+  many Issues at once is a defect signal. Never report Issue counts as
+  progress, and never close Issues to make a backlog look tidy.
+- **An agent may record what it did; it may not certify the goal.**
+  A record written by an agent stays `ownerConfirmation:
+  "unconfirmed"` until a traceable owner artefact (a review, an issue
+  comment, a decision record) points at it. The owner may not be
+  simulated, and an approval record may never be fabricated.
+- Every closure the repository knows about is recorded in
+  `quality/issue-closure-ledger.json` and checked by
+  `pnpm run issue:closure:check` (offline, part of `validate:fast`) and
+  `pnpm run issue:closure:audit` (network, CI step). The canonical
+  procedure is [`docs/runbook/issue-lifecycle.md`](docs/runbook/issue-lifecycle.md).
+- Background for the rule: the 2026-10-31 sweep closed 132 Issues with
+  one templated comment; the per-Issue audit is
+  `docs/verification/backlog/closure-audit-2026-10-31.md`.
+
 ## 7. Recovery
 
 Native session resume is an optimisation. Canonical recovery is from

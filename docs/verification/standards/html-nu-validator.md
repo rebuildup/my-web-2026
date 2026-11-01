@@ -94,14 +94,17 @@ manifest 自身が壊れている場合（`fixtures.valid` / `fixtures.invalid` 
 ## この gate が最初に見つけた既存 defect（waiver ledger）
 
 SSR half を実 Worker に対して走らせた結果、**この gate が新規に検出した既存の
-defect が 3 件**ありました。いずれも app markup 側の所有（Issue #412 の範囲外）で、
-横断的な markup 修正＋既存 e2e selector の更新を伴う owner 判断なので、
+defect**がありました。いずれも app markup 側の所有（Issue #412 の範囲外）で、
 gate は検出した上で `quality/html-standards.json#waivers` に **message 形状で**
 記録しています。
 
+**Issue #718 が desktop nav の `<ul>` / `<a>` 入れ子を実装側で解消したため、その
+waiver は 2026-11-01 に削除しました**（waiver は使われなくなると `waiver.unused`
+で落ちるため、放置された waiver が緑を維持することはありません）。同時に
+`e2e/nav.spec.ts` のセレクタを `> a` から `> li > a` へ更新しています。
+
 | rule | 形状 | 場所 / 理由 |
 | --- | --- | --- |
-| `invalid-nesting` | `Element "a" not allowed as child of element "ul"` | `src/editorial/nav/PublicNav.tsx` の desktop nav。同一ファイルの mobile list は `<li>` で囲んでいるのに対し desktop は `<a>` を直接置いている。`e2e/nav.spec.ts` が `> a` の直接子セレクタを前提にしているため、修正は editorial と e2e の同時変更 |
 | `invalid-nesting` | `Element "div" not allowed as child of element "button"` | home の絵文字 picker の clear-search ボタン（`src/home/reactions/` が描画）。`<button>` は phrasing content のみ。icon wrapper の `div` → `span` 化は primitive の layout に影響する |
 | `bad-idref` | `for attribute "aria-controls"` | picker の検索 input が `aria-controls="epr-search-id"` を宣言するが、その listbox は client 側のみで mount されるため SSR document に id が存在しない |
 
@@ -209,7 +212,7 @@ exit 2 は manifest が読めない/使えない場合です。
   実在する `id` を指しているか）だけが対象で、role と token の妥当性は
   対象外です。axe-core 相当の a11y gate は別系統の作業です。
 - **waiver ledger**（`quality/html-standards.json#waivers`）には、この gate が
-  検出した既存 defect 3 件が記録されています（前節参照）。
+  検出した既存 defect 2 件が記録されています（前節参照）。
   entry を足すのは owner review 側の判断で、**何も suppress しない waiver は
   fail** するので、放置された waiver が緑を維持することはありません。
 - live mode は local/dev 相当の origin を想定しており、production origin への

@@ -216,10 +216,18 @@ export function StatusTiles({
 											</span>
 										) : null}
 									</dd>
-									<div
+									{/* Issue #718: the health badge is a second
+									    description of the same term, so it is a
+									    `<dd>` — not a bare `<div>`. A `<dl>` group
+									    may only contain `<dt>` / `<dd>` (WCAG 2.2
+									    SC 1.3.1); the badge keeps its own grid
+									    column and its own box, so the row looks
+									    exactly as it did. */}
+									<dd
 										className={css({
 											display: 'flex',
 											justifyContent: { base: 'flex-start', md: 'flex-end' },
+											margin: '0',
 										})}
 									>
 										<Badge tone={HEALTH_TONE[health]}>
@@ -234,7 +242,7 @@ export function StatusTiles({
 												{HEALTH_LABEL[health]}
 											</span>
 										</Badge>
-									</div>
+									</dd>
 								</div>
 							);
 						})}

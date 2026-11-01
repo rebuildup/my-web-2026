@@ -49,7 +49,7 @@
 	},
 	"permissions": {
 		"default": "contents: read",
-		"rationale": "CI, compatibility and smoke workflows only read the repository. The single write exception is the Issue #621 project-introduction sync, which pushes one automation branch and opens/updates its review PR against the configured release branch; it never merges, tags, deploys or publishes.",
+		"rationale": "CI, compatibility and smoke workflows only read the repository. The write exceptions are the two scheduled sync workflows (Issue #621 project introductions, Issue #719 keyboard layout), each of which pushes one automation branch and opens/updates its review PR against the configured release branch; neither merges, tags, deploys or publishes.",
 		"allow_writes": [
 			{
 				"scope": "contents",
@@ -60,6 +60,16 @@
 				"scope": "pull-requests",
 				"workflow": ".github/workflows/projects-sync.yml",
 				"reason": "Issue #621: open or update the review PR against the configured release branch. Merge is a human gate; the workflow never approves or merges."
+			},
+			{
+				"scope": "contents",
+				"workflow": ".github/workflows/keyboard-sync.yml",
+				"reason": "Issue #719: push the refreshed keyboard layout snapshot to the `keyboard-layout-sync` automation branch. The upstream read is public and unauthenticated; the workflow never pushes to main, a release branch, a tag or a Release."
+			},
+			{
+				"scope": "pull-requests",
+				"workflow": ".github/workflows/keyboard-sync.yml",
+				"reason": "Issue #719: open or update the review PR against the release branch named by `vars.KEYBOARD_SYNC_BASE_REF`. Merge is a human gate; the workflow never approves or merges."
 			}
 		]
 	},

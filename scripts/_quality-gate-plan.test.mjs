@@ -76,7 +76,7 @@ change_risk_mapping:
  * declared in `quality/profile.yaml` right after
  * `infisical:check:coverage`; Issue #478 (`security:disclosure:check`)
  * and Issue #464 (`integration:scope:check`) add theirs on the release
- * trunk, so the reconciled pin holds 44 components — one per declared
+ * trunk, so the reconciled pin holds one entry per declared
  * `gates.fast.components` entry, in the same order. The pin keeps its
  * job (a dropped or moved
  * component still fails); a new gate is still one line in the profile
@@ -92,6 +92,11 @@ const EXPECTED_FAST_PLAN = [
 	// committed snapshot the same way the structured-data gate reads its
 	// contract, so it runs next to it.
 	'pnpm run projects:check',
+	// Issue #719: the committed keyboard-layout snapshot, checked the
+	// same way — the recorded provenance must still describe the
+	// committed bytes, and the daily refresh workflow runs this same
+	// check before it publishes anything.
+	'pnpm run keyboard:check',
 	'pnpm run ogp:card:check',
 	'pnpm run index:boundary:check',
 	'pnpm run tools:check',
@@ -161,6 +166,10 @@ const EXPECTED_FAST_PLAN = [
 	// Issue #399: the colour-contrast AA contract. It runs right after the
 	// CSS gate, because both read the shipped token / stylesheet layer.
 	'pnpm run a11y:contrast:check',
+	// Issue #401: the tap / click target size contract. It runs right
+	// after the colour-contrast contract, so the two accessibility
+	// findings a reader has to judge together are read together.
+	'pnpm run a11y:target-size:check',
 	'pnpm run a11y:dialog-focus:check',
 	// Issue #402: the screen-reader procedure ledger, declared in
 	// `quality/profile.yaml` right after the contrast gate. It reads the

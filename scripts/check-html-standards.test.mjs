@@ -574,9 +574,9 @@ test('a waiver is scoped to the message shape it names', () => {
 test('the exit code and the statistics must count the same errors', async (t) => {
 	const manifest = loadManifest(MANIFEST_PATH);
 
-	/** The three defects the shipped ledger waives, as one document. */
+	/** The defects the shipped ledger waives, as one document. */
 	const waivedDocument = document(
-		'<main><h1>x</h1><nav><ul><a href="/">home</a></ul></nav><section><h2>y</h2>' +
+		'<main><h1>x</h1><nav><ul><li><a href="/">home</a></li></ul></nav><section><h2>y</h2>' +
 			'<button type="button"><div class="icon"></div></button>' +
 			'<input type="search" aria-controls="epr-search-id" aria-label="q"></section></main>',
 	);
@@ -620,7 +620,7 @@ test('the exit code and the statistics must count the same errors', async (t) =>
 			],
 			severities: severitiesFrom(singleRoute),
 		});
-		assert.equal(result.findings.filter((finding) => finding.waived).length, 3);
+		assert.equal(result.findings.filter((finding) => finding.waived).length, 2);
 		assert.equal(result.stats.errors, 0);
 		assert.equal(
 			effectiveFindings(result.findings).length,
@@ -633,7 +633,7 @@ test('the exit code and the statistics must count the same errors', async (t) =>
 		// The reproduction command the verification note documents
 		// (`--live <baseUrl>`) must exit 0 on a codebase whose defects are
 		// all covered by the ledger. It used to count the waived findings
-		// and print three PRE-EXISTING defects as FAIL.
+		// and print the PRE-EXISTING defects as FAIL.
 		await withServer(waivedDocument, async (baseUrl) => {
 			const covered = await runChecker([
 				'--live',
@@ -646,7 +646,7 @@ test('the exit code and the statistics must count the same errors', async (t) =>
 			const parsed = JSON.parse(covered.stdout);
 			assert.equal(parsed.ok, true, covered.stdout);
 			assert.equal(parsed.live.stats.errors, 0);
-			assert.equal(parsed.live.findings.length, 3);
+			assert.equal(parsed.live.findings.length, 2);
 			assert.ok(parsed.live.findings.every((finding) => finding.waived === true));
 
 			// The same document with no ledger at all must still fail, or the
@@ -661,7 +661,7 @@ test('the exit code and the statistics must count the same errors', async (t) =>
 			assert.equal(uncovered.code, 1);
 			const parsedUncovered = JSON.parse(uncovered.stdout);
 			assert.equal(parsedUncovered.ok, false);
-			assert.equal(parsedUncovered.live.stats.errors, 3);
+			assert.equal(parsedUncovered.live.stats.errors, 2);
 		});
 	});
 });

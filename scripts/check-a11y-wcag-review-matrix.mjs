@@ -89,7 +89,26 @@
  *       human verification exists, or without pointing at this matrix.
  *   scope-decision-doc-mismatch
  *       The scope decisions (the A/AA criteria this table does not
- *       carry) and the documentation that states them disagree.
+ *       carry) and the documentation that states them disagree — in
+ *       any field, including a field the documentation does not have.
+ *   scope-disposition-invalid
+ *       A scope decision has no disposition, a disposition outside the
+ *       vocabulary, or the fields its disposition requires are
+ *       missing / the ones it forbids are present.
+ *   scope-exclusion-not-a-product-fact
+ *       A `not-applicable` decision whose reason or evidence says "this
+ *       table has no item for it" / "no owner" instead of naming a fact
+ *       about the published product. "We did not look at it" is not an
+ *       applicability argument.
+ *   scope-unverified-missing-review-plan
+ *       An `applicable-unverified` decision that does not say who has
+ *       to review it and how to reproduce the check.
+ *   scope-verified-without-review-record
+ *       An `applicable-and-verified` decision without a human review
+ *       record. The repository holds no such record.
+ *   release-assessment-unbacked
+ *       The ledger's release assessment claims the AA audit is complete
+ *       while the record says otherwise.
  *   fixture-expectation-mismatch
  *       A fixture does not behave the way its own expectation says.
  *   fixture-contract-missing
@@ -103,6 +122,7 @@
  *   node scripts/check-a11y-wcag-review-matrix.mjs --today=2026-10-23
  *   node scripts/check-a11y-wcag-review-matrix.mjs --today 2026-10-23
  *   node scripts/check-a11y-wcag-review-matrix.mjs --matrix=<path>
+ *   node scripts/check-a11y-wcag-review-matrix.mjs --scope-decisions=<path>
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -141,6 +161,7 @@ export const EXPECTED_FIXTURE_FILES = {
 		'10-conflicting-criterion.json',
 		'11-claim-predicate-without-qualifier.json',
 		'12-claim-negated-in-another-clause.json',
+		'13-release-assessment-unbacked.json',
 	],
 };
 
@@ -282,7 +303,113 @@ export const WCAG_22_CRITERIA = Object.fromEntries(
 );
 
 /**
- * The A/AA criteria this table does NOT carry, and why.
+ * The dispositions a scope decision may carry.
+ *
+ * A scope decision is a DECISION about a WCAG 2.2 A/AA criterion this
+ * table does not carry as an item. A decision has to say something
+ * about the published product — there is no third, blank answer:
+ *
+ *   - `not-applicable`
+ *       The published product provably lacks the feature the criterion
+ *       is about ("the site ships no prerecorded audio-only content").
+ *       The evidence is a FACT about the product, checkable from the
+ *       repository. A decision whose reason says "this table has no
+ *       item for it" is NOT this: it is an admission that nobody
+ *       looked, and the gate rejects it
+ *       (`scope-exclusion-not-a-product-fact`).
+ *   - `applicable-unverified`
+ *       The criterion applies to the published site, but no person has
+ *       checked it. Such a decision MUST name who has to review it
+ *       (`reviewer` — a role, never an agent) and how to reproduce the
+ *       check (`steps`). Without them it is an open hole, not a
+ *       decision (`scope-unverified-missing-review-plan`).
+ *   - `applicable-and-verified`
+ *       The criterion applies AND a person has measured it. This
+ *       disposition requires a human review record
+ *       (`scope-verified-without-review-record`). The repository holds
+ *       **no** such record: no owner measurement exists, and an agent
+ *       may not fabricate one.
+ *
+ * The three are different statements, and the release assessment has
+ * to report them separately: "the ledger's structure is green" says
+ * nothing about "the audited quality passes".
+ */
+export const SCOPE_DISPOSITIONS = [
+	'not-applicable',
+	'applicable-unverified',
+	'applicable-and-verified',
+];
+
+/**
+ * What each disposition has to carry.
+ *
+ * `requires` are fields that must be present and non-empty;
+ * `forbids` are fields that must be absent (a `not-applicable`
+ * decision has no reviewer and no reproduction plan — there is nothing
+ * left to review).
+ */
+export const SCOPE_DISPOSITION_CONTRACT = {
+	'not-applicable': {
+		requires: ['reason', 'evidence'],
+		forbids: ['reviewer', 'steps', 'verifiedBy', 'verifiedAt'],
+	},
+	'applicable-unverified': {
+		requires: ['reason', 'evidence', 'reviewer', 'steps'],
+		forbids: ['verifiedBy', 'verifiedAt'],
+	},
+	'applicable-and-verified': {
+		requires: ['reason', 'evidence', 'reviewer', 'steps', 'verifiedBy', 'verifiedAt'],
+		forbids: [],
+	},
+};
+
+/**
+ * The wording that turns an exclusion into an admission that nobody
+ * looked.
+ *
+ * "We have no item for it in this table" and "no owner" are NOT
+ * applicability arguments: they describe the ledger, not the product.
+ * A `not-applicable` decision whose reason or evidence uses one of
+ * these patterns is refused (`scope-exclusion-not-a-product-fact`).
+ *
+ * The check is a PATTERN over the reason text, so it also catches the
+ * phrasings nobody anticipated. The negative control is the fixture
+ * `scripts/fixtures/a11y-wcag-review-matrix/scope/fail/01-table-coverage-exclusion.json`,
+ * which reproduces the wording this issue removed.
+ */
+export const TABLE_COVERAGE_PATTERNS = [
+	// 「…をこの表に持たない」 / 「この表に持たない」
+	/この表に(?:は)?(?:[^。、]{0,12})?(?:持|もた)ない/,
+	// 「検査する項目」「検査項目」「レビュー項目」
+	/(?:検査|レビュー|チェック)(?:する|項目|用の項目)/,
+	// 「検査項目が無い」「項目が無い」
+	/(?:検査|レビュー)?項目(?:が|は|を)?(?:無い|ない|ありません)/,
+	// 「表に項目が無い」
+	/表(?:の|に)(?:[^。、]{0,8})?(?:項目|基準)(?:が|は|を)?(?:無い|ない)/,
+	// 「表の外側にある」
+	/表(?:の|の)?外(?:側)?(?:の|に)(?:ある|いる|あるもの)/,
+	// "no item in this table" / "no review item for"
+	/(?:no|not any) (?:item|items|criterion|criteria|review|check)(?:s)? (?:in|for|of) (?:this|the) (?:table|matrix)/i,
+	// "no owner" / "nobody is assigned"
+	/no (?:owner|assignee|reviewer|responsib\w*)/i,
+	// "not covered by this table" / "not checked"
+	/not (?:have|has|covered|reviewed|checked|audited)(?:ed)? (?:an? |any )?(?:item|entry|coverage|record)/i,
+];
+
+/**
+ * Does the text read like an admission that nobody looked?
+ *
+ * The patterns are matched over the reason AND the evidence, because
+ * either one can carry the admission.
+ */
+export function looksLikeTableCoverageReason(text) {
+	const value = String(text ?? '');
+	return TABLE_COVERAGE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+/**
+ * The A/AA criteria this table does NOT carry, and what was decided
+ * about each of them.
  *
  * WCAG 2.2 has 55 Level A / AA criteria (31 at Level A, 24 at Level
  * AA; see {@link WCAG_22_A_AA_UNIVERSE}). {@link WCAG_22_CRITERIA}
@@ -296,115 +423,300 @@ export const WCAG_22_CRITERIA = Object.fromEntries(
  * two lists never overlap.
  *
  * The level and the name are taken from {@link WCAG_22_A_AA_UNIVERSE};
- * only the reason is written here. The reason text is Japanese because
- * the documentation table carries the same text and the gate compares
- * the two (`scope-decision-doc-mismatch`); the rest of this file stays
+ * only the decision itself is written here. Every decision carries:
+ *
+ *   - `disposition` — one of {@link SCOPE_DISPOSITIONS};
+ *   - `reason` — what the decision is about;
+ *   - `evidence` — the product fact that closes it (`not-applicable`),
+ *     or what would close it (`applicable-unverified`);
+ *   - `reviewer` / `steps` — who has to do the remaining work and how
+ *     to reproduce it (`applicable-unverified` only).
+ *
+ * The reason / evidence / steps text is Japanese because the
+ * documentation table carries the same text and the gate compares the
+ * two (`scope-decision-doc-mismatch`); the rest of this file stays
  * English.
  */
 export const SCOPE_DECISIONS = [
-	{ sc: '1.2.1', reason: '事前録音の音声・動画だけのコンテンツを出荷していない。' },
+	{
+		sc: '1.2.1',
+		disposition: 'not-applicable',
+		reason: '事前録音の音声・動画だけのコンテンツを出荷していない。',
+		evidence:
+			'`src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く（`src/editorial/reduced-motion.ts` の該当箇所は将来の自動再生メディアを検出する条文）、事前録音のメディアを同梱する Tool も無い（`src/tools/manifest.json` にメディアの記載が無い）。',
+	},
 	{
 		sc: '1.2.3',
+		disposition: 'not-applicable',
 		reason: '事前録音の映像を出荷していない（1.2.1 と同じ理由）。',
+		evidence:
+			'1.2.1 と同じ。`src/**` に `<video>` 要素が無く、事前録音の映像を同梱する Tool も無い。',
 	},
 	{
 		sc: '1.2.5',
+		disposition: 'not-applicable',
 		reason:
 			'事前録音の映像・音声を出荷していないため、音声説明の代替手段を用意しない（1.2.1 と同じ理由）。',
+		evidence:
+			'1.2.1 と同じ。`src/**` に `<video>` / `<audio>` 要素が無く、事前録音の映像・音声を同梱する Tool も無い。',
 	},
 	{
 		sc: '1.3.3',
-		reason: '感覚的な特徴だけに頼って指示する表現を使っていない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'感覚的な特徴（位置・形・色・音）に依存した指示の候補が 1 件ある。ホームのリアクション欄の空表示は「下のボタンから送ってみましょう」と位置で指示している（`src/home/reactions/widget.tsx`）。ただしコントロールの種類「ボタン」も併記しているため、位置だけに依存しているかは未判定。',
+		evidence:
+			'公開画面の指示文を人が読み、感覚的な特徴だけで操作を特定している文が 1 件も無いことを確認する。候補は上記の空表示文と、各フォームの説明文。',
+		reviewer: 'owner',
+		steps: [
+			'開発サーバーを起動して `/` を開き、リアクション欄が空のときの文言を読む（`src/home/reactions/widget.tsx`）。',
+			'`/about`・`/contact`・`/portfolio`・`/tools` を開き、指示文が位置・形・色・音のどれか 1 つにだけ依存していないか読む。',
+			'位置だけに依存する文があれば、その文がコントロールの種類や役割を併記しているかを判断する。',
+			'判定と根拠（該当した文と併記の有無）を記録する。',
+		],
 	},
 	{
 		sc: '1.4.2',
+		disposition: 'not-applicable',
 		reason: '2 秒以上鳴り止まない音が自動再生する UI を持たない。',
+		evidence:
+			'`src/**` に `<audio>` / `<video>` 要素も `autoplay` 属性も無く、音声を自動再生するコードも無い。',
 	},
 	{
 		sc: '1.4.5',
-		reason: '画像の中に文字を埋め込む表現を使っていない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'文字を画像として描画している箇所がある。ホームのアクセスカウンタは数字を WebP の 1 枚ずつ（`src/home/digits/*.webp`）で描画している。',
+		evidence:
+			'カウンタの桁を実際のテキスト（等幅数字）に置き換えられるか、例外（特定の表示上の必然性）が成立するかを人が判断する。',
+		reviewer: 'owner',
+		steps: [
+			'`/` を開き、アクセスカウンタの桁が `<img>` 画像で描画されていることを確認する（`src/home/digits/*.webp`）。',
+			'桁を囲む `role="img"` の `aria-label` が数値を読み上げられることを確認する。',
+			'桁をテキスト描画（`font-variant-numeric: tabular-nums`）に置き換えられるかを判断する。',
+			'置き換え可能なら例外は成立しない。判定と根拠を記録する。',
+		],
 	},
 	{
 		sc: '2.1.4',
+		disposition: 'not-applicable',
 		reason: '1 文字のショートカットキーを使う操作を用意していない。',
+		evidence:
+			'`src/**` の keydown ハンドラは `Escape`・矢印キー・`Home` / `End` のみで、単一文字のショートカットは無い（`src/editorial/nav/PublicNav.tsx`、`src/keyboard/components/KeyboardPage.tsx`、`src/home/reactions/widget.tsx`）。',
 	},
 	{
 		sc: '2.2.1',
-		reason: '時間の制限のある操作を用意していない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'時間の制限のある操作を 1 つ出荷している。管理画面の API キー発行には 5 分の step-up 確認窓（`STEP_UP_MAX_AGE_SECONDS` = 300）が残り、窓が切れると発行できなくなる。公開画面には時間制限が無いが、管理画面を適合の主張の範囲に含めるかどうかの判断がまだ無い。',
+		evidence:
+			'step-up 窓が SC 2.2.1 の「内容による時間の制限」に当たるかどうかと、管理画面を適合の主張の範囲に含めるかどうかを判断する。',
+		reviewer: 'owner',
+		steps: [
+			'管理画面にログインして `/admin/keys` を開き、step-up 確認（パスワード確認）の窓が 5 分であることを表示していることを確認する（`src/admin/keys/step-up-panel.tsx`）。',
+			'窓が切れたあとの挙動（step-up が失われ、発行できなくなる等）を確認する。',
+			'認証前の画面（`/`・`/about`・`/contact`・`/portfolio`・`/tools`・`/admin/login`・`/admin/invitations_/accept`）に時間制限のある操作が無いかを確認する。',
+			'管理画面を適合の主張に含めるかどうか、含める場合はこの窓が SC 2.2.1 に当たるかを判断し、判定と根拠を記録する。',
+		],
 	},
 	{
 		sc: '2.2.2',
+		disposition: 'not-applicable',
 		reason: '2 秒以上動き続ける自動更新アニメーションを使っていない。',
+		evidence:
+			'`src/**` で発行される `animation-name` はカウンタの桁ロールアップ（320 ms）のみで、無限ループも 5 秒を超える自動更新も無い（`src/home/access/tiles.tsx`）。',
 	},
 	{
 		sc: '2.3.1',
+		disposition: 'not-applicable',
 		reason: '1 秒間に 3 回以上点滅する表現を使っていない。',
+		evidence:
+			'`src/**` に点滅するアニメーションが無く、唯一のアニメーション（カウンタの桁ロールアップ）は 320 ms で 1 回だけ再生される（`src/home/access/tiles.tsx`）。',
 	},
 	{
 		sc: '2.4.4',
-		reason: 'リンクの目的を文脈ごとに検査する項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'リンクの目的が文脈だけでは判断しにくい可能性がある。リンク文言だけの記録はできるが、文脈ごとの判断は人がする必要がある（例: 「Portfolio を開く」「記録を開く / Open the record」「← Previous」）。',
+		evidence:
+			'各公開画面のリンク文言を、リンク先を見ずに記録し、直前の文・ページの主題・リンク文言だけで目的が分かるかを判断する。',
+		reviewer: 'owner',
+		steps: [
+			'公開画面（`/`・`/about`・`/contact`・`/portfolio`・`/portfolio/my-web-2026`・`/tools`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を 1 枚ずつ開く。',
+			'各ページのリンク文言を、リンク先を見ずにそのまま記録する。',
+			'各リンクが「リンク文言 + 直前の文 + ページの主題」だけで目的が分かるかを判断する。',
+			'判断できないリンクがあれば、文言と前後の文を添えて報告し、判定を記録する。',
+		],
 	},
 	{
 		sc: '2.4.5',
-		reason: '複数の到達経路を検査する項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'複数の到達経路を出す必要がある。公開ナビ（`src/editorial/nav/PublicNav.tsx`）と `GET /sitemap.xml` は同じ URL 群を advertise するが、公開ナビを表示しない画面がある（`/`・`/tools`・`/tools/<slug>`）。公開ナビからも内部リンクからも到達できず、Sitemap にも無い URL があれば、到達経路は 1 通りしかない。',
+		evidence:
+			'各公開 URL について、公開ナビ・内部リンク・サイトマップの何通りで到達できるかを数え、1 通りしかない URL を洗い出す。',
+		reviewer: 'owner',
+		steps: [
+			'`GET /sitemap.xml` を取得し、掲載されている URL を記録する。',
+			'各公開 URL について、(a) 公開ナビ、(b) 内部リンク、(c) サイトマップ のうち何通りで到達できるかを記録する。',
+			'1 通りしかない URL を洗い出す（`/projects/dotfiles` が候補）。',
+			'判定と、1 通りしかない URL が有ればその URL を記録する。',
+		],
 	},
 	{
 		sc: '2.5.1',
+		disposition: 'not-applicable',
 		reason: 'パス操作（スワイプなど）を使う操作を用意していない。',
+		evidence: '`src/**` に `touchstart` / `touchmove` やパスベクトルのハンドラが無い。',
 	},
 	{
 		sc: '2.5.2',
+		disposition: 'not-applicable',
 		reason: '単一のポインタ操作だけで操作できる UI に絞っている。',
+		evidence:
+			'`src/**` に複数ポインタ（マルチタッチ）の操作が無い。`onPointer*` と `touch*` のハンドラ自体が無い。',
 	},
 	{
 		sc: '2.5.3',
-		reason: 'アクセシブル名の検査は SC 4.1.2 側に集約している。',
+		disposition: 'applicable-unverified',
+		reason:
+			'可視ラベルとアクセシブル名の不一致が既知の違反として残っている。`/` の capability リンクは可視テキストが「Portfolio を開く」で `aria-label` は「ポートフォリオ を開く」、`/portfolio` の facet ボタンも可視テキストと `aria-label` が食い違う（`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch`）。',
+		evidence:
+			'可視テキストが `aria-label` に含まれるかを全リンク・ボタンで判断し、食い違う箇所を洗い出す。',
+		reviewer: 'owner',
+		steps: [
+			'`pnpm run a11y:axe:check` を実行し、`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch` 記録（`/` の `a[aria-label="ポートフォリオ を開く"]` と `/portfolio` の facet ボタン）を確認する。',
+			'`/` の capability リンクごとに、可視テキストと `aria-label` を突き合わせる。',
+			'`/portfolio` の facet ボタンごとに、可視テキストと `aria-label` を突き合わせる。',
+			'不一致ごとに `aria-label` を直すか可視テキストを直すかを判断し、判定と該当箇所を記録する。',
+		],
 	},
 	{
 		sc: '2.5.4',
+		disposition: 'not-applicable',
 		reason: '端末を振って操作する機能を持たない。',
+		evidence: '`src/**` に `DeviceMotion` / `DeviceOrientation` を使うコードが無い。',
 	},
 	{
 		sc: '2.5.7',
+		disposition: 'not-applicable',
 		reason: 'ドラッグで操作する UI（スライダーなど）を持たない。',
+		evidence:
+			'`src/**` にドラッグ操作のハンドラが無い。`draggable="false"`（`src/home/access/tiles.tsx`）は画像のドラッグ抑止で、ドラッグ操作の提供ではない。',
 	},
 	{
 		sc: '3.2.1',
+		disposition: 'not-applicable',
 		reason: 'フォーカスしただけで自動で開く UI を持たない。',
+		evidence: '`src/**` に `onFocus` / `onFocusCapture` のハンドラが無い。',
 	},
 	{
 		sc: '3.2.2',
+		disposition: 'not-applicable',
 		reason: '入力値の変更で画面が自動で切り替わる UI を持たない。',
+		evidence:
+			'`src/**` の `onChange` は制御された入力の状態更新だけで、ページ遷移・フォーカス移動・別の表示の生成を起こさない（`src/routes/admin.emoji-catalog.tsx`、`src/routes/admin.keys.tsx`、`src/admin/invitations/accept-view.tsx`）。',
 	},
 	{
 		sc: '3.2.3',
-		reason: 'ページを越えたナビゲーションの順序を検査する項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'ページを越えたナビゲーションがある。公開ナビは全画面で共通の 1 つのコンポーネント（`src/editorial/nav/PublicNav.tsx`）だが、公開ナビを表示しない画面もある（`/`・`/tools`・`/tools/<slug>`）。順序が全画面で一致するかは未判定。',
+		evidence: '公開ナビを表示する全画面でリンクの相対順序を記録し、一致するかを確認する。',
+		reviewer: 'owner',
+		steps: [
+			'公開ナビを表示する画面（`/about`・`/contact`・`/portfolio`・`/portfolio/my-web-2026`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を開く。',
+			'各画面の `<nav>` 内のリンク順序を左から右へ記録する。',
+			'記録した順序が全画面で一致するかを確認する。',
+			'公開ナビを表示しない画面（`/`・`/tools`・`/tools/<slug>`）が他の画面と同じ順序の経路を提供しているかを確認する。',
+			'順序が異なる画面があれば、その画面と該当箇所を記録する。',
+		],
 	},
 	{
 		sc: '3.2.4',
-		reason: '同じ機能の名称がページを越えて揃っているかを検査する項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'同じ機能の名称がページを越えて揃っているかを確認する必要がある。公開ナビのラベルとパンくずのラベルは複数の画面で使われる（`src/editorial/nav/route-labels.ts`）。揃っているかは未判定。',
+		evidence:
+			'同じ機能に付けられる名称（例: 「お問い合わせ / Contact」「Portfolio」）を画面間で突き合わせ、揃っていない機能を洗い出す。',
+		reviewer: 'owner',
+		steps: [
+			'公開ナビを表示する全画面を開く。',
+			'同じ機能（ナビ項目・パンくず・ページの主題）が画面を越えて同じ名称で示されているかを比較する。',
+			'名称が異なる機能があれば、その機能名と画面を記録する。',
+		],
 	},
 	{
 		sc: '3.2.6',
-		reason: 'ヘルプの置き方の検査項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'助け（問い合わせ）の入口がある。`/contact` への入口がホームの Contact 節と公開ナビにあり、その位置が画面によって異なる可能性がある。相対順序が揃っているかは未判定。',
+		evidence:
+			'各公開画面に助けの入口があるか、ある場合その位置（何番目のリンクか・何の直後か）を記録して比較する。',
+		reviewer: 'owner',
+		steps: [
+			'公開画面（`/`・`/about`・`/contact`・`/portfolio`・`/tools`・`/design-system`・`/keyboard`・`/projects/dotfiles`）を開き、助けの入口（`/contact` へのリンク）があるかを記録する。',
+			'入口がある画面について、その位置（何番目のリンクか・何の直後か）を記録する。',
+			'位置が画面間で揃っているかを確認する。',
+			'揃っていない画面があれば、その画面と位置を記録する。',
+		],
 	},
 	{
 		sc: '3.3.3',
-		reason: 'エラーメッセージの修正提案を個別に検査する項目をこの表に持たない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'入力の拒否メッセージを持つフォームがある。`/admin/invitations_/accept` は `FAILURE_COPY`（`src/admin/invitations/accept-view.tsx`）で修正の提案を含む文言を持つが、`/admin/login` は Better Auth の 401 を受けて独自のパスワードエラーを描かない。すべての拒否に提案が揃っているかは未判定。',
+		evidence:
+			'各拒否状態のメッセージが修正の提案を含むかを確認し、提案が欠けている拒否を洗い出す。',
+		reviewer: 'owner',
+		steps: [
+			'`/admin/invitations_/accept` を開き、無効なトークン・期限切れ・使用済み・メールアドレス重複・パスワード不足の各状態を再現する（`FAILURE_COPY` の各文言）。',
+			'各メッセージが修正の提案を含むか（例: 「管理者から再発行を受けてください」「8 文字以上」）を記録する。',
+			'`/admin/login` で誤ったパスワードを投入し、画面のフィードバックを記録する（`src/routes/admin.login.tsx` は Better Auth の 401 を受けて独自のエラーを描かない）。',
+			'提案が欠けている拒否があれば、判定と該当文言を記録する。',
+		],
 	},
 	{
 		sc: '3.3.4',
-		reason: '法的 / 財務 / データの送信を扱う入力が無い。',
+		disposition: 'applicable-unverified',
+		reason:
+			'データを送信する入力がある。管理画面の招待作成・API キー発行・画像登録はデータを変更するが、送信前の確認・送信後の取り消し・入力値の確認のいずれかが SC 3.3.4 の例外に当たるかは未判定。',
+		evidence:
+			'各送信が SC 3.3.4 の対象（法的・財務・利用者制御可能データ）に当たるかを確認し、3 つの例外のいずれかで満たされるかを判断する。',
+		reviewer: 'owner',
+		steps: [
+			'管理画面のデータ送信面（`/admin/invitations` の招待作成、`/admin/keys` の API キー発行、`/admin/images` の画像登録）を開く。',
+			'各送信が SC 3.3.4 の対象に当たるか（法的・財務・利用者制御可能データの変更か）を判断する。',
+			'変更前の確認・変更後の取り消し（招待の revoke、キーと画像の削除）が用意されているかを画面上で確認する。',
+			'3 つの例外のいずれかで満たされるかを判断し、判定と根拠を記録する。',
+		],
 	},
 	{
 		sc: '3.3.8',
-		reason: '認証は管理画面の対象で、この表（公開画面と story）は扱わない。',
+		disposition: 'applicable-unverified',
+		reason:
+			'認証の画面を公開している。`/admin/login` はメールアドレスとパスワードの認証で、記憶テストや謎解きは無いが、貼り付け可否とパスワードマネージャ対応は未判定。',
+		evidence: '貼り付け可否・パスワードマネージャの挿入可否・認知機能テストの有無を人が確認する。',
+		reviewer: 'owner',
+		steps: [
+			'`/admin/login` を開く。',
+			'パスワード欄とメールアドレス欄をそれぞれクリックして貼り付け（Cmd / Ctrl + V）し、貼り付けが拒否されないことを確認する。',
+			'パスワードマネージャが値を挿入できるかを確認する（`autoComplete="username"` / `current-password`）。',
+			'記憶テスト・謎解きのような認知機能テストが要求されていないことを確認する。',
+			'3 点が満たされているかを判断し、判定と根拠を記録する。',
+		],
 	},
 ].map((decision) => ({
 	sc: decision.sc,
 	level: WCAG_22_A_AA_UNIVERSE[decision.sc].level,
 	name: WCAG_22_A_AA_UNIVERSE[decision.sc].name,
+	disposition: decision.disposition,
 	reason: decision.reason,
+	evidence: decision.evidence,
+	...(decision.reviewer ? { reviewer: decision.reviewer } : {}),
+	...(decision.steps ? { steps: decision.steps } : {}),
+	...(decision.verifiedBy ? { verifiedBy: decision.verifiedBy } : {}),
+	...(decision.verifiedAt ? { verifiedAt: decision.verifiedAt } : {}),
 }));
 
 /**
@@ -414,6 +726,15 @@ export const SCOPE_DECISIONS = [
  * constant, so the two can never drift apart silently.
  */
 export const SCOPE_DECISION_DOC = 'docs/verification/a11y/wcag-review-matrix.md';
+
+/**
+ * Where the scope decisions live.
+ *
+ * The decisions are the GATE's source of truth (Issue #722): the
+ * documentation is their mirror, and the ledger (`quality/…json`) does
+ * not hold a second copy.
+ */
+export const SCOPE_DECISION_SOURCE = 'scripts/check-a11y-wcag-review-matrix.mjs';
 
 /**
  * Compare the criterion universe with the two lists that partition it.
@@ -735,6 +1056,11 @@ export const RULES = [
 	'criterion-universe-mismatch',
 	'compliance-claim-unbacked',
 	'scope-decision-doc-mismatch',
+	'scope-disposition-invalid',
+	'scope-exclusion-not-a-product-fact',
+	'scope-unverified-missing-review-plan',
+	'scope-verified-without-review-record',
+	'release-assessment-unbacked',
 	'fixture-expectation-mismatch',
 	'fixture-contract-missing',
 ];
@@ -1131,6 +1457,16 @@ export function auditMatrix(
 			);
 			continue;
 		}
+		// The same rule the scope decisions obey: "this table has no
+		// item for it" is an admission that nobody looked, not a fact
+		// about the published product.
+		if (looksLikeTableCoverageReason(entry.reason)) {
+			add(
+				'scope-exclusion-not-a-product-fact',
+				MATRIX_PATH,
+				`the excluded criterion ${sc} is excluded with a reason that reads like an admission that nobody looked ("${entry.reason}"); an exclusion needs a fact about the published product`,
+			);
+		}
 		if (coveredCriteria.has(sc)) {
 			add(
 				'criterion-conflict',
@@ -1197,6 +1533,38 @@ export function auditMatrix(
 				claim.file,
 				`${claim.phrase} is claimed on line ${claim.line}, but ${missing.join('; ')}`,
 			);
+		}
+	}
+
+	/* --- the release assessment ------------------------------------ */
+	// The ledger may state what the release assessment is. It may not
+	// state that the AA audit is COMPLETE while the record says
+	// otherwise: an overclaim in the ledger is the same defect as an
+	// overclaim in a document.
+	const assessment = matrix.releaseAssessment;
+	if (assessment && typeof assessment === 'object' && !Array.isArray(assessment)) {
+		if (assessment.aaAuditComplete === true) {
+			const missing = [];
+			if (humanVerified.length === 0) missing.push('no human verification exists');
+			if (outstanding.length > 0) {
+				missing.push(`${outstanding.length} manual item(s) are still outstanding`);
+			}
+			if (humanFailed.length > 0) {
+				missing.push(`${humanFailed.length} manual item(s) failed the review`);
+			}
+			const unverified = SCOPE_DECISIONS.filter(
+				(decision) => decision.disposition === 'applicable-unverified',
+			);
+			if (unverified.length > 0) {
+				missing.push(`${unverified.length} criterion/criteria are applicable but unverified`);
+			}
+			if (missing.length > 0) {
+				add(
+					'release-assessment-unbacked',
+					MATRIX_PATH,
+					`the release assessment claims the WCAG 2.2 AA audit is complete, but ${missing.join('; ')}`,
+				);
+			}
 		}
 	}
 
@@ -1706,8 +2074,30 @@ export function auditFixtures({ repoRoot = REPO_ROOT, packageScripts = null } = 
  * the scope decisions
  * ------------------------------------------------------------------ */
 
-/** The header of the scope-decision table in the documentation. */
-export const SCOPE_DECISION_TABLE_HEADER = ['SC', 'レベル', '名前', '理由'];
+/**
+ * The header of the scope-decision table in the documentation.
+ *
+ * Every field of a scope decision is mirrored: the disposition, the
+ * reason, the evidence (or what would close it), the reviewer and the
+ * reproduction steps. A field that is missing in the document is a
+ * mismatch, exactly like a field that differs.
+ */
+export const SCOPE_DECISION_TABLE_HEADER = [
+	'SC',
+	'レベル',
+	'名前',
+	'区分',
+	'理由',
+	'証跡',
+	'検査者',
+	'手順',
+];
+
+/** The cell that stands for "this field is not present". */
+export const EMPTY_CELL = '—';
+
+/** The separator the documentation uses between two reproduction steps. */
+export const STEP_SEPARATOR = '<br>';
 
 /**
  * Read the scope-decision table out of the documentation.
@@ -1736,7 +2126,19 @@ export function parseScopeDecisionTable(text) {
 			continue;
 		}
 		if (cells.every((cell) => /^-+$/.test(cell))) continue;
-		rows.push({ sc: cells[0], level: cells[1], name: cells[2], reason: cells[3] });
+		rows.push({
+			sc: cells[0],
+			level: cells[1],
+			name: cells[2],
+			disposition: cells[3],
+			reason: cells[4],
+			evidence: cells[5],
+			reviewer: cells[6] === EMPTY_CELL || cells[6] === '' ? null : cells[6],
+			steps:
+				cells[7] === EMPTY_CELL || cells[7] === ''
+					? []
+					: cells[7].split(STEP_SEPARATOR).map((step) => step.trim()),
+		});
 	}
 	return rows;
 }
@@ -1745,19 +2147,21 @@ export function parseScopeDecisionTable(text) {
  * Compare the documented scope decisions with the constant.
  *
  * Every criterion of the constant must be documented with the same
- * level, the same name and the same reason, and the documentation must
- * not list a criterion the constant does not hold. A drift is a
- * violation: the script and the document are two views of one decision.
+ * level, the same name, the same disposition, the same reason, the
+ * same evidence, the same reviewer and the same reproduction steps,
+ * and the documentation must not list a criterion the constant does
+ * not hold. A drift is a violation: the script and the document are
+ * two views of one decision.
  */
-export function compareScopeDecisions(rows) {
+export function compareScopeDecisions(rows, decisions = SCOPE_DECISIONS) {
 	const problems = [];
 	const documented = new Map(rows.map((row) => [row.sc, row]));
-	if (rows.length !== SCOPE_DECISIONS.length) {
+	if (rows.length !== decisions.length) {
 		problems.push(
-			`the documentation lists ${rows.length} scope decision(s) while the gate holds ${SCOPE_DECISIONS.length}`,
+			`the documentation lists ${rows.length} scope decision(s) while the gate holds ${decisions.length}`,
 		);
 	}
-	for (const decision of SCOPE_DECISIONS) {
+	for (const decision of decisions) {
 		const row = documented.get(decision.sc);
 		if (!row) {
 			problems.push(`SC ${decision.sc} (${decision.level}) is not documented`);
@@ -1769,12 +2173,33 @@ export function compareScopeDecisions(rows) {
 		if (row.name !== decision.name) {
 			problems.push(`SC ${decision.sc} is documented as "${row.name}", not "${decision.name}"`);
 		}
+		if (row.disposition !== decision.disposition) {
+			problems.push(
+				`SC ${decision.sc} is documented with the disposition "${row.disposition}", not "${decision.disposition}"`,
+			);
+		}
 		if (row.reason !== decision.reason) {
 			problems.push(`SC ${decision.sc} is documented with another reason`);
 		}
+		if (row.evidence !== decision.evidence) {
+			problems.push(`SC ${decision.sc} is documented with another evidence`);
+		}
+		const reviewer = decision.reviewer ?? null;
+		if ((row.reviewer ?? null) !== reviewer) {
+			problems.push(
+				`SC ${decision.sc} is documented with the reviewer "${row.reviewer ?? EMPTY_CELL}", not "${reviewer ?? EMPTY_CELL}"`,
+			);
+		}
+		const steps = decision.steps ?? [];
+		if (
+			row.steps.length !== steps.length ||
+			row.steps.some((step, index) => step !== steps[index])
+		) {
+			problems.push(`SC ${decision.sc} is documented with another reproduction plan`);
+		}
 	}
 	for (const row of rows) {
-		if (!SCOPE_DECISIONS.some((decision) => decision.sc === row.sc)) {
+		if (!decisions.some((decision) => decision.sc === row.sc)) {
 			problems.push(`SC ${row.sc} is documented but the gate does not hold it`);
 		}
 	}
@@ -1787,7 +2212,7 @@ export function compareScopeDecisions(rows) {
  * The gate holds the decision; the documentation states it. The two
  * have to agree, or the record is not trustworthy.
  */
-export function auditScopeDecisions({ repoRoot = REPO_ROOT } = {}) {
+export function auditScopeDecisions({ repoRoot = REPO_ROOT, decisions = SCOPE_DECISIONS } = {}) {
 	const path = resolve(repoRoot, SCOPE_DECISION_DOC);
 	if (!existsSync(path)) {
 		return [
@@ -1799,11 +2224,213 @@ export function auditScopeDecisions({ repoRoot = REPO_ROOT } = {}) {
 		];
 	}
 	const rows = parseScopeDecisionTable(readFileSync(path, 'utf8'));
-	return compareScopeDecisions(rows).map((message) => ({
+	return compareScopeDecisions(rows, decisions).map((message) => ({
 		rule: 'scope-decision-doc-mismatch',
 		file: SCOPE_DECISION_DOC,
 		message,
 	}));
+}
+
+/**
+ * Audit the DISPOSITIONS of the scope decisions.
+ *
+ * This is the rule that stops "we have no item for it in this table"
+ * from counting as "this criterion does not apply":
+ *
+ *   - `scope-disposition-invalid`
+ *       The decision has no disposition, or a disposition that is not
+ *       one of the three, or the fields its disposition requires are
+ *       missing, or it carries fields its disposition forbids.
+ *   - `scope-exclusion-not-a-product-fact`
+ *       A `not-applicable` decision whose reason or evidence says
+ *       "this table has no item for it" / "no owner" instead of naming
+ *       a fact about the published product.
+ *   - `scope-unverified-missing-review-plan`
+ *       An `applicable-unverified` decision that does not say who has
+ *       to review it and how to reproduce the check.
+ *   - `scope-verified-without-review-record`
+ *       An `applicable-and-verified` decision without a human review
+ *       record. The repository holds no such record, and an agent may
+ *       not produce one.
+ *
+ * The decisions are taken as DATA so that the rules can be exercised
+ * with a decision that breaks them.
+ */
+export function auditScopeDispositions(
+	decisions = SCOPE_DECISIONS,
+	{ file = SCOPE_DECISION_SOURCE } = {},
+) {
+	const violations = [];
+	const list = Array.isArray(decisions) ? decisions : [];
+	for (const decision of list) {
+		const sc = decision?.sc ?? '(no sc)';
+		const disposition = decision?.disposition;
+		if (!SCOPE_DISPOSITIONS.includes(disposition)) {
+			violations.push({
+				rule: 'scope-disposition-invalid',
+				file,
+				message: `SC ${sc}: the disposition must be one of ${SCOPE_DISPOSITIONS.join(' / ')} (found ${JSON.stringify(disposition)})`,
+			});
+			continue;
+		}
+		const contract = SCOPE_DISPOSITION_CONTRACT[disposition];
+		for (const field of contract.requires) {
+			if (!scopeFieldPresent(decision[field], field)) {
+				const rule =
+					disposition === 'applicable-unverified' && (field === 'reviewer' || field === 'steps')
+						? 'scope-unverified-missing-review-plan'
+						: disposition === 'applicable-and-verified' &&
+								(field === 'verifiedBy' || field === 'verifiedAt')
+							? 'scope-verified-without-review-record'
+							: 'scope-disposition-invalid';
+				violations.push({
+					rule,
+					file,
+					message: `SC ${sc}: a "${disposition}" decision needs ${field}`,
+				});
+			}
+		}
+		for (const field of contract.forbids) {
+			if (decision[field] !== undefined && decision[field] !== null && decision[field] !== '') {
+				violations.push({
+					rule: 'scope-disposition-invalid',
+					file,
+					message: `SC ${sc}: a "${disposition}" decision must not carry ${field}`,
+				});
+			}
+		}
+		if (disposition === 'not-applicable') {
+			for (const field of ['reason', 'evidence']) {
+				if (!looksLikeTableCoverageReason(decision[field])) continue;
+				violations.push({
+					rule: 'scope-exclusion-not-a-product-fact',
+					file,
+					message: `SC ${sc}: the ${field} reads like an admission that nobody looked ("${decision[field]}"); a "not-applicable" decision needs a fact about the published product, not a statement about the table`,
+				});
+			}
+		}
+	}
+	return violations;
+}
+
+/**
+ * Is a scope-decision field present?
+ *
+ * `steps` is an array of non-empty strings; every other field is a
+ * non-empty string.
+ */
+export function scopeFieldPresent(value, field) {
+	if (field === 'steps') {
+		return Array.isArray(value) && value.length > 0 && value.every((entry) => filledString(entry));
+	}
+	return filledString(value) !== null;
+}
+
+/**
+ * The scope-decision fixtures: negative controls and the positive
+ * control beside them.
+ *
+ * The set is EXACT, for the same reason the matrix fixture set is:
+ * a fixture that quietly lost a file would verify less than it claims.
+ */
+export const SCOPE_FIXTURE_ROOT = `${FIXTURE_ROOT}/scope`;
+export const EXPECTED_SCOPE_FIXTURE_FILES = {
+	pass: ['01-product-fact-exclusion.json'],
+	fail: [
+		'01-table-coverage-exclusion.json',
+		'02-unverified-without-steps.json',
+		'03-verified-without-review-record.json',
+	],
+};
+
+/**
+ * Audit every scope-decision fixture.
+ *
+ * A `pass` fixture must produce no violation; a `fail` fixture must
+ * produce **exactly** the rules it declares — the same contract the
+ * matrix fixtures use.
+ */
+export function auditScopeFixtures({ repoRoot = REPO_ROOT } = {}) {
+	const violations = [];
+	const files = [];
+	for (const [expectation, directory] of [
+		['pass', `${SCOPE_FIXTURE_ROOT}/pass`],
+		['fail', `${SCOPE_FIXTURE_ROOT}/fail`],
+	]) {
+		const absolute = resolve(repoRoot, directory);
+		const found = collectFixtureFiles(absolute);
+		if (found.length === 0) {
+			violations.push({
+				rule: 'fixture-contract-missing',
+				file: directory,
+				message: `${directory} holds no fixture file; the ${expectation} fixture has no source`,
+			});
+			continue;
+		}
+		const expected = EXPECTED_SCOPE_FIXTURE_FILES[expectation] ?? [];
+		const foundNames = found.map((path) => path.slice(path.lastIndexOf('/') + 1));
+		for (const name of expected) {
+			if (!foundNames.includes(name)) {
+				violations.push({
+					rule: 'fixture-expectation-mismatch',
+					file: `${directory}/${name}`,
+					message: `the ${expectation} scope fixture ${name} is missing; the expected fixture set is ${expected.join(', ')}`,
+				});
+			}
+		}
+		for (const name of foundNames) {
+			if (!expected.includes(name)) {
+				violations.push({
+					rule: 'fixture-expectation-mismatch',
+					file: `${directory}/${name}`,
+					message: `the ${expectation} scope fixture ${name} is not part of the expected fixture set (${expected.join(', ')})`,
+				});
+			}
+		}
+		for (const path of found) {
+			const relativePath = path.slice(repoRoot.length + 1);
+			let fixture = null;
+			try {
+				fixture = readJson(path);
+			} catch (error) {
+				violations.push({
+					rule: 'fixture-contract-missing',
+					file: relativePath,
+					message: `the scope fixture cannot be parsed: ${error.message}`,
+				});
+				continue;
+			}
+			const decisions = Array.isArray(fixture) ? fixture : fixture?.decisions;
+			if (!Array.isArray(decisions) || decisions.length === 0) {
+				violations.push({
+					rule: 'fixture-contract-missing',
+					file: relativePath,
+					message: 'the scope fixture holds no decisions',
+				});
+				continue;
+			}
+			const produced = auditScopeDispositions(decisions, { file: relativePath });
+			const expects = Array.isArray(fixture?.$expects) ? fixture.$expects : [];
+			for (const message of compareFixtureExpectations(
+				expectation,
+				expects,
+				produced.map((violation) => violation.rule),
+			)) {
+				violations.push({
+					rule: 'fixture-expectation-mismatch',
+					file: relativePath,
+					message,
+				});
+			}
+			files.push({
+				path: relativePath,
+				expectation,
+				expects,
+				produced: [...new Set(produced.map((violation) => violation.rule))],
+			});
+		}
+	}
+	return { files, violations };
 }
 
 /* ------------------------------------------------------------------ *
@@ -1813,12 +2440,12 @@ export function auditScopeDecisions({ repoRoot = REPO_ROOT } = {}) {
 /** The human-readable report. */
 export function renderGateSummary(evidence) {
 	const lines = [];
-	lines.push('WCAG 2.2 A/AA manual review matrix — Issue #410');
+	lines.push('WCAG 2.2 A/AA manual review matrix — Issue #410 / Issue #722');
 	lines.push(
 		`matrix: ${evidence.matrixPath} (revision ${evidence.updatedAt}, review window ${evidence.reviewWindowDays} day(s))`,
 	);
 	lines.push(
-		`${evidence.items.length} item(s): ${evidence.machineChecked} machine-checked, ${evidence.humanReviewed} human review(s) — ${evidence.humanVerified} human-verified, ${evidence.humanFailed} human-failed, ${evidence.outstanding} outstanding`,
+		`${evidence.items.length} item(s): ${evidence.machineChecked} machine-checked (auto-pass), ${evidence.humanReviewed} human review(s) — ${evidence.humanVerified} human-verified, ${evidence.humanFailed} human-failed, ${evidence.outstanding} not-reviewed`,
 	);
 	lines.push('');
 	lines.push('machine-checked (an npm gate decided it — NOT a human verification):');
@@ -1852,7 +2479,41 @@ export function renderGateSummary(evidence) {
 	}
 	lines.push('');
 	lines.push(
-		`scope decisions: ${evidence.scopeDecisions.length} A/AA criteria are outside this table; the list and its reasons live in ${SCOPE_DECISION_DOC}`,
+		`scope decisions: ${evidence.scopeDecisions.length} A/AA criteria are outside this table; the dispositions and their reasons live in ${SCOPE_DECISION_DOC}`,
+	);
+	lines.push(
+		`  not-applicable: ${evidence.dispositionCounts['not-applicable']} (each one carries a fact about the published product)`,
+	);
+	lines.push(
+		`  applicable-unverified: ${evidence.dispositionCounts['applicable-unverified']} (each one names a reviewer and a reproduction plan)`,
+	);
+	lines.push(
+		`  applicable-and-verified: ${evidence.dispositionCounts['applicable-and-verified']} (no owner measurement exists in this repository, and an agent may not produce one)`,
+	);
+	for (const decision of evidence.scopeDecisions) {
+		const owner = decision.reviewer ? ` (${decision.reviewer})` : '';
+		lines.push(
+			`  - SC ${decision.sc} (${decision.level}) ${decision.name} — ${decision.disposition}${owner}`,
+		);
+	}
+	lines.push('');
+	lines.push(
+		"release assessment (the ledger's structure and the audited quality are two different things):",
+	);
+	lines.push(
+		`  ledger structure: GREEN — every criterion has a disposition, every scope decision is mirrored in ${SCOPE_DECISION_DOC}, and every fixture behaves as it declares.`,
+	);
+	lines.push(
+		`  audited quality: NOT PASSED — ${evidence.outstanding} manual item(s) are still outstanding, ${evidence.humanVerified} manual item(s) are human-verified, ${evidence.humanFailed} failed, and ${evidence.dispositionCounts['applicable-unverified']} criterion/criteria are applicable but unverified.`,
+	);
+	lines.push(
+		`  this is NOT a WCAG 2.2 AA audit: ${evidence.machineChecked} of ${evidence.items.length} ledger items are machine-checked. A machine gate cannot decide what a screen reader announces, what the keyboard path feels like, or whether a link text says what the reader needs it to say — no browser or screen-reader confirmation is replaced by a gate.`,
+	);
+	lines.push(
+		'  the outstanding manual items are outstanding: they are assigned to the owner and nobody has performed them.',
+	);
+	lines.push(
+		'  the known axe-core violations tracked by Issue #718 (e2e/a11y/axe-baseline.json and e2e/a11y/axe-storybook-baseline.json) are a SEPARATE, still-open quality item; this gate neither closes nor excuses them.',
 	);
 	lines.push('');
 	lines.push(
@@ -1897,11 +2558,34 @@ export function readPackageScripts(repoRoot = REPO_ROOT) {
 	}
 }
 
+/**
+ * Read a scope-decision file.
+ *
+ * The file holds either the decisions themselves or an object with a
+ * `decisions` array. It is how the negative controls are exercised
+ * from the command line: pointing the gate at a decision file that
+ * breaks a rule makes the gate red with that rule.
+ */
+export function loadScopeDecisions(path) {
+	let parsed = null;
+	try {
+		parsed = readJson(path);
+	} catch (error) {
+		throw new Error(`the scope decision file ${path} cannot be parsed: ${error.message}`);
+	}
+	const decisions = Array.isArray(parsed) ? parsed : parsed?.decisions;
+	if (!Array.isArray(decisions) || decisions.length === 0) {
+		throw new Error(`the scope decision file ${path} holds no decisions`);
+	}
+	return decisions;
+}
+
 /** Collect every piece of evidence the gate reports. */
 export function collectEvidence({
 	today = todayIso(),
 	repoRoot = REPO_ROOT,
 	matrixPath = MATRIX_PATH,
+	scopeDecisionsPath = null,
 } = {}) {
 	const absolute = resolve(repoRoot, matrixPath);
 	if (!existsSync(absolute)) {
@@ -1920,7 +2604,15 @@ export function collectEvidence({
 	const packageScripts = readPackageScripts(repoRoot);
 	const audited = auditMatrix(matrix, { today, repoRoot, packageScripts });
 	const fixtures = auditFixtures({ repoRoot, packageScripts });
-	const scopeDecisions = auditScopeDecisions({ repoRoot });
+	const scopeFixtures = auditScopeFixtures({ repoRoot });
+	// The documentation always mirrors the SHIPPED decisions. An
+	// override (`--scope-decisions`) replaces the decisions the rules
+	// are judged against, not the record the documentation states.
+	const scopeDoc = auditScopeDecisions({ repoRoot });
+	const decisions = scopeDecisionsPath
+		? loadScopeDecisions(resolve(repoRoot, scopeDecisionsPath))
+		: SCOPE_DECISIONS;
+	const dispositions = auditScopeDispositions(decisions);
 	const universe = auditCriterionUniverse();
 	return {
 		matrix,
@@ -1938,15 +2630,29 @@ export function collectEvidence({
 		humanReviewed: audited.items.filter((item) => item?.review?.state !== 'auto-pass').length,
 		outstanding: audited.outstanding,
 		machineChecked: audited.machineChecked,
-		scopeDecisions: SCOPE_DECISIONS,
+		scopeDecisions: decisions,
+		dispositionCounts: Object.fromEntries(
+			SCOPE_DISPOSITIONS.map((id) => [
+				id,
+				decisions.filter((decision) => decision.disposition === id).length,
+			]),
+		),
 		fixtures: fixtures.files,
-		violations: [...audited.violations, ...fixtures.violations, ...scopeDecisions, ...universe],
+		scopeFixtures: scopeFixtures.files,
+		violations: [
+			...audited.violations,
+			...fixtures.violations,
+			...scopeDoc,
+			...dispositions,
+			...scopeFixtures.violations,
+			...universe,
+		],
 	};
 }
 
 function usage() {
 	process.stderr.write(
-		'usage: check-a11y-wcag-review-matrix.mjs [--quiet] [--json=FILE] [--today=YYYY-MM-DD] [--matrix=PATH]\n',
+		'usage: check-a11y-wcag-review-matrix.mjs [--quiet] [--json=FILE] [--today=YYYY-MM-DD] [--matrix=PATH] [--scope-decisions=PATH]\n',
 	);
 }
 
@@ -1959,8 +2665,13 @@ function usage() {
  * silently replaced by a default, so a typo cannot turn into "today".
  */
 export function parseOptions(argv = []) {
-	const options = { quiet: false, json: null, today: null, matrix: null };
-	const valued = { '--json': 'json', '--today': 'today', '--matrix': 'matrix' };
+	const options = { quiet: false, json: null, today: null, matrix: null, scopeDecisions: null };
+	const valued = {
+		'--json': 'json',
+		'--today': 'today',
+		'--matrix': 'matrix',
+		'--scope-decisions': 'scopeDecisions',
+	};
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (arg === '--quiet') {
@@ -1998,7 +2709,11 @@ export function runGate(argv = process.argv.slice(2)) {
 	const matrixPath = options.matrix ?? MATRIX_PATH;
 	const jsonOut = options.json;
 
-	const evidence = collectEvidence({ today, matrixPath });
+	const evidence = collectEvidence({
+		today,
+		matrixPath,
+		scopeDecisionsPath: options.scopeDecisions,
+	});
 
 	if (!options.quiet) {
 		process.stdout.write(`${renderGateSummary(evidence)}\n`);

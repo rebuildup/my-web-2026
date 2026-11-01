@@ -258,8 +258,8 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 		file: 'src/home/composer.stories.tsx',
 		title: 'home/HomePage',
 		exports: ['AllReachable', 'Degraded'],
-		expect: 'baseline',
-		note: 'Home composition — the whole home surface composed. The home status list breaks the `<dl>` content model (SC 1.3.1); the ledger records it per story.',
+		expect: 'pass',
+		note: 'Home composition — the whole home surface composed. The home status list no longer breaks the `<dl>` content model (SC 1.3.1) — fixed in Issue #718, so the file measures `pass`.',
 	},
 	{
 		file: 'src/home/format.stories.tsx',
@@ -296,8 +296,8 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 			'IncidentContext',
 			'NarrowViewport',
 		],
-		expect: 'baseline',
-		note: 'Status tiles — the service-health states. The status list breaks the `<dl>` content model (SC 1.3.1); the ledger records it per story.',
+		expect: 'pass',
+		note: 'Status tiles — the service-health states. The status list no longer breaks the `<dl>` content model (SC 1.3.1) — fixed in Issue #718, so the file measures `pass`.',
 	},
 	{
 		file: 'src/http/api-directory/catalog.stories.tsx',

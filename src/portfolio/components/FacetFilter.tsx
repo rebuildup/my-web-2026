@@ -1,7 +1,7 @@
 import { useRouter, useSearch } from '@tanstack/react-router';
+import { css } from '../../../styled-system/css';
 import type { PortfolioFacet } from '../schema';
 import { PORTFOLIO_FACETS } from '../schema';
-import { css } from '../../../styled-system/css';
 
 /**
  * FacetFilter — URL-synced facet toggle (Issue #77).
@@ -27,6 +27,11 @@ import { css } from '../../../styled-system/css';
  *     `aria-pressed` reflecting the active state. Active state is
  *     **not** colour-only — the `aria-pressed` attribute plus a
  *     checkmark glyph (`✓`) inside the chip is the second channel.
+ *   - The chip's accessible name carries the visible label (the JA
+ *     label and the EN label the chip shows) before the word
+ *     `facet`, because WCAG 2.2 SC 2.5.3 (Label in Name) requires
+ *     the accessible name to contain the visible text (Issue #718).
+ *     The visible chip itself is unchanged.
  */
 export interface FacetFilterProps {
 	value: readonly PortfolioFacet[];
@@ -102,7 +107,7 @@ export function FacetFilter({ value }: FacetFilterProps) {
 							key={facet}
 							type="button"
 							aria-pressed={isActive}
-							aria-label={`${label.en} facet${isActive ? ' selected' : ''}`}
+							aria-label={`${label.ja} / ${label.en} facet${isActive ? ' selected' : ''}`}
 							onClick={onToggle(facet)}
 							className={css({
 								display: 'inline-flex',

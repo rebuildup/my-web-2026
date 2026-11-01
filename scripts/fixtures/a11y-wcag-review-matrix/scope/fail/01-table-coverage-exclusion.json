@@ -1,0 +1,14 @@
+{
+	"$comment": "Negative control for Issue #722. The wording is the one this issue removed: \"this table has no item to inspect it\" is NOT an applicability argument, it is an admission that nobody looked. The gate must refuse it with `scope-exclusion-not-a-product-fact`.",
+	"decisions": [
+		{
+			"sc": "2.4.4",
+			"level": "A",
+			"name": "Link Purpose (In Context)",
+			"disposition": "not-applicable",
+			"reason": "リンクの目的を文脈ごとに検査する項目をこの表に持たない。",
+			"evidence": "この表に検査項目が無い。"
+		}
+	],
+	"$expects": ["scope-exclusion-not-a-product-fact"]
+}

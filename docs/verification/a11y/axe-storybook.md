@@ -18,7 +18,7 @@ Issue #393 は公開ルートの描画済み DOM を測った。ここが測る�
 | `e2e/a11y/axe-storybook-manifest.ts` | 監査した story の明示的な記録（ファイル / 公開する story.export 名 / title / 期待する判定 / 理由）。**story ファイルから自動生成しない**（監査した範囲を自動生成すると、監査記録として反証できなくなるため） |
 | `e2e/a11y/axe-storybook-verdict.ts` | 判定の式を 1 か所に置いたもの。ブラウザ実測と静的ゲートの両方が同じ式を使うので、ゲートの判定と実測の判定が食い違えない |
 | `e2e/a11y/axe-storybook.spec.ts` | manifest の各 story を Chromium で開き、axe-core で WCAG 2.2 A/AA の違反を収集し、宣言・実測・台帳の 3 者を突き合わせる |
-| `e2e/a11y/axe-storybook-baseline.json` | 既知の既存違反の台帳（11 story × 1 rule = 11 レコード） |
+| `e2e/a11y/axe-storybook-baseline.json` | 既知の既存違反の台帳。**Issue #718 で記録されていた 11 story × 1 rule = 11 レコードは実装側で直して削除した。現在 0 レコード** |
 | `scripts/check-a11y-axe-storybook.mjs` | 静的ゲート（manifest と台帳の整合、登録 story の実在、自己チェック fixture の再現） |
 | `scripts/capture-a11y-axe-storybook.mjs` | ゲート自身の実測結果から検証画像（WebP）を作る |
 
@@ -114,6 +114,12 @@ reviewer が報告する「manifest を書き換えると新規違反が通る�
 ブラウザ実測は CI の専用ジョブ `storybook axe` が条件なしで毎回走らせるので、
 「ブラウザ実測が走らないから緑」という状態は起こらない。
 
+> **Issue #718 後の現在地**: 11 レコードは「隠して消した」のではなく
+> **実装を直して消した**。ブラウザ実測が緑になるのは違反が無くなったからで、
+> ゲートが緩んだからではない。修正前の markup に戻した負の対照では
+> **11 failed / 90 passed**（`the scan found violation(s) the ledger does not record`）
+> に戻ることを確認している。
+
 ## 適用対象
 
 - Storybook の設定（`.storybook/main.ts`）が `stories` として宣言する全ファイル
@@ -193,10 +199,11 @@ WCAG 適合を意味しないことを明記しておく。
 
 ## baseline 台帳の扱い
 
-現在の台帳は **11 レコード**（11 story × 1 rule）。すべて `definition-list`
-（WCAG 2.2 SC 1.3.1）で、home の status リストが `<dl>` の直下に `<div>` を
-置いている既存の缺陷である。**同じ缺陷が `/` ルートでも記録されている**
-（`e2e/a11y/axe-baseline.json`）。
+現在の台帳は **0 レコード**。**Issue #718（2026-11-01）で、2026-10-23 に記録していた
+11 レコード（11 story × 1 rule）を実装側で直して削除した。** 原因は home の status
+リストが `<dl>` の group に badge 用の `<div>` を置いていたこと（SC 1.3.1、
+`src/home/status/tiles.tsx`）。改正の詳細は
+[`axe-known-violations.md`](axe-known-violations.md) に記録した。
 
 > **この台帳は「最初に測ったときは空だった」。** Storybook の dev サーバが
 > `@storybook/react` を解決できず **story が 1 つも描画されず**、実測が空の
@@ -205,6 +212,12 @@ WCAG 適合を意味しないことを明記しておく。
 > （manifest の `expect` も `baseline` に変更）。**空の台帳は「違反が無い」
 > ではなく「測れていなかった」** のであり、story が描画されていることを
 > 別途確認してから台帳を確定する。
+
+> **2026-11-01 の再実測**: 11 story を `definition-list` が出なくなるよう実装を
+> 直し、台帳のレコードを削除して manifest の `expect` を `pass` に変えた。
+> 実測は **101 passed / 0 failed**（100 story + index 1 test）。修正前のコードで
+> 同じ測定をやり直すと **11 failed / 90 passed**（すべて `definition-list`）に
+> なることを確かめている。**空の台帳でもゲートは機能している**。
 
 台帳にレコードを追加する条件は「その違反が恒久的に存在してよい」と
 **人が判断した**ことだけである。機械は「記録されているか」を見るだけで、

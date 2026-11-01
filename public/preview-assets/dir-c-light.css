@@ -1,0 +1,148 @@
+
+:root {
+	color-scheme: light;
+	--colors-bg-canvas: #FFFFFF;
+	--colors-bg-surface: #F4F7FA;
+	--colors-bg-subtle: #E9EFF5;
+	--colors-bg-inverse: #0A1220;
+	--colors-bg-accent: #0369A1;
+	--colors-accent-interactive: #075985;
+	--colors-accent-surface: #EAF4FB;
+	--colors-bg-control: #DEE5EF;
+	--colors-bg-control-hover: #CDD7E4;
+	--colors-text-default: #08111F;
+	--colors-text-muted: #4A5A6E;
+	--colors-text-inverse: #F3F6FB;
+	--colors-text-accent: #0369A1;
+	--colors-accent-positive: #0B6B4A;
+	--colors-accent-negative: #A82A3E;
+	--colors-accent-warning: #7A5200;
+	--colors-accent-category-design: #B03A6E;
+	--colors-accent-category-code: #0B6D80;
+	--colors-accent-category-writing: #7038A8;
+	--colors-accent-category-tool: #1D4ED8;
+	--colors-border-focus: #0369A1;
+	--colors-border-strong: #75879C;
+	--colors-border-subtle: #D6E0EB;
+	--colors-on-accent: #FFFFFF;
+	--colors-text-on-inverse-muted: #B7C3D4;
+	--colors-accent-positive-on-inverse: #4FD1A0;
+	--colors-accent-warning-on-inverse: #F0C05A;
+	--colors-accent-negative-on-inverse: #FF8A97;
+}
+
+	/* ── icons: self-hosted, no third-party request (delivery decision) ──
+	   Ligature font: the markup carries the word (arrow_forward), the font
+	   draws the glyph. `font-display: block` hides the word during load
+	   instead of flashing it; the box is a fixed 1em so nothing shifts. */
+	@font-face {
+		font-family: 'Material Symbols Rounded';
+		font-style: normal;
+		font-weight: 400;
+		font-display: block;
+		src: url('/preview-assets/material-symbols-rounded.woff2') format('woff2');
+	}
+	.msr {
+		font-family: 'Material Symbols Rounded' !important;
+		font-weight: normal;
+		font-style: normal;
+		font-size: 1em;
+		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1em;
+		height: 1em;
+		overflow: hidden;
+		vertical-align: -0.14em;
+		letter-spacing: normal;
+		text-transform: none;
+		font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+	}
+
+	/* ── surfaces are separated by FILL, never by a 1px border ────────── */
+	*[class*="bd-w_1px"] { border-width: 0 !important; }
+	*[class*="bd_1px_solid"] { border-width: 0 !important; }
+	/* a control that sat on the page colour now sits one step above it */
+	button[class*="bg-c_bg.canvas"],
+	a[class*="bg-c_bg.canvas"],
+	button[class*="bg-c_bg.surface"],
+	a[class*="bg-c_bg.surface"] {
+		background: var(--colors-bg-control) !important;
+	}
+	button[class*="bg-c_bg.canvas"]:hover,
+	a[class*="bg-c_bg.canvas"]:hover,
+	button[class*="bg-c_bg.surface"]:hover,
+	a[class*="bg-c_bg.surface"]:hover {
+		background: var(--colors-bg-control-hover) !important;
+	}
+	/* a card that was closed by a border is now closed by its own plane */
+	article[class*="bd-w_1px"],
+	li[class*="bd-w_1px_solid"],
+	figure[class*="bd_1px_solid"] {
+		background: var(--colors-bg-surface) !important;
+	}
+	/* the CTA label is its own role: `text.inverse` was doing both jobs */
+	[class*="bg-c_bg.accent"],
+	[class*="bg-c_accent.interactive"],
+	[class*="hover\:bg-c_accent.interactive"]:hover,
+	[class*="active\:bg-c_accent.interactive"]:active {
+		color: var(--colors-on-accent) !important;
+	}
+	/* ── no left colour bar (owner: confirmed, all directions) ────────── */
+	*[class*="bd-s-w_4px"] { border-inline-start-width: 0 !important; }
+
+	/* ── one grid: 12 x 58 + 24 gutter, content 960 ───────────────────── */
+	@media (min-width: 1024px) {
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"]:has(> :last-child:nth-child(2)),
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_4fr)"]:has(> :last-child:nth-child(3)) {
+			grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+			column-gap: 24px !important;
+		}
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"]:has(> :last-child:nth-child(2)) > :nth-child(1) { grid-column: 1 / span 4; }
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"]:has(> :last-child:nth-child(2)) > :nth-child(2) { grid-column: 5 / span 8; }
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_4fr)"]:has(> :last-child:nth-child(3)) > :nth-child(1) { grid-column: 1 / span 4; }
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_4fr)"]:has(> :last-child:nth-child(3)) > :nth-child(2) { grid-column: 5 / span 4; }
+		[class*="grid-tc_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_4fr)"]:has(> :last-child:nth-child(3)) > :nth-child(3) { grid-column: 9 / span 4; }
+		article[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"] {
+			grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+			column-gap: 24px !important;
+		}
+		article[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"] > :nth-child(2) { grid-column: 1 / span 4; }
+		article[class*="grid-tc_minmax(0,_4fr)_minmax(0,_8fr)"] > :nth-child(3) { grid-column: 5 / span 8; }
+	}
+
+	/* ── consent band: full width, on the same grid ────────────────────
+	   Behaviour (persistent / sticky / collapsible) is NOT decided here;
+	   the comparison shows the persistent band. Look spec:
+	   fill = bg.subtle, no border, no radius, no shadow, one top rule. */
+	section[class*="pos_fixed"] {
+		position: static !important;
+		inset: auto !important;
+		z-index: auto !important;
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 20px max(32px, calc((100vw - 960px) / 2)) !important;
+		border: 0 !important;
+		border-radius: 0 !important;
+		box-shadow: none !important;
+		background: var(--colors-bg-subtle) !important;
+		color: var(--colors-text-default) !important;
+		display: grid !important;
+		grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+		column-gap: 24px !important;
+		row-gap: 4px !important;
+		align-items: start !important;
+	}
+	section[class*="pos_fixed"] > p:nth-of-type(1) { grid-column: 1 / span 3; grid-row: 1; margin: 0; }
+	section[class*="pos_fixed"] > h2 { grid-column: 1 / span 3; grid-row: 2; margin: 0; }
+	section[class*="pos_fixed"] > p:nth-of-type(2) { grid-column: 4 / span 6; grid-row: 1 / span 3; margin: 0; }
+	section[class*="pos_fixed"] > p:nth-of-type(3) { display: none; }
+	section[class*="pos_fixed"] > div { grid-column: 10 / span 3; grid-row: 1 / span 3; margin: 0; }
+	@media (max-width: 1023px) {
+		section[class*="pos_fixed"] { grid-template-columns: 1fr !important; padding: 16px !important; }
+		section[class*="pos_fixed"] > * { grid-column: 1 !important; grid-row: auto !important; }
+	}
+
+undefined

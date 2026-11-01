@@ -4,6 +4,9 @@ import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
 import '../styles.css';
+// Issue #764 comparison preview (WORKTREE ONLY — delete with the worktree).
+import { PreviewMount } from '../preview/PreviewMount';
+import { parsePreview } from '../preview/preview-css.mjs';
 
 /**
  * Icon family links (Issue #504).
@@ -206,6 +209,17 @@ export const Route = createRootRoute({
 		],
 		scripts: [
 			{
+				// Issue #764 comparison preview (WORKTREE ONLY). Reads
+				// `?direction=a|b|c&theme=dark|light`, links the matching
+				// static stylesheet into <head>, and does it while the head
+				// is still parsing — so the palette is in effect before the
+				// first paint and React never owns the node (a <style> or a
+				// per-query attribute rendered through the component tree
+				// fails React 19 hydration in this shell).
+				children:
+					'(function(){try{var p=new URLSearchParams(location.search);var d=(p.get("direction")||"").toLowerCase();if(d!=="a"&&d!=="b"&&d!=="c")return;var t=(p.get("theme")||"").toLowerCase()==="light"?"light":"dark";var mode=p.get("pv")||"both";if(mode==="both"||mode==="link"){var h="/preview-assets/dir-"+d+"-"+t+".css";var e=document.createElement("link");e.id="preview-css";e.rel="stylesheet";e.href=h;document.head.appendChild(e)}if(mode==="both"||mode==="attr"){document.documentElement.setAttribute("data-preview",d+"-"+t)}}catch(e){}})();',
+			},
+			{
 				// Applies the non-blocking font stylesheet above. Written to
 				// be order-independent with respect to the <link>: if the
 				// sheet is already parsed (`sheet` set) it flips immediately,
@@ -264,6 +278,11 @@ function RootComponent() {
 	// The `/admin/*` exclusion rule lives in `editorial/analytics/consent.ts`
 	// so it can be tested without a router — see `isAnalyticsMountPath`.
 	const isAdminPath = !isAnalyticsMountPath(pathname);
+	// Issue #764 comparison preview. `?direction=a|b|c&theme=dark|light`
+	// re-skins the real route; without a query the page is the released one.
+	const preview = pathname.startsWith('/compare')
+		? { direction: 'a' as const, theme: 'dark' as const, on: false }
+		: parsePreview(searchStr);
 	return (
 		<html lang="ja">
 			<head>
@@ -304,6 +323,10 @@ function RootComponent() {
 				    nothing before hydration, so it can never delay or
 				    change the page it sits on. */}
 				{!isAdminPath ? <AnalyticsConsentControl /> : null}
+				{/* Issue #764: the palette stylesheet is linked from the head
+				    script above (see its comment); this only handles the DOM
+				    work React cannot express. */}
+				<PreviewMount on={preview.on} />
 			</body>
 		</html>
 	);

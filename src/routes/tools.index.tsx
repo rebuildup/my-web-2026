@@ -440,7 +440,6 @@ const plannedDescription = css({
 function ToolCard({ tool }: { tool: ManifestTool }) {
 	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
 	const preview = TOOL_PREVIEWS[tool.slug];
-	const titleId = `tool-title-${tool.slug}`;
 	// No `data-tool-state` on an OPEN card: the attribute is the disabled
 	// marker the prod-smoke row-classification probe reads
 	// (`e2e/prod-smoke.spec.ts`), and it treats "linked kind" as "carries
@@ -449,14 +448,17 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 	// nothing is disabled.
 	return (
 		<li data-tool-slug={tool.slug} className={cardItem}>
-			{/* `aria-labelledby` keeps the accessible name at the Tool's
-			    name instead of concatenating the description and the CTA
-			    (Issue #718: the visible label is the name, so the name
-			    must contain it — and nothing forces it to be longer). */}
+			{/* The accessible name comes from the card's own content, NOT
+			    from `aria-labelledby`/`aria-label`. The whole card is the
+			    link, so its visible text is the name plus the description
+			    plus 「開く」; pinning the name to the name alone is what
+			    WCAG 2.2 SC 2.5.3 (Label in Name) forbids — the same
+			    `label-content-name-mismatch` defect Issue #718 fixed on
+			    the home capability links. The axe scan on `/tools`
+			    caught it (Issue #785). */}
 			<Link
 				to="/tools/$slug"
 				params={{ slug: tool.slug }}
-				aria-labelledby={titleId}
 				className={preview ? cardLink : cardLinkTextOnly}
 			>
 				{preview ? (
@@ -472,7 +474,7 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 				) : null}
 				<span className={titleRow}>
 					<MaterialSymbol className={toolIcon} name={icon} size={18} />
-					<span data-tool-title className={toolTitle} id={titleId}>
+					<span data-tool-title className={toolTitle}>
 						{tool.display_name}
 					</span>
 				</span>

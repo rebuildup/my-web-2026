@@ -595,6 +595,40 @@ permission on the prod env; the viewer Machine Identity is
 read-only and fails-closed for `flip`. Other operations do not
 require writer scope (they only mutate Worker bindings).
 
+## Rehearsal evidence levels
+
+The recovery operations above are rehearsed offline by
+`scripts/_rollback-rehearsal.mjs`. The rehearsal states, per step and
+per result, **how strongly the repository can prove that step**:
+
+| Evidence level | Meaning | Who can raise it |
+| --- | --- | --- |
+| `recorded` | The procedure is written down; nothing ran. | The table in the rehearsal module |
+| `simulated-and-tested` | The procedure was exercised against a disposable local fixture and the outcome was asserted. | The offline rehearsal (Issue #721) |
+| `human-verified` | A human ran it and confirmed the outcome. | The repository owner, against the real system |
+| `production-verified` | It ran against the live platform and the platform's own behaviour confirmed it. | The release operator, against the real system |
+
+A recording is **never** reported as an execution: the levels are
+distinct, and the rehearsal may not claim `human-verified` or
+`production-verified` — nothing in the repository was done by a human
+against Cloudflare.
+
+The offline rehearsal reads **no credential**, makes **no external
+request** and performs **no production operation**. It exercises the
+documented paths against a disposable local state model
+(`scripts/_rollback-fixture.mjs`), so it can show that the decision
+logic picks the documented path and that the documented restore changes
+the state back.
+
+The facts only the live platform can prove stay **not verified here**:
+whether Cloudflare actually rolls the Worker back, whether the previous
+release is still deployable, whether `--delete-legacy-only` is
+irreversible in practice, whether the Phase B driver performs the bulk
+put exactly as described above, and the two human steps — an operator
+signing in with real production credentials, and the release PR merge /
+tag / GitHub Release publication. A passing local rehearsal never
+stands in for any of them.
+
 ## GitHub Actions — validation only
 
 `.github/workflows/ci.yml` runs `validate` (format + lint +

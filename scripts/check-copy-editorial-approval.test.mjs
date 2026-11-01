@@ -9,12 +9,16 @@ import {
 	DECISIONS,
 	DIMENSIONS,
 	LEDGER_PATH,
+	OWNER_CONFIRMATIONS,
+	PROVENANCE_KINDS,
 	SURFACES_PATH,
 	VERDICTS,
 	buildChangeSet,
 	classifyFile,
 	commitParents,
 	evaluateApproval,
+	evaluateProvenance,
+	exitCodeForVerdict,
 	extractSegments,
 	fingerprintUnits,
 	gitDiff,
@@ -26,6 +30,7 @@ import {
 	renderJson,
 	renderText,
 	resolveDiffBase,
+	summarizeLedger,
 } from './check-copy-editorial-approval.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,8 +41,9 @@ const FIXTURE_DIR = join(REPO_ROOT, 'test/fixtures/copy/editorial-approval');
  * Fixture coverage for the public Japanese copy editorial approval gate
  * (Issue #506).
  *
- * The gate's whole value is that an unreviewed change of public copy
- * cannot pass, so the committed fixtures resolve to the four states the
+ * Strict CLI fails unreviewed changes; PR CI reports those as pending
+ * without blocking integration and E2E. The committed fixtures still resolve to
+ * the four states the
  * report distinguishes: `pass`, `fail`, `not run` (NEEDS REVIEW) and
  * `not applicable`. A scanner regression must not be able to collapse
  * two of them into one — the test asserts the verdict AND the three
@@ -84,6 +90,26 @@ const FIXTURE_NAMES = readdirSync(FIXTURE_DIR)
 	.filter((name) => name.endsWith('.json'))
 	.map((name) => name.replace(/\.json$/, ''))
 	.sort();
+
+describe('check-copy-editorial-approval — CI separation without fabricated approval', () => {
+	it('keeps all four verdicts and only downgrades pending review to advisory', () => {
+		assert.equal(exitCodeForVerdict('pass'), 0);
+		assert.equal(exitCodeForVerdict('not applicable'), 0);
+		assert.equal(exitCodeForVerdict('not run'), 1);
+		assert.equal(exitCodeForVerdict('fail'), 1);
+		assert.equal(exitCodeForVerdict('pass', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('not applicable', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('not run', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('fail', { allowUnreviewed: true }), 1);
+		assert.equal(exitCodeForVerdict('unexpected', { allowUnreviewed: true }), 2);
+	});
+	it('does not change review findings or manufacture owner provenance', () => {
+		const { result } = runFixture('agent-recorded');
+		assert.equal(result.verdict, 'not run');
+		assert.equal(exitCodeForVerdict(result.verdict, { allowUnreviewed: true }), 0);
+		assert.equal(result.dimensions.approval, 'not run');
+	});
+});
 
 describe('check-copy-editorial-approval — the four verdicts stay distinct', () => {
 	it('every committed fixture resolves to its expected verdict', () => {
@@ -287,6 +313,138 @@ describe('check-copy-editorial-approval — the repository declarations', () => 
 			assert.ok(DECISIONS.includes(record.decision));
 			assert.ok(typeof record.fingerprint === 'string' && record.fingerprint.startsWith('sha256:'));
 		}
+	});
+
+	it('every shipped record carries a provenance, and none claims an owner review without a reference', () => {
+		for (const record of ledger.records) {
+			assert.ok(record.provenance, `${record.id} must carry a provenance`);
+			assert.ok(PROVENANCE_KINDS.includes(record.provenance.kind));
+			assert.ok(OWNER_CONFIRMATIONS.includes(record.provenance.ownerConfirmation));
+			if (record.provenance.kind === 'owner-review') {
+				assert.ok(
+					typeof record.provenance.reference === 'string' && record.provenance.reference.length > 0,
+					`${record.id} claims an owner review and must name the artefact`,
+				);
+			}
+		}
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * The provenance of an approval record (Issue #720)
+ * ------------------------------------------------------------------ */
+
+describe('check-copy-editorial-approval — an approval needs a traceable owner artefact', () => {
+	it('a record an automated side wrote does not satisfy the change set', () => {
+		const { result } = runFixture('agent-recorded');
+		assert.equal(result.verdict, 'not run');
+		assert.equal(result.dimensions.approval, 'not run');
+		const finding = result.findings.find(
+			(item) => item.code === 'approval-owner-confirmation-missing',
+		);
+		assert.ok(finding, 'the gate must name the missing owner confirmation');
+		assert.match(finding.message, /written by an automated side/);
+		assert.match(finding.message, /the copy is un-reviewed/);
+	});
+
+	it('a record without any provenance is rejected', () => {
+		const { fixture, changeSet } = runFixture('approved');
+		const record = { ...fixture.ledger.records[0], provenance: undefined };
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'not run');
+		assert.ok(
+			result.findings.some((item) => item.code === 'approval-provenance-missing'),
+			'a record without a provenance must be rejected',
+		);
+	});
+
+	it('an owner review with a reference passes', () => {
+		const { result } = runFixture('approved');
+		assert.equal(result.verdict, 'pass');
+		assert.equal(result.dimensions.approval, 'pass');
+		assert.equal(result.provenance.ownerConfirmed, true);
+		assert.equal(result.provenance.kind, 'owner-review');
+		assert.ok(result.provenance.reference.length > 0);
+	});
+
+	it('an owner review without a reference is not an owner approval', () => {
+		const { fixture, changeSet } = runFixture('approved');
+		const record = {
+			...fixture.ledger.records[0],
+			provenance: {
+				kind: 'owner-review',
+				reference: '',
+				recordedBy: 'rebuildup',
+				ownerConfirmation: 'confirmed',
+			},
+		};
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'not run');
+		assert.ok(result.findings.some((item) => item.code === 'approval-owner-confirmation-missing'));
+	});
+
+	it('an unconfirmed owner review is not an owner approval', () => {
+		const { fixture, changeSet } = runFixture('approved');
+		const record = {
+			...fixture.ledger.records[0],
+			provenance: {
+				kind: 'owner-review',
+				reference: 'https://github.com/rebuildup/my-web-2026/pull/512#pullrequestreview-1',
+				recordedBy: 'rebuildup',
+				ownerConfirmation: 'unconfirmed',
+			},
+		};
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'not run');
+		assert.ok(result.findings.some((item) => item.code === 'approval-owner-confirmation-missing'));
+	});
+
+	it('a rejection still fails without an owner confirmation', () => {
+		const { fixture, changeSet } = runFixture('rejected');
+		const record = { ...fixture.ledger.records[0], provenance: undefined };
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'fail');
+		assert.equal(result.dimensions.approval, 'fail');
+	});
+
+	it('the ledger summary states the two populations separately', () => {
+		const { result } = runFixture('agent-recorded');
+		assert.equal(result.ledgerSummary.records, 1);
+		assert.equal(result.ledgerSummary.ownerConfirmed, 0);
+		assert.equal(result.ledgerSummary.awaitingConfirmation, 1);
+		const text = renderText(result);
+		assert.match(text, /owner-confirmed 0, awaiting owner confirmation 1/);
+		assert.match(text, /change sets waiting for an owner decision: 1/);
+	});
+
+	it('the report states the limit of what the gate can prove', () => {
+		const { result } = runFixture('approved');
+		const text = renderText(result);
+		assert.match(text, /SHAPE of a reference, not who wrote/);
+		assert.match(text, /records the claim, it does not prove it/);
+	});
+
+	it('the shipped ledger is reported as awaiting owner confirmation', () => {
+		const summary = summarizeLedger(ledger);
+		assert.equal(summary.records, ledger.records.length);
+		assert.equal(summary.missingProvenance, 0);
+		assert.equal(summary.ownerConfirmed + summary.awaitingConfirmation, summary.records);
 	});
 });
 

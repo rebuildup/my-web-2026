@@ -7,6 +7,7 @@ obligations.
 | --- | --- | --- |
 | `editorial-approval-gate.webp` | #506 | the editorial approval gate for public Japanese copy: the verdict, the three review dimensions, the extracted changed segments, the per-file classification, and the four verdicts resolved from the committed fixtures (see [`editorial-approval-gate.md`](editorial-approval-gate.md)) |
 | `japanese-diff-report.webp` | #425 | the Japanese copy review-target report: the live change set, a worked before/after example with number-drift, a withheld credential-shaped line, and every status resolved from the committed fixtures (see [`japanese-diff-report.md`](japanese-diff-report.md)) |
+| `meaning-diff-evaluation.webp` | #426 | the meaning-diff corpus evaluation: every proposal pair with the classification the gate gave it (meaning / surface / disposition), the evidence code behind each verdict, and the empty auto-apply vocabulary (see [`meaning-diff-evaluation.md`](meaning-diff-evaluation.md)) |
 
 ## 公開日本語の編集レビュー承認 (Issue #506)
 
@@ -43,6 +44,30 @@ is in [`docs/runbook/japanese-copy-review.md`](../../runbook/japanese-copy-revie
 the acceptance-criteria mapping and the out-of-scope list are in
 [`japanese-diff-report.md`](japanese-diff-report.md).
 
+## 意味差分（意味保持）の評価レポート (Issue #426)
+
+`meaning-diff-evaluation.webp` is the committed screenshot of the
+meaning-diff corpus evaluation. It shows every proposal pair in
+`test/fixtures/copy/meaning-diff/corpus.json` with the classification
+the gate gave it — the meaning axis (a claim is a number, a negation or
+a permission marker), the surface axis (a mechanical typography
+difference vs. a prose difference no rule decides) and the disposition
+— plus the evidence code behind each verdict and the locale opt-in
+state.
+
+The report is the **presentation** of the gate, not a second verdict:
+`scripts/make-copy-meaning-diff-report.mjs` renders what
+`scripts/check-copy-meaning-diff.mjs` decided, using the gate's own
+`renderHtml` / `renderText`. The rule Issue #426 states — a proposal is
+never adopted automatically — is a type in the gate (the list of
+auto-appliable dispositions is empty), and the report shows the count
+of auto-appliable cases beside it.
+
+The image is **not** a substitute for the tests: the classification is
+asserted by `scripts/check-copy-meaning-diff.test.mjs` and the report by
+`scripts/make-copy-meaning-diff-report.test.mjs`. The record is in
+[`meaning-diff-evaluation.md`](meaning-diff-evaluation.md).
+
 ## How to reproduce it
 
 ```sh
@@ -57,6 +82,11 @@ pnpm run verify:copy-editorial-approval-screenshot -- --base=origin/release-0-7-
 pnpm run copy:diff:report -- --base=release-0-7-0 --format=html \
   --out=.tmp/japanese-copy-review-report.html
 pnpm run verify:copy-diff-report-screenshot -- --base=origin/release-0-7-0
+
+# 4. render and screenshot the meaning-diff corpus evaluation
+pnpm run copy:meaning:check -- --format=html \
+  --out=.tmp/copy-meaning-diff.html
+pnpm run verify:copy-meaning-diff-screenshot
 ```
 
 Step 1 writes `.tmp/copy-editorial-approval.html` (gitignored). Step 2

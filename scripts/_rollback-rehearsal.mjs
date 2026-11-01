@@ -29,15 +29,56 @@
  * as requiring human approval. An unknown owner — "agent" included — is
  * rejected: the rehearsal records authority, it cannot grant it.
  *
- * Nothing is executed
- * -------------------
- * This module executes nothing. It does not import `node:child_process`,
+ * Nothing is executed against a real system
+ * --------------------------------------
+ * This module runs no command. It does not import `node:child_process`,
  * a network client, or a Cloudflare binding, and every action says
  * `executedByRehearsal: false`. The commands below are recorded text;
  * running one remains an operator action. `runRollbackRehearsal()`
- * therefore reports zero executed commands, zero external requests and
- * zero credentials read by construction (the test pins the import list
- * to keep it that way).
+ * therefore reports zero executed commands, zero external requests,
+ * zero credentials read and zero production operations by construction
+ * (the test pins the import list to keep it that way).
+ *
+ * What IS executed (Issue #721)
+ * -----------------------------
+ * A rehearsal that only renders the procedure proves nothing about
+ * recovery. The procedure is therefore exercised against a DISPOSABLE
+ * LOCAL FIXTURE (`scripts/_rollback-fixture.mjs`): a file-backed model
+ * of the deployment state, written into a throwaway temporary
+ * directory. The order is the documented one — state before, failure
+ * injection, the rollback decision, the documented restore, state after.
+ *
+ * The decision is made from the OBSERVED signals alone
+ * -----------------------------------------------------
+ * Every path in the table carries a `detection` rule: the observable
+ * properties of the state that make the path the applicable one. The
+ * decision function receives the signals and nothing else, so a
+ * scenario cannot hand it the answer. A state that matches no
+ * documented path, or more than one, is an error — never a guess.
+ *
+ * The table and the simulation cannot drift apart
+ * ------------------------------------------------
+ * Every path in the table must be covered by a simulation scenario and
+ * every step a scenario claims to exercise must exist in that path.
+ * Both are gates, so a path added to the table without a scenario fails
+ * instead of being silently unrehearsed.
+ *
+ * Evidence levels
+ * ---------------
+ * A recording is never reported as an execution. The four levels are:
+ *
+ *   - `recorded`            the procedure is written down; nothing ran;
+ *   - `simulated-and-tested` the procedure was exercised against the
+ *                            disposable local fixture and the outcome
+ *                            was asserted;
+ *   - `human-verified`      a human ran it and confirmed the outcome;
+ *   - `production-verified` it ran against the live platform.
+ *
+ * This module can reach `simulated-and-tested` and no further: nothing
+ * here was done by a human against Cloudflare, so `human-verified` and
+ * `production-verified` are never emitted. The facts only the live
+ * platform can prove are listed as `not verified here`, with the
+ * reason.
  *
  * Citations are resolved
  * ----------------------
@@ -63,6 +104,13 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import {
+	SIGNAL,
+	SIMULATION_SCENARIOS,
+	describeSignals,
+	runSimulationScenario,
+} from './_rollback-fixture.mjs';
 
 /** The repository root, resolved from this module's own location. */
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -148,6 +196,75 @@ export const OUTCOME = Object.freeze({
 
 const OUTCOME_VALUES = new Set(Object.values(OUTCOME));
 
+/**
+ * The evidence levels, weakest first.
+ *
+ * A level says what the repository can prove about a step. The levels
+ * are ordered, and a step may never claim a stronger level than the
+ * evidence behind it.
+ */
+export const EVIDENCE_LEVEL = Object.freeze({
+	recorded: 'recorded',
+	simulatedAndTested: 'simulated-and-tested',
+	humanVerified: 'human-verified',
+	productionVerified: 'production-verified',
+});
+
+const EVIDENCE_LEVEL_VALUES = new Set(Object.values(EVIDENCE_LEVEL));
+
+/** The evidence order, weakest first. */
+export const EVIDENCE_ORDER = Object.freeze([
+	EVIDENCE_LEVEL.recorded,
+	EVIDENCE_LEVEL.simulatedAndTested,
+	EVIDENCE_LEVEL.humanVerified,
+	EVIDENCE_LEVEL.productionVerified,
+]);
+
+/**
+ * The facts only the live platform (or a human against it) can prove.
+ *
+ * A passing local simulation must never stand in for one of these. Each
+ * entry names the fact, the reason it is unverified here, and the level
+ * that would be required to verify it.
+ */
+export const NOT_VERIFIED_FACTS = Object.freeze([
+	{
+		fact: 'Cloudflare actually rolls the Worker back to the previous deployment when a release fails',
+		reason:
+			'only the live platform can show it; the rehearsal exercises a disposable local fixture and calls no Cloudflare API',
+		requires: EVIDENCE_LEVEL.productionVerified,
+	},
+	{
+		fact: 'the previous release is still deployable after the failed release',
+		reason:
+			'deployability is a property of the live Worker and its bindings, not of a local state model',
+		requires: EVIDENCE_LEVEL.productionVerified,
+	},
+	{
+		fact: 'the --delete-legacy-only step is irreversible in practice',
+		reason:
+			'the fixture keeps an append-only operation log, so it shows that a restore does not erase the deletion, but only the live Infisical audit / recovery copy shows what is recoverable',
+		requires: EVIDENCE_LEVEL.productionVerified,
+	},
+	{
+		fact: 'the Phase B driver performs the bulk put exactly as the runbook describes',
+		reason:
+			'the rehearsal models the state transition the documented operation produces; it does not run scripts/phase-3-plus-prod-flip.mjs',
+		requires: EVIDENCE_LEVEL.productionVerified,
+	},
+	{
+		fact: 'an operator signs in with real production credentials against the versioned runtime',
+		reason: 'no human ran the procedure against Cloudflare, and no credential was read',
+		requires: EVIDENCE_LEVEL.humanVerified,
+	},
+	{
+		fact: 'the release PR merge, the release tag and the GitHub Release publication were performed',
+		reason:
+			'those are repository-owner operations (AGENTS.md section 6); the rehearsal performs none of them',
+		requires: EVIDENCE_LEVEL.humanVerified,
+	},
+]);
+
 /** Stable error codes. A message never carries user- or secret-shaped text. */
 export const ERROR_CODE = Object.freeze({
 	pathsMissing: 'paths_missing',
@@ -188,6 +305,14 @@ export const ERROR_CODE = Object.freeze({
 	actionMutationInvalid: 'action_mutation_invalid',
 	humanGateNotOwner: 'human_gate_not_owner',
 	mutationNotOwnerGated: 'mutation_not_owner_gated',
+	detectionMissing: 'detection_missing',
+	detectionInvalid: 'detection_invalid',
+	detectionSignalUnknown: 'detection_signal_unknown',
+	detectionValueInvalid: 'detection_value_invalid',
+	stepEvidenceMissing: 'step_evidence_missing',
+	stepEvidenceInvalid: 'step_evidence_invalid',
+	stepEvidenceNotRecorded: 'step_evidence_not_recorded',
+	simulationFailed: 'simulation_failed',
 });
 
 /** Deep-freeze a JSON-shaped fixture so no caller can mutate the record. */
@@ -222,6 +347,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		id: 'failed-build',
 		title: 'Workers Builds build phase fails before deploy',
 		failureClass: FAILURE_CLASS.failedBuild,
+		detection: { buildFailed: true, deployCompleted: false },
 		trigger: {
 			observation: 'Cloudflare Workers Builds reports the build command as failed.',
 			description:
@@ -238,6 +364,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		steps: [
 			{
 				id: 'resolve-failed-build',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Diagnosing a failed build (Issue #247)'),
 				action: {
@@ -252,6 +379,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'fix-forward',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Production deploy authority'),
 				action: {
@@ -270,6 +398,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'refuse-local-deploy-substitute',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Production deploy authority'),
 				action: {
@@ -293,6 +422,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		id: 'failed-smoke-pre-merge',
 		title: 'Transition smoke fails before the release PR merges',
 		failureClass: FAILURE_CLASS.failedSmoke,
+		detection: { smokeFailed: true, failedSmokeStage: 'transition', deployCompleted: false },
 		trigger: {
 			observation:
 				'`pnpm run e2e:prod:transition` exits non-zero while the legacy runtime is still active.',
@@ -313,6 +443,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		steps: [
 			{
 				id: 'observe-transition-smoke',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Smoke boundary semantics'),
 				action: {
@@ -326,6 +457,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'confirm-binding-state',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
 				action: {
@@ -339,6 +471,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'rollback-versioned-binding',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
@@ -353,6 +486,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'legacy-auth-failure-branch',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(
 					RUNBOOK_PATH,
@@ -370,6 +504,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'release-merge-human-gate',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(AGENTS_PATH, '## 6. Sprint workflow'),
 				action: {
@@ -395,6 +530,12 @@ export const REHEARSAL_PATHS = deepFreeze([
 		id: 'failed-smoke-post-deploy',
 		title: 'Post-deploy smoke fails after the Worker has shipped',
 		failureClass: FAILURE_CLASS.failedSmoke,
+		detection: {
+			smokeFailed: true,
+			failedSmokeStage: 'post-deploy',
+			deployCompleted: true,
+			deleteLegacyOnlyRan: false,
+		},
 		trigger: {
 			observation:
 				'`pnpm run e2e:prod` exits non-zero, or the operator sign-in step fails after the deploy.',
@@ -415,6 +556,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		steps: [
 			{
 				id: 'observe-post-deploy-smoke',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Smoke boundary semantics'),
 				action: {
@@ -428,6 +570,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'confirm-both-bindings',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
 				action: {
@@ -441,6 +584,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'do-not-delete-legacy',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(
 					RUNBOOK_PATH,
@@ -458,6 +602,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'no-restore-legacy-before-delete',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
@@ -472,6 +617,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'investigate-before-closing-lifecycle',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Smoke boundary semantics'),
 				action: {
@@ -499,6 +645,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		id: 'post-delete-recheck-failure',
 		title: 'Re-check fails after the legacy binding was deleted',
 		failureClass: FAILURE_CLASS.postDeleteRecheck,
+		detection: { deleteLegacyOnlyRan: true, recheckFailed: true },
 		trigger: {
 			observation:
 				'A re-check that runs after `--delete-legacy-only` reports a mismatch: the final drift check, or a smoke re-run after the deletion.',
@@ -515,6 +662,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		steps: [
 			{
 				id: 'observe-post-delete-recheck',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(
 					RUNBOOK_PATH,
@@ -532,6 +680,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'confirm-legacy-binding-absent',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
 				action: {
@@ -545,6 +694,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'restore-legacy-binding',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
@@ -559,6 +709,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'keep-lifecycle-open',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
@@ -583,6 +734,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		id: 'post-deploy-regression',
 		title: 'Visitor-facing regression observed after the deploy window',
 		failureClass: FAILURE_CLASS.postDeployRegression,
+		detection: { regressionReported: true },
 		trigger: {
 			observation: 'A visitor-facing regression is reported after the smoke window has closed.',
 			description:
@@ -599,6 +751,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 		steps: [
 			{
 				id: 'record-regression',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.releaseOperator,
 				authority: cite(RELEASE_PATH, '## Patch releases'),
 				action: {
@@ -615,6 +768,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'no-agent-rollback',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(AGENTS_PATH, '## 6. Sprint workflow'),
 				action: {
@@ -629,6 +783,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'canonical-patch-release',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RELEASE_PATH, '## Patch releases'),
 				action: {
@@ -649,6 +804,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			},
 			{
 				id: 'binding-only-recovery',
+				evidence: EVIDENCE_LEVEL.recorded,
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
@@ -769,6 +925,18 @@ function isOutcome(value) {
 	return isNonEmptyString(value) && OUTCOME_VALUES.has(value);
 }
 
+/** The observable signals a detection rule may name. */
+const SIGNAL_VALUES = new Set(Object.values(SIGNAL));
+
+/** The stage values a detection rule may expect of the smoke signal. */
+const DETECTION_STAGE_VALUES = new Set(['transition', 'post-deploy']);
+
+/** Whether a detection rule's value is one the fixture can produce. */
+function isDetectionValue(value) {
+	if (typeof value === 'boolean') return true;
+	return typeof value === 'string' && DETECTION_STAGE_VALUES.has(value);
+}
+
 function isActionKind(value) {
 	return isNonEmptyString(value) && ACTION_KIND_VALUES.has(value);
 }
@@ -854,6 +1022,40 @@ export function validateRehearsal(paths = REHEARSAL_PATHS, options = {}) {
 			});
 		} else {
 			seenFailureClasses.add(path.failureClass);
+		}
+
+		if (!path.detection || typeof path.detection !== 'object' || Array.isArray(path.detection)) {
+			recordError(errors, {
+				pathId,
+				code: ERROR_CODE.detectionMissing,
+				message: 'path has no detection rule',
+			});
+		} else {
+			const entries = Object.entries(path.detection);
+			if (entries.length === 0) {
+				recordError(errors, {
+					pathId,
+					code: ERROR_CODE.detectionInvalid,
+					message: 'the detection rule is empty',
+				});
+			}
+			for (const [signal, expected] of entries) {
+				if (!SIGNAL_VALUES.has(signal)) {
+					recordError(errors, {
+						pathId,
+						code: ERROR_CODE.detectionSignalUnknown,
+						message: `the detection rule names a signal the fixture cannot observe: ${signal}`,
+					});
+					continue;
+				}
+				if (!isDetectionValue(expected)) {
+					recordError(errors, {
+						pathId,
+						code: ERROR_CODE.detectionValueInvalid,
+						message: `the detection rule expects a value the fixture cannot produce for ${signal}`,
+					});
+				}
+			}
 		}
 
 		if (!path.trigger || typeof path.trigger !== 'object') {
@@ -1003,6 +1205,29 @@ export function validateRehearsal(paths = REHEARSAL_PATHS, options = {}) {
 					stepId,
 					code: ERROR_CODE.ownerInvalid,
 					message: 'step owner is not an authorised human owner',
+				});
+			}
+
+			if (!isNonEmptyString(step.evidence)) {
+				recordError(errors, {
+					pathId,
+					stepId,
+					code: ERROR_CODE.stepEvidenceMissing,
+					message: 'step declares no evidence level',
+				});
+			} else if (!EVIDENCE_LEVEL_VALUES.has(step.evidence)) {
+				recordError(errors, {
+					pathId,
+					stepId,
+					code: ERROR_CODE.stepEvidenceInvalid,
+					message: 'step evidence level is not in the closed vocabulary',
+				});
+			} else if (step.evidence !== EVIDENCE_LEVEL.recorded) {
+				recordError(errors, {
+					pathId,
+					stepId,
+					code: ERROR_CODE.stepEvidenceNotRecorded,
+					message: 'the table may only record a step; execution evidence is assigned by the runner',
 				});
 			}
 
@@ -1157,17 +1382,145 @@ export function validateRehearsal(paths = REHEARSAL_PATHS, options = {}) {
 }
 
 /**
- * Run the rehearsal and project the recorded table into a result.
+ * Whether a detection rule matches an observed signal set.
  *
- * This is a table-driven rehearsal, not a deploy simulator: the paths
- * are checked for completeness and projected for the report. It never
- * executes a recorded command. An invalid table returns `ok: false` and
- * no paths, so a caller cannot print a partial result as a PASS.
+ * Every signal the rule names must be present and equal. A signal the
+ * rule does not name is not a constraint.
  */
-export function runRollbackRehearsal(paths = REHEARSAL_PATHS) {
-	const validation = validateRehearsal(paths);
+export function detectionMatches(detection, signals) {
+	if (!detection || typeof detection !== 'object') return false;
+	for (const [name, expected] of Object.entries(detection)) {
+		if (signals[name] !== expected) return false;
+	}
+	return true;
+}
 
-	if (!validation.ok) {
+/**
+ * Decide which documented path applies, from the observed state.
+ *
+ * The decision reads the OBSERVED SIGNALS and the table's detection
+ * rules, and nothing else: no scenario, no path id, no release name.
+ * A state that matches no documented path, or more than one, is an
+ * error — never a guess and never a silent fallback.
+ */
+export function decideRollbackPath(signals, paths = REHEARSAL_PATHS) {
+	const matches = paths.filter((path) => detectionMatches(path.detection ?? {}, signals));
+	if (matches.length === 0) {
+		throw new Error(
+			`the observed state matches no documented rollback path: ${describeSignals(signals)}`,
+		);
+	}
+	if (matches.length > 1) {
+		throw new Error(
+			`the observed state matches ${matches.length} documented rollback paths (${matches
+				.map((path) => path.id)
+				.join(', ')}): the detection rules overlap`,
+		);
+	}
+	const path = matches[0];
+	return {
+		pathId: path.id,
+		outcome: path.outcome,
+		owner: path.decisionPoint.owner,
+		rule: path.decisionPoint.rule,
+		detection: path.detection,
+	};
+}
+
+/**
+ * Run every simulation scenario against a disposable local fixture.
+ *
+ * A scenario that fails does not abort the run: the failure is
+ * collected, so the report can name every scenario that did not hold.
+ * The caller decides what a failed simulation means (it means the
+ * rehearsal is not OK).
+ */
+export function runRollbackSimulation({
+	paths = REHEARSAL_PATHS,
+	scenarios = SIMULATION_SCENARIOS,
+} = {}) {
+	const records = [];
+	const errors = [];
+	for (const scenario of scenarios) {
+		try {
+			records.push(
+				runSimulationScenario(scenario, {
+					decide: (signals) => decideRollbackPath(signals, paths),
+				}),
+			);
+		} catch (error) {
+			errors.push({
+				code: ERROR_CODE.simulationFailed,
+				scenarioId: scenario.id,
+				pathId: scenario.pathId,
+				message: error.message,
+			});
+		}
+	}
+	return {
+		ok: errors.length === 0,
+		records,
+		errors,
+		summary: {
+			scenarioCount: scenarios.length,
+			executedScenarioCount: records.length,
+			simulatedStepCount: records.reduce(
+				(total, record) => total + record.exercisedSteps.length,
+				0,
+			),
+			stateTransitions: records.reduce((total, record) => total + record.stateTransitions, 0),
+			// The safety boundary, counted: the simulation writes files in
+			// a throwaway directory and does nothing else.
+			executedCommands: 0,
+			externalRequests: 0,
+			credentialsRead: 0,
+			productionOperations: 0,
+		},
+	};
+}
+
+/** An empty simulation result, for the projection that runs none. */
+function emptySimulation() {
+	return {
+		ok: true,
+		records: [],
+		errors: [],
+		summary: {
+			scenarioCount: 0,
+			executedScenarioCount: 0,
+			simulatedStepCount: 0,
+			stateTransitions: 0,
+			executedCommands: 0,
+			externalRequests: 0,
+			credentialsRead: 0,
+			productionOperations: 0,
+		},
+	};
+}
+
+/**
+ * Run the rehearsal: validate the table, exercise the documented paths
+ * against a disposable local fixture, and project the result.
+ *
+ * The projection keeps the two evidence kinds apart. A step the
+ * simulation performed carries the `simulated-and-tested` level and the
+ * observations it produced; every other step stays `recorded`, because
+ * a recording is never reported as an execution. Nothing here can
+ * reach `human-verified` or `production-verified`.
+ */
+export function runRollbackRehearsal(paths = REHEARSAL_PATHS, options = {}) {
+	const validation = validateRehearsal(paths);
+	const simulation =
+		options.simulate === false
+			? emptySimulation()
+			: runRollbackSimulation({
+					paths,
+					scenarios: options.scenarios ?? SIMULATION_SCENARIOS,
+				});
+	const errors = [...validation.errors, ...simulation.errors];
+	const ok = validation.ok && simulation.ok;
+
+	if (!ok) {
 		return {
 			issue: '#503',
 			ok: false,
@@ -1178,14 +1531,37 @@ export function runRollbackRehearsal(paths = REHEARSAL_PATHS) {
 				executedCommands: 0,
 				externalRequests: 0,
 				credentialsRead: 0,
+				productionOperations: 0,
 				ownerGatedSteps: 0,
 				humanGateSteps: 0,
 				readOnlySteps: 0,
 				outcomes: [],
 				failureClasses: [],
+				evidenceLevels: [EVIDENCE_LEVEL.recorded],
+				simulatedSteps: 0,
+				recordedSteps: 0,
+				simulatedScenarios: 0,
+				fixtureStateTransitions: 0,
+				notVerifiedFacts: NOT_VERIFIED_FACTS.length,
 			},
-			errors: validation.errors,
+			evidence: {
+				levels: [EVIDENCE_LEVEL.recorded],
+				highest: EVIDENCE_LEVEL.recorded,
+				humanVerified: false,
+				productionVerified: false,
+				notVerified: NOT_VERIFIED_FACTS,
+			},
+			simulation,
+			errors,
 		};
+	}
+
+	// Which steps did the simulation actually exercise?
+	const exercised = new Map();
+	for (const record of simulation.records) {
+		for (const step of record.exercisedSteps) {
+			exercised.set(`${record.pathId}/${step.stepId}`, { scenarioId: record.id, ...step });
+		}
 	}
 
 	const projected = paths.map((path) => ({
@@ -1195,14 +1571,34 @@ export function runRollbackRehearsal(paths = REHEARSAL_PATHS) {
 		outcome: path.outcome,
 		trigger: path.trigger,
 		decisionPoint: path.decisionPoint,
-		steps: path.steps.map((step) => ({
-			...step,
-			status: 'recorded',
-		})),
+		steps: path.steps.map((step) => {
+			const detail = exercised.get(`${path.id}/${step.id}`);
+			return {
+				...step,
+				status: detail ? 'simulated' : 'recorded',
+				evidence: detail ? EVIDENCE_LEVEL.simulatedAndTested : EVIDENCE_LEVEL.recorded,
+				simulation: detail
+					? { scenarioId: detail.scenarioId, method: detail.method, observed: detail.observed }
+					: null,
+			};
+		}),
 		notReversible: path.notReversible,
 	}));
 
 	const allSteps = projected.flatMap((path) => path.steps);
+
+	// Safety net: this module may never claim a human or production
+	// verification. Nothing here was done by a human against Cloudflare.
+	for (const step of allSteps) {
+		if (
+			step.evidence === EVIDENCE_LEVEL.humanVerified ||
+			step.evidence === EVIDENCE_LEVEL.productionVerified
+		) {
+			throw new Error('the rehearsal may not claim human or production verification');
+		}
+	}
+
+	const levels = EVIDENCE_ORDER.filter((level) => allSteps.some((step) => step.evidence === level));
 
 	return {
 		issue: '#503',
@@ -1214,12 +1610,28 @@ export function runRollbackRehearsal(paths = REHEARSAL_PATHS) {
 			executedCommands: 0,
 			externalRequests: 0,
 			credentialsRead: 0,
+			productionOperations: 0,
 			ownerGatedSteps: allSteps.filter((step) => step.action.requiresHumanApproval === true).length,
 			humanGateSteps: allSteps.filter((step) => step.action.kind === ACTION_KIND.humanGate).length,
 			readOnlySteps: allSteps.filter((step) => step.action.mutates === MUTATION.none).length,
 			outcomes: projected.map((path) => path.outcome),
 			failureClasses: [...new Set(projected.map((path) => path.failureClass))],
+			evidenceLevels: levels,
+			simulatedSteps: allSteps.filter((step) => step.evidence === EVIDENCE_LEVEL.simulatedAndTested)
+				.length,
+			recordedSteps: allSteps.filter((step) => step.evidence === EVIDENCE_LEVEL.recorded).length,
+			simulatedScenarios: simulation.records.length,
+			fixtureStateTransitions: simulation.summary.stateTransitions,
+			notVerifiedFacts: NOT_VERIFIED_FACTS.length,
 		},
+		evidence: {
+			levels,
+			highest: levels[levels.length - 1] ?? EVIDENCE_LEVEL.recorded,
+			humanVerified: false,
+			productionVerified: false,
+			notVerified: NOT_VERIFIED_FACTS,
+		},
+		simulation,
 		errors: [],
 	};
 }
@@ -1229,11 +1641,27 @@ export function formatRollbackRehearsal(result) {
 	const lines = [
 		`rollback rehearsal (${result.issue}): ${result.ok ? 'PASS' : 'FAIL'}`,
 		`paths: ${result.summary.pathCount}, steps: ${result.summary.stepCount}`,
-		`executed commands: ${result.summary.executedCommands}, external requests: ${result.summary.externalRequests}, credentials read: ${result.summary.credentialsRead}`,
+		`executed commands: ${result.summary.executedCommands}, external requests: ${result.summary.externalRequests}, credentials read: ${result.summary.credentialsRead}, production operations: ${result.summary.productionOperations}`,
 		`owner-gated steps: ${result.summary.ownerGatedSteps}, human gates: ${result.summary.humanGateSteps}`,
+		`evidence levels: ${result.evidence.levels.join(', ')} (highest: ${result.evidence.highest})`,
+		`human-verified: ${result.evidence.humanVerified ? 'yes' : 'no'}, production-verified: ${result.evidence.productionVerified ? 'yes' : 'no'}`,
+		`simulated scenarios: ${result.summary.simulatedScenarios}, simulated steps: ${result.summary.simulatedSteps}, recorded steps: ${result.summary.recordedSteps}, fixture state transitions: ${result.summary.fixtureStateTransitions}`,
 	];
 	for (const path of result.paths) {
-		lines.push(`PASS ${path.id}: ${path.outcome} (${path.steps.length} steps)`);
+		const simulated = path.steps.filter(
+			(step) => step.evidence === EVIDENCE_LEVEL.simulatedAndTested,
+		);
+		lines.push(
+			`PASS ${path.id}: ${path.outcome} (${path.steps.length} steps, ${simulated.length} simulated against the local fixture)`,
+		);
+	}
+	for (const scenario of result.simulation?.records ?? []) {
+		lines.push(
+			`SIMULATED ${scenario.id}: decided ${scenario.decision.pathId}, restore ${scenario.restore.kind} performed ${scenario.restore.performed ? 'yes' : 'no'}`,
+		);
+	}
+	for (const fact of result.evidence.notVerified) {
+		lines.push(`NOT VERIFIED (${fact.requires}): ${fact.fact}`);
 	}
 	for (const error of result.errors) {
 		const location = [error.pathId, error.stepId].filter(Boolean).join('/');

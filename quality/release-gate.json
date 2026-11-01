@@ -120,6 +120,24 @@
 			"state": "implemented",
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/tools/runbook.md"
+		},
+		{
+			"id": "tool-artefact-check",
+			"contract": "The licence, dependency set and outbound-host declaration of every shipped Tool still agree with the reviewed record, so a release cannot ship a Tool whose stated provenance is unverified.",
+			"command": "pnpm run tools:artifact:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/tools/runbook.md"
+		},
+		{
+			"id": "tool-artefact-observed",
+			"contract": "The Tool licence and outbound-host findings are judged against the bytes that would actually be served, so a release cannot report an outbound rule as satisfied by a build that never produced the artefact.",
+			"command": "pnpm run tools:artifact:check:observed",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["integration", "release"],
 			"documentation": "docs/runbook/tools.md"
 		},
 		{

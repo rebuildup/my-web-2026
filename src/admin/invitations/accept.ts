@@ -1,7 +1,5 @@
-import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { auth } from '../../cloudflare/auth/better-auth';
 
 /**
  * Invitation accept — public server function called from
@@ -17,6 +15,15 @@ import { auth } from '../../cloudflare/auth/better-auth';
  * bypass the middleware and run as the underlying service. The
  * Better Auth CLI (`create-admin`) uses this same pattern — see
  * `packages/cli/src/commands/create-admin.ts`. See ADR-0009 §4.
+ *
+ * Issue #724: both the D1 binding and the Better Auth instance are
+ * resolved with `await import(…)` **inside** the implementation
+ * functions, never at module level. This file is imported by the route
+ * component `/admin/invitations/accept`, so a module-level import of
+ * the auth module would pull the whole Better Auth server stack (Kysely,
+ * Drizzle, the SQLite dialects, the API-key plugin — roughly 700 KB) into
+ * the shared client entry chunk that EVERY route loads, including the
+ * public home page.
  *
  * Sign-in after acceptance: this fn does NOT sign the user in
  * directly. We can't forward Set-Cookie headers through the RPC
@@ -56,6 +63,8 @@ export interface AcceptInvitationResult {
 export async function acceptInvitationImpl(
 	data: z.infer<typeof AcceptInvitationInput>,
 ): Promise<AcceptInvitationResult> {
+	const { env } = await import('cloudflare:workers');
+	const { auth } = await import('../../cloudflare/auth/better-auth');
 	const tokenHash = await sha256Hex(data.token);
 	const now = Date.now();
 
@@ -155,6 +164,7 @@ export interface InvitationProbe {
 export async function probeInvitationImpl(
 	data: z.infer<typeof ProbeInvitationInput>,
 ): Promise<InvitationProbe> {
+	const { env } = await import('cloudflare:workers');
 	const tokenHash = await sha256Hex(data.token);
 	const row = await env.DB.prepare(
 		'SELECT email, expires_at, consumed_at FROM auth_invitation WHERE token_hash = ? LIMIT 1',

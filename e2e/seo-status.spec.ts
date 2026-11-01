@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { runStatement } from '../scripts/_d1.mjs';
 import {
+	assertLocalOnlySpecMaySkip,
+	isLocalBaseUrl,
+	localOnlyAcknowledged,
+} from '../scripts/_local-only-spec.mjs';
+import {
 	HTTP_STATUS_EXPECTATIONS,
 	evaluateObservation,
 	robotsStateFromHtml,
@@ -66,7 +71,17 @@ const UNLISTED_SLUG = 'seo-status-browser-unlisted';
 
 // Same condition as `playwright.config.ts`: the local preview server.
 // `PLAYWRIGHT_BASE_URL` defaults to `http://127.0.0.1:<port>`.
-const LOCAL_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.startsWith('http://127.0.0.1') ?? true;
+//
+// Issue #728: the predicate lives in `scripts/_local-only-spec.mjs` so
+// the guard and the predicate cannot disagree, and a run pointed at a
+// non-local origin FAILS unless it acknowledges the lost coverage
+// (`E2E_LOCAL_ONLY_ACK=1`). A silently skipped spec is
+// indistinguishable from a spec that verified something.
+const LOCAL_BASE_URL = isLocalBaseUrl(process.env.PLAYWRIGHT_BASE_URL);
+assertLocalOnlySpecMaySkip({
+	baseUrl: process.env.PLAYWRIGHT_BASE_URL,
+	acknowledged: localOnlyAcknowledged(process.env),
+});
 
 /** Repeated `facets` — rejected by the route's own search schema. */
 const INVALID_QUERY_PATH = '/portfolio?facets=a&facets=b';

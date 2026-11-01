@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF, env } from 'cloudflare:test';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Admin routing regression (Issue #106).
@@ -36,13 +36,6 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 describe('admin routing (Issue #106)', () => {
-	// Issue #266: workerd pool cold-start (~2.3-2.6s for first SSR
-	// bundle render) must not fall inside a timed test. Warm-up
-	// is done once per file, outside individual `it` budgets.
-	beforeAll(async () => {
-		await SELF.fetch('https://example.com/admin/login', { redirect: 'manual' });
-	});
-
 	it('GET /admin/login returns 200 HTML with the sign-in form (anonymous)', async () => {
 		// Regression: this previously returned 307 to /admin/login
 		// because the parent /admin loader auth-gated the

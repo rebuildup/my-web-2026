@@ -617,12 +617,61 @@ export function checkRouteCoverage(routePaths, expectations = HTTP_STATUS_EXPECT
 }
 
 /**
+ * The test titles a proof file declares.
+ *
+ * Issue #733 (V-5): the proof wiring used to ask only whether the case id
+ * appears *somewhere* in the file, so an assertion could be deleted while
+ * the id survived in a comment — the gate stayed green with the evidence
+ * removed. A test title is the smallest unit that a runner can actually
+ * execute and report by name, so the case id has to be *in* one.
+ *
+ * Only `test(...)` / `it(...)` call sites count. `test.describe(...)` is a
+ * grouping call, and `test.skip(...)` / `test.fixme(...)` name a test the
+ * runner will not execute, so neither may stand in for evidence.
+ *
+ * The call site must also open its line. A commented-out declaration
+ * (`// it('public-home')`) is exactly the shape this check exists to
+ * reject, and a trailing comment mentioning a call would otherwise be
+ * read as one.
+ *
+ * @param {string} source the proof file's text.
+ * @returns {string[]} the declared test titles, in source order.
+ */
+export function collectTestTitles(source) {
+	const titles = [];
+	const call = /^[ \t]*(?:test|it)\s*\(\s*(['"`])([^'"`]*)\1/gm;
+	for (const match of source.matchAll(call)) {
+		titles.push(match[2]);
+	}
+	return titles;
+}
+
+/**
+ * Whether a test title names the case.
+ *
+ * The title may continue after the id (`'public-home renders as a normal
+ * page'`), but it may not continue with another id character: `public-home`
+ * must not be satisfied by `public-homepage`.
+ *
+ * @param {string} title a declared test title.
+ * @param {string} id the case id.
+ */
+function titleNamesCase(title, id) {
+	if (title === id) return true;
+	if (!title.startsWith(id)) return false;
+	const next = title.charAt(id.length);
+	return next !== undefined && !/[A-Za-z0-9_-]/.test(next);
+}
+
+/**
  * Every row must name a proof that actually exists and cites it.
  *
  * The check is textual on purpose: the proof suites are TypeScript and
  * are executed by their own runners, but a case id that appears nowhere
  * in the file it names is a claim with no evidence, which is the exact
- * failure mode this Issue names.
+ * failure mode this Issue names. Issue #733 (V-5) tightened "appears
+ * somewhere in the file" to "names a test in the file", so removing an
+ * assertion cannot leave the claim behind as a comment.
  *
  * @param {Record<string, string>} fileSources absolute path -> file text.
  */
@@ -638,10 +687,14 @@ export function checkProofWiring(expectations = HTTP_STATUS_EXPECTATIONS, fileSo
 				});
 				continue;
 			}
-			if (!source.includes(entry.id)) {
+			const titles = collectTestTitles(source);
+			if (!titles.some((title) => titleNamesCase(title, entry.id))) {
+				const mentioned = source.includes(entry.id);
 				violations.push({
-					code: 'unproven-case',
-					message: `case "${entry.id}" is never referenced in its ${proof.layer} proof ${proof.file}`,
+					code: mentioned ? 'unnamed-case' : 'unproven-case',
+					message: mentioned
+						? `case "${entry.id}" is mentioned in its ${proof.layer} proof ${proof.file} but no test there is named after it — a mention is not evidence`
+						: `case "${entry.id}" is never referenced in its ${proof.layer} proof ${proof.file}`,
 				});
 			}
 		}

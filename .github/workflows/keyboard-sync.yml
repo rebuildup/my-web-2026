@@ -1,0 +1,145 @@
+name: Keyboard layout sync
+
+# Issue #719 — refresh the committed `/keyboard` layout snapshot from the
+# public upstream, and open a review pull request.
+#
+# Trigger / acceptable delay
+# --------------------------
+# Once a day at 04:41 UTC. The minute is deliberately NOT on the hour:
+# scheduled workflows are queued at the same top-of-the-hour minute, so
+# an off-hour minute keeps this run out of the crowded slot. The page is
+# a committed snapshot, so the maximum honest delay between an upstream
+# change and the page reflecting it is one schedule interval, plus the
+# workflow queue, plus the human review of the pull request. The page
+# itself never claims to be fresher than the snapshot records: a
+# snapshot older than `KEYBOARD_STALE_AFTER_DAYS` (45) renders as
+# `stale`, and the offline `keyboard:check` gate reports the same age.
+#
+# Why a pull request and not a direct commit
+# ------------------------------------------
+# `main` is the released source state and only release PRs update it
+# (AGENTS.md §6). The workflow therefore opens (or updates) a PR
+# against the active release branch, configured as
+# `vars.KEYBOARD_SYNC_BASE_REF` at sprint cut — the same pattern the
+# `Project introduction sync` workflow uses. The workflow never merges,
+# tags, deploys or publishes; those remain human gates. If the variable
+# is unset the job stops with a status-only message rather than
+# guessing a base.
+#
+# What it reads
+# -------------
+# `pnpm run keyboard:sync` reads exactly four allowlisted public paths
+# (two repositories, no token, no Authorization header, `redirect:
+# 'error'`, byte caps) through the bounded parsers in
+# `src/keyboard/parse-*.ts`, and writes only `src/keyboard/sources/`.
+# The Worker never fetches: the page reads the committed bytes.
+#
+# Failure contract
+# -----------------
+# A failed run is visible on the repository's Actions page, and the
+# repository owner is the party who re-runs it. The failure is never
+# silent: `unavailable` (the upstream no longer serves the allowlisted
+# content) and `error` (transport / validation) are different exit
+# states, and neither advances the committed snapshot's freshness
+# clock, so the old bytes can never start reading as current.
+#
+# Supply chain: every `uses:` is pinned to a full commit SHA and
+# reviewed in `quality/actions-pins.json` (Issue #472).
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keyboard-layout-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: sync keyboard layout snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22.18 }
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with: { version: 12.3.4 }
+      - run: pnpm install --frozen-lockfile
+      - name: resolve release base
+        id: base
+        env:
+          BASE_REF: ${{ vars.KEYBOARD_SYNC_BASE_REF }}
+        run: |
+          if [ -z "$BASE_REF" ]; then
+            echo "::error::vars.KEYBOARD_SYNC_BASE_REF is unset; set it to the active release-x-y-z branch."
+            exit 1
+          fi
+          echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+      - name: check out the sync branch
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          BRANCH: keyboard-layout-sync
+        run: |
+          git fetch origin "$BASE_REF"
+          git checkout -B "$BRANCH" "origin/$BASE_REF"
+      - name: refresh the snapshot
+        run: pnpm run keyboard:sync
+      # The refreshed bytes are the ones the page renders, so the page's
+      # own suites run against them before anything is published.
+      - name: verify the refreshed snapshot
+        run: |
+          pnpm run keyboard:check
+          pnpm exec vitest run src/keyboard test/integration/keyboard-page.test.ts
+      - name: commit only when the snapshot changed
+        id: commit
+        env:
+          BRANCH: keyboard-layout-sync
+        run: |
+          git add src/keyboard/sources
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::the upstream snapshot is unchanged; nothing to publish"
+            exit 0
+          fi
+          files=$(git diff --cached --name-only | paste -sd, -)
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(keyboard): refresh the keyboard layout snapshot'
+          # Issue #739: the lease is resolved from the REMOTE's current
+          # state, so a concurrent run is refused instead of overwriting
+          # another snapshot.
+          node scripts/_keyboard-sync-publish.mjs push --remote origin --branch "$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+      - name: plan the review pull request
+        id: plan
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+          FILES: ${{ steps.commit.outputs.files }}
+        run: |
+          mkdir -p .tmp
+          node scripts/_keyboard-sync-publish.mjs plan \
+            --base "$BASE_REF" --changed-files "$FILES" --out .tmp/pr-plan.json
+          echo "status=$(jq -r .status .tmp/pr-plan.json)" >> "$GITHUB_OUTPUT"
+      - name: open or update the review pull request
+        if: steps.commit.outputs.changed == 'true' && steps.plan.outputs.status == 'publish'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base=$(jq -r .base .tmp/pr-plan.json)
+          branch=$(jq -r .branch .tmp/pr-plan.json)
+          existing=$(gh pr list --head "$branch" --base "$base" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "::notice::updated existing pull request #$existing"
+            exit 0
+          fi
+          gh pr create --base "$base" --head "$branch" \
+            --title "$(jq -r .title .tmp/pr-plan.json)" --body "$(jq -r .body .tmp/pr-plan.json)"

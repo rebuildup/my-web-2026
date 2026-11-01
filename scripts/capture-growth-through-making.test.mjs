@@ -1,0 +1,131 @@
+#!/usr/bin/env node
+/**
+ * Capture-script contract for Issue #513.
+ *
+ * The verification image is only evidence if it is the SHIPPED preview
+ * and if the capture fails when the preview stops matching the
+ * specification. These assertions cover the parts that can be decided
+ * without a browser: the WebP-only output contract, the harness that
+ * renders the shipped story, and the comparison that turns a
+ * half-rendered preview into a failed capture.
+ */
+
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { GROWTH_THROUGH_MAKING } from '../src/routes/design-system/sections/GrowthThroughMaking.preview.ts';
+import {
+	DEFAULT_ARTEFACT_PATH,
+	SCREENSHOT_BUDGET_BYTES,
+	assertEncodeWidth,
+	assertWebpOutputPath,
+	harnessMainTsx,
+	screenshotBudgetVerdict,
+	verifyRenderedDocument,
+} from './capture-growth-through-making.mjs';
+
+/** The observation a correct render produces (the fixture of "everything is there"). */
+function completeObservation() {
+	const spec = GROWTH_THROUGH_MAKING.document;
+	const sections = GROWTH_THROUGH_MAKING.sections;
+	return {
+		title: spec.title,
+		headings: [
+			{ level: 'H1', text: spec.title },
+			...sections.map((section) => ({ level: 'H2', text: section.heading })),
+			...sections.flatMap((section) =>
+				section.blocks
+					.map((block) => block.heading)
+					.filter((heading) => heading !== null)
+					.map((heading) => ({ level: 'H3', text: heading })),
+			),
+		],
+		leads: sections.map((section) => section.lead),
+		bullets: sections.flatMap((section) => section.blocks.flatMap((block) => [...block.bullets])),
+		meta: [spec.status, spec.source, spec.verification, spec.preview],
+		scrollWidth: 1440,
+		clientWidth: 1440,
+	};
+}
+
+describe('capture-growth-through-making (Issue #513)', () => {
+	it('refuses an output path that is not WebP', () => {
+		assert.throws(
+			() => assertWebpOutputPath('docs/verification/vision/growth-case-study-preview.png'),
+			/non-WebP/,
+		);
+	});
+
+	it('refuses an output path outside the repository', () => {
+		assert.throws(() => assertWebpOutputPath('../outside.webp'), /outside the repository/);
+	});
+
+	it('accepts the committed WebP path', () => {
+		const resolved = assertWebpOutputPath(DEFAULT_ARTEFACT_PATH, process.cwd());
+		assert.ok(resolved.endsWith('docs/verification/vision/growth-case-study-preview.webp'));
+	});
+
+	it('reports the artefact budget', () => {
+		assert.equal(screenshotBudgetVerdict(1024).withinBudget, true);
+		assert.equal(screenshotBudgetVerdict(SCREENSHOT_BUDGET_BYTES).withinBudget, true);
+		assert.equal(screenshotBudgetVerdict(SCREENSHOT_BUDGET_BYTES + 1).withinBudget, false);
+	});
+
+	it('refuses to encode wider than the committed width cap', () => {
+		assert.throws(() => assertEncodeWidth(1441), /over the 1440px width cap/);
+	});
+
+	it('renders the shipped story module, not a copy of it', () => {
+		const main = harnessMainTsx();
+		assert.match(main, /GrowthThroughMaking\.stories\.tsx/);
+		assert.match(main, /Default/);
+		assert.match(main, /src\/styles\.css/);
+	});
+
+	it('passes a render that shows the whole specification', () => {
+		const verdict = verifyRenderedDocument(completeObservation());
+		assert.deepEqual(verdict.failures, []);
+		assert.equal(verdict.ok, true);
+	});
+
+	it('fails when the document title is wrong', () => {
+		const observation = completeObservation();
+		observation.title = '別の表題';
+		const verdict = verifyRenderedDocument(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /the document title is/);
+	});
+
+	it('fails when a section is missing', () => {
+		const observation = completeObservation();
+		const renderedSections = observation.headings.filter((heading) => heading.level === 'H2');
+		const lastSection = renderedSections[renderedSections.length - 1];
+		observation.headings = observation.headings.filter((heading) => heading !== lastSection);
+		const verdict = verifyRenderedDocument(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /the rendered sections are/);
+	});
+
+	it('fails when a bullet is missing', () => {
+		const observation = completeObservation();
+		observation.bullets = observation.bullets.slice(0, -1);
+		const verdict = verifyRenderedDocument(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /bullet\(s\), expected/);
+	});
+
+	it('fails when a lead paragraph is missing', () => {
+		const observation = completeObservation();
+		observation.leads = observation.leads.slice(0, -1);
+		const verdict = verifyRenderedDocument(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /the rendered lead paragraphs are/);
+	});
+
+	it('fails when the document scrolls sideways', () => {
+		const observation = completeObservation();
+		observation.scrollWidth = 1600;
+		const verdict = verifyRenderedDocument(observation);
+		assert.equal(verdict.ok, false);
+		assert.match(verdict.failures.join('\n'), /scrolls sideways/);
+	});
+});

@@ -1,0 +1,16 @@
+{
+	"$comment": "Negative control for Issue #722. `applicable-and-verified` requires a human review record. No owner measurement exists in this repository and an agent may not produce one, so a decision that claims it without a record must be refused with `scope-verified-without-review-record`.",
+	"decisions": [
+		{
+			"sc": "2.4.6",
+			"level": "AA",
+			"name": "Headings and Labels",
+			"disposition": "applicable-and-verified",
+			"reason": "見出しの文言がそのセクションを説明している。",
+			"evidence": "すべての見出しを読んだ。",
+			"reviewer": "owner",
+			"steps": ["すべての公開画面の見出しを読む。"]
+		}
+	],
+	"$expects": ["scope-verified-without-review-record"]
+}

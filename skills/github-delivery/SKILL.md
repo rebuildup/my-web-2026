@@ -141,7 +141,7 @@ Dependency execution上は必要に応じて次を区別する:
 9. independent ticketまたはstacked ticketをreviewし、current landing candidateを検証する。
 10. ticket/stackをready-to-mergeへ持っていく。
 11. explicit merge authorizationがなければここで停止し、current head SHA / gate state / blockersを報告する。authorizationがある場合だけtarget release trunkへlandし、landing成功を確認する。
-12. target release trunkへlandしたticketのlinked Issueを明示的にcloseし、Project statusをDoneへ更新する。
+12. target release trunkへlandしたticketのlinked Issueを明示的にcloseし、Project statusをDoneへ更新する。closeの直前に、そのIssue自身のacceptance criteriaが満たされたことを**証拠付き**で確認し、記録を残す。release trunkへlandしたこと自体は完了の証拠にならない（AGENTS.md §6 / `docs/runbook/issue-lifecycle.md`）。
 13. release branch全体を検証し、release PRをready-to-mergeへ持っていく。
 14. explicit release-merge authorizationがなければrelease merge前で停止する。authorizationがある場合だけrelease PRを `main` へmergeする。
 15. version/release処理を完了する。
@@ -296,7 +296,7 @@ DraftからReady for reviewへ移す条件:
 
 IssueのDone条件:
 
-- acceptance criteria satisfied
+- acceptance criteria satisfied（**証拠**: 受け入れ条件を満たす成果物が、repository path / PR / commit / URL で引用できること。PRのmerge / CIのgreen / 文書の存在 / releaseへの統合 / agent自身の完了報告は証拠にならない。AGENTS.md §6）
 - required CI/checks green for current landing candidate
 - blocking review resolved
 - release/stack staleness handled
@@ -312,11 +312,11 @@ native stacked PRでは、stackはbottom（trunkに最も近いPR）からlandin
 
 native stack landingを使えずordinary nested PRへfallbackする場合、例えば `124 -> 123` の通常mergeはintermediate integrationにすぎない。#124のchangesがtarget `release-x-y-z` へ到達するまでIssue #124をclose/Doneにしない。
 
-contiguous stack groupまたはstack全体を一括landingする場合、含まれるすべてのticketが個別にacceptance criteria / review / current-SHA validationを満たしていることを確認する。landing後に各Issue/Project stateを明示的にreconcileする。
+contiguous stack groupまたはstack全体を一括landingする場合、含まれるすべてのticketが個別にacceptance criteria / review / current-SHA validationを満たしていることを確認する。landing後に各Issue/Project stateを明示的にreconcileする。**一括landingでは、各Issueの受け入れ条件が満たされたかをIssueごとに確認し、その確認の記録を残す。確認できないIssueはcloseしない。** 一括closeは進捗ではなく defect signal であり、Issue数の減少はevidenceにならない。
 
 `main`へのmergeをIssue単位のDone条件にはしない。Issue Done boundaryはtarget release trunkである。
 
-GitHubのclosing keywordはdefault branch向けPRでのみ自動closeに使えるため、release trunkへのlanding成功確認後にCoordinatorまたはdelivery automationがIssueを明示的にcloseする。
+GitHubのclosing keywordはdefault branch向けPRでのみ自動closeに使えるため、release trunkへのlanding成功確認後にCoordinatorまたはdelivery automationがIssueを明示的にcloseする。closeの根拠は**そのIssue自身の受け入れ条件**でなければならない。「release-0-8-0に統合済み」だけを理由とするcloseは 2026-10-31 の事故と同じ形に复发する（同一template commentによる一括クローズ）。gate `scripts/check-issue-closure-remote.mjs` が検出する。
 
 ## Release PR merge human gate (canonical rule)
 

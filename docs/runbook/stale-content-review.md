@@ -81,6 +81,10 @@ pnpm run copy:stale:check
    （file と行）を書いて `quality/stale-content-review.json` を更新する。
 3. 表現を変えたいなら、**#506 の編集レビュー承認** を通す。本 gate は
    書き換えを提案しないし、公開もしない。
+4. **owner 確認を台帳に固定する (Issue #720)。** 確認の根拠を issue comment
+   として残し、record の `provenance` を `kind: "owner-review"` /
+   `reference: "<その URL>"` / `ownerConfirmation: "confirmed"` に更新する。
+   **「gate が緑だった」ことは owner 確認の根拠にならない。**
 
 ### 4.3 記録を repository に残す
 
@@ -95,12 +99,23 @@ pnpm run copy:stale:check
 	"dimension": "prose",
 	"reviewedAt": "2026-11-04",
 	"reviewedBy": "owner",
+	"provenance": {
+		"kind": "owner-review",
+		"reference": "<owner の review / issue comment の URL>",
+		"recordedBy": "<owner の識別子>",
+		"ownerConfirmation": "confirmed"
+	},
 	"note": "src/contact/public.ts:52 の getVisibleChannels() が返す一覧の題字。30 日 gate は src/contact/schema.ts:67。"
 }
 ```
 
 `expression` は **表示文面の byte-exact** な文字列。gate はそれで照合する。
 **文を書き換えると、この記録は失効する**（次の実行で `unrecorded` になる）。
+
+`provenance` は **その review date が owner のものである**ことを示す欄である
+(Issue #720)。owner 自身が読まずに agent が記入した record には
+`kind: "agent-recorded"` / `ownerConfirmation: "unconfirmed"` を書き、gate は
+それを **owner 確認待ち** として報告する。
 
 ### 4.4 再確認
 
@@ -157,6 +172,21 @@ opt-in すると、その locale の文面は検出されない（`not-scanned` 
 - **reviewer の同一性を検証しない。** `reviewedBy` は記録された文字列で
   あり、その人物が owner であることの証明ではない。実際の権限は PR review
   にある（AGENTS.md §6）。
+- **review date は「記録された主張」である (Issue #720)。** registry の
+  `reviewedAt` は「owner がこの文を読んだ日」という **主張** であり、owner が
+  読んだことそのものではない。gate は record の `provenance` を読む:
+  `kind: "owner-review"` + traceable な `reference` +
+  `ownerConfirmation: "confirmed"` だけが **owner 確認済み** であり、
+  自動化された側が書いた record は **owner 確認待ち** として報告される
+  （`reviewedBy: "owner"` という文字列は registry 自身の主張にすぎない）。
+  gate は **日付を書き換えない** — 分類を変えるだけである。
+- **reference の「指している先」を検証しない (Issue #720)。** gate は
+  reference の **形** だけを見る。GitHub 上のコメントは gate が読まない
+  （offline / status-only が gate の契約である）。**reference は人間行動に
+  ついての主張**であり、repository はその主張を記録するが独立に証明はしない。
+  台帳全体の監査は
+  [`docs/verification/governance/approval-provenance.md`](../verification/governance/approval-provenance.md)
+  にある。
 - **window は「読む間隔」であって「真である期間」ではない。** gate が緑でも
   文が誤っていることはある。gate はそれを **検出しない**。
 

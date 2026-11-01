@@ -76,7 +76,7 @@ change_risk_mapping:
  * declared in `quality/profile.yaml` right after
  * `infisical:check:coverage`; Issue #478 (`security:disclosure:check`)
  * and Issue #464 (`integration:scope:check`) add theirs on the release
- * trunk, so the reconciled pin holds 44 components — one per declared
+ * trunk, so the reconciled pin holds one entry per declared
  * `gates.fast.components` entry, in the same order. The pin keeps its
  * job (a dropped or moved
  * component still fails); a new gate is still one line in the profile
@@ -92,6 +92,11 @@ const EXPECTED_FAST_PLAN = [
 	// committed snapshot the same way the structured-data gate reads its
 	// contract, so it runs next to it.
 	'pnpm run projects:check',
+	// Issue #719: the committed keyboard-layout snapshot, checked the
+	// same way — the recorded provenance must still describe the
+	// committed bytes, and the daily refresh workflow runs this same
+	// check before it publishes anything.
+	'pnpm run keyboard:check',
 	'pnpm run ogp:card:check',
 	'pnpm run index:boundary:check',
 	'pnpm run tools:check',
@@ -119,6 +124,10 @@ const EXPECTED_FAST_PLAN = [
 	// review-pending finding is read next to the other copy findings.
 	'pnpm run copy:stale:check',
 	'pnpm run publication:check',
+	// Issue #734: the sitemap-membership cross-check runs right after the
+	// publication ledger it compares against the sitemap generator, so a
+	// disagreement is read next to the ledger finding it belongs to.
+	'pnpm run sitemap:ledger:check',
 	'pnpm run content:links:check',
 	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',
@@ -133,15 +142,68 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run knip:check',
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
+	// Issue #396: the icon-button accessible-name contract, declared in
+	// `quality/profile.yaml` right after the reduced-motion gate.
+	'pnpm run a11y:icon-button-names:check',
 	'pnpm run a11y:table:code:check',
+	'pnpm run a11y:image-alt:check',
+	// Issue #400: the text reflow / resize-text contract, declared in
+	// `quality/profile.yaml` right after the image-alt gate.
+	'pnpm run a11y:reflow:check',
 	'pnpm run a11y:language-of-parts:check',
+	// Issue #398: the heading-outline / landmark contract. It runs
+	// right after the other `a11y` contracts, so an outline finding is
+	// read next to the other accessibility findings.
+	'pnpm run a11y:heading-landmarks:check',
+	// Issue #410: the WCAG 2.2 A/AA manual review matrix, declared in
+	// `quality/profile.yaml` right after the heading / landmark gate.
+	// Both read the accessibility contract of the shipped surfaces; this
+	// one reads the RECORD of the judgements a machine cannot make. The
+	// position is deliberately NOT right after the colour-contrast gate,
+	// so a gate that needs that position does not collide with this one.
+	'pnpm run a11y:wcag-review-matrix:check',
 	'pnpm run css:check',
+	// Issue #399: the colour-contrast AA contract. It runs right after the
+	// CSS gate, because both read the shipped token / stylesheet layer.
+	'pnpm run a11y:contrast:check',
+	// Issue #401: the tap / click target size contract. It runs right
+	// after the colour-contrast contract, so the two accessibility
+	// findings a reader has to judge together are read together.
+	'pnpm run a11y:target-size:check',
+	'pnpm run a11y:dialog-focus:check',
+	// Issue #402: the screen-reader procedure ledger, declared in
+	// `quality/profile.yaml` right after the contrast gate. It reads the
+	// committed ledger of the manual review and keeps the RECORD honest
+	// (complete step, existing surface, no automated audit passed off as
+	// a human screen-reader verification).
+	'pnpm run a11y:screenreader-steps:check',
+	// Issue #405: the live-region / status-message contract, declared in
+	// `quality/profile.yaml` right after the contrast gate.
+	'pnpm run a11y:live-region:check',
+	// Issue #395: the focus visibility / focus-not-obscured contract. It
+	// runs right after the colour gate, because both read the shipped
+	// source and the shipped stylesheet.
+	'pnpm run a11y:focus-visible:check',
+	// Issue #392: the offline half of the Storybook story axe audit. It
+	// sits with the other accessibility gates, right after the contrast
+	// contract, and it is a pure Node gate — the browser half
+	// (`a11y:axe-storybook:e2e`) needs a Storybook server and is
+	// therefore not part of the offline fast plan. The browser half runs
+	// in CI, in the dedicated `storybook axe` job.
+	'pnpm run a11y:axe-storybook:check',
+	// Issue #408: the prerecorded-video caption / text-alternative
+	// contract, declared in `quality/profile.yaml` right after the
+	// focus-visible gate. The position is deliberately NOT right after the
+	// colour-contrast gate, so it does not collide with the gates that
+	// already claim that position.
+	'pnpm run a11y:video-caption:check',
 	'pnpm run app:icons:check',
 	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',
 	'pnpm run integration:scope:check',
 	'pnpm run tools:artifact:check',
 	'pnpm run assets:license:check',
+	'pnpm run issue:closure:check',
 ];
 
 describe('runPlan', () => {
@@ -357,12 +419,14 @@ describe('the repository plan', () => {
 		// beside it, so every historical step keeps the position — and
 		// therefore the failure path — it already had: Issue #464 added
 		// `integration:scope:check` BEFORE that merge-base tail, Issue #497
-		// added `assets:license:check` AFTER it.
-		assert.deepEqual(plan('fast').slice(-4), [
+		// added `assets:license:check` AFTER it, and Issue #741 added
+		// `issue:closure:check` after that.
+		assert.deepEqual(plan('fast').slice(-5), [
 			'pnpm run release:gate:check',
 			'pnpm run integration:scope:check',
 			'pnpm run tools:artifact:check',
 			'pnpm run assets:license:check',
+			'pnpm run issue:closure:check',
 		]);
 	});
 

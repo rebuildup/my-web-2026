@@ -1,0 +1,527 @@
+{
+	"$comment": "WCAG 2.2 A/AA manual review matrix (Issue #410, Issue #722). The record of the judgements a machine cannot make. The gate (scripts/check-a11y-wcag-review-matrix.mjs) reads it and decides only whether the RECORD is intact — that every criterion is either covered by an item or excluded with a reason, that every item says who decides it, that every performed review carries a reviewer, a date, an environment and a result, that no document claims WCAG 2.2 AA conformance on the strength of an automatic pass, and that the criteria outside this table carry a DISPOSITION with meaning (a product fact, or an explicit 'applicable but unverified' with a reviewer and a reproduction plan). The matrix is owner data: it is read by the gate and written by the reviewer. The write-up is docs/verification/a11y/wcag-review-matrix.md; the dispositions of the 25 criteria outside this table live in that document's mirror, scripts/check-a11y-wcag-review-matrix.mjs#SCOPE_DECISIONS.",
+	"version": 1,
+	"issue": "#410, #722",
+	"updatedAt": "2026-11-01",
+	"reviewWindowDays": 365,
+	"policy": "A `machine` item is decided by an npm gate: the record says which one, and the gate's own verdict is the evidence. A `human` item is decided by a person: the record says who was responsible, and — once the review has happened — who performed it, when, in which environment and with which result. The two states are different on purpose: `auto-pass` and `human-verified` never mean the same thing, and a green run of the gate says the TABLE is intact, not that the site conforms to WCAG 2.2 AA. A review older than the review window has to be made again. Issue #722 adds the release assessment below: the ledger's structure and the audited quality are two different things, and the ledger states which of them it has. The procedure is docs/verification/a11y/wcag-review-matrix.md.",
+	"releaseAssessment": {
+		"aaAuditComplete": false,
+		"ledgerStructure": "green",
+		"auditedQuality": "not-passed",
+		"humanReviewOutstanding": 22,
+		"humanReviewVerified": 0,
+		"scopeDecisionsApplicableUnverified": 12,
+		"knownAxeViolations": {
+			"issue": "#718",
+			"state": "fixed",
+			"recordedViolations": 0,
+			"ledgers": ["e2e/a11y/axe-baseline.json", "e2e/a11y/axe-storybook-baseline.json"],
+			"note": "The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers now hold 0 records. Issue #718 stays open for the MANUAL audit items below, not for a recorded axe violation. An open Issue is not an unfixed violation — read \"recordedViolations\" for that."
+		},
+		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 22 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers hold 0 records, so Issue #718 remains open for the manual items above rather than for a recorded axe violation. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
+	},
+	"states": [
+		{
+			"id": "normal",
+			"description": "その surface が出荷状態のままのときの表示。"
+		},
+		{
+			"id": "empty",
+			"description": "まだ何も入っていない状態の表示（未入力のフォーム、内容の無い一覧）。"
+		},
+		{
+			"id": "error",
+			"description": "失敗した状態の表示（送信後の拒否、必須の欠落など）。"
+		},
+		{
+			"id": "narrow",
+			"description": "CSS 320 px 幅で Forced reflow を満たすときの表示。"
+		},
+		{
+			"id": "zoomed",
+			"description": "文字を 200 % に拡大したときの表示。"
+		},
+		{
+			"id": "text-spacing",
+			"description": "SC 1.4.12 の text-spacing 差し込みを適用したときの表示。"
+		},
+		{
+			"id": "keyboard-only",
+			"description": "キーボードだけで操作したときの表示。"
+		},
+		{
+			"id": "focus-visible",
+			"description": "どの control に focus ring がある状態での表示。"
+		},
+		{
+			"id": "screen-reader",
+			"description": "スクリーンリーダーで読み上げたときの読み順と読み上げ内容。"
+		}
+	],
+	"surfaces": [
+		{
+			"id": "app-source",
+			"kind": "source",
+			"path": "src",
+			"export": null,
+			"reproduces": {}
+		},
+		{
+			"id": "editorial-source",
+			"kind": "source",
+			"path": "src/editorial",
+			"export": null,
+			"reproduces": {}
+		},
+		{
+			"id": "form-gallery",
+			"kind": "story",
+			"path": "src/editorial/forms/form-errors.stories.tsx",
+			"export": "Gallery",
+			"reproduces": {
+				"empty": ["空欄"],
+				"error": ["失敗"],
+				"narrow": ["縮小表示"]
+			}
+		},
+		{
+			"id": "table-code-story",
+			"kind": "story",
+			"path": "src/editorial/table-code.stories.tsx",
+			"export": "MobileWidth",
+			"reproduces": {
+				"narrow": ["export:MobileWidth"]
+			}
+		},
+		{
+			"id": "status-tiles-story",
+			"kind": "story",
+			"path": "src/home/status/tiles.stories.tsx",
+			"export": "AllOk",
+			"reproduces": {
+				"empty": ["export:EmptyStatuses"],
+				"narrow": ["export:NarrowViewport"]
+			}
+		},
+		{
+			"id": "glyph-headings-story",
+			"kind": "story",
+			"path": "src/editorial/glyph-headings.stories.tsx",
+			"export": "Default",
+			"reproduces": {}
+		},
+		{
+			"id": "embed-consent-story",
+			"kind": "story",
+			"path": "src/tools/embed-consent-notice.stories.tsx",
+			"export": "ClickToLoad",
+			"reproduces": {
+				"error": ["export:MissingPurpose"]
+			}
+		},
+		{
+			"id": "home-route",
+			"kind": "route",
+			"path": "src/routes/index.tsx",
+			"export": null,
+			"reproduces": {}
+		},
+		{
+			"id": "contact-route",
+			"kind": "route",
+			"path": "src/routes/contact.tsx",
+			"export": null,
+			"reproduces": {}
+		}
+	],
+	"items": [
+		{
+			"id": "image-alt",
+			"sc": ["1.1.1"],
+			"subject": "すべての画像に代替テキストがあること",
+			"scope": "src/** の <img> 要素（装飾目的のものは空の alt と装飾マークを持つ）。",
+			"surface": "app-source",
+			"state": "normal",
+			"method": "machine",
+			"autoGates": ["a11y:image-alt:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "contrast",
+			"sc": ["1.4.3", "1.4.11"],
+			"subject": "前景と背景のコントラスト比が閾値を満たすこと",
+			"scope": "出荷しているトークンのペア（light / dark の 2 つの appearance）。",
+			"surface": "editorial-source",
+			"state": "normal",
+			"method": "machine",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "icon-button-names",
+			"sc": ["4.1.2"],
+			"subject": "テキストを持たないボタンにアクセシブルな名前があること",
+			"scope": "src/** のアイコンのみのボタン。",
+			"surface": "app-source",
+			"state": "normal",
+			"method": "machine",
+			"autoGates": ["a11y:icon-button-names:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "language-of-parts",
+			"sc": ["3.1.2"],
+			"subject": "文書言語と異なる部分だけに lang が付いていること",
+			"scope": "src/** の部分言語の run。",
+			"surface": "app-source",
+			"state": "normal",
+			"method": "machine",
+			"autoGates": ["a11y:language-of-parts:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "table-semantics",
+			"sc": ["1.3.1"],
+			"subject": "表とコードブロックが機械で読める構造になっていること",
+			"scope": "出荷している DataTable / CodeBlock。",
+			"surface": "editorial-source",
+			"state": "normal",
+			"method": "machine",
+			"autoGates": ["a11y:table:code:check"],
+			"review": {
+				"state": "auto-pass"
+			}
+		},
+		{
+			"id": "keyboard-navigation",
+			"sc": ["2.1.1"],
+			"subject": "キーボードだけですべての操作ができること",
+			"scope": "ホーム画面の対話的な要素（composer、リアクション、ナビゲーション）。",
+			"surface": "home-route",
+			"state": "keyboard-only",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "keyboard-trap",
+			"sc": ["2.1.2"],
+			"subject": "キーボードのフォーカスが抜けられない領域が無いこと",
+			"scope": "ホーム画面のフォーカス順序全体。",
+			"surface": "home-route",
+			"state": "keyboard-only",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "focus-order",
+			"sc": ["2.4.3"],
+			"subject": "フォーカスの順序が意味の順序と一致すること",
+			"scope": "ホーム画面のタブ順序。",
+			"surface": "home-route",
+			"state": "keyboard-only",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "focus-visible",
+			"sc": ["2.4.7"],
+			"subject": "キーボードのフォーカスが常に見えること",
+			"scope": "ホーム画面のフォーカスリング。",
+			"surface": "home-route",
+			"state": "focus-visible",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "focus-not-obscured",
+			"sc": ["2.4.11"],
+			"subject": "フォーカスされた要素が固定ヘッダーに隠されないこと",
+			"scope": "ホーム画面の固定ヘッダーと、フォーカスされた control。",
+			"surface": "home-route",
+			"state": "focus-visible",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "target-size",
+			"sc": ["2.5.8"],
+			"subject": "ポインタのターゲットが 24 × 24 CSS px 以上であること",
+			"scope": "フォームギャラリーの操作要素。",
+			"surface": "form-gallery",
+			"state": "normal",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "reading-order",
+			"sc": ["1.3.2"],
+			"subject": "スクリーンリーダーの読み順が意味の順序と一致すること",
+			"scope": "ホーム画面の読み上げ順序。",
+			"surface": "home-route",
+			"state": "screen-reader",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "heading-labels",
+			"sc": ["2.4.6"],
+			"subject": "見出しの文言がそのセクションを説明していること",
+			"scope": "グリフ見出しギャラリーの各見出し。",
+			"surface": "glyph-headings-story",
+			"state": "normal",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "resize-text",
+			"sc": ["1.4.4"],
+			"subject": "文字を 200 % に拡大しても内容を失わないこと",
+			"scope": "フォームギャラリーの各フィールド。",
+			"surface": "form-gallery",
+			"state": "zoomed",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "text-spacing",
+			"sc": ["1.4.12"],
+			"subject": "text-spacing の差し込みで内容が重ならないこと",
+			"scope": "フォームギャラリーの各フィールド。",
+			"surface": "form-gallery",
+			"state": "text-spacing",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "reflow",
+			"sc": ["1.4.10"],
+			"subject": "320 CSS px 幅で横スクロール 2 方向の無い reflow になること",
+			"scope": "表 / コードギャラリーの表とコードブロック。",
+			"surface": "table-code-story",
+			"state": "narrow",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "status-colour",
+			"sc": ["1.4.1"],
+			"subject": "色だけで状態を伝えないこと",
+			"scope": "ステータスタイルの ok / degraded / error の表示。",
+			"surface": "status-tiles-story",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:contrast:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "form-error-identification",
+			"sc": ["3.3.1"],
+			"subject": "入力の拒否がテキストで示され、対象 field から辿れること",
+			"scope": "フォームギャラリーの失敗パネル。",
+			"surface": "form-gallery",
+			"state": "error",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "form-labels",
+			"sc": ["3.3.2"],
+			"subject": "必須と入力の要件が label 付近のテキストで示されること",
+			"scope": "フォームギャラリーの空欄パネル。",
+			"surface": "form-gallery",
+			"state": "empty",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "status-messages",
+			"sc": ["4.1.3"],
+			"subject": "状態メッセージが支援技術に一度だけ通知されること",
+			"scope": "フォームギャラリーの ErrorSummary。",
+			"surface": "form-gallery",
+			"state": "error",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "control-names",
+			"sc": ["4.1.2"],
+			"subject": "フォームの control が名前・役割・状態を読めること",
+			"scope": "お問い合わせ画面の各 control。",
+			"surface": "contact-route",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "contact-input-purpose",
+			"sc": ["1.3.5"],
+			"subject": "ユーザー自身の情報を取る入力に autocomplete があること",
+			"scope": "お問い合わせ画面の name / email / message。",
+			"surface": "contact-route",
+			"state": "normal",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "embed-consent-hover",
+			"sc": ["1.4.13"],
+			"subject": "hover / focus で開く内容があり、操作できるなら閉じられること",
+			"scope": "Tool の埋め込み同意表示。",
+			"surface": "embed-consent-story",
+			"state": "normal",
+			"method": "human",
+			"autoGates": [],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "orientation",
+			"sc": ["1.3.4"],
+			"subject": "表示が向きを固定していないこと",
+			"scope": "ホーム画面の縦 / 横の向き。",
+			"surface": "home-route",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "bypass-blocks",
+			"sc": ["2.4.1"],
+			"subject": "繰り返しされるブロックを抜ける手段があること",
+			"scope": "ホーム画面の skip link とランドマーク。",
+			"surface": "home-route",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "page-titles",
+			"sc": ["2.4.2"],
+			"subject": "各公開ルートに内容の判るタイトルがあること",
+			"scope": "src/routes/** の各ルートの head.title。",
+			"surface": "app-source",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		},
+		{
+			"id": "language-of-page",
+			"sc": ["3.1.1"],
+			"subject": "各公開ドキュメントに lang があること",
+			"scope": "src/routes/** の各ルートの <html lang>。",
+			"surface": "app-source",
+			"state": "normal",
+			"method": "human",
+			"autoGates": ["a11y:axe:check"],
+			"review": {
+				"state": "not-reviewed",
+				"assignedTo": "owner"
+			}
+		}
+	],
+	"excluded": [
+		{
+			"sc": "1.2.2",
+			"reason": "事前録音の音声・動画を出荷していない。Tool の埋め込みは同一オリジンの iframe 製の第三者コードで、この基準の対象外。"
+		},
+		{
+			"sc": "1.2.4",
+			"reason": "事前録音の音声・動画を出荷していない（1.2.2 と同じ理由）。"
+		},
+		{
+			"sc": "3.3.7",
+			"reason": "公開画面には複数手順のフォームが無い。複数手順の招待フローは認証された管理画面なので公開スコープの外。"
+		}
+	]
+}

@@ -150,9 +150,16 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 										{capability.summary}
 									</p>
 									{capability.status === 'live' && capability.href ? (
+										/* Issue #718 (WCAG 2.2 SC 2.5.3, Label in
+										   Name): the accessible name must contain the
+										   visible label, and the visible label of this
+										   link is the EN capability name. The name now
+										   carries the JA label, the visible EN label
+										   and the JA verb, in the same order the card
+										   reads. The visible text is unchanged. */
 										<a
 											href={capability.href}
-											aria-label={`${capability.labelJa} を開く`}
+											aria-label={`${capability.labelJa} / ${capability.label} を開く`}
 											className={css({
 												marginBlockStart: '4',
 												display: 'inline-flex',

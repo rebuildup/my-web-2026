@@ -360,6 +360,49 @@ describe('operator MFA audit — the anonymization guard', () => {
 		});
 	}
 
+	it('exempts only the exact token the caller vouches for', () => {
+		// A 12-character hexadecimal sha is all digits about 0.36% of the
+		// time, and the digit-run rule cannot tell it from a secret. The
+		// exemption is therefore a value, not a pattern: the sha the
+		// caller actually read from git is allowed, a digit run that
+		// merely looks like one is not.
+		const provenance =
+			'Issue #469 · my-web-2026 <version> · head 637725805045 · 生成 2026-11-01T05:34:43.315Z';
+		assert.deepEqual(findSensitiveInText(provenance, { allow: ['637725805045'] }), []);
+		assertNoSensitiveInText(provenance, { allow: ['637725805045'] });
+	});
+
+	it('still flags a digit run that is not the allowed token', () => {
+		const findings = findSensitiveInText('recovery code 123456789012');
+		assert.ok(findings.some((finding) => finding.id === 'long-digit-run'));
+		// Same shape as a provenance sha, different value: the exemption
+		// must not wave it through.
+		const impostor = findSensitiveInText('head 637725805046', { allow: ['637725805045'] });
+		assert.ok(impostor.some((finding) => finding.id === 'long-digit-run'));
+		const longer = findSensitiveInText('head 6377258050451234', { allow: ['637725805045'] });
+		assert.ok(longer.some((finding) => finding.id === 'long-digit-run'));
+	});
+
+	it('still flags a credential-like digit run while an unrelated token is allowed', () => {
+		const findings = findSensitiveInText('recovery code 123456789012', {
+			allow: ['637725805045'],
+		});
+		assert.ok(findings.some((finding) => finding.id === 'long-digit-run'));
+	});
+
+	it('keeps the word boundary of the digit-run rule', () => {
+		// A digit run inside an alphanumeric identifier is not a digit run:
+		// the rule has always required a word boundary, and the allow-list
+		// comparison must not widen it.
+		assert.deepEqual(findSensitiveInText('commit: a123456789b'), []);
+		assert.deepEqual(findSensitiveInText('build a123456789012b'), []);
+		assert.ok(
+			findSensitiveInText('commit: 123456789012').some(
+				(finding) => finding.id === 'long-digit-run',
+			),
+		);
+	});
+
 	it('passes the rendered report for every fixture', () => {
 		for (const name of FIXTURE_NAMES) {
 			const read = readFixture(readFileSync(join(FIXTURE_DIR, name), 'utf8'));

@@ -1,5 +1,5 @@
 {
-	"$comment": "Fixture: a public Japanese copy change with a complete owner approval record. Expected verdict: pass. The fingerprint is the value the gate computes for this diff; scripts/check-copy-editorial-approval.test.mjs asserts it, so a change to the fixture diff must be a deliberate, visible edit.",
+	"$comment": "Fixture: a public Japanese copy change with a complete owner approval record. The provenance reference is a fixture placeholder, not a real artefact. Expected verdict: pass. The fingerprint is the value the gate computes for this diff; scripts/check-copy-editorial-approval.test.mjs asserts it, so a change to the fixture diff must be a deliberate, visible edit.",
 	"name": "approved",
 	"expect": "pass",
 	"pr": 512,
@@ -22,6 +22,12 @@
 				"reviewer": "rebuildup",
 				"reviewedAt": "2026-10-20",
 				"decision": "approved",
+				"provenance": {
+					"kind": "owner-review",
+					"reference": "https://github.com/rebuildup/my-web-2026/pull/512#pullrequestreview-1",
+					"recordedBy": "rebuildup",
+					"ownerConfirmation": "confirmed"
+				},
 				"fingerprint": "sha256:a94069ca55b31d2cd80e79d9c2aeba1dbca8244d2f739add7932952e0b08ae9e",
 				"proposal": {
 					"tool": "yomiyasu",

@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { runStatement } from '../scripts/_d1.mjs';
+import {
+	assertLocalOnlySpecMaySkip,
+	isLocalBaseUrl,
+	localOnlyAcknowledged,
+} from '../scripts/_local-only-spec.mjs';
 import { BLOCKED_LINK_CLASS } from '../src/portfolio/markdown.lexer';
 import {
 	MARKDOWN_XSS_FIXTURE_COLUMNS,
@@ -57,7 +62,17 @@ const SLUG = MARKDOWN_XSS_FIXTURE_SLUG;
 
 // Same condition as `playwright.config.ts`: the local preview server.
 // `PLAYWRIGHT_BASE_URL` defaults to `http://127.0.0.1:<port>`.
-const LOCAL_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.startsWith('http://127.0.0.1') ?? true;
+//
+// Issue #728: the predicate lives in `scripts/_local-only-spec.mjs` so
+// the guard and the predicate cannot disagree, and a run pointed at a
+// non-local origin FAILS unless it acknowledges the lost coverage
+// (`E2E_LOCAL_ONLY_ACK=1`). A silently skipped spec is
+// indistinguishable from a spec that verified something.
+const LOCAL_BASE_URL = isLocalBaseUrl(process.env.PLAYWRIGHT_BASE_URL);
+assertLocalOnlySpecMaySkip({
+	baseUrl: process.env.PLAYWRIGHT_BASE_URL,
+	acknowledged: localOnlyAcknowledged(process.env),
+});
 
 const sqlLiteral = (value: string | number | null) =>
 	value === null

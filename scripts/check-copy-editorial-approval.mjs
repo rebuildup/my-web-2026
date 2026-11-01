@@ -27,7 +27,8 @@
  *          compared, meaning-wise, and the comparison is written down
  *          per changed segment.
  *        - `approval` — the owner decided (`approved` / `rejected`),
- *          and the decision names its reviewer and its date.
+ *          and the decision names its reviewer and its date **and**
+ *          its provenance (Issue #720 — see below).
  *
  * The four verdicts are kept distinct on purpose, exactly like the
  * release-gate ledger they sit next to:
@@ -36,14 +37,53 @@
  *                         a complete owner approval record.
  *   - `fail`            — a review was recorded and it says no, or the
  *                         record contradicts the change set.
- *   - `not run`         — the review was never recorded (this is the
- *                         NEEDS REVIEW state: the pull request asks for
- *                         an owner decision nobody has taken yet).
+ *   - `not run`         — the review was never recorded, **or** the
+ *                         record that exists was written by an
+ *                         automated side and no owner has confirmed it
+ *                         (this is the NEEDS REVIEW state: the pull
+ *                         request asks for an owner decision nobody has
+ *                         taken yet).
  *   - `not applicable`  — the pull request changed no public Japanese
  *                         copy at all.
  *
  * `not run` and `fail` both stop the merge; they are different
  * sentences, and the report says which one it is.
+ *
+ * Owner approval means a traceable owner artefact (Issue #720)
+ * ---------------------------------------------------------------
+ * "Approved" is a claim about a human judgement, so the gate asks a
+ * second question: **what traceable artefact says the owner decided?**
+ * An approval record therefore carries a `provenance` block:
+ *
+ * ```jsonc
+ * "provenance": {
+ *   "kind": "owner-review" | "agent-recorded" | "unverified",
+ *   "reference": "<a GitHub review / issue comment URL, or null>",
+ *   "recordedBy": "<who wrote this record: 'agent' | a handle>",
+ *   "ownerConfirmation": "confirmed" | "unconfirmed"
+ * }
+ * ```
+ *
+ * Only `kind: "owner-review"` + a `reference` + `ownerConfirmation:
+ * "confirmed"` counts as an owner approval. A record an automated side
+ * wrote is `kind: "agent-recorded"` / `ownerConfirmation:
+ * "unconfirmed"`: it is **evidence that a review was prepared**, and
+ * the gate reports it as *awaiting owner confirmation* with the rule
+ * id `approval-owner-confirmation-missing` — never as approval. A
+ * record with no `provenance` at all is rejected with
+ * `approval-provenance-missing`.
+ *
+ * The editing aid (yomiyasu or a comparable tool) is evidence in the
+ * same sense, and for the same reason: its output never approves
+ * anything on its own.
+ *
+ * **The limit of what can be proven mechanically.** The gate checks the
+ * *shape* of a reference — that a string is present and looks like a
+ * reference — not who wrote the thing it points at. A reference is a
+ * claim about a human action: the repository records the claim and
+ * cannot independently prove it. The audit of the shipped records is
+ * in
+ * `docs/verification/governance/approval-provenance.md`.
  *
  * What this gate is not
  * ---------------------
@@ -60,6 +100,10 @@
  * opt-in list (`quality/copy-editorial-surfaces.json`), and the copy
  * contract's per-capability locale opt-in
  * (`copy/resources.json`) is untouched by this gate.
+ *
+ * The editing aid and the provenance block are two faces of one rule:
+ * **an automated side may prepare a review; only the owner may
+ * approve it.** The gate never mistakes the first for the second.
  *
  * The change set is the pull request's OWN change set
  * ----------------------------------------------------
@@ -190,6 +234,21 @@ export const DIMENSIONS = ['proposal', 'semantic', 'approval'];
 /** Decisions an owner may record. */
 export const DECISIONS = ['approved', 'rejected'];
 
+/**
+ * The provenance kinds an approval record may carry (Issue #720).
+ *
+ * `owner-review`   — a traceable owner artefact exists (a GitHub review
+ *                    or an issue comment by the owner).
+ * `agent-recorded` — the record was written by an automated side; it is
+ *                    evidence that a review was *prepared*, never that
+ *                    the owner *approved* it.
+ * `unverified`     — the record carries no usable provenance at all.
+ */
+export const PROVENANCE_KINDS = ['owner-review', 'agent-recorded', 'unverified'];
+
+/** The two owner-confirmation states. */
+export const OWNER_CONFIRMATIONS = ['confirmed', 'unconfirmed'];
+
 /** Verdicts a per-segment semantic comparison may carry. */
 export const COMPARISON_VERDICTS = ['equivalent', 'intentional'];
 
@@ -216,6 +275,89 @@ function finding(code, severity, message) {
 }
 
 /**
+ * The provenance of one approval record (Issue #720).
+ *
+ * "Approved" is a claim about a human decision. This function decides
+ * one thing only: does the record carry a **traceable owner artefact**?
+ *
+ * It does NOT decide who wrote the artefact the reference points at.
+ * A reference is a claim about a human action; the repository records
+ * the claim and cannot prove it (see
+ * `docs/verification/governance/approval-provenance.md`).
+ */
+export function evaluateProvenance(record) {
+	const provenance = record?.provenance ?? null;
+	if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) {
+		return {
+			present: false,
+			kind: 'unverified',
+			reference: null,
+			recordedBy: null,
+			ownerConfirmation: 'unconfirmed',
+			ownerConfirmed: false,
+			reason: 'missing',
+		};
+	}
+	const kind = typeof provenance.kind === 'string' ? provenance.kind.trim() : '';
+	const reference = typeof provenance.reference === 'string' ? provenance.reference.trim() : '';
+	const recordedBy = typeof provenance.recordedBy === 'string' ? provenance.recordedBy.trim() : '';
+	const ownerConfirmation =
+		typeof provenance.ownerConfirmation === 'string' ? provenance.ownerConfirmation.trim() : '';
+	let reason = null;
+	if (kind !== 'owner-review') {
+		reason = 'not-an-owner-review';
+	} else if (reference.length === 0) {
+		reason = 'no-reference';
+	} else if (ownerConfirmation !== 'confirmed') {
+		reason = 'not-confirmed';
+	}
+	return {
+		present: true,
+		kind: kind.length > 0 ? kind : 'unverified',
+		reference: reference.length > 0 ? reference : null,
+		recordedBy: recordedBy.length > 0 ? recordedBy : null,
+		ownerConfirmation: ownerConfirmation.length > 0 ? ownerConfirmation : 'unconfirmed',
+		ownerConfirmed: reason === null,
+		reason,
+	};
+}
+
+/**
+ * The ledger-wide provenance summary (Issue #720).
+ *
+ * The gate judges one change set at a time, but the ledger as a whole
+ * carries a claim that readers (and CI) are tempted to read as "the
+ * copy is owner-approved". The summary states the two populations
+ * separately, so no report can imply owner approval where there is
+ * none.
+ */
+export function summarizeLedger(ledger) {
+	const records = Array.isArray(ledger?.records) ? ledger.records : [];
+	let ownerConfirmed = 0;
+	let awaitingConfirmation = 0;
+	let missingProvenance = 0;
+	for (const record of records) {
+		const provenance = evaluateProvenance(record);
+		if (!provenance.present) missingProvenance += 1;
+		if (provenance.ownerConfirmed) ownerConfirmed += 1;
+		else awaitingConfirmation += 1;
+	}
+	return {
+		records: records.length,
+		ownerConfirmed,
+		awaitingConfirmation,
+		missingProvenance,
+	};
+}
+
+/** The human wording of one provenance state. */
+export function provenanceLabel(provenance) {
+	if (!provenance || !provenance.present) return 'no provenance recorded';
+	if (provenance.ownerConfirmed) return 'owner-confirmed';
+	return `awaiting owner confirmation (kind=${provenance.kind}, recordedBy=${provenance.recordedBy ?? '—'}, reference=${provenance.reference ?? 'none'})`;
+}
+
+/**
  * Resolve the approval record for a change set and the three review
  * dimensions it claims.
  *
@@ -228,6 +370,7 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 	const fingerprint = fingerprintUnits(units);
 	const records = Array.isArray(ledger?.records) ? ledger.records : [];
 	const findings = [];
+	const ledgerSummary = summarizeLedger(ledger);
 
 	if (units.length === 0) {
 		return {
@@ -241,6 +384,8 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 			},
 			findings: [],
 			record: null,
+			provenance: null,
+			ledgerSummary,
 			pr,
 			diffBase,
 		};
@@ -266,6 +411,8 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 				dimensions: { proposal: 'fail', semantic: 'fail', approval: 'fail' },
 				findings,
 				record: null,
+				provenance: null,
+				ledgerSummary,
 				pr,
 				diffBase,
 			};
@@ -284,12 +431,15 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 			dimensions: { proposal: 'not run', semantic: 'not run', approval: 'not run' },
 			findings,
 			record: null,
+			provenance: null,
+			ledgerSummary,
 			pr,
 			diffBase,
 		};
 	}
 
 	const record = matching[0];
+	const provenance = evaluateProvenance(record);
 	const dimensions = { proposal: 'not run', semantic: 'not run', approval: 'not run' };
 
 	// 1. The editing aid: evidence, never approval.
@@ -375,7 +525,16 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 		dimensions.semantic = 'pass';
 	}
 
-	// 3. The owner's decision.
+	// 3. The owner's decision — and the provenance that says a human
+	//    took it (Issue #720).
+	//
+	//    `decision: "approved"` is a claim about a human judgement. It
+	//    only counts as an owner approval when the record also carries a
+	//    traceable owner artefact: provenance.kind = "owner-review", a
+	//    non-empty reference, and ownerConfirmation = "confirmed". A
+	//    record an automated side wrote is evidence that a review was
+	//    *prepared*, and the gate reports it as awaiting owner
+	//    confirmation — never as approval.
 	const decision = typeof record.decision === 'string' ? record.decision.trim() : '';
 	const reviewer = typeof record.reviewer === 'string' ? record.reviewer.trim() : '';
 	const reviewedAt = typeof record.reviewedAt === 'string' ? record.reviewedAt.trim() : '';
@@ -386,6 +545,24 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 				'approval-rejected',
 				'error',
 				`The owner rejected this change set${reviewer ? ` (${reviewer})` : ''}. The changed public Japanese copy may not be published as it stands.`,
+			),
+		);
+	} else if (decision === 'approved' && !provenance.present) {
+		dimensions.approval = 'not run';
+		findings.push(
+			finding(
+				'approval-provenance-missing',
+				'error',
+				'The approval record carries no provenance: nothing says who decided, or what traceable artefact says so. The changed public Japanese copy is un-reviewed.',
+			),
+		);
+	} else if (decision === 'approved' && !provenance.ownerConfirmed) {
+		dimensions.approval = 'not run';
+		findings.push(
+			finding(
+				'approval-owner-confirmation-missing',
+				'error',
+				`This record was written by an automated side and no traceable owner confirmation exists, so the copy is un-reviewed (provenance: ${provenanceLabel(provenance)}). An owner approval needs provenance.kind "owner-review", a traceable reference — a GitHub review or an issue comment by the owner — and ownerConfirmation "confirmed".`,
 			),
 		);
 	} else if (decision === 'approved' && reviewer.length > 0 && reviewedAt.length > 0) {
@@ -404,7 +581,18 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 	const notRun = Object.values(dimensions).includes('not run');
 	const verdict = failed ? 'fail' : notRun ? 'not run' : 'pass';
 
-	return { verdict, fingerprint, units, dimensions, findings, record, pr, diffBase };
+	return {
+		verdict,
+		fingerprint,
+		units,
+		dimensions,
+		findings,
+		record,
+		provenance,
+		ledgerSummary,
+		pr,
+		diffBase,
+	};
 }
 
 /** Verdict label used in the report (the human wording of `not run`). */
@@ -427,6 +615,7 @@ function unitText(unit) {
 /** Terminal report. Default output; also the text pasted into a PR. */
 export function renderText(result) {
 	const lines = [];
+	const summary = result.ledgerSummary ?? null;
 	lines.push('public Japanese copy — editorial approval gate (Issue #506)');
 	lines.push(`  verdict: ${verdictLabel(result.verdict)}`);
 	lines.push(`  fingerprint: ${result.fingerprint}`);
@@ -438,6 +627,15 @@ export function renderText(result) {
 			(dimension) => `${dimension}=${result.dimensions[dimension]}`,
 		).join(', ')})`,
 	);
+	if (summary) {
+		lines.push(
+			`  approval ledger: ${summary.records} record(s) — owner-confirmed ${summary.ownerConfirmed}, awaiting owner confirmation ${summary.awaitingConfirmation}`,
+		);
+		lines.push(`  change sets waiting for an owner decision: ${summary.awaitingConfirmation}`);
+	}
+	if (result.provenance) {
+		lines.push(`  this record's provenance: ${provenanceLabel(result.provenance)}`);
+	}
 	if (result.units.length === 0) {
 		lines.push(
 			'  NOT APPLICABLE: this change set changes no Japanese text in a public copy surface.',
@@ -456,15 +654,23 @@ export function renderText(result) {
 	lines.push('');
 	lines.push('Reading the verdict:');
 	lines.push(
-		'  - pass           the changed public Japanese copy carries a complete owner approval record',
+		'  - pass           the changed public Japanese copy carries a complete owner approval record whose provenance is owner-confirmed (a traceable owner artefact)',
 	);
 	lines.push(
 		'  - fail           a review was recorded and it says no, or the record contradicts the change set',
 	);
 	lines.push(
-		'  - NEEDS REVIEW   the review was never recorded (the pull request asks for a decision nobody took)',
+		'  - NEEDS REVIEW   the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it: the copy is un-reviewed',
 	);
 	lines.push('  - not applicable this change set changes no public Japanese copy');
+	lines.push('');
+	lines.push('What this gate does not prove:');
+	lines.push(
+		'  - it checks the SHAPE of a reference, not who wrote the thing the reference points at.',
+	);
+	lines.push(
+		'  - a reference is a claim about a human action; the repository records the claim, it does not prove it.',
+	);
 	return `${lines.join('\n')}\n`;
 }
 
@@ -478,6 +684,8 @@ export function renderJson(result) {
 			dimensions: result.dimensions,
 			units: result.units,
 			findings: result.findings,
+			provenance: result.provenance ?? null,
+			ledgerSummary: result.ledgerSummary ?? null,
 			pr: result.pr,
 			diffBase: result.diffBase ?? null,
 		},
@@ -503,6 +711,7 @@ const DIMENSION_LABELS = {
  * prints the skipped files too.
  */
 export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet = null } = {}) {
+	const summary = result.ledgerSummary ?? null;
 	const unitRows = result.units
 		.map(
 			(unit) => `<tr>
@@ -625,6 +834,22 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 	</table>
 </section>
 <section>
+	<h2>Owner approval provenance (Issue #720)</h2>
+	<p class="meta">
+		ledger <code>${escapeHtml(String(summary ? summary.records : 0))}</code> record(s) ·
+		owner-confirmed <code>${escapeHtml(String(summary ? summary.ownerConfirmed : 0))}</code> ·
+		awaiting owner confirmation <code>${escapeHtml(String(summary ? summary.awaitingConfirmation : 0))}</code>
+	</p>
+	<p class="meta">
+		this change set's record: <code>${escapeHtml(provenanceLabel(result.provenance))}</code>
+	</p>
+	<p class="meta">
+		The gate checks the <em>shape</em> of a reference, not who wrote the thing the reference points
+		at. A reference is a claim about a human action; the repository records the claim, it does not
+		independently prove it.
+	</p>
+</section>
+<section>
 	<h2>Changed public Japanese text</h2>
 	${
 		result.units.length === 0
@@ -668,9 +893,9 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 <div class="legend">
 	<h2>How to read this report</h2>
 	<dl>
-		<dt>pass</dt><dd>the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision).</dd>
+		<dt>pass</dt><dd>the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision) whose provenance is owner-confirmed — a traceable owner artefact.</dd>
 		<dt>fail</dt><dd>a review was recorded and it says no, or the record contradicts the change set. The change may not be published as it stands.</dd>
-		<dt>not run (NEEDS REVIEW)</dt><dd>the review was never recorded. The pull request asks for an owner decision nobody has taken yet.</dd>
+		<dt>not run (NEEDS REVIEW)</dt><dd>the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it. The copy is un-reviewed.</dd>
 		<dt>not applicable</dt><dd>the change set changes no public Japanese copy, so no review is owed.</dd>
 	</dl>
 </div>
@@ -689,6 +914,13 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 `;
 }
 
+export function exitCodeForVerdict(verdict, { allowUnreviewed = false } = {}) {
+	if (verdict === 'pass' || verdict === 'not applicable') return 0;
+	if (verdict === 'not run') return allowUnreviewed ? 0 : 1;
+	if (verdict === 'fail') return 1;
+	return 2;
+}
+
 function parseArgs(argv) {
 	const options = {
 		base: null,
@@ -699,6 +931,7 @@ function parseArgs(argv) {
 		format: 'text',
 		out: null,
 		printFingerprint: false,
+		allowUnreviewed: false,
 	};
 	for (const arg of argv) {
 		// `pnpm run <script> -- <args>` forwards the separator; the runbook
@@ -712,6 +945,7 @@ function parseArgs(argv) {
 		else if (arg.startsWith('--out=')) options.out = arg.slice('--out='.length);
 		else if (arg.startsWith('--format=')) options.format = arg.slice('--format='.length);
 		else if (arg === '--print-fingerprint') options.printFingerprint = true;
+		else if (arg === '--allow-unreviewed') options.allowUnreviewed = true;
 		else throw new Error(`unknown option: ${arg}`);
 	}
 	return options;
@@ -802,7 +1036,12 @@ export function main(argv, { env = process.env } = {}) {
 		process.stdout.write(rendered);
 	}
 
-	return result.verdict === 'pass' || result.verdict === 'not applicable' ? 0 : 1;
+	if (options.allowUnreviewed && result.verdict === 'not run') {
+		process.stdout.write(
+			'::warning title=Public copy review pending::Owner review is unconfirmed; technical CI continues. This is not an approval.\n',
+		);
+	}
+	return exitCodeForVerdict(result.verdict, { allowUnreviewed: options.allowUnreviewed });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

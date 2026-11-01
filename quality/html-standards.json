@@ -243,11 +243,6 @@
 	"waivers": [
 		{
 			"rule": "html.invalid-nesting",
-			"message_pattern": "Element \"a\" not allowed as child of element \"ul\"\\.",
-			"reason": "PRE-EXISTING, NOT FIXED BY #412 — the desktop public nav (src/editorial/nav/PublicNav.tsx) renders a <ul> whose children are <a> elements with no <li> wrapper, while the mobile list in the same file does wrap them. e2e/nav.spec.ts asserts the '[data-testid=\"public-nav-desktop\"] > a' direct-child selector, so fixing the markup is a coordinated editorial + e2e change and therefore an owner decision, not a gate change. The waiver is scoped to this message shape: any other nesting defect still fails."
-		},
-		{
-			"rule": "html.invalid-nesting",
 			"message_pattern": "Element \"div\" not allowed as child of element \"button\"\\.",
 			"reason": "PRE-EXISTING, NOT FIXED BY #412 — the home emoji picker (editorial picker primitives rendered by src/home/reactions/) puts a <div> icon wrapper inside its clear-search <button>; <button> takes phrasing content only. Turning that div into a span is an editorial obligation decision with layout implications for the icon primitive."
 		},

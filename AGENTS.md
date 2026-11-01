@@ -81,6 +81,13 @@ routes -> keyboard (Issue #620 — read-only keyboard-layout reference; the
 keyboard -> editorial (Issue #620 — display primitives and semantic tokens only)
 routes -> projects (Issue #621 — `/projects/dotfiles` loader + page composition)
 projects -> editorial (Issue #621 — display primitives only)
+personal -> editorial (Issue #709 — the personal-document preview owner
+                   composes display primitives only; it reads no
+                   binding, no route and no peer obligation. This is the
+                   one edge AGENTS.md §3 declares for it, so
+                   `scripts/check-architecture.mjs` enforces it as an
+                   ALLOWLIST: every other owner directory under `src/`
+                   is forbidden, including one that does not exist yet)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
@@ -122,6 +129,14 @@ legal -> editorial (Issue #497 — the asset rights-review obligation owns
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
+http -> i18n (Issue #700 — `isAdminPath` reads the request path through
+  `src/i18n/router-path.ts`, the one owner of "how a request path is
+  READ" (percent-decode, then case-fold, then an exact-namespace-or-
+  descendant match); the analytics mount gate in `editorial` obeys the
+  same rule, and `editorial` may not import `http`, so the shared rule
+  has to live in a leaf)
+http -> editorial (Issue #530 — the public API directory preview story
+            and its fixture column type; display primitives only)
 http/media -> portfolio (Issue #634 — `GET /media/<key>` asks the portfolio
   obligation whether a `portfolio/` object is published; the route owns
   namespace and delivery, portfolio owns what "published" means)
@@ -179,7 +194,13 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `*.spec.*` file under a leaf is exempt, so
   `src/i18n/fixtures.test.ts` can assert against
   the owner-owned grammars; implementation modules
-  are not exempt). Each obligation keeps
+  are not exempt). The rule is pinned by
+  `scripts/check-architecture.test.mjs`: until the
+  0.8.0 audit it was declared here but unreachable
+  in the checker (the leaf test sat behind an early
+  return that skipped every leaf owner), so a leaf
+  obligation could have imported another one without
+  the gate noticing. Each obligation keeps
   ownership of its own slug grammar:
   `src/reactions/slug-regex.ts` publishes
   `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
@@ -193,6 +214,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `src/i18n/glyphs.test.ts` (CI),
   `src/editorial/glyph-headings.stories.tsx` (preview) and
   `scripts/capture-glyph-coverage.mjs` (measured artefact) all read.
+  Issue #700 adds the request-path half: `src/i18n/router-path.ts`
+  owns **how a request path is READ** (percent-decode, then
+  case-fold, then an exact-namespace-or-descendant match) and
+  publishes the platform's request-path namespaces
+  (`ADMIN_SURFACE_NAMESPACE`). It is URL text policy — the same family
+  as the slug and display-text rules — and it is a leaf, so the HTTP
+  boundary (`src/http/admin-path.ts`, Issue #654) and the editorial
+  analytics mount gate (`src/editorial/analytics/consent.ts`,
+  Issue #495) can obey ONE rule without depending on each other:
+  `editorial` may not import `http` (AGENTS.md §3), so a rule both of
+  them need cannot live in the HTTP boundary. The route tree stays the
+  authority for WHICH routes exist;
+  `test/integration/analytics-admin-path-parity.test.ts` pins the
+  published namespace against the router's own route tree.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
@@ -298,6 +333,18 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `pnpm run projects:check`; the scheduled refresh is
   `.github/workflows/projects-sync.yml`, whose PR base is the repository
   variable `PROJECTS_SYNC_BASE_REF` (the active release branch).
+- `src/personal/**` (Issue #709) owns the **structured display data and
+  the standalone preview** of the personal documents — the philosophy,
+  the making motivation, the brand naming record, the influence notes
+  — so that each document Issue can be completed by one fixture /
+  Storybook preview without a page composition. The documents
+  themselves are Markdown under `docs/**` (internal documentation);
+  this owner holds only what a preview renders. It is a peer to
+  `home/` / `portfolio/` / `about/`, composes `editorial` primitives,
+  and imports no route, no binding and no peer obligation. A preview is
+  a demo surface, so it stays outside the public-Japanese-copy gate for
+  the same reason `**/*.stories.tsx` does. See
+  `src/personal/README.md`.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
@@ -350,8 +397,9 @@ origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-produ
 `routes[]` binding for the bare hostname live in the companion
 file `wrangler.production.jsonc`. Production delivery is owned by Cloudflare
 Workers Builds: pushes to `main` run the configured Cloudflare build command
-and production deploy command. GitHub Actions owns validation and the manual
-production-smoke workflow only; it must not deploy production. The local
+and production deploy command. GitHub Actions owns validation and the
+production-smoke workflow only (operator-triggered, plus a daily scheduled
+pass — Issue #733 V-4); it must not deploy production. The local
 `pnpm run deploy:production` command is a recovery/debugging fallback. The
 companion file exists because
 declaring `env.production` inside `wrangler.jsonc` causes wrangler
@@ -531,9 +579,10 @@ point is an open decision recorded in
 [`quality/profile.yaml`](quality/profile.yaml). The declaration runs
 `enforcement: block` (Issue #645), so that CI step fails the build on
 any `critical` / `high` advisory that no approved exception covers; the
-one exception still on record (`braces`, no published patched version)
-is dated, grounded and tracked (Issue #669), and an expired record
-blocks again. Operator reference:
+exception ledger is empty (the `braces` record was retired in Issue
+#704 when the advisory was withdrawn upstream), so every `critical` /
+`high` finding blocks, and an expired record would block again.
+Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 A second gate is deliberately **not** in the three entry points, and is
@@ -578,14 +627,21 @@ a CI step: the public Japanese copy editorial approval gate (Issue
 Japanese text a pull request changed in a public copy surface
 (`quality/copy-editorial-surfaces.json`) — against the owner approval
 records in `quality/copy-editorial-approvals.json`, and it runs as the
-`Copy editorial approval gate` step of the `validate` job on
-`pull_request` events. `validate:fast` is an offline, repository-state
-gate by contract, and a diff only exists against a base branch, so the
-gate is a pull-request gate rather than a release gate. Its verdicts
-are `pass` / `fail` (a review was recorded and it says no) / `not run`
-(NEEDS REVIEW — no owner decision is recorded) / `not applicable` (no
-public Japanese copy changed); the editing aid's output is evidence and
-never approves anything on its own. Decision:
+`Copy editorial evidence (pending owner review is advisory)` step of the
+`validate` job on `pull_request` events. `validate:fast` is an offline,
+repository-state gate by contract, and a diff only exists against a base
+branch, so the gate is a pull-request gate rather than a release gate.
+Its verdicts are `pass` / `fail` (a review was recorded and it says no) /
+`not run` (NEEDS REVIEW — no owner decision is recorded) / `not
+applicable` (no public Japanese copy changed); the editing aid's output
+is evidence and never approves anything on its own. In the required PR
+step (Issue #761) the `not run` verdict is **advisory**: it emits a CI
+warning and exits 0 so integration validation and Playwright E2E are not
+blocked by a missing owner comment. The default CLI invocation stays
+strict (exit 1), an explicit rejection or an inconsistent record still
+fails, and an unreadable diff still fails closed. The advisory mode
+never manufactures an owner decision — a record nobody confirmed stays
+`agent-recorded / unconfirmed`. Decision:
 [`quality/profile.yaml`](quality/profile.yaml#copy_editorial_approval).
 Operator reference:
 [`docs/runbook/copy-editorial-approval.md`](docs/runbook/copy-editorial-approval.md).
@@ -638,6 +694,35 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   `skills/github-delivery/SKILL.md` for the canonical wording and
   scope.
 - See `skills/github-delivery/SKILL.md` for the full procedure.
+
+### Issue closure requires evidence (Issue #741)
+
+- **Closing an Issue is not the same as finishing it.** An Issue may be
+  closed only when its **own acceptance criteria** are met, or when its
+  state is recorded truthfully as *not* met (planned-unimplemented /
+  partial / unassessed / deferred / rejected) **with a written reason**.
+- **A merged PR, a green CI run, a written document, a release
+  integration, or an agent's own report are NOT evidence** that the
+  original goal was reached. Evidence is the artefact that satisfies the
+  acceptance criteria, citable by repository path, PR, commit or URL.
+- **Release integration is not completion.** "merged into
+  `release-x-y-z`" says the change shipped, not that the goal was met.
+- **The number of closed Issues is not a metric.** A sweep that closes
+  many Issues at once is a defect signal. Never report Issue counts as
+  progress, and never close Issues to make a backlog look tidy.
+- **An agent may record what it did; it may not certify the goal.**
+  A record written by an agent stays `ownerConfirmation:
+  "unconfirmed"` until a traceable owner artefact (a review, an issue
+  comment, a decision record) points at it. The owner may not be
+  simulated, and an approval record may never be fabricated.
+- Every closure the repository knows about is recorded in
+  `quality/issue-closure-ledger.json` and checked by
+  `pnpm run issue:closure:check` (offline, part of `validate:fast`) and
+  `pnpm run issue:closure:audit` (network, CI step). The canonical
+  procedure is [`docs/runbook/issue-lifecycle.md`](docs/runbook/issue-lifecycle.md).
+- Background for the rule: the 2026-10-31 sweep closed 132 Issues with
+  one templated comment; the per-Issue audit is
+  `docs/verification/backlog/closure-audit-2026-10-31.md`.
 
 ## 7. Recovery
 
@@ -693,7 +778,10 @@ imported. The vendored set has two upstreams:
 - `rebuildup/project-init` — delivery / quality / runtime skills.
   Last reconciled against **0.1.1**; upstream has since moved to
   `release-0-6-0` (`52d3e64`). (`writing-discipline` is itself vendored
-  by project-init from the writing-skills upstream.)
+  by project-init from the writing-skills upstream.) One exception:
+  `herdr-runtime` is vendored from the **PR #135 head** (`48fb2f6`,
+  240 lines) — newer than upstream's merged `origin/main` (`0be0fcb`,
+  234 lines); see the fork table.
 - `rebuildup/design-skills` — design skills. Last reconciled against
   **0.3.0** (`release-0-3-0`).
 
@@ -704,17 +792,18 @@ canonical link:
 
 | Skill | Why it is forked |
 | --- | --- |
-| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. |
+| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. **Issue #741 adds a third local divergence**: the Done criteria and the bulk-landing clause now require per-issue acceptance-criteria **evidence** before an Issue is closed (`docs/runbook/issue-lifecycle.md`). The 2026-10-31 sweep happened because the pre-amendment skill made "landed on the release trunk → close the Issue" a step with no evidence step, so a blanket sync would restore the rule that caused the incident. |
 | `worktree-workflow` | Pinned to this repo's `.config/wt.toml` (Issue #284); upstream's additions assume a Rust/Cargo build this repository does not have. |
 | `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
 | `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
+| `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
 
 Upstream skills this repository **does not vendor**: `linear-release-control`
 (explicitly declined — it conflicts with §7's GitHub-Projects SoT),
-`herdr-runtime`, `orca-frontend` (both explicitly declined),
+`orca-frontend` (explicitly declined),
 `secrets-management`, `skill-selection`, `security-audit`,
 `agent-delivery-estimation`, `correctness-assurance`, `idea-discovery`.
 Re-evaluation candidates from Issue #647: `skill-selection`,
@@ -745,6 +834,7 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 - `skills/design-refinement/SKILL.md` — pre-implementation design refinement
 
 ### Runtime / recovery
+- `skills/herdr-runtime/SKILL.md` — Herdr as an optional Supervisor / session runtime
 - `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
 - `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery

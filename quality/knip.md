@@ -68,6 +68,28 @@ reports them as *new* until the baseline is regenerated. Run
 exactly which findings were absorbed; never edit the baseline by hand and
 never fix another ticket's debt from here.
 
+### The ceiling (Issue #733)
+
+The baseline is **recorded debt**, and debt that can grow without limit is
+not a debt but a budget nobody decided. `quality/knip-baseline.json`
+therefore carries two fields beyond the findings themselves:
+
+| Field | Meaning |
+| --- | --- |
+| `ceiling` | The maximum number of baselined findings the repository tolerates. |
+| `ceiling_rationale` | Why that number is that number. A human sentence, never generated from the findings. |
+
+`pnpm run knip:update` **reads** the ceiling and never raises it: an update
+may shrink the recorded debt, but growing it is refused, and the error
+names the remedy — raise the ceiling in `quality/knip-baseline.json` by
+hand, with a new stated reason. `pnpm run knip:check` refuses a baseline
+whose recorded findings exceed its ceiling, and refuses one that has no
+ceiling or no stated reason at all, so the debt cannot become unbounded by
+editing the file either.
+
+The ceiling is currently **141** — the debt as it stood when Issue #733
+introduced the rule. Lowering it is welcome; raising it is a decision.
+
 Absorbed so far (each line is an addition the diff shows, never a removal):
 
 | Finding | Origin |

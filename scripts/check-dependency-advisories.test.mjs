@@ -464,21 +464,17 @@ describe('check-dependency-advisories — the committed declaration stays valid'
 		assert.match(stdout, /gate declaration:\s+quality\/dependency-advisory-gate\.json/);
 	});
 
-	it('keeps the shipped exception a dated, tracked, reviewable record', () => {
+	it('keeps the shipped exception ledger empty', () => {
 		// An exception is a decision, so it has to name what it accepts,
 		// who accepted it, when it stops accepting it, and where the
-		// follow-up is tracked. A record without an expiry or a tracking
+		// follow-up is tracked — a record without an expiry or a tracking
 		// Issue is not reviewable and the declaration parser rejects it.
+		// The shipped ledger carries no record at all: the `braces`
+		// advisory it used to except was withdrawn upstream and the
+		// registry no longer reports it (Issue #704), so nothing is
+		// tolerated and every blocking finding blocks.
 		const raw = JSON.parse(readFileSync(REPOSITORY_GATE, 'utf8'));
-		assert.equal(raw.exceptions.length, 1);
-		const [exception] = raw.exceptions;
-		assert.equal(exception.advisoryId, 'GHSA-vfj7-8cjw-p6xm');
-		assert.equal(exception.package, 'braces');
-		assert.equal(exception.severity, 'high');
-		assert.match(exception.expiresOn, /^\d{4}-\d{2}-\d{2}$/);
-		assert.ok(Number.isInteger(exception.trackingIssue));
-		assert.ok(exception.approvedBy.length > 0);
-		assert.ok(exception.reason.length > 0);
+		assert.deepEqual(raw.exceptions, []);
 	});
 
 	it('fails closed on the committed declaration when the advisory data cannot be read', () => {

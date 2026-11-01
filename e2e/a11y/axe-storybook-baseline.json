@@ -1,0 +1,8 @@
+{
+	"$comment": "Known axe-core violations on the audited Storybook stories (Issue #392). One record per story and rule. A violation that is NOT listed here fails the audit; a record that no longer matches an observed violation fails too, so the ledger cannot be emptied to turn the gate green. The story key is `<file>#<export>`, the same key the manifest uses. See docs/verification/a11y/axe-storybook.md.",
+	"version": 2,
+	"recordedAt": "2026-11-01",
+	"axeCoreVersion": "4.14.0",
+	"$history": "Issue #718 (2026-11-01) fixed every recorded violation in the implementation, not in the ledger: the home status list (`src/home/status/tiles.tsx`, the owner of the `<dl>` content model) no longer puts a bare `<div>` inside the definition list, so the 11 `definition-list` records recorded on 2026-10-23 were removed. The ledger is empty because the defects are gone, not because the gate was relaxed: the first new violation still fails the audit.",
+	"records": []
+}

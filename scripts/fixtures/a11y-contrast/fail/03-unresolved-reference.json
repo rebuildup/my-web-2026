@@ -1,0 +1,14 @@
+{
+	"id": "fail-unresolved-reference",
+	"note": "A semantic token that points at a raw token which does not exist. The gate must report this instead of guessing a colour: a guessed colour would let a broken token pass as a compliant one.",
+	"pairs": [
+		{
+			"id": "reference-to-a-missing-step",
+			"fg": "{colors.brand.999}",
+			"bg": "{colors.neutral.0}",
+			"kind": "normal",
+			"threshold": 4.5,
+			"expect": "unresolved"
+		}
+	]
+}

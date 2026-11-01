@@ -107,13 +107,16 @@ describe('repository workflows', () => {
 		});
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
-		assert.equal(audit.summary.workflows, 5);
-		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x6)
+		assert.equal(audit.summary.workflows, 6);
+		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x6,
+		//           plus the Storybook axe job's checkout, setup-node, pnpm,
+		//           cache — Issue #392)
 		// + compat.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
 		// + viewport.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + projects-sync.yml (checkout, setup-node, pnpm)
-		assert.equal(audit.summary.pins, 33);
+		// + keyboard-sync.yml (checkout, setup-node, pnpm) — Issue #719
+		assert.equal(audit.summary.pins, 40);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -138,6 +141,14 @@ describe('repository workflows', () => {
 		assert.deepEqual(effective.sort(), [
 			'compat:map:contents=read',
 			'prod-smoke:map:contents=read',
+			// The Storybook axe job (Issue #392) inherits the workflow-level
+			// `contents: read`; a job with no token scope of its own is
+			// still audited.
+			'storybook-axe:map:contents=read',
+			// Two scheduled sync jobs (Issue #621 project introductions and
+			// Issue #719 keyboard layout) each push their own automation
+			// branch and open their review PR.
+			'sync:map:contents=write,pull-requests=write',
 			'sync:map:contents=write,pull-requests=write',
 			'validate:map:contents=read',
 			'viewport:map:contents=read',
@@ -955,7 +966,13 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 33);
+		// 40 = the pinned `uses:` entries across the six workflows. The
+		// Storybook axe job (Issue #392) added four of them to ci.yml
+		// (checkout, setup-node, pnpm setup, cache) and reuses the same
+		// pins, so no new action entered the manifest. The keyboard
+		// layout sync (Issue #719) added three more — checkout,
+		// setup-node and pnpm setup — and reuses the same pins too.
+		assert.equal(parsed.summary.pins, 40);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

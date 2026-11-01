@@ -12,6 +12,11 @@
  * not reversible. The page is generated from the SAME table the test
  * asserts, so the image cannot drift from the rehearsal.
  *
+ * The page also states the EVIDENCE LEVEL of every step: a step the
+ * disposable local fixture exercised is `simulated-and-tested`, every
+ * other step stays `recorded`. The facts only the live platform can
+ * prove are listed as "not verified here", with the reason.
+ *
  * Safety
  * ------
  *   - No deploy, no Cloudflare API call, no binding read, no credential.
@@ -67,6 +72,7 @@ import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+	EVIDENCE_LEVEL,
 	OWNER_LABEL,
 	RUNBOOK_PATH,
 	formatRollbackRehearsal,
@@ -192,9 +198,15 @@ export function renderRollbackRehearsalHtml(result) {
 	const tiles = [
 		['Paths', String(summary.pathCount)],
 		['Recorded steps', String(summary.stepCount)],
+		['Simulated steps', String(summary.simulatedSteps)],
 		['Owner-gated', String(summary.ownerGatedSteps)],
 		['Human gates', String(summary.humanGateSteps)],
 	];
+
+	const evidenceChip = (step) =>
+		step.evidence === EVIDENCE_LEVEL.simulatedAndTested
+			? '<span class="simulated-chip">simulated-and-tested — local fixture</span>'
+			: '<span class="recorded-chip">recorded, not executed</span>';
 
 	const pathCards = result.paths
 		.map(
@@ -228,7 +240,7 @@ export function renderRollbackRehearsalHtml(result) {
 								<span class="step-id">${escapeHtml(step.id)}</span>
 								<span class="owner-chip">${escapeHtml(OWNER_LABEL[step.owner] ?? step.owner)}</span>
 								<span class="mutation-chip">${escapeHtml(mutationLabel(step.action.mutates))}</span>
-								<span class="recorded-chip">recorded, not executed</span>
+								${evidenceChip(step)}
 							</div>
 							<div class="step-action">${actionText(step.action)}</div>
 							<p class="observation"><span>Expected observation</span> ${escapeHtml(step.observation)}</p>
@@ -304,7 +316,7 @@ export function renderRollbackRehearsalHtml(result) {
 			.pill.pass { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; letter-spacing: 0.08em; }
 			.summary {
 				display: grid;
-				grid-template-columns: repeat(4, minmax(0, 1fr));
+				grid-template-columns: repeat(5, minmax(0, 1fr));
 				gap: 12px;
 				margin: 18px 0 20px;
 			}
@@ -347,7 +359,7 @@ export function renderRollbackRehearsalHtml(result) {
 			.step:last-child { border-bottom: 0; }
 			.step-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
 			.step-id { font-family: var(--mono); font-size: 12px; font-weight: 700; }
-			.owner-chip, .mutation-chip, .recorded-chip {
+			.owner-chip, .mutation-chip, .recorded-chip, .simulated-chip {
 				font-family: var(--mono);
 				font-size: 10px;
 				padding: 2px 7px;
@@ -357,6 +369,21 @@ export function renderRollbackRehearsalHtml(result) {
 			}
 			.owner-chip { background: var(--green-soft); color: var(--green); border-color: #c7ded4; }
 			.recorded-chip { background: var(--amber-soft); color: var(--amber); border-color: #e7d1ae; }
+			.simulated-chip { background: var(--green-soft); color: var(--green); border-color: #c7ded4; }
+			.not-verified { margin-top: 18px; background: var(--amber-soft); border: 1px solid #e7d1ae; border-radius: 12px; padding: 12px 16px; }
+			.not-verified h2 { margin: 0 0 4px; font-size: 15px; }
+			.not-verified-lede { margin: 0 0 6px; font-size: 11.5px; color: #5c4a2c; }
+			.not-verified ul { margin: 0; padding-left: 18px; font-size: 11.5px; }
+			.not-verified li { margin-bottom: 4px; }
+			.requires {
+				font-family: var(--mono);
+				font-size: 10px;
+				padding: 1px 6px;
+				border-radius: 4px;
+				background: var(--card);
+				border: 1px solid #e7d1ae;
+				color: var(--amber);
+			}
 			.step-action code {
 				display: block;
 				font-family: var(--mono);
@@ -388,15 +415,20 @@ export function renderRollbackRehearsalHtml(result) {
 				<div class="eyebrow">Operations · Issue #503 · offline rehearsal</div>
 				<h1>Rollback rehearsal — failed Cloudflare Workers Builds release</h1>
 				<p class="lede">
-					Table-driven rehearsal of the documented failure paths. Every step is an executable
-					assertion in <code>scripts/_rollback-rehearsal.test.mjs</code>. Commands are recorded,
-					not executed; the rehearsal calls no Cloudflare API and reads no credential.
+					Table-driven rehearsal of the documented failure paths, exercised against a
+					disposable local fixture. Every step is an executable assertion in
+					<code>scripts/_rollback-rehearsal.test.mjs</code>. A step the fixture exercised is
+					marked <code>simulated-and-tested</code>; every other step stays
+					<code>recorded</code>. Commands are recorded, not executed; the rehearsal calls no
+					Cloudflare API and reads no credential.
 				</p>
 				<div class="pills">
 					<span class="pill pass">PASS</span>
 					<span class="pill">${summary.executedCommands} commands executed</span>
 					<span class="pill">${summary.externalRequests} external requests</span>
 					<span class="pill">${summary.credentialsRead} credentials read</span>
+					<span class="pill">${summary.productionOperations} production operations</span>
+					<span class="pill">evidence: ${escapeHtml(result.evidence.levels.join(', '))}</span>
 					<span class="pill">release merge / tag / deploy: owner-only</span>
 				</div>
 			</header>
@@ -409,6 +441,21 @@ export function renderRollbackRehearsalHtml(result) {
 					.join('')}
 			</section>
 			<section class="paths" aria-label="Rehearsed paths">${pathCards}</section>
+			<section class="not-verified" aria-label="Not verified here">
+				<h2>Not verified here</h2>
+				<p class="not-verified-lede">
+					These facts can only be shown by the live platform or by a human against it. The
+					local rehearsal below does not stand in for any of them.
+				</p>
+				<ul>
+					${result.evidence.notVerified
+						.map(
+							(fact) =>
+								`<li><span class="requires">${escapeHtml(fact.requires)}</span> ${escapeHtml(fact.fact)} — <em>${escapeHtml(fact.reason)}</em></li>`,
+						)
+						.join('')}
+				</ul>
+			</section>
 			<footer>
 				<p><code>${escapeHtml(RUNBOOK_PATH)}</code> is the canonical release sequence. This rehearsal adds no deploy path and does not reorder that sequence.</p>
 				<p>Release PR merge, release tag, GitHub Release publication and production deploy remain repository-owner-only (AGENTS.md §6).</p>
@@ -629,11 +676,30 @@ async function main() {
 		rehearsal: {
 			ok: result.ok,
 			summary: result.summary,
+			evidence: result.evidence,
+			simulation: {
+				ok: result.simulation.ok,
+				summary: result.simulation.summary,
+				scenarios: result.simulation.records.map((record) => ({
+					id: record.id,
+					pathId: record.pathId,
+					decidedPathId: record.decision.pathId,
+					outcome: record.decision.outcome,
+					restore: record.restore.kind,
+					restorePerformed: record.restore.performed,
+					before: record.before.signals,
+					after: record.after.signals,
+				})),
+				errors: result.simulation.errors,
+			},
 			paths: result.paths.map((path) => ({
 				id: path.id,
 				failureClass: path.failureClass,
 				outcome: path.outcome,
 				steps: path.steps.length,
+				simulatedSteps: path.steps.filter(
+					(step) => step.evidence === EVIDENCE_LEVEL.simulatedAndTested,
+				).length,
 				notReversible: path.notReversible.length,
 			})),
 			errors: result.errors,
@@ -645,6 +711,11 @@ async function main() {
 		policy: {
 			executedCommands: 0,
 			credentialsRead: 0,
+			externalRequests: 0,
+			productionOperations: 0,
+			evidenceLevels: result.evidence.levels,
+			humanVerified: result.evidence.humanVerified,
+			productionVerified: result.evidence.productionVerified,
 			webpOnly: true,
 			maxWidth: SCREENSHOT_MAX_WIDTH,
 			quality: capture === null ? null : capture.quality,

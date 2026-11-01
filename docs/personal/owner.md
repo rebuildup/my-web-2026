@@ -36,6 +36,37 @@ my-web-2026 が表現する人物そのものの canonical grounding は **[doma
 
 また authority は単なる repository write permission と同一視しない。agent / contributor は evidence の observation、record / correction の proposal、canonical knowledge からの projection を行えるが、owner の subjective preference / intention を発明して確定してはならない。personal knowledge の record / correction / assertion / publication / authority delegation の意味は [knowledge-model.md](knowledge-model.md) を canonical とする。
 
+## 承認記録と owner 確認 (Issue #720)
+
+owner の判断を台帳に記録する gate を持つ場合、**「owner 承認」は
+「approved と書かれた record がある」ことではない。**
+
+- **owner 承認** = owner がその判断を行ったことを述べる **traceable な
+  artefact**（GitHub の review / issue comment）がある。台帳の record は
+  `provenance` としてその artefact を指す。
+- **owner 確認待ち** = 自動化された側（agent、編集補助ツール）が書いた
+  record。これは **レビューが準備された**という証拠であり、承認ではない。
+  gate はこれを `kind: "agent-recorded"` / `ownerConfirmation: "unconfirmed"`
+  として報告し、owner の承認としては数えない。
+- **編集補助ツールの出力は常に evidence であり、approval ではない。**
+  proposal の記録、semantic comparison、owner 決定の 3 つが揃っていても、
+  最後の 1 つに owner 自身の artefact が無ければ **未確認**である。
+
+**機械で証明できること / できないこと**: gate は reference の **形** を検査する
+（文字列として存在するか、review / comment らしい形か）だけで、**その
+コメントを誰が書いたかは検証しない**（gate は offline / status-only である）。
+reference は **人間行動についての主張** であり、repository はその主張を
+記録するが、独立に証明はしない。したがって **「owner が確認した」と
+書かれることと「owner が確認した」ことは別** であり、報告はこの区別を
+隠さない。
+
+台帳の監査記録は
+[`docs/verification/governance/approval-provenance.md`](../verification/governance/approval-provenance.md)、
+運用手順は
+[`docs/runbook/copy-editorial-approval.md`](../runbook/copy-editorial-approval.md)
+と
+[`docs/runbook/stale-content-review.md`](../runbook/stale-content-review.md)。
+
 ## Working languages
 
 repository-wide contract:

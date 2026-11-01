@@ -18,6 +18,7 @@ import {
 	commitParents,
 	evaluateApproval,
 	evaluateProvenance,
+	exitCodeForVerdict,
 	extractSegments,
 	fingerprintUnits,
 	gitDiff,
@@ -88,6 +89,26 @@ const FIXTURE_NAMES = readdirSync(FIXTURE_DIR)
 	.filter((name) => name.endsWith('.json'))
 	.map((name) => name.replace(/\.json$/, ''))
 	.sort();
+
+describe('check-copy-editorial-approval — CI separation without fabricated approval', () => {
+	it('keeps all four verdicts and only downgrades pending review to advisory', () => {
+		assert.equal(exitCodeForVerdict('pass'), 0);
+		assert.equal(exitCodeForVerdict('not applicable'), 0);
+		assert.equal(exitCodeForVerdict('not run'), 1);
+		assert.equal(exitCodeForVerdict('fail'), 1);
+		assert.equal(exitCodeForVerdict('pass', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('not applicable', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('not run', { allowUnreviewed: true }), 0);
+		assert.equal(exitCodeForVerdict('fail', { allowUnreviewed: true }), 1);
+		assert.equal(exitCodeForVerdict('unexpected', { allowUnreviewed: true }), 2);
+	});
+	it('does not change review findings or manufacture owner provenance', () => {
+		const { result } = runFixture('owner-unconfirmed');
+		assert.equal(result.verdict, 'not run');
+		assert.equal(exitCodeForVerdict(result.verdict, { allowUnreviewed: true }), 0);
+		assert.equal(result.dimensions.approval, 'not run');
+	});
+});
 
 describe('check-copy-editorial-approval — the four verdicts stay distinct', () => {
 	it('every committed fixture resolves to its expected verdict', () => {

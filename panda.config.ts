@@ -70,6 +70,16 @@ export default defineConfig({
 					from: { transform: 'translateX(0)' },
 					to: { transform: 'translateX(-75%)' },
 				},
+				// Travel strip for the drag (`running-left.webp` /
+				// `running-right.webp`, Issue #274). Eight 96 px frames in
+				// a 768 px strip: -87.5 % is seven frame widths, so
+				// `steps(8, jump-none)` shows each frame once and holds
+				// the last one. One keyframe serves both directions
+				// because only the image differs.
+				petRun: {
+					from: { transform: 'translateX(0)' },
+					to: { transform: 'translateX(-87.5%)' },
+				},
 			},
 		},
 	},

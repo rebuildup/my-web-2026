@@ -61,11 +61,13 @@ export interface HomePageProps {
  *   - 03 — Reactions   (visitor emoji reactions against home-page)
  *   - 04 — Access counter (page-view counter; spread SectionHeading
  *                            + Dashboard KPI tile in 8/12 children slot)
- *   - 05 — Companion   (the site's character; still by default, one
- *                            finite greeting behind an explicit trigger —
- *                            Issue #274, primitive in `src/editorial/pet/`)
- *   - 06 — Contact     (re-verified public channels only)
+ *   - 05 — Contact     (re-verified public channels only)
  *   - Footer            (edition / identity / index / privacy notice)
+ *
+ * The companion character (Issue #274) is NOT a section: owner
+ * instruction 2026-11-01 moved Melty to a page-level floating overlay
+ * (`src/editorial/pet/`), so it is drawn once at the end of the page
+ * and owns no eyebrow, heading or reading-order position.
  *
  * Branch 43 redesign: every body section now participates in the
  * shared editorial coordinate system (`<Container>` →
@@ -143,24 +145,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Container>
 				</section>
 				<section
-					aria-labelledby="companion-heading"
-					className={css({
-						paddingBlock: { base: '16', lg: '24' },
-					})}
-				>
-					<Container>
-						<SectionHeading
-							id="companion-heading"
-							eyebrow="05 — Companion"
-							title="相棒 / Companion"
-							description="このサイトの相棒です。ふだんは静かにしています。"
-							variant="spread"
-						>
-							<PetSprite />
-						</SectionHeading>
-					</Container>
-				</section>
-				<section
 					aria-labelledby="contact-cta-heading"
 					className={css({
 						paddingBlock: { base: '16', lg: '24' },
@@ -169,7 +153,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					<Container>
 						<SectionHeading
 							id="contact-cta-heading"
-							eyebrow="06 — Contact"
+							eyebrow="05 — Contact"
 							title="Contact / お問い合わせ"
 							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途 (採用 / 技術的な議論 / 配布) 別の説明が添えてあります。"
 							variant="spread"
@@ -215,6 +199,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				</section>
 			</main>
 			<Footer />
+			<PetSprite />
 		</>
 	);
 }

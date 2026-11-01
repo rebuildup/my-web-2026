@@ -66,12 +66,18 @@ export const CELL_WIDTH = 192;
 export const CELL_HEIGHT = 208;
 
 /**
- * The rows the web surface draws.
+ * The cells the web surface draws.
  *
- * Row indices are contract values, not preferences: row 0 is `idle`
- * and row 3 is `waving` in every v2 atlas. Rows 1-2 are the draggable
- * desktop overlay's left/right travel, 9-10 are pointer-following look
- * directions — none of them has a meaning on a web page.
+ * Row indices are contract values, not preferences: row 0 is `idle`,
+ * row 1/2 are `running-right`/`running-left`, row 3 is `waving`, and
+ * rows 9/10 hold the 16 look directions in 22.5 degree steps starting
+ * at 000 (up). `column` is the first cell of the crop (default 0), so a
+ * single look cell is `frames: 1` at its own column.
+ *
+ * Rows 5-8 (failed / waiting / running / review) are NOT produced: the
+ * site has no "working", "waiting" or "failed" state, and drawing one
+ * would be a false state rather than a display choice. Row 4 (jumping)
+ * is also not produced — see `docs/domain/pet-companion.md` §5.4.
  */
 export const SPRITES = [
 	{
@@ -84,7 +90,47 @@ export const SPRITES = [
 		file: 'waving.webp',
 		row: 3,
 		frames: 4,
-		description: 'waving の 4 フレーム横ストリップ',
+		description: 'waving の 4 フレーム横ストリップ（到着の挨拶）',
+	},
+	{
+		file: 'running-right.webp',
+		row: 1,
+		frames: 8,
+		description: 'running-right の 8 フレームストリップ（右方向へドラッグ中）',
+	},
+	{
+		file: 'running-left.webp',
+		row: 2,
+		frames: 8,
+		description: 'running-left の 8 フレームストリップ（左方向へドラッグ中）',
+	},
+	{
+		file: 'look-up.webp',
+		row: 9,
+		column: 0,
+		frames: 1,
+		description: 'look 000°（上）',
+	},
+	{
+		file: 'look-right.webp',
+		row: 9,
+		column: 4,
+		frames: 1,
+		description: 'look 090°（右）',
+	},
+	{
+		file: 'look-down.webp',
+		row: 10,
+		column: 0,
+		frames: 1,
+		description: 'look 180°（下）',
+	},
+	{
+		file: 'look-left.webp',
+		row: 10,
+		column: 4,
+		frames: 1,
+		description: 'look 270°（左）',
 	},
 ];
 
@@ -136,18 +182,27 @@ async function readPinnedAtlas(path) {
 	return { bytes, size: (await stat(path)).size };
 }
 
-/** Crop one row's leading `frames` cells and encode it as WebP. */
+/**
+ * Crop `frames` cells starting at `column` of one row and encode them as
+ * WebP. A single look cell is a `frames: 1` crop at its own column.
+ */
 async function buildSprite(atlasBytes, sprite) {
+	const column = sprite.column ?? 0;
 	const width = CELL_WIDTH * sprite.frames;
 	const height = CELL_HEIGHT;
-	if (sprite.frames > ATLAS_WIDTH / CELL_WIDTH) {
-		throw new Error(`${sprite.file}: ${sprite.frames} frames exceeds the atlas row width`);
+	if (column < 0 || sprite.frames < 1) {
+		throw new Error(`${sprite.file}: invalid crop (column ${column}, frames ${sprite.frames})`);
+	}
+	if (column + sprite.frames > ATLAS_WIDTH / CELL_WIDTH) {
+		throw new Error(
+			`${sprite.file}: columns ${column}..${column + sprite.frames} exceed the ${ATLAS_WIDTH / CELL_WIDTH}-column atlas row`,
+		);
 	}
 	if ((sprite.row + 1) * CELL_HEIGHT > ATLAS_HEIGHT) {
 		throw new Error(`${sprite.file}: row ${sprite.row} is outside the atlas`);
 	}
 	return sharp(atlasBytes)
-		.extract({ left: 0, top: sprite.row * CELL_HEIGHT, width, height })
+		.extract({ left: column * CELL_WIDTH, top: sprite.row * CELL_HEIGHT, width, height })
 		.webp({ quality: 85, alphaQuality: 100, effort: 6 })
 		.toBuffer();
 }

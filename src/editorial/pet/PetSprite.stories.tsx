@@ -4,13 +4,15 @@ import { PetSprite } from './PetSprite';
 /**
  * The companion character (Issue #274).
  *
- * The `Interactive` story is the only one that animates, and it does
- * so because a reader pressed the button — the platform ships no
- * autoplaying motion (`src/editorial/reduced-motion.ts`). The
- * `ReducedMotion` story pins the preference so the reduced render can
- * be inspected without changing the OS setting: it shows the still
- * frame and no trigger, because a control whose only effect is motion
- * is not offered to a visitor who asked for less motion.
+ * The component is a page-level floating overlay, so every story is the
+ * same picture in a different corner: drag it, scroll the story iframe,
+ * or move the pointer near it to see the reactions. The stories exist
+ * to inspect the two preference renders without changing the OS
+ * setting.
+ *
+ * `ReducedMotion` is the render a visitor who asked for less motion
+ * gets: the resting frame at full size, no greeting, no gaze, and a
+ * drag that moves the character without playing the travel strip.
  *
  * Storybook is a demo surface, so this file stays outside the public
  * copy gate for the same reason every other `*.stories.tsx` does.
@@ -25,7 +27,7 @@ const meta: Meta<typeof PetSprite> = {
 		docs: {
 			description: {
 				component:
-					'Melty, the site companion. Still by default; one finite four-frame greeting behind an explicit trigger; the strip and the trigger are not rendered at all under `prefers-reduced-motion: reduce`.',
+					'Melty, the site companion. A page-level fixed overlay that can be dragged, greets once on arrival, looks the way the reader scrolls, looks at a nearby pointer, and shows the travel strip only while it is actually being moved. No buttons. Under `prefers-reduced-motion: reduce` every automatic reaction is off and only the drag remains.',
 			},
 		},
 	},

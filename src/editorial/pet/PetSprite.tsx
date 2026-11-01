@@ -1,62 +1,180 @@
-import { useState } from 'react';
+import {
+	type CSSProperties,
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
 import { css } from '../../../styled-system/css';
-import { PET_REACTION_MOTION, usePrefersReducedMotion } from '../reduced-motion';
+import {
+	PET_REACTION_MOTION,
+	resolveReducedMotion,
+	usePrefersReducedMotion,
+} from '../reduced-motion';
+import {
+	PET_POSITION_MARGIN,
+	type PetPositionPixels,
+	browserPetPositionStorage,
+	clampPosition,
+	positionToRatio,
+	ratioToPosition,
+	readStoredPosition,
+	writeStoredPosition,
+} from './position';
+import { PET_DRAG_THRESHOLD_PX, type PetPose, dragPose, lookPose, scrollPose } from './reactions';
 
 /**
  * PetSprite — Melty, the platform's companion character (Issue #274).
  *
- * Why this is an `editorial` primitive
- * ------------------------------------
- * Two shipped surfaces render it: the Home page and `/about`. Neither
- * may import the other (AGENTS.md §3), and `/about` may only reach the
- * visual language (`about -> editorial`), so a display component with
- * two consumers has exactly one place it can live. The earlier design
- * note (`docs/domain/pet-companion.md` §5.1) put it in `src/home/` and
- * named the promotion trigger — "a second consumer appears" — which
- * this ticket then met. It is a DISPLAY primitive: it reads no
- * binding, fetches nothing, owns no route, and carries no page copy.
+ * What it is
+ * ----------
+ * A page-level overlay, not a section. The owner's second instruction
+ * (2026-11-01) replaced the first design — a Home section and an
+ * `/about` hero column — with a free-floating character:
+ *
+ *   > ペットはセクションに制限せず、自由に上から重ねる形式にする。
+ *   > 実際のCodexペットのように、ドラッグすると移動画像などになるように。
+ *   > そしてユーザーの操作に対して自動で反応するように。ボタンなどを使わずに。
+ *
+ * `docs/domain/pet-companion.md` §5.2-§5.9 is the contract this file
+ * implements; §5.9 records which reference behaviours were adopted and
+ * which were rejected, with the primary-source evidence for each.
  *
  * What it deliberately does NOT do
  * --------------------------------
- *   - No autoplay. `src/editorial/reduced-motion.ts` states that the
- *     platform ships no content that moves by itself for longer than
- *     five seconds (WCAG 2.2 SC 2.2.2, level A). A looping idle
- *     animation would make that sentence false, so the resting state is
- *     a still frame and the reaction is finite, discrete and explicitly
- *     triggered.
- *   - No JS frame-stepping. The four `waving` frames are one committed
- *     strip translated by a CSS `steps()` animation, so the motion is
- *     visible to the reduced-motion gate and can be slowed to nothing
- *     by a stylesheet the same way every other animated box is.
- *   - No layout shift. The frame is a fixed 96 x 104 box reserved
- *     before the image decodes; the strip is absolutely positioned
- *     inside it, so gaining or losing the animation moves nothing.
+ *   - No full-screen layer. The fixed box is exactly the sprite, so the
+ *     links, buttons and scrolling underneath are never captured.
+ *   - No buttons, tooltips or settings. Reactions are driven by what
+ *     the reader is already doing (arrival, scroll, pointer approach,
+ *     drag) and the drag is direct manipulation.
+ *   - No fake state. The running strip plays only while the character
+ *     is actually being moved; the gaze never claims travel; the
+ *     desktop overlay's "working / waiting / failed" states are not
+ *     drawn because this site has no such state.
+ *   - No autoplay loop. Every reaction is finite (0.7 s greeting,
+ *     0.9 s gaze) or bound to an interaction (drag). The platform
+ *     ships no content that moves by itself for longer than five
+ *     seconds — WCAG 2.2 SC 2.2.2 — and the resting frame is still.
+ *   - No JS frame-stepping. Multi-frame poses are committed strips
+ *     translated by a CSS `steps()` animation, so the motion is
+ *     visible to the reduced-motion gate and can be stopped by the
+ *     stylesheet as well as by the render-time branch.
  *
  * Accessibility
  * -------------
- * The character is decoration: every image is `alt=""` +
- * `aria-hidden="true"`, so it never enters the reading order or the
- * accessible name computation. The single control carries the entire
- * accessible name, and it is removed entirely under reduced motion —
- * a button whose only effect is motion is a button that should not be
- * offered to a visitor who asked for less motion.
+ * The character is decoration. The root is `aria-hidden="true"` with no
+ * `role` and no `tabindex`, every image is `alt=""`, and nothing inside
+ * is focusable — the owner asked for no button, and a focusable element
+ * inside `aria-hidden` would be an invalid tree. That is also why this
+ * file must never grow a control: a keyboard path would have to undo
+ * both choices at once.
+ *
+ * Position
+ * --------
+ * The state is the visitor's, not the page's: a dragged position is
+ * persisted as a ratio of the travel box (`./position.ts`) and restored
+ * on the next visit. Storage is optional in every direction — the
+ * server renders the resting corner, and a browser without storage
+ * simply keeps that position.
  */
 
-/**
- * Display size in CSS px. The atlas cell is 192 x 208, so this is
- * exactly half: a 2x device gets the source pixels 1:1 and a 3x device
- * upscales by 1.5. Going smaller (72 x 78) is not a clean divisor and
- * visibly softens the outline on 2x screens.
- */
+/** Display size in CSS px: the 192 x 208 atlas cell at DPR 2. */
 const FRAME_WIDTH = 96;
 const FRAME_HEIGHT = 104;
 
-/** Frames in the `waving` row of the v2 atlas contract. */
-const WAVING_FRAMES = 4;
+/** Resting scale — the character shrinks so it never covers the column. */
+const REST_SCALE = 0.62;
+
+/** The greeting, played once when the character first appears. */
+const ARRIVAL_MS = 700;
+
+/** How long a gaze is held before the character returns to resting. */
+const GAZE_HOLD_MS = 900;
+
+/** Silence before the character goes back to its resting scale. */
+const REST_AFTER_MS = 12_000;
+
+/**
+ * The resting position's bottom inset (Issue #274).
+ *
+ * The bottom-right corner belongs to the analytics-consent toggle: a
+ * 36 px button sitting 12 px above the viewport edge in
+ * `src/editorial/analytics/AnalyticsConsent.tsx`. Measured in the
+ * browser at 1440 x 900, the 24 px corner put the resting character's
+ * box over the button's top-right corner, so a decorative overlay was
+ * intercepting a real control. The resting position therefore sits one
+ * margin + one button + one gap above the edge, and the inline-end
+ * inset stays at the ordinary margin.
+ *
+ * Only the DEFAULT is lifted. A position the visitor dragged to is
+ * theirs — the character remains below the page's own controls in no
+ * other sense, and dropping it over a button is a deliberate act the
+ * visitor can undo by dragging it away.
+ */
+const REST_INSET_BLOCK_END = PET_POSITION_MARGIN + 36 + 12;
+
+/**
+ * The custom property that carries this overlay's footprint to the
+ * document's focus compensation.
+ *
+ * WCAG 2.2 SC 2.4.11 (Focus Not Obscured — Minimum) is enforced for
+ * every author-created fixed overlay by
+ * `scripts/check-a11y-focus-visible.mjs`: the overlay's own file
+ * publishes the offset it occupies, and `src/styles.css` consumes it as
+ * the document's `scroll-padding` and as the room at the end of the
+ * document. This file is the publishing end; the chain is closed only
+ * when both ends exist, which is why the property is listed in
+ * `src/styles.css` and not only here.
+ *
+ * The value is the overlay's LAYOUT footprint measured from the bottom
+ * edge — the resting inset plus the full 96 x 104 box — rather than its
+ * shrunken resting render: the character grows to full size whenever it
+ * reacts, and the compensation must clear the largest form it takes. It
+ * is published while the component is mounted and removed with it, so a
+ * page without the companion reserves nothing.
+ */
+const FOCUS_OFFSET_PROPERTY = '--pet-overlay-offset';
+const FOCUS_OFFSET_PX = REST_INSET_BLOCK_END + FRAME_HEIGHT;
+
+const BOX = { width: FRAME_WIDTH, height: FRAME_HEIGHT } as const;
 
 /** Committed files produced by `scripts/build-pet-sprites.mjs`. */
-const PET_RESTING_SOURCE = '/pets/melty/idle-rest.webp';
-const PET_WAVING_SOURCE = '/pets/melty/waving.webp';
+const POSE_SOURCE: Readonly<Record<PetPose, string>> = {
+	idle: '/pets/melty/idle-rest.webp',
+	wave: '/pets/melty/waving.webp',
+	'run-right': '/pets/melty/running-right.webp',
+	'run-left': '/pets/melty/running-left.webp',
+	'look-up': '/pets/melty/look-up.webp',
+	'look-right': '/pets/melty/look-right.webp',
+	'look-down': '/pets/melty/look-down.webp',
+	'look-left': '/pets/melty/look-left.webp',
+};
+
+const POSE_FRAMES: Readonly<Record<PetPose, number>> = {
+	idle: 1,
+	wave: 4,
+	'run-right': 8,
+	'run-left': 8,
+	'look-up': 1,
+	'look-right': 1,
+	'look-down': 1,
+	'look-left': 1,
+};
+
+/** What caused the current pose, so a reaction can end only itself. */
+type PoseSource = 'wave' | 'scroll' | 'pointer' | 'drag';
+
+interface DragState {
+	pointerId: number;
+	readonly offsetX: number;
+	readonly offsetY: number;
+	readonly startX: number;
+	readonly startY: number;
+	lastX: number;
+	moved: boolean;
+	direction: 'run-left' | 'run-right' | null;
+}
 
 export interface PetSpriteProps {
 	/**
@@ -65,134 +183,321 @@ export interface PetSpriteProps {
 	 * Production callers pass nothing: the component asks the shared
 	 * contract, which answers `false` on the server and the visitor's
 	 * real preference after hydration. A unit test and a Storybook
-	 * fixture pass a value so the two renders are deterministic.
-	 *
-	 * The live read goes through `usePrefersReducedMotion` — the
-	 * hydration-safe form — rather than `resolveReducedMotion`, which
-	 * would read the media query directly during the first client render
-	 * and produce markup the server did not send.
+	 * fixture pass a value so the renders are deterministic.
 	 */
 	readonly reducedMotion?: boolean;
 }
 
-/**
- * Render the character with its one reaction.
- *
- * The display decision (size, frames, trigger) is the visual
- * language's, so there is no size / shape prop: a per-surface
- * variation would be a second visual language nobody asked for.
- */
 export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const systemPrefersReducedMotion = usePrefersReducedMotion();
 	const reducedMotion = override ?? systemPrefersReducedMotion;
-	const [wave, setWave] = useState(0);
-	const waving = wave > 0;
+
+	const boxRef = useRef<HTMLDivElement | null>(null);
+	const [pose, setPose] = useState<PetPose>('idle');
+	const [position, setPosition] = useState<PetPositionPixels | null>(null);
+	const [dragging, setDragging] = useState(false);
+	const [active, setActive] = useState(false);
+
+	const poseRef = useRef<PetPose>('idle');
+	const poseSourceRef = useRef<PoseSource | null>(null);
+	const poseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const restTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const positionRef = useRef<PetPositionPixels | null>(null);
+	const dragRef = useRef<DragState | null>(null);
+
+	const clearPoseTimer = useCallback(() => {
+		if (poseTimerRef.current !== null) {
+			clearTimeout(poseTimerRef.current);
+			poseTimerRef.current = null;
+		}
+	}, []);
+
+	const showPose = useCallback(
+		(next: PetPose, durationMs: number | null, source: PoseSource) => {
+			clearPoseTimer();
+			poseRef.current = next;
+			poseSourceRef.current = source;
+			setPose(next);
+			if (durationMs === null) return;
+			poseTimerRef.current = setTimeout(() => {
+				poseTimerRef.current = null;
+				poseRef.current = 'idle';
+				poseSourceRef.current = null;
+				setPose('idle');
+			}, durationMs);
+		},
+		[clearPoseTimer],
+	);
+
+	/** The character has the reader's attention: full size for a while. */
+	const markActive = useCallback(() => {
+		setActive(true);
+		if (restTimerRef.current !== null) clearTimeout(restTimerRef.current);
+		restTimerRef.current = setTimeout(() => {
+			restTimerRef.current = null;
+			setActive(false);
+		}, REST_AFTER_MS);
+	}, []);
+
+	useEffect(() => {
+		positionRef.current = position;
+	}, [position]);
+
+	useEffect(
+		() => () => {
+			clearPoseTimer();
+			if (restTimerRef.current !== null) clearTimeout(restTimerRef.current);
+		},
+		[clearPoseTimer],
+	);
+
+	// The greeting is a reaction to arriving on the page, so it starts
+	// after hydration and never in the server document. The preference
+	// is read LIVE here rather than taken from the render: the first
+	// client render still carries the server snapshot (`false`), so a
+	// render-time guard would start the greeting for exactly the
+	// visitors who asked it not to start. Reading it inside the effect
+	// also means a later preference flip cannot replay it — the effect
+	// has no dependency that changes with the preference.
+	useEffect(() => {
+		if (resolveReducedMotion(override)) return;
+		showPose('wave', ARRIVAL_MS, 'wave');
+	}, [override, showPose]);
+
+	// Publish the footprint the document reserves so a focused element is
+	// never left behind the character (see FOCUS_OFFSET_PROPERTY).
+	useEffect(() => {
+		const root = document.documentElement;
+		root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${FOCUS_OFFSET_PX}px`);
+		return () => {
+			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
+		};
+	}, []);
+
+	// A saved position is applied once, on the client. The server document
+	// and the first client render both draw the resting corner, so this is
+	// not a hydration mismatch — it is one deliberate snap after mount.
+	useEffect(() => {
+		const stored = readStoredPosition(browserPetPositionStorage());
+		if (stored === null) return;
+		setPosition(
+			ratioToPosition(stored, { width: window.innerWidth, height: window.innerHeight }, BOX),
+		);
+	}, []);
+
+	// A resized window can leave a stored position outside the viewport.
+	useEffect(() => {
+		const onResize = () => {
+			const current = positionRef.current;
+			if (current === null) return;
+			setPosition(
+				clampPosition(current, { width: window.innerWidth, height: window.innerHeight }, BOX),
+			);
+		};
+		window.addEventListener('resize', onResize);
+		return () => window.removeEventListener('resize', onResize);
+	}, []);
+
+	// Reaction 2 — the reader's scroll direction. Asking for an animation
+	// frame first keeps a fast scroll from flooding React with renders.
+	useEffect(() => {
+		if (reducedMotion) return;
+		let last = window.scrollY;
+		let frame: number | null = null;
+		const onScroll = () => {
+			if (frame !== null) return;
+			frame = requestAnimationFrame(() => {
+				frame = null;
+				if (dragRef.current !== null) return;
+				const current = window.scrollY;
+				const next = scrollPose(false, current - last);
+				if (next === null) return;
+				last = current;
+				markActive();
+				showPose(next, GAZE_HOLD_MS, 'scroll');
+			});
+		};
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			window.removeEventListener('scroll', onScroll);
+			if (frame !== null) cancelAnimationFrame(frame);
+		};
+	}, [reducedMotion, markActive, showPose]);
+
+	// Reaction 3 — the pointer coming near. This only reads coordinates:
+	// the listener is passive and the page keeps every event it had.
+	useEffect(() => {
+		if (reducedMotion) return;
+		const onPointerMove = (event: PointerEvent) => {
+			if (dragRef.current !== null) return;
+			const box = boxRef.current;
+			if (box === null) return;
+			const next = lookPose(
+				false,
+				{ x: event.clientX, y: event.clientY },
+				box.getBoundingClientRect(),
+			);
+			if (next === null) {
+				if (poseSourceRef.current === 'pointer') showPose('idle', null, 'pointer');
+				return;
+			}
+			markActive();
+			if (next !== poseRef.current) showPose(next, null, 'pointer');
+		};
+		window.addEventListener('pointermove', onPointerMove, { passive: true });
+		return () => window.removeEventListener('pointermove', onPointerMove);
+	}, [reducedMotion, markActive, showPose]);
+
+	const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		const rect = event.currentTarget.getBoundingClientRect();
+		// The rendered box is the LAYOUT box multiplied by the resting
+		// scale, so a grab point measured in rendered pixels has to be
+		// converted back before it can offset a layout position —
+		// otherwise grabbing a resting character moves it by the
+		// difference (a visible jump on the very first frame of a drag).
+		const renderedScale = rect.width / FRAME_WIDTH || 1;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {
+			pointerId: event.pointerId,
+			offsetX: (event.clientX - rect.left) / renderedScale,
+			offsetY: (event.clientY - rect.top) / renderedScale,
+			startX: event.clientX,
+			startY: event.clientY,
+			lastX: event.clientX,
+			moved: false,
+			direction: null,
+		};
+		setDragging(true);
+		markActive();
+	};
+
+	const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+		const drag = dragRef.current;
+		if (drag === null || drag.pointerId !== event.pointerId) return;
+		if (
+			!drag.moved &&
+			Math.abs(event.clientX - drag.startX) < PET_DRAG_THRESHOLD_PX &&
+			Math.abs(event.clientY - drag.startY) < PET_DRAG_THRESHOLD_PX
+		) {
+			return;
+		}
+		drag.moved = true;
+		drag.direction = dragPose(reducedMotion, event.clientX - drag.lastX, drag.direction);
+		drag.lastX = event.clientX;
+		setPosition(
+			clampPosition(
+				{ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY },
+				{ width: window.innerWidth, height: window.innerHeight },
+				BOX,
+			),
+		);
+		markActive();
+		if (drag.direction !== null && drag.direction !== poseRef.current) {
+			showPose(drag.direction, null, 'drag');
+		}
+	};
+
+	const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+		const drag = dragRef.current;
+		if (drag === null || drag.pointerId !== event.pointerId) return;
+		dragRef.current = null;
+		setDragging(false);
+		if (poseSourceRef.current === 'drag') showPose('idle', null, 'drag');
+		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			event.currentTarget.releasePointerCapture(event.pointerId);
+		}
+		const current = positionRef.current;
+		if (!drag.moved || current === null) return;
+		writeStoredPosition(
+			browserPetPositionStorage(),
+			positionToRatio(current, { width: window.innerWidth, height: window.innerHeight }, BOX),
+		);
+	};
+
+	const overlayStyle = css({
+		position: 'fixed',
+		zIndex: '30',
+		width: `${FRAME_WIDTH}px`,
+		height: `${FRAME_HEIGHT}px`,
+		transformOrigin: '100% 100%',
+		transition: 'transform 200ms ease',
+		pointerEvents: 'none',
+	});
 
 	const boxStyle = css({
 		position: 'relative',
-		flex: 'none',
+		width: '100%',
+		height: '100%',
 		overflow: 'hidden',
-		width: `${FRAME_WIDTH}px`,
-		height: `${FRAME_HEIGHT}px`,
+		pointerEvents: 'auto',
+		touchAction: 'none',
+		userSelect: 'none',
+		cursor: dragging ? 'grabbing' : 'grab',
+		filter: dragging ? 'drop-shadow(0 4px 12px rgba(11, 16, 32, 0.28))' : 'none',
 	});
 
-	const restingStyle = css({
-		display: 'block',
-		width: `${FRAME_WIDTH}px`,
-		height: `${FRAME_HEIGHT}px`,
-	});
-
-	// The resting frame steps aside for the strip rather than showing
-	// through it: both files carry alpha, and two poses overlapping
-	// would ghost.
-	const restingHiddenStyle = css({ visibility: 'hidden' });
-
-	const stripBaseStyle = css({
+	const frameStyle = css({
 		position: 'absolute',
 		left: '0',
 		top: '0',
 		display: 'block',
 		maxWidth: 'none',
-		width: `${FRAME_WIDTH * WAVING_FRAMES}px`,
 		height: `${FRAME_HEIGHT}px`,
 	});
 
-	// Pre-loaded but invisible until triggered: the strip is mounted
-	// from the first render so the first click animates instead of
-	// waiting for 15 kB to arrive.
-	const stripIdleStyle = css({ visibility: 'hidden' });
+	const waveStyle = css({ animation: `petReaction ${ARRIVAL_MS}ms steps(4, jump-none) 1` });
+	// One keyframe for both directions: only the committed strip differs.
+	const runStyle = css({ animation: 'petRun 1060ms steps(8, jump-none) infinite' });
 
-	const stripPlayingStyle = css({
-		animation: `petReaction 0.6s steps(${WAVING_FRAMES}, jump-none) 1`,
-	});
+	let animationStyle: string | null = null;
+	if (!reducedMotion) {
+		if (pose === 'wave') animationStyle = waveStyle;
+		else if (pose === 'run-right' || pose === 'run-left') animationStyle = runStyle;
+	}
 
-	const buttonStyle = css({
-		display: 'inline-flex',
-		alignItems: 'center',
-		gap: '2',
-		minHeight: '44px',
-		paddingInline: '4',
-		borderRadius: 'md',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.subtle',
-		backgroundColor: 'bg.canvas',
-		color: 'text.default',
-		fontFamily: 'sans',
-		fontSize: 'sm',
-		fontWeight: '600',
-		cursor: 'pointer',
-		transition: 'background-color 120ms ease',
-		_hover: { borderColor: 'border.strong' },
-		_focusVisible: {
-			outline: '2px solid {colors.border.focus}',
-			outlineOffset: '2px',
-		},
-	});
+	// Growing is itself a reaction, so it is one of the things reduced
+	// motion turns off: the character keeps its resting size and never
+	// resizes on scroll, approach or drag.
+	const scale = active && !reducedMotion ? 1 : REST_SCALE;
+	const positionStyle: CSSProperties =
+		position === null
+			? {
+					insetBlockEnd: `${REST_INSET_BLOCK_END}px`,
+					insetInlineEnd: `${PET_POSITION_MARGIN}px`,
+				}
+			: { left: `${position.x}px`, top: `${position.y}px` };
 
 	return (
 		<div
-			className={css({
-				display: 'flex',
-				alignItems: 'center',
-				gap: '4',
-				flexWrap: 'wrap',
-			})}
+			className={overlayStyle}
+			style={{ ...positionStyle, transform: `scale(${scale})` }}
+			aria-hidden="true"
 		>
-			<span className={boxStyle}>
+			<div
+				ref={boxRef}
+				className={boxStyle}
+				onPointerDown={handlePointerDown}
+				onPointerMove={handlePointerMove}
+				onPointerUp={handlePointerEnd}
+				onPointerCancel={handlePointerEnd}
+			>
 				<img
-					className={`${restingStyle} ${waving ? restingHiddenStyle : ''}`}
-					src={PET_RESTING_SOURCE}
+					key={pose}
+					className={`${frameStyle} ${animationStyle ?? ''}`}
+					src={POSE_SOURCE[pose]}
 					alt=""
 					aria-hidden="true"
-					width={FRAME_WIDTH}
+					data-motion={PET_REACTION_MOTION}
+					width={FRAME_WIDTH * POSE_FRAMES[pose]}
 					height={FRAME_HEIGHT}
+					draggable={false}
 					loading="lazy"
 					decoding="async"
 					fetchPriority="low"
+					onAnimationEnd={pose === 'wave' ? () => showPose('idle', null, 'wave') : undefined}
 				/>
-				{reducedMotion ? null : (
-					<img
-						key={wave}
-						className={`${stripBaseStyle} ${waving ? stripPlayingStyle : stripIdleStyle}`}
-						src={PET_WAVING_SOURCE}
-						alt=""
-						aria-hidden="true"
-						data-motion={PET_REACTION_MOTION}
-						width={FRAME_WIDTH * WAVING_FRAMES}
-						height={FRAME_HEIGHT}
-						loading="lazy"
-						decoding="async"
-						fetchPriority="low"
-						onAnimationEnd={() => setWave(0)}
-					/>
-				)}
-			</span>
-			{reducedMotion ? null : (
-				<button type="button" className={buttonStyle} onClick={() => setWave((count) => count + 1)}>
-					<span lang="ja">あいさつしてもらう</span>
-				</button>
-			)}
+			</div>
 		</div>
 	);
 }

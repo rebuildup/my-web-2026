@@ -1,6 +1,6 @@
 # Pet companion — Codex ペット (Melty) の Web 再利用
 
-> Status: **Shipped — owner 承認済み（2026-11-01）、0.8.1 sprint で実装**
+> Status: **設計改訂中 — 配置契約を 2026-11-01 に全面改訂（owner 2 次指示）**
 > Visibility: public (MIT)
 > Audience: contributor, agent, future-self
 > Owner: rebuildup（§1 owner attestation）
@@ -18,8 +18,9 @@
   記録は [`quality/asset-license-inventory.json`](../../quality/asset-license-inventory.json)
   の `pet-melty-sprites`。根拠と未確認項目は
   [`docs/verification/legal/pet-melty-rights-review.md`](../verification/legal/pet-melty-rights-review.md)。
-- 表示は **Home の「05 — Companion」セクション**と **`/about` の hero 右カラム**の 2 面。
-  どちらも同じ `editorial` プリミティブ（`src/editorial/pet/PetSprite.tsx`）を描く。
+- 表示は **セクション内ではなく、ページ全体に対する浮遊レイヤー**。Home と `/about` の
+  2 面が同じ `editorial` プリミティブ（`src/editorial/pet/PetSprite.tsx`）を描く。
+  どのセクションにも属さず、読み順・見出し構造・本文の流れに入らない（§5.2）。
 - この文書は「素材は何か」「どう出しているか」「何が未確認か」を記録する。
   **実装の正本はコード**であり、この文書はその判断理由を持つ。
 
@@ -93,21 +94,29 @@ Library 外へのバックアップは owner の作業として残っている�
 
 ### 3.1 Web で出荷している行
 
-| 行 | 扱い |
-| --- | --- |
-| 0 idle | **出荷**（第 0 フレームを静止表示） |
-| 3 waving | **出荷**（明示トリガの反応、4 フレーム） |
-| 4 jumping | 未使用。採用するなら同じトリガ系統にする |
-| 1 / 2 running | 使わない（ドラッグ可能なデスクトップ overlay 用） |
-| 5 / 6 / 7 / 8 | 使わない（サイト状態と結びつけない） |
-| 9 / 10 look | 使わない（ポインタ追従は Web ページの機能ではない） |
+| 行 | 出荷 | 使う場所 |
+| --- | --- | --- |
+| 0 idle | 第 0 フレーム | 静止状態 |
+| 1 running-right | 8 フレーム | 右方向へドラッグ中 |
+| 2 running-left | 8 フレーム | 左方向へドラッグ中 |
+| 3 waving | 4 フレーム | 到着時の挨拶（1 回だけ） |
+| 9 look 000 / 090 | 2 セル（上・右） | ポインタ接近・スクロール方向の視線 |
+| 10 look 180 / 270 | 2 セル（下・左） | 同上 |
+| 4 jumping | 出荷しない | 採らない理由は §5.4 |
+| 5 / 6 / 7 / 8 | 出荷しない | サイトに「作業中 / 失敗 / 確認待ち」の状態が無い。偽の状態を演じることになる |
+
+look 行は 16 方位すべてではなく **4 方位に量子化**して出荷する（§5.4）。
 
 ### 3.2 既知の警告
 
 `qa/pet-quality.json` は look 方向の連続性に 4 件の警告を出している
 （`157.5→180` が局所外れ値、`292.5→315` / `337.5→000` が隣接平均より大きい差分）。
 契約上これは warning であり、cardinal / quadrant の誤りではない。
-**出荷している行（0, 3）には影響しない**。look 行を使う判断をした場合にだけ再評価する。
+
+出荷している行（0 / 1 / 2 / 3）はこの警告の対象外。look 行からは
+**cardinal の 4 セル（000 / 090 / 180 / 270）だけ**を使う（§5.4）。
+警告が指しているのは隣接フレーム間の差分であり、cardinal セル自体の向きではない。
+連続ループとして look 行を再生する判断をした場合にだけ再評価する。
 
 ## 4. 権利（確定）
 
@@ -143,7 +152,7 @@ AGENTS.md §3 の 5 問（現状の答え）:
 
 | 問い | 答え |
 | --- | --- |
-| Obligation | キャラクターの**表示**（寸法・フレーム・トリガ・reduced-motion 分岐） |
+| Obligation | キャラクターの**表示**（寸法・フレーム・反応の選択・ドラッグ・reduced-motion 分岐） |
 | Change reason | キャラクターの見せ方が変わるとき。ページの主張が変わっても変わらない |
 | Authority | `src/editorial/**`（出荷済みの視覚言語）と reduced-motion 契約 |
 | Dependency direction | `home → editorial` / `about → editorial`（どちらも §3 の許可済みエッジ）。**新しいエッジは 1 本も追加していない** |
@@ -158,141 +167,230 @@ authority / lifecycle が観測されていないため。
 
 ```text
 src/editorial/pet/
-  PetSprite.tsx          表示プリミティブ（状態は wave カウンタ 1 つだけ）
-  PetSprite.test.tsx     静的マークアップの契約
+  PetSprite.tsx          浮遊レイヤー本体（配置・ドラッグ・反応・reduced-motion 分岐）
+  position.ts            保存位置の読み書きとクランプ（純関数、storage は注入）
+  PetSprite.test.tsx     マークアップ / 反応 / ドラッグ / storage の契約
+  position.test.ts       クランプと壊れた保存値の扱い
   PetSprite.stories.tsx  Interactive / ReducedMotion / BothPreferences
   index.ts               re-export
 ```
 
-アセットは `public/pets/melty/`（§5.9）。
+アセットは `public/pets/melty/`（§5.8）。
 
-### 5.2 表示位置
+### 5.2 配置契約 — セクションではなくページの浮遊レイヤー
 
-| 面 | 位置 | 見出し |
-| --- | --- | --- |
-| Home | capability 群の後、Contact の前の独立セクション | `05 — Companion`（`<h2>` は `SectionHeading` が持つ） |
-| `/about` | hero 右カラム、identity 段落の直後 | `companion`（uppercase monospace ラベル） |
+owner 指示（2026-11-01、`OWNER-2026-11-01-2.md`）:
 
-`src/home/brief.md` は「hero illustration を避ける」と明記しているので
-Home の hero には置いていない。`/about` の hero 右カラムは `about` 自身の
-レイアウト判断で、Home の brief の制約を受けない。
+> ペットはセクションに制限せず、自由に上から重ねる形式にする。
 
-Home 側は既存の eyebrow 連番を `05 — Companion` / `06 — Contact` に振り直した
-（`src/home/composer.tsx` の reading-order コメントも同時に更新）。
+2026-11-01 の初版は Home の `05 — Companion` セクションと `/about` の hero 右カラムに
+置いていた。**この配置は廃止した。** セクション所属は「そのページの内容の一部」という
+主張になり、実際にはどのページの本文でもないものを、Home の情報設計に混ぜていた。
 
-### 5.3 サイズ
+現在の契約:
 
-- セル 192 × 208 を **96 × 104 CSS px** で表示する（DPR 2 で原寸 1:1）。
-- 72 × 78 は 2 倍系でないため輪郭が甘くなるので採らない。
-- `width` / `height` 属性と CSS の固定ボックスで先に確保するので **CLS 0**。
-
-### 5.4 アニメーション
-
-**自動再生しない。** これは好みではなく WCAG 2.2 SC 2.2.2（Pause, Stop, Hide, A）の
-制約で、`src/editorial/reduced-motion.ts` は「5 秒を超えて自動で動き続ける内容は
-プラットフォームに出荷していない」と宣言している。常時ループする idle を足すと
-**その宣言が嘘になる**。
-
-| 状態 | 動き |
+| 項目 | 契約 |
 | --- | --- |
-| 既定 | idle の第 0 フレームを静止表示 |
-| 反応 | waving の 4 フレームを 0.6 秒で 1 回だけ再生し、静止フレームに戻る |
+| 所属 | **どのセクションにも属さない。** ページの本文フロー・見出し階層・読み順に入らない |
+| 位置 | `position: fixed`。スクロールに追従し、本文の流れから独立する |
+| 実体 | **スプライトの実体（96 × 104 CSS px）ちょうどの 1 ボックス**。全画面の透明レイヤーは敷かない |
+| ポインタ | `pointer-events` はそのボックスにだけ乗る。下のリンク・ボタン・スクロールは奪わない |
+| 初期位置 | 画面右下（`inset-block-end: 72px` / `inset-inline-end: 24px`） — 下端だけ持ち上げる理由は直後 |
+| 面 | Home（`src/home/composer.tsx`）と `/about`（`src/about/components/AboutPage.tsx`）。同じコンポーネントを 1 個ずつ描く |
+| 重なり順 | `z-index: 30`（同意バナーの 20 より上、モーダルはこのリポジトリに無い） |
 
-実装（`PetSprite.tsx`）:
+初期位置を参照元の既定（右上・§5.9）と変えている理由: このサイトは上部に
+sticky なヘッダがあり、右上に浮かせるとナビゲーションの上に乗る。読み列は中央なので、
+**右下が本文から最も遠い**。
 
-- 4 フレームは **1 枚の横ストリップ**（`waving.webp`、768 × 208）で、
-  `overflow: hidden` の 96 × 104 ボックスの中で平行移動する。
-- CSS は `animation: petReaction 0.6s steps(4, jump-none) 1`、
-  keyframes は `panda.config.ts#theme.extend.keyframes.petReaction` の
-  `translateX(0)` → `translateX(-75%)`。
-  `steps(4, jump-none)` なので 4 フレームが等分に当たり、空セルは出ない。
-- 再生終了は `onAnimationEnd` が `wave` を 0 に戻し、ストリップが
-  `visibility: hidden` に戻る。JS タイマーでフレームを書き換える方式は使わない
-  （gate から見えない motion を生むため）。
-- ストリップは**最初から mount しておく**（`visibility: hidden`）。初回クリックで
-  15 kB の取得待ちが入らない。
-- `data-motion="pet-reaction"` を付け、定数 `PET_REACTION_MOTION` を
-  `src/editorial/reduced-motion.ts` に公開し、`src/styles.css` の
-  `@media (prefers-reduced-motion: reduce)` に
-  `[data-motion="pet-reaction"] { animation: none !important; }` を置いた。
-  この 3 点は `pnpm run a11y:reduced-motion:check` が要求する。
+ただし**左下ではなく右下の、下端から 72 px** を初期位置にする。24 px の素の右下では、
+解析同意のトグル（`src/editorial/analytics/AnalyticsConsent.tsx` の
+`data-testid="analytics-consent-toggle"`、下端 12 px・高さ 36 px）の右上に
+キャラクターの当たり判定が重なった — 装飾が実在のボタンの一部を奪う状態で、
+要件 4 に反する。実測（1440 × 900、Playwright）で pet の矩形は
+`y 811.5–876.0`、トグルは `y 852–888`、重なりは 24 px。
+`REST_INSET_BLOCK_END = 24 + 36 + 12` でトグルの 12 px 上に置くと重なりは 0 になる。
+**初期位置だけ**を持ち上げる: 訪問者がドラッグした位置は訪問者のもので、
+その上に自分でコントロールを置くのは取り消せる行為だから。
+
+セクションを消した副作用として、Home の eyebrow 連番は `05 — Contact` に戻した
+（`06 — Contact` ではない）。`src/home/composer.tsx` の reading-order コメントも同期。
+
+### 5.3 退避 — 本文を覆い続けない
+
+要件 4「本文を邪魔しない」と禁止事項「自動で本文の上に被さり続けてリンクを隠す挙動」に
+対して、位置ではなく**大きさ**で答える。
+
+| 状態 | 大きさ | 入る条件 / 出る条件 |
+| --- | --- | --- |
+| 休憩 | 0.62 倍（約 60 × 64 px、原点は右下） | 既定。最後の反応から 12 秒 |
+| 反応中 | 1.0 倍（96 × 104 px） | ポインタが 120 px 以内 / スクロール / ドラッグ / 到着の挨拶 |
+
+- 休憩サイズが**既定**なので、何もしない読者の上には小さい姿しか乗らない。
+- 拡大は 200 ms の `transform` 遷移。reduced motion では拡大そのものを行わない（§5.5）。
+- `transform: scale()` はヒットテストにも効くので、休憩中は**実際に受けるポインタ領域も**小さくなる。
+- 12 秒は「読みながら横切られない長さ」と「読み終えた行を覆わない長さ」の折衷。
+  値はこの文書が正本で、実装は `REST_AFTER_MS` として同じ値を持つ。
+
+### 5.4 反応 — ボタンを持たない
+
+owner 指示:
+
+> そしてユーザーの操作に対して自動で反応するように。ボタンなどを使わずに。
+
+反応の対象は「本人が今やっていること」に限る。**UI は作らない**（ボタン、ツールチップ、
+設定パネル、バッジ、クリックでの再生）。
+
+| # | 反応 | トリガ | 見た目 | なぜ読者の役に立つか |
+| ---: | --- | --- | --- | --- |
+| 1 | 到着の挨拶 | そのページで最初に描画されたとき 1 回 | `waving` 4 フレーム / 0.7 秒 | ボタンもツールチップも無いので、「これは意図された相棒で、操作対象ではない」ことを最初の 1 回で伝えられる。貼り付いた画像との区別がこれ 1 つでつく |
+| 2 | スクロール方向の視線 | 24 px 以上のスクロール | `look-down`（下へ）/ `look-up`（上へ）を 0.9 秒 | 読み進めている方向を小さく肯定する。反応していることが分かると、装飾は「置物」ではなくその場の一部になる。**走らせない**ので、移動していないのに移動しているようには見せない |
+| 3 | ポインタ接近の視線 | ポインタが 120 px 以内 | その方位の `look-*` を保持 | 参照元の signature（§5.9）。ポインタを奪わず、クリックも要求しない。視線だけなので操作の圧力を与えない |
+| 4 | ドラッグ | 掴んでいる間 | `running-right` / `running-left` 8 フレームのループ + `cursor: grabbing` + `shadow.md` | 掴めたことと、どちらへ運ばれているかが出る。**実際に移動している**ので、走る絵は嘘ではない |
+
+**採らない反応**（理由付き）:
+
+| 参照元の挙動 | 採否 | 理由 |
+| --- | --- | --- |
+| ホバーで `jumping` | 採らない | ホバーは既に視線で使っている。横切るたびに跳ねるのは読者の操作と無関係な自動運動で、WCAG 2.2.2 の精神（勝手に動き続けない）に反する。跳ねると位置が実際のアンカーからずれ、「置物の位置」を偽る |
+| 通知 / ターン状態の `running` / `waiting` / `failed` / `review` | 採らない | このサイトには「作業中」「失敗」「確認待ち」の状態が無い。無い状態を演じるのは偽装 |
+| ドラッグ解放の慣性・バウンド | 採らない | 読者が置いた位置から勝手に滑る。保存位置と実際の位置が食い違い、次回の復元も合わなくなる |
+| クリックで開く（参照元は Quick Chat を開く） | 採らない | owner の「ボタンなどを使わずに」に反する |
+| 待機時間で別の姿勢に変わる | 採らない | 読者の役に立たない。タイマーが増えるだけで、可読性も変わらない |
+| 全 16 方位の視線（22.5° 刻み） | 一部採る（4 方位） | 16 方位を出すには look 行 2 本（16 フレーム、約 60 kB）を出荷する必要がある。装飾に対して過大。「近づいた方を見る」は 4 方位で成立する |
 
 ### 5.5 reduced motion
 
-- `usePrefersReducedMotion()` で**レンダー時に分岐**する（`CounterTile` と同じ形）。
-  これは `useSyncExternalStore` 経由で、SSR スナップショットは `false`（= motion allowed）、
-  hydration 後に実値を読む。`resolveReducedMotion()` のように media query を
-  直接読むと、サーバが送っていないマークアップを最初のクライアント描画で作ってしまう。
-- reduced のときは**ストリップもボタンも DOM に出さない**。動きだけが失われ、
-  キャラクター（静止フレーム）は残る。動きが唯一の効果であるボタンを、
-  動きを減らしてほしい訪問者に差し出す理由がない。
-- `reducedMotion` prop は unit test と Storybook のためだけに存在する
-  （`override ?? systemPreference`）。gate は `usePrefersReducedMotion(` の
-  呼び出しを render-time opt-out として認識する。
+`src/editorial/reduced-motion.ts` の契約（Issue #403）に従う。
 
-### 5.6 遅延ロード / CLS / 転送量（実測）
+| 対象 | `prefers-reduced-motion: reduce` のとき |
+| --- | --- |
+| 到着の挨拶 / スクロール視線 / ポインタ視線 | **行わない。** 自動反応はすべて止める |
+| ドラッグ | **残す。** 直接操作なので止めない |
+| ドラッグ中の見た目 | `running` ストリップを出さず、静止フレームのまま `cursor: grabbing` + `shadow.md`（動かない状態表示） |
+| 休憩 ↔ 反応の拡大 | 拡大しない（休憩サイズのまま）。200 ms 遷移も出さない |
 
-出荷バイト（`scripts/build-pet-sprites.mjs` が生成、`sharp` WebP q85 / alphaQuality 100 / effort 6）:
+- **描画時**の判定は `usePrefersReducedMotion()`（`useSyncExternalStore`、SSR スナップショットは
+  `false`）。描画中に `resolveReducedMotion()` を直接呼ぶと、サーバが送っていない
+  マークアップを最初のクライアント描画で作ってしまう（`CounterTile` と同じ理由で採らない）。
+- **effect 内**では実値を読む。サーバは「motion allowed」で描くので、最初のクライアント描画の
+  `reducedMotion` はまだ `false` であり、それを描画の値のまま信じると
+  **reduced の訪問者に挨拶のタイマーが 1 回だけ走る**。`useEffect` の初回で
+  `resolveReducedMotion(override)` を呼び直してから開始するので、挨拶は
+  hydration 後にしか始まらず、reduced では始まらない（2026-11-01 の実機確認で
+  この分岐が無いと `waving` のまま止まることを検出し、修正した）。
+- 拡大（0.62 → 1.0）も自動反応の 1 つなので reduced では行わない。休憩サイズのまま
+  一定で、`transform` の 200 ms 遷移も走らない。
+- `a11y:reduced-motion:check` は `animation:` 宣言を含む region ごとに
+  `data-motion` フックと preference の呼び出しを要求する。reduced でアニメーション要素を
+  DOM に出さない実装にしても、CSS 層の opt-out として
+  `src/styles.css` の `[data-motion="pet-reaction"] { animation: none !important; }` を残す。
 
-| 対象 | フレーム | 元寸法 | バイト | sha256 |
-| --- | ---: | --- | ---: | --- |
-| `public/pets/melty/idle-rest.webp` | 1 | 192 × 208 | 4,568 | `c23a6880f255fe2bdf2c271e96f3e2b064e1dd4460fbdeb24582b7397efc956f` |
-| `public/pets/melty/waving.webp` | 4 | 768 × 208 | 15,644 | `3b345de39791bebc15e499f012da3d77c7b978946496a1ec68e44f35bdd401df` |
-| 合計 | — | — | **20,212 B（約 20 kB）** | — |
-
-- 両方 `loading="lazy"` `decoding="async"` `fetchpriority="low"`。
-  どちらの面でも初期視野の LCP 候補にならない。
-- 固定ボックスがあるので読み込み完了前でもレイアウトは動かない（CLS 0）。
-- ストリップは `visibility: hidden` で mount 済みなので、遅延ロードのままでも
-  初回クリックが待たされない。
-
-### 5.7 モバイル
-
-- 固定ボックスなのでリフロー時のジャンプはない。
-- トリガは `min-height: 44px` のボタン。横並びは `flex-wrap: wrap` なので
-  幅が足りなければボタンが下に落ちる。
-- 狭いときに非表示にしない（装飾を消す判断はレイアウトの都合ではなくデザイン判断）。
-- `prefers-reduced-data` はこのリポジトリで未使用なので、ここでも導入していない。
-
-### 5.8 キーボード / a11y
+### 5.6 キーボード / 支援技術
 
 | 対象 | 扱い |
 | --- | --- |
-| 画像 | `alt=""` + `aria-hidden="true"`（装飾）。`a11y:image-alt:check` の PASS 形 |
-| トリガ | `<button type="button">`。`あいさつしてもらう` が唯一のアクセシブル名 |
-| 状態 | トグルではないので `aria-pressed` は付けない |
-| focus | `_focusVisible` で `border.focus` の 2px outline + offset 2px |
+| ルート要素 | `aria-hidden="true"`。`role` なし、`tabindex` なし |
+| 画像 | `alt=""`（装飾）。`a11y:image-alt:check` の PASS 形 |
+| フォーカス | **しない。** ボタンが無いのでフォーカス可能な子孫も無い |
+| キーボード操作 | 提供しない。位置の変更はポインタ操作の副産物で、キーボード利用者はこの装飾を必要としない |
+| フォーカス済み要素の遮蔽 | WCAG 2.2 SC 2.4.11。`--pet-overlay-offset`（休憩位置の下端 72 px + フレーム 104 px = 176 px）を mount 中だけ publish し、`src/styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費する。`scripts/check-a11y-focus-visible.mjs` が両端の存在を強制する |
 
-ボタンの文言は `lang="ja"` の `<span>` で包んでいる（ページの `lang` に依存しない）。
+「不可視」は読み上げ・フォーカスの話で、視覚的にも消すという意味ではない
+（owner は相棒として見せることを求めている）。`aria-hidden` を付けた要素の中に
+フォーカス可能な要素を置くと不正になるので、**将来ここにボタンを足してはいけない**。
 
-### 5.9 配信形式 / 変換スクリプト
+### 5.7 保存位置
 
-- 状態ごとの**横ストリップ WebP（alpha）**。CSS の `steps()` と相性がよく、
-  静止フレームを別ファイルにできる（ストリップ全体を落とさずに済む）。
-- 出力先は `public/pets/melty/`。**`src/**` から import しない**。
-  Vite に取り込むと `/assets/<hash>` になり、`assets:license:check` の
-  監査対象 `PUBLIC_MEDIA` から外れるため（この隙間は Issue #780）。
-- 変換は `scripts/build-pet-sprites.mjs`（`pnpm run generate:pets`）:
-  - 入力は**ローカルのアトラス**（`--atlas=<path>`）。リポジトリに含まれない。
-  - 入力の sha256 が固定値と一致しなければ**何も書かずに失敗する**。
-  - 出力は決定的（同じ入力 → 同じバイト）。status-only 出力。
-- 静的アセットの既定 `Cache-Control: public, max-age=0, must-revalidate` のままでよい
-  （URL が安定していて内容が変わりうるファイルの正しい扱い）。
+- `localStorage` のキー `pet-position.v1`。値は
+  `{"xRatio":number,"yRatio":number}`（0–1、可動域 = viewport − 96×104 に対する比率）。
+  比率で持つので、ウィンドウサイズが変わっても同じ隅に戻る。
+- 読み書きは `try/catch`。storage が無い / 壊れた JSON / 範囲外の値は**既定位置**に落ちる。
+  `position.ts` がその判定を持つ（純関数。storage は引数で受け取る）。
+- 復元は `useEffect`（クライアントのみ）。SSR と最初のクライアント描画は同じ既定位置
+  なので hydration mismatch は起きない。保存位置がある場合は**復元時に 1 回だけ位置が飛ぶ** —
+  これは受け入れる（レイアウトは固定ボックスなので CLS 0）。
+- 保存はドラッグ終了時のみ。ドラッグ中の各移動では書かない。
+
+### 5.8 寸法・転送量・配信
+
+- 表示はセル 192 × 208 を **96 × 104 CSS px**（DPR 2 で原寸 1:1）。72 × 78 は 2 倍系でないので輪郭が甘くなる。
+- 出荷ファイル（`scripts/build-pet-sprites.mjs`、`pnpm run generate:pets`）:
+
+| ファイル | 行 | フレーム | 元寸法 | 使うとき |
+| --- | ---: | ---: | --- | --- |
+| `idle-rest.webp` | 0 | 1 | 192 × 208 | 常時 |
+| `waving.webp` | 3 | 4 | 768 × 208 | 到着時 |
+| `look-up.webp` / `look-down.webp` | 9 / 10 | 1 | 192 × 208 | スクロール |
+| `look-left.webp` / `look-right.webp` | 10 / 9 | 1 | 192 × 208 | ポインタ接近 |
+| `running-right.webp` / `running-left.webp` | 1 / 2 | 8 | 1536 × 208 | ドラッグ中 |
+
+  実測値は `docs/verification/legal/pet-melty-rights-review.md` と
+  `quality/asset-license-inventory.json#pet-melty-sprites` の `publicPaths` に同期する。
+- `<img>` は**現在の姿勢の 1 枚だけ**を mount する。初期転送は idle（約 4.5 kB）+ 挨拶
+  （約 15 kB）で、look / running はその姿勢になったときに初めて取りに行く。
+- 全イメージ `loading="lazy"` `decoding="async"` `fetchpriority="low"`。固定ボックス
+  （`width` / `height` 属性 + CSS）で **CLS 0**。
+- 出力先は `public/pets/melty/`。**`src/**` から import しない**。Vite に取り込むと
+  `/assets/<hash>` になり `assets:license:check` の監査対象から外れる（Issue #780）。
+- 変換は `scripts/build-pet-sprites.mjs`: 入力アトラスの sha256 を固定値で検証し、
+  一致しなければ**何も書かずに失敗する**。出力は 1 回 encode の決定的結果。
+
+### 5.9 参照元（Codex デスクトップのペット）の実挙動 — 一次情報
+
+owner は「実際のCodexペットのように」と**参照元を名指し**している。以下は推測ではなく、
+この Mac にある配布物の文字列と、ペット生成プラグインの契約文書から確認した事実である。
+確認できなかったことは「確認できなかった」と書く。
+
+一次情報:
+
+1. `/Applications/ChatGPT.app/Contents/Resources/app.asar`（Codex デスクトップの
+   avatar overlay を含む配布物。`avatar-overlay-*`、`data-codex-pet-*` の文字列を持つ）
+2. `~/.codex/plugins/cache/openai-curated-remote/work-pets/0.1.6/`
+   （`references/sprite-sheet-contract.md`、`skills/create-pet/references/animation-rows.md`、
+   `skills/create-pet/scripts/prepare_pet_run.py`）
+
+| 挙動 | 一次情報 | 採否 |
+| --- | --- | --- |
+| デスクトップの上に浮く overlay。寸法は 80–224 px、既定 112 px | 設定項目 `avatar-overlay-mascot-width-px`「Size of the floating Codex pet」、`avatar-overlay-pet-visible`「Whether the floating Codex pet is visible above its controls」 | **採る**（浮遊。寸法はこのサイトの 96 × 104） |
+| 既定は右上（`placement="top-end"`）、ドラッグ後は自由配置 | 既定値 `placement="top-end"`、フラグ `isFreelyPositioned` | **採る**（ただし初期位置は右下。§5.2 の理由） |
+| ドラッグで移動し、移動方向に応じて `running-right` / `running-left` に切り替わる。しきい値 4 px | `(Math.abs(r)>=4||Math.abs(i)>=4)&&(…,r>=4?\`running-right\`:r<=-4&&\`running-left\`)`、`avatar-overlay-drag-start` / `-move` / `-end` | **採る**（しきい値も同じ 4 px） |
+| 位置は永続化される | electron-store のキー `electron-avatar-overlay-bounds` | **採る**（`localStorage`、比率で保存） |
+| ポインタの方位を 16 方位（22.5° 刻み）で見る | `Math.atan2(r,-i)…`、`A7i=22.5,j7i=16`、look 行は 9/10、中心からの距離が 1 px 以下なら idle | **一部採る**（4 方位に量子化。§5.4） |
+| ホバーで `jumping` | `respondToHover` → `f = i && c ? 'jumping' : s`、`onPointerEnter` | **採らない**（§5.4） |
+| 通知 / 作業状態で `running` / `waiting` / `failed` / `review` に変わる | `mascotState` の割り当て（loading→running、warning→waiting、danger→failed、success→review） | **採らない**（サイトに状態が無い） |
+| ドラッグ解放で慣性・バウンド | `avatar-overlay-drag-release` + `throwWithVelocity(…, shouldBounce)` | **採らない**（§5.4） |
+| 装飾時の `aria-hidden="true"` | スプライト要素の `"aria-hidden": "true"`（ラベルが付くのは操作可能なときだけ） | **採る**（このサイトでは常に装飾） |
+| 実体だけがポインタを受ける（ウィンドウ側のマウスパススルー） | `applyPointerInteractivityPolicy`、`mousePassthroughMode`、`setPointerInteraction(id, isInteractive)` | **採る**（Web では「スプライト実体サイズの fixed ボックスにだけ `pointer-events`」で等価） |
+| クリックで Quick Chat を開く | `avatar-overlay-action`（`focus-quick-chat`） | **採らない**（ボタン禁止） |
+| スクロールへの反応 | `app.asar` 内の scroll リスナとペットの結びつきは**確認できなかった** | **こちらで追加する**（§5.4 #2）。参照元はチャット窓の上に浮くが、このサイトは長い文書の上に浮く。参照元では「ターン状態」が読者の進行の代理だった |
+
+確認できたが**採らなかった**もののうち、`jumping`（row 4）は将来の候補として残すが、
+「押せる / 操作できる」方向の反応を足すときは §5.6 のフォーカス禁止と衝突するので、
+まず owner に返す。
+
+契約文書側の補足: `animation-rows.md` は row 1/2 を「drag movement loop」、
+row 4 を「hover or playful jump」と定義しており、app.asar の実装と一致する。
+`prepare_pet_run.py` のプロンプトも row 1/2 を "Dragging-right/left loop" と呼ぶ。
+つまり **running 行はドラッグ専用**という扱いは参照元の設計そのものである。
 
 ## 6. 実装ファイル一覧
 
 | ファイル | 役割 |
 | --- | --- |
-| `src/editorial/pet/PetSprite.tsx` | 表示プリミティブ本体 |
-| `src/editorial/pet/PetSprite.test.tsx` | 静的マークアップの契約（装飾 / 寸法 / hook / トリガ / lazy / reduced） |
+| `src/editorial/pet/PetSprite.tsx` | 浮遊レイヤー本体（配置・ドラッグ・反応・reduced-motion 分岐） |
+| `src/editorial/pet/position.ts` | 保存位置の読み書き・クランプ（純関数、storage は注入） |
+| `src/editorial/pet/PetSprite.test.tsx` | 装飾 / 寸法 / ドラッグ / 自動反応 / reduced / storage 不可の契約 |
+| `src/editorial/pet/position.test.ts` | クランプと壊れた保存値の扱い |
 | `src/editorial/pet/PetSprite.stories.tsx` | `Editorial/PetSprite`（3 story） |
 | `src/editorial/pet/index.ts` | re-export |
-| `src/editorial/reduced-motion.ts` | `PET_REACTION_MOTION` を追加 |
+| `src/editorial/reduced-motion.ts` | `PET_REACTION_MOTION` |
 | `src/styles.css` | `[data-motion="pet-reaction"]` の opt-out |
-| `panda.config.ts` | `petReaction` keyframes |
-| `src/home/composer.tsx` | `05 — Companion` セクション、Contact を `06` に繰り下げ |
-| `src/about/components/AboutPage.tsx` | hero 右カラムに `companion` ラベル + `PetSprite` |
-| `public/pets/melty/{idle-rest,waving}.webp` | 出荷バイト（2 ファイル、20,212 B） |
+| `panda.config.ts` | `petReaction` / `petRun` keyframes（`petRun` は両方向で 1 本。違いはストリップだけ） |
+| `docs/verification/visual/pet-companion/overlay-verification.md` | 実機で撮った WebP と測定値（§5.2 の重なり回避を含む） |
+| `src/home/composer.tsx` | ページ末尾に `<PetSprite />`（セクションは持たない） |
+| `src/about/components/AboutPage.tsx` | 末尾に `<PetSprite />`（hero 右カラムから移動） |
+| `public/pets/melty/*.webp` | 出荷バイト（§5.8） |
 | `scripts/build-pet-sprites.mjs` | アトラス → ストリップ変換（digest 固定） |
 | `quality/asset-license-inventory.json` | `pet-melty-sprites` レコード |
 | `docs/verification/legal/pet-melty-rights-review.md` | 権利の根拠と未確認項目 |
@@ -305,9 +403,13 @@ Home 側は既存の eyebrow 連番を `05 — Companion` / `06 — Contact` に
    権利監査の対象外。Issue #780（target 0.9.0）として起票済み。0.8.1 では広げない。
 3. **提供者条件** — 生成モデル提供者の利用条件本文はこのリポジトリで読んでいない。
    読む必要があると owner が判断したときに別 Issue にする。
+4. **`jumping`（row 4）** — 未出荷。反応として足すなら「操作できる」方向の
+   追加になり §5.6 と衝突するので、実装ではなく owner 判断が先。
 
 ## 8. 関連
 
+- owner 指示（配置の改訂）: `.tmp/supervisor/pet/OWNER-2026-11-01-2.md`
+- 実機の描画記録: [`docs/verification/visual/pet-companion/overlay-verification.md`](../verification/visual/pet-companion/overlay-verification.md)
 - 権利記録: [`docs/verification/legal/pet-melty-rights-review.md`](../verification/legal/pet-melty-rights-review.md)
 - 権利契約: `src/legal/contract.ts`（Issue #497）
 - reduced motion 契約: `src/editorial/reduced-motion.ts`（Issue #403）

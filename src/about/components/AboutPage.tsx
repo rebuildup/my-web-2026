@@ -19,6 +19,10 @@ import type { AboutPageData } from '../types';
  *   - 05 — Future        (active vs parked)
  *   - Footer             (finds-me-elsewhere external handles)
  *
+ * The companion character (Issue #274) is not a section and owns no
+ * number: owner instruction 2026-11-01 moved Melty to a page-level
+ * floating overlay, drawn once after the footer.
+ *
  * The Hero adopts the same 4/12 (rail) + 8/12 (lead) grid split
  * as the home hero. The body sections use the spread
  * `SectionHeading` variant so the heading cluster sits in the
@@ -88,6 +92,7 @@ export function AboutPage({ data }: AboutPageProps) {
 				<FutureSection active={future.active} parked={future.parked} />
 			</main>
 			<ExternalHandlesFooter handles={externalHandles} />
+			<PetSprite />
 		</>
 	);
 }
@@ -203,36 +208,6 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 								{identity.secondary}
 							</p>
 						) : null}
-						{/*
-						 * Issue #274: the companion character joins the identity
-						 * block as DISPLAY only. It reads nothing from `identity`,
-						 * adds no section number, and owns no fact the page states —
-						 * so the person projection and its JSON-LD stay exactly what
-						 * `src/about/structured-data.ts` builds.
-						 */}
-						<div
-							data-testid="about-companion"
-							className={css({
-								marginBlockStart: '10',
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '2',
-							})}
-						>
-							<span
-								lang="en"
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-									color: 'text.muted',
-								})}
-							>
-								companion
-							</span>
-							<PetSprite />
-						</div>
 					</div>
 				</div>
 			</Container>

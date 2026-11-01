@@ -112,7 +112,7 @@ function projectVersion() {
 	}
 }
 
-function headSha() {
+export function headSha() {
 	try {
 		return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
 			cwd: ROOT,
@@ -438,7 +438,11 @@ async function main() {
 
 	const page = buildPage({ entries, outPath });
 	try {
-		assertNoSensitiveInText(page);
+		// The commit the page was generated from is provenance, not a
+		// secret. It is exempt by value: only the sha this run read from
+		// git is, so a different digit-looking token in the same slot is
+		// still reported.
+		assertNoSensitiveInText(page, { allow: [headSha()] });
 	} catch (error) {
 		process.stderr.write(`${error.message}\n`);
 		return 2;

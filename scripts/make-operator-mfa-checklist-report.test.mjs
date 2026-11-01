@@ -25,7 +25,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -37,6 +37,21 @@ import { assertNoSensitiveInText } from './_operator-mfa-audit.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = resolve(ROOT, 'scripts', 'make-operator-mfa-checklist-report.mjs');
 const FIXTURE_DIR = resolve(ROOT, 'quality', 'fixtures', 'operator-mfa');
+
+/**
+ * The commit the report was generated from.
+ *
+ * The generator reads it from git and prints it as the provenance of the
+ * artefact, so the guard exempts exactly this value — by value, not by
+ * pattern. The test reads the same value, so a page that carries a
+ * different token in that slot is still reported.
+ */
+function headSha() {
+	return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
+		cwd: ROOT,
+		encoding: 'utf8',
+	}).trim();
+}
 
 function runGenerator(args) {
 	return spawnSync(process.execPath, [SCRIPT, ...args], { cwd: ROOT, encoding: 'utf8' });
@@ -55,7 +70,8 @@ describe('operator MFA checklist report', () => {
 			const { result, out } = generateInto(dir);
 			assert.equal(result.status, 0, result.stderr);
 			const page = readFileSync(out, 'utf8');
-			assertNoSensitiveInText(page);
+			assertNoSensitiveInText(page, { allow: [headSha()] });
+			assert.ok(page.includes(`head ${headSha()}`), 'the page names the commit it came from');
 			assert.equal(page.includes('@'), false, 'the page names no address');
 
 			// The real checklist is shown as it is: unconfirmed.
@@ -124,7 +140,7 @@ describe('operator MFA checklist report', () => {
 			const page = readFileSync(out, 'utf8');
 			assert.equal(page.includes('verdict: OK'), true);
 			assert.equal(page.includes('policy_status=proposed'), false);
-			assertNoSensitiveInText(page);
+			assertNoSensitiveInText(page, { allow: [headSha()] });
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

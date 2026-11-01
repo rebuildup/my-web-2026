@@ -691,48 +691,55 @@ export function formatAuditReport(audit, context = {}) {
 }
 
 /**
- * The provenance git short sha a rendered artefact prints next to the
- * `head` label (`git rev-parse --short=12 HEAD`).
- *
- * A 12-character hexadecimal sha is all digits about 0.36% of the time
- * (`(10/16)^12`), and a bare digit run is exactly what the
- * `long-digit-run` rule exists to catch. The sha is neither an
- * identifier nor a credential — it is the commit the artefact was
- * generated from — so the rule needs one narrow exception.
- *
- * The exception is narrow on purpose: 7 to 12 hexadecimal characters
- * directly after the `head` label. A credential is longer than 12
- * characters, and no account identifier is printed with this label.
- */
-const PROVENANCE_SHORT_SHA = /\bhead [0-9a-f]{7,12}\b/g;
-
-/**
  * The mechanical anonymization guard: report every pattern hit as
  * `{ id, line }` and **never** the matched text. A scanner whose finding
  * quotes the value it found is a disclosure channel (AGENTS.md §4).
  *
+ * `allow` is the narrow exception for the `long-digit-run` rule. The MFA
+ * report prints the commit it was generated from next to the `head`
+ * label, and a 12-character hexadecimal sha is all digits about 0.36% of
+ * the time — a bare digit run, which is exactly what that rule exists to
+ * catch. The sha is neither an identifier nor a credential, so the rule
+ * needs one exception.
+ *
+ * The exception is a **value, not a pattern**: only the exact tokens the
+ * caller vouches for (the sha it read from git) are exempt. A pattern
+ * such as `head [0-9a-f]{7,12}` would wave through every digit-looking
+ * token in that slot, whether or not it was ever a commit sha. The
+ * exemption is compared against a digit run **as a whole**, so a longer
+ * run that merely contains an allowed token is still reported. Every
+ * other rule still reads the line as it is, so an exemption cannot hide
+ * a credential.
+ *
  * @param {string} text
+ * @param {{allow?: string[]}} [options]
  * @returns {{id: string, line: number}[]}
  */
-export function findSensitiveInText(text) {
+export function findSensitiveInText(text, { allow = [] } = {}) {
 	/** @type {{id: string, line: number}[]} */
 	const findings = [];
+	const allowed = new Set(allow.map((token) => String(token)).filter((token) => token.length > 0));
 	text.split('\n').forEach((line, index) => {
 		for (const pattern of SENSITIVE_PATTERNS) {
-			// The digit-run rule is the only one that reads a git short
-			// sha as a secret. Every other rule still sees the line as it
-			// is, so masking the sha here cannot hide a credential.
-			const subject =
-				pattern.id === 'long-digit-run' ? line.replace(PROVENANCE_SHORT_SHA, 'head <sha>') : line;
-			if (pattern.re.test(subject)) findings.push({ id: pattern.id, line: index + 1 });
+			if (pattern.id === 'long-digit-run') {
+				// The exemption is matched against the **whole** digit run, so
+				// a longer run that merely contains an allowed token is still
+				// reported: masking the token out of the line would leave a
+				// credential that embeds the sha invisible to the rule.
+				for (const run of line.match(/\d{9,}/g) ?? []) {
+					if (!allowed.has(run)) findings.push({ id: pattern.id, line: index + 1 });
+				}
+				continue;
+			}
+			if (pattern.re.test(line)) findings.push({ id: pattern.id, line: index + 1 });
 		}
 	});
 	return findings;
 }
 
 /** Throw (value-free) when the text would disclose an identifier or a secret. */
-export function assertNoSensitiveInText(text) {
-	const findings = findSensitiveInText(text);
+export function assertNoSensitiveInText(text, options) {
+	const findings = findSensitiveInText(text, options);
 	if (findings.length === 0) return;
 	const first = findings[0];
 	throw new Error(

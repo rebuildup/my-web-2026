@@ -1,5 +1,5 @@
 import { css } from '../../styled-system/css';
-import { PetSprite } from '../editorial/pet';
+import { PetCompanion } from '../editorial/pet';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import type { HomeCounterData } from './access/load';
@@ -199,7 +199,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				</section>
 			</main>
 			<Footer />
-			<PetSprite />
+			<PetCompanion />
 		</>
 	);
 }

@@ -195,7 +195,7 @@ owner 指示（2026-11-01、`OWNER-2026-11-01-2.md`）:
 | 位置 | `position: fixed`。スクロールに追従し、本文の流れから独立する |
 | 実体 | **スプライトの実体（96 × 104 CSS px）ちょうどの 1 ボックス**。全画面の透明レイヤーは敷かない |
 | ポインタ | `pointer-events` はそのボックスにだけ乗る。下のリンク・ボタン・スクロールは奪わない |
-| 初期位置 | 画面右下（`inset-block-end: 72px` / `inset-inline-end: 24px`） — 下端だけ持ち上げる理由は直後 |
+| 初期位置 | 画面右下（`inset-block-end` = **同意面の公開値 + 12 px（= 面の可視上端 + 24 px）**、最低 72 px / `inset-inline-end: 24px`） — 下端だけ持ち上げる理由は直後と §5.2.1 |
 | 面 | Home（`src/home/composer.tsx`）と `/about`（`src/about/components/AboutPage.tsx`）。同じコンポーネントを 1 個ずつ描く |
 | 重なり順 | `z-index: 30`（同意バナーの 20 より上、モーダルはこのリポジトリに無い） |
 
@@ -215,6 +215,54 @@ sticky なヘッダがあり、右上に浮かせるとナビゲーションの�
 
 セクションを消した副作用として、Home の eyebrow 連番は `05 — Contact` に戻した
 （`06 — Contact` ではない）。`src/home/composer.tsx` の reading-order コメントも同期。
+
+### 5.2.1 同意面との結合（Issue #783）
+
+Issue #783 は同意パネルを**下辺全幅の帯**にする。帯は `position: fixed` で高さが
+実測 198 px（1440 幅）/ 341 px（390 幅）あり、素の休息位置（下 72 px）は帯の**内側**に落ちる。
+390 幅では帯の操作ボタンが全幅で縦積みになるため、装飾が「許可する / 拒否する」を覆う。
+
+同意面は既に `--analytics-consent-offset`（`src/editorial/analytics/consent.ts`
+が名前を持ち、`AnalyticsConsent.tsx` が `:root` に publish する）で
+**自面の高さ + 12 px**（focus compensation 用の余白込み）を公開している。
+ペットはその**読み手**になるだけでよい。
+
+```text
+休憩時の block-end = max(72px, var(--analytics-consent-offset, 0px) + 12px)
+```
+
+| 同意面の状態 | 面の高さ | publish される値 | 休憩時の block-end | 帯の上端との間隔 |
+| --- | ---: | ---: | ---: | ---: |
+| 無し（SSR / hydration 前 / 対象外ページ） | — | 無し（0） | **72 px** | — |
+| 畳んだピル（判断済み） | 36 | 48（36 + 12） | **72 px**（60 < 72 なので従来どおり） | 24 px（下端 828 / ピル上端 852） |
+| 帯（未確定、1440） | 198 | 210 | **222 px** | **24 px**（下端 678 / 帯上端 702） |
+| 帯（未確定、390） | 341 | 353 | **365 px** | **24 px**（下端 479 / 帯上端 503） |
+
+- publish 値は既に 12 px を含むため、式の `+ 12px` を足すと帯の可視上端からは
+  **24 px** 空く。12 px で足りるかは見た目の判断なので、実測値として
+  `docs/verification/visual/pet-companion/consent-*.webp` と
+  `.tmp/pet-consent/measurements.json` に残し、owner / supervisor に返す。
+
+- `max()` であって和ではない。ピルは 60 なので 72 に戻り、帯だけが押し上げる。
+  式は `src/editorial/pet/position.ts` の `restingBlockEndInset()` が唯一の実装で、
+  CSS 側に第 2 の式は置かない（サーバ文書は定数 72 px で描き、hydration 後にだけ
+  この関数の値へ移る）。
+- 値は **hydration 後**に読む。最初の描画ではまだ公開されていないので、
+  サーバは 72 px で描き、マウント直後に一度だけ上へ移る（`transform` のみ遷移するので
+  アニメーションはせず、位置が飛ぶだけ）。同意面自体も hydration 後に出るので、
+  訪問者から見れば「同意面が出た瞬間にペットがその上へ退く」順序になる。
+- 途中で形が変わった場合（帯 → ピル、ピル → 帯）は `MutationObserver`（`:root` の
+  `style`）と `resize` で読み直す。位置が既にある場合は**新しい移動可能域へクランプ**
+  し直すので、形が変わった後も同意面の下に残らない。
+- **ドラッグの移動可能域も同じ下端を使う。** 以前は下端 24 px まで動かせたので、
+  訪問者が帯の上へ運べてしまっていた。`blockEnd` を休憩インセットにしたことで、
+  帯があるときは帯の上までしか動かせない。訪問者が置いた位置を尊重する原則
+  （§5.2）は「同意面の上」の範囲でだけ適用される。
+- `pet-position.v1` は**移動可能域に対する比率**なので、箱の高さが変わっても
+  同じ相対位置に戻る。帯が出た後に復元すると「下」は「帯の直上」を意味する。
+- `--pet-overlay-offset`（focus compensation、§5.6）も同じ値で再 publish する:
+  `blockEnd + 104`。実測では同意面なし / ピルが 176 px、帯（1440）が 326 px、
+  帯（390）が 469 px。
 
 ### 5.3 退避 — 本文を覆い続けない
 
@@ -294,7 +342,7 @@ owner 指示:
 | 画像 | `alt=""`（装飾）。`a11y:image-alt:check` の PASS 形 |
 | フォーカス | **しない。** ボタンが無いのでフォーカス可能な子孫も無い |
 | キーボード操作 | 提供しない。位置の変更はポインタ操作の副産物で、キーボード利用者はこの装飾を必要としない |
-| フォーカス済み要素の遮蔽 | WCAG 2.2 SC 2.4.11。`--pet-overlay-offset`（休憩位置の下端 72 px + フレーム 104 px = 176 px）を mount 中だけ publish し、`src/styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費する。`scripts/check-a11y-focus-visible.mjs` が両端の存在を強制する |
+| フォーカス済み要素の遮蔽 | WCAG 2.2 SC 2.4.11。`--pet-overlay-offset`（**現在の**下端インセット + フレーム 104 px。同意面が無ければ 72 + 104 = 176 px、帯（1440）なら 222 + 104 = 326 px、帯（390）なら 365 + 104 = 469 px）を mount 中だけ publish し、`src/styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費する。`scripts/check-a11y-focus-visible.mjs` が両端の存在を強制する |
 
 「不可視」は読み上げ・フォーカスの話で、視覚的にも消すという意味ではない
 （owner は相棒として見せることを求めている）。`aria-hidden` を付けた要素の中に
@@ -303,8 +351,9 @@ owner 指示:
 ### 5.7 保存位置
 
 - `localStorage` のキー `pet-position.v1`。値は
-  `{"xRatio":number,"yRatio":number}`（0–1、可動域 = viewport − 96×104 に対する比率）。
-  比率で持つので、ウィンドウサイズが変わっても同じ隅に戻る。
+  `{"xRatio":number,"yRatio":number}`（0–1、可動域 = viewport − 96×104 − インセット
+  に対する比率）。比率で持つので、ウィンドウサイズが変わっても、同意面の形が
+  変わって下端が動いても（§5.2.1）、同じ**相対位置**に戻る。
 - 読み書きは `try/catch`。storage が無い / 壊れた JSON / 範囲外の値は**既定位置**に落ちる。
   `position.ts` がその判定を持つ（純関数。storage は引数で受け取る）。
 - 復元は `useEffect`（クライアントのみ）。SSR と最初のクライアント描画は同じ既定位置
@@ -314,6 +363,13 @@ owner 指示:
 
 ### 5.8 寸法・転送量・配信
 
+- **初期 JS に含めない。** ページが import するのは `PetCompanion`
+  （`src/editorial/pet/PetCompanion.tsx`）だけで、hydration 後に
+  `import('./PetSprite')` する。サーバ文書と最初のクライアント描画は空。
+  装飾のために全 route の first paint を払わない、という
+  `quality/bundle-budget.json` の判断であり、見た目の要件（到着時の挨拶・
+  スクロールの視線・ドラッグ）は遅延読み込みでも満たされる。チャンク取得に
+  失敗した場合はペットが居ないだけ（装飾の正しい失敗）。
 - 表示はセル 192 × 208 を **96 × 104 CSS px**（DPR 2 で原寸 1:1）。72 × 78 は 2 倍系でないので輪郭が甘くなる。
 - 出荷ファイル（`scripts/build-pet-sprites.mjs`、`pnpm run generate:pets`）:
 
@@ -378,9 +434,11 @@ row 4 を「hover or playful jump」と定義しており、app.asar の実装�
 
 | ファイル | 役割 |
 | --- | --- |
+| `src/editorial/pet/PetCompanion.tsx` | ページが import する静的側の入口（hydration 後に `PetSprite` を dynamic import） |
 | `src/editorial/pet/PetSprite.tsx` | 浮遊レイヤー本体（配置・ドラッグ・反応・reduced-motion 分岐） |
 | `src/editorial/pet/position.ts` | 保存位置の読み書き・クランプ（純関数、storage は注入） |
 | `src/editorial/pet/PetSprite.test.tsx` | 装飾 / 寸法 / ドラッグ / 自動反応 / reduced / storage 不可の契約 |
+| `src/editorial/pet/PetCompanion.test.tsx` | サーバ文書と最初のクライアント描画が空であること |
 | `src/editorial/pet/position.test.ts` | クランプと壊れた保存値の扱い |
 | `src/editorial/pet/PetSprite.stories.tsx` | `Editorial/PetSprite`（3 story） |
 | `src/editorial/pet/index.ts` | re-export |

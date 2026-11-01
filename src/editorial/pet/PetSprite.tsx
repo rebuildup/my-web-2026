@@ -3,10 +3,12 @@ import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from 'react';
 import { css } from '../../../styled-system/css';
+import { ANALYTICS_CONSENT_OFFSET_PROPERTY } from '../analytics/consent';
 import {
 	PET_REACTION_MOTION,
 	resolveReducedMotion,
@@ -14,12 +16,15 @@ import {
 } from '../reduced-motion';
 import {
 	PET_POSITION_MARGIN,
+	PET_TRAVEL_INSETS,
 	type PetPositionPixels,
+	type PetTravelInsets,
 	browserPetPositionStorage,
 	clampPosition,
 	positionToRatio,
 	ratioToPosition,
 	readStoredPosition,
+	restingBlockEndInset,
 	writeStoredPosition,
 } from './position';
 import { PET_DRAG_THRESHOLD_PX, type PetPose, dragPose, lookPose, scrollPose } from './reactions';
@@ -96,25 +101,6 @@ const GAZE_HOLD_MS = 900;
 const REST_AFTER_MS = 12_000;
 
 /**
- * The resting position's bottom inset (Issue #274).
- *
- * The bottom-right corner belongs to the analytics-consent toggle: a
- * 36 px button sitting 12 px above the viewport edge in
- * `src/editorial/analytics/AnalyticsConsent.tsx`. Measured in the
- * browser at 1440 x 900, the 24 px corner put the resting character's
- * box over the button's top-right corner, so a decorative overlay was
- * intercepting a real control. The resting position therefore sits one
- * margin + one button + one gap above the edge, and the inline-end
- * inset stays at the ordinary margin.
- *
- * Only the DEFAULT is lifted. A position the visitor dragged to is
- * theirs — the character remains below the page's own controls in no
- * other sense, and dropping it over a button is a deliberate act the
- * visitor can undo by dragging it away.
- */
-const REST_INSET_BLOCK_END = PET_POSITION_MARGIN + 36 + 12;
-
-/**
  * The custom property that carries this overlay's footprint to the
  * document's focus compensation.
  *
@@ -128,14 +114,51 @@ const REST_INSET_BLOCK_END = PET_POSITION_MARGIN + 36 + 12;
  * `src/styles.css` and not only here.
  *
  * The value is the overlay's LAYOUT footprint measured from the bottom
- * edge — the resting inset plus the full 96 x 104 box — rather than its
- * shrunken resting render: the character grows to full size whenever it
- * reacts, and the compensation must clear the largest form it takes. It
- * is published while the component is mounted and removed with it, so a
- * page without the companion reserves nothing.
+ * edge — the current bottom inset plus the full 96 x 104 box — rather
+ * than its shrunken resting render: the character grows to full size
+ * whenever it reacts, and the compensation must clear the largest form
+ * it takes. It is published while the component is mounted and removed
+ * with it, so a page without the companion reserves nothing. It is
+ * re-published when the consent surface changes shape, because the
+ * character's own footprint moves with it.
  */
 const FOCUS_OFFSET_PROPERTY = '--pet-overlay-offset';
-const FOCUS_OFFSET_PX = REST_INSET_BLOCK_END + FRAME_HEIGHT;
+
+/**
+ * Read the height the analytics-consent surface occupies (Issue #783).
+ *
+ * The consent surface publishes `--analytics-consent-offset` on `:root`
+ * and keeps it current through a `ResizeObserver`, so this component
+ * only has to notice the property changing. That is a
+ * `MutationObserver` on the root's `style` attribute plus a `resize`
+ * listener; both are dropped with the component.
+ *
+ * Reading it is a convenience, never a dependency: with no consent
+ * surface on the page (or before hydration) the value is absent and the
+ * resting inset falls back to its own constant. A malformed value is
+ * treated the same way as an absent one.
+ */
+function useConsentOffset(): number {
+	const [offset, setOffset] = useState(0);
+	useEffect(() => {
+		const root = document.documentElement;
+		const read = () => {
+			const raw = getComputedStyle(root).getPropertyValue(ANALYTICS_CONSENT_OFFSET_PROPERTY).trim();
+			const parsed = Number.parseFloat(raw);
+			const next = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+			setOffset((previous) => (previous === next ? previous : next));
+		};
+		read();
+		const observer = new MutationObserver(read);
+		observer.observe(root, { attributeFilter: ['style'], attributes: true });
+		window.addEventListener('resize', read);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener('resize', read);
+		};
+	}, []);
+	return offset;
+}
 
 const BOX = { width: FRAME_WIDTH, height: FRAME_HEIGHT } as const;
 
@@ -197,6 +220,17 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const [position, setPosition] = useState<PetPositionPixels | null>(null);
 	const [dragging, setDragging] = useState(false);
 	const [active, setActive] = useState(false);
+	const consentOffset = useConsentOffset();
+
+	/**
+	 * The edges the sprite stays inside. The bottom one follows the
+	 * analytics-consent surface, so the character rests above a band or a
+	 * pill instead of on top of it (Issue #783).
+	 */
+	const insets = useMemo<PetTravelInsets>(
+		() => ({ inline: PET_POSITION_MARGIN, blockEnd: restingBlockEndInset(consentOffset) }),
+		[consentOffset],
+	);
 
 	const poseRef = useRef<PetPose>('idle');
 	const poseSourceRef = useRef<PoseSource | null>(null);
@@ -204,6 +238,12 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const restTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const positionRef = useRef<PetPositionPixels | null>(null);
 	const dragRef = useRef<DragState | null>(null);
+	// The listeners registered once in an effect cannot see a later
+	// render's insets, so the current value is mirrored where they read.
+	const insetsRef = useRef<PetTravelInsets>(PET_TRAVEL_INSETS);
+	useEffect(() => {
+		insetsRef.current = insets;
+	}, [insets]);
 
 	const clearPoseTimer = useCallback(() => {
 		if (poseTimerRef.current !== null) {
@@ -265,14 +305,16 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	}, [override, showPose]);
 
 	// Publish the footprint the document reserves so a focused element is
-	// never left behind the character (see FOCUS_OFFSET_PROPERTY).
+	// never left behind the character (see FOCUS_OFFSET_PROPERTY). The
+	// footprint grows with the consent surface, so it is re-published
+	// whenever the bottom inset moves.
 	useEffect(() => {
 		const root = document.documentElement;
-		root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${FOCUS_OFFSET_PX}px`);
+		root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${insets.blockEnd + FRAME_HEIGHT}px`);
 		return () => {
 			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
 		};
-	}, []);
+	}, [insets.blockEnd]);
 
 	// A saved position is applied once, on the client. The server document
 	// and the first client render both draw the resting corner, so this is
@@ -281,7 +323,12 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 		const stored = readStoredPosition(browserPetPositionStorage());
 		if (stored === null) return;
 		setPosition(
-			ratioToPosition(stored, { width: window.innerWidth, height: window.innerHeight }, BOX),
+			ratioToPosition(
+				stored,
+				{ width: window.innerWidth, height: window.innerHeight },
+				BOX,
+				insetsRef.current,
+			),
 		);
 	}, []);
 
@@ -291,12 +338,34 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 			const current = positionRef.current;
 			if (current === null) return;
 			setPosition(
-				clampPosition(current, { width: window.innerWidth, height: window.innerHeight }, BOX),
+				clampPosition(
+					current,
+					{ width: window.innerWidth, height: window.innerHeight },
+					BOX,
+					insetsRef.current,
+				),
 			);
 		};
 		window.addEventListener('resize', onResize);
 		return () => window.removeEventListener('resize', onResize);
 	}, []);
+
+	// A consent surface that changes shape — the panel collapsing into its
+	// pill after a decision, or a band replacing it — moves the bottom edge
+	// after the position is already known. The stored ratio keeps its
+	// relative place; the CLAMP is what stops a position that is now below
+	// the new edge from resting under the surface.
+	useEffect(() => {
+		const current = positionRef.current;
+		if (current === null) return;
+		const next = clampPosition(
+			current,
+			{ width: window.innerWidth, height: window.innerHeight },
+			BOX,
+			insets,
+		);
+		if (next.x !== current.x || next.y !== current.y) setPosition(next);
+	}, [insets]);
 
 	// Reaction 2 — the reader's scroll direction. Asking for an animation
 	// frame first keeps a fast scroll from flooding React with renders.
@@ -390,6 +459,7 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 				{ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY },
 				{ width: window.innerWidth, height: window.innerHeight },
 				BOX,
+				insets,
 			),
 		);
 		markActive();
@@ -411,7 +481,12 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 		if (!drag.moved || current === null) return;
 		writeStoredPosition(
 			browserPetPositionStorage(),
-			positionToRatio(current, { width: window.innerWidth, height: window.innerHeight }, BOX),
+			positionToRatio(
+				current,
+				{ width: window.innerWidth, height: window.innerHeight },
+				BOX,
+				insets,
+			),
 		);
 	};
 
@@ -463,8 +538,8 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const positionStyle: CSSProperties =
 		position === null
 			? {
-					insetBlockEnd: `${REST_INSET_BLOCK_END}px`,
-					insetInlineEnd: `${PET_POSITION_MARGIN}px`,
+					insetBlockEnd: `${insets.blockEnd}px`,
+					insetInlineEnd: `${insets.inline}px`,
 				}
 			: { left: `${position.x}px`, top: `${position.y}px` };
 

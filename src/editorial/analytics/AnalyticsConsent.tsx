@@ -74,6 +74,7 @@ import {
 } from './GoogleAnalytics';
 import {
 	ANALYTICS_CONSENT_CHANGE_EVENT,
+	type ANALYTICS_CONSENT_OFFSET_PROPERTY,
 	type AnalyticsConsentDecision,
 	type AnalyticsConsentOffSwitch,
 	type AnalyticsConsentState,
@@ -102,8 +103,16 @@ import {
  * view. The reserved height follows the rendered surface instead of a
  * guessed number, and with the surface off the page the property is
  * absent and the fallback reserves nothing.
+ *
+ * The literal is declared HERE, not imported, because
+ * `scripts/check-a11y-focus-visible.mjs` closes the chain only when the
+ * overlay's OWN file publishes the offset it occupies. The type
+ * annotation pins the string to `./consent.ts`, which
+ * `src/editorial/pet/PetSprite.tsx` also reads (Issue #274), so a rename
+ * on either side is a `typecheck` error rather than silent drift.
  */
-const FOCUS_OFFSET_PROPERTY = '--analytics-consent-offset';
+const FOCUS_OFFSET_PROPERTY =
+	'--analytics-consent-offset' satisfies typeof ANALYTICS_CONSENT_OFFSET_PROPERTY;
 
 /**
  * Publish how much of the viewport this surface occupies.

@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
-import { PetSprite } from '../../editorial/pet';
+import { PetCompanion } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -92,7 +92,7 @@ export function AboutPage({ data }: AboutPageProps) {
 				<FutureSection active={future.active} parked={future.parked} />
 			</main>
 			<ExternalHandlesFooter handles={externalHandles} />
-			<PetSprite />
+			<PetCompanion />
 		</>
 	);
 }

@@ -59,8 +59,14 @@ describe('PetSprite (Issue #274)', () => {
 		// toggle (a 36 px button 12 px off the bottom edge): at the plain
 		// 24 px corner the decorative overlay covered part of that real
 		// control. This is a browser measurement — the numbers live in
-		// `REST_INSET_BLOCK_END` and in
+		// `PET_REST_INSET_BLOCK_END` and in
 		// `docs/verification/visual/pet-companion/`.
+		//
+		// 72 px is the value of the SERVER document, where no consent
+		// surface exists yet and the height it publishes cannot be read.
+		// After hydration the bottom inset follows that surface (a band
+		// lifts it by its height plus a gap); the arithmetic is pinned in
+		// `position.test.ts`, and it can only move UP from this value.
 		expect(html).toContain('inset-block-end:72px');
 	});
 

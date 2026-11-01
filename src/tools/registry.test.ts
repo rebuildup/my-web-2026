@@ -62,6 +62,23 @@ describe('Tool Registry — listTools / getTool', () => {
 	it('returns undefined for an unknown slug', () => {
 		assert.equal(getTool('does-not-exist'), undefined);
 	});
+
+	it('every Tool carries a non-empty Japanese description (Issue #785)', () => {
+		// The /tools index renders `description_ja` for every entry,
+		// including the host_disabled ones, so a missing value is an
+		// unexplained row rather than a cosmetic gap.
+		for (const tool of listAllTools()) {
+			assert.equal(
+				typeof tool.description_ja,
+				'string',
+				`${tool.slug}: description_ja must be a string`,
+			);
+			assert.ok(
+				tool.description_ja.trim().length > 0,
+				`${tool.slug}: description_ja must not be empty`,
+			);
+		}
+	});
 });
 
 describe('Tool Registry — public surface', () => {

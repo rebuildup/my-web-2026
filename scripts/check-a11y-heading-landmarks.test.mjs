@@ -18,8 +18,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
-	EXPECTED_FIXTURES,
 	EXEMPTION_RULE,
+	EXPECTED_FIXTURES,
 	FIXTURE_RULE,
 	HUMAN_EVALUATION,
 	PAGE_UNITS,
@@ -369,8 +369,9 @@ test('the report separates machine-checked facts from human evaluation', () => {
  * A rule exemption is a DECLARATION with a reason.
  *
  * `/tools` renders no `main` landmark on purpose: the browser-compat
- * contract states `main: 'none'` for that route (Issue #288). These
- * tests pin the three properties that make the exemption honest:
+ * contract states `main: 'none'` for that route, and Issue #785 kept
+ * that decision when it restored the nav and the breadcrumbs there.
+ * These tests pin the three properties that make the exemption honest:
  *
  *   1. the declaration names the rule AND the contract it comes from;
  *   2. the exemption applies to the unit that declares it, and to
@@ -396,7 +397,7 @@ test('the tools-index unit declares the landmark exemption and the contract it c
 	assert.equal(exemptions.length, 1);
 	assert.equal(exemptions[0].rule, 'page-missing-landmark');
 	assert.match(exemptions[0].reason, /main: 'none'/);
-	assert.match(exemptions[0].reason, /Issue #288/);
+	assert.match(exemptions[0].reason, /Issue #785/);
 });
 
 test('an exempt unit does not report the exempted rule, and the exemption is recorded', () => {
@@ -506,5 +507,5 @@ test('the repository run declares the tools-index exemption and reports no viola
 	const exemption = evidence.exemptions.find((entry) => entry.unit === 'tools-index');
 	assert.ok(exemption, 'the tools-index unit must declare its exemption');
 	assert.equal(exemption.rule, 'page-missing-landmark');
-	assert.match(exemption.reason, /Issue #288/);
+	assert.match(exemption.reason, /Issue #785/);
 });

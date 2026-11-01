@@ -89,6 +89,16 @@ gates:
       # and reports freshness as an advisory. A hand-edited snapshot
       # that claims it is current cannot pass this gate.
       - 'pnpm run projects:check'
+      # Issue #719: the committed keyboard-layout snapshot. Offline and
+      # read-only: it re-validates that the recorded provenance still
+      # matches the committed bytes (digest, byte count, adoption ref),
+      # that the three saved sources still parse through the bounded
+      # parsers the page uses, and that the recorded source ids, roles
+      # and URLs are still the allowlisted ones. A hand-edited snapshot
+      # whose manifest no longer describes its bytes cannot pass this
+      # gate — and the daily refresh workflow runs the same check
+      # before it publishes anything.
+      - 'pnpm run keyboard:check'
       # Issue #421: the Open Graph / Twitter card contract. Cheap by
       # design (pure Node): it proves every route the router serves has
       # a declared card state, that the declared fallback card is a real

@@ -125,6 +125,14 @@
 			"expectedTypes": [],
 			"samplePath": null,
 			"note": "認証必須の内部 surface。search 流入を意図していないため structured data の対象外。"
+		},
+		{
+			"path": "/compare",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": null,
+			"note": "Issue #764 の比較ハーネス。owner の判断用の画面で、構造化データを 1 件も emit しない（robots も noindex, nofollow）。route ごとブランチと一緒に消えるため、実装ではなく「決めない」ことを記録する。"
 		}
 	]
 }

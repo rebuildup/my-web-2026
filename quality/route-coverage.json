@@ -51,7 +51,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the home canonical / Open Graph metadata; the surface is asserted for composition only."
@@ -80,8 +83,14 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/about.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/about.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -106,8 +115,14 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/keyboard.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/keyboard.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -132,7 +147,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the contact canonical / Open Graph metadata."
@@ -193,7 +211,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "Only the detail route's canonical / Open Graph metadata is asserted; the list route is not."
@@ -223,8 +244,14 @@
 			"addressable": true,
 			"sample_path": "/portfolio/my-web-2026",
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -249,7 +276,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the Tool index canonical / Open Graph metadata."
@@ -311,7 +341,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "Internal design-system showcase; no spec pins its canonical / Open Graph metadata."
@@ -405,7 +438,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "The sign-in document publishes no canonical / Open Graph metadata that a spec pins."
@@ -587,6 +623,39 @@
 					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
 				}
 			}
+		},
+		{
+			"source": "src/routes/compare.tsx",
+			"path": "/compare",
+			"audience": "internal",
+			"addressable": false,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Issue #764 comparison harness: a branch-local page the owner reviews directions on, deleted with the branch. It is not a product surface, so every family is excluded rather than covered."
+				}
+			},
+			"addressable_reason": "The owner opens it directly with query parameters; nothing on the platform links to it and it is deleted with Issue #764."
 		}
 	]
 }

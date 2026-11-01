@@ -212,6 +212,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		openDecision: null,
 	},
 	{
+		id: 'harness-compare-noindex',
+		route: '/compare',
+		request: 'GET /compare (anonymous)',
+		expect: { status: 200, robots: 'noindex', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF],
+		why: 'Issue #764 comparison harness. It is served by this branch so the owner can judge the three directions on screen, and it is deleted with the branch — so it is registered here rather than left as an unclassified route, and pinned as noindex because nothing on it is a product surface.',
+		openDecision: null,
+	},
+	{
 		id: 'admin-login-anonymous',
 		route: '/admin/login',
 		request: 'GET /admin/login (anonymous)',

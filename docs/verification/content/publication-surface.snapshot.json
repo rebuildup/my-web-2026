@@ -165,6 +165,20 @@
 				"reason": "PUBLIC BY NECESSITY: the sign-in waypoint has to be reachable before a session exists. Its loader only redirects already-signed-in users. Never a sitemap target."
 			},
 			{
+				"id": "/compare",
+				"path": "/compare",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/compare.tsx"
+				],
+				"urls": [
+					"/compare"
+				],
+				"reason": "Issue #764 comparison harness: a branch-local review page for the owner, noindex and not a sitemap target. It exists so the harness is declared rather than appearing as an undeclared route, and it is deleted with the branch."
+			},
+			{
 				"id": "/contact",
 				"path": "/contact",
 				"classification": "public",

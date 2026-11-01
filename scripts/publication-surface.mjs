@@ -162,6 +162,15 @@ export const SURFACE_DECLARATIONS = [
 			'Public, canonical, nav-linked showcase — it satisfies the same membership rule the sitemap generator applies, so it is a sitemap target.',
 	},
 	{
+		id: '/compare',
+		path: '/compare',
+		classification: 'internal',
+		sitemap: false,
+		files: ['src/routes/compare.tsx'],
+		reason:
+			'Issue #764 comparison harness: a branch-local review page for the owner, noindex and not a sitemap target. It exists so the harness is declared rather than appearing as an undeclared route, and it is deleted with the branch.',
+	},
+	{
 		id: '/admin',
 		path: '/admin',
 		classification: 'internal',

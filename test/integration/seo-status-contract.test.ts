@@ -137,6 +137,9 @@ describe('public documents answer 200 and stay indexable (#419)', () => {
 describe('200 but noindex (#419)', () => {
 	it('tool-detail-noindex', async () => expectCase('tool-detail-noindex', '/tools/prototype'));
 	it('admin-login-anonymous', async () => expectCase('admin-login-anonymous', '/admin/login'));
+	// Issue #764 harness: served by this branch, deleted with it. Pinned so the
+	// route is classified rather than skipped, and so its noindex cannot drift.
+	it('harness-compare-noindex', async () => expectCase('harness-compare-noindex', '/compare'));
 });
 
 /**

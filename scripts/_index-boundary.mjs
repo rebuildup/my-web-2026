@@ -241,6 +241,16 @@ const ROUTE_INTENT = [
 			'URL indexed-without-content.',
 	},
 	{
+		paths: ['/compare'],
+		zone: 'private',
+		crawl: 'allow',
+		index: 'no',
+		reason:
+			'Issue #764 comparison harness: a branch-local page the owner reviews directions on. It ' +
+			'ships `robots: noindex, nofollow` in its route head and is deleted with the branch, so it ' +
+			'is classified here instead of appearing as an unreviewed route.',
+	},
+	{
 		paths: ['/admin'],
 		zone: 'private',
 		crawl: 'allow',

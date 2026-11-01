@@ -9,7 +9,7 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 19 |
+| Declared surfaces | 20 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 19 |
@@ -74,6 +74,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/admin/invitations/accept` | `/admin/invitations/accept` | public | no | `src/routes/admin.invitations_.accept.tsx` |
 | `/admin/keys` | `/admin/keys` | internal | no | `src/routes/admin.keys.tsx` |
 | `/admin/login` | `/admin/login` | public | no | `src/routes/admin.login.tsx` |
+| `/compare` | `/compare` | internal | no | `src/routes/compare.tsx` |
 | `/contact` | `/contact` | public | yes | `src/routes/contact.tsx` |
 | `/design-system` | `/design-system` | public | yes | `src/routes/design-system.tsx` |
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |

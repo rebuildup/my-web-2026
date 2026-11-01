@@ -308,5 +308,13 @@ function btn(active: boolean): React.CSSProperties {
 }
 
 export const Route = createFileRoute('/compare')({
+	// A harness surface is never a product page: it must not be indexed, and
+	// the row that pins this lives in `scripts/_seo-status-contract.mjs`.
+	head: () => ({
+		meta: [
+			{ title: 'Issue #764 comparison board' },
+			{ name: 'robots', content: 'noindex, nofollow' },
+		],
+	}),
 	component: ComparePage,
 });

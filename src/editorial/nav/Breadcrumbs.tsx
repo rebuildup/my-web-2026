@@ -1,6 +1,11 @@
 import { Link, useMatches } from '@tanstack/react-router';
 import type { ReactElement } from 'react';
-import { BREADCRUMB_ORIGIN, ROUTE_LABELS, SUPPRESS_BREADCRUMB_LEAF_IDS } from './route-labels';
+import {
+	BREADCRUMB_ORIGIN,
+	BREADCRUMB_ROOT,
+	ROUTE_LABELS,
+	SUPPRESS_BREADCRUMB_LEAF_IDS,
+} from './route-labels';
 
 /**
  * Breadcrumbs — structural nav primitive (Issue #173, Issue #185, Issue #199).
@@ -125,6 +130,23 @@ export function resolveBreadcrumbChain(
 			continue;
 		}
 
+		// Issue #778: a flat route tree means a leaf's section has no
+		// match of its own (`/portfolio/$slug` and `/portfolio/` are
+		// siblings), so the section segment is contributed from the
+		// route registry. It is inserted only when no real match
+		// already carries it, so nested route trees keep their own
+		// order.
+		if (entry.parent && !items.some((item) => item.routeId === entry.parent?.routeId)) {
+			const parentEntry = ROUTE_LABELS[entry.parent.routeId];
+			if (parentEntry) {
+				items.push({
+					routeId: entry.parent.routeId,
+					label: parentEntry.label,
+					href: entry.parent.href,
+				});
+			}
+		}
+
 		const params = match.params as Record<string, string | undefined>;
 		const resolved = entry.resolve
 			? entry.resolve({ params, loaderData: match.loaderData })
@@ -140,6 +162,14 @@ export function resolveBreadcrumbChain(
 	}
 
 	if (items.length === 0) return null;
+
+	// Issue #778: every chain starts at Home. Without this the trail
+	// began at the leaf itself, so a top-level page rendered a single
+	// segment whose only item was the current page — a breadcrumb
+	// that could not go anywhere. The synthetic root is prepended
+	// AFTER the suppression check, so `/` and the other suppressed
+	// leaves still render nothing.
+	items.unshift({ ...BREADCRUMB_ROOT });
 	return items;
 }
 

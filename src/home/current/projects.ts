@@ -95,7 +95,7 @@ export const CURRENT_PROJECTS: readonly CurrentProject[] = [
 	{
 		id: 'my-web-2026',
 		name: 'my-web-2026',
-		statusJa: '個人 Web Platform の再構築。0.8.1 sprint で現在地の表示を追加中。',
+		statusJa: '個人 Web Platform の再構築。',
 	},
 	{
 		id: 'tastile',

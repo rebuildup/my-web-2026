@@ -290,11 +290,15 @@ Issue #722 が名指しした 6 基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 /
 | 1.4.5 | 「画像の中に文字を埋め込む表現を使っていない」 | ホームのアクセスカウンタは数字を **WebP のビットマップ** で描画している（`src/home/digits/*.webp`）— 文字を画像で描画している。テキスト描画に置き換えられるかは人が判定する | `applicable-unverified` |
 | 2.2.1 | 「時間の制限のある操作を用意していない」 | 管理画面の API キー発行には **5 分の step-up 確認窓** がある（`STEP_UP_MAX_AGE_SECONDS` = 300）。公開画面には無いが、管理画面を適合の主張の範囲に含めるかどうかの判断がまだ無い | `applicable-unverified` |
 
-2.5.3 には **既知の違反** が残っている。`/` の capability リンクは
-可視テキストが「Portfolio を開く」で `aria-label` は「ポートフォリオ を開く」、
-`/portfolio` の facet ボタンも可視テキストと `aria-label` が食い違う
-（`e2e/a11y/axe-baseline.json` の `label-content-name-mismatch`、**Issue #718 が追跡中**）。
-この **既知の違反** は Issue #718 の追跡対象であり、この gate は **閉じない**。
+2.5.3 について、かつて記録されていた `label-content-name-mismatch`
+（`/` の capability リンクと `/portfolio` の facet ボタンの可視テキストと
+`aria-label` の食い違い）は、**Issue #718 の実装側の修正（PR #745）で解消済み**で、
+`e2e/a11y/axe-baseline.json` と `e2e/a11y/axe-storybook-baseline.json` は
+現在 **0 レコード**。
+**Issue が open であることと、記録された違反が未修正であることは別**である。
+未修正なのは **手動監査項目** であり、違反記録そのものではない。
+（`quality/wcag-review-matrix.json` の `releaseAssessment.knownAxeViolations`
+が実測の所在を保持する。）
 
 #### この表の「対象範囲」の読み方
 
@@ -444,9 +448,12 @@ gate の出力は **2 つを分けて** 報告する。**混ぜない。**
 | **AA 準拠の主張** | **手動項目が 1 件残らず `human-verified`** で、その行が **この表を正確に指している** ときだけ | `auto-pass` だけの台帳 |
 
 **未実施の項目は「未実施」のまま報告する。** 「不合格」とも「合格」とも書かない。
-**Issue #718 が追跡している既知の axe 違反**（`e2e/a11y/axe-baseline.json` と
-`e2e/a11y/axe-storybook-baseline.json`）は **別の、未解決の品質項目** であり、
+**axe 違反の記録**（`e2e/a11y/axe-baseline.json` と
+`e2e/a11y/axe-storybook-baseline.json`）は **別の品質項目** であり、
 この gate はそれを **閉じても許さない**（ excuse もしない）。
+ただし **現在の記録は 0 件** であり、**Issue #718 が open であることを
+「記録された未修正の違反がある」こととして読まない。**
+実測の所在は `releaseAssessment.knownAxeViolations` が保持する。
 台帳に `releaseAssessment.aaAuditComplete: true` と書いた場合は
 `release-assessment-unbacked` で red になる。
 
@@ -648,10 +655,11 @@ node scripts/check-a11y-wcag-review-matrix.mjs --matrix=quality/does-not-exist.j
   **gate が緑であることは、この 12 件が閉じていることを意味しない。**
 - **`applicable-and-verified` は 0 件。** owner の実測記録が 1 件も無いので、
   この状態を書き込むことは許されない（`scope-verified-without-review-record`）。
-- **Issue #718 が追跡している既知の axe 違反は別の項目。** 例えば
-  `label-content-name-mismatch`（`/` の capability リンクと `/portfolio` の
-  facet ボタン）は **SC 2.5.3 の既知の違反** として記録されている。
-  この gate は **それを閉じない**。台帳の構造と、監査された品質は別のものです。
+- **axe 違反の記録は別の項目。** かつての `label-content-name-mismatch`
+  （`/` の capability リンクと `/portfolio` の facet ボタン）は
+  **Issue #718 の実装側修正で解消済み**で、記録は 0 件。
+  **open な Issue 番号を「未修正の違反」としては読まない。**
+  この gate は記録の有無を裁定しない。台帳の構造と、監査された品質は別のものです。
 - **`auto-pass` の 5 項目は「その範囲」に限る。** 例えば
   `icon-button-names` は `src/**` のアイコンボタンの **名前** だけを扱う。
   基準全体の適合ではない。

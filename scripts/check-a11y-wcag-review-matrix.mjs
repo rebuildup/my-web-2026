@@ -2512,9 +2512,25 @@ export function renderGateSummary(evidence) {
 	lines.push(
 		'  the outstanding manual items are outstanding: they are assigned to the owner and nobody has performed them.',
 	);
-	lines.push(
-		'  the known axe-core violations tracked by Issue #718 (e2e/a11y/axe-baseline.json and e2e/a11y/axe-storybook-baseline.json) are a SEPARATE, still-open quality item; this gate neither closes nor excuses them.',
-	);
+	const knownAxe =
+		evidence.knownAxeViolations ?? evidence.matrix?.releaseAssessment?.knownAxeViolations ?? null;
+	if (knownAxe) {
+		const recorded = Number(knownAxe.recordedViolations);
+		const ledgers = Array.isArray(knownAxe.ledgers) ? knownAxe.ledgers.join(', ') : '';
+		if (Number.isFinite(recorded) && recorded > 0) {
+			lines.push(
+				`  the axe-core violation records (${ledgers}) hold ${recorded} entry/entries; they are tracked by Issue ${knownAxe.issue ?? '(unrecorded)'} and this gate neither closes nor excuses them.`,
+			);
+		} else {
+			lines.push(
+				`  the axe-core violation records (${ledgers}) hold 0 entries — the recorded violations Issue ${knownAxe.issue ?? '(unrecorded)'} tracked were fixed in the implementation, and the Issue stays open for the MANUAL items above, not for a recorded axe violation.`,
+			);
+		}
+	} else {
+		lines.push(
+			'  the axe-core violation records (e2e/a11y/axe-baseline.json and e2e/a11y/axe-storybook-baseline.json) are recorded in the ledger; read the ledger for their state, and do not infer an unfixed violation from an open Issue number.',
+		);
+	}
 	lines.push('');
 	lines.push(
 		`site-level conformance claim: ${

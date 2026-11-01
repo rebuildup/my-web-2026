@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, describe, it } from 'node:test';
 import {
+	LEGACY_FACET_ROLES,
+	LEGACY_FACET_ROLE_PRIORITY,
 	buildInventory,
+	deriveLegacyRole,
 	diffInventories,
 	indexClassification,
 	inventoryAssetIds,
@@ -13,6 +16,8 @@ import {
 	listLegacyDatabases,
 	parseArgs,
 	readNotionPages,
+	readRoleOverrides,
+	resolveLegacyRole,
 	rightsStateFor,
 } from './audit-legacy-portfolio.mjs';
 
@@ -152,6 +157,82 @@ describe('rights state', () => {
 	});
 });
 
+describe('legacy facet → role table', () => {
+	/**
+	 * These assertions are the contract, not a smoke test. The table decides
+	 * what a public "Role" field will say about a person, derived from a
+	 * facet that only ever described the project. If a value changes, the
+	 * change is a public-copy change and this test is where it must be
+	 * argued — not in a migration run discovered later.
+	 */
+	it('maps each facet to the kind of work, never to a personal credit', () => {
+		assert.deepEqual(LEGACY_FACET_ROLES, {
+			develop: 'Development',
+			video: 'Video production',
+			design: 'Design',
+			other: 'Production',
+		});
+	});
+
+	it('keeps the priority order fixed', () => {
+		assert.deepEqual([...LEGACY_FACET_ROLE_PRIORITY], ['develop', 'video', 'design', 'other']);
+	});
+
+	it('picks the highest-priority facet regardless of the order facets arrive in', () => {
+		assert.equal(deriveLegacyRole(['video', 'develop']), 'Development');
+		assert.equal(deriveLegacyRole(['design', 'develop']), 'Development');
+		assert.equal(deriveLegacyRole(['design', 'video']), 'Video production');
+		assert.equal(deriveLegacyRole(['other', 'design']), 'Design');
+	});
+
+	it('derives nothing from an empty, missing or unknown facet set', () => {
+		assert.equal(deriveLegacyRole([]), null);
+		assert.equal(deriveLegacyRole(null), null);
+		assert.equal(deriveLegacyRole(['photography']), null);
+	});
+
+	it('lets an owner-recorded role win and labels both provenances', () => {
+		const overrides = new Map([['aulymo-v01', 'Tool developer']]);
+		assert.deepEqual(resolveLegacyRole('aulymo-v01', ['develop'], overrides), {
+			role: 'Tool developer',
+			role_source: 'owner-recorded',
+		});
+		assert.deepEqual(resolveLegacyRole('border', ['video'], overrides), {
+			role: 'Video production',
+			role_source: 'facet-derived',
+		});
+	});
+
+	it('says "nothing" with two nulls rather than an empty string', () => {
+		assert.deepEqual(resolveLegacyRole('nothing', [], null), { role: null, role_source: null });
+	});
+});
+
+describe('readRoleOverrides', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'legacy-role-overrides-'));
+	after(() => rmSync(dir, { recursive: true, force: true }));
+
+	it('treats a missing file as no overrides', () => {
+		assert.equal(readRoleOverrides(join(dir, 'absent.json')), null);
+	});
+
+	it('reads only grounded, non-empty rows', () => {
+		const path = join(dir, 'roles.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				role_overrides: [
+					{ legacy_id: 'a', role: 'Tool developer', grounded: true },
+					{ legacy_id: 'b', role: 'Ungrounded claim', grounded: false },
+					{ legacy_id: 'c', role: '   ', grounded: true },
+					{ role: 'No id', grounded: true },
+				],
+			}),
+		);
+		assert.deepEqual([...readRoleOverrides(path).entries()], [['a', 'Tool developer']]);
+	});
+});
+
 describe('buildInventory', () => {
 	const source = makeSource('corpus', {
 		'content-published.db': {
@@ -261,6 +342,29 @@ describe('buildInventory', () => {
 		// The new URL is a publication decision, not a migration one.
 		assert.equal(row.new_url, null);
 		assert.deepEqual(withPages.counts.by_notion_page, { recorded: 1, null: 1 });
+	});
+
+	it('carries the derived role and its provenance into the ledger', () => {
+		const row = document.items.find((item) => item.id === 'published');
+		assert.equal(row.role, 'Video production');
+		assert.equal(row.role_source, 'facet-derived');
+		assert.deepEqual(document.counts.by_role_source, { 'facet-derived': 1, null: 1 });
+	});
+
+	it('does not mistake an owner-recorded role for a derived one', () => {
+		const withOwnerRole = buildInventory({
+			sourcePath: source,
+			sourceHead: 'a'.repeat(40),
+			classificationPath: 'docs/migration/portfolio-2025-to-2026-classification.json',
+			classification,
+			inventory,
+			roleOverrides: new Map([['published', 'Video producer']]),
+			now: '2026-11-01T00:00:00.000Z',
+			openDatabase,
+		});
+		const row = withOwnerRole.items.find((item) => item.id === 'published');
+		assert.equal(row.role, 'Video producer');
+		assert.equal(row.role_source, 'owner-recorded');
 	});
 });
 

@@ -7,6 +7,7 @@
  *   node scripts/audit-legacy-portfolio.mjs --source=… --format=json
  *   node scripts/audit-legacy-portfolio.mjs --source=… --check   # drift gate
  *   node scripts/audit-legacy-portfolio.mjs --notion-pages=<path>  # migration state
+ *   node scripts/audit-legacy-portfolio.mjs --role-overrides=<path>  # owner roles
  *
  * What this script is FOR: the migration ledger
  * (`docs/migration/notion-migration-ledger.md`) has to say, per legacy
@@ -23,8 +24,13 @@
  *   3. rights state — every legacy asset is `unrecorded` until
  *      `quality/asset-license-inventory.json` records it. The inventory is
  *      read here; the verdict vocabulary stays owned by `src/legal/**`.
- *   4. the Notion/new-URL columns, which are `null` by construction: no
- *      page has been created and no destination has been decided.
+ *   4. the Notion column — a STATE per item (`recorded` / `null`), never a
+ *      page id. `new_url` stays `null` by construction: the destination is
+ *      decided by publication, not by migration.
+ *   5. the role Notion will receive and its provenance (`role_source`), so a
+ *      derived value stays distinguishable from one an owner wrote. The
+ *      table itself is `LEGACY_FACET_ROLES` below — the only place a facet
+ *      becomes text.
  *
  * Titles and body text are deliberately NOT read into the output. The
  * ledger needs identifiers and states, not prose, and copying a title into
@@ -60,6 +66,7 @@ const DEFAULT_SOURCE = '.reference/my-web-2025';
 const DEFAULT_CLASSIFICATION = 'docs/migration/portfolio-2025-to-2026-classification.json';
 const DEFAULT_OUT = 'docs/migration/portfolio-2025-inventory.json';
 const DEFAULT_NOTION_PAGES = 'docs/migration/portfolio-notion-pages.json';
+const DEFAULT_ROLE_OVERRIDES = 'docs/migration/portfolio-2025-role-overrides.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -153,6 +160,94 @@ export function readNotionPages(path) {
 	return map.size > 0 ? map : null;
 }
 
+/**
+ * The fixed facet → role table (owner decision, 2026-11-01).
+ *
+ * Why a table and not a generated sentence
+ * ----------------------------------------
+ * `Role` is required by the Notion mapper, and the legacy site records no
+ * role anywhere: every project's `frontmatter` carries title / slug /
+ * updated / draft and nothing else. Left empty, 65 of the 69 published
+ * items cannot be migrated at all; filled in per item by a model, the
+ * resulting claim about a person's work is not reproducible and not
+ * reviewable.
+ *
+ * So the value is derived from the facet the classifier already recorded,
+ * through this one table, and the ledger stamps `role_source:
+ * "facet-derived"` next to it. A role an owner writes stays distinguishable
+ * (`role_source: "owner-recorded"`), which is what makes a later override
+ * auditable instead of invisible.
+ *
+ * The values name the KIND OF WORK, not a personal credit. `develop` is
+ * "Development", not "Developer": a facet says what the project is, and
+ * turning that into "this person was the developer" is a claim the source
+ * does not make. The display label for the same field is checked separately
+ * — see `docs/migration/portfolio-2025-migration-run-2026-11-01.md`.
+ *
+ * This table is the only place a facet becomes text. Do not copy it.
+ */
+export const LEGACY_FACET_ROLES = Object.freeze({
+	develop: 'Development',
+	video: 'Video production',
+	design: 'Design',
+	other: 'Production',
+});
+
+/**
+ * Which facet wins when an item carries several. Fixed, not ranked per
+ * item: `develop` first because it is the narrowest claim, then the medium,
+ * then presentation, with `other` as the fallback. Pinned by a test.
+ */
+export const LEGACY_FACET_ROLE_PRIORITY = Object.freeze(['develop', 'video', 'design', 'other']);
+
+/** The derived role for a set of facets, or `null` when none is usable. */
+export function deriveLegacyRole(facets) {
+	if (!Array.isArray(facets)) return null;
+	for (const facet of LEGACY_FACET_ROLE_PRIORITY) {
+		if (facets.includes(facet)) return LEGACY_FACET_ROLES[facet];
+	}
+	return null;
+}
+
+/**
+ * A row's role and where it came from.
+ *
+ * An owner-recorded value always wins and is labelled as such; otherwise the
+ * facet table decides; otherwise the row has no role and says so with two
+ * `null`s rather than an empty string, so "not derived" and "derived to
+ * nothing" stay apart.
+ */
+export function resolveLegacyRole(legacyKey, facets, roleOverrides = null) {
+	const recorded = roleOverrides?.get(legacyKey);
+	if (typeof recorded === 'string' && recorded.trim().length > 0) {
+		return { role: recorded.trim(), role_source: 'owner-recorded' };
+	}
+	const derived = deriveLegacyRole(facets);
+	if (derived === null) return { role: null, role_source: null };
+	return { role: derived, role_source: 'facet-derived' };
+}
+
+/**
+ * Read the owner's grounded role record (`portfolio-2025-role-overrides.json`).
+ *
+ * Only rows marked `grounded: true` are read: an ungrounded entry would be
+ * an owner-authored claim with no citation, which is the thing the record
+ * exists to prevent. A missing file is not an error.
+ */
+export function readRoleOverrides(path) {
+	if (!existsSync(path)) return null;
+	const parsed = readJson(path);
+	const rows = Array.isArray(parsed?.role_overrides) ? parsed.role_overrides : [];
+	const map = new Map();
+	for (const row of rows) {
+		if (row?.grounded !== true) continue;
+		if (typeof row.legacy_id !== 'string' || row.legacy_id.length === 0) continue;
+		if (typeof row.role !== 'string' || row.role.trim().length === 0) continue;
+		map.set(row.legacy_id, row.role.trim());
+	}
+	return map.size > 0 ? map : null;
+}
+
 /** Stable digest over the items, so `--check` can name drift cheaply. */
 export function inventoryDigest(items) {
 	return `sha256:${createHash('sha256').update(JSON.stringify(items)).digest('hex')}`;
@@ -177,7 +272,10 @@ function hasTable(db, name) {
  * Measure one legacy database. Returns the ledger row plus the counts the
  * summary needs. `data` is never selected — only its length.
  */
-function measureDatabase(db, { dbFile, classificationRow, inventoryIds, notionPages = null }) {
+function measureDatabase(
+	db,
+	{ dbFile, classificationRow, inventoryIds, notionPages = null, roleOverrides = null },
+) {
 	const contents = hasTable(db, 'contents')
 		? db
 				.prepare(
@@ -234,6 +332,14 @@ function measureDatabase(db, { dbFile, classificationRow, inventoryIds, notionPa
 			// 種別: the classification's work facets, plus whether a content
 			// row even exists. Not inferred here.
 			facets: Array.isArray(classificationRow?.facets) ? classificationRow.facets : [],
+			// The role Notion receives, and where it came from. `role_source`
+			// is the whole point: a derived value must stay distinguishable
+			// from one the owner wrote, or a later override cannot be audited.
+			...resolveLegacyRole(
+				legacyKey,
+				Array.isArray(classificationRow?.facets) ? classificationRow.facets : [],
+				roleOverrides,
+			),
 			old_url: typeof content?.public_url === 'string' ? content.public_url : null,
 			visibility: typeof content?.visibility === 'string' ? content.visibility : null,
 			status: typeof content?.status === 'string' ? content.status : null,
@@ -285,6 +391,7 @@ export function buildInventory({
 	classification,
 	inventory,
 	notionPages = null,
+	roleOverrides = null,
 	now,
 	openDatabase,
 }) {
@@ -309,6 +416,7 @@ export function buildInventory({
 				classificationRow: byDb.get(dbFile) ?? null,
 				inventoryIds,
 				notionPages,
+				roleOverrides,
 			});
 			if (!measured.hasContentRow) emptyDatabases += 1;
 			for (const row of measured.rows) items.push(row);
@@ -353,6 +461,11 @@ export function buildInventory({
 		const key = item.notion_page ?? 'null';
 		byNotionPage[key] = (byNotionPage[key] ?? 0) + 1;
 	}
+	const byRoleSource = {};
+	for (const item of items) {
+		const key = item.role_source ?? 'null';
+		byRoleSource[key] = (byRoleSource[key] ?? 0) + 1;
+	}
 
 	return {
 		schema: INVENTORY_SCHEMA,
@@ -376,6 +489,10 @@ export function buildInventory({
 			by_state: byState,
 			by_publication: byPublication,
 			by_notion_page: byNotionPage,
+			// `facet-derived` is the machine-authored count; `owner-recorded`
+			// is the count a person stands behind. They add up to the rows
+			// that have a role at all.
+			by_role_source: byRoleSource,
 			media_mime: mediaMime,
 		},
 		rights: {
@@ -464,6 +581,9 @@ function printSummary(inventory, outPath) {
 		`  notion pages    ${Object.entries(counts.by_notion_page)
 			.map(([key, value]) => `${key}=${value}`)
 			.join(' ')}`,
+		`  role source     ${Object.entries(counts.by_role_source)
+			.map(([key, value]) => `${key}=${value}`)
+			.join(' ')}`,
 		`  digest          ${inventory.content_digest}`,
 	];
 	if (problems.length > 0) lines.push(`  problems        ${problems.length}`);
@@ -512,6 +632,11 @@ async function main() {
 	const inventory = existsSync(inventoryRecordPath) ? readJson(inventoryRecordPath) : null;
 
 	const notionPages = readNotionPages(notionPagesPath);
+	const roleOverridesPath =
+		flags.get('role-overrides') === undefined
+			? join(root, DEFAULT_ROLE_OVERRIDES)
+			: String(flags.get('role-overrides'));
+	const roleOverrides = readRoleOverrides(roleOverridesPath);
 
 	const document = buildInventory({
 		sourcePath,
@@ -520,6 +645,7 @@ async function main() {
 		classification,
 		inventory,
 		notionPages,
+		roleOverrides,
 		now: new Date().toISOString(),
 		openDatabase: (file) => new DatabaseSync(file, { readOnly: true }),
 	});

@@ -1,7 +1,7 @@
 # Notion CMS 採用前の現状監査（2026-11-01 / Issue #765）
 
 > Status: **監査記録**。決定ではない。決定は
-> [`ADR-0018`](../adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md)（提案中）。
+> [`ADR-0018`](../adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md)（Accepted 2026-11-01）。
 > 測定は repository と `.reference/my-web-2025`（HEAD `ed1b9df`）に対して行った。
 
 ## 1. 目的

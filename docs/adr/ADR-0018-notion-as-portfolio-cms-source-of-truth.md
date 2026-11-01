@@ -1,7 +1,8 @@
 # ADR-0018 — Notion を portfolio の CMS SoT とし、build-time で snapshot を取り込む
 
-- Status: **Proposed (draft) — 未承認。owner review 待ち**
+- Status: **Accepted**（owner 決定 2026-11-01）
 - Date: 2026-11-01
+- Accepted on: 2026-11-01 — owner が「Accepted を選ぶ」と決定（総合監督経由で伝達）
 - Owner instruction: `.tmp/supervisor/portfolio/OWNER-2026-11-01.md`（build-time のみ /
   scheduled sync 禁止 / 編集可能性の実証 / 全件移行は不要）
 - Ticket: Issue #765（採用と同期基盤） / Issue #766（旧サイトからの代表例の移行）
@@ -17,11 +18,12 @@
   [`docs/domain/integrations.md`](../domain/integrations.md) /
   [`docs/security/integration-token-scope.md`](../security/integration-token-scope.md)
 
-> この ADR は **提案** である。`Status: Accepted` に変えるのは repository
-> owner の判断であり、agent はこの文書を書いたこと自体を承認の証拠にしない
-> （AGENTS.md §6 / `docs/runbook/issue-lifecycle.md`）。実装は owner 指示
-> （2026-11-01）の範囲 — **実際の Notion token が必要になる直前まで** — で
-> 止まっている。§5 の未決事項は owner の判断を要する。
+> **採用の記録。** `Status: Accepted` は repository owner の決定（2026-11-01）に
+> よる。agent がこの ADR を書いたこと・本行を編集したことは承認の証拠ではない
+> （AGENTS.md §6 / `docs/runbook/issue-lifecycle.md`）。決定の出所は owner の
+> 指示であり、この行はその**記録**であって認定ではない。
+> 決定内容（本文）は Proposed 時点から変えていない。§5 に残る未決事項は
+> Accepted の範囲外ではなく、実装側で順に解く対象である。
 
 ## 1. Context
 

@@ -122,6 +122,13 @@
 			"source": "src/routes/admin.keys.tsx",
 			"mode": "excluded",
 			"reason": "auth-gated: an anonymous request never renders this document (see /admin/login for the rendered admin surface)."
+		},
+		{
+			"route_id": "/compare",
+			"path": "/compare",
+			"source": "src/routes/compare.tsx",
+			"mode": "render",
+			"why": "Issue #764 comparison harness: the board and its specimen iframes are real documents, so the markup the owner reviews is held to the same standards while the branch serves it."
 		}
 	],
 	"inventory": {

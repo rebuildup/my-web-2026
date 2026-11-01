@@ -97,6 +97,14 @@
 			"cardPolicy": "none",
 			"samplePath": "/projects/dotfiles",
 			"note": "README から生成した introduction を表示する surface。代表画像を持たず、上流 README の画像を hotlink しない方針のため og:image は宣言しない。og:title / description / url は route が出す。"
+		},
+		{
+			"path": "/compare",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/compare",
+			"note": "Issue #764 の比較ハーネス。owner の判断用の画面で、unfurl されない（noindex, nofollow）ため card 画像も unfurl metadata も宣言しない。route ごとブランチと一緒に消えるので、実装ではなく「card を持たない」ことを記録する。"
 		}
 	],
 	"deferredSurfaces": [

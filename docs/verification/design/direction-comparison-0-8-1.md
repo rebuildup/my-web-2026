@@ -96,6 +96,8 @@ DNT と GPC を有効にした Playwright での実測（ハーネス branch 上
 | `seo:status:check` | `/compare` が未分類 | `harness-compare-noindex` 行（200 / noindex / sitemap 対象外）+ workerd の proof テスト。`/compare` の head に `robots: noindex, nofollow` |
 | `routes:quality:check` | `/compare` が manifest に無い | `quality/route-coverage.json` に 6 family すべて `excluded` + 理由 |
 | `bundle:budget:check` | `/compare` の cap が無い | 実測して cap を追加（下記） |
+| `html:standards:check` | `/compare` が manifest に無い | `quality/html-standards.json` に `mode: "render"` で宣言（board も標本 iframe も実文書のため） |
+| `seo-head` policy（`test`） | `/compare` に description / canonical が無く、noindex が未宣言 | head に description と絶対 canonical を追加し、noindex を `scripts/seo-head-contract.mjs#INDEX_EXCLUSIONS` に記録 |
 
 新規の owner ディレクトリ（`src/preview/**`）は**作らない**方針で閉じた。`src/preview/**` は
 比較ハーネスの一時実装で、AGENTS.md §3 の obligation を持たない。製品に入れるのは、選ばれた

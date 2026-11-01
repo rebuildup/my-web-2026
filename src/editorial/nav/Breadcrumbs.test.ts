@@ -60,6 +60,28 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		expect(chain).toEqual([{ routeId: '/about', label: 'About', href: '/about' }]);
 	});
 
+	/**
+	 * Issue #791 — `/projects/dotfiles`.
+	 *
+	 * The route is a leaf directly under `__root__`, so its label is the
+	 * whole of its own contribution to the chain. Asserted at the chain
+	 * TAIL rather than as the entire array because Issue #778 prepends
+	 * the Home root to every chain: asserting the whole chain here would
+	 * make this test fail for a change that has nothing to do with
+	 * `/projects/dotfiles`.
+	 */
+	it('labels /projects/dotfiles with the page name', () => {
+		const chain = resolveBreadcrumbChain([
+			root,
+			match('/projects/dotfiles', '/projects/dotfiles'),
+		]);
+		expect(chain?.at(-1)).toEqual({
+			routeId: '/projects/dotfiles',
+			label: 'dotfiles',
+			href: '/projects/dotfiles',
+		});
+	});
+
 	it('skips unlabeled intermediate matches (e.g. /admin layout)', () => {
 		const chain = resolveBreadcrumbChain([
 			root,

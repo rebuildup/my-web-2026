@@ -413,7 +413,7 @@ async function computePageProbes(
 				// (`PAGE_CONTENT_SECTIONS`, Issue #664) so root-layout
 				// chrome — the GA4 consent panel is a named `<section>`
 				// — is not counted as a section of the page.
-				sixSections:
+				homeSections:
 					(await page.locator(PAGE_CONTENT_SECTIONS).count()) ===
 					EXPECTED_SECTION_COUNTS['/'].labelled,
 				// The disabled placeholder is the home surface's

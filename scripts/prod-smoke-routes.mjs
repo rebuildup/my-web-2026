@@ -169,8 +169,8 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'home-default',
 				description:
-					'all six default sections render and the reactions widget is configured (no disabled placeholder)',
-				probes: Object.freeze({ sixSections: true, reactionsDisabled: false }),
+					'all seven default sections render and the reactions widget is configured (no disabled placeholder)',
+				probes: Object.freeze({ homeSections: true, reactionsDisabled: false }),
 			}),
 		]),
 	}),
@@ -320,14 +320,19 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * instead of as literals inside the Playwright adapter: one place to
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
- * against a real render (`e2e/smoke.spec.ts` for the six home sections,
+ * against a real render (`e2e/smoke.spec.ts` for the seven home sections,
  * `e2e/about.spec.ts` for the five narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
+ *
+ * `/` gained one section in Issue #316: `current-projects-heading`
+ * ("現在地 / Where I am now") sits between the hero and the capabilities
+ * grid, so the count went 6 -> 7 and `e2e/smoke.spec.ts` pins each id in
+ * its new position rather than only the total.
  *
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 6 }),
+	'/': Object.freeze({ labelled: 7 }),
 	'/about': Object.freeze({ narrative: 5 }),
 });
 

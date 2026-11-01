@@ -561,6 +561,15 @@ describe('portfolio — D1 statement budget (Issue #491 N+1 boundary)', () => {
 		expect(portfolioListQueryBudget(500)).toBe(1 + 2 * Math.ceil(500 / D1_BATCH_ID_CHUNK));
 	});
 
+	it('a merged page costs exactly one extra statement (Issue #765)', () => {
+		// The slug projection that keeps one slug from rendering as two cards.
+		// It is issued only when the CMS contributes rows, so an unconnected
+		// checkout keeps the pre-#765 budget.
+		for (const pageSize of [0, 1, D1_BATCH_ID_CHUNK, D1_BATCH_ID_CHUNK + 1, 500]) {
+			expect(portfolioListQueryBudget(pageSize, true)).toBe(portfolioListQueryBudget(pageSize) + 1);
+		}
+	});
+
 	it('detail surface stays at the detail budget for every fixture size', () => {
 		expect(detailMeasurements.length).toBe(PAGE_SIZES.length);
 		for (const d of detailMeasurements) {

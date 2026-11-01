@@ -6,6 +6,7 @@ import {
 	seedPortfolioRow,
 } from '../../test/integration/fixtures/portfolio-d1';
 import { createD1PortfolioLoader, intersectsAny } from './load';
+import type { PortfolioListPage, PortfolioProject } from './schema';
 import { encodeCursor } from './schema';
 import { PORTFOLIO_SEED } from './seed';
 
@@ -473,5 +474,170 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	it('listPublishedProjectIndex — empty array when the binding is missing', async () => {
 		const loader = createD1PortfolioLoader({});
 		expect(await loader.listPublishedProjectIndex()).toEqual([]);
+	});
+});
+
+/**
+ * CMS merge (Issue #765).
+ *
+ * The bundled snapshot is empty until a Notion database is connected, so
+ * these tests inject the rows the deployment would read. Without this
+ * block the whole merge path — page slicing, cursor advance, adjacency
+ * across two sources — would be exercised for the first time by whoever
+ * pastes the first token in, which is exactly the wrong moment to find
+ * out that two sources do not interleave.
+ */
+describe('portfolio — CMS merge (Issue #765)', () => {
+	beforeEach(async () => {
+		await applySchema();
+		await clearTables();
+	});
+	afterEach(async () => {
+		await clearTables();
+	});
+
+	function cmsProject(overrides: Partial<PortfolioProject> = {}): PortfolioProject {
+		return {
+			id: 'notion:page-1',
+			slug: 'cms-one',
+			title: 'CMS One',
+			summary: '',
+			role: '',
+			periodStart: 2024,
+			periodEnd: null,
+			periodLabel: null,
+			motivationMd: 'Why.',
+			architectureMd: null,
+			constraintsMd: null,
+			implementationMd: null,
+			evidenceMd: null,
+			retrospectiveMd: null,
+			facets: ['develop'],
+			technologies: [],
+			visibility: 'public',
+			status: 'published',
+			pinned: false,
+			displayOrder: 0,
+			createdAt: 1_767_000_000_000,
+			updatedAt: 1_767_000_000_000,
+			links: [],
+			media: [],
+			...overrides,
+		};
+	}
+
+	it('resolves a CMS slug that D1 does not hold', async () => {
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+		const project = await loader.loadPortfolioProject('cms-one');
+		expect(project?.id).toBe('notion:page-1');
+		expect(project?.motivationMd).toBe('Why.');
+	});
+
+	it('prefers the D1 row when both sources carry the same slug', async () => {
+		await seedOne('cms-one', { display_order: 5 });
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+		const project = await loader.loadPortfolioProject('cms-one');
+		expect(project?.id).not.toBe('notion:page-1');
+	});
+
+	it('interleaves the two sources by the canonical order', async () => {
+		await seedOne('d1-second', { display_order: 20 });
+		await seedOne('d1-first', { display_order: 10 });
+		const loader = createD1PortfolioLoader(env, {
+			cmsProjects: [cmsProject({ displayOrder: 15, slug: 'cms-middle' })],
+		});
+		const page = await loader.listPortfolioProjects();
+		expect(page.projects.map((project) => project.slug)).toEqual([
+			'd1-first',
+			'cms-middle',
+			'd1-second',
+		]);
+	});
+
+	it('pages across the merged ordering without duplicating a row', async () => {
+		await seedOne('d1-a', { display_order: 10 });
+		await seedOne('d1-b', { display_order: 30 });
+		const loader = createD1PortfolioLoader(env, {
+			cmsProjects: [
+				cmsProject({ slug: 'cms-a', displayOrder: 20, id: 'notion:a' }),
+				cmsProject({ slug: 'cms-b', displayOrder: 40, id: 'notion:b' }),
+			],
+		});
+
+		const seen: string[] = [];
+		let cursor: string | null = null;
+		for (let page = 0; page < 5; page += 1) {
+			const result: PortfolioListPage = await loader.listPortfolioProjects({ limit: 2, cursor });
+			seen.push(...result.projects.map((project) => project.slug));
+			cursor = result.nextCursor;
+			if (cursor === null) break;
+		}
+
+		expect(seen).toEqual(['d1-a', 'cms-a', 'd1-b', 'cms-b']);
+	});
+
+	it('computes adjacency across both sources', async () => {
+		await seedOne('d1-a', { display_order: 10 });
+		const loader = createD1PortfolioLoader(env, {
+			cmsProjects: [cmsProject({ slug: 'cms-z', displayOrder: 20, id: 'notion:z' })],
+		});
+		expect(await loader.loadPortfolioAdjacent('d1-a')).toEqual({
+			prev: null,
+			next: { slug: 'cms-z', title: 'CMS One' },
+		});
+	});
+
+	it('includes CMS slugs in the public project index', async () => {
+		await seedOne('d1-a');
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+		const index = await loader.listPublishedProjectIndex();
+		expect(index.map((entry) => entry.slug).sort()).toEqual(['cms-one', 'd1-a']);
+	});
+
+	it('serves the CMS alone when D1 is unbound', async () => {
+		const loader = createD1PortfolioLoader({}, { cmsProjects: [cmsProject()] });
+		const page = await loader.listPortfolioProjects();
+		expect(page.projects.map((project) => project.slug)).toEqual(['cms-one']);
+		expect(await loader.loadPortfolioAdjacent('cms-one')).toEqual({ prev: null, next: null });
+	});
+
+	// The collision rule has to hold in every method, not only in
+	// `loadPortfolioProject`: one slug, one card, one URL. A list that
+	// ignored it would render two cards for `/portfolio/cms-one` where the
+	// detail route answers with the D1 row for both of them.
+	describe('when both sources carry the same slug', () => {
+		it('lists the D1 row only', async () => {
+			await seedOne('cms-one', { display_order: 5 });
+			const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+			const page = await loader.listPortfolioProjects();
+			expect(page.projects.map((project) => project.slug)).toEqual(['cms-one']);
+			expect(page.projects[0]?.id).not.toBe('notion:page-1');
+			expect(page.nextCursor).toBeNull();
+		});
+
+		it('does not place the CMS row beside the D1 row as a neighbour', async () => {
+			await seedOne('d1-a', { display_order: 10 });
+			await seedOne('cms-one', { display_order: 20 });
+			await seedOne('d1-z', { display_order: 30 });
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [cmsProject({ displayOrder: 15 })],
+			});
+			expect(await loader.loadPortfolioAdjacent('d1-a')).toEqual({
+				prev: null,
+				next: { slug: 'cms-one', title: expect.any(String) },
+			});
+			expect(await loader.loadPortfolioAdjacent('cms-one')).toEqual({
+				prev: { slug: 'd1-a', title: expect.any(String) },
+				next: { slug: 'd1-z', title: expect.any(String) },
+			});
+		});
+
+		it('publishes the URL once in the index', async () => {
+			await seedOne('cms-one');
+			const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+			const index = await loader.listPublishedProjectIndex();
+			expect(index.map((entry) => entry.slug)).toEqual(['cms-one']);
+			expect(index[0]?.updatedAt).not.toBe(cmsProject().updatedAt);
+		});
 	});
 });

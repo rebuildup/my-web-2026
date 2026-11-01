@@ -108,7 +108,19 @@ build path は無いので、bump は build 追加 PR の後に行う。
 5. **DOM 直接操作の検証（2 件）**: `history-quiz` は `useEffect` で
    wrapper / tooltip を差し込む。StrictMode の二重 mount で重複しないことを
    Tool 側で確認する。`fillgen` も `document.createElement` を多用する。
-6. **実画面の操作確認**: 各 Issue の受け入れ条件どおり、その Tool の主要操作
+6. **host 相対 import の除去（7 件）**: `text-counter` / `color-palette` /
+   `sequential-png-preview` / `svg2tsx` / `code-type-p5` が
+   `../../../../src/components/tools-ui/RawDOMContainer` を、
+   `ae-expression` / `business-mail-block` が
+   `../../../../src/components/tools-ui/ToolWrapper` を import している。
+   いずれも my-web-2025 側のファイルで Tool repo には存在しない。
+   standalone build では Tool repo が自前の frame を持つ必要がある。
+7. **コンテンツが host 側にある Tool（1 件）**: `history-quiz` は実行時に
+   `/history-quiz.html` を fetch するが、その 89,935 bytes の HTML は
+   `my-web-2025/public/history-quiz.html` にあり、Tool repo には無い。
+   単体 build にはコンテンツの移設が必要で、これは build 作業ではなく
+   コンテンツ所有権・著作権の判断である。
+8. **実画面の操作確認**: 各 Issue の受け入れ条件どおり、その Tool の主要操作
    （採点・コピー・ダウンロード・描画）を sandbox iframe 内で確認する。
 
 ## 5. host 側で残る論点（Tool 実装後に判断が要るもの）
@@ -134,20 +146,28 @@ sandbox は現状 `allow-scripts` のみ（`prototype` / `readmark`）。
 リスクの低さ = (a) 外部 origin が無い、(b) 権限付与が必要な API が無い、
 (c) `next/*` import が無い、(d) 依存が小さい、の順で評価した。
 
-### 第 1 候補: `history-quiz`（Issue #772）
+### 第 1 候補: `color-palette`（Issue #770）— 上流 PR 起票済み
 
-- 外部 origin 無し、`next/*` import 無し、依存は react のみ、権限 API 無し。
-- 13 件で唯一、**iframe の capability token を 1 つも追加せずに動かせる**。
-- 残るリスクは (i) lockfile が無い、(ii) DOM 直接操作が StrictMode で
-  二重挿入しないか、の 2 点だけ。
+- 外部 origin 無し、`next/*` import 無し、runtime 依存は react のみ。
+- host 相対 import は 1 箇所（`RawDOMContainer`）のみで、Tool repo 所有の
+  frame に置き換えれば standalone になる。
+- 権限 API は clipboard のみ。opaque origin では async Clipboard が
+  permissions policy で拒否されるが、`document.execCommand("copy")` の
+  フォールバックで動作することを実測済み（8 節）。
+- 上流 PR: rebuildup/tool-color-palette#6（Issue #5）。Vite 足場、host import
+  の置換、storage / clipboard の opaque origin 対応を含む。merge は owner 判断。
 
-### 第 2 候補: `color-palette`（Issue #770）
+### 第 2 候補: `text-counter`（Issue #353）/ `svg2tsx`（#356）
 
-- 外部 origin 無し、`next/*` import 無し、依存 react のみ、`bun.lock` あり。
-- 権限 API は clipboard のみで、Tool 側フォールバックに倒せば
-  capability token 追加を回避できる。
-- 3 番目以降の `text-counter` / `svg2tsx` もほぼ同等のリスクで、
-  コピー機能の扱いを先に固めれば同じ手順で横展開できる。
+- `color-palette` と同じ構造（react のみ + `RawDOMContainer` + clipboard）。
+  `text-counter` は `js-tiktoken` を追加で持つ。
+- 1 件目の手順がそのまま横展開できる。
+
+### 第 3 候補: `history-quiz`（Issue #772）— コンテンツ判断待ち
+
+- 構造は最も単純（外部 origin 無し・権限 API 無し・react のみ）だが、
+  quiz 本体の HTML が `my-web-2025/public/history-quiz.html` にしか無い。
+  移設の可否（コンテンツ所有権）が決まるまで着手しない。
 
 `pomodoro` と `mic-level` は最後尾。前者は通知と第三者埋込、後者は #598 の
 owner 判断が前提で、他 Tool と同じ手順では進められない。
@@ -162,27 +182,56 @@ artifact inventory 再生成、privacy / sandbox、desktop / mobile WebP、
 
 推奨順序:
 
-1. `history-quiz` (#772) → `color-palette` (#770) — capability token 不要で
-   contract を 1 周通す。
+1. `color-palette` (#770) — 上流 PR 起票済み。contract を 1 周通す。
 2. `text-counter` (#353) → `svg2tsx` (#356) → `qr-generator` (#355) —
    clipboard / download の host 側判断を固めて横展開する。
 3. `pi-game` (#354) → `ae-expression` (#773) → `sequential-png-preview` (#357)
    → `fillgen` (#359) → `business-mail-block` (#771)。
 4. `code-type-p5` (#361) → `pomodoro` (#358) — 重量・第三者依存のため後回し。
-5. `mic-level` (#360) — **#598 の owner 判断まで停止**。
+5. `history-quiz` (#772) — quiz コンテンツの移設可否が決まるまで保留。
+6. `mic-level` (#360) — **#598 の owner 判断まで停止**。
 
 上流 13 repo の変更は my-web-2026 の PR に混ぜない（ADR-0006 §3）。
 各上流 PR の merge SHA で `source.pinned_sha` を bump する。
 
-## 8. owner に決めてほしいこと
+## 8. 上流 PR の実測（`color-palette`, 2026-11-01）
 
-1. 上流 13 repo の standalone build PR を agent が起票してよいか
-   （repo はすべて operator 所有・public・MIT）。
-2. 着手順序を上記 7 節でよいか。特に `pomodoro` / `mic-level` を最後に置く判断。
-3. 既存 9 件の Tool Issue（#353〜#361）に `target:0.8.1` label を付けてよいか。
-   本 program で起票した 4 件（#770〜#773）には付けている。
+- 上流 Issue: rebuildup/tool-color-palette#5
+- 上流 PR: rebuildup/tool-color-palette#6（Ready）。head
+  `ab049e618641e82d47e417e92b5cf67deac2b760`。**merge は owner 判断**。
+- 上流で追加したもの: `vite.config.ts` / `index.html` / `src/main.tsx` /
+  `tsconfig.json`、`build` ほか script、devDependencies（Vite 7.3.x /
+  plugin-react 5.2.x / TypeScript 5.9.x）、host import を置き換える
+  `AppFrame`、opaque origin 向けの storage guard と copy fallback。
+- 実測: `bun install --frozen-lockfile`（変更なし）、`bun run type-check`
+  （exit 0）、`bun run build`（`dist/index.html` + 209.81 kB JS）。
+  `<iframe sandbox="allow-scripts">` 内で初期表示・5 色生成・コピー・
+  保存（in-memory）が動作し、console error なし。通常 origin では
+  reload 後も保存が復元される。
+- host の `scripts/rewrite-asset-paths.mjs` を乾式実行し、
+  `/tools/color-palette/app/assets/...` への書き換えと `crossorigin` の
+  除去を確認した（`public/_headers` の
+  `Access-Control-Allow-Origin: *` と対になる契約）。
+- runtime 依存・ライセンス（MIT）は不変。外部 origin への通信は無い。
 
-## 9. 再測定手順
+## 9. owner に決めてほしいこと
+
+済み:
+
+- 上流 PR の起票 → 認可済み（2026-11-01 指示）。
+- 着手順序 → 上記 7 節に更新（`color-palette` を先頭、`history-quiz` は保留）。
+- 既存 9 件（#353〜#361）への `target:0.8.1` → 付与済み。
+
+未決:
+
+1. **`history-quiz` の quiz コンテンツ**（`my-web-2025/public/history-quiz.html`,
+   89,935 bytes）を Tool repo へ移設してよいか。コンテンツの所有権・
+   著作権の判断が必要。
+2. **上流 PR #6 の merge**。merge commit が pinned SHA になるため、
+   host 側 PR（submodule / manifest / artifact inventory / WebP /
+   `validate:integration`）はその後にしか起票できない。
+
+## 10. 再測定手順
 
 ```bash
 # pinned SHA の tarball を read-only で取得する
@@ -194,6 +243,8 @@ mkdir -p .tmp/<slug> && tar -xzf /tmp/<slug>.tar.gz -C .tmp/<slug> --strip-compo
 #   - vite.config.* / index.html / src/main.tsx の有無
 #   - lockfile の種類
 #   - src/** の next/* import
+#   - src/** の host 相対 import（../../../../src/...）
+#   - src/** が fetch する host 側ファイル（例: /history-quiz.html）
 #   - src/** の http(s):// origin
 #   - src/** の browser API（getUserMedia / Notification / clipboard / storage / canvas）
 ```

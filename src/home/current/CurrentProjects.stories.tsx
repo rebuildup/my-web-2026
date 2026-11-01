@@ -1,88 +1,147 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { CurrentProjects } from './CurrentProjects';
-import { CURRENT_PROJECTS } from './projects';
-import type { CurrentProject } from './projects';
+import { currentProjectsFor } from './loader';
+import type {
+	CurrentProjectRecord,
+	ProjectFact,
+	ProjectFactSource,
+	ProjectWeightLevel,
+} from './types';
 
 /**
  * CurrentProjects stories (Issue #316).
  *
- * Four states, because the section has four honest shapes:
+ * The section has three honest shapes, and the fixtures below pin each one:
  *
- *   - `Shipped`    — the snapshot the route actually hands the page
- *     (`CURRENT_PROJECTS`). This is the state the verification capture
- *     (`scripts/capture-home-current-projects.mjs`) renders, so the
- *     committed screenshots show what a reader receives today rather
- *     than a design fixture.
- *   - `Populated`  — the ordinary case: a handful of projects, one of
- *     them with a published link. A design surface for the linked
- *     shape the shipped snapshot does not exercise yet.
- *   - `Empty`      — nothing publishable. The section publishes ONE
- *     sentence, not an empty list, so a reader can tell "nothing is
- *     published" from "the page failed".
- *   - `Linkless`   — projects with NO link at all. The shipped
- *     snapshot is in this state today (the owner has not confirmed a
- *     public destination), so the section has to read well without a
- *     link in every row.
+ *   - `Shipped` — what the route hands the page today: the owner's roster
+ *     composed with this repository's git snapshot. Captured by
+ *     `scripts/capture-home-current-projects.mjs`, so the committed
+ *     screenshots show the real document rather than a design fixture.
+ *   - `Grouped` — every project has a weight level, so the list becomes
+ *     group headings (`主軸 · 1 件`). The shape the owner asked for once the
+ *     levels are written.
+ *   - `Flat` — only some projects have a level, so grouping would imply the
+ *     ungrouped rows have none; the list is flat and each row that has a
+ *     level carries a tag. This is the state the shipped snapshot is in
+ *     while the owner's values are unwritten.
  *
- * The `Populated` / `Empty` / `Linkless` fixtures are literals in this
- * file: a design surface must not change because the owner edited the
- * snapshot. `Shipped` is the deliberate exception — it is the only
- * story whose content is the snapshot itself.
+ * `Stopped` shows the section when nothing was updated inside the counting
+ * window: the summary sentence says so, and no row moves.
+ *
+ * `Today` is fixed per render run rather than per story, so every fixture
+ * in one capture session describes the same base date.
  */
-const POPULATED: CurrentProject[] = [
+const TODAY = new Date().toISOString().slice(0, 10);
+
+function fact<T>(
+	value: T,
+	source: ProjectFactSource,
+	observedOn: string,
+	evidence?: string,
+): ProjectFact<T> {
+	return evidence ? { value, source, observedOn, evidence } : { value, source, observedOn };
+}
+
+const GROUPED: readonly CurrentProjectRecord[] = [
 	{
 		id: 'my-web-2026',
 		name: 'my-web-2026',
 		statusJa: '個人 Web Platform の再構築。',
-		link: { label: '詳細を見る', href: '/about' },
+		startedOn: fact('2026-09-11', 'git', '2026-11-01', '9363f814'),
+		updatedOn: fact('2026-11-01', 'git', '2026-11-01', '7885f19d'),
+		weight: {
+			level: fact<ProjectWeightLevel>('primary', 'handwritten', '2026-11-01'),
+			activity: fact(
+				{ commits: 2433, windowDays: 30, commitsTotal: 2915 },
+				'git',
+				'2026-11-01',
+				'scripts/sync-home-git-facts.mjs',
+			),
+		},
 	},
 	{
 		id: 'tastile',
 		name: 'Tastile',
 		statusJa:
 			'scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development。',
+		startedOn: fact('2025-04-01', 'handwritten', '2026-11-01'),
+		updatedOn: fact('2026-10-28', 'handwritten', '2026-11-01'),
+		weight: { level: fact<ProjectWeightLevel>('active', 'handwritten', '2026-11-01') },
 	},
 	{
 		id: 'after-effects',
 		name: 'After Effects',
 		statusJa: 'script / plugin / extension の継続開発。配布と運用まで含む product として扱う。',
+		startedOn: fact('2024-08-01', 'handwritten', '2026-11-01'),
+		updatedOn: fact('2026-10-30', 'handwritten', '2026-11-01'),
+		weight: { level: fact<ProjectWeightLevel>('active', 'handwritten', '2026-11-01') },
 	},
 	{
 		id: 'ai-coding-agent',
 		name: 'AI coding agent',
 		statusJa:
 			'agent workflow の実運用と形式知化。project-init / design-skills として実験と文書を並行。',
+		startedOn: fact('2025-11-20', 'handwritten', '2026-11-01'),
+		updatedOn: fact('2026-07-14', 'handwritten', '2026-11-01'),
+		weight: { level: fact<ProjectWeightLevel>('paused', 'handwritten', '2026-11-01') },
 	},
 ];
 
-const LINKLESS: CurrentProject[] = POPULATED.map(({ id, name, statusJa }) => ({
-	id,
-	name,
-	statusJa,
-}));
+const FLAT: readonly CurrentProjectRecord[] = [
+	GROUPED[0],
+	{
+		id: 'tastile',
+		name: 'Tastile',
+		statusJa:
+			'scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development。',
+		weight: { level: fact<ProjectWeightLevel>('active', 'handwritten', '2026-11-01') },
+	},
+	{
+		id: 'after-effects',
+		name: 'After Effects',
+		statusJa: 'script / plugin / extension の継続開発。配布と運用まで含む product として扱う。',
+	},
+];
+
+const STOPPED: readonly CurrentProjectRecord[] = [
+	{
+		id: 'after-effects',
+		name: 'After Effects',
+		statusJa: 'script / plugin / extension の継続開発。配布と運用まで含む product として扱う。',
+		startedOn: fact('2024-08-01', 'handwritten', '2026-11-01'),
+		updatedOn: fact('2026-08-02', 'handwritten', '2026-11-01'),
+	},
+];
 
 const meta = {
 	title: 'home/CurrentProjects',
 	component: CurrentProjects,
 	parameters: { layout: 'fullscreen' },
 	tags: ['autodocs'],
+	// `today` is required by the component and is fixed per render run, so it
+	// is supplied once here rather than repeated in every story.
+	args: { today: TODAY },
 } satisfies Meta<typeof CurrentProjects>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Shipped: Story = {
-	render: () => <CurrentProjects projects={CURRENT_PROJECTS} />,
+	render: () => <CurrentProjects projects={currentProjectsFor(TODAY)} today={TODAY} />,
 };
 
-export const Populated: Story = {
-	render: () => <CurrentProjects projects={POPULATED} />,
+export const Grouped: Story = {
+	render: () => <CurrentProjects projects={GROUPED} today={TODAY} />,
+};
+
+export const Flat: Story = {
+	render: () => <CurrentProjects projects={FLAT} today={TODAY} />,
+};
+
+export const Stopped: Story = {
+	render: () => <CurrentProjects projects={STOPPED} today={TODAY} />,
 };
 
 export const Empty: Story = {
-	render: () => <CurrentProjects projects={[]} />,
-};
-
-export const Linkless: Story = {
-	render: () => <CurrentProjects projects={LINKLESS} />,
+	render: () => <CurrentProjects projects={[]} today={TODAY} />,
 };

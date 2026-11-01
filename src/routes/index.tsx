@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
 	CAPABILITIES,
-	CURRENT_PROJECTS,
 	HOME_REACTIONS_TARGET,
 	HomePage,
 	KNOWN_INCIDENTS,
@@ -9,18 +8,9 @@ import {
 	getHomeCounter,
 	getHomeReactions,
 	getHomeSystemStatus,
+	loadCurrentProjects,
 	recordHomeHit,
 } from '../home/public';
-import type { CurrentProject } from '../home/public';
-
-/**
- * The published current-projects snapshot (Issue #316).
- *
- * The value is committed to the repository, so the type is stated
- * here once: the route hands the home page a `readonly` list of
- * `CurrentProject`, and the page decides what may be published.
- */
-const projects: readonly CurrentProject[] = CURRENT_PROJECTS;
 
 /**
  * TanStack Start route binding for the canonical home surface.
@@ -37,27 +27,34 @@ const projects: readonly CurrentProject[] = CURRENT_PROJECTS;
 export const Route = createFileRoute('/')({
 	loader: async () => {
 		await recordHomeHit({ data: {} });
-		const [statuses, reactions, counter] = await Promise.all([
+		// The base date the current-projects section computes every
+		// derived value against. One `observedAt` serves both the status
+		// tiles and the section, so "3 日前" and the status snapshot can
+		// never disagree about which day they describe (Issue #316).
+		const observedAt = new Date().toISOString();
+		const today = observedAt.slice(0, 10);
+		const [statuses, reactions, counter, projects] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
+			loadCurrentProjects(today),
 		]);
 		return {
 			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,
 			statuses,
-			observedAt: new Date().toISOString(),
+			observedAt,
 			// Issue #502: the committed incident records. There is no
 			// runtime fetch here on purpose — the published list is
 			// exactly what the repository holds.
 			incidents: KNOWN_INCIDENTS,
 			reactions,
 			counter,
-			// Issue #316: the current-projects snapshot. It is
-			// committed to the repository on purpose — the section
-			// makes a claim about *now*, and a claim that changes
-			// without a commit cannot be reviewed. There is no
-			// runtime fetch here.
+			// Issue #316: the current-project records. Composed from
+			// committed artefacts only (the owner's roster plus the
+			// generated git snapshot) — the section makes a claim about
+			// *now*, and a claim that changes without a commit cannot be
+			// reviewed. There is no runtime fetch here.
 			projects,
 		};
 	},

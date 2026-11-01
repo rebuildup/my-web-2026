@@ -59,6 +59,13 @@ export default defineConfig({
 					'60%': { opacity: '1' },
 					'100%': { transform: 'translateY(0)', opacity: '1' },
 				},
+				// Issue #316: the current-projects change marker. One
+				// run, opacity + a 4px lift only — no layout property,
+				// so the row's height cannot move while it plays.
+				currentLocationChange: {
+					'0%': { transform: 'translateY(4px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
 			},
 		},
 	},

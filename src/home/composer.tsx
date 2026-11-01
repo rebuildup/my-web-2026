@@ -6,7 +6,7 @@ import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
 import { CurrentProjects } from './current/CurrentProjects';
-import type { CurrentProject } from './current/projects';
+import type { CurrentProjectRecord } from './current/types';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
 import { Hero } from './hero';
@@ -31,13 +31,14 @@ export interface HomePageData {
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
 	/**
-	 * The current-projects snapshot (Issue #316). Optional, and the
-	 * default is the empty list: a route that forgets the snapshot
-	 * publishes the "nothing is published" sentence rather than a
-	 * stale one. The data itself is committed to the repository —
-	 * there is no runtime fetch for this section.
+	 * The current-project records (Issue #316). Optional, and the
+	 * default is the EMPTY list: a route that forgets them publishes
+	 * the "nothing is published" sentence rather than a stale one.
+	 * Every record is composed from committed artefacts (the owner's
+	 * roster and the generated git snapshot) — there is no runtime
+	 * fetch for this section.
 	 */
-	projects?: readonly CurrentProject[];
+	projects?: readonly CurrentProjectRecord[];
 }
 
 export interface HomePageProps {
@@ -103,7 +104,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</a>
 			<Hero />
 			<main id="main">
-				<CurrentProjects projects={data.projects} />
+				<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 				<CapabilitiesGrid capabilities={data.capabilities} />
 				<StatusTiles
 					services={data.services}

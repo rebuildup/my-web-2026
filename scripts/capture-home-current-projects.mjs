@@ -7,61 +7,70 @@
  * What this captures
  * ------------------
  * The shipped story (`src/home/current/CurrentProjects.stories.tsx`,
- * the `home/CurrentProjects` → `Shipped` story, which renders the
- * committed `CURRENT_PROJECTS` snapshot) in a Chromium at three
- * conditions:
+ * `Shipped`, which composes the owner's roster with this repository's
+ * committed git snapshot) in a Chromium at seven conditions:
  *
- *   - desktop 1440 — the section in its widest shipped layout;
- *   - mobile 390   — the single-column layout (the width the section
- *                    has to survive without a horizontal scroll);
- *   - reduced motion — the SAME desktop context with
- *                    `prefers-reduced-motion: reduce`, so the artefact
- *                    shows that turning motion off removes nothing but
- *                    movement.
+ *   - desktop 1440 × light / dark — the widest shipped layout in both
+ *     appearances the document declares via `color-scheme`;
+ *   - mobile 390 × light / dark — the single-column layout at the width
+ *     the section has to survive without a horizontal scroll;
+ *   - reduced motion (desktop, light) — the same document with
+ *     `prefers-reduced-motion: reduce`, so the artefact shows that turning
+ *     motion off removes nothing but movement;
+ *   - change marker (desktop, light) — the ONE motion surface, after a real
+ *     fact changed between two visits;
+ *   - change marker under reduced motion — the same marker with the fade
+ *     suppressed. The marker is information and stays; only the animation
+ *     is gone.
  *
- * It is also an ASSERTION, not only a screenshot. The section ships
- * NO motion, so "no information is lost under the reduce preference"
- * is a claim about the DOM: after each capture the script reads the
- * rendered section back out of the browser and compares the heading,
- * the project count and every project name / status line against the
- * DOM it captured without the preference. A reduced-motion context
- * that dropped a project, a heading or a status line fails the capture
- * instead of producing a plausible picture.
+ * It is an ASSERTION, not only a screenshot
+ * -----------------------------------------
+ * After each capture the script reads the rendered section back out of the
+ * browser and compares the conditions against each other:
+ *
+ *   - light and dark must publish the SAME projects with the SAME text;
+ *   - desktop and mobile must publish the SAME projects with the SAME text;
+ *   - a first visit must render NO marker and animate NOTHING (nothing has
+ *     changed yet, and a first paint that animates is the fake-live
+ *     behaviour the design forbids);
+ *   - a changed fact must render exactly one marker, animated under
+ *     `no-preference` and NOT animated under `reduce`;
+ *   - the reduced document must carry the same information as the
+ *     unreduced one.
+ *
+ * The marker state is produced the way a visitor produces it: the page is
+ * loaded once (first visit → the browser stores the current signatures),
+ * one stored signature is then rewritten to a previous value, and the page
+ * is reloaded. Nothing is faked in the DOM.
  *
  * Why a generated harness instead of the Storybook gallery
  * --------------------------------------------------------
- * `pnpm run build-storybook` in this repository emits a MANAGER-ONLY
- * static build (no `iframe.html`) — see
- * `scripts/capture-error-state-gallery.mjs` (Issue #501). So the
- * harness below imports the SHIPPED story module itself and renders
- * the story's own `render()` output: the capture and the Storybook
+ * `pnpm run build-storybook` in this repository emits a MANAGER-ONLY static
+ * build (no `iframe.html`) — see `scripts/capture-error-state-gallery.mjs`
+ * (Issue #501). So the harness below imports the SHIPPED story module and
+ * renders the story's own `render()` output: the capture and the Storybook
  * gallery cannot drift.
  *
  * Safety
  * ------
- *   - Nothing is deployed, no remote binding is touched, no secret is
- *     read or printed. The fixture data is literals in the story file.
+ *   - Nothing is deployed, no remote binding is touched, no secret is read
+ *     or printed. The fixture data is committed (roster + git snapshot).
  *   - The harness is served over a loopback-only HTTP server on an
- *     ephemeral port; Chromium refuses ES modules from `file://`, which
- *     is the only reason an origin exists.
+ *     ephemeral port; Chromium refuses ES modules from `file://`, which is
+ *     the only reason an origin exists.
  *
  * WebP, not PNG
  * -------------
- * Chromium only writes PNG. The capture is taken into `.tmp/`, encoded
- * with the existing `sharp` devDependency at width <= 1600 / quality
- * 80, and the committed file is the `.webp` sibling. The script
- * REFUSES any non-`.webp` output path and deletes the intermediate
- * PNGs.
+ * Chromium only writes PNG. The capture is taken into `.tmp/`, encoded with
+ * the existing `sharp` devDependency at width <= 1600 / quality 80, and the
+ * committed file is the `.webp` sibling. The script REFUSES any non-`.webp`
+ * output path and deletes the intermediate PNGs.
  *
  * Usage:
  *   node scripts/capture-home-current-projects.mjs [options]
  *
- *   --desktop=<path>    committed desktop artefact
- *                       (default docs/verification/home/current-projects-desktop.webp)
- *   --mobile=<path>     committed mobile artefact
- *                       (default docs/verification/home/current-projects-mobile.webp)
- *   --reduced=<path>    committed reduced-motion artefact
- *                       (default docs/verification/home/current-projects-reduced-motion.webp)
+ *   --out-dir=<path>    directory for the committed artefacts
+ *                       (default docs/verification/home)
  *   --png-dir=<path>    temporary PNG directory (default .tmp/home-current-projects)
  *   --json-out=<path>   report destination
  *                       (default .tmp/home-current-projects/report.json)
@@ -91,17 +100,76 @@ export const STORY_EXPORT = 'Shipped';
 /** Readiness marker the capture waits for before reading anything. */
 export const SECTION_TEST_ID = 'home-current-projects';
 
+/**
+ * The localStorage key the section compares against. Kept in step with
+ * `CHANGE_SIGNATURE_STORAGE_KEY` in
+ * `src/home/current/use-changed-projects.ts`; the vitest suite pins that
+ * constant, and this script only has to know the same string because it
+ * seeds a previous visit.
+ */
+export const STORAGE_KEY = 'mw_home_current_projects_v1';
+
 export const HARNESS_DIR = '.tmp/home-current-projects/harness';
 export const HARNESS_DIST = '.tmp/home-current-projects/harness-dist';
 
-/** The three capture conditions this Issue names. */
+/**
+ * The sentence the change marker prints. Duplicated here only to take it out
+ * of the information comparison; the component owns the wording.
+ */
+const MARKER_TEXT = '前回の表示から更新';
+
+/** The documents captured without a seeded previous visit. */
 export const CAPTURES = [
-	{ id: 'desktop', width: 1440, height: 640, reducedMotion: 'no-preference' },
-	{ id: 'mobile', width: 390, height: 880, reducedMotion: 'no-preference' },
-	{ id: 'reduced-motion', width: 1440, height: 640, reducedMotion: 'reduce' },
+	{
+		id: 'desktop-light',
+		width: 1440,
+		height: 720,
+		colorScheme: 'light',
+		reducedMotion: 'no-preference',
+	},
+	{
+		id: 'desktop-dark',
+		width: 1440,
+		height: 720,
+		colorScheme: 'dark',
+		reducedMotion: 'no-preference',
+	},
+	{
+		id: 'mobile-light',
+		width: 390,
+		height: 900,
+		colorScheme: 'light',
+		reducedMotion: 'no-preference',
+	},
+	{
+		id: 'mobile-dark',
+		width: 390,
+		height: 900,
+		colorScheme: 'dark',
+		reducedMotion: 'no-preference',
+	},
+	{ id: 'reduced-motion', width: 1440, height: 720, colorScheme: 'light', reducedMotion: 'reduce' },
 ];
 
-/** The generated harness page. */
+/** The documents captured after a real fact changed between two visits. */
+export const MARKER_CAPTURES = [
+	{
+		id: 'change-marker',
+		width: 1440,
+		height: 720,
+		colorScheme: 'light',
+		reducedMotion: 'no-preference',
+	},
+	{
+		id: 'change-marker-reduced',
+		width: 1440,
+		height: 720,
+		colorScheme: 'light',
+		reducedMotion: 'reduce',
+	},
+];
+
+/** The generated harness page. The canvas colour comes from `src/styles.css`. */
 export function harnessIndexHtml() {
 	return `<!doctype html>
 <html lang="ja">
@@ -110,7 +178,7 @@ export function harnessIndexHtml() {
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>home current projects (#316)</title>
 	</head>
-	<body style="margin:0;background:#ffffff">
+	<body style="margin:0">
 		<div id="root"></div>
 		<script type="module" src="./main.tsx"></script>
 	</body>
@@ -157,9 +225,7 @@ export default defineConfig({
 
 function parseArgs(argv) {
 	const options = {
-		desktop: 'docs/verification/home/current-projects-desktop.webp',
-		mobile: 'docs/verification/home/current-projects-mobile.webp',
-		reduced: 'docs/verification/home/current-projects-reduced-motion.webp',
+		outDir: 'docs/verification/home',
 		pngDir: '.tmp/home-current-projects',
 		jsonOut: '.tmp/home-current-projects/report.json',
 		build: true,
@@ -172,14 +238,8 @@ function parseArgs(argv) {
 		).replace(/^--/, '');
 		const value = separator === -1 ? null : arg.slice(separator + 1);
 		switch (flag) {
-			case 'desktop':
-				options.desktop = value;
-				break;
-			case 'mobile':
-				options.mobile = value;
-				break;
-			case 'reduced':
-				options.reduced = value;
+			case 'out-dir':
+				options.outDir = value;
 				break;
 			case 'png-dir':
 				options.pngDir = value;
@@ -200,6 +260,11 @@ function parseArgs(argv) {
 	return options;
 }
 
+/** The committed artefact path for one condition. */
+export function artefactPath(outDir, id) {
+	return `${outDir}/current-projects-${id}.webp`;
+}
+
 function ensureParent(path) {
 	mkdirSync(dirname(resolve(REPO_ROOT, path)), { recursive: true });
 }
@@ -215,14 +280,14 @@ export function writeHarness(repoRoot = REPO_ROOT) {
 }
 
 /**
- * Read the rendered section back out of the browser (pure, so it runs
- * inside the page).
+ * Read the rendered section back out of the browser (pure, so it runs inside
+ * the page).
  *
- * The reading is deliberately complete: the heading, the project
- * count, every project's name and status line, and the animation names
- * the browser reports. A capture that only photographed the section
- * would not notice a project that vanished under the reduce
- * preference.
+ * The reading is deliberately complete: the heading, every project's id and
+ * text, the change markers, and the animation names the browser actually
+ * reports. A capture that only photographed the section would not notice a
+ * project that vanished under a preference, or a marker that animated when
+ * it should not have.
  */
 export const READ_SECTION = ({ testId }) => {
 	const section = document.querySelector(`[data-testid="${testId}"]`);
@@ -232,61 +297,171 @@ export const READ_SECTION = ({ testId }) => {
 		(item) => ({
 			id: item.getAttribute('data-project-id'),
 			text: (item.textContent ?? '').replace(/\s+/g, ' ').trim(),
+			changed: Boolean(item.querySelector('[data-testid="home-current-project-changed"]')),
 		}),
 	);
-	const animated = [...section.querySelectorAll('*')].filter(
-		(element) => getComputedStyle(element).animationName !== 'none',
-	).length;
+	const animated = [...section.querySelectorAll('*')]
+		.map((element) => getComputedStyle(element).animationName)
+		.filter((name) => name !== 'none');
 	return {
 		heading: (heading?.textContent ?? '').replace(/\s+/g, ' ').trim(),
 		itemCount: items.length,
 		items,
-		animated,
+		markers: items.filter((item) => item.changed).length,
+		animated: animated.length,
+		animationNames: [...new Set(animated)],
 		empty: Boolean(section.querySelector('[data-testid="home-current-projects-empty"]')),
+		colorScheme: getComputedStyle(document.documentElement).colorScheme,
 	};
 };
 
 /**
- * Compare the reduced-motion observation with the desktop one (pure,
- * so it is assertable without a browser).
+ * A comparison projection: the information, without the appearance.
  *
- * The section ships no motion, so the two documents must carry the
- * SAME information. A difference is a defect, not a styling choice.
+ * The change marker's sentence is removed here, because the marker is the
+ * one thing a changed fact is SUPPOSED to add; comparing with it left in
+ * would make the marker capture differ from the first-visit capture by
+ * construction and turn the information check into a tautology.
  */
-export function evaluateObservation({ desktop, reduced }) {
-	const failures = [];
-	if (!desktop || !reduced) {
-		failures.push('one of the two browser observations is missing');
-		return { ok: false, failures };
+function projection(observation) {
+	return {
+		heading: observation.heading,
+		empty: observation.empty,
+		items: observation.items.map((item) => ({
+			id: item.id,
+			text: item.text.replace(MARKER_TEXT, '').replace(/\s+/g, ' ').trim(),
+		})),
+	};
+}
+
+function assertSameInformation(failures, a, b, label) {
+	const left = projection(a);
+	const right = projection(b);
+	if (left.heading !== right.heading) {
+		failures.push(`${label}: the heading differs ("${left.heading}" vs "${right.heading}")`);
 	}
-	if (desktop.heading !== reduced.heading) {
+	if (left.empty !== right.empty) {
+		failures.push(`${label}: the empty state appeared or disappeared`);
+	}
+	if (left.items.length !== right.items.length) {
 		failures.push(
-			`the heading changed under the reduce preference ("${desktop.heading}" vs "${reduced.heading}")`,
+			`${label}: the number of published projects differs (${left.items.length} vs ${right.items.length})`,
 		);
 	}
-	if (desktop.itemCount !== reduced.itemCount) {
-		failures.push(
-			`the number of published projects changed under the reduce preference (${desktop.itemCount} vs ${reduced.itemCount})`,
-		);
-	}
-	if (desktop.empty !== reduced.empty) {
-		failures.push('the empty state appeared or disappeared under the reduce preference');
-	}
-	for (const item of desktop.items) {
-		const other = reduced.items.find((candidate) => candidate.id === item.id);
+	for (const item of left.items) {
+		const other = right.items.find((candidate) => candidate.id === item.id);
 		if (!other) {
-			failures.push(`the project "${item.id}" disappeared under the reduce preference`);
+			failures.push(`${label}: the project "${item.id}" is missing`);
 			continue;
 		}
 		if (other.text !== item.text) {
-			failures.push(`the project "${item.id}" reads differently under the reduce preference`);
+			failures.push(`${label}: the project "${item.id}" reads differently`);
 		}
 	}
-	if (desktop.animated !== 0 || reduced.animated !== 0) {
-		failures.push(
-			`the section animates in one of the contexts (desktop ${desktop.animated}, reduced ${reduced.animated} animated element(s)); it ships no motion at all`,
+}
+
+/**
+ * Judge every observation against the section's contract (pure).
+ *
+ * `observations` is keyed by condition id. A missing observation is a
+ * failure: a capture that silently skipped a condition would otherwise pass
+ * on the strength of the ones it did take.
+ */
+export function evaluateObservation({ observations }) {
+	const failures = [];
+	const required = [...CAPTURES, ...MARKER_CAPTURES];
+	for (const condition of required) {
+		if (!observations[condition.id]) failures.push(`no observation for "${condition.id}"`);
+	}
+	if (failures.length > 0) return { ok: false, failures };
+
+	for (const id of ['desktop', 'mobile']) {
+		assertSameInformation(
+			failures,
+			observations[`${id}-light`],
+			observations[`${id}-dark`],
+			`${id}: light vs dark`,
 		);
 	}
+	for (const scheme of ['light', 'dark']) {
+		assertSameInformation(
+			failures,
+			observations[`desktop-${scheme}`],
+			observations[`mobile-${scheme}`],
+			`desktop vs mobile (${scheme})`,
+		);
+	}
+	assertSameInformation(
+		failures,
+		observations['desktop-light'],
+		observations['reduced-motion'],
+		'reduced motion',
+	);
+	assertSameInformation(
+		failures,
+		observations['desktop-light'],
+		observations['change-marker'],
+		'change marker',
+	);
+
+	// The appearance really switched — otherwise the two artefacts above are
+	// the same picture twice.
+	for (const [id, expected] of [
+		['desktop-light', 'light'],
+		['desktop-dark', 'dark'],
+		['mobile-light', 'light'],
+		['mobile-dark', 'dark'],
+	]) {
+		if (!String(observations[id].colorScheme).includes(expected)) {
+			failures.push(
+				`${id}: the browser did not apply the ${expected} colour scheme (${observations[id].colorScheme})`,
+			);
+		}
+	}
+
+	// A first visit knows nothing to compare against: no marker, no motion.
+	for (const condition of CAPTURES) {
+		const observation = observations[condition.id];
+		if (observation.markers !== 0) {
+			failures.push(
+				`${condition.id}: ${observation.markers} marker(s) on a first visit; nothing had changed`,
+			);
+		}
+		if (observation.animated !== 0) {
+			failures.push(
+				`${condition.id}: ${observation.animated} animated element(s) on a first visit (${observation.animationNames.join(', ')})`,
+			);
+		}
+	}
+
+	// A changed fact marks exactly one row, and only that row moves.
+	const marker = observations['change-marker'];
+	if (marker.markers !== 1) {
+		failures.push(`change-marker: ${marker.markers} marker(s) after one changed fact, expected 1`);
+	}
+	if (marker.animated !== 1) {
+		failures.push(
+			`change-marker: ${marker.animated} animated element(s), expected exactly the marker (${marker.animationNames.join(', ') || 'none'})`,
+		);
+	}
+	if (!marker.animationNames.includes('currentLocationChange')) {
+		failures.push('change-marker: the marker did not report the currentLocationChange animation');
+	}
+
+	// Under the reduce preference the marker is still information, and only
+	// the animation is gone.
+	const reducedMarker = observations['change-marker-reduced'];
+	if (reducedMarker.markers !== 1) {
+		failures.push(
+			`change-marker-reduced: ${reducedMarker.markers} marker(s); the marker is information and must stay`,
+		);
+	}
+	if (reducedMarker.animated !== 0) {
+		failures.push(
+			`change-marker-reduced: ${reducedMarker.animated} animated element(s) under the reduce preference`,
+		);
+	}
+
 	return { ok: failures.length === 0, failures };
 }
 
@@ -294,6 +469,7 @@ async function captureCondition(browser, baseUrl, condition, pngPath) {
 	const context = await browser.newContext({
 		viewport: { width: condition.width, height: condition.height },
 		deviceScaleFactor: 1,
+		colorScheme: condition.colorScheme,
 		reducedMotion: condition.reducedMotion,
 	});
 	try {
@@ -303,21 +479,102 @@ async function captureCondition(browser, baseUrl, condition, pngPath) {
 		const observation = await page.evaluate(READ_SECTION, { testId: SECTION_TEST_ID });
 		const png = await page.screenshot({ fullPage: true, type: 'png' });
 		writeFileSync(pngPath, png);
-		return { ...observation, condition: condition.id, reducedMotion: condition.reducedMotion };
+		return {
+			...observation,
+			condition: condition.id,
+			colorSchemePreference: condition.colorScheme,
+			reducedMotion: condition.reducedMotion,
+		};
 	} finally {
 		await context.close();
 	}
 }
 
+/**
+ * Capture a changed fact the way a visitor produces one.
+ *
+ * Visit 1 stores the current signatures. The script then rewrites ONE stored
+ * signature to a previous value, reloads, and the section marks exactly that
+ * project. No DOM is edited and no motion is forced — the marker is produced
+ * by the shipped comparison.
+ */
+async function captureChangeMarker(browser, baseUrl, condition, pngPath) {
+	const context = await browser.newContext({
+		viewport: { width: condition.width, height: condition.height },
+		deviceScaleFactor: 1,
+		colorScheme: condition.colorScheme,
+		reducedMotion: condition.reducedMotion,
+	});
+	try {
+		const page = await context.newPage();
+		await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
+		await page.waitForSelector(`[data-testid="${SECTION_TEST_ID}"]`, { timeout: 30_000 });
+		await page.waitForFunction(
+			(key) => {
+				try {
+					return window.localStorage.getItem(key) !== null;
+				} catch {
+					return false;
+				}
+			},
+			STORAGE_KEY,
+			{ timeout: 30_000 },
+		);
+		const seededId = await page.evaluate((key) => {
+			const raw = window.localStorage.getItem(key);
+			const parsed = raw ? JSON.parse(raw) : {};
+			const ids = Object.keys(parsed);
+			if (ids.length === 0) throw new Error('the section stored no signature');
+			// One recorded fact changed since the last visit.
+			parsed[ids[0]] = 'previous-visit';
+			window.localStorage.setItem(key, JSON.stringify(parsed));
+			return ids[0];
+		}, STORAGE_KEY);
+		await page.reload({ waitUntil: 'networkidle' });
+		await page.waitForSelector('[data-testid="home-current-project-changed"]', {
+			timeout: 30_000,
+		});
+		// Let the 200ms fade settle so the artefact shows the marker at rest.
+		await page.waitForTimeout(400);
+		const observation = await page.evaluate(READ_SECTION, { testId: SECTION_TEST_ID });
+		const png = await page.screenshot({ fullPage: true, type: 'png' });
+		writeFileSync(pngPath, png);
+		return {
+			...observation,
+			condition: condition.id,
+			colorSchemePreference: condition.colorScheme,
+			reducedMotion: condition.reducedMotion,
+			seededId,
+		};
+	} finally {
+		await context.close();
+	}
+}
+
+async function writeArtefact({ sharp, pngPath, outPath, condition }) {
+	ensureParent(outPath);
+	await sharp(pngPath)
+		.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
+		.webp({ quality: SCREENSHOT_QUALITY })
+		.toFile(resolve(REPO_ROOT, outPath));
+	// The intermediate PNG never reaches the repository.
+	rmSync(pngPath, { force: true });
+	const budget = screenshotBudgetVerdict(statSync(resolve(REPO_ROOT, outPath)).size);
+	if (!budget.withinBudget) {
+		throw new Error(
+			`capture ${condition.id} is ${budget.kb} kB, over the ${Math.round(SCREENSHOT_BUDGET_BYTES / 1024)} kB budget`,
+		);
+	}
+	process.stdout.write(`[capture] wrote ${outPath} (${budget.kb} kB)\n`);
+	return { artefact: outPath, ...budget };
+}
+
 async function main() {
 	const options = parseArgs(process.argv.slice(2));
-	const outputs = {
-		desktop: options.desktop,
-		mobile: options.mobile,
-		'reduced-motion': options.reduced,
-	};
+	const conditions = [...CAPTURES, ...MARKER_CAPTURES];
+	const outputFor = (condition) => artefactPath(options.outDir, condition.id);
 	if (options.capture) {
-		for (const path of Object.values(outputs)) assertWebpOutputPath(path);
+		for (const condition of conditions) assertWebpOutputPath(outputFor(condition));
 	}
 
 	writeHarness();
@@ -350,45 +607,37 @@ async function main() {
 			mkdirSync(pngDir, { recursive: true });
 			const browser = await chromium.launch();
 			try {
-				for (const condition of CAPTURES) {
+				for (const condition of conditions) {
 					const pngPath = join(pngDir, `${condition.id}.png`);
-					const observation = await captureCondition(browser, server.baseUrl, condition, pngPath);
+					const markerCapture = MARKER_CAPTURES.includes(condition);
+					const observation = markerCapture
+						? await captureChangeMarker(browser, server.baseUrl, condition, pngPath)
+						: await captureCondition(browser, server.baseUrl, condition, pngPath);
 					observations[condition.id] = observation;
-					const outPath = resolve(REPO_ROOT, outputs[condition.id]);
-					ensureParent(outputs[condition.id]);
-					await sharp(pngPath)
-						.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
-						.webp({ quality: SCREENSHOT_QUALITY })
-						.toFile(outPath);
-					// The intermediate PNG never reaches the repository.
-					rmSync(pngPath, { force: true });
-					const budget = screenshotBudgetVerdict(statSync(outPath).size);
-					if (!budget.withinBudget) {
-						throw new Error(
-							`capture ${condition.id} is ${budget.kb} kB, over the ${Math.round(SCREENSHOT_BUDGET_BYTES / 1024)} kB budget`,
-						);
-					}
+					const written = await writeArtefact({
+						sharp,
+						pngPath,
+						outPath: outputFor(condition),
+						condition,
+					});
 					captures[condition.id] = {
-						artefact: outputs[condition.id],
+						...written,
 						viewport: { width: condition.width, height: condition.height },
+						colorScheme: condition.colorScheme,
 						reducedMotion: condition.reducedMotion,
-						quality: SCREENSHOT_QUALITY,
-						...budget,
+						markers: observation.markers,
+						animated: observation.animated,
 					};
-					process.stdout.write(`[capture] wrote ${outputs[condition.id]} (${budget.kb} kB)\n`);
 				}
 			} finally {
 				await browser.close();
 			}
 
-			verdict = evaluateObservation({
-				desktop: observations.desktop,
-				reduced: observations['reduced-motion'],
-			});
+			verdict = evaluateObservation({ observations });
 			for (const failure of verdict.failures) process.stderr.write(`- ${failure}\n`);
 			if (!verdict.ok) {
 				throw new Error(
-					`the reduced-motion capture contradicts the section contract (${verdict.failures.length} failure(s)); no artefact was kept`,
+					`the captures contradict the section contract (${verdict.failures.length} failure(s))`,
 				);
 			}
 		}

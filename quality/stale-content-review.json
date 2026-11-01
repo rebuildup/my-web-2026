@@ -15,6 +15,11 @@
 			"path": "src/home/reactions/widget.tsx",
 			"expression": "リアクションは現在記録できません。時間をおいてお試しください。",
 			"reason": "runtime-message"
+		},
+		{
+			"path": "src/home/current/derive.ts",
+			"expression": "今日",
+			"reason": "runtime-message"
 		}
 	],
 	"expressions": [

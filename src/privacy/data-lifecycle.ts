@@ -568,6 +568,55 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			},
 		},
 	},
+	{
+		id: 'current-projects-signature',
+		label: {
+			ja: '現在地セクションの前回表示署名（ブラウザの localStorage `mw_home_current_projects_v1`）',
+			en: 'Current-projects change signature (browser localStorage `mw_home_current_projects_v1`)',
+		},
+		stores: {
+			ja: 'ホームの「現在地」に並ぶ各プロジェクトについて、識別子・名称・一行説明・保存された事実（日付・段階・計測値）とその出所を連結した文字列 1 本ずつ。訪問者の識別子、IP、閲覧履歴、端末情報は含みません。導出値（「1 か月」「12 日前」など）は保存しません。',
+			en: 'For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.',
+		},
+		retention: {
+			kind: 'until-deleted',
+			statement: {
+				ja: '自動失効はありません。このキーは訪問者のブラウザにだけ残り、訪問者がサイトデータを消すまで残ります。サーバーには複製されません。',
+				en: 'No automatic expiry. The key lives only in the visitor’s browser and stays until the visitor clears site data. It is not copied to the server.',
+			},
+		},
+		deletion: {
+			channel: 'visitor-action',
+			statement: {
+				ja: 'ブラウザのサイトデータ削除で消えます。値は次回の表示時に上書きされるだけなので、削除しなくても表示が壊れることはありません。',
+				en: 'Clearing site data in the browser removes it. It is simply overwritten on the next visit, so the page renders the same whether or not it was deleted.',
+			},
+		},
+		transfer: {
+			target: 'none',
+			statement: {
+				ja: 'このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。',
+				en: 'The value is never sent to a server. Reading and writing happen entirely in the browser.',
+			},
+			senders: [],
+		},
+		visibility: {
+			ja: '訪問者本人にだけ意味を持つ比較用の値で、公開ページにも公開 API にも現れません。',
+			en: 'The value is a comparison aid meaningful only to the visitor and appears in no public page or public API response.',
+		},
+		evidence: [
+			'src/home/current/use-changed-projects.ts (キー名・保存する項目・try/catch の失敗時挙動)',
+			'src/home/current/CurrentProjects.tsx (保存の読み書きに失敗しても表示を変えない)',
+			'src/home/current/use-changed-projects.test.ts (署名に導出値を含めない規則)',
+		],
+		publication: {
+			status: 'pending',
+			note: {
+				ja: 'Issue #316 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。',
+				en: 'Added by Issue #316. No owner approval of public wording exists yet, so it renders nowhere.',
+			},
+		},
+	},
 ] as const satisfies readonly DataLifecycleEntry[];
 
 /**

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { ABOUT_DATA } from '../../src/about/data';
-import { CURRENT_PROJECTS } from '../../src/home/current/projects';
+import { PROJECT_ROSTER } from '../../src/home/current/roster';
 
 /**
  * Home ↔ About consistency for the "current" claim (Issue #316).
  *
  * INTENT
  * ------
- * The home page publishes a "現在地 / Where I am now" section from a
- * committed snapshot (`src/home/current/projects.ts`), and `/about`
+ * The home page publishes a "現在地 / Where I am now" section from the
+ * owner's committed roster (`src/home/current/roster.ts`), and `/about`
  * publishes its own "current" narrative (`src/about/data.ts`). Both
  * make a claim about what the owner is working on at the time of
  * reading, so the two can drift apart silently — the home section
@@ -48,12 +48,12 @@ const HOME_TO_ABOUT: ReadonlyArray<{ id: string; aboutFragment: string }> = [
 
 describe('home current projects ↔ about current narrative', () => {
 	it('publishes a project snapshot that is not empty', () => {
-		expect(CURRENT_PROJECTS.length).toBeGreaterThan(0);
+		expect(PROJECT_ROSTER.length).toBeGreaterThan(0);
 	});
 
 	it('maps every published home project to an About fragment', () => {
 		const mapped = new Set(HOME_TO_ABOUT.map((entry) => entry.id));
-		for (const project of CURRENT_PROJECTS) {
+		for (const project of PROJECT_ROSTER) {
 			expect(
 				mapped.has(project.id),
 				`the home snapshot publishes "${project.id}", but HOME_TO_ABOUT has no About fragment for it`,
@@ -62,7 +62,7 @@ describe('home current projects ↔ about current narrative', () => {
 	});
 
 	it('has no mapping for a project the home snapshot no longer publishes', () => {
-		const published = new Set(CURRENT_PROJECTS.map((project) => project.id));
+		const published = new Set<string>(PROJECT_ROSTER.map((project) => project.id));
 		for (const mapping of HOME_TO_ABOUT) {
 			expect(
 				published.has(mapping.id),

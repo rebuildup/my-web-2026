@@ -24,7 +24,7 @@ import { selectPublicProjects } from './projects';
  * -----------
  * The component receives whatever it is handed and publishes only
  * what `selectPublicProjects` allows. An empty set is a published
- * sentence ("現在、公開中の進行中のプロジェクトはありません。"), never
+ * sentence ("現在、公開している進行中のプロジェクトはありません。"), never
  * an empty list and never an invented placeholder — a reader must be
  * able to tell "nothing is published" from "the page failed".
  *
@@ -102,7 +102,7 @@ export function CurrentProjects({ projects = [] }: CurrentProjectsProps) {
 								lineHeight: '1.6',
 							})}
 						>
-							現在、公開中の進行中のプロジェクトはありません。
+							現在、公開している進行中のプロジェクトはありません。
 						</p>
 					) : (
 						<ul

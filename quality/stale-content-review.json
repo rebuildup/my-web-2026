@@ -647,7 +647,7 @@
 		{
 			"id": "home-current-projects-empty",
 			"path": "src/home/current/CurrentProjects.tsx",
-			"expression": "現在、公開中の進行中のプロジェクトはありません。",
+			"expression": "現在、公開している進行中のプロジェクトはありません。",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",

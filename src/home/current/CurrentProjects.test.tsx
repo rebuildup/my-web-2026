@@ -48,14 +48,14 @@ describe('CurrentProjects', () => {
 
 	it('publishes one meaningful sentence instead of an empty list', () => {
 		const html = render({ projects: [] });
-		expect(html).toContain('現在、公開中の進行中のプロジェクトはありません。');
+		expect(html).toContain('現在、公開している進行中のプロジェクトはありません。');
 		expect(html).not.toContain('<ul');
 		expect(html).not.toContain('<li');
 	});
 
 	it('treats a missing snapshot as an empty publication', () => {
 		const html = render({});
-		expect(html).toContain('現在、公開中の進行中のプロジェクトはありません。');
+		expect(html).toContain('現在、公開している進行中のプロジェクトはありません。');
 	});
 
 	it('renders no link when a project has none', () => {

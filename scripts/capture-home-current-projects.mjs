@@ -7,8 +7,9 @@
  * What this captures
  * ------------------
  * The shipped story (`src/home/current/CurrentProjects.stories.tsx`,
- * the `home/CurrentProjects` → `Populated` story) rendered in a
- * Chromium at three conditions:
+ * the `home/CurrentProjects` → `Shipped` story, which renders the
+ * committed `CURRENT_PROJECTS` snapshot) in a Chromium at three
+ * conditions:
  *
  *   - desktop 1440 — the section in its widest shipped layout;
  *   - mobile 390   — the single-column layout (the width the section
@@ -85,7 +86,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** The shipped story the capture renders. */
 export const STORY_MODULE = 'src/home/current/CurrentProjects.stories.tsx';
-export const STORY_EXPORT = 'Populated';
+export const STORY_EXPORT = 'Shipped';
 
 /** Readiness marker the capture waits for before reading anything. */
 export const SECTION_TEST_ID = 'home-current-projects';

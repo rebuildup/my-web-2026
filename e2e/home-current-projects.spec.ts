@@ -12,9 +12,10 @@ import { CURRENT_PROJECTS } from '../src/home/current/projects';
  * The link assertion is written so it holds in BOTH honest states:
  * the snapshot today publishes no link (the owner has not confirmed a
  * public destination), and a future snapshot may publish an internal
- * path. What must never happen is a link that leaves the site or
- * carries an unusable scheme, so every anchor the section renders has
- * to be an internal path with a visible label.
+ * path or an `https://` URL. What must never happen is a
+ * protocol-relative link or an unusable scheme, so every anchor the
+ * section renders has to be an `https://` URL or an internal path,
+ * each with a visible label.
  */
 test.describe('home — current projects section (Issue #316)', () => {
 	test('publishes the section with its own heading', async ({ page }) => {
@@ -44,7 +45,7 @@ test.describe('home — current projects section (Issue #316)', () => {
 		}
 	});
 
-	test('publishes only internal links, each with a visible label', async ({ page }) => {
+	test('publishes only publishable links, each with a visible label', async ({ page }) => {
 		await page.goto('/');
 
 		const links = page.locator('[data-testid="home-current-projects"] a');
@@ -53,7 +54,12 @@ test.describe('home — current projects section (Issue #316)', () => {
 			const link = links.nth(index);
 			const href = await link.getAttribute('href');
 			expect(href, 'every published link carries an href').toBeTruthy();
-			expect(href?.startsWith('/'), `"${href}" is an internal path`).toBe(true);
+			// The same rule the snapshot applies (`isPublishableHref`): an
+			// `https://` URL or an internal path, never the protocol-relative
+			// `//…` that would leave the site under a scheme the page does
+			// not choose.
+			const publishable = href?.startsWith('https://') === true || href?.startsWith('/') === true;
+			expect(publishable, `"${href}" is an https URL or an internal path`).toBe(true);
 			expect(href?.startsWith('//'), `"${href}" is not protocol-relative`).toBe(false);
 			// The visible label is the accessible name (WCAG 2.2 SC 2.5.3).
 			await expect(link).not.toBeEmpty();
@@ -68,7 +74,7 @@ test.describe('home — current projects section (Issue #316)', () => {
 		const empty = page.locator('[data-testid="home-current-projects-empty"]');
 		if (CURRENT_PROJECTS.length === 0) {
 			await expect(empty).toHaveCount(1);
-			await expect(empty).toContainText('現在、公開中の進行中のプロジェクトはありません。');
+			await expect(empty).toContainText('現在、公開している進行中のプロジェクトはありません。');
 			await expect(page.locator('[data-testid="home-current-projects-list"]')).toHaveCount(0);
 		} else {
 			await expect(empty).toHaveCount(0);

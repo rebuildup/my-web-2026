@@ -1,15 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { CurrentProjects } from './CurrentProjects';
+import { CURRENT_PROJECTS } from './projects';
 import type { CurrentProject } from './projects';
 
 /**
  * CurrentProjects stories (Issue #316).
  *
- * Three states, because the section has three honest shapes:
+ * Four states, because the section has four honest shapes:
  *
+ *   - `Shipped`    — the snapshot the route actually hands the page
+ *     (`CURRENT_PROJECTS`). This is the state the verification capture
+ *     (`scripts/capture-home-current-projects.mjs`) renders, so the
+ *     committed screenshots show what a reader receives today rather
+ *     than a design fixture.
  *   - `Populated`  — the ordinary case: a handful of projects, one of
- *     them with a published link. This is the state the verification
- *     capture (`scripts/capture-home-current-projects.mjs`) renders.
+ *     them with a published link. A design surface for the linked
+ *     shape the shipped snapshot does not exercise yet.
  *   - `Empty`      — nothing publishable. The section publishes ONE
  *     sentence, not an empty list, so a reader can tell "nothing is
  *     published" from "the page failed".
@@ -18,9 +24,10 @@ import type { CurrentProject } from './projects';
  *     public destination), so the section has to read well without a
  *     link in every row.
  *
- * The fixtures are literals in this file, not the committed snapshot
- * (`CURRENT_PROJECTS`): a preview is a design surface, and it must
- * not change because the owner edited the snapshot.
+ * The `Populated` / `Empty` / `Linkless` fixtures are literals in this
+ * file: a design surface must not change because the owner edited the
+ * snapshot. `Shipped` is the deliberate exception — it is the only
+ * story whose content is the snapshot itself.
  */
 const POPULATED: CurrentProject[] = [
 	{
@@ -63,6 +70,10 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const Shipped: Story = {
+	render: () => <CurrentProjects projects={CURRENT_PROJECTS} />,
+};
 
 export const Populated: Story = {
 	render: () => <CurrentProjects projects={POPULATED} />,

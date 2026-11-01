@@ -313,8 +313,14 @@ export const Route = createFileRoute('/compare')({
 	head: () => ({
 		meta: [
 			{ title: 'Issue #764 comparison board' },
+			{
+				name: 'description',
+				content:
+					'Issue #764 の direction 比較ハーネス。A / B / C の色と階層を実 route で並べて確認するための、公開しない開発用の板。',
+			},
 			{ name: 'robots', content: 'noindex, nofollow' },
 		],
+		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/compare' }],
 	}),
 	component: ComparePage,
 });

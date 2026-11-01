@@ -79,6 +79,7 @@ describe('social card contract (contract.json)', () => {
 			[
 				'/',
 				'/about',
+				'/compare',
 				'/contact',
 				'/design-system',
 				'/keyboard',

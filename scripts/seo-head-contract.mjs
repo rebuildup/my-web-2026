@@ -184,6 +184,11 @@ export const INDEX_EXCLUSIONS = Object.freeze({
 		reason:
 			'Tool iframe shell — the Tool artifact is served under /tools/<slug>/<artifact_path>/ (see src/routes/tools.$slug.tsx)',
 	}),
+	'/compare': Object.freeze({
+		robots: 'noindex',
+		reason:
+			'Issue #764 comparison harness — a branch-local surface the owner opens directly; it is never linked from a product page and is deleted with the branch that serves it.',
+	}),
 });
 
 /* ------------------------------------------------------------------ *

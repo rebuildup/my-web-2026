@@ -441,6 +441,43 @@
 			"publication": "published",
 			"externalHosts": ["use.typekit.net"],
 			"delegatedTo": "tools:artifact:check (Issue #466)"
+		},
+		{
+			"id": "tool-preview-screens",
+			"kind": "image",
+			"title": "ツール一覧のプレビュー画像（WebP 2 種）",
+			"summary": "scripts/capture-tool-previews.mjs が /tools/prototype と /tools/readmark の実画面を撮影して生成する。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。",
+			"covers": ["public/tools/**"],
+			"publicPaths": ["/tools/prototype/overview.webp", "/tools/readmark/overview.webp"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"撮影対象は Tool の実画面のみで、外部サイトの画像・フォントファイルは含まない。",
+					"写っている Tool の出所と commit は src/tools/manifest.json の canonical_repo / pinned_sha が固定する。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-01",
+				"note": "撮影スクリプトと manifest の pinned_sha が、写っている画面の出所を指す。画像は 2026-11-01 にローカル preview から取得した。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/capture-tool-previews.mjs" },
+				{ "kind": "repository-file", "path": "src/tools/manifest.json" }
+			],
+			"publication": "published",
+			"externalHosts": []
 		}
 	]
 }

@@ -5,6 +5,7 @@
 		{
 			"slug": "prototype",
 			"display_name": "ProtoType",
+			"description_ja": "タイピングゲーム。gsap・three.js・pixi.js を使った演出つきで、Tool Registry の最初の統合例として公開しています。",
 			"description": "ProtoType: a heavy Vite SPA showcase (gsap + three.js + pixi.js + recharts) used as the Tool Registry pilot for Issue #81.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/ProtoType.git",
@@ -46,6 +47,7 @@
 		{
 			"slug": "readmark",
 			"display_name": "readmark",
+			"description_ja": "PDF をブラウザ内で読むローカルファーストのリーディングアプリ。MVP は PDF 対応で、EPUB・Markdown・テキストは今後追加予定です。",
 			"description": "A local-first reading app for the browser. PDFs in MVP; EPUB/Markdown/text next. Designed to embed as a Tool in my-web-2026.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/readmark.git",
@@ -78,6 +80,7 @@
 		{
 			"slug": "text-counter",
 			"display_name": "Text Counter",
+			"description_ja": "入力したテキストの文字数・単語数・行数・段落数・UTF-8 バイト数を数え、js-tiktoken によるトークン数と日本語の文字種別の内訳も表示するツール。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-text-counter.git",
 				"submodule_path": "external/text-counter",
@@ -99,6 +102,7 @@
 		{
 			"slug": "color-palette",
 			"display_name": "Color Palette",
+			"description_ja": "配色を生成し、保存・コピーできるカラーパレットツール。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-color-palette.git",
 				"submodule_path": "external/color-palette",
@@ -120,6 +124,7 @@
 		{
 			"slug": "sequential-png-preview",
 			"display_name": "Sequential PNG Preview",
+			"description_ja": "連番 PNG を読み込んでアニメーションとして再生し、GIF や MP4 に書き出せるプレビューツール。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-sequential-png-preview.git",
 				"submodule_path": "external/sequential-png-preview",
@@ -141,6 +146,7 @@
 		{
 			"slug": "svg2tsx",
 			"display_name": "SVG to TSX",
+			"description_ja": "SVG を React の TSX コンポーネントに変換するツール。色の変数化、パスの最適化、不要属性の削除を切り替えられます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-svg2tsx.git",
 				"submodule_path": "external/svg2tsx",
@@ -162,6 +168,7 @@
 		{
 			"slug": "business-mail-block",
 			"display_name": "Business Mail Block",
+			"description_ja": "ビジネスメールの文面をブロック単位で組み立てるツール。挨拶・依頼・謝罪などの定型文を並べ替え、署名付きのメールを作れます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-business-mail-block.git",
 				"submodule_path": "external/business-mail-block",
@@ -183,6 +190,7 @@
 		{
 			"slug": "code-type-p5",
 			"display_name": "Code Type p5",
+			"description_ja": "p5.js のキャンバスで、コードが打たれていく様子をアニメーション表示するツール。言語・色・サイズ・FPS を設定でき、PNG 連番を ZIP で書き出せます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-code-type-p5.git",
 				"submodule_path": "external/code-type-p5",
@@ -204,6 +212,7 @@
 		{
 			"slug": "fillgen",
 			"display_name": "Fillgen",
+			"description_ja": "穴埋め問題つきの教材ページを、Markdown 風のテキストから生成するツール。HTML と React のコードを書き出せます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-fillgen.git",
 				"submodule_path": "external/fillgen",
@@ -225,6 +234,7 @@
 		{
 			"slug": "qr-generator",
 			"display_name": "QR Generator",
+			"description_ja": "テキストや URL から QR コードを生成するツール。色やパラメータを調整し、PNG / SVG で保存できます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-qr-generator.git",
 				"submodule_path": "external/qr-generator",
@@ -246,6 +256,7 @@
 		{
 			"slug": "pomodoro",
 			"display_name": "Pomodoro",
+			"description_ja": "ポモドーロ・テクニック用のタイマー。作業と休憩のサイクルを管理し、メモや YouTube の埋め込みも使えます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pomodoro.git",
 				"submodule_path": "external/pomodoro",
@@ -267,6 +278,7 @@
 		{
 			"slug": "history-quiz",
 			"display_name": "History Quiz",
+			"description_ja": "歴史の穴埋めクイズ。空欄に答えを入力し、ヒントと正解を確認しながら進めます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-history-quiz.git",
 				"submodule_path": "external/history-quiz",
@@ -288,6 +300,7 @@
 		{
 			"slug": "pi-game",
 			"display_name": "Pi Game",
+			"description_ja": "円周率の桁を順番に入力していく記憶ゲーム。全画面表示とキーボード入力に対応しています。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pi-game.git",
 				"submodule_path": "external/pi-game",
@@ -309,6 +322,7 @@
 		{
 			"slug": "ae-expression",
 			"display_name": "AE Expression",
+			"description_ja": "After Effects のエクスプレッションを選んでコピーできるリファレンス。バウンス・サイン波・ランダムなどの式とパラメータを確認できます。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-ae-expression.git",
 				"submodule_path": "external/ae-expression",
@@ -330,6 +344,7 @@
 		{
 			"slug": "mic-level",
 			"display_name": "Mic Level",
+			"description_ja": "マイク入力のレベルを OBS のミキサーと同じ目盛りで表示し、5 秒のテストから -14 dBFS に近づけるゲイン調整量を提案するツール。音声はブラウザの外へ送信しません。",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-mic-level.git",
 				"submodule_path": "external/mic-level",

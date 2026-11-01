@@ -1,57 +1,64 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { css } from '../../styled-system/css';
+import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
-import { listAllTools, listPublicTools } from '../tools/registry';
-import type { ManifestTool, PublicToolSummary } from '../tools/registry';
+import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import type { MaterialSymbolName } from '../editorial/primitives/MaterialSymbol';
+import { listAllTools } from '../tools/registry';
+import type { ManifestTool } from '../tools/registry';
 
 /**
- * TanStack Start route for the Tools index page.
+ * `/tools` — the Tool Registry index (Issues #195, #300, #785).
  *
- * Issue #195 (2026-09-29) flipped the show-all policy: the index
- * now lists every manifest entry, not just the embeddable subset.
- * `host_disabled` Tools render with a "Coming soon" badge and
- * their `disabled_reason` so users can see the full my-web tool
- * roadmap instead of a single integrated Tool (the pre-#195 state).
+ * Issue #195 (2026-09-29) flipped the show-all policy: the index lists
+ * every manifest entry, not just the embeddable subset, so a visitor
+ * sees the whole roadmap. `host_disabled` Tools render as a
+ * non-interactive row with a 「準備中」 badge.
  *
- * Two surface kinds:
+ * Issue #785 (owner instruction 2026-11-01) rebuilt the page for
+ * comprehension rather than decoration:
  *
- *   - `same_origin_static` / `external_exception` →
- *     clickable link to `/tools/<slug>`. Sort: alphabetical within
- *     the embeddable group ("Integrated").
- *   - `host_disabled` → non-link row with tool name, "Coming soon"
- *     badge, and the `disabled_reason` text. Sort: alphabetical
- *     within the disabled group ("Coming soon").
+ *   - The page mounts the same `PublicNav` / `Breadcrumbs` /
+ *     `BreadcrumbJsonLd` chrome every other page mounts explicitly
+ *     (`src/routes/__root.tsx` documents the convention). Before this,
+ *     `/tools` was the one public page with no header and no
+ *     breadcrumb trail.
+ *   - Every row is a whole-row link with a Material Symbols glyph, a
+ *     Japanese description (`manifest.json#description_ja`, owned by
+ *     the registry), and a 「開く」 affordance, so "this opens a Tool"
+ *     is visible before hovering. `host_disabled` rows carry the same
+ *     layout minus the link, and the group copy says why they cannot
+ *     be opened yet.
+ *   - Two representative Tools carry a WebP screenshot of their real
+ *     screen; the images live under `public/tools/<slug>/` so the
+ *     asset-rights gate (`scripts/check-asset-licenses.mjs`) covers
+ *     them, and `scripts/capture-tool-previews.mjs` is the committed
+ *     capture.
  *
- * Layout — `Container` + editorial whitespace (#184/#189). Each
- * tool is a row separated by a thin `borderTop` (the shared section
- * divider primitive) instead of a per-item border + background
- * card. The per-item borders collapsed the readable column at
- * narrow viewports; the row-divided list keeps the page on the same
- * visual axis as the rest of the public surface.
+ * Layout — `Container` + editorial whitespace (#184/#189). Each Tool is
+ * a row separated by a thin `borderTop`; hover / focus-visible tints
+ * the row and underlines the name, which is the "clickable" signal the
+ * owner asked for. Colour and background transitions only (no
+ * animation), so the reduced-motion contract needs no new hook.
  *
- * Embeddable Tools are sorted to the top, then `host_disabled`
- * Tools below. The embeddable list is sourced from `listPublicTools()`
- * for sort/display fields (entry_html etc.); the disabled list comes
- * straight from `listAllTools()` filtered by delivery.kind.
+ * Embeddable Tools are sorted to the top, then `host_disabled` Tools
+ * below; both groups are alphabetical so the order stays predictable
+ * for snapshot tests and screen-reader users.
  */
 export const Route = createFileRoute('/tools/')({
 	loader: () => {
 		const all = listAllTools();
-		const embeddable = listPublicTools();
-		const embeddableSlugs = new Set(embeddable.map((t) => t.slug));
-		const disabled = all.filter((t) => !embeddableSlugs.has(t.slug));
-		// Stable, alphabetical sort within each group so the order is
-		// predictable for snapshot tests and screen-reader users.
-		const bySlug = (a: { slug: string }, b: { slug: string }) => a.slug.localeCompare(b.slug);
-		return {
-			embeddable: [...embeddable].sort(bySlug),
-			disabled: [...disabled].sort(bySlug),
-		};
+		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
+		const embeddable = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
+		const disabled = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
+		return { embeddable, disabled };
 	},
 	head: () => {
 		const title = 'Tools — my-web-2026';
 		const description =
-			'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.';
+			'ブラウザで動く小さなツールの一覧。各ツールの内容と、開けるかどうかが分かります。';
 		const url = 'https://rebuildup.dev/tools';
 		return {
 			meta: [
@@ -63,27 +70,72 @@ export const Route = createFileRoute('/tools/')({
 				{ property: 'og:url', content: url },
 				{ name: 'twitter:card', content: 'summary' },
 			],
-			// Issue #418: the index declared a title and a
-			// description but no canonical, so the Tool registry had
-			// no preferred URL of its own. Issue #420 makes the same
-			// link the sitemap entry's target; the per-Tool shells
-			// stay `noindex` and out of the sitemap (see
-			// `src/routes/index.tsx` for the rationale).
+			// Issue #418: the index declares its own canonical so the Tool
+			// registry has a preferred URL. Issue #420 makes the same link
+			// the sitemap entry's target; the per-Tool shells stay
+			// `noindex` and out of the sitemap (see `src/routes/index.tsx`).
 			links: [{ rel: 'canonical', href: url }],
 		};
 	},
 	component: ToolsIndexRoute,
 });
 
+/**
+ * One glyph per Tool, so a row is identifiable before it is read.
+ * Material Symbols names (`src/editorial/primitives/MaterialSymbol.tsx`);
+ * `extension` is the explicit fallback for a manifest entry nobody has
+ * classified yet — a new Tool renders, it just is not mislabelled.
+ */
+const TOOL_ICONS: Readonly<Record<string, MaterialSymbolName>> = {
+	prototype: 'keyboard',
+	readmark: 'menu_book',
+	'text-counter': 'text_fields',
+	'color-palette': 'palette',
+	'sequential-png-preview': 'animation',
+	svg2tsx: 'code',
+	'business-mail-block': 'mail',
+	'code-type-p5': 'movie',
+	fillgen: 'edit_note',
+	'qr-generator': 'qr_code_2',
+	pomodoro: 'timer',
+	'history-quiz': 'history_edu',
+	'pi-game': 'calculate',
+	'ae-expression': 'functions',
+	'mic-level': 'mic',
+};
+
+/**
+ * Screenshots for the Tools whose screen explains the Tool better than
+ * a sentence does. Each file is generated by
+ * `scripts/capture-tool-previews.mjs` and recorded in
+ * `quality/asset-license-inventory.json`; the alt text describes the
+ * captured screen, not the Tool's pitch.
+ *
+ * readmark's preview shows the state a visitor actually gets today:
+ * the Library stays on 「読み込み中…」 inside the sandboxed frame. The
+ * image is not retouched to look healthier — the row would then claim
+ * more than the Tool does (see the follow-up Issue on that defect).
+ */
+const TOOL_PREVIEWS: Readonly<Record<string, { src: string; alt: string }>> = {
+	prototype: {
+		src: '/tools/prototype/overview.webp',
+		alt: 'ProtoType のタイトル画面。中央に Game Start、左にゲーム・ランキング・サイト設定のメニューが並んでいる。',
+	},
+	readmark: {
+		src: '/tools/readmark/overview.webp',
+		alt: 'readmark のライブラリ画面。文書の一覧が「読み込み中…」の表示のまま止まっている。',
+	},
+};
+
 function ToolsIndexRoute() {
 	const { embeddable, disabled } = Route.useLoaderData();
 	return (
 		<>
-			{/* Issue #300: the hero block and the tool lists were one
-			    section, so the page-entry beat was 96px where every
-			    other page enters at 128px. Split into the canonical
-			    hero beat (16/32) + body beat (16/24) — same Container,
-			    same left axis. */}
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			{/* Issue #300: hero beat (16/32) + body beat (16/24), same
+			    Container and left axis as every other public page. */}
 			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
 				<Container>
 					<header
@@ -117,7 +169,7 @@ function ToolsIndexRoute() {
 								maxWidth: '720px',
 							})}
 						>
-							ツール / Tools
+							ツール
 						</h1>
 						<p
 							className={css({
@@ -129,9 +181,8 @@ function ToolsIndexRoute() {
 								maxWidth: '640px',
 							})}
 						>
-							my-web-2026 に統合している standalone web tool。固定まわりは独立した repository から{' '}
-							<code>/tools/&lt;slug&gt;/app/</code> に collection され、同一 origin
-							から配信されます。統合 contract は ADR-0006 を参照。
+							ブラウザで動く小さなツールをまとめています。行を選ぶとツールが開きます。各ツールは独立した
+							repository で開発し、同じ origin から配信しています。
 						</p>
 					</header>
 				</Container>
@@ -142,19 +193,20 @@ function ToolsIndexRoute() {
 						<p
 							className={css({
 								margin: '0',
-								fontFamily: 'mono',
-								fontSize: 'sm',
+								fontFamily: 'sans',
+								fontSize: 'md',
 								color: 'text.muted',
 							})}
 						>
-							No Tools are currently registered.
+							登録されているツールはまだありません。
 						</p>
 					) : (
 						<>
 							{embeddable.length > 0 && (
 								<ToolGroup
-									title="Integrated"
-									description="Same-origin or external Tools currently embedded at /tools/<slug>."
+									id="integrated"
+									title="今すぐ使える"
+									description="このページから開けます。"
 								>
 									{embeddable.map((tool) => (
 										<ToolRow key={tool.slug} tool={tool} />
@@ -163,8 +215,9 @@ function ToolsIndexRoute() {
 							)}
 							{disabled.length > 0 && (
 								<ToolGroup
-									title="Coming soon"
-									description="Tools registered in the manifest but not yet embedded. The reason is recorded in each Tool's disabled_reason."
+									id="coming-soon"
+									title="準備中"
+									description="公開に向けて準備しているツールです。現在はこのページから開けません。分かっている内容だけを書いています。"
 								>
 									{disabled.map((tool) => (
 										<DisabledToolRow key={tool.slug} tool={tool} />
@@ -180,27 +233,27 @@ function ToolsIndexRoute() {
 }
 
 function ToolGroup({
+	id,
 	title,
 	description,
 	children,
 }: {
+	id: string;
 	title: string;
 	description: string;
 	children: React.ReactNode;
 }) {
 	return (
-		<div
-			data-tool-group={title.toLowerCase().replace(/\s+/g, '-')}
-			className={css({ marginBlockEnd: '12' })}
-		>
+		<div data-tool-group={id} className={css({ marginBlockEnd: '12' })}>
 			<h2
 				className={css({
 					margin: '0 0 2',
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
+					fontFamily: 'heading',
+					fontSize: 'xl',
+					fontWeight: '700',
+					color: 'text.default',
+					lineHeight: '1.25',
+					letterSpacing: '-0.01em',
 				})}
 			>
 				{title}
@@ -232,162 +285,207 @@ function ToolGroup({
 	);
 }
 
-function ToolRow({ tool }: { tool: PublicToolSummary }) {
+/** The section divider: the row treatment every public list uses. */
+const rowDivider = {
+	borderBlockStartWidth: '1px',
+	borderBlockStartStyle: 'solid',
+	borderBlockStartColor: 'border.subtle',
+} as const;
+
+/**
+ * The row's own box. The negative inline margin lets the hover /
+ * focus tint reach the Container's edge while the text keeps the same
+ * left axis as the rest of the page.
+ */
+const rowContent = {
+	display: 'grid',
+	gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+	alignItems: 'start',
+	columnGap: '4',
+	rowGap: '2',
+	paddingBlock: '6',
+	paddingInline: '2',
+	marginInline: '-2',
+	borderRadius: 'sm',
+} as const;
+
+const iconBox = css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	flexShrink: '0',
+	width: '11',
+	height: '11',
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: 'border.subtle',
+	borderRadius: 'sm',
+	color: 'text.muted',
+	backgroundColor: 'bg.canvas',
+});
+
+const toolTitle = css({
+	fontFamily: 'heading',
+	fontSize: 'xl',
+	fontWeight: '700',
+	color: 'text.default',
+	lineHeight: '1.25',
+	letterSpacing: '-0.01em',
+});
+
+const toolDescription = css({
+	fontFamily: 'sans',
+	fontSize: 'md',
+	color: 'text.muted',
+	lineHeight: '1.6',
+	maxWidth: '640px',
+});
+
+const badge = css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	fontWeight: '500',
+	letterSpacing: '0.06em',
+	color: 'text.muted',
+	paddingBlock: '1',
+	paddingInline: '2',
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: 'border.subtle',
+	borderRadius: 'full',
+});
+
+function ToolRow({ tool }: { tool: ManifestTool }) {
+	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
+	const preview = TOOL_PREVIEWS[tool.slug];
 	return (
-		<li
-			data-tool-slug={tool.slug}
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '2',
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.subtle',
-			})}
-		>
-			<h2
-				className={css({
-					margin: '0',
-					fontFamily: 'heading',
-					fontSize: 'xl',
-					fontWeight: '700',
-					color: 'text.default',
-					lineHeight: '1.25',
-					letterSpacing: '-0.01em',
+		<li data-tool-slug={tool.slug} data-tool-state="open" className={css(rowDivider)}>
+			<Link
+				to="/tools/$slug"
+				params={{ slug: tool.slug }}
+				className={css(rowContent, {
+					color: 'inherit',
+					textDecoration: 'none',
+					transition: 'background-color 120ms ease, border-color 120ms ease',
+					_hover: {
+						backgroundColor: 'bg.surface',
+						'& [data-tool-title]': {
+							textDecoration: 'underline',
+							textUnderlineOffset: '3px',
+						},
+						'& [data-tool-icon]': {
+							borderColor: 'border.strong',
+							color: 'text.default',
+						},
+					},
+					_focusVisible: {
+						backgroundColor: 'bg.surface',
+						outline: '2px solid {colors.border.focus}',
+						outlineOffset: '2px',
+						'& [data-tool-title]': {
+							textDecoration: 'underline',
+							textUnderlineOffset: '3px',
+						},
+					},
 				})}
 			>
-				<Link
-					to="/tools/$slug"
-					params={{ slug: tool.slug }}
+				<span aria-hidden="true" className={iconBox} data-tool-icon>
+					<MaterialSymbol name={icon} size={24} />
+				</span>
+				<span
 					className={css({
-						color: 'inherit',
-						textDecoration: 'none',
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '4px',
-							borderRadius: '2px',
-						},
-						_hover: {
-							textDecoration: 'underline',
-						},
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '2',
+						minWidth: '0',
 					})}
 				>
-					{tool.display_name}
-				</Link>
-			</h2>
-			<p
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					color: 'text.muted',
-					lineHeight: '1.6',
-					// Issue #300: row descriptions ran the full 960px
-					// Container measure (~95 characters per line) while
-					// every other description on the site caps at 640px.
-					maxWidth: '640px',
-				})}
-			>
-				{tool.description}
-			</p>
+					<span data-tool-title className={toolTitle}>
+						{tool.display_name}
+					</span>
+					<span className={toolDescription}>{tool.description_ja}</span>
+					{preview ? (
+						<img
+							alt={preview.alt}
+							className={css({
+								display: 'block',
+								width: '100%',
+								maxWidth: '420px',
+								height: 'auto',
+								marginBlockStart: '2',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.subtle',
+								borderRadius: 'sm',
+							})}
+							decoding="async"
+							height={500}
+							loading="lazy"
+							src={preview.src}
+							width={800}
+						/>
+					) : null}
+				</span>
+				<span
+					data-tool-cta
+					className={css({
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: '1',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						fontWeight: '500',
+						color: 'text.accent',
+						whiteSpace: 'nowrap',
+						paddingBlock: '1',
+					})}
+				>
+					開く
+					<MaterialSymbol name="arrow_forward" size={18} />
+				</span>
+			</Link>
 		</li>
 	);
 }
 
 function DisabledToolRow({ tool }: { tool: ManifestTool }) {
-	// tool.delivery.kind is `host_disabled` here; pull the reason with
-	// a runtime narrowing cast since ManifestTool is a discriminated
-	// union.
-	const reason = tool.delivery.kind === 'host_disabled' ? tool.delivery.disabled_reason : '';
+	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
 	return (
 		<li
 			data-tool-slug={tool.slug}
 			data-tool-state="host_disabled"
-			aria-disabled="true"
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '2',
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.subtle',
-				opacity: '0.85',
-			})}
+			className={css(rowDivider, rowContent)}
 		>
-			<h2
+			<span aria-hidden="true" className={iconBox} data-tool-icon>
+				<MaterialSymbol name={icon} size={24} />
+			</span>
+			<span
 				className={css({
-					margin: '0',
-					fontFamily: 'heading',
-					fontSize: 'xl',
-					fontWeight: '700',
-					color: 'text.default',
-					lineHeight: '1.25',
-					letterSpacing: '-0.01em',
 					display: 'flex',
-					flexWrap: 'wrap',
-					alignItems: 'baseline',
-					gap: '3',
+					flexDirection: 'column',
+					gap: '2',
+					minWidth: '0',
 				})}
 			>
-				<span>{tool.display_name}</span>
 				<span
-					data-tool-badge="coming-soon"
 					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						fontWeight: '500',
-						textTransform: 'uppercase',
-						letterSpacing: '0.06em',
-						color: 'text.muted',
-						paddingBlock: '1',
-						paddingInline: '2',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.subtle',
-						borderRadius: 'full',
+						display: 'flex',
+						flexWrap: 'wrap',
+						alignItems: 'baseline',
+						gap: '3',
 					})}
 				>
-					Coming soon
+					<span className={toolTitle}>{tool.display_name}</span>
+					<span className={badge}>準備中</span>
 				</span>
-			</h2>
-			<p
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					color: 'text.muted',
-					lineHeight: '1.6',
-					// Issue #300: row descriptions ran the full 960px
-					// Container measure (~95 characters per line) while
-					// every other description on the site caps at 640px.
-					maxWidth: '640px',
-				})}
-			>
-				{tool.description}
-			</p>
-			{reason ? (
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-						lineHeight: '1.5',
-						fontStyle: 'italic',
-						// Issue #300: for host_disabled Tools the
-						// disabled_reason is the row's only prose — it
-						// takes the same 640px measure cap as every
-						// other description (host_disabled entries
-						// ship an empty `description`, so the uncapped
-						// line the audit saw ran the full 960px here).
-						maxWidth: '640px',
-					})}
-				>
-					{reason}
-				</p>
-			) : null}
+				<span className={toolDescription}>{tool.description_ja}</span>
+			</span>
+			{/* No CTA column content: the row is not a link. The badge
+			    next to the name carries the state, so the grid keeps the
+			    same shape as an open row without implying an action. */}
+			<span aria-hidden="true" />
 		</li>
 	);
 }

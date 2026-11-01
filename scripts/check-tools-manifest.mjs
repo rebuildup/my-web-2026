@@ -11,7 +11,9 @@
  *   1. Manifest parses as JSON.
  *   2. Manifest shape matches `src/tools/manifest.schema.json` (basic
  *      hand-rolled checks; full ajv validation is out of scope).
- *   3. Slugs are unique.
+ *   3. Slugs are unique, and every Tool carries a `display_name` and a
+ *      non-empty Japanese `description_ja` (Issue #785 — the /tools
+ *      index renders Japanese first).
  *   4. `source.pinned_sha` is a valid 40-char hex SHA.
  *   5. `source.canonical_repo` does not derive from the slug (no
  *      `https://github.com/rebuildup/tool-<slug>.git` guessing).
@@ -105,6 +107,18 @@ for (let i = 0; i < manifest.tools.length; i++) {
 	}
 	if (seenSlugs.has(tool.slug)) errors.push(`${prefix}  slug: duplicate "${tool.slug}"`);
 	seenSlugs.add(tool.slug);
+
+	// Issue #785: the /tools index renders Japanese first, so a Tool
+	// without a display name or a Japanese description would leave a
+	// row the visitor cannot identify or understand.
+	if (typeof tool.display_name !== 'string' || tool.display_name.trim().length === 0) {
+		errors.push(`${prefix}  display_name: required`);
+	}
+	if (typeof tool.description_ja !== 'string' || tool.description_ja.trim().length === 0) {
+		errors.push(
+			`${prefix}  description_ja: required (one or two Japanese sentences for the /tools index)`,
+		);
+	}
 
 	if (!tool.source || typeof tool.source !== 'object') {
 		errors.push(`${prefix}  source: missing or not an object`);

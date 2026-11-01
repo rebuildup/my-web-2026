@@ -107,14 +107,20 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		expect(chain?.[1]?.label).toBe('foo');
 	});
 
-	it('resolves /tools/$slug from loaderData.display_name', () => {
+	// The fixture is the REAL loader shape: since Issue #465 the route
+	// returns a discriminated union (`{ state, tool }` — see
+	// `src/routes/tools.$slug.tsx`), so the Tool record sits under
+	// `tool`. The pre-#465 fixture put `display_name` at the top level,
+	// which no loader has returned since; it went unnoticed while
+	// Issue #288 kept the breadcrumbs off this route.
+	it('resolves /tools/$slug from the loader’s tool.display_name', () => {
 		const chain = resolveBreadcrumbChain([
 			root,
 			match('/tools/', '/tools/multi-slicer'),
 			match(
 				'/tools/$slug',
 				'/tools/multi-slicer',
-				{ display_name: 'MultiSlicer', slug: 'multi-slicer' },
+				{ state: 'embeddable', tool: { display_name: 'MultiSlicer', slug: 'multi-slicer' } },
 				{ slug: 'multi-slicer' },
 			),
 		]);
@@ -195,7 +201,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			match(
 				'/tools/$slug',
 				'/tools/prototype',
-				{ display_name: 'ProtoType', slug: 'prototype' },
+				{ state: 'embeddable', tool: { display_name: 'ProtoType', slug: 'prototype' } },
 				{
 					slug: 'prototype',
 				},

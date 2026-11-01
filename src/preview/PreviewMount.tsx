@@ -110,14 +110,12 @@ export function PreviewMount({ on }: { on: boolean }) {
 			});
 			observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 		};
+		// `load` already means hydration had a full pass; the timeout only keeps the
+		// DOM work out of the same frame as the first paint. A plain timer is enough
+		// here: an idle-scheduling API is not Baseline in Safari and would need a
+		// guarded-feature declaration for a throwaway harness.
 		const schedule = () => {
-			const idle = (
-				window as Window & {
-					requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-				}
-			).requestIdleCallback;
-			if (idle) idle(start, { timeout: 800 });
-			else setTimeout(start, 400);
+			setTimeout(start, 400);
 		};
 		if (document.readyState === 'complete') schedule();
 		else window.addEventListener('load', schedule, { once: true });

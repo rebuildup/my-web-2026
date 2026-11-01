@@ -786,6 +786,12 @@
 			],
 			"min_files": 7,
 			"role": "App shell: client entry, its zod non-JIT CSP configuration, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
+		},
+		{
+			"id": "preview-harness",
+			"root": "src/preview",
+			"min_files": 1,
+			"role": "Issue #764 comparison harness: client-only display helpers the owner reviews directions with. Deleted with the branch; it is scanned so its API usage is held to the same Baseline bar as the product while it exists."
 		}
 	],
 	"features": [

@@ -66,6 +66,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { Container } from '../primitives/Container';
 import {
 	GoogleAnalytics,
 	GoogleAnalyticsRouteTracker,
@@ -111,16 +112,19 @@ const FOCUS_OFFSET_PROPERTY = '--analytics-consent-offset';
  * The measurement is re-published when the surface is resized, so a
  * surface whose content changes height (a longer answer, a wrapped
  * label) keeps the compensation honest.
+ *
+ * `gapPx` is the distance between the surface and the viewport edge:
+ * the band sits flush against the bottom (0), while the collapsed
+ * status pill floats `bottom: 3` above it, so its own gap is part of
+ * the space it covers.
  */
-function useFocusOffset(element: HTMLElement | null) {
+function useFocusOffset(element: HTMLElement | null, gapPx: number) {
 	useEffect(() => {
 		if (!element) return;
 		const root = document.documentElement;
 		const publish = () => {
 			const { height } = element.getBoundingClientRect();
-			// `bottom: 3` is a 0.75rem gap above the viewport edge, so the
-			// space the surface occupies is that gap plus its own height.
-			root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${Math.ceil(height + 12)}px`);
+			root.style.setProperty(FOCUS_OFFSET_PROPERTY, `${Math.ceil(height + gapPx)}px`);
 		};
 		publish();
 		if (typeof ResizeObserver === 'undefined') return;
@@ -130,7 +134,7 @@ function useFocusOffset(element: HTMLElement | null) {
 			observer.disconnect();
 			root.style.removeProperty(FOCUS_OFFSET_PROPERTY);
 		};
-	}, [element]);
+	}, [element, gapPx]);
 }
 
 /** Copy for the panel. Kept next to the markup so a wording change is one edit. */
@@ -187,6 +191,19 @@ export interface AnalyticsConsentPanelProps {
  * and screen-reader activation are native. When the browser off-switch
  * is on the grant button is replaced by an explanation — the copy
  * never offers an action the code would refuse to perform.
+ *
+ * A full-width band, not a floating card (Issue #783)
+ * ---------------------------------------------------
+ * The owner chose a band across the page width over a centred 560px
+ * card: it covers less of the viewport on desktop while keeping the
+ * same content. The band is flush with the bottom edge, carries no
+ * border, radius or shadow (a surface is told apart by its fill), and
+ * its inner content sits on the shared `Container` grid so it lines up
+ * with the page. Only the placement and the width change — the
+ * recorded states, the choices and the wording are the ones Issue #495
+ * shipped. On a narrow viewport the band stacks (text, then actions)
+ * and keeps its height rather than shrinking the text: the decision
+ * has to stay readable.
  */
 export function AnalyticsConsentPanel({
 	state,
@@ -197,10 +214,11 @@ export function AnalyticsConsentPanel({
 }: AnalyticsConsentPanelProps) {
 	const headingId = 'analytics-consent-heading';
 	const descriptionId = 'analytics-consent-description';
-	// The surface is measured so the document can reserve the space it
-	// occupies (Issue #395, SC 2.4.11).
+	// The band is measured so the document can reserve the space it
+	// occupies (Issue #395, SC 2.4.11), and it sits flush against the
+	// bottom of the viewport (Issue #783).
 	const [surface, setSurface] = useState<HTMLElement | null>(null);
-	useFocusOffset(surface);
+	useFocusOffset(surface, 0);
 	// A refused write outranks the recorded state: the browser does not
 	// hold the decision, so reporting "許可されています" here would be a
 	// claim about a state the visitor no longer has.
@@ -244,89 +262,120 @@ export function AnalyticsConsentPanel({
 			data-analytics-off-switch={offSwitch ?? 'none'}
 			className={css({
 				position: 'fixed',
-				insetInline: { base: '3', lg: '6' },
-				bottom: '3',
+				insetInline: 0,
+				bottom: 0,
 				zIndex: '20',
-				maxWidth: '560px',
-				marginInline: 'auto',
-				padding: '4',
-				borderRadius: 'lg',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
 				backgroundColor: 'bg.surface',
 				color: 'text.default',
-				boxShadow: 'sm',
 			})}
 		>
-			<p
+			<Container
 				className={css({
-					margin: '0',
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					letterSpacing: '0.06em',
-					color: 'text.muted',
+					display: 'grid',
+					gridTemplateColumns: { base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) auto' },
+					columnGap: '8',
+					rowGap: '4',
+					alignItems: 'start',
+					paddingBlock: { base: '4', lg: '5' },
 				})}
 			>
-				{ANALYTICS_CONSENT_COPY.eyebrow} / {statusLabel}
-			</p>
-			<h2
-				id={headingId}
-				className={css({
-					margin: '0',
-					marginBlockStart: '2',
-					fontFamily: 'heading',
-					fontSize: 'md',
-					fontWeight: '700',
-					lineHeight: '1.3',
-					color: 'text.default',
-				})}
-			>
-				{headline}
-			</h2>
-			<p
-				id={descriptionId}
-				className={css({
-					margin: '0',
-					marginBlockStart: '2',
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					lineHeight: '1.7',
-					color: 'text.muted',
-				})}
-			>
-				{description}
-			</p>
-			{/* Status region: the decision and any storage failure are
-			    announced politely, and neither moves focus — a visitor who
-			    activated a button should keep their place in the page. */}
-			<p
-				aria-live="polite"
-				data-testid="analytics-consent-status"
-				className={css({
-					margin: '0',
-					marginBlockStart: '2',
-					fontFamily: 'sans',
-					fontSize: 'xs',
-					lineHeight: '1.6',
-					color: writeFailed ? 'accent.negative' : 'text.muted',
-				})}
-			>
-				{statusMessage}
-			</p>
-			<div
-				className={css({
-					marginBlockStart: '4',
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: '2',
-				})}
-			>
-				{offSwitch === null ? (
+				<div className={css({ maxWidth: { lg: '68ch' } })}>
+					<p
+						className={css({
+							margin: '0',
+							fontFamily: 'mono',
+							fontSize: 'xs',
+							letterSpacing: '0.06em',
+							color: 'text.muted',
+						})}
+					>
+						{ANALYTICS_CONSENT_COPY.eyebrow} / {statusLabel}
+					</p>
+					<h2
+						id={headingId}
+						className={css({
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'heading',
+							fontSize: 'md',
+							fontWeight: '700',
+							lineHeight: '1.3',
+							color: 'text.default',
+						})}
+					>
+						{headline}
+					</h2>
+					<p
+						id={descriptionId}
+						className={css({
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'sans',
+							fontSize: 'sm',
+							lineHeight: '1.7',
+							color: 'text.muted',
+						})}
+					>
+						{description}
+					</p>
+					{/* Status region: the decision and any storage failure are
+					    announced politely, and neither moves focus — a visitor who
+					    activated a button should keep their place in the page. */}
+					<p
+						aria-live="polite"
+						data-testid="analytics-consent-status"
+						className={css({
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'sans',
+							fontSize: 'xs',
+							lineHeight: '1.6',
+							color: writeFailed ? 'accent.negative' : 'text.muted',
+						})}
+					>
+						{statusMessage}
+					</p>
+				</div>
+				<div
+					className={css({
+						display: 'flex',
+						flexWrap: 'wrap',
+						gap: '2',
+						alignItems: 'center',
+						justifySelf: { base: 'start', lg: 'end' },
+					})}
+				>
+					{offSwitch === null ? (
+						<button
+							type="button"
+							onClick={() => onDecide('granted')}
+							data-testid="analytics-consent-grant"
+							className={css({
+								minHeight: '10',
+								paddingInline: '4',
+								borderRadius: 'md',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.subtle',
+								backgroundColor: 'bg.accent',
+								color: 'text.inverse',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+								cursor: 'pointer',
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							{ANALYTICS_CONSENT_COPY.grantLabel}
+						</button>
+					) : null}
 					<button
 						type="button"
-						onClick={() => onDecide('granted')}
-						data-testid="analytics-consent-grant"
+						onClick={() => onDecide('denied')}
+						data-testid="analytics-consent-deny"
 						className={css({
 							minHeight: '10',
 							paddingInline: '4',
@@ -334,8 +383,8 @@ export function AnalyticsConsentPanel({
 							borderWidth: '1px',
 							borderStyle: 'solid',
 							borderColor: 'border.subtle',
-							backgroundColor: 'bg.accent',
-							color: 'text.inverse',
+							backgroundColor: 'bg.canvas',
+							color: 'text.default',
 							fontFamily: 'sans',
 							fontSize: 'sm',
 							fontWeight: '600',
@@ -346,35 +395,10 @@ export function AnalyticsConsentPanel({
 							},
 						})}
 					>
-						{ANALYTICS_CONSENT_COPY.grantLabel}
+						{ANALYTICS_CONSENT_COPY.denyLabel}
 					</button>
-				) : null}
-				<button
-					type="button"
-					onClick={() => onDecide('denied')}
-					data-testid="analytics-consent-deny"
-					className={css({
-						minHeight: '10',
-						paddingInline: '4',
-						borderRadius: 'md',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.subtle',
-						backgroundColor: 'bg.canvas',
-						color: 'text.default',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						fontWeight: '600',
-						cursor: 'pointer',
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '2px',
-						},
-					})}
-				>
-					{ANALYTICS_CONSENT_COPY.denyLabel}
-				</button>
-			</div>
+				</div>
+			</Container>
 		</section>
 	);
 }
@@ -471,7 +495,8 @@ export function AnalyticsConsentControl() {
 	// The collapsed status control is a fixed overlay too, so it publishes
 	// its own height for the same compensation (Issue #395, SC 2.4.11).
 	const [surface, setSurface] = useState<HTMLElement | null>(null);
-	useFocusOffset(surface);
+	// `bottom: 3` is a 0.75rem gap above the viewport edge (12px).
+	useFocusOffset(surface, 12);
 
 	const decide = useCallback((decision: AnalyticsConsentDecision) => {
 		const written = writeAnalyticsConsent(decision);

@@ -10,6 +10,7 @@
  * between directions, never between two different rendering setups.
  */
 import { createFileRoute, useLocation, useNavigate } from '@tanstack/react-router';
+import { ColourSystemSection } from '../preview/colour-specimens';
 import { PALETTES } from '../preview/preview-palettes.mjs';
 import { MonochromeSection } from '../preview/specimens';
 
@@ -93,6 +94,9 @@ function ComparePage() {
 					<a href="#scale" style={jump}>
 						節 1 階層
 					</a>
+					<a href="#colour" style={jump}>
+						節 2 色の体系
+					</a>
 				</div>
 				<div style={{ display: 'flex', gap: 6, marginInlineStart: 'auto' }}>
 					{(['dark', 'light'] as const).map((t) => (
@@ -104,6 +108,7 @@ function ComparePage() {
 			</header>
 
 			<MonochromeSection />
+			<ColourSystemSection />
 
 			<section style={{ padding: '28px 20px 0', borderTop: '1px solid #2b3038' }}>
 				<h2

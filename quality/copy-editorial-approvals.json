@@ -1816,13 +1816,13 @@
 				}
 			],
 			"provenance": {
-				"kind": "owner-review",
+				"kind": "agent-recorded",
 				"reference": "https://github.com/rebuildup/my-web-2026/issues/749",
 				"recordedBy": "Claude Code (agent)",
-				"ownerConfirmation": "confirmed",
+				"ownerConfirmation": "unconfirmed",
 				"evidence": [
-					"2026-11-01、repository owner がこの change set を「英日併記の記法として可」として承認した（agent へのレビュー依頼への回答）。",
-					"owner の判断は Issue #749 のコメントとして残す。gate が検査するのは reference の「形」だけで、reference が誰の comment を指すかは証明しない。owner が自分のアカウントでコメントを投稿したら、この reference をそのコメント URL に置き換える。agent が owner の判断を代筆したコメントは artefact として数えない（runbook §3.4）。",
+					"2026-11-01、repository owner がこの change set を「英日併記の記法として可」として承認した（agent へのレビュー依頼への回答）。この回答は対話をigadoの artefact であり、追跡可能な GitHub artefact ではない。",
+					"owner の判断は Issue #749 のコメントとして残す。**owner が自分のアカウントでコメントを投稿するまでは、この記録は owner 承認ではなく「agent が記録したレビュー予定」** であり、provenance.kind は agent-recorded、ownerConfirmation は unconfirmed のままにする（gate は verdict NEEDS REVIEW を返す）。コメントが投稿されたら、reference をそのコメント URL に、kind を owner-review に、ownerConfirmation を confirmed に更新する。agent が owner の判断を代筆したコメントは artefact として数えない（runbook §3.4）。",
 					"編集補助（pi）の出力は evidence であり、承認ではない。採決は owner が行い、採否の根拠は comparisons と disposition に記した。"
 				]
 			}

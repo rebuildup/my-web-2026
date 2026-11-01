@@ -261,6 +261,19 @@ gates:
       # Issue #566: this one step is now `vitest run` plus the discovered
       # `scripts/*.test.mjs` suite (scripts/run-script-tests.mjs), so a new
       # script test needs no edit to this list.
+      #
+      # Issue #721: the rollback rehearsal is now EXERCISED, not only
+      # rendered: `scripts/_rollback-fixture.test.mjs` and
+      # `scripts/_rollback-rehearsal.test.mjs` drive the documented
+      # failure paths against a disposable local fixture (state before →
+      # failure injection → rollback decision → restore → state after),
+      # with negative controls that must fail. Both files are
+      # `scripts/*.test.mjs`, so they are discovered by the `test`
+      # component below by convention — the rehearsal is therefore
+      # inside `gates.fast` without a new component line, and the
+      # pinned plan in `scripts/_quality-gate-plan.test.mjs` stays
+      # intact. The operator-facing entry point is
+      # `pnpm run rollback:rehearsal:check`.
       - 'pnpm run test' # vitest run (unit + integration SELF) + scripts/*.test.mjs
       # Issue #419: the SEO HTTP STATUS contract. Offline and
       # read-only like the index boundary above, but it answers a

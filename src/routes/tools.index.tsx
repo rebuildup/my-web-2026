@@ -124,7 +124,14 @@ const TOOL_PREVIEWS: Readonly<
 	Record<string, { src: string; alt: string; width: number; height: number }>
 > = {
 	prototype: {
-		src: '/tools/prototype/overview.webp',
+		// `/tools/<slug>/` is the Tool's OWN artifact namespace: the
+		// deploy-artifact gates compare the built `tools/**` file set
+		// with the copied one exactly (`scripts/sync-cf-build-output.mjs`,
+		// `scripts/verify-cf-build-output.mjs`), so a host-rendered
+		// thumbnail must not sit in that tree — it made the sync count
+		// 14 files against 13 built and failed `build:production`. The
+		// preview lives in its own namespace instead.
+		src: '/tool-previews/prototype.webp',
 		alt: 'ProtoType のタイトル画面。中央に Game Start、左にゲーム・ランキング・サイト設定のメニューが並んでいる。',
 		// The capture is the Tool FRAME's box, not the page: at the
 		// script's 1440 × 900 context the frame is 811 px tall (900 minus

@@ -5,7 +5,7 @@
  * The `/tools` index shows a screenshot for the Tools whose screen
  * explains them better than a sentence does (owner instruction
  * 2026-11-01: ツールの内容が分かりづらい。スクショなど貼ると適切). The
- * committed artefacts are `public/tools/<slug>/overview.webp`; this
+ * committed artefacts are `public/tool-previews/<slug>.webp`; this
  * script is the committed capture, so the image is evidence rather
  * than an assertion. The files are claimed by
  * `quality/asset-license-inventory.json` (record `tool-preview-screens`),
@@ -89,7 +89,7 @@ const WEBP_QUALITY = 80;
 // `pnpm run … -- <arg>` forwards the `--` separator to the script.
 const cliArgs = process.argv.slice(2).filter((arg) => arg !== '--');
 const baseUrl = cliArgs[0] ?? 'http://127.0.0.1:4173';
-const outputRoot = resolve(cliArgs[1] ?? 'public/tools');
+const outputRoot = resolve(cliArgs[1] ?? 'public/tool-previews');
 
 const browser = await chromium.launch();
 try {
@@ -167,7 +167,10 @@ try {
 			.webp({ quality: WEBP_QUALITY })
 			.toBuffer();
 
-		const outPath = join(outputRoot, target.slug, 'overview.webp');
+		// One flat namespace, deliberately OUTSIDE `/tools/<slug>/`: that
+		// path is the Tool's own artifact tree, and the deploy-artifact
+		// gates compare it file-for-file with the built bundle.
+		const outPath = join(outputRoot, `${target.slug}.webp`);
 		mkdirSync(dirname(outPath), { recursive: true });
 		await sharp(webp).toFile(outPath);
 		const meta = await sharp(outPath).metadata();

@@ -447,8 +447,8 @@
 			"kind": "image",
 			"title": "ツール一覧のプレビュー画像（WebP）",
 			"summary": "scripts/capture-tool-previews.mjs が /tools/prototype の実画面を撮影して生成する。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark は表示不具合（Issue #786）が直るまで撮影対象から外しており、画像を持たない。",
-			"covers": ["public/tools/**"],
-			"publicPaths": ["/tools/prototype/overview.webp"],
+			"covers": ["public/tool-previews/**"],
+			"publicPaths": ["/tool-previews/prototype.webp"],
 			"origin": "repository-generated",
 			"rightsHolder": "rebuildup",
 			"license": {

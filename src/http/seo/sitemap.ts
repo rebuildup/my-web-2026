@@ -216,6 +216,12 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 			'Public keyboard reference, linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed source snapshot is synchronised.',
 	},
 	{
+		route: '/compare',
+		kind: 'route',
+		reason:
+			'Issue #764 comparison harness. It is noindex, unlinked from every product surface, and deleted with the branch that serves it.',
+	},
+	{
 		route: '/projects/dotfiles',
 		kind: 'route',
 		reason:

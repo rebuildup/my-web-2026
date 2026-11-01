@@ -627,14 +627,21 @@ a CI step: the public Japanese copy editorial approval gate (Issue
 Japanese text a pull request changed in a public copy surface
 (`quality/copy-editorial-surfaces.json`) — against the owner approval
 records in `quality/copy-editorial-approvals.json`, and it runs as the
-`Copy editorial approval gate` step of the `validate` job on
-`pull_request` events. `validate:fast` is an offline, repository-state
-gate by contract, and a diff only exists against a base branch, so the
-gate is a pull-request gate rather than a release gate. Its verdicts
-are `pass` / `fail` (a review was recorded and it says no) / `not run`
-(NEEDS REVIEW — no owner decision is recorded) / `not applicable` (no
-public Japanese copy changed); the editing aid's output is evidence and
-never approves anything on its own. Decision:
+`Copy editorial evidence (pending owner review is advisory)` step of the
+`validate` job on `pull_request` events. `validate:fast` is an offline,
+repository-state gate by contract, and a diff only exists against a base
+branch, so the gate is a pull-request gate rather than a release gate.
+Its verdicts are `pass` / `fail` (a review was recorded and it says no) /
+`not run` (NEEDS REVIEW — no owner decision is recorded) / `not
+applicable` (no public Japanese copy changed); the editing aid's output
+is evidence and never approves anything on its own. In the required PR
+step (Issue #761) the `not run` verdict is **advisory**: it emits a CI
+warning and exits 0 so integration validation and Playwright E2E are not
+blocked by a missing owner comment. The default CLI invocation stays
+strict (exit 1), an explicit rejection or an inconsistent record still
+fails, and an unreadable diff still fails closed. The advisory mode
+never manufactures an owner decision — a record nobody confirmed stays
+`agent-recorded / unconfirmed`. Decision:
 [`quality/profile.yaml`](quality/profile.yaml#copy_editorial_approval).
 Operator reference:
 [`docs/runbook/copy-editorial-approval.md`](docs/runbook/copy-editorial-approval.md).

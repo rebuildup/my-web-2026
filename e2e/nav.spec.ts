@@ -17,11 +17,14 @@ import { NAV_ROSTER } from './nav-roster';
  *     entries, `/design-system` added by Issue #181.
  *   - Issue #288 removed the nav (and breadcrumbs) from every Tools
  *     surface (`/tools`, `/tools/<slug>`, and the 404 / disabled
- *     states). Issue #785 restores them on the `/tools` INDEX only
+ *     states). Issue #785 restores them — first on the `/tools` index
  *     (owner instruction 2026-11-01: the index had no header and no
- *     breadcrumb trail); the `/tools/<slug>` shell, the disabled
- *     placeholder and the 404 keep #288's full-height, chrome-free
- *     arrangement.
+ *     breadcrumb trail), then on the DETAIL route and every one of its
+ *     states when the owner abolished #288 outright (「`/tools` は
+ *     index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」).
+ *     The overflow #288 was guarding against is handled by layout now:
+ *     the shell is a `100dvh` flex column whose frame takes only the
+ *     space the chrome leaves.
  *
  * Scopes:
  *   1. `/` does NOT mount the nav (the #199 contract).
@@ -33,8 +36,8 @@ import { NAV_ROSTER } from './nav-roster';
  *   5. Home → Tools one click is still possible, via the
  *      capabilities card rather than the nav.
  *   6. The nav does NOT appear on `/admin/*` (admin owns its own
- *      chrome) nor on the `/tools/<slug>` shell and its 404 surface
- *      (Issue #288).
+ *      chrome). It DOES appear on every `/tools/<slug>` state since
+ *      Issue #785 abolished #288.
  *   7. The mobile affordance collapses the nav below the `md`
  *      breakpoint.
  */
@@ -42,8 +45,8 @@ import { NAV_ROSTER } from './nav-roster';
 /**
  * Pages that opt into `PublicNav`. `/portfolio/<slug>` fixtures
  * depend on published D1 rows, so they are not part of this loop.
- * `/tools` opts in since Issue #785; the per-Tool shell does NOT —
- * see the Issue #288 exclusion describe below.
+ * `/tools` opts in since Issue #785; the per-Tool shell mounts the
+ * same chrome and is covered by the Tools describe below.
  */
 const NAV_OPT_IN_PAGES: ReadonlyArray<{ path: string; h1: RegExp }> = [
 	{ path: '/about', h1: /木村友亮/ },
@@ -145,11 +148,13 @@ test.describe('public nav — Home → Tools one-click (Issue #168)', () => {
 	});
 });
 
-test.describe('public nav — Tools exclusion (Issue #288, narrowed by #785)', () => {
-	// The per-Tool shell and its 404 keep #288's chrome-free
-	// arrangement so the iframe can use the full viewport. The INDEX
-	// opts back in since #785: the owner read it as a page with no
-	// header and no breadcrumb trail.
+test.describe('public nav — Tools surfaces (Issue #288 abolished by #785)', () => {
+	// Issue #288 took the chrome off every Tools surface so the iframe
+	// could own the viewport. The owner rejected that (2026-11-01), so
+	// this describe now fixes PRESENCE in both directions it used to
+	// assert absence: index, the per-Tool shell (including its consent
+	// state, which is what a visitor sees first), the designed 404 and
+	// the 「準備中」 placeholder.
 	test('is mounted on /tools (Issue #785 restores the index chrome)', async ({ page }) => {
 		const res = await page.goto('/tools');
 		expect(res?.status()).toBe(200);
@@ -159,15 +164,14 @@ test.describe('public nav — Tools exclusion (Issue #288, narrowed by #785)', (
 		await expect(page.locator('h1').first()).toContainText(/ツール/);
 	});
 
-	test('is NOT mounted on /tools/<slug> (iframe shell)', async ({ page }) => {
+	test('is mounted on /tools/<slug> (iframe shell)', async ({ page }) => {
 		const res = await page.goto('/tools/prototype');
 		expect(res?.status()).toBe(200);
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
-		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(1);
 		// Issue #498: ProtoType declares third-party contacts, so the shell
-		// opens on the consent notice. This assertion is about the NAV — the
-		// Tool frame must not drag the public nav back — and the frame is what
-		// the visitor asked for by activating the load.
+		// opens on the consent notice. The chrome is mounted in that state
+		// too — the visitor has to be able to leave before activating.
 		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
 		await page.waitForLoadState('networkidle');
 		// The notice is server-rendered: the button exists before React
@@ -191,13 +195,39 @@ test.describe('public nav — Tools exclusion (Issue #288, narrowed by #785)', (
 			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
 		).toBe(true);
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
+		// The chrome survives the state change: the frame replaces the
+		// notice INSIDE the page, not the page.
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(1);
 	});
 
-	test('is NOT mounted on the Tools 404 surface', async ({ page }) => {
+	test('is mounted on the Tools 404 surface', async ({ page }) => {
 		const res = await page.goto('/tools/definitely-not-a-registered-tool');
 		expect(res?.status()).toBe(404);
 		await expect(page.locator('[data-testid="tools-not-found"]')).toBeVisible();
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		// NO breadcrumb on this state, and that is the resolver working as
+		// designed: `route-labels.ts` drops the `$slug` leaf when the loader
+		// threw (`dropOnMissingLoaderData`), and a flat route tree has no
+		// other labeled match to fall back on — so `resolveBreadcrumbChain`
+		// returns null and the primitive renders nothing. Rendering a stub
+		// "Tool" segment for a slug that does not exist is the defect
+		// Issue #183 removed; the nav above is what gets the visitor out.
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+	});
+
+	test('is mounted on the 「準備中」 placeholder', async ({ page }) => {
+		const res = await page.goto('/tools/text-counter');
+		expect(res?.status()).toBe(200);
+		await expect(page.locator('[data-tool-state="host_disabled"]')).toBeVisible();
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(1);
+		// The leaf label is the Tool's own name, not the static "Tool"
+		// fallback — `route-labels.ts` reads it off the loader's
+		// `{ state, tool }` wrapper.
+		await expect(page.locator('nav[aria-label="パンくず"] [aria-current="page"]')).toHaveText(
+			'Text Counter',
+		);
 	});
 });
 

@@ -56,8 +56,9 @@
 「ペットの成果物は ChatGPT Library に保存する」と定めており
 （`~/.codex/plugins/cache/openai-curated-remote/work-pets/0.1.6/references/sprite-sheet-contract.md`
 §Save artifacts to Library）、この Library の実体が上記 `~/Documents/Codex/**` である。
-`~/.codex/pets/` はアバター上書きのローカルキャッシュ枠という位置づけで、
-正本の置き場所ではない。
+つまり正本は Library 側にあり、`~/.codex/pets/` が空であることは
+「素材が無い」ことを意味しない。`~/.codex/pets/` の役割はこの調査では特定していない
+（空だったという事実だけを記録する）。
 
 ### 2.2 再取得経路（owner が何かをする必要があるか）
 

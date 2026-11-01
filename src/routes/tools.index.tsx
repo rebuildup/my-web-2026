@@ -91,7 +91,7 @@ const TOOL_ICONS: Readonly<Record<string, MaterialSymbolName>> = {
 	readmark: 'menu_book',
 	'text-counter': 'text_fields',
 	'color-palette': 'palette',
-	'sequential-png-preview': 'animation',
+	'sequential-png-preview': 'motion',
 	svg2tsx: 'code',
 	'business-mail-block': 'mail',
 	'code-type-p5': 'movie',

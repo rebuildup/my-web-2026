@@ -11,6 +11,7 @@
  */
 import { createFileRoute, useLocation, useNavigate } from '@tanstack/react-router';
 import { PALETTES } from '../preview/preview-palettes.mjs';
+import { MonochromeSection } from '../preview/specimens';
 
 const ROUTES = [
 	{ path: '/', label: 'Home' },
@@ -56,9 +57,7 @@ function ComparePage() {
 		<div style={{ minHeight: '100vh', background: '#101215', color: '#e8ecf3' }}>
 			{/* The board is an internal comparison surface: no consent card, and
 			    the shell's body keeps the board's ground instead of white. */}
-			<style>
-				{'body{background:#101215}section[class*="pos_fixed"]{display:none!important}'}
-			</style>
+			<style>{'body{background:#101215}section[class*="pos_fixed"]{display:none!important}'}</style>
 			<header
 				style={{
 					position: 'sticky',
@@ -90,6 +89,11 @@ function ComparePage() {
 						</button>
 					))}
 				</div>
+				<div style={{ display: 'flex', gap: 6 }}>
+					<a href="#scale" style={jump}>
+						節 1 階層
+					</a>
+				</div>
 				<div style={{ display: 'flex', gap: 6, marginInlineStart: 'auto' }}>
 					{(['dark', 'light'] as const).map((t) => (
 						<button key={t} type="button" onClick={() => go({ theme: t })} style={btn(t === theme)}>
@@ -99,6 +103,24 @@ function ComparePage() {
 				</div>
 			</header>
 
+			<MonochromeSection />
+
+			<section style={{ padding: '28px 20px 0', borderTop: '1px solid #2b3038' }}>
+				<h2
+					style={{ font: '600 20px/1.3 ui-sans-serif, system-ui, sans-serif', margin: '0 0 4px' }}
+				>
+					参考 — A / B / C を実 route で並べた板（B 採用前の記録）
+				</h2>
+				<p
+					style={{
+						font: '12px/1.5 ui-sans-serif, system-ui, sans-serif',
+						opacity: 0.62,
+						margin: '0 0 8px',
+					}}
+				>
+					下は各 case を実 route の iframe で描いたもの。direction の決定（B）はこの記録より後です。
+				</p>
+			</section>
 			{DIRECTIONS.map((d) => {
 				const palette = PALETTES[d.id][theme];
 				const search = `direction=${d.id}&theme=${theme}`;
@@ -217,6 +239,15 @@ function Frame({
 		</div>
 	);
 }
+
+const jump: React.CSSProperties = {
+	padding: '5px 10px',
+	borderRadius: 4,
+	background: '#23272e',
+	color: 'inherit',
+	font: '12px/1.2 inherit',
+	textDecoration: 'none',
+};
 
 const cap: React.CSSProperties = {
 	font: '11px/1.4 ui-monospace, monospace',

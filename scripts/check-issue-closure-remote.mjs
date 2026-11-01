@@ -37,11 +37,28 @@
  *
  *   2. **Closures with no record and no evidence** (R001). Every issue
  *      closed inside the audited window must carry EITHER a ledger
- *      entry (a recorded decision) OR evidence attached to the closure
- *      itself — a commit that referenced the issue, a pull request that
- *      delivered it, or a comment that names the artefact. A closure
+ *      entry (a recorded decision) OR a trace attached to the closure
+ *      itself — a commit that referenced the issue, or a comment that
+ *      names the artefact or records an explicit decision. A closure
  *      with none of those is exactly the 2026-10-31 shape: the issue
  *      disappeared from the backlog with nothing a reader could open.
+ *
+ *      A bare pull-request reference is deliberately NOT a trace. The
+ *      audit's own standard says that "the PR was merged" does not
+ *      prove the issue's goal was reached, and the measurement agrees:
+ *      on the reconstructed 2026-10-31 state, treating a merged-PR
+ *      reference as evidence caught only 57 of the 132 swept issues,
+ *      while the commit-or-comment bar caught 92 of the 104 issues
+ *      the audit judged unsupported or awaiting the owner.
+ *
+ *   3. **Mass closures with one template** (R006). A closure operation
+ *      that shares ONE closing comment across several issues is a mass
+ *      operation, and a mass operation needs a per-issue record. When
+ *      such a cluster uses the release-branch wording ("回収完了" /
+ *      "統合完了" / "一括クローズ"), the gate reports the cluster even
+ *      if individual issues happen to carry an incidental reference:
+ *      the damage of 2026-10-31 was the operation, not the individual
+ *      comments.
  *
  * The window
  * ----------
@@ -63,10 +80,12 @@
  * Failure contract
  * ----------------
  *   error → the step fails. An issue was closed with neither a ledger
- *           entry nor evidence (R001), the ledger and GitHub disagree
+ *           entry nor a trace (R001), the ledger and GitHub disagree
  *           about a tracked issue's state (R002 / R003), a ledger entry
- *           cannot be read (R004), or the ledger's own population count
- *           does not match its entries (R005).
+ *           cannot be read (R004), the ledger's own population count
+ *           does not match its entries (R005), or a mass closure used
+ *           the release-branch template without a per-issue record
+ *           (R006).
  *   The API being unreachable is exit 2 (unusable input), never a clean
  *   bill of health: a registry outage must not read as "everything is
  *           accounted for".
@@ -197,7 +216,7 @@ export async function listClosedIssues({ repo, since, token = null, fetchImpl = 
  * costs a handful of requests instead of one request per issue.
  *
  * @param {{repo: string, numbers: number[], token: string|null, fetchImpl?: typeof fetch, batchSize?: number}} options
- * @returns {Promise<Map<number, {number: number, state: string, closedAt: string|null, comments: string[], referencedPullRequests: number[], referencedCommits: string[]}>>}
+ * @returns {Promise<Map<number, {number: number, state: string, closedAt: string|null, comments: Array<{body: string, createdAt: string|null}>, referencedPullRequests: number[], referencedCommits: string[]}>>}
  */
 export async function fetchIssueStates({
 	repo,
@@ -218,7 +237,7 @@ i${offset}: issue(number: ${number}) {
   number
   state
   closedAt
-  comments(last: 5) { nodes { body } }
+  comments(last: 30) { nodes { body createdAt } }
   timelineItems(first: 30, itemTypes: [CROSS_REFERENCED_EVENT, REFERENCED_EVENT]) {
     nodes {
       __typename
@@ -255,7 +274,10 @@ i${offset}: issue(number: ${number}) {
 				number: value.number,
 				state: value.state,
 				closedAt: value.closedAt ?? null,
-				comments: (value.comments?.nodes ?? []).map((node) => node?.body ?? ''),
+				comments: (value.comments?.nodes ?? []).map((node) => ({
+					body: node?.body ?? '',
+					createdAt: node?.createdAt ?? null,
+				})),
 				referencedPullRequests: timeline
 					.filter((node) => node?.__typename === 'CrossReferencedEvent' && node.source?.number)
 					.map((node) => node.source.number),
@@ -285,28 +307,56 @@ export function isSweepTemplate(body) {
  *
  * A trace is one of:
  *   - a commit whose message referenced the issue,
- *   - a pull request that referenced the issue,
  *   - a comment that names an artefact (a pull request, a commit, a URL)
  *     or that records an explicit decision (a hold, a rejection, a
  *     duplicate, a deferral).
  *
- * The release-branch template is NOT a trace: it states that a branch
- * was integrated, not that this issue's own goal was reached.
+ * A bare pull-request reference is NOT a trace: the audit's standard is
+ * that "the PR was merged" does not prove the issue's goal was reached,
+ * and the measurement agrees — a merged-PR reference on the
+ * reconstructed 2026-10-31 state left 57 of the 132 swept issues
+ * looking accounted for, against 92 of the 104 the audit judged
+ * unsupported or awaiting the owner under the commit-or-comment bar.
  *
- * @param {{comments: string[], referencedPullRequests: number[], referencedCommits: string[]}|undefined} issue
+ * The release-branch template is NOT a trace either: it states that a
+ * branch was integrated, not that this issue's own goal was reached.
+ *
+ * @param {{comments: Array<{body: string, createdAt: string|null}>, referencedPullRequests: number[], referencedCommits: string[]}|undefined} issue
  * @returns {boolean}
  */
 export function hasClosureTrace(issue) {
 	if (!issue) return false;
-	if (issue.referencedCommits.length > 0) return true;
-	if (issue.referencedPullRequests.length > 0) return true;
-	return issue.comments.some(
-		(body) =>
-			typeof body === 'string' &&
-			body.trim() !== '' &&
-			!isSweepTemplate(body) &&
-			(ARTEFACT_PATTERN.test(body) || DECISION_PATTERN.test(body)),
+	if ((issue.referencedCommits ?? []).length > 0) return true;
+	return (issue.comments ?? []).some(
+		(comment) =>
+			typeof comment?.body === 'string' &&
+			comment.body.trim() !== '' &&
+			!isSweepTemplate(comment.body) &&
+			(ARTEFACT_PATTERN.test(comment.body) || DECISION_PATTERN.test(comment.body)),
 	);
+}
+
+/**
+ * The comment the issue was closed with: the last one written at or
+ * before the closure.
+ *
+ * A cluster detector needs the CLOSING comment, not any comment: a
+ * later comment (a recovery note, a follow-up discussion) says nothing
+ * about how the issue was closed.
+ *
+ * @param {{closedAt: string|null, comments: Array<{body: string, createdAt: string|null}>}} issue
+ * @returns {string|null}
+ */
+export function closingComment(issue) {
+	if (!issue) return null;
+	const closedAt = issue.closedAt ? new Date(issue.closedAt).getTime() : Number.POSITIVE_INFINITY;
+	const before = (issue.comments ?? []).filter((comment) => {
+		if (!comment?.createdAt) return true;
+		return new Date(comment.createdAt).getTime() <= closedAt;
+	});
+	if (before.length === 0) return null;
+	const last = before[before.length - 1];
+	return typeof last.body === 'string' && last.body.trim() !== '' ? last.body : null;
 }
 
 /**
@@ -327,7 +377,7 @@ export function compare({ closed, ledger, states }) {
 			rule: 'R001',
 			issue: issue.number,
 			message:
-				'closed with no ledger entry and no trace (no referenced commit, no referenced pull request, no comment naming an artefact or recording a decision)',
+				'closed with no ledger entry and no trace (no referenced commit, and no comment naming an artefact or recording a decision) — record the outcome before closing it',
 		});
 	}
 
@@ -370,6 +420,54 @@ export function compare({ closed, ledger, states }) {
 		});
 	}
 
+	findings.push(...detectMassClosure({ closed, states, byIssue }));
+
+	return findings;
+}
+
+/**
+ * How many issues may share one closing comment before the gate calls
+ * it a mass operation.
+ *
+ * The 2026-10-31 sweep wrote the same comment on 124 issues. A mass
+ * operation is not itself wrong — closing ten issues that ten merged
+ * pull requests delivered is normal development work — but it needs a
+ * per-issue record, and the release-branch wording is the specific
+ * pattern the audit has to forbid.
+ */
+const MASS_CLOSURE_THRESHOLD = 5;
+
+/**
+ * Detect a mass closure that used the release-branch template.
+ *
+ * Issues the ledger records are exempt: the ledger IS the per-issue
+ * record of decisions, and the offline gate refuses to accept the
+ * template comment as that record's evidence.
+ *
+ * @param {{closed: Array<{number: number}>, states: Map<number, object>, byIssue: Map<number, unknown>}} input
+ * @returns {Array<{rule: string, issue: number|null, message: string}>}
+ */
+export function detectMassClosure({ closed, states, byIssue }) {
+	const clusters = new Map();
+	for (const issue of closed) {
+		if (byIssue.has(issue.number)) continue; // the ledger records this closure
+		const comment = closingComment(states.get(issue.number));
+		if (comment === null || !isSweepTemplate(comment)) continue;
+		const key = comment.trim();
+		if (!clusters.has(key)) clusters.set(key, []);
+		clusters.get(key).push(issue.number);
+	}
+	const findings = [];
+	for (const members of clusters.values()) {
+		if (members.length < MASS_CLOSURE_THRESHOLD) continue;
+		findings.push({
+			rule: 'R006',
+			issue: null,
+			message:
+				`${members.length} issues were closed with the same release-branch template comment and no per-issue record ` +
+				`(#${members.slice(0, 10).join(', #')}${members.length > 10 ? ', …' : ''}) — record each issue separately before closing it`,
+		});
+	}
 	return findings;
 }
 

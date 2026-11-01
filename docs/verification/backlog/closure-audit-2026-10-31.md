@@ -82,6 +82,8 @@
 - そのため **「backlog 回収」と「実装完了」が同一の操作として実行された**。
 - 結果として **未実装の構想・研究待ちの構想・採用判断待ちの構想が、完了済みとして管理対象から消えた**。
 
+**運用ルール側の原因（リポジトリ内の記録から確定できるもの）**: 2026-11-01 時点の `skills/github-delivery/SKILL.md` には、sprint cycle の手順 12 として「target release trunkへlandしたticketのlinked Issueを明示的にcloseし、Project statusをDoneへ更新する」と書かれており、一括landing時の指示は「landing後に各Issue/Project stateを明示的にreconcileする」だけでした。Done 条件には「acceptance criteria satisfied」が挙がっていましたが、**それを確認する手順も、その記録を残す場所も定義されていませんでした**。「release trunk へ land した」ことが手元の完了根拠として使える形になっていたため、回収スウィープは**手順に従って動けます**。DRY な言い換えではなく、実行可能で有害な隙間はここにあります。修正は `skills/github-delivery/SKILL.md`（Done 条件・一括landing条項・手順 12）へ入れ、AGENTS.md §10 の fork table にその独自差分として記録しました。
+
 **断定できない部分**: 実行した主体がどのエージェント／手順だったかは、**リポジトリ内に記録が残っていない**ため特定できません（`scripts/` に該当スクリプトなし、10-31 の commit にも回収処理の記録なし）。GH Actions の該当 run もありません。分かるのは「owner 資格で、テンプレートコメントで、17 時間にわたってクローズされた」という事実だけです。
 
 ## 5. 再発防止（実装済み）
@@ -91,13 +93,41 @@
 | 状態の語彙 | 8 状態の closure vocabulary を `docs/runbook/issue-lifecycle.md` §1 に定義 | `scripts/check-issue-closure.test.mjs` |
 | 台帳 | `quality/issue-closure-ledger.json`（132 件の per-Issue 記録） | `pnpm run issue:closure:check` |
 | オフライン gate | `scripts/check-issue-closure.mjs`（状態・証拠・判断理由・著作者の整合、テンプレートコメントを証拠として拒否 = E006） | `node --test scripts/check-issue-closure.test.mjs` |
-| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub の各 Issue の現在状態とクローズ時の追跡を直接読み、台帳と食い違えば R002/R003/R004/R005、**台帳に記録が無くかつ追跡も無い**クローズを R001 として検出） | `node --test scripts/check-issue-closure-remote.test.mjs` |
+| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub の各 Issue の現在状態とクローズ時の追跡を直接読み、台帳と食い違えば R002/R003/R004/R005、**台帳に記録が無くかつ追跡も無い**クローズを R001、**同一テンプレートで一括クローズされた**群を R006 として検出） | `node --test scripts/check-issue-closure-remote.test.mjs` |
 | プロジェクト契約 | AGENTS.md §6「Issue closure requires evidence」 | `node --test scripts/_quality-gate-plan.test.mjs` |
+| 運用手順の修正 | `skills/github-delivery/SKILL.md`（Done 条件・一括landing条項·sprint cycle 手順 12）に「受け入れ条件の証拠を確認・記録してから close する」を追加。回収スウィープが「手順に従って動ける」隙間を塞ぐ | `scripts/check-content-links.mjs` / 手動確認（§4「運用ルール側の原因」） |
 | CI | `.github/workflows/ci.yml` に `Issue closure audit` ステップ（network が必要なため CI only。dependency advisory gate と同じ方式） | actionlint / `pnpm run lint:ci` |
 
 **この gate だけでは防げなかったもの**: オフライン gate だけなら 2026-10-31 の sweep は**素通りしていた**（リポジトリに記録を一切書かなかったため）。GitHub 側のクローズ実績と照合するのは、リモート gate 側です。
 
-**R001 の「追跡」の意味**: クローズが**読者が開ける痕跡を残しているか**です。具体的には (a) 当該 Issue を参照した commit、(b) 当該 Issue を参照した PR、(c) 成果物（PR / commit / URL）を名指しするコメント、または (d) 保留・重複・却下・延期のような**判断理由が書かれたコメント**。①②の根拠は Issue の timeline（`CrossReferencedEvent` / `ReferencedEvent`）です。**「release-0-8-0 統合完了」というテンプレートコメントは追跡に数えません** — それはブランチの統合状況であって、その Issue 自身の受入条件の達成ではないためです。この定義は 2026-10-01 以降のクローズ 232 件に対して実測検証済みで、追跡の無いクローズは **0 件**（誤検出なし）です。
+### 5.1 「追跡」の定義とその実測検証
+
+追跡 = **読者が開ける痕跡**。具体的には (a) 当該 Issue を参照した **commit**、(b) 成果物（PR / commit / URL）を名指しする**コメント**、(c) 保留・重複・却下・延期のような**判断理由が書かれたコメント**。(a) の根拠は Issue の timeline（`ReferencedEvent` / `CrossReferencedEvent`）です。
+
+**参照された PR 、単体では追跡に数えません。** 監査の基準そのもので「PR が merge された」は受入条件の達成の証明にならないからです。この判断は推測ではなく、**2026-10-31 時点の 132 件を再構成して実測**しました（ Issue の timeline / コメントの `createdAt` で 2026-10-31 23:59 UTC 以前を切り、再発防止の判定と一緒に照合）:
+
+| 判定 | ゲートが通過 | ゲートが検出 | 合計 |
+| --- | --- | --- | --- |
+| クローズ妥当（`supported`） | 25 | 3 | 28 |
+| クローズ不当（`unsupported`） | 9 | **84** | 93 |
+| owner 判断待ち（`awaiting-owner`） | 3 | **8** | 11 |
+
+- 危害を受ける側（不当 + 判断待ち = 104 件）中 **92 件を検出**（88%）。
+- 妥当と監査した 28 件のうち **25 件を通過**（誤検出 3 件 = 11%）。
+- 対照実験として「merge 済み PR の参照」を追跡に数えると、132 件中 **57 件**しか検出できません（44%）。これが PR 参照を採らない理由です。
+
+**R006（一括クローズ検出）**: 同じクローズコメントを共有する Issue が 5 件以上まとまり、そのコメントがリリース枝の定型（「回収完了」「統合完了」「一括クローズ」）に一致する場合に検出します。**Issue 単位の証拠が偶然残っていても、一括操作そのものを検出する**ためです。台帳が Issue ごとに記録している場合は該当しません（台帳が per-Issue 記録そのものなので）。
+
+### 5.2 実運用での誤検出（実測）
+
+2026-10-01 以降のクローズ **232 件**をこの定義で走査した結果:
+
+| ウィンドウ | 検出数 | 内容 |
+| --- | --- | --- |
+| 台帳の監査日以降（CI が使う既定） | **0** | — |
+| 2026-10-01 以降（広め） | **1** | #165（2026-10-02 クローズ、PR #217 の merge 4 分後に手動クローズ、**コメントなし**） |
+
+#165 は「誤検出」ではなく、**記録が残っていなかったクローズの正しい指摘**です（クローズ自体は妥当）。監査母集団（2026-10-31 の 132 件）の外側なので台帳には入れておらず、CI の既定ウィンドウでも検出されません。広めのウィンドウを走らせたときだけ現れます。
 
 ## 6. Miro 原典について（未達・owner 作業）
 

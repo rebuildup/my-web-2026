@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	closingComment,
 	compare,
 	fetchIssueStates,
 	hasClosureTrace,
@@ -59,6 +60,14 @@ function state(overrides = {}) {
 	};
 }
 
+/**
+ * @param {string} body
+ * @param {string} [createdAt]
+ */
+function comment(body, createdAt = '2026-10-31T00:00:00Z') {
+	return { body, createdAt };
+}
+
 test('listClosedIssues skips pull requests and keeps issues', async () => {
 	const fetchImpl = fakeFetch([
 		{ number: 1, title: 'an issue', closed_at: '2026-10-31T00:00:00Z' },
@@ -86,7 +95,7 @@ test('fetchIssueStates reads the state and the closure trace of every issue', as
 		state({
 			number,
 			state: 'OPEN',
-			comments: { nodes: [{ body: '対応 PR #740' }] },
+			comments: { nodes: [{ body: '対応 PR #740', createdAt: '2026-10-20T00:00:00Z' }] },
 			timelineItems: {
 				nodes: [
 					{
@@ -108,7 +117,7 @@ test('fetchIssueStates reads the state and the closure trace of every issue', as
 	assert.equal(entry.state, 'OPEN');
 	assert.deepEqual(entry.referencedPullRequests, [740]);
 	assert.deepEqual(entry.referencedCommits, ['abc1234']);
-	assert.deepEqual(entry.comments, ['対応 PR #740']);
+	assert.deepEqual(entry.comments, [{ body: '対応 PR #740', createdAt: '2026-10-20T00:00:00Z' }]);
 });
 
 test('fetchIssueStates fails closed when the API answers with an error status', async () => {
@@ -137,19 +146,45 @@ test('the release-branch sweep wording is recognised as a template', () => {
 	assert.equal(isSweepTemplate('対応 PR #740 を merge しました'), false);
 });
 
-test('a trace is a referenced commit, a referenced pull request or a specific comment', () => {
+test('a trace is a referenced commit or a comment that names an artefact or a decision', () => {
 	assert.equal(hasClosureTrace(state({ referencedCommits: ['abc1234'] })), true);
-	assert.equal(hasClosureTrace(state({ referencedPullRequests: [740] })), true);
-	assert.equal(hasClosureTrace(state({ comments: ['対応 PR #740 を merge しました'] })), true);
-	assert.equal(hasClosureTrace(state({ comments: ['重複のためクローズ'] })), true);
+	assert.equal(
+		hasClosureTrace(state({ comments: [comment('対応 PR #740 を merge しました')] })),
+		true,
+	);
+	assert.equal(hasClosureTrace(state({ comments: [comment('重複のためクローズ')] })), true);
+});
+
+test('a bare pull-request reference is not a trace', () => {
+	// "the PR was merged" does not prove the issue's goal was reached
+	// (docs/verification/backlog/closure-audit-2026-10-31.md §2).
+	assert.equal(hasClosureTrace(state({ referencedPullRequests: [740] })), false);
 });
 
 test('the sweep template alone is not a trace', () => {
 	assert.equal(
-		hasClosureTrace(state({ comments: ['回収完了。release-0-8-0統合完了（#679待機中）。'] })),
+		hasClosureTrace(
+			state({ comments: [comment('回収完了。release-0-8-0統合完了（#679待機中）。')] }),
+		),
 		false,
 	);
 	assert.equal(hasClosureTrace(state()), false);
+});
+
+test('the closing comment is the last one written before the closure', () => {
+	const issue = state({
+		closedAt: '2026-10-31T00:00:00Z',
+		comments: [
+			comment('解放的条件を記載', '2026-10-30T00:00:00Z'),
+			comment('回収完了。release-0-8-0統合完了（#679待機中）。', '2026-10-31T00:00:00Z'),
+			comment('復旧コメント', '2026-11-01T00:00:00Z'),
+		],
+	});
+	assert.equal(closingComment(issue), '回収完了。release-0-8-0統合完了（#679待機中）。');
+});
+
+test('an issue closed without a comment has no closing comment', () => {
+	assert.equal(closingComment(state({ comments: [] })), null);
 });
 
 test('a closed issue with no ledger entry and no trace is R001', () => {
@@ -176,7 +211,7 @@ test('a closed issue with a closure trace but no ledger entry produces no findin
 	const findings = compare({
 		closed: [{ number: 274, title: 'x', closedAt: '2026-10-31' }],
 		ledger: { entries: [] },
-		states: new Map([[274, state({ number: 274, referencedPullRequests: [281] })]]),
+		states: new Map([[274, state({ number: 274, referencedCommits: ['dc46190b'] })]]),
 	});
 	assert.deepEqual(findings, []);
 });
@@ -215,4 +250,54 @@ test('a ledger population that does not match its entries is R005', () => {
 		states: new Map(),
 	});
 	assert.ok(findings.some((f) => f.rule === 'R005'));
+});
+
+test('a mass closure that used the release-branch template is R006', () => {
+	const template = '回収完了。release-0-8-0統合完了（#679待機中）。';
+	const numbers = [801, 802, 803, 804, 805];
+	const findings = compare({
+		closed: numbers.map((number) => ({ number, title: 'x', closedAt: '2026-10-31' })),
+		ledger: { entries: [] },
+		states: new Map(
+			numbers.map((number) => [
+				number,
+				state({ number, comments: [comment(template)], referencedCommits: ['abc1234'] }),
+			]),
+		),
+	});
+	assert.equal(findings.filter((f) => f.rule === 'R006').length, 1);
+});
+
+test('a mass closure the ledger records issue by issue is not R006', () => {
+	const template = '回収完了。release-0-8-0統合完了（#679待機中）。';
+	const numbers = [801, 802, 803, 804, 805];
+	const findings = compare({
+		closed: numbers.map((number) => ({ number, title: 'x', closedAt: '2026-10-31' })),
+		ledger: {
+			entries: numbers.map((number) => ({ issue: number, action: 'kept-closed' })),
+		},
+		states: new Map(
+			numbers.map((number) => [
+				number,
+				state({ number, comments: [comment(template)], referencedCommits: ['abc1234'] }),
+			]),
+		),
+	});
+	assert.equal(findings.filter((f) => f.rule === 'R006').length, 0);
+});
+
+test('a small group sharing the template is not R006', () => {
+	const template = '回収完了。release-0-8-0統合完了（#679待機中）。';
+	const numbers = [801, 802];
+	const findings = compare({
+		closed: numbers.map((number) => ({ number, title: 'x', closedAt: '2026-10-31' })),
+		ledger: { entries: [] },
+		states: new Map(
+			numbers.map((number) => [
+				number,
+				state({ number, comments: [comment(template)], referencedCommits: ['abc1234'] }),
+			]),
+		),
+	});
+	assert.equal(findings.filter((f) => f.rule === 'R006').length, 0);
 });

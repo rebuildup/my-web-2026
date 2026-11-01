@@ -113,10 +113,23 @@ It is part of `validate:fast` because it is offline and read-only.
 ### 4.3 The remote audit — `pnpm run issue:closure:audit`
 
 `scripts/check-issue-closure-remote.mjs` asks GitHub which issues were
-closed in a window and reports every closure the ledger does not cover
-(rule `R001`). It needs the network, so it runs as a CI step — the same
-arrangement as the dependency advisory gate (AGENTS.md §5). A GitHub
-outage is exit 2 ("unusable input"), never a clean bill of health.
+closed in a window and reports every closure that carries **neither a
+ledger entry nor a trace** (rule `R001`), plus every mass closure that
+used the release-branch template (rule `R006`). It also checks that the
+ledger and GitHub agree about each tracked issue's current state
+(`R002` / `R003`), that every ledger entry is readable (`R004`), and
+that the ledger's declared population matches its entries (`R005`).
+
+A **trace** is a commit that referenced the issue, or a comment that
+names an artefact (a PR, a commit, a URL) or records an explicit
+decision (a hold, a rejection, a duplicate, a deferral). A bare
+pull-request reference is **not** a trace: "the PR was merged" does not
+prove the issue's goal was reached. The release-branch template is not
+a trace either.
+
+It needs the network, so it runs as a CI step — the same arrangement as
+the dependency advisory gate (AGENTS.md §5). A GitHub outage is exit 2
+("unusable input"), never a clean bill of health.
 
 **This is the half that would have caught 2026-10-31.** The sweep wrote
 no repository record at all, so a repository-only gate would have stayed
@@ -132,7 +145,10 @@ green through it.
 3. **Record the entry** in `quality/issue-closure-ledger.json`.
 4. **Run** `pnpm run issue:closure:check`.
 5. **Close the issue** with a comment that states the evidence and the
-   state — not a template.
+   state — not a template. The comment must name the artefact or the
+   decision, because that is the trace the remote gate looks for; a
+   comment that only says the release branch was integrated is the
+   2026-10-31 shape.
 
 When a sweep is genuinely warranted (a milestone that really did land),
 the sweep still has to write one ledger entry per issue, each with its

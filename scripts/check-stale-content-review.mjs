@@ -59,6 +59,29 @@
  * 6. **The output is status-only.** Paths, counts, dates and the
  *    expression text. No credential, no environment dump.
  *
+ * The public article sources (Issue #723)
+ * ---------------------------------------
+ * The surface declaration above holds the **UI / code** copy of the
+ * platform. The **article prose** a visitor reads lives elsewhere, and
+ * until Issue #723 the gate never looked at it: a green gate could
+ * therefore mean "no article prose was examined at all".
+ *
+ * This gate therefore also keeps an **explicit inventory** of the
+ * public article sources (Issue #723):
+ *
+ *   - a source that is **declared but absent** (the article Markdown
+ *     globs of the Issue #425 declaration, for example — the repository
+ *     has no `content/` directory) is recorded as a fact about the
+ *     repository, never as "reviewed";
+ *   - a source that **cannot be read offline** (the published D1 rows,
+ *     a Notion import) is `unobserved`, never `pass`;
+ *   - a source that **exists but was not scanned** (a file type this
+ *     gate cannot read) is reported as unscanned, with the reason.
+ *
+ * The inventory is fail-closed on the difference: what the gate did
+ * not read is named, so a green gate is never read as "the articles
+ * were audited".
+ *
  * What this gate is not
  * ---------------------
  * It is not a proofreading tool and it does not judge prose. The
@@ -92,6 +115,10 @@
  *   --root=<path>       Tree to scan (default the repository root).
  *   --today=YYYY-MM-DD  The current date (default: today, UTC). The
  *                        freshness window is measured against it.
+ *   --article-sources=<path>  The public article source declaration (default: the
+ *                              declaration in this script — Issue #723).
+ *   --japanese-surfaces=<path> The Issue #425 declaration, read for the cross-check
+ *                              (default `quality/japanese-copy-review-surfaces.json`).
  *   --format=text|json|html   Output format (default `text`).
  *   --out=<path>        Write the report to a file instead of stdout.
  *
@@ -205,6 +232,91 @@ export const SCANNABLE_EXTENSIONS = new Set([
 	'.cjs',
 	'.json',
 ]);
+
+/**
+ * The file extensions the **article scan** reads.
+ *
+ * The public copy surface scan keeps its own extension set (the code
+ * extensions), because the Issue #506 surface declaration excludes
+ * the Markdown files. An article source is read on the article scan's own path:
+ * a Markdown file is read when it matches a declared article source,
+ * never because a Markdown file happens to exist somewhere in the tree.
+ */
+export const ARTICLE_SCANNABLE_EXTENSIONS = new Set(['.md', '.markdown']);
+
+/**
+ * The public article sources (Issue #723).
+ *
+ * A **public article source** is anything that holds article prose a
+ * visitor reads — a committed file, or a system the repository reads
+ * at request time. The list is explicit on purpose: a source that is
+ * not named here is not examined, and the inventory says so instead of
+ * implying that the articles were audited.
+ *
+ * Two kinds:
+ *
+ *   - `repository` — a glob over the tree. The gate reads the files it
+ *     can read offline and reports the ones it cannot.
+ *   - `external` — a system outside the repository (the published D1
+ *     rows, a Notion import). It can never be read offline, so it is
+ *     reported as `unobserved`, never as reviewed.
+ */
+export const DEFAULT_ARTICLE_SOURCES = {
+	version: 1,
+	policy:
+		'The public article sources of Issue #723. A source that is declared but absent is a fact about the repository and is recorded as such; a source that cannot be read offline is `unobserved`, never `reviewed`. The gate reads this declaration; it never writes it.',
+	sources: [
+		{
+			id: 'portfolio-seed',
+			kind: 'repository',
+			globs: ['src/portfolio/seed.ts'],
+			routes: ['/portfolio', '/portfolio/<slug>'],
+			description:
+				'The committed portfolio article bodies — the seed skeleton the published rows are seeded from (`/portfolio/my-web-2026` is one of them).',
+		},
+		{
+			id: 'content-articles',
+			kind: 'repository',
+			globs: ['content/articles/**/*.md'],
+			routes: ['/portfolio/<slug>'],
+			description:
+				'Article Markdown bodies, when they are committed as files. The declaration names them; this repository has no `content/` directory, so no committed file renders one today.',
+		},
+		{
+			id: 'content-blog',
+			kind: 'repository',
+			globs: ['content/blog/**/*.md'],
+			routes: [],
+			description:
+				'Blog Markdown bodies, when they are committed as files. The declaration names them; this repository has no `content/` directory and no route renders one today.',
+		},
+		{
+			id: 'portfolio-d1-rows',
+			kind: 'external',
+			location: 'Cloudflare D1 (env.DB) — the published portfolio rows',
+			routes: ['/portfolio', '/portfolio/<slug>'],
+			description:
+				'The article bodies the public portfolio routes actually render. The repository holds only the seed skeleton, so the freshness of the published text is not observable offline.',
+		},
+		{
+			id: 'notion-import',
+			kind: 'external',
+			location: 'the Notion import (the approved read-content integration)',
+			routes: [],
+			description:
+				'Article bodies imported from Notion. The import runs outside this repository, so the imported prose is not observable offline.',
+		},
+	],
+};
+
+/** The Issue #425 declaration (read only — the cross-check of the two lists). */
+export const JAPANESE_REVIEW_SURFACES_PATH = 'quality/japanese-copy-review-surfaces.json';
+
+/** The status of one article source in the inventory. */
+export const ARTICLE_SOURCE_STATUSES = ['scanned', 'declared-but-absent', 'unobserved'];
+
+/** The registry coverage of one article source. */
+export const ARTICLE_REVIEW_STATUSES = ['covered', 'outstanding', 'not-applicable'];
 
 /** CJK ideographs (used for the `今` boundary guard). */
 const IDEOGRAPH_PATTERN = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/u;
@@ -409,6 +521,408 @@ export function collectSegments(
 	return { segments, skipped };
 }
 
+/**
+ * The time-sensitive expressions of one Markdown document.
+ *
+ * The unit of a Markdown segment is the **block**: consecutive non-empty
+ * lines belong to one paragraph, and a paragraph is the sentence a
+ * visitor reads. A fenced code block is not prose, so it is skipped, and
+ * the heading / list markers are stripped so the expression matches the
+ * text a reader sees rather than the markup around it.
+ */
+export function markdownSegments(text) {
+	const blocks = [];
+	let current = null;
+	let inFence = false;
+	const lines = String(text ?? '').split('\n');
+	for (const [index, line] of lines.entries()) {
+		const trimmed = line.trim();
+		if (/^(```|~~~)/.test(trimmed)) {
+			inFence = !inFence;
+			continue;
+		}
+		if (inFence) continue;
+		if (trimmed.length === 0) {
+			current = null;
+			continue;
+		}
+		const cleaned = trimmed
+			.replace(/^#{1,6}\s+/, '')
+			.replace(/^[-*+]\s+/, '')
+			.replace(/^\d+[.)]\s+/, '')
+			.trim();
+		if (cleaned.length === 0) {
+			current = null;
+			continue;
+		}
+		if (!current) {
+			current = { line: index + 1, parts: [] };
+			blocks.push(current);
+		}
+		current.parts.push(cleaned);
+	}
+	const segments = [];
+	for (const block of blocks) {
+		const joined = block.parts.join(' ');
+		const locale = detectLocale(joined);
+		if (locale) segments.push({ line: block.line, text: joined, locale });
+	}
+	return segments;
+}
+
+/** The time-sensitive expressions of one code file (the surface scan's unit). */
+function codeSegments(text) {
+	const segments = [];
+	const lines = text.split('\n');
+	for (const [index, line] of lines.entries()) {
+		for (const segment of lineSegments(line)) {
+			segments.push({ line: index + 1, text: segment.text, locale: segment.locale });
+		}
+	}
+	return segments;
+}
+
+/** The file extension of a path (including the dot), or `''`. */
+function extensionOf(path) {
+	const base = path.slice(path.lastIndexOf('/') + 1);
+	const dot = base.lastIndexOf('.');
+	return dot === -1 ? '' : base.slice(dot);
+}
+
+/**
+ * The files of one article source, by glob.
+ *
+ * The walk is the gate's own: build output, dependencies and caches are
+ * skipped, so a glob never matches a vendored copy.
+ */
+export function matchArticleSourceFiles(files, globs) {
+	return files.filter(({ path }) => globs.some((glob) => matchesGlob(glob, path)));
+}
+
+/**
+ * The time-sensitive expressions of the declared article sources, and
+ * the per-file record of what was read (Issue #723).
+ *
+ * A file of an article source is read when this gate can read its text:
+ * a code file that the #506 surface declaration already covers is read
+ * by the surface scan, and a Markdown file is read by the article scan.
+ * A file that matches a declared source but that this gate cannot read
+ * is reported as **not scanned**, with the reason — never silently
+ * dropped, and never counted as reviewed.
+ */
+export function collectArticleSegments(
+	root,
+	sources,
+	{ surfaces, excludedPaths = [], excludedExpressions = [] } = {},
+) {
+	const segments = [];
+	const files = [];
+	const absoluteRoot = resolve(root);
+	const treeFiles = walkFiles(absoluteRoot).map((file) => ({
+		path: relative(absoluteRoot, file).split(sep).join('/'),
+		file,
+	}));
+	for (const source of sources) {
+		if (source.kind !== 'repository') {
+			files.push({
+				sourceId: source.id,
+				path: null,
+				scanned: false,
+				reason: 'the source is outside the repository — the gate cannot read it offline',
+			});
+			continue;
+		}
+		for (const { path: relativePath, file } of matchArticleSourceFiles(treeFiles, source.globs)) {
+			const excluded = excludedPaths.find((entry) => matchesGlob(entry.glob, relativePath));
+			if (excluded) {
+				files.push({
+					sourceId: source.id,
+					path: relativePath,
+					scanned: true,
+					excluded: true,
+					reason: `excluded by "${excluded.glob}" (${excluded.reason})`,
+				});
+				continue;
+			}
+			const extension = extensionOf(relativePath);
+			const isSurface = classifyFile(relativePath, surfaces).public;
+			const surfaceReads = isSurface && SCANNABLE_EXTENSIONS.has(extension);
+			const articleReads = ARTICLE_SCANNABLE_EXTENSIONS.has(extension);
+			if (!surfaceReads && !articleReads) {
+				files.push({
+					sourceId: source.id,
+					path: relativePath,
+					scanned: false,
+					reason: `this gate cannot read a "${extension || '(no extension)'}" file`,
+				});
+				continue;
+			}
+			let text;
+			try {
+				text = readFileSync(file, 'utf8');
+			} catch {
+				files.push({
+					sourceId: source.id,
+					path: relativePath,
+					scanned: false,
+					reason: 'unreadable file',
+				});
+				continue;
+			}
+			const found = articleReads && !surfaceReads ? markdownSegments(text) : codeSegments(text);
+			for (const segment of found) {
+				const excludedExpression = excludedExpressions.find(
+					(entry) => entry.path === relativePath && entry.expression === segment.text,
+				);
+				if (excludedExpression) continue;
+				segments.push({
+					path: relativePath,
+					line: segment.line,
+					text: segment.text,
+					locale: segment.locale,
+					sourceId: source.id,
+				});
+			}
+			files.push({
+				sourceId: source.id,
+				path: relativePath,
+				scanned: true,
+				reason: surfaceReads
+					? 'read as a declared public copy surface'
+					: 'read as an article source',
+			});
+		}
+	}
+	return { segments, files };
+}
+
+/**
+ * The scanned segments of both scans, without duplicates.
+ *
+ * A file that is both a public copy surface and an article source (the
+ * portfolio seed is one) is read once: the surface scan wins, so the
+ * expression keeps its `surface` origin and its existing behaviour.
+ */
+export function mergeSegments(surfaceSegments, articleSegments) {
+	const seen = new Set();
+	const merged = [];
+	for (const segment of surfaceSegments) {
+		const key = `${segment.path}:${segment.line}:${segment.text}`;
+		seen.add(key);
+		merged.push({ ...segment, origin: 'surface' });
+	}
+	for (const segment of articleSegments) {
+		const key = `${segment.path}:${segment.line}:${segment.text}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		merged.push({ ...segment, origin: 'article' });
+	}
+	return merged;
+}
+
+/**
+ * The inventory of the public article sources (Issue #723).
+ *
+ * One record per source, and every record says the same six things:
+ * whether the source exists, whether the gate can read it offline,
+ * whether the gate scanned it, which public surface it feeds, and what
+ * the owner registry says about it. A source that is absent or
+ * unreadable is visible as such — the inventory is fail-closed on the
+ * difference between "the registry covers it" and "it was examined".
+ */
+export function buildArticleInventory({ sources, files, entries }) {
+	const records = [];
+	for (const source of sources) {
+		const sourceFiles = files.filter((file) => file.sourceId === source.id);
+		const paths = new Set(sourceFiles.map((file) => file.path).filter((path) => path !== null));
+		const sourceEntries = entries.filter((entry) => paths.has(entry.path));
+		const recorded = sourceEntries.filter((entry) => entry.record !== null);
+		const outstandingEntries = sourceEntries.filter((entry) =>
+			QUEUE_STATUSES.includes(entry.status),
+		);
+		const scannedFiles = sourceFiles.filter((file) => file.scanned && !file.excluded);
+		const unreadableFiles = sourceFiles.filter((file) => !file.scanned);
+		const external = source.kind !== 'repository';
+		let status;
+		if (external) {
+			status = 'unobserved';
+		} else if (sourceFiles.length === 0) {
+			status = 'declared-but-absent';
+		} else if (unreadableFiles.length > 0) {
+			status = 'unobserved';
+		} else {
+			status = 'scanned';
+		}
+		let reviewStatus = 'not-applicable';
+		if (outstandingEntries.length > 0) reviewStatus = 'outstanding';
+		else if (recorded.length > 0) reviewStatus = 'covered';
+		records.push({
+			id: source.id,
+			kind: source.kind,
+			globs: source.globs ?? [],
+			routes: source.routes ?? [],
+			description: source.description ?? '',
+			location: source.location ?? null,
+			exists: external ? 'unknown' : sourceFiles.length > 0 ? 'yes' : 'no',
+			files: external ? null : sourceFiles.length,
+			scannedFiles: external ? null : scannedFiles.length,
+			unreadableFiles: external ? null : unreadableFiles.length,
+			readableOffline: external
+				? 'no'
+				: sourceFiles.length === 0
+					? 'unknown'
+					: unreadableFiles.length === 0
+						? 'yes'
+						: 'no',
+			scanned: !external && sourceFiles.length > 0 && unreadableFiles.length === 0 ? 'yes' : 'no',
+			status,
+			expressions: external ? null : sourceEntries.length,
+			recorded: external ? null : recorded.length,
+			outstanding: external ? null : outstandingEntries.length,
+			reviewStatus,
+			reasons: sourceFiles
+				.filter((file) => !file.scanned)
+				.map((file) => (file.path ? `${file.path}: ${file.reason}` : file.reason)),
+		});
+	}
+	const totals = {
+		sources: records.length,
+		scanned: records.filter((record) => record.status === 'scanned').length,
+		declaredButAbsent: records.filter((record) => record.status === 'declared-but-absent').length,
+		unobserved: records.filter((record) => record.status === 'unobserved').length,
+		expressions: records.reduce((total, record) => total + (record.expressions ?? 0), 0),
+		recorded: records.reduce((total, record) => total + (record.recorded ?? 0), 0),
+		outstanding: records.reduce((total, record) => total + (record.outstanding ?? 0), 0),
+	};
+	return { records, totals };
+}
+
+/**
+ * The difference between this gate's article sources and the Issue #425
+ * declaration.
+ *
+ * The two declarations answer different questions (Issue #437 asks
+ * whether a time-sensitive claim is still true; Issue #425 asks whether
+ * a pull request changed the wording), but they must not disagree about
+ * *which files hold article prose*. A glob that only one of them names
+ * is reported, so the disagreement is a fact in the report rather than a
+ * silent difference.
+ */
+export function crossCheckArticleSources(articleSources, japaneseDeclaration) {
+	const here = new Set(
+		(articleSources.sources ?? [])
+			.filter((source) => source.kind === 'repository')
+			.flatMap((source) => source.globs ?? []),
+	);
+	const there = new Set(japaneseDeclaration?.articleMarkdownGlobs ?? []);
+	return {
+		checked: true,
+		onlyHere: [...here].filter((glob) => !there.has(glob)).sort(),
+		onlyThere: [...there].filter((glob) => !here.has(glob)).sort(),
+	};
+}
+
+/**
+ * Validate the article source declaration. Fail-closed: every problem is
+ * reported and the caller exits 2.
+ */
+export function validateArticleSources(declaration) {
+	const problems = [];
+	if (!declaration || typeof declaration !== 'object' || Array.isArray(declaration)) {
+		return { problems: ['the article source declaration is not a JSON object'] };
+	}
+	if (declaration.version !== 1) {
+		problems.push(`version must be 1 (found ${JSON.stringify(declaration.version)})`);
+	}
+	if (!Array.isArray(declaration.sources) || declaration.sources.length === 0) {
+		problems.push('sources must be a non-empty array');
+		return { problems };
+	}
+	const ids = new Set();
+	for (const source of declaration.sources) {
+		const label = source && typeof source.id === 'string' ? source.id : '(no id)';
+		if (!source || typeof source !== 'object') {
+			problems.push(`source ${label} is not an object`);
+			continue;
+		}
+		if (typeof source.id !== 'string' || source.id.length === 0) {
+			problems.push('every source needs a non-empty id');
+		} else if (ids.has(source.id)) {
+			problems.push(`source ${label}: the id is used twice`);
+		} else {
+			ids.add(source.id);
+		}
+		if (source.kind !== 'repository' && source.kind !== 'external') {
+			problems.push(
+				`source ${label}: kind must be "repository" or "external" (found ${JSON.stringify(source.kind)})`,
+			);
+			continue;
+		}
+		if (source.kind === 'repository') {
+			if (!Array.isArray(source.globs) || source.globs.length === 0) {
+				problems.push(`source ${label}: a repository source needs at least one glob`);
+			} else {
+				for (const glob of source.globs) {
+					if (typeof glob !== 'string' || glob.length === 0) {
+						problems.push(`source ${label}: every glob must be a non-empty string`);
+					}
+				}
+			}
+		} else if (typeof source.location !== 'string' || source.location.length === 0) {
+			problems.push(`source ${label}: an external source needs a location`);
+		}
+		for (const route of source.routes ?? []) {
+			if (typeof route !== 'string' || route.length === 0) {
+				problems.push(`source ${label}: every route must be a non-empty string`);
+			}
+		}
+	}
+	return { problems };
+}
+
+/**
+ * The whole review: the surface scan, the article scan and the
+ * inventory of the article sources.
+ *
+ * `japaneseSurfaces` is optional — the Issue #425 declaration is read
+ * only for the cross-check, and its absence is never an error.
+ */
+export function runReview({
+	root,
+	surfaces,
+	registry,
+	today,
+	articleSources = DEFAULT_ARTICLE_SOURCES,
+	japaneseSurfaces = null,
+}) {
+	const excludedPaths = registry.excludedPaths ?? [];
+	const excludedExpressions = registry.excludedExpressions ?? [];
+	const { segments: surfaceSegments, skipped } = collectSegments(root, surfaces, {
+		excludedPaths,
+		excludedExpressions,
+	});
+	const article = collectArticleSegments(root, articleSources.sources ?? [], {
+		surfaces,
+		excludedPaths,
+		excludedExpressions,
+	});
+	const segments = mergeSegments(surfaceSegments, article.segments);
+	const result = evaluateRegistry({ segments, registry, today });
+	const inventory = buildArticleInventory({
+		sources: articleSources.sources ?? [],
+		files: article.files,
+		entries: result.entries,
+	});
+	result.articleInventory = inventory;
+	result.articleOutstanding = result.entries.filter(
+		(entry) => entry.origin === 'article' && QUEUE_STATUSES.includes(entry.status),
+	);
+	result.articleCrossCheck = japaneseSurfaces
+		? crossCheckArticleSources(articleSources, japaneseSurfaces)
+		: { checked: false, onlyHere: [], onlyThere: [] };
+	return { result, skipped };
+}
+
 /** Whole days between two ISO dates (`to` minus `from`). */
 export function daysBetween(fromIso, toIso) {
 	const from = Date.parse(`${fromIso}T00:00:00Z`);
@@ -575,7 +1089,24 @@ export function evaluateRegistry({ segments, registry, today }) {
 	const counts = { current: 0, stale: 0, unrecorded: 0, 'not-scanned': 0 };
 	for (const entry of entries) counts[entry.status] += 1;
 
-	const queue = entries.filter((entry) => QUEUE_STATUSES.includes(entry.status));
+	/**
+	 * The failing queue is the **public copy surface** queue.
+	 *
+	 * An expression of a surface the owner registry already covers is a
+	 * review the owner owes, and the gate stays red until it is done.
+	 * An expression of a surface this gate **newly** scans (the article
+	 * sources of Issue #723) is reported as an **outstanding** review
+	 * instead: it must not become a gate failure, because the only way
+	 * to close it is to write an owner record — and the owner alone may
+	 * write the registry. It is never silently ignored either: it is
+	 * reported in the inventory and in the outstanding list.
+	 */
+	const queue = entries.filter(
+		(entry) => entry.origin !== 'article' && QUEUE_STATUSES.includes(entry.status),
+	);
+	const outstanding = entries.filter(
+		(entry) => entry.origin === 'article' && QUEUE_STATUSES.includes(entry.status),
+	);
 
 	const notScannedLocales = [
 		...new Set(entries.filter((e) => e.status === 'not-scanned').map((e) => e.locale)),
@@ -588,6 +1119,7 @@ export function evaluateRegistry({ segments, registry, today }) {
 		notScannedLocales,
 		entries,
 		queue,
+		outstanding,
 		orphanRecords,
 		counts,
 	};
@@ -599,6 +1131,104 @@ function escapeHtml(value) {
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
 		.replace(/"/g, '&quot;');
+}
+
+/**
+ * The public article source inventory, in text (Issue #723).
+ *
+ * The section is status-only: ids, counts, statuses and reasons. The
+ * article bodies themselves are never printed here — the owner reads
+ * the file, and the report says which file.
+ */
+export function renderArticleInventoryText(result) {
+	const inventory = result.articleInventory;
+	const lines = [];
+	lines.push('Public article sources (Issue #723)');
+	if (!inventory) {
+		lines.push('  (no article source declaration was read)');
+		return `${lines.join('\n')}\n`;
+	}
+	const rows = inventory.records.map((record) => ({
+		id: record.id,
+		kind: record.kind,
+		files: record.files === null ? '-' : String(record.files),
+		scanned: record.scannedFiles === null ? '-' : String(record.scannedFiles),
+		status: record.status,
+		registry: record.reviewStatus,
+		expressions: record.expressions === null ? '-' : String(record.expressions),
+		recorded: record.recorded === null ? '-' : String(record.recorded),
+		waiting: record.outstanding === null ? '-' : String(record.outstanding),
+	}));
+	const columns = [
+		'id',
+		'kind',
+		'files',
+		'scanned',
+		'status',
+		'registry',
+		'expressions',
+		'recorded',
+		'waiting',
+	];
+	const widths = columns.map((column) =>
+		Math.max(column.length, ...rows.map((row) => row[column].length)),
+	);
+	const line = (cells) =>
+		`  ${columns.map((column, index) => cells[index].padEnd(widths[index])).join('  ')}`.trimEnd();
+	lines.push(line(columns));
+	for (const row of rows) {
+		lines.push(line(columns.map((column) => row[column])));
+	}
+	for (const record of inventory.records) {
+		if (record.routes.length > 0) {
+			lines.push(`  ${record.id}: public surface ${record.routes.join(', ')}`);
+		}
+		for (const reason of record.reasons) {
+			if (record.kind === 'external') continue;
+			lines.push(`  ${record.id}: not read — ${reason}`);
+		}
+		if (record.status === 'declared-but-absent') {
+			lines.push(
+				`  ${record.id}: declared but absent — no committed file matches, so nothing was reviewed here`,
+			);
+		}
+		if (record.status === 'unobserved' && record.kind === 'external') {
+			lines.push(
+				`  ${record.id}: unobserved — ${record.location ?? 'outside the repository'}; the gate cannot read it offline`,
+			);
+		}
+	}
+	if (result.articleCrossCheck?.checked) {
+		const { onlyHere, onlyThere } = result.articleCrossCheck;
+		if (onlyHere.length === 0 && onlyThere.length === 0) {
+			lines.push('  article source declaration: agrees with the Issue #425 declaration');
+		} else {
+			for (const glob of onlyHere) {
+				lines.push(`  article source declaration: "${glob}" is declared here only`);
+			}
+			for (const glob of onlyThere) {
+				lines.push(`  article source declaration: "${glob}" is declared by Issue #425 only`);
+			}
+		}
+	}
+	const outstanding = result.articleOutstanding ?? [];
+	lines.push('  waiting = an expression without an owner record (or with one that has expired).');
+	lines.push(
+		'  a waiting expression of a public copy surface is in the review queue above; a waiting expression',
+	);
+	lines.push(
+		'  of a newly scanned article source is reported below and is never turned into a gate failure.',
+	);
+	lines.push(
+		`  outstanding article reviews (no owner record yet; reported, never a gate failure): ${outstanding.length}`,
+	);
+	for (const entry of outstanding) {
+		lines.push(`  [outstanding] ${entry.path}:${entry.line}  (${entry.status})`);
+	}
+	lines.push(
+		'  a green gate means the registry covers the surfaces it covers — it does NOT mean the article surfaces were audited.',
+	);
+	return `${lines.join('\n')}\n`;
 }
 
 /** The report's wording for one classification. */
@@ -651,6 +1281,7 @@ export function renderText(result) {
 		}
 	}
 	lines.push('');
+	lines.push(renderArticleInventoryText(result));
 	lines.push('Reading the report:');
 	lines.push(
 		'  - current       a record exists and its review date is inside the freshness window.',
@@ -699,6 +1330,42 @@ export function renderJson(result) {
 				id: record.id,
 				path: record.path,
 				expression: record.expression,
+			})),
+			articleInventory: result.articleInventory
+				? {
+						totals: result.articleInventory.totals,
+						crossCheck: result.articleCrossCheck ?? null,
+						sources: result.articleInventory.records.map((record) => ({
+							id: record.id,
+							kind: record.kind,
+							globs: record.globs,
+							routes: record.routes,
+							description: record.description,
+							location: record.location,
+							exists: record.exists,
+							files: record.files,
+							scannedFiles: record.scannedFiles,
+							unreadableFiles: record.unreadableFiles,
+							readableOffline: record.readableOffline,
+							scanned: record.scanned,
+							status: record.status,
+							expressions: record.expressions,
+							recorded: record.recorded,
+							outstanding: record.outstanding,
+							reviewStatus: record.reviewStatus,
+							reasons: record.reasons,
+						})),
+					}
+				: null,
+			// The outstanding article reviews are named by file and line, not
+			// by their text: the report says *where* the sentence is, and
+			// the owner reads it in the file. The article body itself is
+			// never quoted by the gate.
+			articleOutstanding: (result.articleOutstanding ?? []).map((entry) => ({
+				path: entry.path,
+				line: entry.line,
+				status: entry.status,
+				sourceId: entry.sourceId ?? null,
 			})),
 		},
 		null,
@@ -760,6 +1427,36 @@ export function renderHtml(result, { sourceSha = null, skipped = [] } = {}) {
 		)
 		.join('\n');
 
+	const inventory = result.articleInventory;
+	const inventoryRows = inventory
+		? inventory.records
+				.map(
+					(record) => `<tr class="status-${escapeHtml(record.status)}">
+			<td><code>${escapeHtml(record.id)}</code></td>
+			<td>${escapeHtml(record.kind)}</td>
+			<td>${record.files === null ? '—' : escapeHtml(record.files)}</td>
+			<td>${record.scannedFiles === null ? '—' : escapeHtml(record.scannedFiles)}</td>
+			<td><span class="badge ${escapeHtml(record.status)}">${escapeHtml(record.status)}</span></td>
+			<td><span class="badge ${escapeHtml(record.reviewStatus)}">${escapeHtml(record.reviewStatus)}</span></td>
+			<td>${escapeHtml(record.expressions === null ? '—' : record.expressions)}</td>
+			<td>${escapeHtml(record.recorded === null ? '—' : record.recorded)}</td>
+			<td>${escapeHtml(record.outstanding === null ? '—' : record.outstanding)}</td>
+			<td>${record.routes.length > 0 ? escapeHtml(record.routes.join(', ')) : '—'}</td>
+		</tr>`,
+				)
+				.join('\n')
+		: '<tr><td colspan="10">No article source declaration was read.</td></tr>';
+
+	const outstandingRows = (result.articleOutstanding ?? [])
+		.map(
+			(entry) => `<tr>
+			<td><code>${escapeHtml(entry.path)}</code>:${entry.line}</td>
+			<td><span class="badge ${escapeHtml(entry.status)}">${escapeHtml(entry.status)}</span></td>
+			<td><code>${escapeHtml(entry.sourceId ?? '—')}</code></td>
+		</tr>`,
+		)
+		.join('\n');
+
 	return `<!doctype html>
 <html lang="en">
 <head>
@@ -788,6 +1485,12 @@ export function renderHtml(result, { sourceSha = null, skipped = [] } = {}) {
 	.current { background: #e6f0e2; border-color: #a9c69c; color: #2f5a24; }
 	.stale, .unrecorded { background: #fdf3dc; border-color: #e4ce9a; color: #6d5312; }
 	.not-scanned { background: #e9eef5; border-color: #b9c8da; color: #2b4763; }
+	.scanned { background: #e6f0e2; border-color: #a9c69c; color: #2f5a24; }
+	.declared-but-absent { background: #fdf3dc; border-color: #e4ce9a; color: #6d5312; }
+	.unobserved { background: #fbe6e6; border-color: #dda6a6; color: #6d2323; }
+	.covered { background: #e6f0e2; border-color: #a9c69c; color: #2f5a24; }
+	.outstanding { background: #fdf3dc; border-color: #e4ce9a; color: #6d5312; }
+	.not-applicable { background: #eceae3; border-color: #d3cfc2; color: #55523f; }
 	tr.off td { color: #6b6759; }
 	dl.legend { margin: 0; display: grid; grid-template-columns: 190px 1fr; gap: 7px 20px; }
 	dl.legend dt { font-weight: 600; }
@@ -856,6 +1559,29 @@ export function renderHtml(result, { sourceSha = null, skipped = [] } = {}) {
 	</table>
 </section>
 <section>
+	<h2>Public article sources (Issue #723)</h2>
+	<p class="meta">
+		A green gate means the registry covers the surfaces it covers — it does <strong>not</strong> mean the
+		article surfaces were audited. A source that is declared but absent, or that cannot be read offline,
+		is named below instead of being counted as reviewed.
+	</p>
+	<table>
+		<thead><tr><th>source</th><th>kind</th><th>files</th><th>read</th><th>status</th><th>registry</th><th>expressions</th><th>recorded</th><th>outstanding</th><th>public surface</th></tr></thead>
+		<tbody>${inventoryRows}</tbody>
+	</table>
+</section>
+<section>
+	<h2>Outstanding article reviews</h2>
+	<p class="meta">
+		An expression of a newly scanned article source without an owner record. It is reported, never a gate
+		failure: the only way to close it is for the owner to record a review date.
+	</p>
+	<table>
+		<thead><tr><th>file</th><th>status</th><th>source</th></tr></thead>
+		<tbody>${outstandingRows || '<tr><td colspan="3">No outstanding article review.</td></tr>'}</tbody>
+	</table>
+</section>
+<section>
 	<h2>How to read this report</h2>
 	<dl class="legend">
 		<dt>current</dt><dd>a record exists and its review date is inside the freshness window.</dd>
@@ -899,6 +1625,8 @@ function parseArgs(argv) {
 		today: null,
 		format: 'text',
 		out: null,
+		articleSources: null,
+		japaneseSurfaces: JAPANESE_REVIEW_SURFACES_PATH,
 	};
 	for (const arg of argv) {
 		if (arg === '--') continue;
@@ -908,6 +1636,10 @@ function parseArgs(argv) {
 		else if (arg.startsWith('--today=')) options.today = arg.slice('--today='.length);
 		else if (arg.startsWith('--out=')) options.out = arg.slice('--out='.length);
 		else if (arg.startsWith('--format=')) options.format = arg.slice('--format='.length);
+		else if (arg.startsWith('--article-sources='))
+			options.articleSources = arg.slice('--article-sources='.length);
+		else if (arg.startsWith('--japanese-surfaces='))
+			options.japaneseSurfaces = arg.slice('--japanese-surfaces='.length);
 		else throw new Error(`unknown option: ${arg}`);
 	}
 	return options;
@@ -967,11 +1699,49 @@ export function main(argv, { env = process.env } = {}) {
 		return 2;
 	}
 
-	const { segments, skipped } = collectSegments(options.root, surfaces, {
-		excludedPaths: registry.excludedPaths ?? [],
-		excludedExpressions: registry.excludedExpressions ?? [],
+	// The public article sources (Issue #723). The declaration is read,
+	// never written: the gate cannot add a source, and it cannot decide
+	// that an absent source was reviewed.
+	let articleSources = DEFAULT_ARTICLE_SOURCES;
+	if (options.articleSources) {
+		try {
+			articleSources = readJson(options.articleSources, 'article source declaration');
+		} catch (error) {
+			process.stderr.write(`[check-stale-content-review] ${error.message}\n`);
+			return 2;
+		}
+	}
+	const { problems: articleProblems } = validateArticleSources(articleSources);
+	if (articleProblems.length > 0) {
+		process.stderr.write(
+			`[check-stale-content-review] the article source declaration cannot be read (${articleProblems.length} problem(s)):\n`,
+		);
+		for (const problem of articleProblems) {
+			process.stderr.write(`  - ${problem}\n`);
+		}
+		return 2;
+	}
+
+	// The Issue #425 declaration is read for the cross-check only. Its
+	// absence is never an error: the two reviews are separate questions,
+	// and neither is a precondition of the other.
+	let japaneseSurfaces = null;
+	if (options.japaneseSurfaces) {
+		try {
+			japaneseSurfaces = readJson(options.japaneseSurfaces, 'the Issue #425 surface declaration');
+		} catch {
+			japaneseSurfaces = null;
+		}
+	}
+
+	const { result, skipped } = runReview({
+		root: options.root,
+		surfaces,
+		registry,
+		today,
+		articleSources,
+		japaneseSurfaces,
 	});
-	const result = evaluateRegistry({ segments, registry, today });
 
 	const rendered =
 		options.format === 'json'

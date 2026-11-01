@@ -103,7 +103,7 @@ describe('check-copy-editorial-approval — CI separation without fabricated app
 		assert.equal(exitCodeForVerdict('unexpected', { allowUnreviewed: true }), 2);
 	});
 	it('does not change review findings or manufacture owner provenance', () => {
-		const { result } = runFixture('owner-unconfirmed');
+		const { result } = runFixture('agent-recorded');
 		assert.equal(result.verdict, 'not run');
 		assert.equal(exitCodeForVerdict(result.verdict, { allowUnreviewed: true }), 0);
 		assert.equal(result.dimensions.approval, 'not run');

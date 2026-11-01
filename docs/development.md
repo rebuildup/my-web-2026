@@ -124,6 +124,32 @@ pnpm storybook
 # -> http://127.0.0.1:6006
 ```
 
+### Development data source (Issue #377)
+
+The dev server ALWAYS states which data it reads. The home page shows
+it as an indicator above the fold, and the console states it at
+startup. `pnpm dev` is the default and never touches production.
+
+| Command | Data source | Writes |
+| --- | --- | --- |
+| `pnpm dev` | local (miniflare copy of the schema) | allowed |
+| `pnpm dev:mock` | canned fixtures (`LOCAL_API_MODE=mock`) | allowed (in-memory) |
+| `pnpm dev:production-data` | **production** D1 / R2 (remote bindings) | **refused** |
+| `pnpm dev:read-only-guard` | local, under the production-readonly write policy | **refused** |
+
+`pnpm dev:production-data` turns on `@cloudflare/vite-plugin`'s
+`remoteBindings`, so the D1 / R2 bindings point at the real Cloudflare
+resources. It needs a Cloudflare **remote session**, which the
+development API token can only create with the right permission — see
+the runbook.
+
+`pnpm dev:read-only-guard` is the SAFE way to exercise the refusal:
+the write policy is the production one, the bindings stay local, and no
+write can reach production.
+
+Full contract, failure modes and the verification artefacts:
+[`docs/runbook/development-data-source.md`](runbook/development-data-source.md).
+
 ### Fallback: `pnpm run generate:dev-vars`
 
 Use the fallback when the Infisical CLI (`infisical` binary) is

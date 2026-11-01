@@ -6,6 +6,7 @@ import {
 	KNOWN_INCIDENTS,
 	SYSTEM_SERVICES,
 	getHomeCounter,
+	getHomeDataSource,
 	getHomeReactions,
 	getHomeSystemStatus,
 	recordHomeHit,
@@ -26,10 +27,14 @@ import {
 export const Route = createFileRoute('/')({
 	loader: async () => {
 		await recordHomeHit({ data: {} });
-		const [statuses, reactions, counter] = await Promise.all([
+		const [statuses, reactions, counter, dataSource] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
+			// Issue #377 — which data source this runtime reads. The
+			// home renders an indicator for every mode except the
+			// deployed production Worker.
+			getHomeDataSource(),
 		]);
 		return {
 			capabilities: CAPABILITIES,
@@ -42,6 +47,7 @@ export const Route = createFileRoute('/')({
 			incidents: KNOWN_INCIDENTS,
 			reactions,
 			counter,
+			dataSource,
 		};
 	},
 	/**

@@ -44,7 +44,8 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 				<SectionHeading
 					id="capabilities-heading"
 					eyebrow="01 — Capabilities"
-					title="できごと / What's here"
+					title="できごと"
+					titleEn="What's here"
 					description="個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。"
 					variant="spread"
 				>

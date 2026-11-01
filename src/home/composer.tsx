@@ -6,6 +6,7 @@ import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
+import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
 import { Hero } from './hero';
@@ -14,6 +15,7 @@ import { ReactionsWidget } from './reactions/widget';
 import type { SystemService, SystemServiceStatus } from './status/health';
 import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
+import type { DataSourceDescriptor } from './status/data-source';
 
 export interface HomePageData {
 	capabilities: readonly Capability[];
@@ -29,6 +31,12 @@ export interface HomePageData {
 	incidents?: readonly KnownIncident[];
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
+	/**
+	 * Issue #377 — which data source the runtime is reading. The
+	 * indicator renders only outside the deployed production Worker,
+	 * so the shipped page carries no development text.
+	 */
+	dataSource?: DataSourceDescriptor;
 }
 
 export interface HomePageProps {
@@ -99,6 +107,11 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</a>
 			<Hero />
 			<main id="main">
+				{data.dataSource ? (
+					<Container>
+						<DataSourceBadge source={data.dataSource} />
+					</Container>
+				) : null}
 				<CapabilitiesGrid capabilities={data.capabilities} />
 				<StatusTiles
 					services={data.services}

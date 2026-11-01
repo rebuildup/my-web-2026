@@ -360,6 +360,22 @@ describe('operator MFA audit — the anonymization guard', () => {
 		});
 	}
 
+	it('does not read a provenance git short sha as a credential', () => {
+		// A 12-character hexadecimal sha is all digits about 0.36% of the
+		// time, and the digit-run rule cannot tell it from a secret.
+		const provenance =
+			'Issue #469 · my-web-2026 <version> · head 637725805045 · 生成 2026-11-01T05:34:43.315Z';
+		assert.deepEqual(findSensitiveInText(provenance), []);
+		assertNoSensitiveInText(provenance);
+	});
+
+	it('still flags a digit run that is not a provenance short sha', () => {
+		const findings = findSensitiveInText('recovery code 123456789012');
+		assert.ok(findings.some((finding) => finding.id === 'long-digit-run'));
+		const longer = findSensitiveInText('head 6377258050451234');
+		assert.ok(longer.some((finding) => finding.id === 'long-digit-run'));
+	});
+
 	it('passes the rendered report for every fixture', () => {
 		for (const name of FIXTURE_NAMES) {
 			const read = readFixture(readFileSync(join(FIXTURE_DIR, name), 'utf8'));

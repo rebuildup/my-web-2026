@@ -170,6 +170,32 @@ test.describe('home page composition', () => {
 		const activityCard = section.locator('li').filter({ hasText: 'アクティビティ' });
 		await expect(activityCard.locator('text=planned')).toBeVisible();
 		await expect(activityCard.locator('a[href^="/"]')).toHaveCount(0);
+
+		// Issue #782 — every row starts at its grid column's x. The live
+		// rows used to carry a 24px `paddingInlineStart` plus an
+		// absolutely positioned 2px bar, so a live row and the planned row
+		// beside it in the same column did not share a start line. State is
+		// now carried by the badge alone, and no replacement decoration is
+		// allowed: an absolutely positioned child under a row is a bar.
+		await page.setViewportSize({ width: 1440, height: 1000 });
+		const rows = section.locator('li');
+		const rowCount = await rows.count();
+		for (let index = 0; index < rowCount; index += 1) {
+			const row = rows.nth(index);
+			const rowBox = await row.boundingBox();
+			const headingBox = await row.locator('h3').boundingBox();
+			expect(rowBox).not.toBeNull();
+			expect(headingBox).not.toBeNull();
+			expect(
+				Math.abs((headingBox?.x ?? Number.NaN) - (rowBox?.x ?? Number.NaN)),
+			).toBeLessThanOrEqual(0.5);
+		}
+		const absoluteBars = await section
+			.locator('li > span[aria-hidden="true"]')
+			.evaluateAll(
+				(nodes) => nodes.filter((node) => getComputedStyle(node).position === 'absolute').length,
+			);
+		expect(absoluteBars).toBe(0);
 	});
 
 	test('renders the system status section with three services', async ({ page }) => {

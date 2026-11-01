@@ -19,8 +19,34 @@
 | `dialog-focus.webp` | #406 | the modal focus contract on one screen: the shipped picker `<dialog>` open in one Chromium (1280×900, deviceScaleFactor 2) with its `:modal` state, its focus trap, the inert background, the `Escape` close and the focus return to the trigger measured live, plus the negative control (a non-modal open) caught by the same verdict. `dialog-focus.md` is the write-up |
 | `video-caption-track.webp` | #408 | the `<video>` contract on one screen: a work whose caption SOURCE the gate verified (the author's `data-caption-status` is a declaration, not a verification), a work with no caption track, a work with no controls, a work whose caption source 404s (the declaration does not become a verification: the source is reported as `video-caption-source-unverified`), and a work that declares no audio-description disposition (SC 1.2.3 A / 1.2.5 AA, fail closed), with each card's verdict computed by the gate's own `evaluateVideo` and the working / failing caption tracks read from the browser. `video-caption.md` is the write-up |
 | `live-region-state.webp` | #405 | the shipped live-region contract driven through idle / pending / success / settled / failure / empty / 320 px in one Chromium: the status region's `role`, `aria-live`, `aria-atomic` and `aria-busy` read at every step, with the mutation count proving one announcement per result and no re-announce. `live-region.md` is the write-up |
+| `tap-target-overlay.webp` | #401 | the tap / click target size contract on one screen: the repository's own target-size fixtures (five conforming specimens, five violating ones) and the three shipped surfaces the Issue names (the reaction picker, the nav, the facet filter), each target carrying the 24 × 24 CSS px minimum drawn over its hit box (green = meets it, red = misses it), with the measured size of every target printed beside it. `target-size.md` is the write-up |
 | `screenreader-steps.webp` | #402 | the screen-reader procedure ledger as a record sheet: every step a person has to perform with an assistive technology (the operation, the surface and its state, the assistive technology, the environment, the expected announcement), with the columns a person fills — the observed announcement, the performer, the date — printed as empty cells, because no review has been performed yet. The header states the gate's verdict and that the picture is the design of the record, not a reading. `screenreader-steps.md` is the write-up |
 | `wcag-review-matrix.webp` | #410 | the manual-review record for the WCAG 2.2 A/AA criteria a machine cannot decide, with the shipped form-state gallery on one screen, the failure panel's Chromium accessibility snapshot, and the gate's own report (machine-checked rows / outstanding rows / excluded criteria / scope decisions) printed above them. `wcag-review-matrix.md` is the write-up |
+
+## Tap and click target size (Issue #401)
+
+`tap-target-overlay.webp` is the committed screenshot of
+`docs/verification/a11y/tap-target-overlay.png` with the `.webp`
+extension (the repository's rule is that a verification artefact is
+WebP; Issue #401 names a `.png` path — see "WebP, not PNG" below).
+
+The criterion is WCAG 2.2 **SC 2.5.8 Target Size (Minimum), level AA**:
+a pointer target is at least 24 × 24 CSS px, unless it falls under one
+of the four exceptions the criterion names. The Issue is decided in two
+halves, because the two halves can only say half of it:
+
+| half | entry point | decides |
+| --- | --- | --- |
+| static | `pnpm run a11y:target-size:check` | the size a target **declares**, the validity of a declared exception, and whether a drag gesture has a click (or keyboard) alternative |
+| measured | `pnpm run capture:a11y-target-size` | the **rendered** box in Chromium, and the exceptions the source cannot settle (the inline and the spacing exception) |
+
+The scope is the three surfaces Issue #401 names — the reaction picker,
+the nav, the facet filter. Everything else under `src/**` is excluded
+**with its reason printed**, never silently skipped. The exceptions are
+never ignored in silence either: `inline` and `spacing` are decided by
+measurement, `user-agent control` and `essential` have to be declared
+with a reason (`SHIPPED_EXCEPTIONS`, empty today and printed as such).
+
 
 ## WCAG AA manual review matrix (Issue #410)
 

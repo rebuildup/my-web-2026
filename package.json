@@ -225,6 +225,8 @@
 		"a11y:focus-visible:check": "node scripts/check-a11y-focus-visible.mjs",
 		"capture:a11y-focus-visible": "node scripts/capture-a11y-focus-visible.mjs",
 		"capture:a11y-contrast": "node scripts/capture-a11y-contrast.mjs",
+		"a11y:target-size:check": "node scripts/check-a11y-target-size.mjs",
+		"capture:a11y-target-size": "node scripts/capture-a11y-target-size.mjs",
 		"a11y:axe-storybook:check": "node scripts/check-a11y-axe-storybook.mjs",
 		"a11y:axe-storybook:e2e": "playwright test --config playwright.storybook.config.ts",
 		"a11y:axe-storybook:ci": "node scripts/run-storybook-axe-audit.mjs",

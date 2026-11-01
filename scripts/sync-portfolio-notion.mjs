@@ -21,7 +21,7 @@
  *     mapping, from the same functions, so the offline run exercises every
  *     decision the online run makes.
  *   * the default mode reads the live database. It needs `NOTION_TOKEN`
- *     and a database id (`--database-id` or `NOTION_PORTFOLIO_DATABASE_ID`).
+ *     and a database id (`--database-id` or `NOTION_PORTFOLIO_DB_ID`).
  *     Neither value is printed, and neither reaches the snapshot.
  *
  * Failure semantics:
@@ -65,7 +65,7 @@ const USAGE = `sync-portfolio-notion — build the portfolio snapshot from Notio
   node scripts/sync-portfolio-notion.mjs [--fixture <path>] [--dry-run] [--force]
 
   --fixture <path>       read a Notion-shaped JSON file instead of the API
-  --database-id <id>     Notion database id (default: $NOTION_PORTFOLIO_DATABASE_ID)
+  --database-id <id>     Notion database id (default: $NOTION_PORTFOLIO_DB_ID)
   --out <path>           where to write the snapshot (default: the bundled file)
   --dry-run              map and validate, write nothing
   --force                write even when the content digest is unchanged
@@ -148,6 +148,7 @@ export function contentDigest(records) {
  */
 export function buildSnapshot({
 	databaseId,
+	idKind = null,
 	sourceUrl = null,
 	records,
 	now,
@@ -161,6 +162,11 @@ export function buildSnapshot({
 			schema: SNAPSHOT_SCHEMA,
 			source: {
 				databaseId,
+				...(idKind === null
+					? typeof previous?.source?.idKind === 'string'
+						? { idKind: previous.source.idKind }
+						: {}
+					: { idKind }),
 				capabilities: ['read_content'],
 				// The snapshot was not fetched this run; keep the last
 				// successful fetch time so a reader can measure the age.
@@ -179,6 +185,7 @@ export function buildSnapshot({
 		schema: SNAPSHOT_SCHEMA,
 		source: {
 			databaseId,
+			...(idKind === null ? {} : { idKind }),
 			capabilities: ['read_content'],
 			fetchedAt: observedAt,
 			sourceUrl,
@@ -272,7 +279,7 @@ export async function syncNotion({
 			return 3;
 		}
 		if (id === null) {
-			stderr.write('missing target: pass --database-id or set NOTION_PORTFOLIO_DATABASE_ID\n');
+			stderr.write('missing target: pass --database-id or set NOTION_PORTFOLIO_DB_ID\n');
 			return 3;
 		}
 	}
@@ -317,8 +324,11 @@ export async function syncNotion({
 				`refused page=${error.pageId} ${error.code} at=${error.at} expected=${error.expected}\n`,
 			);
 		}
+		// One page can fail several properties, so the count that matters to
+		// an operator is pages, not findings.
+		const refusedPages = new Set(errors.map((error) => error.pageId));
 		stderr.write(
-			`sync aborted: ${errors.length} page(s) could not be mapped; nothing was written\n`,
+			`sync aborted: ${refusedPages.size} page(s) could not be mapped (${errors.length} finding(s)); nothing was written\n`,
 		);
 		return 1;
 	}
@@ -326,6 +336,8 @@ export async function syncNotion({
 	const databaseIdOut = source.databaseId;
 	const snapshot = buildSnapshot({
 		databaseId: databaseIdOut,
+		// A fixture has no id kind: it is not fetched from either endpoint.
+		idKind: source.idKind === 'database' || source.idKind === 'data_source' ? source.idKind : null,
 		sourceUrl: typeof source.sourceUrl === 'string' ? source.sourceUrl : null,
 		records,
 		now,

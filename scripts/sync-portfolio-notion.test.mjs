@@ -354,7 +354,7 @@ describe('syncNotion live mode', () => {
 		const exitCode = await syncNotion({
 			outPath,
 			now: NOW,
-			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DATABASE_ID: 'db-1' },
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: 'db-1' },
 			fetchImpl: supports(fixtureDocument().pages[0].page.id),
 			stdout: silent(),
 			stderr: silent(),
@@ -362,7 +362,55 @@ describe('syncNotion live mode', () => {
 		assert.equal(exitCode, 0);
 		const written = JSON.parse(readFileSync(outPath, 'utf8'));
 		assert.equal(written.source.databaseId, 'db-1');
+		assert.equal(written.source.idKind, 'database');
 		assert.equal(written.records.length, 1);
+	});
+
+	// The id an operator copies out of Notion is often a data source id, not
+	// a database id: the data-source model gives one table two ids and only
+	// the query endpoint takes the one the UI shows. Accepting both is what
+	// keeps the secret they stored from being wrong for a reason that has
+	// nothing to do with them.
+	it('accepts a data source id when the database read misses', async () => {
+		const outPath = tempOut();
+		const pageId = fixtureDocument().pages[0].page.id;
+		const seen = [];
+		const exitCode = await syncNotion({
+			outPath,
+			now: NOW,
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: 'ds-1' },
+			fetchImpl: (url, init) => {
+				seen.push(`${init?.method ?? 'GET'} ${url}`);
+				if (url.endsWith('/databases/ds-1')) {
+					return Promise.resolve(new Response('{}', { status: 404 }));
+				}
+				return supports(pageId)(url, init);
+			},
+			stdout: silent(),
+			stderr: silent(),
+		});
+		assert.equal(exitCode, 0);
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		assert.equal(written.source.databaseId, 'ds-1');
+		assert.equal(written.source.idKind, 'data_source');
+		assert.equal(written.records.length, 1);
+		assert.equal(seen[0], 'GET https://api.notion.com/v1/databases/ds-1');
+	});
+
+	it('reports a 404 when neither id resolves', async () => {
+		const outPath = tempOut();
+		const capture = readCapture();
+		const exitCode = await syncNotion({
+			outPath,
+			now: NOW,
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: 'nowhere' },
+			fetchImpl: () => Promise.resolve(new Response('{}', { status: 404 })),
+			stdout: silent(),
+			stderr: capture.stream,
+		});
+		assert.equal(exitCode, 3);
+		assert.match(capture.text(), /not found while reading the data source/u);
+		assert.equal(existsSync(outPath), false);
 	});
 
 	it('refuses a database with more than one data source', async () => {
@@ -371,7 +419,7 @@ describe('syncNotion live mode', () => {
 		const exitCode = await syncNotion({
 			outPath,
 			now: NOW,
-			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DATABASE_ID: 'db-1' },
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: 'db-1' },
 			fetchImpl: () =>
 				Promise.resolve(
 					new Response(
@@ -398,7 +446,7 @@ describe('syncNotion live mode', () => {
 		const exitCode = await syncNotion({
 			outPath,
 			now: NOW,
-			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DATABASE_ID: 'db-1' },
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: 'db-1' },
 			fetchImpl: () => Promise.resolve(new Response('{}', { status: 401 })),
 			stdout: silent(),
 			stderr: silent(),
@@ -415,7 +463,7 @@ describe('syncNotion live mode', () => {
 		const exitCode = await syncNotion({
 			outPath,
 			now: new Date('2026-11-01T00:00:00.000Z'),
-			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DATABASE_ID: previous.source.databaseId },
+			env: { NOTION_TOKEN: TOKEN, NOTION_PORTFOLIO_DB_ID: previous.source.databaseId },
 			fetchImpl: () => Promise.resolve(new Response('{}', { status: 503 })),
 			stdout: silent(),
 			stderr: silent(),

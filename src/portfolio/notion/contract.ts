@@ -110,8 +110,19 @@ export const NotionRecordSchema = z.object({
 export const NotionSnapshotSchema = z.object({
 	schema: z.literal(NOTION_SNAPSHOT_SCHEMA),
 	source: z.object({
-		/** Database id. Never the workspace id, never a token. */
+		/**
+		 * The configured Notion object id — a database id or a data source id
+		 * (`idKind` says which). Never the workspace id, never a token.
+		 */
 		databaseId: z.string().min(1).max(64),
+		/**
+		 * Which kind `databaseId` names (Issue #765). Notion's data-source
+		 * model gives an operator two ids for one portfolio table, and the
+		 * value people copy is usually the data source. Absent means the
+		 * snapshot predates this field or was hand-authored — never that it
+		 * names a database: an unknown kind is recorded as unknown, never guessed.
+		 */
+		idKind: z.enum(['database', 'data_source']).optional(),
 		/** Capabilities actually exercised, so the ledger can be measured. */
 		capabilities: z.array(z.enum(['read_content', 'read_user_information'])).max(4),
 		fetchedAt: isoInstant,

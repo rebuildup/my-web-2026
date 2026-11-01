@@ -3,9 +3,9 @@
 Issue #765 / ADR-0018。Notion の database を portfolio の **authoring SoT** として
 扱い、build 時にだけ snapshot へ取り込む手順。
 
-> **この runbook は「token を持っていない状態」から書かれている。**
-> 2026-11-01 時点で `NOTION_TOKEN` はまだ Infisical に存在しない。実装は
-> token を差す直前まで完成しており、fixture / dry-run で全経路を検証済みである。
+> **この runbook は「token を持っていない状態」の検証から始まる。**
+> owner が Infisical `dev` に `NOTION_TOKEN` / `NOTION_PORTFOLIO_DB_ID` を投入済みで、
+> 2026-11-01 に dry-run で real path の疎通を確認した（§5.2）。
 
 ## 1. これは何か / 何ではないか
 
@@ -84,14 +84,26 @@ code / divider。**それ以外と `image` は error**（黙って落とさな�
 
 | 項目 | 値 |
 | --- | --- |
-| **名前** | `NOTION_TOKEN` |
+| **名前** | `NOTION_TOKEN` / `NOTION_PORTFOLIO_DB_ID` |
 | 値 | **この文書にも repo にも Issue にも書かない**。operator が Infisical に直接入れる |
-| Infisical 環境 | `prod`（実データを読むため） |
+| Infisical 環境 | **`dev`**（理由は下記） |
 | Infisical path | `/`（`scripts/infisical-seed.mjs` の既定と同じ） |
 | `wrangler.jsonc#secrets.required` | **入れない** |
 | `wrangler.production.jsonc#secrets.required` | **入れない** |
 | `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS` | **入れない** |
-| `NOTION_PORTFOLIO_DATABASE_ID` | 必須ではない。`--database-id` で渡すか、env に置く（secret ではない） |
+| `NOTION_PORTFOLIO_DB_ID` | secret ではない。`--database-id` で渡すか、env に置く（**`--database-id` が env より優先**） |
+
+**なぜ `dev` か。** これは本番 runtime secret ではなく **運用者ローカルの
+credential** である。根拠:
+
+| 事実 | 帰結 |
+| --- | --- |
+| `pnpm build` は Notion sync を呼ばない（実測: `vite build` → `build-tools` → `check-client-bundle`） | build のたびに token を要さない |
+| Worker は Notion を読まない（snapshot を bundle しているだけ） | runtime secret ではない |
+| ADR-0018 §2.2 で定期同期を却下しており、CI / Workers Builds に sync step は無い | CI も token を要さない |
+| `wrangler*.jsonc#secrets.required` に名前を足さない | `prod` に置くと「宣言されていない prod secret」になり、`cf:config:drift:check` の観点で乖離する |
+
+つまり `prod` に置くのは **本番 runtime が読む secret だけ**にする。
 
 **なぜ `secrets.required` に入れないか**: それは *Worker が runtime で読む* secret の
 宣言である。`NOTION_TOKEN` は offline tooling の credential で、Worker の
@@ -103,11 +115,12 @@ import graph に入らない。加えて `quality/integration-scope.json#allowli
 値を入れる操作（operator が自分の shell で実行する。agent は実行しない）:
 
 ```sh
-infisical secrets set NOTION_TOKEN --env=prod --path=/
+infisical secrets set NOTION_TOKEN --env=dev --path=/
+infisical secrets set NOTION_PORTFOLIO_DB_ID --env=dev --path=/
 # プロンプトに値が現れる。stdout に値は出ない。
 ```
 
-`infisical secrets --env=prod --path=/` / `infisical secrets get ... --plain` の
+`infisical secrets --env=dev --path=/` / `infisical secrets get ... --plain` の
 ような **値を列挙するコマンドは禁止**（AGENTS.md §4、Issue #139）。
 
 ## 5. 実行手順と期待結果
@@ -130,11 +143,11 @@ exit=0
 `records=3` は fixture の 3 ページ。うち 1 ページは `Draft` + `Unlisted` で、
 公開面には出ない（`publish.ts` が落とす）。**この実行はネットワークを使わない。**
 
-### 5.2 token を入れた後の最初の実行
+### 5.2 token を入れた後の最初の実行（2026-11-01 に実施済み）
 
 ```sh
-infisical run --env=prod --path=/ -- \
-  node scripts/sync-portfolio-notion.mjs --database-id <DATABASE_ID> --dry-run
+# DATABASE_ID は env（NOTION_PORTFOLIO_DB_ID）から来るので、指定は任意
+infisical run --env=dev --path=/ -- node scripts/sync-portfolio-notion.mjs --dry-run
 ```
 
 期待（dry-run なので何も書かない）:
@@ -144,13 +157,38 @@ synced records=<N> digest=sha256:<16桁>… written=false
 exit=0
 ```
 
-`<N>` は database のページ数。**ここで `records=0` なら共有忘れ**（§2 手順 3）、
+`<N>` は data source のページ数。**ここで `records=0` なら共有忘れ**（§2 手順 3）、
 `refused page=… ` 行が出たら本文の形が §3 の語彙から外れている。
+
+**configured id は database id でも data source id でもよい**（2026-11-01 追加）。
+Notion の data-source model では 1 つの表に 2 つの id があり、UI からコピーできるのは
+たいてい data source id である。CLI はまず `/v1/databases/{id}` を読み、404 のとき
+同じ値を data source id として query する。どちらでも解決しなければ 404 で止まる
+（別の表を黙って選ぶことはない）。
+
+**property 名は §3 の表と完全一致している必要がある。** 違う名前の
+database を指していると、1 ページについて property の数だけ
+`missing_property` が出る。まず `data source` の property 名を確認する
+（値を出す必要はない。名前と種別だけで足りる）。
+
+#### 2026-11-01 の実行結果（owner が `dev` に secret を投入した後）
+
+| 段 | 結果 |
+| --- | --- |
+| token / id の存在 | どちらも注入された（`infisical run` は 7 secret を注入） |
+| `GET /v1/databases/{id}` | **404** — configured id は database id ではなかった |
+| `GET /v1/data_sources/{id}` | **200** — data source id として解決。property は 3 件（`名前: title` / `タグ: multi_select` / `作成日時: created_time`） |
+| `POST /v1/data_sources/{id}/query` | **200** — 1 ページ |
+| mapping | `missing_property` 7 件 + `unknown_status` / `unknown_visibility` / `missing_motivation` = **1 ページ / 9 件**で refuse。何も書いていない（exit 1） |
+| 判定 | 読めるが、**§3 の property schema を持たない data source を指している**。§2 の database を作り、property を §3 の名前で用意するか、正しい id に差し替える |
+
+これは code の欠陥ではなく、owner 側の database 準備待ちである。
+`--dry-run` は何も書いていないので、この状態で repo は無変更。
 
 問題がなければ本実行:
 
 ```sh
-infisical run --env=prod --path=/ -- \
+infisical run --env=dev --path=/ -- \
   node scripts/sync-portfolio-notion.mjs --database-id <DATABASE_ID>
 ```
 
@@ -203,13 +241,16 @@ Notion で本文を編集
 | メッセージ | 意味 |
 | --- | --- |
 | `missing credential: NOTION_TOKEN is not set` | env が無い。exit 3。何も書いていない |
-| `missing target: pass --database-id or set NOTION_PORTFOLIO_DATABASE_ID` | id が無い。exit 3 |
+| `missing target: pass --database-id or set NOTION_PORTFOLIO_DB_ID` | id が無い。exit 3 |
 | `credential rejected or integration not shared with the database` | 401/403。token 不正 or 共有忘れ |
-| `database or page not found (...)` | 404。database id の誤り or 共有忘れ |
+| `not found while reading the database (...)` | 404。configured id が database id でも data source id でもない、または共有忘れ |
+| `not found while reading the data source (...)` | 404。data source としても解決しない。id の誤り or 共有忘れ |
 | `database has N data sources; the portfolio must be exactly one` | 複数 data source。**owner の判断が要る**（どの source が portfolio か） |
 | `database has no data source (...)` | 2025-09-03 未満の形。共有を確認 |
 | `sync failed: request timed out` / `network request failed` | 一次障害。exit 3、何も書かない |
 | `refused page=… <code> at=… expected=…` | 本文の形。ADR-0018 §2.3 の語彙に直す |
+| `refused … missing_property at=property <Name>` | data source に §3 の property が無い。**property 名が違う**のが典型（下記） |
+| `sync aborted: N page(s) could not be mapped (M finding(s))` | 1 ページが複数の property で落ちうるので、ページ数と指摘数を分けて出す |
 | `unavailable records=N reason=source_error` | 429 / 5xx。**最後の既知内容を保持したまま** `availability: unavailable` を記録した |
 | `refusing to write the snapshot: it contains a token value` | 防御機構。**commit しないで**、何が起きたか報告する |
 

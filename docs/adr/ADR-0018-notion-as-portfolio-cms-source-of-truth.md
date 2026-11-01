@@ -185,7 +185,8 @@ fail-closed に検証する。
 | field | 意味 | 検証 |
 | --- | --- | --- |
 | `schema` | `portfolio-notion-snapshot.v1` | 未知 version は `null`（公開しない） |
-| `source.databaseId` | 取得元 database の識別子（secret ではない） | 非空文字列。**workspace id も token も記録しない** |
+| `source.databaseId` | 取得元の識別子（secret ではない）。**database id でも data source id でもよい** | 非空文字列。**workspace id も token も記録しない** |
+| `source.idKind` | `database` \| `data_source`。configured id がどちらとして解決したか | 任意。無い場合は「不明」（fixture / 旧 snapshot）であって database と推定しない |
 | `source.capabilities` | 実際に行使した capability | `read_content` のみ |
 | `source.fetchedAt` / `observedAt` | 取得時刻 / 観測時刻 | ISO 8601。parse 不能は invalid |
 | `availability` | `public` \| `unavailable` | `unavailable` と `unavailableReason` は必ず対 |
@@ -195,13 +196,27 @@ fail-closed に検証する。
 `records[]` は Notion page の全 property を写さない。`src/projects/types.ts` が
 「上流 document より意図的に狭い」と明記しているのと同じ理由である。
 
+**configured id の解決順**（2026-11-01 追加）。data-source model では 1 つの表に
+database id と data source id の 2 つがあり、Notion の UI からコピーできるのは
+たいてい data source id である。operator に「どちらをコピーしたか」を当てさせない。
+
+1. `GET /v1/databases/{id}` を読む。成功したら `data_sources[]` がちょうど 1 つで
+   あることを要求し（複数は §5 の owner 判断）、その data source を query する。
+2. 404 のときだけ、同じ値を data source id として `POST /v1/data_sources/{id}/query`
+   する。data source id は database endpoint の知らない id なので、これは
+   「別の表を黙って選ぶ」推測にはならない。解決しなければ 404 で止まる。
+3. query 側の 404 は fallback しない。id が database id として入ってきた場合、
+   それは本当の失敗である。
+
+どちらの経路で解決したかは `source.idKind` に残す。
+
 ### 2.9 Secret contract
 
 | 項目 | 値 |
 | --- | --- |
-| 名前 | `NOTION_TOKEN`（`{PRODUCT}_{ROLE}`、`docs/runbook/infisical-secrets.md` §3.2） |
+| 名前 | `NOTION_TOKEN` / `NOTION_PORTFOLIO_DB_ID`（`{PRODUCT}_{ROLE}`、`docs/runbook/infisical-secrets.md` §3.2）。id は secret ではないが、token と同じ場所に置く |
 | 種別 | **internal connection token**（静的。OAuth の refresh token ではない） |
-| 値の所在 | Infisical（ADR-0015 §1）。この repository のどのファイルにも書かない |
+| 値の所在 | Infisical **`dev`**（ADR-0015 §1）。この repository のどのファイルにも書かない。`prod` に置かない理由: `pnpm build` は sync を呼ばず、Worker も Notion を読まず、CI にも sync step が無い。本番 runtime secret ではないので `prod` に置くと `secrets.required` と乖離する |
 | 誰が使うか | **offline sync スクリプトのみ**。Worker は読まない |
 | `wrangler*.jsonc` | **登録しない**。`secrets.required` に足すと allowlist が空のうちは `pnpm run integration:scope:check` が error にする |
 | 出力 | status-only。値を echo しない・ログに載せない。snapshot に混入した場合は書き込みを拒否する（`findCredentialLeak`） |

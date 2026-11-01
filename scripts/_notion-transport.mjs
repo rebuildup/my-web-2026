@@ -71,11 +71,11 @@ export function readToken(env = process.env) {
 
 /** The database id, from `--database-id` or the environment. */
 export function readDatabaseId(env = process.env) {
-	const value = env.NOTION_PORTFOLIO_DATABASE_ID;
+	const value = env.NOTION_PORTFOLIO_DB_ID;
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-async function request({ path, method = 'GET', body, token, fetchImpl, version }) {
+async function request({ path, method = 'GET', body, token, fetchImpl, version, step }) {
 	let response;
 	try {
 		response = await fetchImpl(`${NOTION_API_BASE}${path}`, {
@@ -110,8 +110,12 @@ async function request({ path, method = 'GET', body, token, fetchImpl, version }
 			);
 		}
 		if (status === 404) {
+			// The step is named because the two 404s this boundary can produce
+			// need different fixes: the database read means the configured id
+			// is not a database the integration can see, while the data-source
+			// query means the database was found and its child was not.
 			throw new NotionTransportError(
-				'database or page not found (check the id and the integration share)',
+				`not found while reading the ${step ?? 'resource'} (check the id and the integration share)`,
 				{
 					status,
 				},
@@ -155,6 +159,7 @@ export async function fetchDatabase({ databaseId, token, fetchImpl = globalThis.
 		token,
 		fetchImpl,
 		version,
+		step: 'database',
 	});
 	if (typeof body?.id !== 'string') {
 		throw new NotionTransportError('database response had no id');
@@ -202,6 +207,7 @@ export async function queryDataSource({
 			token,
 			fetchImpl,
 			version,
+			step: 'data source',
 		});
 		if (Array.isArray(body?.results)) results.push(...body.results);
 		if (body?.has_more !== true) return results;
@@ -230,6 +236,7 @@ export async function fetchBlockChildren({
 			token,
 			fetchImpl,
 			version,
+			step: 'block children',
 		});
 		if (Array.isArray(body?.results)) blocks.push(...body.results);
 		if (body?.has_more !== true) return blocks;
@@ -245,6 +252,23 @@ export async function fetchBlockChildren({
 /**
  * Read the whole database: its pages and each page's blocks.
  *
+ * The configured id may be **either** object Notion shows for a portfolio
+ * database. Under the data-source model a database carries one or more data
+ * sources, and the value an operator copies out of the Notion UI is often a
+ * data source id (it is what `POST /v1/data_sources/{id}/query` takes, and
+ * what the integration's search results are keyed by). Making the operator
+ * work out which one they copied is a trap, so both are accepted:
+ *
+ *   1. `GET /v1/databases/{id}` — a database id resolves to its single data
+ *      source (ADR-0018 §2.7: more than one is an error, not a choice made
+ *      here).
+ *   2. If that read 404s, the same value is tried as a data source id. A
+ *      data source id is not an id the database endpoint knows, so this is
+ *      not a guess that can silently pick a different table: the id either
+ *      names the queried data source or the sync fails.
+ *
+ * Both 404s stay 404s: an unshared database is still an operator problem.
+ *
  * Returns the same intermediate shape a fixture file has, so the mapping
  * path is identical in both modes — that is what makes the fixture a real
  * test of the real path rather than a parallel implementation.
@@ -256,14 +280,31 @@ export async function fetchNotionPortfolio({
 	version,
 	maxPages = 200,
 }) {
-	const database = await fetchDatabase({ databaseId, token, fetchImpl, version });
-	const dataSource = selectDataSource(database);
-	const pages = await queryDataSource({
-		dataSourceId: dataSource.id,
-		token,
-		fetchImpl,
-		version,
-	});
+	let idKind = 'database';
+	let targetId = databaseId;
+	let pages;
+
+	let database = null;
+	try {
+		database = await fetchDatabase({ databaseId, token, fetchImpl, version });
+	} catch (error) {
+		// Only this read may fall back. A 404 from the query endpoint is a
+		// real failure even when the id came in as a database id.
+		const isDatabaseMiss = error instanceof NotionTransportError && error.status === 404;
+		if (!isDatabaseMiss) throw error;
+	}
+
+	if (database === null) {
+		// A data source id is not an id `/v1/databases/{id}` knows. Try the
+		// same value against the query endpoint before reporting a 404.
+		idKind = 'data_source';
+		pages = await queryDataSource({ dataSourceId: databaseId, token, fetchImpl, version });
+	} else {
+		const dataSource = selectDataSource(database);
+		targetId = database.id;
+		pages = await queryDataSource({ dataSourceId: dataSource.id, token, fetchImpl, version });
+	}
+
 	if (pages.length > maxPages) {
 		throw new NotionTransportError(
 			`database has more than ${maxPages} pages; refusing to sync all of them`,
@@ -281,7 +322,8 @@ export async function fetchNotionPortfolio({
 	}
 
 	return {
-		databaseId: database.id,
+		databaseId: targetId,
+		idKind,
 		// Deliberately not published: the database URL is an internal
 		// identifier and this file is bundled into the build.
 		sourceUrl: null,

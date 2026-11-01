@@ -91,11 +91,13 @@
 | 状態の語彙 | 8 状態の closure vocabulary を `docs/runbook/issue-lifecycle.md` §1 に定義 | `scripts/check-issue-closure.test.mjs` |
 | 台帳 | `quality/issue-closure-ledger.json`（132 件の per-Issue 記録） | `pnpm run issue:closure:check` |
 | オフライン gate | `scripts/check-issue-closure.mjs`（状態・証拠・判断理由・著作者の整合、テンプレートコメントを証拠として拒否 = E006） | `node --test scripts/check-issue-closure.test.mjs` |
-| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub のクローズ実績と照合し、台帳に無いクローズを R001 として検出） | `node --test scripts/check-issue-closure-remote.test.mjs` |
+| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub の各 Issue の現在状態とクローズ時の追跡を直接読み、台帳と食い違えば R002/R003/R004/R005、**台帳に記録が無くかつ追跡も無い**クローズを R001 として検出） | `node --test scripts/check-issue-closure-remote.test.mjs` |
 | プロジェクト契約 | AGENTS.md §6「Issue closure requires evidence」 | `node --test scripts/_quality-gate-plan.test.mjs` |
 | CI | `.github/workflows/ci.yml` に `Issue closure audit` ステップ（network が必要なため CI only。dependency advisory gate と同じ方式） | actionlint / `pnpm run lint:ci` |
 
 **この gate だけでは防げなかったもの**: オフライン gate だけなら 2026-10-31 の sweep は**素通りしていた**（リポジトリに記録を一切書かなかったため）。GitHub 側のクローズ実績と照合するのは、リモート gate 側です。
+
+**R001 の「追跡」の意味**: クローズが**読者が開ける痕跡を残しているか**です。具体的には (a) 当該 Issue を参照した commit、(b) 当該 Issue を参照した PR、(c) 成果物（PR / commit / URL）を名指しするコメント、または (d) 保留・重複・却下・延期のような**判断理由が書かれたコメント**。①②の根拠は Issue の timeline（`CrossReferencedEvent` / `ReferencedEvent`）です。**「release-0-8-0 統合完了」というテンプレートコメントは追跡に数えません** — それはブランチの統合状況であって、その Issue 自身の受入条件の達成ではないためです。この定義は 2026-10-01 以降のクローズ 232 件に対して実測検証済みで、追跡の無いクローズは **0 件**（誤検出なし）です。
 
 ## 6. Miro 原典について（未達・owner 作業）
 

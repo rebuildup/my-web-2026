@@ -84,6 +84,13 @@ export const MANIFEST_VERSION = 1 as const;
 export interface ManifestTool {
 	readonly slug: string;
 	readonly display_name: string;
+	/**
+	 * Japanese description rendered on the `/tools` index (Issue #785).
+	 * Required: the index leads with Japanese, so a Tool without one
+	 * would render an unexplained row. The English `description`
+	 * remains the maintainer-facing text.
+	 */
+	readonly description_ja: string;
 	readonly description?: string;
 	readonly source: {
 		readonly canonical_repo: string;

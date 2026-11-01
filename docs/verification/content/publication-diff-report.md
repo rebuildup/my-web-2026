@@ -123,7 +123,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |

@@ -85,7 +85,7 @@
 	"/tools": {
 		"ogType": "website",
 		"ogTitle": "Tools — my-web-2026",
-		"ogDescription": "Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.",
+		"ogDescription": "ブラウザで動く小さなツールの一覧。各ツールの内容と、開けるかどうかが分かります。",
 		"ogUrl": "https://rebuildup.dev/tools",
 		"twitterCard": "summary"
 	},

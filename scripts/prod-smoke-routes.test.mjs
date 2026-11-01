@@ -73,7 +73,9 @@ const FIXTURES = {
 	},
 	'/tools': {
 		title: 'Tools — my-web-2026',
-		h1Text: 'ツール / Tools',
+		// Issue #785: the index h1 is the Japanese surface title alone;
+		// the English word sits in the eyebrow, not in the heading.
+		h1Text: 'ツール',
 		unmatchedProbes: { allManifestSlugsListed: false, everyRowClassified: false },
 	},
 	'/api/v1/health': {

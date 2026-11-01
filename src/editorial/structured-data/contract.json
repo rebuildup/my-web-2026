@@ -89,18 +89,18 @@
 		{
 			"path": "/tools",
 			"public": true,
-			"status": "not-implemented",
-			"expectedTypes": [],
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/tools",
-			"note": "Issue #288 で breadcrumb chrome を撤去した surface。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
+			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner は撤去理由を受け入れず「index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」と判断した。index は breadcrumb leaf を emit する。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
 		},
 		{
 			"path": "/tools/[slug]",
 			"public": true,
-			"status": "not-implemented",
-			"expectedTypes": [],
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/tools/prototype",
-			"note": "同上。iframe shell であり、Tool 自体の記述は manifest が owning する。"
+			"note": "Issue #785（owner 指示 2026-11-01）で #288 を全面廃止し、詳細側も PublicNav とパンくずを戻したので breadcrumb leaf を emit する。iframe shell であり、Tool 自体の記述は manifest が owning する。404 / 準備中 / consent 待ちの各 state も同じ PublicNav を描く。ただし breadcrumb は「Tool 名の leaf 1 件」で、親セグメントは flat route tree に親ルートが無いため出ない（/contact, /tools と同じ既存挙動）。404 では leaf 自体が route-labels の dropOnMissingLoaderData で落ち、chain が空になるので breadcrumb を emit しない。"
 		},
 		{
 			"path": "/design-system",

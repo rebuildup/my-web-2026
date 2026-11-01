@@ -145,12 +145,20 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 		// canonical surface for the 404 path.
 		dropOnMissingLoaderData: true,
 		resolve: ({ loaderData }) => {
-			// `getPublicTool(slug)` returns the tool record directly
-			// (no wrapper), so the loaderData IS the tool — read its
+			// The loader returns a discriminated union
+			// (`{ state: 'embeddable' | 'blocked' | 'disabled', tool, … }`
+			// — see `src/routes/tools.$slug.tsx`), so the Tool record
+			// sits under `tool` in EVERY non-404 state. Read its
 			// `display_name` (registry contract, see
 			// `src/tools/registry.ts`) and fall back to the slug.
-			const data = loaderData as { display_name?: string; slug?: string } | undefined;
-			return data?.display_name ?? data?.slug;
+			//
+			// This resolver was written against the pre-#465 shape, where
+			// the loaderData WAS the public Tool record. It went unnoticed
+			// because Issue #288 removed the breadcrumbs from this route in
+			// the same era; Issue #785 puts them back, so the leaf now has
+			// to read the wrapper.
+			const data = loaderData as { tool?: { display_name?: string; slug?: string } } | undefined;
+			return data?.tool?.display_name ?? data?.tool?.slug;
 		},
 	},
 	'/admin': { label: 'Admin' },

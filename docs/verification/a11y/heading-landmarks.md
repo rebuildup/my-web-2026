@@ -26,7 +26,7 @@ gate は **ページ単位のソース** を走査する。単位は「1 ペー�
 | `legal-review` | component | `src/legal/**` | 資産権利レビュー**カード**（ページに埋め込まれる） |
 | `external-api` | component | `src/external-api/**` | 外部 API 読み取りカード |
 | `tools-index` | page | `src/routes/tools.index.tsx` | Tools 一覧。**`page-missing-landmark` は除外**（理由は「rule 除外（宣言と理由）」の節） |
-| `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（chrome なしの全画面 iframe。ページ own の outline を持たない） |
+| `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（サイト chrome を載せた iframe ホスト。ページ own の outline を持たない。chrome は Issue #785 で復活） |
 | `contact` | page | `src/routes/contact.tsx` + `src/contact/page.tsx` | お問い合わせ（route シェル + 描画するページ） |
 | `projects-dotfiles` | page | `src/routes/projects.dotfiles.tsx` + `src/projects/DotfilesIntroductionPage.tsx` | dotfiles 導入（route シェル + 描画するページ） |
 | `design-system` | page | `src/routes/design-system.tsx` + `src/routes/design-system/DesignSystemPage.tsx` | デザインシステム（route シェル + 描画するページ） |
@@ -117,7 +117,7 @@ scanned scope`）。除外は「黙って無視する」のではなく「読め
     {
       rule: 'page-missing-landmark',
       reason:
-        "the browser-compat contract expects `main: 'none'` for this route (Issue #288)",
+        "the browser-compat contract expects `main: 'none'` for this route, which Issue #785 kept when it restored the chrome",
     },
   ],
 }
@@ -127,7 +127,7 @@ scanned scope`）。除外は「黙って無視する」のではなく「読め
 
 | unit | 除外する rule | 理由 | 根拠 |
 | --- | --- | --- | --- |
-| `tools-index` | `page-missing-landmark` | `the browser-compat contract expects main: 'none' for this route (Issue #288)` | `/tools` は全画面 iframe shell であり、browser-compat contract が `main: 'none'` を **明示的に** 期待する documented state（Issue #288）。`e2e/compat/contract.ts` の `COMPAT_ROUTES` が `main: 'none'` と宣言しており、3 エンジンともこれを検証する |
+| `tools-index` | `page-missing-landmark` | `the browser-compat contract expects main: 'none' for this route, which Issue #785 kept when it restored the chrome` | browser-compat contract が `/tools` の landmark 状態を `main: 'none'` と **明示的に** 期待しており、`e2e/compat/contract.ts` の `COMPAT_ROUTES` がそう宣言していて 3 エンジンともこれを検証する。Issue #288 が chrome を外した理由は owner 判断で廃止され、Issue #785 が nav / パンくずを戻した。戻したのは chrome だけで、landmark の契約は変えていない |
 
 除外の扱いには **fail-closed** が働く。
 
@@ -155,7 +155,7 @@ gate の初回実行で **3 件の違反** が出た。うち 2 件は **構造*
 | 違反 | 場所 | 修正 |
 | --- | --- | --- |
 | `landmark-duplicated` ×2 | `src/keyboard/components/KeyboardPage.tsx` | 3 つの描画分岐（ready / unavailable / プラットフォームなし）がそれぞれ `<main>` を持っていたため、**ページの `<main>` を 1 つに** 集約し、分岐側は `<section>` / `<div>` にした |
-| `page-missing-landmark` | `src/routes/tools.index.tsx` | **修正ではなく除外**。当初この route は「ページ本体が `<main>` を持たない」ため `<main>` を追加したが、その追加は **既存の browser-compat 契約（Issue #288、`main: 'none'`）を反転** しており、browser-compat job が 3 エンジンすべてで落ちた。よって `<main>` の追加を **取り消し**、`/tools` は `main: 'none'` の documented state に戻し、gate 側に **理由つきの明示的な除外** を宣言した（下記「rule 除外（宣言と理由）」） |
+| `page-missing-landmark` | `src/routes/tools.index.tsx` | **修正ではなく除外**。当初この route は「ページ本体が `<main>` を持たない」ため `<main>` を追加したが、その追加は **browser-compat 契約（`main: 'none'`）を反転** しており、browser-compat job が 3 エンジンすべてで落ちた。よって `<main>` の追加を **取り消し**、`/tools` は `main: 'none'` の documented state に戻し、gate 側に **理由つきの明示的な除外** を宣言した（下記「rule 除外（宣言と理由）」）。Issue #785 は chrome（nav / パンくず）を戻したが、この landmark の契約は据え置き |
 
 いずれも「見出しの文言を変える必要はなく、要素の追加・属性の付与で解ける」修正である
 （`tools-index` は仕様どおり要素の追加ではなく除外で解いた）。
@@ -223,8 +223,9 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
    見出しを描画する場合は、その primitive を gate のモデルに加えてから
    判定し直す。
 4. **他の契約が明示的に宣言している状態なら、除外を宣言する。**
-   例: `/tools` の `main: 'none'` は browser-compat contract（Issue #288）が
-   明示する documented state であり、`PAGE_UNITS` の `exemptRules` に
+   例: `/tools` の `main: 'none'` は browser-compat contract が
+   明示する documented state（Issue #785 で chrome を戻した後も据え置き）であり、
+   `PAGE_UNITS` の `exemptRules` に
    **理由を書いて** 宣言する。理由のない除外は成立しない（`exemption-mismatch`）。
 5. いずれも該当しない場合は **owner へ判断を仰ぐ**。見出しの文言変更を伴う
    修正は public copy の変更になるため、copy editorial approval gate の
@@ -249,7 +250,7 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
   変更しない（変更は別 ticket の決定事項）。
 - **`kind: 'component'` の unit は「宣言された判断」である。**
   `legal-review` / `external-api` / `tools-detail` は、ページに埋め込まれる
-  カード、または chrome なしの iframe ホスト shell であり、ページ own の
+  カード、またはサイト chrome を載せた iframe ホスト shell であり、ページ own の
   `<h1>` / `main` を持たない。種別は **宣言** なので、gate の出力には
   `(component)` として印字され、reader が判断の根拠を追える。
   一方 `tools-detail` は `<h2>` だけを持ち `<h1>` を持たないため、

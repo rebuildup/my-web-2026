@@ -436,9 +436,25 @@ describe('check-stale-content-review — the locale is opt-in', () => {
 });
 
 describe('check-stale-content-review — the shipped registry', () => {
+	/**
+	 * The anchor for the SHIPPED registry, kept separate from
+	 * `TODAY` on purpose. `TODAY` pins the fixture suite so the
+	 * freshness-window boundary assertions can be exact (90 / 91
+	 * days); the shipped registry is real content, so its anchor has
+	 * to move forward whenever a record is reviewed later. Bumping
+	 * `TODAY` instead would silently re-date every fixture and
+	 * destroy the boundary test. Advancing this constant is the
+	 * maintenance step when a new record lands with a later date —
+	 * it is not a way to make a future-dated record pass: the value
+	 * still has to be at least as recent as the newest review, and a
+	 * genuinely future date (a typo, a hand-edited year) still
+	 * fails here until someone moves this line deliberately.
+	 */
+	const SHIPPED_TODAY = '2026-11-01';
+
 	it('parses and validates', () => {
 		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
-		const { problems } = validateRegistry(registry, { today: TODAY });
+		const { problems } = validateRegistry(registry, { today: SHIPPED_TODAY });
 		assert.deepEqual(problems, []);
 	});
 

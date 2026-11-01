@@ -127,6 +127,25 @@ change sets waiting for an owner decision: 6
 記録であり、提案の多さではない。工具を **実行しなかった** 場合は `not run` のまま
 止まる（それが review 未確認の正しい状態である）。
 
+### 3.5 技術的 CI と owner レビューの分離（#761）
+
+既定の `pnpm run copy:approval:check` は厳密判定を維持する。PR の必須 CI では
+`pnpm run copy:approval:check -- --allow-unreviewed` を実行する。
+
+| verdict | 通常 CLI | PR 必須 CI | 意味 |
+| --- | --- | --- | --- |
+| `pass` / `not applicable` | exit 0 | exit 0 | 変更の承認記録あり／対象変更なし |
+| `not run` | exit 1 | **警告 + exit 0** | owner 証跡なし。**承認済みとは記録しない** |
+| `fail` | exit 1 | **exit 1** | 明示的な拒否・指紋不一致などはブロック |
+| 差分不明・不正入力 | exit 2 | **exit 2** | 不明な差分を黙って通さない |
+
+公開コピーの差分そのものと数値・否定・権限の変化は、独立した
+`Japanese copy review targets` レポートで引き続き可視化する。
+本モードは編集判断を AI に偽装するものではない。技術的な release CI
+（統合検証・依存監査・Playwright E2E）が owner コメントの欠如によって
+一切走らなくなる障害を解消するための CI 配置である。人間が確認していない
+場合は `agent-recorded / unconfirmed` のまま保持する。
+
 ## 4. 実行手順
 
 ### 4.1 PR 作者（変更者）

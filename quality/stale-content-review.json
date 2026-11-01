@@ -610,52 +610,6 @@
 				]
 			},
 			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
-		},
-		{
-			"id": "tools-index-available-group",
-			"path": "src/routes/tools.index.tsx",
-			"expression": "今すぐ使える",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-01",
-			"reviewedBy": "owner",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "4e5db767d5a84998b9a922d52363eed08cd5d654",
-						"note": "the commit that introduced this record and the wording it covers"
-					}
-				]
-			},
-			"note": "Heading of the /tools index group that lists the Tools a visitor can open from the page (Issue #785). It carries a time token, so it decays: when a Tool is enabled or disabled the group is no longer the set it names. The group is rendered from the manifest, so the sentence and the rows change together."
-		},
-		{
-			"id": "tools-index-coming-soon-group",
-			"path": "src/routes/tools.index.tsx",
-			"expression": "公開に向けて準備しているツールです。現在はこのページから開けません。分かっている内容だけを書いています。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-01",
-			"reviewedBy": "owner",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "4e5db767d5a84998b9a922d52363eed08cd5d654",
-						"note": "the commit that introduced this record and the wording it covers"
-					}
-				]
-			},
-			"note": "Description of the /tools index group of host_disabled Tools (Issue #785). The 現在 is the claim that needs a re-read: a Tool leaves this group when its delivery.kind changes, and the sentence has to keep telling the truth about what the page can open."
 		}
 	]
 }

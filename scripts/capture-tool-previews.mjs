@@ -33,9 +33,15 @@
  *     own third-party consent notice are both declined/activated the
  *     way a visitor can, and the frame is aligned to the viewport
  *     before the shot, so the image is the Tool and nothing else,
- *   - encoding: width 800 px (`withoutEnlargement`), WebP `quality: 80`
+ *   - encoding: width 1200 px (`withoutEnlargement`), WebP `quality: 80`
  *     with the `sharp` devDependency — the same encoder the other
- *     capture scripts use, no new dependency.
+ *     capture scripts use, no new dependency. The width is a layout
+ *     requirement, not a taste: the index card is 468 px wide on the
+ *     2-up body grid, so a 2× surface needs ≥ 936 px, and the first
+ *     committed preview (800 px) was rejected for being under it
+ *     (owner decision 2026-11-01). The context renders at
+ *     `deviceScaleFactor: 2` so the downscale to 1200 px comes from a
+ *     real 2× raster rather than an upscale.
  *
  * Byte-identity: the WebP encode is deterministic for a given PNG, but
  * browser rasterisation is not bit-reproducible across processes, so a
@@ -44,7 +50,7 @@
  *
  * Usage:
  *   pnpm run build && pnpm run preview &        # serves on 4173
- *   pnpm run capture:tool-previews              # writes both previews
+ *   pnpm run capture:tool-previews              # writes every target
  *   pnpm run capture:tool-previews -- http://127.0.0.1:4174 .tmp/previews
  *
  * No secrets are involved: the only reads are the local preview server
@@ -56,20 +62,28 @@ import { dirname, join, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
 
-/** The Tools that ship a preview. Keep in step with the index. */
+/**
+ * The Tools that ship a preview. Keep in step with
+ * `TOOL_PREVIEWS` in `src/routes/tools.index.tsx`.
+ *
+ * `readmark` is NOT a target while Issue #786 is open: its frame stops
+ * on 「読み込み中…」 (the sandboxed frame is denied IndexedDB, and
+ * production behaves the same way), so every run of this script would
+ * produce the same picture of a broken screen. The owner's rule
+ * (2026-11-01) is that a preview may not be faked and a defect may not
+ * be shown on the public index, so the index renders readmark without
+ * an image and nothing is drawn in its place. Re-add the target when
+ * #786 is fixed and the capture shows the real screen.
+ */
 export const PREVIEW_TARGETS = [
 	{
 		slug: 'prototype',
 		/** What the committed artefact must show, for a human re-check. */
 		expect: 'ProtoType のタイピングゲーム画面',
 	},
-	{
-		slug: 'readmark',
-		expect: 'readmark の読書画面',
-	},
 ];
 
-const OUTPUT_WIDTH = 800;
+const OUTPUT_WIDTH = 1200;
 const WEBP_QUALITY = 80;
 
 // `pnpm run … -- <arg>` forwards the `--` separator to the script.
@@ -81,7 +95,7 @@ const browser = await chromium.launch();
 try {
 	const context = await browser.newContext({
 		viewport: { width: 1440, height: 900 },
-		deviceScaleFactor: 1,
+		deviceScaleFactor: 2,
 		colorScheme: 'light',
 	});
 	const page = await context.newPage();

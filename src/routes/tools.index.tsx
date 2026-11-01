@@ -6,6 +6,7 @@ import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import type { MaterialSymbolName } from '../editorial/primitives/MaterialSymbol';
+import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { listAllTools } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
@@ -15,45 +16,47 @@ import type { ManifestTool } from '../tools/registry';
  * Issue #195 (2026-09-29) flipped the show-all policy: the index lists
  * every manifest entry, not just the embeddable subset, so a visitor
  * sees the whole roadmap. `host_disabled` Tools render as a
- * non-interactive row with a 「準備中」 badge.
+ * non-interactive item with a 「準備中」 badge.
  *
- * Issue #785 (owner instruction 2026-11-01) rebuilt the page for
- * comprehension rather than decoration:
+ * Issue #785 (owner instruction 2026-11-01) rebuilt the page twice. The
+ * first pass restored the page chrome and turned each row into a link;
+ * the owner rejected that layout (「ツールの表示のさせ方が悪い。ダサい。
+ * むしろ分かりづらいため、現在の縦積みからグリッドシステムにのせかえた
+ * 方がいい。画像の使い方が下手。バランスが悪い。」), so the shipped
+ * arrangement is:
  *
- *   - The page mounts the same `PublicNav` / `Breadcrumbs` /
- *     `BreadcrumbJsonLd` chrome every other page mounts explicitly
- *     (`src/routes/__root.tsx` documents the convention). Before this,
- *     `/tools` was the one public page with no header and no
- *     breadcrumb trail.
- *   - Every row is a whole-row link with a Material Symbols glyph, a
- *     Japanese description (`manifest.json#description_ja`, owned by
- *     the registry), and a 「開く」 affordance, so "this opens a Tool"
- *     is visible before hovering. `host_disabled` rows carry the same
- *     layout minus the link, and the group copy says why they cannot
- *     be opened yet.
- *   - Two representative Tools carry a WebP screenshot of their real
- *     screen; the images live under `public/tools/<slug>/` so the
- *     asset-rights gate (`scripts/check-asset-licenses.mjs`) covers
- *     them, and `scripts/capture-tool-previews.mjs` is the committed
- *     capture.
+ *   - The page sits on the documented section grid — `Container`, then
+ *     `SectionHeading` (`src/editorial/layout-system.md` §3). No second
+ *     grid is invented here.
+ *   - The two kinds of Tool are two sections, because they answer two
+ *     different questions. 「使えるツール」 is the decision surface: two
+ *     cards on the 2-up body grid, each a whole-card link. 「準備中」 is
+ *     the roadmap: a denser 2-column list with no links and no images.
+ *   - A screenshot appears only where it is true of the WHOLE group.
+ *     `readmark` currently renders 「読み込み中…」 forever inside the
+ *     Tool frame (Issue #786, reproduced on production), so its preview
+ *     was removed rather than re-shot or replaced by a placeholder: the
+ *     owner's rule is that an image may not be faked, and a picture of a
+ *     broken screen is worse than no picture. The card keeps the same
+ *     geometry with its text block vertically centred, so the grid row
+ *     stays even.
  *
- * Layout — `Container` + editorial whitespace (#184/#189). Each Tool is
- * a row separated by a thin `borderTop`; hover / focus-visible tints
- * the row and underlines the name, which is the "clickable" signal the
- * owner asked for. Colour and background transitions only (no
- * animation), so the reduced-motion contract needs no new hook.
- *
- * Embeddable Tools are sorted to the top, then `host_disabled` Tools
- * below; both groups are alphabetical so the order stays predictable
- * for snapshot tests and screen-reader users.
+ * Layout — the card grid is `repeat(2, minmax(0, 1fr))` with the 24 px
+ * gutter and the 40 px row beat the other public surfaces use
+ * (`src/home/capabilities/grid.tsx`), and `grid-auto-rows: 1fr` so two
+ * cards never have two different heights. Borders, shadows and
+ * background tinting are not used to draw a card: `layout-system.md` §1
+ * and §4 forbid a bordered box on a public surface, and design #764
+ * measured that the 1 px border is what made the old surfaces read as
+ * "card grid" rather than editorial whitespace.
  */
 export const Route = createFileRoute('/tools/')({
 	loader: () => {
 		const all = listAllTools();
 		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
-		const embeddable = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
-		const disabled = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
-		return { embeddable, disabled };
+		const available = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
+		const planned = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
+		return { available, planned };
 	},
 	head: () => {
 		const title = 'Tools — my-web-2026';
@@ -81,7 +84,7 @@ export const Route = createFileRoute('/tools/')({
 });
 
 /**
- * One glyph per Tool, so a row is identifiable before it is read.
+ * One glyph per Tool, so a card is identifiable before it is read.
  * Material Symbols names (`src/editorial/primitives/MaterialSymbol.tsx`);
  * `extension` is the explicit fallback for a manifest entry nobody has
  * classified yet — a new Tool renders, it just is not mislabelled.
@@ -105,37 +108,38 @@ const TOOL_ICONS: Readonly<Record<string, MaterialSymbolName>> = {
 };
 
 /**
- * Screenshots for the Tools whose screen explains the Tool better than
- * a sentence does. Each file is generated by
+ * Screenshots, for the Tools whose screen explains them better than a
+ * sentence does. Each file is generated by
  * `scripts/capture-tool-previews.mjs` and recorded in
  * `quality/asset-license-inventory.json`; the alt text describes the
- * captured screen, not the Tool's pitch.
+ * captured screen.
  *
- * readmark's preview shows the state a visitor actually gets today:
- * the Library stays on 「読み込み中…」 inside the sandboxed frame. The
- * image is not retouched to look healthier — the row would then claim
- * more than the Tool does (see the follow-up Issue on that defect).
+ * `readmark` is deliberately absent. Its frame currently stops on
+ * 「読み込み中…」 (Issue #786 — the sandboxed frame is denied IndexedDB,
+ * and the same thing happens on production), so the capture script
+ * excludes it and this map has no entry: a broken screen is not a
+ * preview, and nothing is drawn in its place.
  */
-const TOOL_PREVIEWS: Readonly<Record<string, { src: string; alt: string }>> = {
+const TOOL_PREVIEWS: Readonly<
+	Record<string, { src: string; alt: string; width: number; height: number }>
+> = {
 	prototype: {
 		src: '/tools/prototype/overview.webp',
 		alt: 'ProtoType のタイトル画面。中央に Game Start、左にゲーム・ランキング・サイト設定のメニューが並んでいる。',
-	},
-	readmark: {
-		src: '/tools/readmark/overview.webp',
-		alt: 'readmark のライブラリ画面。文書の一覧が「読み込み中…」の表示のまま止まっている。',
+		width: 1200,
+		height: 750,
 	},
 };
 
 function ToolsIndexRoute() {
-	const { embeddable, disabled } = Route.useLoaderData();
+	const { available, planned } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			{/* Issue #300: hero beat (16/32) + body beat (16/24), same
-			    Container and left axis as every other public page. */}
+			{/* Issue #300: hero beat (16/32), same Container and left axis
+			    as every other public page. */}
 			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
 				<Container>
 					<header
@@ -181,15 +185,15 @@ function ToolsIndexRoute() {
 								maxWidth: '640px',
 							})}
 						>
-							ブラウザで動く小さなツールをまとめています。行を選ぶとツールが開きます。各ツールは独立した
+							ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
 							repository で開発し、同じ origin から配信しています。
 						</p>
 					</header>
 				</Container>
 			</section>
-			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
-				<Container>
-					{embeddable.length === 0 && disabled.length === 0 ? (
+			{available.length === 0 && planned.length === 0 ? (
+				<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+					<Container>
 						<p
 							className={css({
 								margin: '0',
@@ -200,128 +204,160 @@ function ToolsIndexRoute() {
 						>
 							登録されているツールはまだありません。
 						</p>
-					) : (
-						<>
-							{embeddable.length > 0 && (
-								<ToolGroup
-									id="integrated"
-									title="今すぐ使える"
-									description="このページから開けます。"
-								>
-									{embeddable.map((tool) => (
-										<ToolRow key={tool.slug} tool={tool} />
-									))}
-								</ToolGroup>
-							)}
-							{disabled.length > 0 && (
-								<ToolGroup
-									id="coming-soon"
-									title="準備中"
-									description="公開に向けて準備しているツールです。現在はこのページから開けません。分かっている内容だけを書いています。"
-								>
-									{disabled.map((tool) => (
-										<DisabledToolRow key={tool.slug} tool={tool} />
-									))}
-								</ToolGroup>
-							)}
-						</>
-					)}
-				</Container>
-			</section>
+					</Container>
+				</section>
+			) : null}
+			{available.length > 0 ? (
+				<section
+					aria-labelledby="tools-available-heading"
+					data-route="tools-available"
+					className={css({ paddingBlock: { base: '16', lg: '24' } })}
+				>
+					<Container>
+						<SectionHeading
+							id="tools-available-heading"
+							description="このページから開けます。カードを選ぶとツールが開きます。"
+							eyebrow="01 — Available"
+							title="使えるツール"
+						/>
+						<ul className={cardGrid}>
+							{available.map((tool) => (
+								<ToolCard key={tool.slug} tool={tool} />
+							))}
+						</ul>
+					</Container>
+				</section>
+			) : null}
+			{planned.length > 0 ? (
+				<section
+					aria-labelledby="tools-planned-heading"
+					data-route="tools-planned"
+					className={css({ paddingBlock: { base: '16', lg: '24' } })}
+				>
+					<Container>
+						<SectionHeading
+							id="tools-planned-heading"
+							description="公開に向けて準備しているツールです。開けるようになるまで、分かっている内容だけを載せています。"
+							eyebrow="02 — Planned"
+							title="準備中"
+						/>
+						<ul className={plannedGrid}>
+							{planned.map((tool) => (
+								<PlannedToolItem key={tool.slug} tool={tool} />
+							))}
+						</ul>
+					</Container>
+				</section>
+			) : null}
 		</>
 	);
 }
 
-function ToolGroup({
-	id,
-	title,
-	description,
-	children,
-}: {
-	id: string;
-	title: string;
-	description: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div data-tool-group={id} className={css({ marginBlockEnd: '12' })}>
-			<h2
-				className={css({
-					margin: '0 0 2',
-					fontFamily: 'heading',
-					fontSize: 'xl',
-					fontWeight: '700',
-					color: 'text.default',
-					lineHeight: '1.25',
-					letterSpacing: '-0.01em',
-				})}
-			>
-				{title}
-			</h2>
-			<p
-				className={css({
-					margin: '0 0 4',
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					color: 'text.muted',
-					lineHeight: '1.6',
-					maxWidth: '640px',
-				})}
-			>
-				{description}
-			</p>
-			<ul
-				className={css({
-					listStyle: 'none',
-					margin: '0',
-					padding: '0',
-					display: 'flex',
-					flexDirection: 'column',
-				})}
-			>
-				{children}
-			</ul>
-		</div>
-	);
-}
+/**
+ * The body grid for the two sections.
+ *
+ * `repeat(2, minmax(0, 1fr))` is the 6/6 placement of the documented
+ * 12-column contract (column 58 px + gutter 24 px at the 960 px
+ * `Container`), and it is the same declaration the home capabilities
+ * grid uses. `gridAutoRows: '1fr'` is the measured fix for uneven card
+ * heights: with a row track of `1fr` the tallest card in the row sets
+ * the height and the other one stretches to it, so two cards cannot have
+ * two different heights (design #764 measured the before/after of this
+ * exact change at 22.4 px → 0 px).
+ */
+const cardGrid = css({
+	display: 'grid',
+	gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+	columnGap: { base: '0', md: '6' },
+	rowGap: '10',
+	gridAutoRows: '1fr',
+	margin: '0',
+	padding: '0',
+	listStyle: 'none',
+});
 
-/** The section divider: the row treatment every public list uses. */
-const rowDivider = {
-	borderBlockStartWidth: '1px',
-	borderBlockStartStyle: 'solid',
-	borderBlockStartColor: 'border.subtle',
-} as const;
+/** The roadmap list: same columns, denser rows, nothing to click. */
+const plannedGrid = css({
+	display: 'grid',
+	gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+	columnGap: { base: '0', md: '6' },
+	rowGap: '6',
+	gridAutoRows: '1fr',
+	margin: '0',
+	padding: '0',
+	listStyle: 'none',
+});
+
+const cardItem = css({
+	display: 'grid',
+	minWidth: '0',
+});
 
 /**
- * The row's own box. The negative inline margin lets the hover /
- * focus tint reach the Container's edge while the text keeps the same
- * left axis as the rest of the page.
+ * The whole card is the link. `height: 100%` lets it fill the `1fr` row
+ * track, so the two cards in a row share one height even when only one
+ * of them carries a screenshot.
+ *
+ * No background, border or shadow: the affordance is the 「開く」 label,
+ * the title underline on hover, and the focus ring — `layout-system.md`
+ * §5 forbids communicating state by tinting something that then looks
+ * like a card.
  */
-const rowContent = {
-	display: 'grid',
-	gridTemplateColumns: 'auto minmax(0, 1fr) auto',
-	alignItems: 'start',
-	columnGap: '4',
-	rowGap: '2',
-	paddingBlock: '6',
-	paddingInline: '2',
-	marginInline: '-2',
-	borderRadius: 'sm',
+const cardLinkStyles = {
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '3',
+	height: '100%',
+	minWidth: '0',
+	color: 'inherit',
+	textDecoration: 'none',
+	borderRadius: '4px',
+	_focusVisible: {
+		outline: '2px solid {colors.border.focus}',
+		outlineOffset: '4px',
+	},
+	_hover: {
+		'& [data-tool-title]': {
+			textDecoration: 'underline',
+			textUnderlineOffset: '3px',
+		},
+		'& [data-tool-cta]': {
+			color: 'text.default',
+		},
+	},
 } as const;
 
-const iconBox = css({
-	display: 'inline-flex',
+const cardLink = css(cardLinkStyles);
+
+/** A card without a screenshot centres its text block in the same box. */
+const cardLinkTextOnly = css({ ...cardLinkStyles, justifyContent: 'center' });
+
+/**
+ * Screenshot box. `width` / `height` attributes reserve the aspect ratio
+ * before the bytes arrive (the same CLS rule `PortfolioMedia` documents
+ * for Issue #486), the fill is `bg.subtle` rather than a border, and
+ * `borderRadius` matches the media primitive. No `srcset`: this
+ * repository has no image-variant pipeline, so inventing one here would
+ * promise renditions the delivery surface cannot produce.
+ */
+const previewImage = css({
+	display: 'block',
+	width: '100%',
+	height: 'auto',
+	borderRadius: '6px',
+	backgroundColor: 'bg.subtle',
+});
+
+const titleRow = css({
+	display: 'flex',
 	alignItems: 'center',
-	justifyContent: 'center',
+	gap: '2',
+	minWidth: '0',
+});
+
+const toolIcon = css({
 	flexShrink: '0',
-	width: '11',
-	height: '11',
-	borderWidth: '1px',
-	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	borderRadius: 'sm',
 	color: 'text.muted',
-	backgroundColor: 'bg.canvas',
 });
 
 const toolTitle = css({
@@ -341,155 +377,116 @@ const toolDescription = css({
 	maxWidth: '640px',
 });
 
-const badge = css({
+const cta = css({
 	display: 'inline-flex',
 	alignItems: 'center',
+	gap: '1',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '500',
+	color: 'text.accent',
+});
+
+const badge = css({
+	flexShrink: '0',
 	fontFamily: 'mono',
 	fontSize: 'xs',
-	fontWeight: '500',
 	letterSpacing: '0.06em',
 	color: 'text.muted',
 	paddingBlock: '1',
 	paddingInline: '2',
-	borderWidth: '1px',
-	borderStyle: 'solid',
-	borderColor: 'border.subtle',
+	backgroundColor: 'bg.subtle',
 	borderRadius: 'full',
 });
 
-function ToolRow({ tool }: { tool: ManifestTool }) {
+const plannedItem = css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '2',
+	minWidth: '0',
+	paddingBlock: '1',
+});
+
+const plannedTitle = css({
+	fontFamily: 'heading',
+	fontSize: 'lg',
+	fontWeight: '700',
+	color: 'text.default',
+	lineHeight: '1.3',
+	letterSpacing: '-0.01em',
+});
+
+const plannedDescription = css({
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	color: 'text.muted',
+	lineHeight: '1.6',
+});
+
+function ToolCard({ tool }: { tool: ManifestTool }) {
 	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
 	const preview = TOOL_PREVIEWS[tool.slug];
+	const titleId = `tool-title-${tool.slug}`;
+	// No `data-tool-state` on an OPEN card: the attribute is the disabled
+	// marker the prod-smoke row-classification probe reads
+	// (`e2e/prod-smoke.spec.ts`), and it treats "linked kind" as "carries
+	// a /tools/<slug> anchor and NO state attribute". A state value on
+	// this row would read there as a misclassified row even though
+	// nothing is disabled.
 	return (
-		<li data-tool-slug={tool.slug} data-tool-state="open" className={css(rowDivider)}>
+		<li data-tool-slug={tool.slug} className={cardItem}>
+			{/* `aria-labelledby` keeps the accessible name at the Tool's
+			    name instead of concatenating the description and the CTA
+			    (Issue #718: the visible label is the name, so the name
+			    must contain it — and nothing forces it to be longer). */}
 			<Link
 				to="/tools/$slug"
 				params={{ slug: tool.slug }}
-				className={css(rowContent, {
-					color: 'inherit',
-					textDecoration: 'none',
-					transition: 'background-color 120ms ease, border-color 120ms ease',
-					_hover: {
-						backgroundColor: 'bg.surface',
-						'& [data-tool-title]': {
-							textDecoration: 'underline',
-							textUnderlineOffset: '3px',
-						},
-						'& [data-tool-icon]': {
-							borderColor: 'border.strong',
-							color: 'text.default',
-						},
-					},
-					_focusVisible: {
-						backgroundColor: 'bg.surface',
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-						'& [data-tool-title]': {
-							textDecoration: 'underline',
-							textUnderlineOffset: '3px',
-						},
-					},
-				})}
+				aria-labelledby={titleId}
+				className={preview ? cardLink : cardLinkTextOnly}
 			>
-				<span aria-hidden="true" className={iconBox} data-tool-icon>
-					<MaterialSymbol name={icon} size={24} />
-				</span>
-				<span
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '2',
-						minWidth: '0',
-					})}
-				>
-					<span data-tool-title className={toolTitle}>
+				{preview ? (
+					<img
+						alt={preview.alt}
+						className={previewImage}
+						decoding="async"
+						height={preview.height}
+						loading="lazy"
+						src={preview.src}
+						width={preview.width}
+					/>
+				) : null}
+				<span className={titleRow}>
+					<MaterialSymbol className={toolIcon} name={icon} size={18} />
+					<span data-tool-title className={toolTitle} id={titleId}>
 						{tool.display_name}
 					</span>
-					<span className={toolDescription}>{tool.description_ja}</span>
-					{preview ? (
-						<img
-							alt={preview.alt}
-							className={css({
-								display: 'block',
-								width: '100%',
-								maxWidth: '420px',
-								height: 'auto',
-								marginBlockStart: '2',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.subtle',
-								borderRadius: 'sm',
-							})}
-							decoding="async"
-							height={500}
-							loading="lazy"
-							src={preview.src}
-							width={800}
-						/>
-					) : null}
 				</span>
-				<span
-					data-tool-cta
-					className={css({
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: '1',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						fontWeight: '500',
-						color: 'text.accent',
-						paddingBlock: '1',
-					})}
-				>
+				<span className={toolDescription}>{tool.description_ja}</span>
+				<span data-tool-cta className={cta}>
 					開く
-					<MaterialSymbol name="arrow_forward" size={18} />
+					<MaterialSymbol name="arrow_forward" size={16} />
 				</span>
 			</Link>
 		</li>
 	);
 }
 
-function DisabledToolRow({ tool }: { tool: ManifestTool }) {
+function PlannedToolItem({ tool }: { tool: ManifestTool }) {
 	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
 	return (
-		<li
-			data-tool-slug={tool.slug}
-			data-tool-state="host_disabled"
-			className={css(rowDivider, rowContent)}
-		>
-			<span aria-hidden="true" className={iconBox} data-tool-icon>
-				<MaterialSymbol name={icon} size={24} />
-			</span>
-			<span
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '2',
-					minWidth: '0',
-				})}
-			>
-				<span
-					className={css({
-						display: 'flex',
-						flexWrap: 'wrap',
-						alignItems: 'baseline',
-						gap: '3',
-					})}
-				>
-					<span className={toolTitle}>{tool.display_name}</span>
-					{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
-					    asserts a host_disabled row by (Issue #195); the
-					    visible word stays Japanese. */}
-					<span data-tool-badge="coming-soon" className={badge}>
-						準備中
-					</span>
+		<li data-tool-slug={tool.slug} data-tool-state="host_disabled" className={plannedItem}>
+			<span className={titleRow}>
+				<MaterialSymbol className={toolIcon} name={icon} size={18} />
+				<span className={plannedTitle}>{tool.display_name}</span>
+				{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
+				    asserts a host_disabled row by (Issue #195); the
+				    visible word stays Japanese. */}
+				<span data-tool-badge="coming-soon" className={badge}>
+					準備中
 				</span>
-				<span className={toolDescription}>{tool.description_ja}</span>
 			</span>
-			{/* No CTA column content: the row is not a link. The badge
-			    next to the name carries the state, so the grid keeps the
-			    same shape as an open row without implying an action. */}
-			<span aria-hidden="true" />
+			<span className={plannedDescription}>{tool.description_ja}</span>
 		</li>
 	);
 }

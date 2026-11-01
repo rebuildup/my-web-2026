@@ -442,14 +442,12 @@
 			"externalHosts": ["use.typekit.net"],
 			"delegatedTo": "tools:artifact:check (Issue #466)"
 		},
-{
+		{
 			"id": "preview-harness-stylesheets",
 			"kind": "config",
 			"title": "Issue #764 比較ハーネスの生成 CSS（6 ファイル）",
 			"summary": "scripts/generate-preview-css.mjs が src/preview/preview-css.mjs と src/preview/preview-palettes.mjs から生成する方向別スタイルシート。ハーネス（/compare と ?direction=）だけが読み、製品のページは参照しない。",
-			"covers": [
-				"public/preview-assets/*.css"
-			],
+			"covers": ["public/preview-assets/*.css"],
 			"publicPaths": [
 				"/preview-assets/dir-a-dark.css",
 				"/preview-assets/dir-a-light.css",
@@ -493,17 +491,13 @@
 			"publication": "unpublished",
 			"externalHosts": []
 		},
-{
+		{
 			"id": "preview-harness-material-symbols",
 			"kind": "font",
 			"title": "比較ハーネスのアイコン用 woff2（1 個）",
 			"summary": "src/preview/preview-css.mjs の @font-face が /preview-assets/material-symbols-rounded.woff2 として参照する。ハーネスのアイコン表示専用で、取得経路の記録がリポジトリ内に無い。",
-			"covers": [
-				"public/preview-assets/material-symbols-rounded.woff2"
-			],
-			"publicPaths": [
-				"/preview-assets/material-symbols-rounded.woff2"
-			],
+			"covers": ["public/preview-assets/material-symbols-rounded.woff2"],
+			"publicPaths": ["/preview-assets/material-symbols-rounded.woff2"],
 			"origin": "unknown-provenance",
 			"rightsHolder": null,
 			"license": {

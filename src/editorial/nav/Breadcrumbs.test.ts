@@ -71,10 +71,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	 * `/projects/dotfiles`.
 	 */
 	it('labels /projects/dotfiles with the page name', () => {
-		const chain = resolveBreadcrumbChain([
-			root,
-			match('/projects/dotfiles', '/projects/dotfiles'),
-		]);
+		const chain = resolveBreadcrumbChain([root, match('/projects/dotfiles', '/projects/dotfiles')]);
 		expect(chain?.at(-1)).toEqual({
 			routeId: '/projects/dotfiles',
 			label: 'dotfiles',

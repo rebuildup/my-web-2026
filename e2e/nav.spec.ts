@@ -144,7 +144,10 @@ test.describe('public nav — Home → Tools one-click (Issue #168)', () => {
 			.locator('a[href="/tools"]');
 		await toolsCta.click();
 		await expect(page).toHaveURL(/\/tools$/);
-		await expect(page.locator('h1')).toHaveText(/Tools/);
+		// The arrival page's <h1> is the Japanese surface title (Issue
+		// #785 rebuilt the index); the English word lives in the eyebrow,
+		// not in the heading.
+		await expect(page.locator('h1')).toHaveText(/ツール/);
 	});
 });
 

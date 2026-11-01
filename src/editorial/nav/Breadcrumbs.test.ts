@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Breadcrumbs, resolveBreadcrumbChain } from './Breadcrumbs';
-import { BREADCRUMB_ORIGIN, SUPPRESS_BREADCRUMB_LEAF_IDS } from './route-labels';
+import { BREADCRUMB_ORIGIN, ROUTE_LABELS, SUPPRESS_BREADCRUMB_LEAF_IDS } from './route-labels';
 
 /**
  * `resolveBreadcrumbChain` unit tests — pure helper coverage.
@@ -61,6 +61,66 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	it('returns the static label for a simple top-level route', () => {
 		const chain = resolveBreadcrumbChain([root, match('/about', '/about')]);
 		expect(chain).toEqual([HOME, { routeId: '/about', label: 'About', href: '/about' }]);
+	});
+
+	/**
+	 * Issue #791 — `/projects/dotfiles`.
+	 *
+	 * The route is a leaf directly under `__root__`, so its label is the
+	 * whole of its own contribution to the chain. Asserted at the chain
+	 * TAIL rather than as the entire array because Issue #778 prepends
+	 * the Home root to every chain: asserting the whole chain here would
+	 * make this test fail for a change that has nothing to do with
+	 * `/projects/dotfiles`.
+	 */
+	it('labels /projects/dotfiles with the page name', () => {
+		const chain = resolveBreadcrumbChain([root, match('/projects/dotfiles', '/projects/dotfiles')]);
+		expect(chain?.at(-1)).toEqual({
+			routeId: '/projects/dotfiles',
+			label: 'dotfiles',
+			href: '/projects/dotfiles',
+		});
+	});
+
+	/**
+	 * Issue #791 — the label must not read `loaderData`.
+	 *
+	 * Issue #787 found the opposite failure one route over: the
+	 * `/tools/$slug` resolver was written against the pre-#465 loader
+	 * shape (`loaderData` WAS the Tool record) and silently rendered the
+	 * `Tool` placeholder once the loader started returning a wrapper. The
+	 * class of bug is "a leaf label that depends on a loader shape nobody
+	 * pinned".
+	 *
+	 * `/projects/dotfiles` has no such dependency, and this test keeps it
+	 * that way: with no loader data (a throwing loader), with the real
+	 * view payload, and with a shape the route never produces, the leaf
+	 * is the same static label. It also proves the entry is not
+	 * `dropOnMissingLoaderData`, which would silently delete the segment
+	 * instead of mislabeling it.
+	 */
+	it('labels /projects/dotfiles without reading loaderData', () => {
+		const view = {
+			state: 'fresh',
+			repository: { owner: 'rebuildup', name: 'dotfiles' },
+			commit: '0'.repeat(40),
+		};
+		for (const loaderData of [undefined, view, { tool: { display_name: 'wrong shape' } }]) {
+			const chain = resolveBreadcrumbChain([
+				root,
+				match('/projects/dotfiles', '/projects/dotfiles', loaderData),
+			]);
+			expect(chain?.at(-1)?.label).toBe('dotfiles');
+		}
+	});
+
+	/**
+	 * The registry entry for the leaf carries no resolver, so no future
+	 * loader-shape change can move this label without a visible diff to
+	 * the registry (and a failing test here).
+	 */
+	it('keeps the /projects/dotfiles label static in the registry', () => {
+		expect(ROUTE_LABELS['/projects/dotfiles']).toEqual({ label: 'dotfiles' });
 	});
 
 	it('skips unlabeled intermediate matches (e.g. /admin layout)', () => {

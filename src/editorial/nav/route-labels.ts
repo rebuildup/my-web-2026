@@ -23,8 +23,8 @@
  *     editorial IA and should not surface a breadcrumb trail.
  *
  * Everything else (`/about`, `/contact`, `/portfolio[/<slug>]`,
- * `/tools[/<slug>]`, every `/admin/*` internal surface) renders
- * the chain.
+ * `/projects/dotfiles`, `/tools[/<slug>]`, every `/admin/*` internal
+ * surface) renders the chain.
  *
  * Canonical origin — `https://rebuildup.dev` (ADR-0014). The
  * breadcrumbs' JSON-LD `item` URL is computed against this origin
@@ -119,6 +119,7 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/keyboard': { label: 'キーボード配列' },
 	'/contact': { label: 'Contact' },
 	'/portfolio/': { label: 'Portfolio' },
+	'/projects/dotfiles': { label: 'dotfiles' },
 	'/portfolio/$slug': {
 		// Static fallback (used only when loaderData has no project
 		// — e.g. the loader threw `notFound()` and the match was

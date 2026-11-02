@@ -52,7 +52,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/readmark.git",
 				"submodule_path": "external/readmark",
-				"pinned_sha": "f894b83b2f918d5f895017281fbd4e5ebaf3e9d5",
+				"pinned_sha": "889595910ae62ebfb3f6b8000d635283196f9b0e",
 				"branch": "main"
 			},
 			"build": {
@@ -70,7 +70,7 @@
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned readmark f894b83 (ADR-0008 storage-free redesign): no external origin in index.html or src/**, and a sandboxed-frame run observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont); re-measure after a bump"
+					"basis": "measured at pinned readmark 8895959 (ADR-0008 storage-free redesign, merged via readmark PR #86): no external origin in index.html or src/**, and a sandboxed-frame run observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",

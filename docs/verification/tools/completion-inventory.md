@@ -384,21 +384,31 @@ host 側の契約（Tool repo 側が満たすべき条件の対）:
 
 ### 5.15 `mic-level`（`host_disabled` → `same_origin_static`）
 
-- **現在**: library のみ。lockfile 無し。`next/link` を importし、
-  `dependencies` にも `next` がある。`getUserMedia` を使う。
-  **Tool 側の明示同意と拒否時 fallback は実装済み**:
-  「マイクを使用する」ボタン（pinned `5df7ac6` の
-  `src/MicLevelClient.tsx:416`、ハンドラ `:364`）、
-  `NotAllowedError` / `SecurityError` / `NotFoundError` /
-  `OverconstrainedError` を `permission: "denied" | "unsupported"` に
-  変換して stream を止める（`:287` 以降）。
-- **足りないもの**: §3 の recipe 1–7（`next` 依存の除去を含む）+ **host 側の
-  権限条件**。host 側の 2 つの許可（容器側 / 文書側）は**既に実装済み**:
-  `src/tools/registry.ts:350` の `toolRouteSecurityPolicy()` が manifest の
-  `allow` を読み、`src/http/security-headers.ts` が
-  `Permissions-Policy: microphone=(self "https://rebuildup.dev")` を出力する。
-  `public/_headers:183-192` の `/tools/mic-level/app/*` 規則が文書側を
-  付与している。
+- **現在（2026-11-02 実測）**: upstream は standalone Vite build を merge 済み
+  （`9506e461`）。host 側も `same_origin_static` へ配線済み
+  （submodule / manifest / artifact / preview）。**ただし ADR-0020 §4.5.2 の
+  7 条件のうち 3 条件が未達**で、原因は 1 つに絞れた: `delivery.iframe` に
+  残っている `sandbox="allow-scripts"`。
+  - 実測（ローカル preview / Chromium）: frame 内 `window.origin === "null"`
+    （opaque origin）→ `getUserMedia` が `SecurityError` で reject
+    （console: `Permissions policy violation: microphone is not allowed in
+    this document.`）。同じ src / 同じ `allow="microphone"` / 同じ応答ヘッダの
+    frame から sandbox 属性だけを取り除くと `getUserMedia` は**成功**する。
+  - 達している条件: #2（破壊しない fallback / 未処理例外 0 件）、
+    #3（容器側 `microphone=(self "<配信 origin>")`）、
+    #4（文書側 `microphone=(self "https://rebuildup.dev")`）、
+    #5（`<iframe allow="microphone">`）。
+  - 未達の条件: #1（許可経路）/ #6（sandbox 不在）/ #7（frame origin）。
+  - 証跡: [`mic-level-host-activation.md`](mic-level-host-activation.md)。
+- **足りないもの**: ADR-0020 §2.1（D1: `same_origin_static` は sandbox なしで
+  配信する）の**実装**。`release-0-8-1` のコードはまだ
+  `manifest.schema.json` が `iframe.sandbox` を必須とし、
+  `src/tools/embed-policy.ts` が token 1 個以上を要求し、
+  `src/routes/tools.$slug.tsx` が常に `sandbox` 属性を描画する。D1 の
+  実装は #825 の担当であり、稼働中の 7 Tool の frame origin と storage
+  挙動を同時に変えるため、mic-level の配線 PR には含めていない。
+  D1 が land すると #1 / #6 / #7 は到達する見込み（上記 AB 実測が、その
+  形での到達済みの証拠）。
 - **終了条件**: ADR-0020 §4.5.2 の **7 条件すべて**を実測すること
   （許可経路 / 拒否経路 / 容器側の Permissions-Policy / 文書側の
   Permissions-Policy / `allow="microphone"` / sandbox 不在 / frame origin）。
@@ -406,7 +416,8 @@ host 側の契約（Tool repo 側が満たすべき条件の対）:
   拒否の両方、応答ヘッダの実測、配信 HTML の実測）。証跡は
   `docs/verification/tools/`。
 - **追跡 Issue**: **#360**（本_tool の卒業）／ **#598**（旧 owner gate。sandbox
-  除去の決定により前提ごと解消した論点）。
+  除去の決定により前提ごと解消した論点）／ **#825**（D1 の実装。#1 / #6 / #7
+  の未達の前提）。
 - **担当**: agent（upstream PR + host PR）／ merge は owner。
 
 ## 6. 実行順と担当（決定）

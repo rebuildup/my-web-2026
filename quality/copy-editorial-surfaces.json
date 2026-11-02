@@ -1,7 +1,7 @@
 {
-	"$comment": "Public copy surface declaration (Issue #506). A changed file is public copy only when it matches a publicCopyGlobs entry and no excludeGlobs entry. The gate extracts the Japanese text a pull request changed in those files and asks for an owner approval record (quality/copy-editorial-approvals.json). The list is opt-in: a file that is not listed here is out of scope, and the report says so per file, so a missing entry is visible rather than silent.",
-	"version": 1,
-	"policy": "The surfaces are visitor-facing: the Japanese text a reader of https://rebuildup.dev sees. Internal documents, skills, scripts, tests, Storybook samples, design-system demo routes and the authenticated /admin surfaces are not public copy and are not gated here. Extending this list is an owner copy decision, not a mechanical one.",
+	"$comment": "Public copy surface declaration (Issue #506; file-level scope refined by Issue #672). A changed file is public copy when it matches a publicCopyGlobs entry OR is named in publicCopyFiles, and no excludeGlobs entry matches it. The gate extracts the Japanese text a pull request changed in those files and asks for an owner approval record (quality/copy-editorial-approvals.json). The list is opt-in: a file that is not listed here is out of scope, and the report says so per file, so a missing entry is visible rather than silent. The CRITERION for an entry is 'does this file hold a string a visitor reads?' (Issue #672 owner decision, https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805) — not 'does this file live in a directory that also holds display-bearing files?'. A key map, a schema reader, a provenance annotation and a pure type/transform module hold no visitor-visible sentence, so they are not editorial copy; a data file whose visible body IS rendered (src/privacy/data-lifecycle.ts) is editorial copy even though its source is data.",
+	"version": 2,
+	"policy": "The surfaces are visitor-facing: the Japanese text a reader of https://rebuildup.dev sees. Internal documents, skills, scripts, tests, Storybook samples, design-system demo routes and the authenticated /admin surfaces are not public copy and are not gated here. Extending this list is an owner copy decision, not a mechanical one. Two granularities are used on purpose. publicCopyGlobs keeps the subtree granularity for the obligations whose every file is display-bearing (src/home/**, src/editorial/**, …): a file added there later is gated without a second decision. publicCopyFiles names ONE file for the obligations that mix display with data/schema/logic (src/keyboard/**, src/legal/**, src/privacy/**): there the file IS the unit, because a render target reads a file, not a directory. Every excludeGlobs entry below names a file or subtree that holds NO visitor-visible sentence; the reason for each exclusion is written in docs/runbook/copy-editorial-approval.md.",
 	"publicCopyGlobs": [
 		"src/home/**",
 		"src/portfolio/**",
@@ -12,6 +12,17 @@
 		"src/routes/**",
 		"src/editorial/**",
 		"copy/resources.json"
+	],
+	"publicCopyFiles": [
+		"src/keyboard/catalog.ts",
+		"src/keyboard/components/KeyboardDiagram.tsx",
+		"src/keyboard/components/KeyboardPage.tsx",
+		"src/keyboard/format.ts",
+		"src/keyboard/load.ts",
+		"src/keyboard/sources/manifest.json",
+		"src/legal/AssetLicenseReview.tsx",
+		"src/legal/contract.ts",
+		"src/privacy/data-lifecycle.ts"
 	],
 	"excludeGlobs": [
 		"**/*.stories.tsx",
@@ -27,6 +38,16 @@
 		"src/editorial/table-code.tsx",
 		"src/editorial/table-code.fixture.ts",
 		"src/editorial/social-card/contract.json",
-		"src/editorial/structured-data/contract.json"
+		"src/editorial/structured-data/contract.json",
+		"src/keyboard/sources/key-map-kanata/**",
+		"src/keyboard/sources/pc-setup/**",
+		"src/keyboard/geometry.ts",
+		"src/keyboard/types.ts",
+		"src/keyboard/parse-kanata.ts",
+		"src/keyboard/parse-onishi.ts",
+		"src/keyboard/index.ts",
+		"src/keyboard/components/index.ts",
+		"src/legal/inventory.ts",
+		"src/legal/inventory-table.ts"
 	]
 }

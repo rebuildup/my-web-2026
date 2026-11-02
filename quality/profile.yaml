@@ -1721,7 +1721,7 @@ operator_mfa_audit:
 # a step of the CI `validate` job instead - the same split as the
 # dependency advisory gate, which needs the registry.
 copy_editorial_approval:
-  surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs and no excludeGlobs)'
+  surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs, is named in publicCopyFiles, and matches no excludeGlobs)'
   ledger: 'quality/copy-editorial-approvals.json (owner approval records, matched to a change set by fingerprint)'
   command: 'pnpm run copy:approval:check'
   ci_command: 'pnpm run copy:approval:check -- --allow-unreviewed'
@@ -1766,6 +1766,18 @@ copy_editorial_approval:
     an approval is bound to the fingerprint of the changed text, so it
     cannot be reused for a different sentence; a pull request that
     publishes other text does not inherit an earlier approval.
+  surface_granularity: >-
+    Issue #672. The unit of the declaration is the FILE, and the
+    criterion is whether the file holds a string a visitor reads - not
+    whether it lives in a directory that also holds display-bearing
+    files. publicCopyGlobs keeps the subtree granularity for the
+    obligations whose every file is display-bearing; publicCopyFiles
+    names one file for the obligations that mix display with
+    data/schema/logic (src/keyboard/**, src/legal/**, src/privacy/**).
+    A data file whose visible body is rendered is public copy
+    (src/privacy/data-lifecycle.ts); a key map, a schema reader and a
+    pure type module are not. Skipping a hidden definition and letting a
+    visitor-facing sentence escape the gate are different things.
   scope_note: >-
     the surfaces are visitor-facing. Internal documents, skills, scripts,
     tests, Storybook samples, design-system demo routes and the
@@ -1797,7 +1809,7 @@ copy_editorial_approval:
 # an expression to be untrue. Unpublishing is an owner decision.
 stale_content_review:
   registry: 'quality/stale-content-review.json (owner review dates, matched to the expression text)'
-  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads)'
+  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads - publicCopyGlobs + publicCopyFiles)'
   command: 'pnpm run copy:stale:check'
   screenshot_command: 'pnpm run verify:stale-copy-review-screenshot'
   tests: 'node --test scripts/check-stale-content-review.test.mjs'
@@ -1820,6 +1832,17 @@ stale_content_review:
     今 / 現時点 and their Latin counterparts) and nothing else. Precision
     matters more than recall: a noisy detector would make the registry
     unreviewable.
+  surface_note: >-
+    the gate reads the SAME surface declaration as the editorial
+    approval gate, so a surface that enters that declaration enters
+    this scan too (Issue #672: the visitor-facing Japanese of
+    /keyboard, the rights / licence display and the privacy notice).
+    Six time-sensitive expressions of those surfaces carry a record
+    dated 2026-11-02, written by an automated side on the basis of the
+    owner's Issue #672 review of the three surfaces, so they are
+    reported as awaiting owner confirmation. Three expressions of the
+    unpublished `current-projects-signature` entry are excluded: that
+    entry renders nowhere.
   out_of_scope:
     - 'prose quality and typography themselves: the gate records a human decision and never grades either.'
     - 'a duration without a now-word (a 30-day window) - the detector looks for words that point at now, not for time spans.'

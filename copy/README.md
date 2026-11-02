@@ -161,7 +161,7 @@ fixture の finding が gate を赤くすることはない（`--include-fixture
 
 | file | 責務 |
 | --- | --- |
-| `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイルの opt-in glob 宣言 |
+| `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイルの opt-in 宣言（ディレクトリ粒度の `publicCopyGlobs` と、ファイル粒度の `publicCopyFiles`） |
 | `quality/copy-editorial-approvals.json` | owner の承認記録（推敲の採否 / 原文との意味比較 / 採否の決定） |
 | `scripts/check-copy-editorial-approval.mjs` | PR の差分から変更された日本語だけを抜き出し、記録と突き合わせる |
 

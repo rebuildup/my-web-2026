@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { Capability } from './capability';
 
@@ -172,7 +173,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 												},
 											})}
 										>
-											<span aria-hidden="true">→</span>
+											<MaterialSymbol name="arrow_forward" size={16} />
 											<span>{capability.label}を開く</span>
 										</a>
 									) : null}

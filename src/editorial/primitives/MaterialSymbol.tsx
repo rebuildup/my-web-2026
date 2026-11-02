@@ -1,9 +1,15 @@
+import { css, cx } from '../../../styled-system/css';
+
 /**
  * Material Symbols icon primitive (Issue #785, design #764).
  *
  * The Tools index uses an icon per Tool so a visitor can tell what a
  * row is before reading it (owner instruction 2026-11-01: ここは
  * かっこよさではなく利便性を意識するべきところなのでアイコンを使う).
+ * Issue #823 (owner instruction 2026-11-01: 文字で描いた記号をやめ
+ * Material Symbols へ) reuses the same primitive for the OPERATION
+ * cues — the `→` that marks a link and the `×` that marks a form
+ * error — so a drawn sign is never a character in the text layer.
  * Design #764 selects Google's Material Symbols, so this primitive
  * draws the SHIPPED Material Symbols outline glyphs — not an ad-hoc
  * character set, not an emoji, not an icon font loaded at runtime.
@@ -33,6 +39,7 @@
 export type MaterialSymbolName =
 	| 'arrow_forward'
 	| 'calculate'
+	| 'close'
 	| 'code'
 	| 'edit_note'
 	| 'extension'
@@ -63,6 +70,13 @@ const PATHS: Record<MaterialSymbolName, string> = {
 	motion:
 		'M360-80q-58 0-109-22t-89-60q-38-38-60-89T80-360q0-81 42-148t110-102q20-39 49.5-68.5T350-728q33-68 101-110t149-42q58 0 109 22t89 60q38 38 60 89t22 109q0 85-42 150T728-350q-20 39-49.5 68.5T610-232q-35 68-102 110T360-80Zm0-80q33 0 63.5-10t56.5-30q-58 0-109-22t-89-60q-38-38-60-89t-22-109q-20 26-30 56.5T160-360q0 42 16 78t43 63q27 27 63 43t78 16Zm120-120q33 0 64.5-10t57.5-30q-59 0-110-22.5T403-403q-38-38-60.5-89T320-602q-20 26-30 57.5T280-480q0 42 15.5 78t43.5 63q27 28 63 43.5t78 15.5Zm120-120q18 0 34.5-3t33.5-9q22-60 6.5-115.5T621-621q-38-38-93.5-53.5T412-668q-6 17-9 33.5t-3 34.5q0 42 15.5 78t43.5 63q27 28 63 43.5t78 15.5Zm160-78q20-26 30-57.5t10-64.5q0-42-15.5-78T741-741q-27-28-63-43.5T600-800q-35 0-65.5 10T478-760q59 0 110 22.5t89 60.5q38 38 60.5 89T760-478ZM600-600Z',
 	arrow_forward: 'M647-440H160v-80h487L423-744l57-56 320 320-320 320-57-56 224-224Z',
+	// Issue #823 — the form error marker. Source: Google's short-term
+	// release endpoint for the 24 px OUTLINED `close` glyph,
+	// `https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/close/default/24px.svg`
+	// (Apache-2.0, https://github.com/google/material-design-icons).
+	// One glyph, one source URL, quoted verbatim.
+	close:
+		'm256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z',
 	calculate:
 		'M320-240h60v-80h80v-60h-80v-80h-60v80h-80v60h80v80Zm200-30h200v-60H520v60Zm0-100h200v-60H520v60Zm44-152 56-56 56 56 42-42-56-58 56-56-42-42-56 56-56-56-42 42 56 56-56 58 42 42Zm-314-70h200v-60H250v60Zm-50 472q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z',
 	code: 'M320-240 80-480l240-240 57 57-184 184 183 183-56 56Zm320 0-57-57 184-184-183-183 56-56 240 240-240 240Z',
@@ -91,6 +105,20 @@ const PATHS: Record<MaterialSymbolName, string> = {
 		'M360-840v-80h240v80H360Zm80 440h80v-240h-80v240Zm-99.5 291.5Q275-137 226-186t-77.5-114.5Q120-366 120-440t28.5-139.5Q177-645 226-694t114.5-77.5Q406-800 480-800q62 0 119 20t107 58l56-56 56 56-56 56q38 50 58 107t20 119q0 74-28.5 139.5T734-186q-49 49-114.5 77.5T480-80q-74 0-139.5-28.5ZM678-242q82-82 82-198t-82-198q-82-82-198-82t-198 82q-82 82-82 198t82 198q82 82 198 82t198-82ZM480-440Z',
 };
 
+/**
+ * The glyph is an INLINE box by default.
+ *
+ * Panda's preflight (the `reset` layer) declares `svg { display: block }`,
+ * which would break every place a glyph has to sit inside a line of
+ * text — the SVG would become a block of its own and push the words
+ * around it onto separate lines. `inline-block` keeps the glyph in
+ * the text flow; inside a flex container the box is blockified by the
+ * container anyway, so a glyph used as a flex item is unaffected.
+ */
+const glyphClassName = css({
+	display: 'inline-block',
+});
+
 export interface MaterialSymbolProps {
 	readonly name: MaterialSymbolName;
 	/** Rendered edge length in CSS px. Defaults to 24 (the authored size). */
@@ -109,7 +137,7 @@ export function MaterialSymbol({ name, size = 24, className }: MaterialSymbolPro
 	return (
 		<svg
 			aria-hidden="true"
-			className={className}
+			className={cx(glyphClassName, className)}
 			focusable="false"
 			height={size}
 			viewBox="0 -960 960 960"

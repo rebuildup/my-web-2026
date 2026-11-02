@@ -116,6 +116,16 @@ describe('TextField — association (Issue #404)', () => {
 		expect(html).toContain('aria-hidden="true"');
 	});
 
+	it('draws the error marker as a glyph, not a typed character (Issue #823)', () => {
+		const html = renderToStaticMarkup(
+			<TextField name="email" label="Email" type="email" error="この値は受け付けられません。" />,
+		);
+		// The marker is a Material Symbols SVG, drawn and `aria-hidden`.
+		expect(html).toMatch(/<p[^>]*data-testid="email-error"[^>]*><svg[^>]*aria-hidden="true"/);
+		// …and the text layer carries no `×` character at all.
+		expect(html).not.toContain('×');
+	});
+
 	it('marks a required field in markup and in the visible label', () => {
 		const html = renderToStaticMarkup(
 			<TextField name="name" label="Name" type="text" required autoComplete="name" />,

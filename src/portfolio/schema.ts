@@ -132,7 +132,18 @@ export interface PortfolioProjectRow {
 	slug: string;
 	title: string;
 	summary: string;
-	role: string;
+	/**
+	 * The recorded role of the person behind the project — `null`
+	 * when no role is recorded.
+	 *
+	 * The column still carries two claims (a person's role and a kind
+	 * of work derived from the facets). Issue #813 decides that only
+	 * the first one may be published, and that the absence of a role
+	 * is a state the type has to be able to express. The D1 column
+	 * itself becomes nullable in the #811 migration; until then the
+	 * type merely ALLOWS the state (no path returns `null` yet).
+	 */
+	role: string | null;
 	period_start: number;
 	period_end: number | null;
 	period_label: string | null;
@@ -204,7 +215,18 @@ export interface PortfolioProject {
 	slug: string;
 	title: string;
 	summary: string;
-	role: string;
+	/**
+	 * The recorded role of the person behind the project, or `null`
+	 * when no role is recorded.
+	 *
+	 * The public contract is TWO states — recorded / not recorded —
+	 * because "the role was derived from the facet" is a fact about
+	 * the migration, not about the work (Issue #813,
+	 * `docs/domain/portfolio-vocabulary.md` §4). The value is passed
+	 * through byte-exact; the surfaces decide whether there is
+	 * anything to print.
+	 */
+	role: string | null;
 	periodStart: number;
 	periodEnd: number | null;
 	periodLabel: string | null;
@@ -458,6 +480,10 @@ export function rowToProject(
 		// TRANSFORMED value — never the same expression twice.
 		title: row.title,
 		summary: row.summary,
+		// Identity, like `title` / `summary` (Issue #813): `null` stays
+		// `null` and a stored string is never trimmed, defaulted or
+		// emptied here. Whether there is a role to PRINT is a decision
+		// of the surface, not of this mapping.
 		role: row.role,
 		periodStart: row.period_start,
 		periodEnd: row.period_end,

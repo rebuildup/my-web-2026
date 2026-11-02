@@ -56,7 +56,10 @@ const ISSUE_SCOPED_PATHS = ['/', '/about', '/portfolio', '/tools', '/api/v1/heal
  */
 const FIXTURES = {
 	'/': {
-		title: 'my-web-2026',
+		// The document title carries the origin suffix (Issue #418); the
+		// <h1> does not. The fixture states both, so the two patterns are
+		// pinned separately (Issue #816).
+		title: 'my-web-2026 — rebuildup.dev',
 		h1Text: 'my-web-2026',
 		unmatchedProbes: { homeSections: false, reactionsDisabled: true },
 	},

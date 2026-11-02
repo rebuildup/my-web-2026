@@ -223,6 +223,30 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	pomodoro: {
+		src: '/tool-previews/pomodoro.webp',
+		alt: 'Pomodoro の初期画面。左上に「Warm up」と表示され、作業／休憩サイクルを表す大きな円形リングが描かれている。',
+		width: 1200,
+		height: 669,
+	},
+	'pi-game': {
+		src: '/tool-previews/pi-game.webp',
+		alt: 'Pi Memory Game の初期画面。タイトル「Pi Memory Game」と説明文、左に「全画面」ボタン、中央に「3 to Start」と数字の盤面（7 8 9 / 4 5 6 / 1 2 3）が並んでいる。',
+		width: 1200,
+		height: 669,
+	},
+	fillgen: {
+		src: '/tool-previews/fillgen.webp',
+		alt: '穴埋めプリントジェネレーターの初期画面。上に「+ ページ追加」ボタン付きのエディタ（ページ1）、下にプレビュー／HTML／React タブの出力欄がある。',
+		width: 1200,
+		height: 669,
+	},
+	'code-type-p5': {
+		src: '/tool-previews/code-type-p5.webp',
+		alt: 'Code Type p5 の初期画面。操作欄に「Play」「Edit Code」のボタンがあり、下に空のキャンバス領域が描かれている。',
+		width: 1200,
+		height: 669,
+	},
 };
 
 function ToolsIndexRoute() {

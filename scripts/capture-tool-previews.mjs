@@ -122,6 +122,30 @@ export const PREVIEW_TARGETS = [
 		/** What the committed artefact must show, for a human re-check. */
 		expect: 'SVG to TSX の画面。SVG入力欄と変換オプション、TSX出力のペイン',
 	},
+	{
+		slug: 'pomodoro',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Pomodoro の初期画面。左上に「Warm up」のフェーズ表示があり、作業／休憩サイクルを表す大きな円形リングが描かれている',
+	},
+	{
+		slug: 'pi-game',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Pi Memory Game の初期画面。タイトルと説明文、左に「全画面」ボタン、中央に「3 to Start」と数字の盤面（7 8 9 / 4 5 6 / 1 2 3）',
+	},
+	{
+		slug: 'fillgen',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'穴埋めプリントジェネレーターの初期画面。ページ追加ボタン付きのエディタ（ページ1）と、プレビュー／HTML／React タブの出力欄',
+	},
+	{
+		slug: 'code-type-p5',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Code Type p5 の初期画面。操作欄に「Play」と「Edit Code」のボタンがあり、下に空のキャンバス領域',
+	},
 ];
 
 const OUTPUT_WIDTH = 1200;

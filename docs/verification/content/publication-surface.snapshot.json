@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/business-mail-block",
 					"/tools/color-palette",
 					"/tools/prototype",
 					"/tools/qr-generator",
@@ -320,6 +321,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/business-mail-block",
 			"/tools/color-palette",
 			"/tools/prototype",
 			"/tools/qr-generator",
@@ -1300,7 +1302,7 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/color-palette"
+			"/tools/business-mail-block"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1314,7 +1316,7 @@
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/color-palette"
+				"message": "Public URL added: /tools/business-mail-block"
 			}
 		]
 	}

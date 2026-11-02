@@ -278,6 +278,7 @@
 				],
 				"urls": [
 					"/tools/color-palette",
+					"/tools/mic-level",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -321,6 +322,7 @@
 			"/share/procon2026/",
 			"/tools",
 			"/tools/color-palette",
+			"/tools/mic-level",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",
@@ -1300,7 +1302,7 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/color-palette"
+			"/tools/mic-level"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1314,7 +1316,7 @@
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/color-palette"
+				"message": "Public URL added: /tools/mic-level"
 			}
 		]
 	}

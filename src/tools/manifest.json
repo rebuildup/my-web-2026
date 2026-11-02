@@ -215,7 +215,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-business-mail-block.git",
 				"submodule_path": "external/business-mail-block",
-				"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+				"pinned_sha": "e88be11f55bde1bd6ac6fd3b2776a45c83eb9134",
 				"branch": "main"
 			},
 			"build": {
@@ -224,11 +224,21 @@
 				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library and uses bun as package manager. Embedding blocked until the Tool repo adds a standalone Vite build path (consistent with the other tool-* repos)."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/business-mail-block/app",
+				"entry_html": "/tools/business-mail-block/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned business-mail-block e88be11f: the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API, so the opaque-origin sandbox affects nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox stays `allow-scripts` with `no-referrer` and no Permissions-Policy feature is granted. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts). The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts); the sandbox grants no `allow-downloads`, so that button is expected to be blocked inside the frame — recorded as a known gap, not silently widened."
 		},
 		{
 			"slug": "code-type-p5",

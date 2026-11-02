@@ -19,3 +19,6 @@
 [submodule "external/svg2tsx"]
 	path = external/svg2tsx
 	url = https://github.com/rebuildup/tool-svg2tsx.git
+[submodule "external/business-mail-block"]
+	path = external/business-mail-block
+	url = https://github.com/rebuildup/tool-business-mail-block.git

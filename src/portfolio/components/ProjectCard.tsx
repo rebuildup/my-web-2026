@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import type { PortfolioProject } from '../schema';
+import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
@@ -12,7 +13,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *   2. project type (facet label, mono / muted),
  *   3. title,
  *   4. summary,
- *   5. role + period,
+ *   5. role (only when a role is recorded) + period,
  *   6. facet pills,
  *   7. detail link.
  *
@@ -74,13 +75,6 @@ export interface ProjectCardProps {
 	project: PortfolioProject;
 }
 
-const FACET_LABEL: Readonly<Record<string, string>> = {
-	develop: 'Develop',
-	video: 'Video',
-	design: 'Design',
-	other: 'Other',
-};
-
 const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 'tool'>> = {
 	develop: 'code',
 	video: 'tool',
@@ -90,10 +84,14 @@ const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 't
 
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
-	const type = project.facets[0]
-		? (FACET_LABEL[project.facets[0]] ?? project.facets[0])
-		: 'Project';
+	const type = project.facets[0] ? FACET_LABEL[project.facets[0]] : 'Project';
 	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
+	// The `Role` row exists only when a role is actually recorded
+	// (Issue #813). A kind of work is NOT projected here — the eyebrow
+	// word and the facet pills already carry it — and an empty `<dd>`
+	// would be a row that claims something while saying nothing. The
+	// printed string is the stored string, byte-exact.
+	const hasRole = project.role !== null && project.role.trim() !== '';
 	return (
 		<article
 			// Issue #411: the category is a published fact of the card,
@@ -215,17 +213,21 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						color: 'text.muted',
 					})}
 				>
-					<dt
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Role
-					</dt>
-					<dd className={css({ margin: '0' })}>{project.role}</dd>
+					{hasRole ? (
+						<>
+							<dt
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+								})}
+							>
+								Role
+							</dt>
+							<dd className={css({ margin: '0' })}>{project.role}</dd>
+						</>
+					) : null}
 					<dt
 						className={css({
 							fontFamily: 'mono',

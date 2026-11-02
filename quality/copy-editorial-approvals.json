@@ -1791,6 +1791,101 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-819",
+			"pr": 819,
+			"base": "release-0-8-1",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-11-02",
+			"decision": "approved",
+			"fingerprint": "sha256:c74954d61791b3ffa0752806de467bbdf9ee4315dc6a2bfeb8ac1d5f0080a92d",
+			"proposal": {
+				"tool": "none — the editing aid was not run for this change set",
+				"ran": false,
+				"summary": "編集補助は実行していない。この変更集合は日本語の新規執筆を含まない: 4 つの日本語 facet 語 (開発 / 映像 / デザイン / その他) は src/portfolio/components/FacetFilter.tsx のローカル定数から src/portfolio/vocabulary.ts の FACET_LABEL_JA へ移動しただけで、文字列は移動前と移動後で byte-identical である。",
+				"disposition": "提案 0 件 (未実行)。編集補助を実行しなかった理由: 審査対象が「移動した同一文字列」であり、新規に書かれた日本語が存在しないため、語調・否定・許可の判断が発生しない。owner は 2026-11-02 に公開日本語 copy の一覧画面 (3 surface の 324 件とこの変更の 8 セグメント) を見て一括で承認した。8 セグメントはいずれも移動元と移動先で同一文字列であり、意味の変化がないため verdict は equivalent。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "開発",
+					"after": null,
+					"text": "開発",
+					"verdict": "equivalent",
+					"note": "facet `develop` の日本語表示語。FacetFilter.tsx のローカル定数 FACET_LABELS.develop.ja から src/portfolio/vocabulary.ts の FACET_LABEL_JA.develop へ移った。文字列は同一で、意味・語・並び順は変わらない。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "映像",
+					"after": null,
+					"text": "映像",
+					"verdict": "equivalent",
+					"note": "facet `video` の日本語表示語。同じ移動で FACET_LABEL_JA.video へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "デザイン",
+					"after": null,
+					"text": "デザイン",
+					"verdict": "equivalent",
+					"note": "facet `design` の日本語表示語。同じ移動で FACET_LABEL_JA.design へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "その他",
+					"after": null,
+					"text": "その他",
+					"verdict": "equivalent",
+					"note": "facet `other` の日本語表示語。同じ移動で FACET_LABEL_JA.other へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "開発",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `develop`)。FACET_LABEL_JA は `Record<PortfolioFacet, string>` で全域性を型とテストで固定しており、移行前の対応表と同じ 4 語が同じ順で並ぶ。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "映像",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `video`)。文字列は移動元の FacetFilter.tsx:42 と同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "デザイン",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `design`)。文字列は移動元の FacetFilter.tsx:43 と同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "その他",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `other`)。文字列は移動元の FacetFilter.tsx:44 と同一。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-statement",
+						"reference": null,
+						"note": "2026-11-02 の監督セッションで owner が公開日本語 copy を一括承認した。原文: 「まあぱっと見ヤバそうなのはないので全て承認でいいだろう。後から実際のサイトとして見たときに違和感があればその時に調整する。」。この発言はチャット上にあり URL を持つ artefact ではないため reference は null。"
+					},
+					{
+						"type": "issue-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "同じ owner 発言を agent が転記した Issue #672 のコメント。転記であって owner 自身の artefact ではないため、この record の ownerConfirmation は unconfirmed のままにする。"
+					}
+				]
+			}
 		}
 	]
 }

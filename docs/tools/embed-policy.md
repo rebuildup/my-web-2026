@@ -114,6 +114,24 @@ resolves the manifest declaration through `toolRouteSecurityPolicy()`
 response, while `public/_headers` carries the same grant for
 `/tools/<slug>/app/**`. The values and their origin scoping are specified
 in [`docs/security/security-headers.md`](../security/security-headers.md)
+
+**Some capabilities have no header half.** `downloads`, `fullscreen` and
+`modals` are capabilities a Tool really needs, but Permissions-Policy
+cannot grant them to a sandboxed frame: `modals` is not a feature name at
+all (the `allow` attribute is inert and the browser logs `Unrecognized
+feature: modals.`), `downloads` has no feature in the current spec, and
+an explicit `fullscreen=(self …)` does not match a frame running in an
+opaque origin. For these the enforced grant is the **sandbox token**
+(`allow-modals`, `allow-downloads`) or the **container attribute**
+(`allowfullscreen`). Their names are still declared in `iframe.allow`,
+because the embed policy requires a capability name beside every
+conditional token, and they are registered in
+`src/http/security-headers.json#sandbox_only_capabilities` so
+`pnpm run security:headers:check` neither demands a header that would be
+a no-op nor lets a deny baseline kill the capability site-wide. The two
+halves of a sandbox-only grant are measured, not assumed: Issue #772's
+A/B on history-quiz is
+[`docs/verification/tools/history-quiz-host-activation.md`](../verification/tools/history-quiz-host-activation.md).
 §3, and `pnpm run security:headers:check` fails the build when the Worker
 half and `_headers` disagree.
 

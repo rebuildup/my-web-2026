@@ -137,7 +137,7 @@ describe('inspect — repository state', () => {
 		// to widen the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			['ae-expression', 'code-type-p5', 'fillgen', 'history-quiz', 'pi-game', 'mic-level'],
+			['code-type-p5', 'fillgen', 'history-quiz', 'pi-game', 'ae-expression', 'mic-level'],
 		);
 	});
 

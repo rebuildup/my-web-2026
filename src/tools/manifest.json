@@ -251,8 +251,10 @@
 				"artifact_path": "/tools/code-type-p5/app",
 				"entry_html": "/tools/code-type-p5/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
-					"referrer_policy": "no-referrer"
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "code-type-p5 の「Export PNG Sequence (ZIP)」は、描画したフレームを ZIP にまとめて保存する（src/lib/001_Editors/003_VideoEncoder.ts#finalizeZip が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した ZIP を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
 				},
 				"privacy": {
 					"third_party_origins": ["https://cdn.jsdelivr.net"],
@@ -260,7 +262,7 @@
 						"ja": "読み込みを開始すると、埋め込み中の Code Type p5 は p5.js 本体の翻訳ファイル（例: p5@2.3/translations/ja/translation.json）を cdn.jsdelivr.net から取得します。ブラウザの言語が日本語のときに実際に取得されることを実測で確認しています。",
 						"en": "Once the load starts, the embedded Code Type p5 fetches the p5.js translation files (e.g. p5@2.3/translations/ja/translation.json) from cdn.jsdelivr.net. Measured: the request really happens when the browser language is Japanese."
 					},
-					"basis": "measured at pinned code-type-p5 2e119311: index.html and src/** contain no external origin of their own; the contact comes from the p5.js runtime the Tool bundles. p5's i18next backend (node_modules/p5/lib/p5.esm.js, `backend.loadPath = https://cdn.jsdelivr.net/npm/p5@${major.minor}/translations/{{lng}}/{{ns}}.json`) is initialised on p5 startup, and a Playwright run against the built artifact with locale ja-JP observed exactly one external request: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json. The same run with the default en locale requested nothing external, because the English strings are bundled. re-measure after a bump"
+					"basis": "measured at pinned code-type-p5 2e119311: index.html and src/** contain no external origin of their own; the contact comes from the p5.js runtime the Tool bundles. p5's i18next backend (node_modules/p5/lib/p5.esm.js, `backend.loadPath = https://cdn.jsdelivr.net/npm/p5@${major.minor}/translations/{{lng}}/{{ns}}.json`) is initialised on p5 startup, and a Playwright run against the built artifact with locale ja-JP observed exactly one external request: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json. The same run with the default en locale requested nothing external, because the English strings are bundled. The granted sandbox capability (allow-downloads) adds no third-party contact: the exported ZIP is produced inside the frame and never uploaded anywhere. re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
@@ -288,12 +290,14 @@
 				"artifact_path": "/tools/fillgen/app",
 				"entry_html": "/tools/fillgen/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
-					"referrer_policy": "no-referrer"
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "fillgen の出力パネル（HTML / React タブ）の「ダウンロード」ボタンは、生成したコードをファイルとして保存する（src/components/utils.ts#downloadFile が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned fillgen 962ae889: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned fillgen 962ae889: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted sandbox capability (allow-downloads) adds no third-party contact: the saved file is produced inside the frame and never uploaded anywhere"
 				}
 			},
 			"classification": "same_origin_static",
@@ -414,11 +418,12 @@
 				"entry_html": "/tools/pi-game/app/index.html",
 				"iframe": {
 					"sandbox": "allow-scripts",
-					"referrer_policy": "no-referrer"
+					"referrer_policy": "no-referrer",
+					"allow": "fullscreen"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
 				}
 			},
 			"classification": "same_origin_static",

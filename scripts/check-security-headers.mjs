@@ -338,19 +338,27 @@ export function inspect(options = {}) {
 		const probe = probePathFor(rule.path, manifest);
 		const granted = grantedFeatures(resolveHeadersForPath(rules, probe)[PERMISSIONS_POLICY]);
 		for (const feature of granted) {
-			const owner = manifest.tools.find((tool) =>
+			// More than one Tool may declare the SAME capability (Issue #817:
+			// fillgen and code-type-p5 both need `downloads`), so the owner
+			// is not "the first tool that declares it" but "every tool that
+			// declares it". The invariant is unchanged: the feature may
+			// appear only inside the artefact namespace of a Tool that
+			// declares it — so the rule passes when the probed path lies in
+			// the namespace of ANY declaring Tool, and fails when it lies in
+			// none of them.
+			const owners = manifest.tools.filter((tool) =>
 				declaredFeatures(tool.delivery?.iframe?.allow).includes(feature),
 			);
-			if (!owner) {
+			if (owners.length === 0) {
 				violations.push(
 					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" but no Tool manifest entry declares it`,
 				);
 				continue;
 			}
-			const namespace = artifactPathFor(owner);
-			if (!pathnameMatches(namespace, probe)) {
+			const namespaces = owners.map((owner) => artifactPathFor(owner));
+			if (!namespaces.some((namespace) => pathnameMatches(namespace, probe))) {
 				violations.push(
-					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" outside the declaring Tool's namespace ${namespace} (probe ${probe})`,
+					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" outside the declaring Tool's namespace ${namespaces.join(' / ')} (probe ${probe})`,
 				);
 			}
 		}

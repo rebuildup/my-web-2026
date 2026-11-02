@@ -10,6 +10,8 @@
 		"bluetooth",
 		"camera",
 		"display-capture",
+		"downloads",
+		"fullscreen",
 		"geolocation",
 		"hid",
 		"microphone",
@@ -19,5 +21,5 @@
 		"xr-spatial-tracking"
 	],
 	"granted_origin_token": "(self \"{origin}\")",
-	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide."
+	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide. Issue #817 (second wave) added two more per-Tool capabilities: fullscreen (pi-game asks its own frame to fill the screen) and downloads (fillgen / code-type-p5 save a file the frame itself produced). downloads is NOT a Permissions-Policy feature name — browsers ignore an unknown name in this header — so it is bookkeeping here: the real grant for a download is the `allow-downloads` SANDBOX token in the manifest, and the header half keeps the repository's one mechanism (deny baseline + per-Tool grant) able to describe it in one place. fullscreen IS a real feature, and denying it host-wide changes nothing on this site because no page of the host calls requestFullscreen (measured: the only `fullscreen` occurrences under src/ are Storybook `layout: 'fullscreen'` parameters)."
 }

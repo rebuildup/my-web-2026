@@ -86,7 +86,7 @@
   # inbound embed policy for these documents.
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy: frame-ancestors 'self'
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), fullscreen=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 # ---------------------------------------------------------------------------
 # CORS — Tool iframes
 #
@@ -189,7 +189,31 @@
   # request time the way the Worker half does; the grant is still
   # origin-scoped, which is what keeps it off any other site that
   # embeds the Tool.
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), fullscreen=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: frame-ancestors 'self'
+
+/tools/pi-game/app/*
+  # Document half of the grant declared by `delivery.iframe.allow` in the
+  # Tool manifest: pi-game asks its own frame to fill the screen
+  # (src/hooks/useFullscreen.ts calls document.documentElement.requestFullscreen).
+  # Same shape as the mic-level rule above: Permissions-Policy only, so
+  # CORS / nosniff / the Tool Referrer-Policy keep coming from the
+  # `:slug` rule and never combine.
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), fullscreen=(self "https://rebuildup.dev"), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: frame-ancestors 'self'
+
+/tools/fillgen/app/*
+  # Document half of the grant declared by `delivery.iframe.allow` in the
+  # Tool manifest: fillgen saves the code it generated (the "ダウンロード"
+  # button of the HTML / React output tabs).
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(self "https://rebuildup.dev"), fullscreen=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: frame-ancestors 'self'
+
+/tools/code-type-p5/app/*
+  # Document half of the grant declared by `delivery.iframe.allow` in the
+  # Tool manifest: code-type-p5 saves the PNG sequence it rendered
+  # ("Export PNG Sequence (ZIP)").
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(self "https://rebuildup.dev"), fullscreen=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
   Content-Security-Policy: frame-ancestors 'self'
 
 # ---------------------------------------------------------------------------

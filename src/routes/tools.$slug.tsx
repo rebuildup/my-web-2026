@@ -479,6 +479,20 @@ function ToolEmbedGate({
  * blocked entry never reaches the gate and this cannot render an empty
  * purpose under a list of origins.
  */
+/**
+ * Whether the manifest's capability grant names `fullscreen`.
+ *
+ * The grant is the ONE field that decides it (`delivery.iframe.allow`,
+ * Issue #449 / #465): the container half of a fullscreen permission is
+ * the HTML `allowfullscreen` attribute on the iframe, and the policy
+ * half is the `allow="fullscreen"` delegation plus the response header
+ * — all three are derived from this declaration, so a Tool cannot get
+ * one half without the others.
+ */
+function grantsFullscreen(allow: string | undefined): boolean {
+	return (allow ?? '').split(/\s+/).some((token) => token.trim().toLowerCase() === 'fullscreen');
+}
+
 function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
 	const tool = getTool(slug);
 	if (!tool || tool.delivery.kind === 'host_disabled') return undefined;
@@ -572,6 +586,15 @@ function ToolEmbedShell({
 					// delivered, the sandbox half is not. See
 					// `docs/tools/embed-policy.md` §2.
 					allow={allow}
+					// Issue #817: the Permissions-Policy half of the
+					// fullscreen grant (`allow="fullscreen"` + the
+					// response header) is not enough on its own —
+					// Chromium reads the CONTAINER half, the HTML
+					// `allowfullscreen` attribute, before it lets the
+					// framed document call requestFullscreen(). The
+					// attribute is derived from the same manifest
+					// declaration, so the two halves cannot disagree.
+					allowFullScreen={grantsFullscreen(allow)}
 					style={{
 						width: '100%',
 						// Grows into the area above; see `frameArea`.

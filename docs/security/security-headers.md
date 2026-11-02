@@ -48,26 +48,14 @@ return applyHtmlCachePolicy(request, secured);
 ### The deny list, and why it is not deny-all
 
 ```
-bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(),
-hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(),
+microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 ```
 
 Every listed feature has no plausible use on this site: hardware
 bridges (`bluetooth`, `hid`, `serial`, `usb`), capture devices
 (`camera`, `display-capture`, `geolocation`, `microphone`), and
 platform-gated products (`payment`, `xr-spatial-tracking`).
-
-`downloads` is the one entry that is **not** a Permissions-Policy
-feature: browsers ignore an unknown feature in this header, so the
-header half of that grant is a declaration, not an enforcement
-mechanism. It is listed because `delivery.iframe.allow` in the Tool
-manifest is where a Tool declares the capability a conditional sandbox
-token grants, and `scripts/check-security-headers.mjs` scopes every
-declared grant by requiring it to be a denied baseline entry. The
-browser-side enforcement of a Tool's download capability is the
-`allow-downloads` sandbox token (`src/tools/embed-policy.ts`), and the
-entry here keeps the grant scoped to the declaring Tool's namespace
-(`/tools/business-mail-block/app/*`).
 
 A feature that is **not** listed keeps the browser default allowlist
 (`self`). That is deliberate: it means a future Tool that needs a new

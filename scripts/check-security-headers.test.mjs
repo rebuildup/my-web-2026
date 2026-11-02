@@ -127,13 +127,15 @@ describe('inspect — repository state', () => {
 	it('accepts the shipped public/_headers and manifest', () => {
 		const result = inspect();
 		assert.deepEqual(result.violations, []);
-		// The shipped state has exactly one Tool grant PER Tool that
-		// declares one. If a new Tool starts declaring a grant, this
-		// assertion is the reminder to update the expectation rather
+		// The shipped state has five Tool grants (Issue #817's second wave
+		// added pi-game → fullscreen, fillgen / code-type-p5 → downloads
+		// beside mic-level → microphone, and Issue #771 added
+		// business-mail-block → downloads). If a Tool starts declaring
+		// one, this assertion is the reminder to update the expectation rather
 		// than to widen the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			['business-mail-block', 'mic-level'],
+			['business-mail-block', 'code-type-p5', 'fillgen', 'pi-game', 'mic-level'],
 		);
 	});
 
@@ -153,7 +155,7 @@ describe('inspect — repository state', () => {
 		// wildcard Tool rule instead of adding the per-slug one, so the
 		// capture device stops being a per-Tool decision.
 		const baseline =
-			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
+			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
 		const text = readHeadersText();
 		const ruleStart = text.indexOf('/tools/:slug/app/*');
 		const lineStart = text.indexOf(baseline, ruleStart);

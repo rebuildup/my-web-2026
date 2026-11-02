@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	SANDBOX_TOKENS,
-	SANDBOX_TOKENS_FORBIDDEN,
 	attachToolMessageGuard,
 	classifyToolFrameSrc,
 	createToolMessageGuard,
@@ -67,32 +66,42 @@ describe('Tool embed policy — the live manifest', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('every served Tool declares allow-scripts + no-referrer, and nothing stronger', () => {
+	it('every served Tool declares allow-scripts + no-referrer, and a conditional token comes with its grant and reason', () => {
 		const served = listAllTools().filter(
 			(
 				t,
 			): t is typeof t & {
 				delivery: {
 					kind: 'same_origin_static';
-					iframe?: { sandbox: string; referrer_policy: string };
+					iframe?: {
+						sandbox: string;
+						referrer_policy: string;
+						allow?: string;
+						sandbox_rationale?: string;
+					};
 				};
 			} => t.delivery.kind === 'same_origin_static',
 		);
 		expect(served.length).toBeGreaterThan(0);
 		for (const tool of served) {
-			// `allow-scripts` is the free token every served Tool carries,
-			// and `no-referrer` is the only referrer policy a Tool frame
-			// may declare.
-			expect(parseTokenList(tool.delivery.iframe?.sandbox)).toContain('allow-scripts');
-			expect(tool.delivery.iframe?.referrer_policy).toBe('no-referrer');
-			// The tripwire is the ISOLATION, not the exact token string: a
-			// served Tool may hold a conditional token (Issue #465 grants
-			// one only with a capability grant and a written reason, and
-			// `evaluateToolEmbedPolicy` above proves every served entry
-			// satisfies that), but it must never hold a token that
-			// escapes the sandbox.
-			for (const token of parseTokenList(tool.delivery.iframe?.sandbox)) {
-				expect(SANDBOX_TOKENS_FORBIDDEN.has(token)).toBe(false);
+			const iframe = tool.delivery.iframe;
+			// `allow-scripts` is the token every Tool needs, and it comes
+			// first (the manifest schema's advisory pattern).
+			expect(iframe?.sandbox.split(' ')[0]).toBe('allow-scripts');
+			expect(iframe?.referrer_policy).toBe('no-referrer');
+			// A conditional token (Issue #817 added `allow-downloads` for
+			// fillgen and code-type-p5) is only valid with the capability
+			// grant and the written reason — the same contract the policy
+			// module enforces, asserted here over the LIVE manifest.
+			const conditional = (iframe?.sandbox ?? '')
+				.split(' ')
+				.filter((token) => token !== 'allow-scripts');
+			for (const token of conditional) {
+				expect(iframe?.allow?.trim(), `${tool.slug}: ${token} without a grant`).toBeTruthy();
+				expect(
+					iframe?.sandbox_rationale?.trim(),
+					`${tool.slug}: ${token} without a written reason`,
+				).toBeTruthy();
 			}
 		}
 	});

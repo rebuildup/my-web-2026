@@ -231,7 +231,7 @@
 					"sandbox": "allow-scripts allow-downloads",
 					"referrer_policy": "no-referrer",
 					"allow": "downloads",
-					"sandbox_rationale": "The Tool ships a file download (the composed mail as .txt and a saved template as .json — src/components/useMailBlockState.ts). Measured at the pin on the built preview: with `sandbox=\"allow-scripts\"` the browser discards that download (the Tool's own ダウンロード button produced no download event), so the feature was dead inside the host frame. `allow-downloads` is added for exactly that reason and grants nothing else: the frame keeps its opaque origin (`allow-same-origin` is never granted), no storage API is unlocked, and the frame cannot navigate the host. `delivery.iframe.allow` names the same capability so the grant is declared in the one field the gate reads; `downloads` is not a Permissions-Policy feature, so the response-header half of that declaration is inert and the sandbox token is what the browser enforces."
+					"sandbox_rationale": "business-mail-block の「ダウンロード」ボタンは、組み立てたメールを .txt として、テンプレートを .json として保存する（src/components/useMailBlockState.ts#downloadEmail が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた（実測: allow-downloads なしの build では同じボタンで download イベントが発火しなかった）。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
 				},
 				"privacy": {
 					"third_party_origins": [],
@@ -240,51 +240,81 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox grants no Permissions-Policy feature and the frame keeps its opaque origin. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts); measured on the built preview, the コピー button does put the composed mail on the clipboard through that fallback. The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts): measured on the built preview with `sandbox=\"allow-scripts\"` the browser discarded it (no download event), and with `allow-downloads` added the same button produces one — that is why the sandbox carries the token and `delivery.iframe.allow` declares the `downloads` capability."
+			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox grants no Permissions-Policy feature and the frame keeps its opaque origin. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts); measured on the built preview, the コピー button does put the composed mail on the clipboard through that fallback. The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts): measured on the built preview with `sandbox=\"allow-scripts\"` the browser discarded it (no download event), and with `allow-downloads` added the same button produces one — that is why the sandbox carries the token and `delivery.iframe.allow` declares the `downloads` capability. `downloads` is a sandbox-only capability (src/http/security-headers.json#sandbox_only_capabilities): it has no Permissions-Policy header half, so the grant is the sandbox token alone."
 		},
 		{
 			"slug": "code-type-p5",
 			"display_name": "Code Type p5",
 			"description_ja": "p5.js のキャンバスで、コードが打たれていく様子をアニメーション表示するツール。言語・色・サイズ・FPS を設定でき、PNG 連番を ZIP で書き出せます。",
+			"description": "Animates typed code on a p5.js canvas. Language, colour, size and FPS are configurable, and a PNG sequence can be exported as a ZIP.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-code-type-p5.git",
 				"submodule_path": "external/code-type-p5",
-				"pinned_sha": "509c2873a434673befeee08c3bf6d4b2c8473b94",
+				"pinned_sha": "2e1193111faa837d3653d72410aa0e3c97a176b3",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/code-type-p5/app",
+				"entry_html": "/tools/code-type-p5/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "code-type-p5 の「Export PNG Sequence (ZIP)」は、描画したフレームを ZIP にまとめて保存する（src/lib/001_Editors/003_VideoEncoder.ts#finalizeZip が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した ZIP を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+				},
+				"privacy": {
+					"third_party_origins": ["https://cdn.jsdelivr.net"],
+					"purpose": {
+						"ja": "読み込みを開始すると、埋め込み中の Code Type p5 は p5.js 本体の翻訳ファイル（例: p5@2.3/translations/ja/translation.json）を cdn.jsdelivr.net から取得します。ブラウザの言語が日本語のときに実際に取得されることを実測で確認しています。",
+						"en": "Once the load starts, the embedded Code Type p5 fetches the p5.js translation files (e.g. p5@2.3/translations/ja/translation.json) from cdn.jsdelivr.net. Measured: the request really happens when the browser language is Japanese."
+					},
+					"basis": "measured at pinned code-type-p5 2e119311: index.html and src/** contain no external origin of their own; the contact comes from the p5.js runtime the Tool bundles. p5's i18next backend (node_modules/p5/lib/p5.esm.js, `backend.loadPath = https://cdn.jsdelivr.net/npm/p5@${major.minor}/translations/{{lng}}/{{ns}}.json`) is initialised on p5 startup, and a Playwright run against the built artifact with locale ja-JP observed exactly one external request: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json. The same run with the default en locale requested nothing external, because the English strings are bundled. The granted sandbox capability (allow-downloads) adds no third-party contact: the exported ZIP is produced inside the frame and never uploaded anywhere. re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-code-type-p5 PR #5 (commit 2e1193111faa837d3653d72410aa0e3c97a176b3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no browser-storage usage under sandbox=\"allow-scripts\", and the only third-party contact is the p5.js translation fetch described in delivery.privacy. Bundle: 1,482,260 B of JS, inside the shared 1,600,000 B Tool cap."
 		},
 		{
 			"slug": "fillgen",
 			"display_name": "Fillgen",
 			"description_ja": "穴埋め問題つきの教材ページを、Markdown 風のテキストから生成するツール。HTML と React のコードを書き出せます。",
+			"description": "Generates fill-in-the-blank exercise pages from Markdown-like text, and exports the result as HTML or React code.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-fillgen.git",
 				"submodule_path": "external/fillgen",
-				"pinned_sha": "01d53b84e9884352aa2bc44a6b917708de5f5199",
-				"branch": "main"
+				"pinned_sha": "962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a",
+				"branch": "release-0-1-0"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/fillgen/app",
+				"entry_html": "/tools/fillgen/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "fillgen の出力パネル（HTML / React タブ）の「ダウンロード」ボタンは、生成したコードをファイルとして保存する（src/components/utils.ts#downloadFile が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned fillgen 962ae889: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted sandbox capability (allow-downloads) adds no third-party contact: the saved file is produced inside the frame and never uploaded anywhere"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-fillgen PR #3 (commit 962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. The pin is the head of the upstream release-0-1-0 branch, which carries the standalone build; the upstream main branch (01d53b84) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\"."
 		},
 		{
 			"slug": "qr-generator",
@@ -323,10 +353,11 @@
 			"slug": "pomodoro",
 			"display_name": "Pomodoro",
 			"description_ja": "ポモドーロ・テクニック用のタイマー。作業と休憩のサイクルを管理し、メモや YouTube の埋め込みも使えます。",
+			"description": "A pomodoro-technique timer: work / break cycles with notes, an image widget and a YouTube embed widget.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pomodoro.git",
 				"submodule_path": "external/pomodoro",
-				"pinned_sha": "954cfd898dba6f46c8ef250d69b1b64245c0eecf",
+				"pinned_sha": "7ce10d78dc6efc1a71aebd2051e29b80216dfd2c",
 				"branch": "main"
 			},
 			"build": {
@@ -335,11 +366,25 @@
 				"package_manager": "pnpm"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/pomodoro/app",
+				"entry_html": "/tools/pomodoro/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": ["https://via.placeholder.com", "https://www.youtube.com"],
+					"purpose": {
+						"ja": "画像ウィジェットや YouTube ウィジェットを設定すると、埋め込み中の Pomodoro は外部に通信します。画像ウィジェットは読み込みに失敗した画像の代替として via.placeholder.com から画像を取得し、YouTube ウィジェットは www.youtube.com の埋め込み文書（/embed/…）を読み込み、音声の埋め込み機能を使う場合は同オリジンの iframe API（/iframe_api）を読み込みます。",
+						"en": "Once an image widget or a YouTube widget is configured, the embedded Pomodoro contacts two third parties. The image widget fetches a replacement image from via.placeholder.com when the configured image fails to load, and the YouTube widget loads the www.youtube.com embed document (/embed/…) plus, for the audio embed, the iframe API of the same origin (/iframe_api)."
+					},
+					"basis": "measured at pinned pomodoro 7ce10d78: index.html has no external origin; the contacts come from src/components/widgets/WidgetImageContent.tsx:103 (an <img> whose onError handler swaps the src to https://via.placeholder.com/300?text=Image+Error — an image request, not a link), src/components/widgets/WidgetMusicContent.tsx:21 (an <iframe src=\"https://www.youtube.com/embed/…\">) and src/components/youtube/youtube-player-utils.ts:14 (a <script src=\"https://www.youtube.com/iframe_api\"> inserted into the document). The only other URL in src/** is the SVG namespace http://www.w3.org/2000/svg, which is a namespace identifier and never fetched. The default screen contacts nobody; the two origins are reachable once the visitor configures the matching widget. re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts, so the sandboxed opaque origin denies it and the hook logs the failure and keeps the in-memory value — the timer still runs. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
 		},
 		{
 			"slug": "history-quiz",
@@ -367,10 +412,11 @@
 			"slug": "pi-game",
 			"display_name": "Pi Game",
 			"description_ja": "円周率の桁を順番に入力していく記憶ゲーム。全画面表示とキーボード入力に対応しています。",
+			"description": "A memory game that asks for the digits of pi in order, with full-screen and keyboard input.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pi-game.git",
 				"submodule_path": "external/pi-game",
-				"pinned_sha": "9e19ec5d63c84fad9be625b33b0455e922ba3570",
+				"pinned_sha": "e67d9cec91bc431ab10003aa229205466a822425",
 				"branch": "develop"
 			},
 			"build": {
@@ -379,11 +425,22 @@
 				"package_manager": "pnpm"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library (and uses 'develop' as default branch). Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/pi-game/app",
+				"entry_html": "/tools/pi-game/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer",
+					"allow": "fullscreen"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-pi-game PR #4 (commit e67d9cec91bc431ab10003aa229205466a822425 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. The upstream default branch of this repo is develop, and the standalone build landed there; main (9e19ec5d) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\"."
 		},
 		{
 			"slug": "ae-expression",

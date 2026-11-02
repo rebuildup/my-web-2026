@@ -86,7 +86,7 @@
   # inbound embed policy for these documents.
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy: frame-ancestors 'self'
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 # ---------------------------------------------------------------------------
 # CORS — Tool iframes
 #
@@ -189,31 +189,18 @@
   # request time the way the Worker half does; the grant is still
   # origin-scoped, which is what keeps it off any other site that
   # embeds the Tool.
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
   Content-Security-Policy: frame-ancestors 'self'
 
-# ---------------------------------------------------------------------------
-# Per-Tool permission grant — business-mail-block (Issue #771)
-#
-# Same shape as the mic-level rule above: the document half of the
-# capability declared by `delivery.iframe.allow` in the Tool manifest.
-#
-# `downloads` is NOT a Permissions-Policy feature — browsers ignore an
-# unknown feature in this header, so the header half of this grant is a
-# declaration, not the mechanism. The browser enforces the Tool's
-# download capability through the `allow-downloads` sandbox token
-# (`delivery.iframe.sandbox`), and the entry is listed here so the
-# grant is scoped to this Tool's namespace by the same gate that scopes
-# every other grant (`scripts/check-security-headers.mjs` rule 5).
-# ---------------------------------------------------------------------------
-
-/tools/business-mail-block/app/*
-  # Document half of the grant declared by `delivery.iframe.allow` in
-  # the Tool manifest. Only Permissions-Policy is set here: CORS,
-  # nosniff and the Tool `Referrer-Policy` come from the `:slug` rule
-  # above, and repeating them would combine into an invalid value.
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(self "https://rebuildup.dev"), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
-  Content-Security-Policy: frame-ancestors 'self'
+# `fillgen` and `code-type-p5` declare the `downloads` capability, and
+# `pi-game` declares `fullscreen`. None of the three has a Permissions-
+# Policy half: `downloads` is not a Permissions-Policy feature at all
+# (the grant is the SANDBOX token `allow-downloads`), and `fullscreen`
+# cannot be re-granted to a sandboxed frame by a `self`-scoped header
+# (the frame runs in an opaque origin — measured, see
+# `src/http/security-headers.json#sandbox_only_capabilities`). Both are
+# granted by the container / the sandbox token alone, so this file says
+# nothing about them.
 
 # ---------------------------------------------------------------------------
 # Inbound embed policy — public static documents (Issue #448)

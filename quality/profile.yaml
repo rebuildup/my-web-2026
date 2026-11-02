@@ -1722,12 +1722,12 @@ operator_mfa_audit:
 # dependency advisory gate, which needs the registry.
 copy_editorial_approval:
   surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs and no excludeGlobs)'
-  ledger: 'quality/copy-editorial-approvals.json (owner approval records, matched to a change set by fingerprint)'
+  ledger: 'quality/copy-editorial-approvals.json (owner approval records - or records whose owner decision is still pending, Issue #754 - matched to a change set by fingerprint)'
   command: 'pnpm run copy:approval:check'
   ci_command: 'pnpm run copy:approval:check -- --allow-unreviewed'
   screenshot_command: 'pnpm run verify:copy-editorial-approval-screenshot'
   tests: 'node --test scripts/check-copy-editorial-approval.test.mjs'
-  fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,rejected,stale-approval,not-applicable}.json'
+  fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,agent-recorded,pending,rejected,stale-approval,not-applicable}.json'
   gate: ci
   gate_placement: >-
     the `Copy editorial evidence (pending owner review is advisory)`
@@ -1756,7 +1756,7 @@ copy_editorial_approval:
   statuses:
     - 'pass - the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision)'
     - 'fail - a review was recorded and it says no, or the record contradicts the change set (a stale fingerprint, a rejected decision, a comparison with no verdict)'
-    - 'not run (NEEDS REVIEW) - the review was never recorded; the pull request asks for an owner decision nobody has taken yet'
+    - 'not run (NEEDS REVIEW) - the review was never recorded; the pull request asks for an owner decision nobody has taken yet; the record that exists names no owner decision (decision: pending, Issue #754)'
     - 'not applicable - the change set changes no Japanese text in a public copy surface'
   review_dimensions:
     - 'proposal - the editing aid ran over the changed text and its suggestions were adjudicated (evidence, never approval)'

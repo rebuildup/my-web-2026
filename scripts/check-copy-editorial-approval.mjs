@@ -28,7 +28,9 @@
  *          per changed segment.
  *        - `approval` — the owner decided (`approved` / `rejected`),
  *          and the decision names its reviewer and its date **and**
- *          its provenance (Issue #720 — see below).
+ *          its provenance (Issue #720 — see below). A record that names
+ *          no owner decision at all (`pending`, Issue #754) is reported
+ *          as *awaiting an owner decision*, never as approval.
  *
  * The four verdicts are kept distinct on purpose, exactly like the
  * release-gate ledger they sit next to:
@@ -231,8 +233,20 @@ export const VERDICTS = ['pass', 'fail', 'not run', 'not applicable'];
 /** The three review dimensions the Issue names. */
 export const DIMENSIONS = ['proposal', 'semantic', 'approval'];
 
-/** Decisions an owner may record. */
-export const DECISIONS = ['approved', 'rejected'];
+/**
+ * Decisions a record may carry (Issue #754).
+ *
+ * `approved` / `rejected` — the owner decided, and the record names its
+ *                  reviewer and its date.
+ * `pending`        — **no owner decision has been taken yet.** The
+ *                  record was written by an automated side and names no
+ *                  owner artefact, so it says nothing about the owner's
+ *                  judgement. It may not be written as `approved` with
+ *                  the owner's name on it: that would claim a decision
+ *                  nobody took. A pending record is reported as
+ *                  *awaiting an owner decision* — never as approval.
+ */
+export const DECISIONS = ['approved', 'rejected', 'pending'];
 
 /**
  * The provenance kinds an approval record may carry (Issue #720).
@@ -336,18 +350,39 @@ export function summarizeLedger(ledger) {
 	let ownerConfirmed = 0;
 	let awaitingConfirmation = 0;
 	let missingProvenance = 0;
+	let pendingDecisions = 0;
 	for (const record of records) {
 		const provenance = evaluateProvenance(record);
 		if (!provenance.present) missingProvenance += 1;
 		if (provenance.ownerConfirmed) ownerConfirmed += 1;
 		else awaitingConfirmation += 1;
+		if (typeof record?.decision === 'string' && record.decision.trim() === 'pending') {
+			pendingDecisions += 1;
+		}
 	}
 	return {
 		records: records.length,
 		ownerConfirmed,
 		awaitingConfirmation,
 		missingProvenance,
+		pendingDecisions,
 	};
+}
+
+/**
+ * The human wording of one record's decision (Issue #754).
+ *
+ * `pending` is not a softer `approved`: it is the absence of an owner
+ * decision. The wording must not suggest otherwise.
+ */
+export function decisionLabel(record) {
+	const decision = typeof record?.decision === 'string' ? record.decision.trim() : '';
+	if (decision === 'pending') {
+		return 'pending — no owner decision yet (the owner has not decided this change set)';
+	}
+	if (decision === 'approved') return 'approved';
+	if (decision === 'rejected') return 'rejected';
+	return decision.length > 0 ? decision : 'no decision recorded';
 }
 
 /** The human wording of one provenance state. */
@@ -538,7 +573,21 @@ export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) 
 	const decision = typeof record.decision === 'string' ? record.decision.trim() : '';
 	const reviewer = typeof record.reviewer === 'string' ? record.reviewer.trim() : '';
 	const reviewedAt = typeof record.reviewedAt === 'string' ? record.reviewedAt.trim() : '';
-	if (decision === 'rejected') {
+	if (decision === 'pending') {
+		// Issue #754: a record that names no owner decision. It may not
+		// be written as `approved` with the owner's name on it, because
+		// that would claim a judgement nobody took. The verdict stays
+		// NEEDS REVIEW — a pending record is the absence of a decision,
+		// not a decision.
+		dimensions.approval = 'not run';
+		findings.push(
+			finding(
+				'approval-awaiting-owner',
+				'info',
+				'This change set has no owner decision yet: the record was written by an automated side and names no owner artefact. The changed public Japanese copy is un-reviewed.',
+			),
+		);
+	} else if (decision === 'rejected') {
 		dimensions.approval = 'fail';
 		findings.push(
 			finding(
@@ -632,9 +681,20 @@ export function renderText(result) {
 			`  approval ledger: ${summary.records} record(s) — owner-confirmed ${summary.ownerConfirmed}, awaiting owner confirmation ${summary.awaitingConfirmation}`,
 		);
 		lines.push(`  change sets waiting for an owner decision: ${summary.awaitingConfirmation}`);
+		lines.push(
+			`  records with no owner decision yet (decision: pending): ${summary.pendingDecisions ?? 0}`,
+		);
 	}
 	if (result.provenance) {
 		lines.push(`  this record's provenance: ${provenanceLabel(result.provenance)}`);
+	}
+	if (result.record) {
+		lines.push(`  this record's decision: ${decisionLabel(result.record)}`);
+		const reviewer =
+			typeof result.record.reviewer === 'string' && result.record.reviewer.trim().length > 0
+				? result.record.reviewer.trim()
+				: '—';
+		lines.push(`  this record's reviewer: ${reviewer}`);
 	}
 	if (result.units.length === 0) {
 		lines.push(
@@ -660,7 +720,7 @@ export function renderText(result) {
 		'  - fail           a review was recorded and it says no, or the record contradicts the change set',
 	);
 	lines.push(
-		'  - NEEDS REVIEW   the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it: the copy is un-reviewed',
+		'  - NEEDS REVIEW   the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it, or it names no owner decision yet: the copy is un-reviewed',
 	);
 	lines.push('  - not applicable this change set changes no public Japanese copy');
 	lines.push('');
@@ -844,6 +904,11 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 		this change set's record: <code>${escapeHtml(provenanceLabel(result.provenance))}</code>
 	</p>
 	<p class="meta">
+		this change set's decision: <code>${escapeHtml(
+			result.record ? decisionLabel(result.record) : 'no record',
+		)}</code>
+	</p>
+	<p class="meta">
 		The gate checks the <em>shape</em> of a reference, not who wrote the thing the reference points
 		at. A reference is a claim about a human action; the repository records the claim, it does not
 		independently prove it.
@@ -895,7 +960,7 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 	<dl>
 		<dt>pass</dt><dd>the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision) whose provenance is owner-confirmed — a traceable owner artefact.</dd>
 		<dt>fail</dt><dd>a review was recorded and it says no, or the record contradicts the change set. The change may not be published as it stands.</dd>
-		<dt>not run (NEEDS REVIEW)</dt><dd>the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it. The copy is un-reviewed.</dd>
+		<dt>not run (NEEDS REVIEW)</dt><dd>the review was never recorded, or the record that exists was written by an automated side and no owner confirmed it, or it names no owner decision yet (<code>pending</code>). The copy is un-reviewed.</dd>
 		<dt>not applicable</dt><dd>the change set changes no public Japanese copy, so no review is owed.</dd>
 	</dl>
 </div>

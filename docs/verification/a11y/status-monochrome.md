@@ -33,7 +33,7 @@ status 4 状態は **円 / 三角 / 交叉 / 破れた輪**、category 4 種は
 | --- | --- | --- | --- |
 | SC 1.4.1 Use of Color | A | status badge / category rule | 適合 — 形状 + テキストの 2 channel |
 | SC 1.1.1 Non-text Content | A | `StateMark` の `<span>` | 適合 — 装飾なので text alternative 不要。`aria-hidden="true"` で AT には露出しない（機械検査で確認） |
-| SC 1.4.11 Non-text Contrast | AA | マーク（`currentColor` 継承）、4px rule | 適合 — 下表の測定値 |
+| SC 1.4.11 Non-text Contrast | AA | マーク（`currentColor` 継承）、4px rule（**Issue #794 で rule は削除**） | 適合 — 下表の測定値 |
 | SC 1.3.1 Info and Relationships | A | status 行 | 適合 — 構造は変更なし（`<dl>` / `<dt>` / `<dd>`）。色を情報の符号化に使っていない |
 | SC 4.1.2 Name, Role, Value | A | status / portfolio | 適合 — 新しい role / 属性は無く、mark は accessibility tree から消える |
 
@@ -43,7 +43,7 @@ status 4 状態は **円 / 三角 / 交叉 / 破れた輪**、category 4 種は
 | --- | --- | --- |
 | `text.muted`（neutral badge 内の mark とラベル、`bg.subtle` 上） | 4.34 : 1 | 5.37 : 1 |
 | `text.inverse`（accent badge 内の mark、`bg.accent` 上） | 5.93 : 1 | 5.93 : 1 |
-| `accent.category.*` の rule（`bg.canvas` 上） | 4.92 – 7.90 : 1 | 9.87 – 14.93 : 1 |
+| `accent.category.*` の rule（`bg.canvas` 上）— **Issue #794 で廃止** | 4.92 – 7.90 : 1 | 9.87 – 14.93 : 1 |
 
 SC 1.4.11 の下限は 3 : 1。mark は自前の色を持たず `currentColor` を継承するため、
 **ラベルが満たすコントラストを過不足なく継承**する。
@@ -208,6 +208,15 @@ emulate** した（story 側を 2 つに増やしていない）。
   ないため）。8px の RMS / ビットマップも `.tmp` の一時スクリプトで測った値で、
   commit した測定スクリプトは無い。**所有者判断（Issue を作るか、既存の
   report スクリプトに枠を足すか）は open**。
+
+- **Issue #794 で portfolio card の左 rule は削除された。** 上の表の
+  「Portfolio card rule」は #411 時点の**修正前**の状態と、その後の rule 付き
+  状態を記録した履歴である。owner 判断（2026-11-01）「左バーは消す。border も
+  残せない。面の区別は塗りで行う」により、`ProjectCard` は色相を一切塗らず、
+  `bg.surface` の面 + `StateMark` + カテゴリ語でカテゴリを伝える。したがって
+  `accent.category.*` の非テキストコントラスト行は**この surface には適用されない**
+  （role 自体は `/design-system` の identifier tile で存続する）。実測は
+  [`portfolio/category-surface-fill.md`](../portfolio/category-surface-fill.md)。
 
 - **形状は inline `<svg>` ではなく CSS（`clip-path` / `border-radius`）で描画している。**
   当初 `<svg>` で実装したが、`test/fixtures/markdown-xss-fixtures.ts` は

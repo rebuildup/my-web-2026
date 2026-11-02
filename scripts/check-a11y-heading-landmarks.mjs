@@ -199,20 +199,21 @@ export const PAGE_UNITS = [
 		kind: 'page',
 		files: ['src/routes/tools.index.tsx'],
 		note: 'the Tools index page',
-		// Issue #288: this route is a full-viewport iframe shell, and
-		// the browser-compat contract states the state explicitly —
-		// `main: 'none'` — because the route is a documented
-		// full-viewport surface rather than a page with a body
-		// region. The exemption keeps that contract intact instead of
-		// letting this gate report it as a defect, and the report
-		// PRINTS the exemption with this reason, so it cannot
-		// disappear silently. It excuses the missing landmark only:
-		// a second `main`, a missing `<h1>` or a skipped heading level
-		// on this page is still reported.
+		// The browser-compat contract states this route's landmark
+		// state explicitly — `main: 'none'` — and Issue #785 kept that
+		// decision when it abolished the Issue #288 chrome removal: the
+		// nav and breadcrumbs came back, the content landmark did not.
+		// The exemption keeps that contract intact instead of letting
+		// this gate report it as a defect, and the report PRINTS the
+		// exemption with this reason, so it cannot disappear silently.
+		// It excuses the missing landmark only: a second `main`, a
+		// missing `<h1>` or a skipped heading level on this page is
+		// still reported.
 		exemptRules: [
 			{
 				rule: 'page-missing-landmark',
-				reason: "the browser-compat contract expects `main: 'none'` for this route (Issue #288)",
+				reason:
+					"the browser-compat contract expects `main: 'none'` for this route, which Issue #785 kept when it restored the chrome",
 			},
 		],
 	},
@@ -220,7 +221,7 @@ export const PAGE_UNITS = [
 		id: 'tools-detail',
 		kind: 'component',
 		files: ['src/routes/tools.$slug.tsx'],
-		note: 'the Tool embed host shell — a chrome-less full-bleed iframe host whose document title is the route head, not a page outline',
+		note: 'the Tool embed host shell — an iframe host that carries the site chrome (nav + breadcrumbs, Issue #785) but no page-level landmark; its document title is the route head, not a page outline',
 	},
 	{
 		id: 'contact',

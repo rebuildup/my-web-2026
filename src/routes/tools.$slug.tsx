@@ -1,7 +1,10 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
 import { useCallback, useRef, useState } from 'react';
-import type { HTMLAttributeReferrerPolicy } from 'react';
+import type { HTMLAttributeReferrerPolicy, ReactNode } from 'react';
 import { css } from '../../styled-system/css';
+import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ToolConsentNotice } from '../tools/embed-consent-notice';
@@ -53,15 +56,21 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * stops at "Home > Tools" rather than misleadingly showing a
  * stub "Tool" leaf for a slug that does not exist.
  *
- * Chrome convention (Issue #199 → removed by Issue #288). Until
- * #288 this route rendered `<PublicNav />` / `<Breadcrumbs />` /
- * `<BreadcrumbJsonLd />` explicitly in each surface. The Tools
- * surfaces now render NO header chrome at all: the Tool iframe
- * shell is full-bleed by design and the header only consumed
- * viewport height above it, so Issue #288 removed the nav and
- * breadcrumbs from every state (ToolRoute, ToolNotFound,
- * DisabledPlaceholder) and the iframe now fills the full viewport
- * (`100vh`, no header allowance).
+ * Chrome convention (Issue #199; Issue #288 abolished by the owner
+ * decision of 2026-11-01 — Issue #785). This route renders
+ * `<PublicNav />` / `<Breadcrumbs />` / `<BreadcrumbJsonLd />` itself,
+ * in EVERY state: the embeddable shell, the consent gate, the blocked
+ * placeholder, the `host_disabled` placeholder and the 404. Issue #288
+ * had removed that chrome so the frame could own the whole viewport;
+ * the owner rejected the result (「`/tools` は index・詳細とも PublicNav
+ * とパンくずを戻す。 #288 を全面廃止する。」), so the overflow #288 was
+ * protecting against is now handled by layout instead of by omission:
+ * `ToolChrome` stacks the chrome and the Tool in one `100dvh` flex
+ * column, the chrome keeps its natural height and the frame takes only
+ * what is left (`flex: 1 1 auto` + `min-height: 0`). The subtraction is
+ * therefore measured by the layout engine, not assumed as a `64px`
+ * constant — the mobile nav is a different height than the desktop
+ * strip, and the breadcrumb band wraps at narrow widths.
  *
  * Case-insensitive lookup (Issue #183): the manifest schema
  * constrains slugs to `[a-z0-9][a-z0-9-]{0,127}` but a visitor
@@ -221,16 +230,80 @@ export const Route = createFileRoute('/tools/$slug')({
 });
 
 /**
+ * The chrome column every `/tools/<slug>` state renders inside
+ * (owner decision 2026-11-01 — Issue #785).
+ *
+ * The page is a full-height column: `PublicNav` and the breadcrumb band
+ * keep their natural height, and whatever comes after them is the Tool's
+ * own area. `minHeight: '100dvh'` (not `height`) so a short viewport can
+ * still grow the document rather than clip the chrome, and the frame area
+ * itself carries `minHeight: '0'` so the flex track is allowed to give it
+ * exactly the leftover space instead of the frame's intrinsic 150px
+ * default.
+ *
+ * Two consequences worth stating, because both were the content of
+ * Issue #288:
+ *
+ *   - The frame can no longer overflow the viewport: it is never taller
+ *     than `viewport - chrome`, at any breakpoint, without a magic
+ *     `calc()` constant that would go stale the next time the nav or the
+ *     breadcrumb band changes height.
+ *   - The chrome is REAL chrome, not a decorative strip: the visitor can
+ *     leave a Tool that fails to load, and `/tools` is reachable from
+ *     `/` in one click again (the prod-smoke `CHROME_NAV_ROUTES` roster
+ *     includes it in the same change).
+ */
+const toolColumn = css({
+	display: 'flex',
+	flexDirection: 'column',
+	minHeight: '100dvh',
+});
+
+const frameArea = css({
+	flex: '1 1 auto',
+	// Without this a flex child refuses to shrink below its content
+	// height, which is how a full-height iframe would push the document
+	// scrollbar back into existence.
+	minHeight: '0',
+	minWidth: '0',
+	// The frame fills this box by FLEX, not by `height: 100%`. A
+	// percentage height needs a definite parent height, and a flex item
+	// whose height comes from `flex-grow` does not have one — measured:
+	// the frame stayed at its intrinsic 150px inside an 811px area until
+	// it became the flex child instead.
+	display: 'flex',
+	flexDirection: 'column',
+});
+
+function ToolChrome({ children }: { children: ReactNode }) {
+	return (
+		<div className={toolColumn}>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			{children}
+		</div>
+	);
+}
+
+/**
  * Empty state for `/tools/<unknown>` (Issue #183).
  *
- * Renders inside the same `<Outlet />` slot the iframe would occupy.
- * No site chrome: Issue #288 removed `<PublicNav />` /
- * `<Breadcrumbs />` from every Tools surface, so this 404 state
- * renders only the designed empty-state content.
+ * Renders inside the same `<Outlet />` slot the iframe would occupy,
+ * with the same chrome as every other state (`ToolChrome`). The
+ * breadcrumb chain stops at "Home > Tools": `route-labels.ts` marks this
+ * route `dropOnMissingLoaderData`, so a slug that is not in the registry
+ * never produces a stub leaf in the chain.
+ *
+ * This route deliberately renders no `<main>` landmark. `nav` and
+ * `main` are separate decisions: the chrome restoration does not create
+ * a content landmark, and both `e2e/compat/contract.ts` and
+ * `scripts/check-a11y-heading-landmarks.mjs` register `main: 'none'`
+ * for the Tools surfaces.
  */
 function ToolNotFound() {
 	return (
-		<>
+		<ToolChrome>
 			<Container as="section">
 				<div
 					data-testid="tools-not-found"
@@ -275,7 +348,7 @@ function ToolNotFound() {
 					</p>
 				</div>
 			</Container>
-		</>
+		</ToolChrome>
 	);
 }
 
@@ -347,14 +420,20 @@ function ToolEmbedGate({
 	const [activated, setActivated] = useState(false);
 
 	if (privacy.consent === CONSENT_MODE_CLICK_TO_LOAD && !activated) {
+		// The notice is the FIRST thing a visitor of `/tools/prototype`
+		// sees, so it carries the chrome too — `ToolConsentNotice` itself
+		// stays chrome-free (it is also a Storybook fixture), and the
+		// route wraps it.
 		return (
-			<ToolConsentNotice
-				displayName={displayName}
-				contacts={privacy.contacts_after_activation}
-				purpose={declaredPurpose(slug)}
-				frameIsThirdParty={privacy.frame_is_third_party}
-				onActivate={() => setActivated(true)}
-			/>
+			<ToolChrome>
+				<ToolConsentNotice
+					displayName={displayName}
+					contacts={privacy.contacts_after_activation}
+					purpose={declaredPurpose(slug)}
+					frameIsThirdParty={privacy.frame_is_third_party}
+					onActivate={() => setActivated(true)}
+				/>
+			</ToolChrome>
 		);
 	}
 
@@ -437,20 +516,21 @@ function ToolEmbedShell({
 	useToolHostMessage({ slug, declaration: hostMessage, getToolWindow, onMessage: onToolMessage });
 
 	return (
-		<>
+		<ToolChrome>
+			{/*
+			 * The frame area is whatever the chrome above it left over
+			 * (`ToolChrome`). No `height: 100vh` and no
+			 * `calc(100vh - 64px)`: the first is what Issue #288 shipped,
+			 * which overflows the moment chrome returns; the second is the
+			 * constant that was there before #288 and silently rots as
+			 * soon as the nav changes height (it already differs between
+			 * the desktop strip and the collapsed mobile row).
+			 */}
 			<div
 				data-route="tools/$slug"
 				data-tool-slug={slug}
 				data-tool-consent={consentState ?? 'not-required'}
-				style={{
-					width: '100%',
-					// Issue #288: no header chrome above the shell, so the
-					// iframe fills the full viewport height (the previous
-					// `calc(100vh - 64px)` reserved space for the header).
-					height: '100vh',
-					border: '0',
-					display: 'block',
-				}}
+				className={frameArea}
 			>
 				<iframe
 					ref={frameRef}
@@ -473,13 +553,15 @@ function ToolEmbedShell({
 					allow={allow}
 					style={{
 						width: '100%',
-						height: '100%',
+						// Grows into the area above; see `frameArea`.
+						flex: '1 1 auto',
+						minHeight: '0',
 						border: '0',
 						display: 'block',
 					}}
 				/>
 			</div>
-		</>
+		</ToolChrome>
 	);
 }
 
@@ -491,6 +573,10 @@ function ToolEmbedShell({
  * referrer policy, or a frame `src` whose origin contradicts the
  * delivery kind stops at this page instead of at the browser. Each
  * violation code is rendered so the fix is mechanical.
+ *
+ * It carries the site chrome (`ToolChrome`, owner decision
+ * 2026-11-01) — a blocked Tool is the surface where a visitor most
+ * needs a way out.
  */
 function BlockedPlaceholder({
 	tool,
@@ -510,7 +596,7 @@ function BlockedPlaceholder({
 		...privacyViolations.map((entry) => ({ code: entry.code, message: entry.message })),
 	];
 	return (
-		<>
+		<ToolChrome>
 			<Container as="section">
 				<div
 					data-route="tools/$slug"
@@ -578,7 +664,7 @@ function BlockedPlaceholder({
 					</p>
 				</div>
 			</Container>
-		</>
+		</ToolChrome>
 	);
 }
 
@@ -591,11 +677,15 @@ function BlockedPlaceholder({
  * description, and `disabled_reason` all come from the manifest
  * via `getTool()`, so the page is informative even before the
  * Tool-side fix lands.
+ *
+ * It carries the same chrome as the embeddable shell (`ToolChrome`,
+ * owner decision 2026-11-01): a 「準備中」 page that drops the site nav
+ * strands the visitor on the one surface that has nothing to do.
  */
 function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 	const reason = tool.delivery.kind === 'host_disabled' ? tool.delivery.disabled_reason : '';
 	return (
-		<>
+		<ToolChrome>
 			<Container as="section">
 				<div
 					data-route="tools/$slug"
@@ -655,6 +745,6 @@ function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 					</p>
 				</div>
 			</Container>
-		</>
+		</ToolChrome>
 	);
 }

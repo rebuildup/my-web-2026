@@ -8,9 +8,10 @@ import { ProjectCard } from './ProjectCard';
  *
  * WCAG 2.2 SC 1.4.1 Use of Color (Level A) says colour must not be
  * the only visual means of conveying information. The category rule
- * this card paints (`accent.category.<facet>`) was four hues of one
- * identical bar, so the tests below pin the two things that survive
- * when hue is removed:
+ * this card used to paint (`accent.category.<facet>`) was four hues of
+ * one identical bar; Issue #794 removed it (owner decision,
+ * 2026-11-01 — no left rule, no left border), so the tests below pin
+ * the two things that carry the category now that no hue remains:
  *
  *   1. **the mark** — every facet maps to its own `StateMark` kind
  *      (`data-state-mark`), so no two categories share one entry of
@@ -28,6 +29,12 @@ import { ProjectCard } from './ProjectCard';
  * accessible name (`aria-hidden` removed) the redundancy would be
  * one channel instead of two, which is the failure this file exists
  * to catch.
+ *
+ * Issue #794 also pins the ABSENCE of the cue that was removed: no
+ * absolutely positioned bar, no left border, and no `accent.category.*`
+ * colour on this surface. A regression that re-added one of them would
+ * restore a hue-only channel beside the shape, which is exactly what
+ * the owner's decision forbids.
  *
  * Static markup, no DOM: the same reason `list-scale.test.tsx` uses
  * it — this card needs no router and no bindings, and the workerd
@@ -75,6 +82,11 @@ function marks(html: string): string[] {
 	return [...html.matchAll(/data-state-mark="([^"]+)"/g)].map((match) => match[1]);
 }
 
+/** The `<article>` element's class attribute (the card's own plane). */
+function articleClass(html: string): string {
+	return html.match(/<article[^>]*class="([^"]*)"/)?.[1] ?? '';
+}
+
 describe('ProjectCard category cue (Issue #411)', () => {
 	it('gives every category its own silhouette', () => {
 		const rendered = (['design', 'develop', 'video', 'other'] as const).map((facet) =>
@@ -107,6 +119,18 @@ describe('ProjectCard category cue (Issue #411)', () => {
 		const html = renderToStaticMarkup(<ProjectCard project={project([])} />);
 		expect(marks(html)).toEqual([]);
 		expect(html).not.toContain('data-category=');
+	});
+
+	it('paints its own surface and no left category rule (Issue #794)', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['design'])} />);
+		// The face is the card's own fill — a luminance step, not a hue.
+		expect(articleClass(html)).toContain('bg-c_bg.surface');
+		// The removed cue must stay removed: no absolutely positioned
+		// bar, no 4px rule, and no category colour on this surface, so
+		// the owner's "no left rule, no left border" holds against a
+		// future edit as well.
+		expect(html).not.toMatch(/pos_absolute|w_4px|bd-s|borderInlineStart/);
+		expect(html).not.toContain('accent.category');
 	});
 
 	it('maps each facet to the documented category', () => {

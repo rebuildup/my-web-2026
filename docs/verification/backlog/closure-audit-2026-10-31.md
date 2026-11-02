@@ -93,7 +93,7 @@
 | 状態の語彙 | 8 状態の closure vocabulary を `docs/runbook/issue-lifecycle.md` §1 に定義 | `scripts/check-issue-closure.test.mjs` |
 | 台帳 | `quality/issue-closure-ledger.json`（132 件の per-Issue 記録） | `pnpm run issue:closure:check` |
 | オフライン gate | `scripts/check-issue-closure.mjs`（状態・証拠・判断理由・著作者の整合、テンプレートコメントを証拠として拒否 = E006） | `node --test scripts/check-issue-closure.test.mjs` |
-| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub の各 Issue の現在状態とクローズ時の追跡を直接読み、台帳と食い違えば R002/R003/R004/R005、**台帳に記録が無くかつ追跡も無い**クローズを R001、**同一テンプレートで一括クローズされた**群を R006 として検出） | `node --test scripts/check-issue-closure-remote.test.mjs` |
+| リモート gate | `scripts/check-issue-closure-remote.mjs`（GitHub の各 Issue の現在状態とクローズ時の追跡を直接読み、台帳と食い違えば R002/R003/R004/R005、**台帳に記録が無くかつ追跡も無い**クローズを R001、**同一テンプレートで一括クローズされた**群を R006 として検出）。R005 は Issue #815 で監査窓の整合（entry が窓に属する・窓の範囲内・frozen 窓の件数一致・窓の非重複）を検査する規則へ再定義された | `node --test scripts/check-issue-closure-remote.test.mjs` |
 | プロジェクト契約 | AGENTS.md §6「Issue closure requires evidence」 | `node --test scripts/_quality-gate-plan.test.mjs` |
 | 運用手順の修正 | `skills/github-delivery/SKILL.md`（Done 条件・一括landing条項·sprint cycle 手順 12）に「受け入れ条件の証拠を確認・記録してから close する」を追加。回収スウィープが「手順に従って動ける」隙間を塞ぐ | `scripts/check-content-links.mjs` / 手動確認（§4「運用ルール側の原因」） |
 | CI | `.github/workflows/ci.yml` に `Issue closure audit` ステップ（network が必要なため CI only。dependency advisory gate と同じ方式） | actionlint / `pnpm run lint:ci` |

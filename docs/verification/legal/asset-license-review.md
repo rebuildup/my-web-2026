@@ -70,7 +70,8 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 
 | 対象 | 取得元 | 扱い |
 | --- | --- | --- |
-| Static Assets が verbatim で配信する全ファイル | `public/**`（現在 107 ファイル） | gate が列挙し、**1 ファイルにつきちょうど 1 件の記録**に主張されていなければ `L001` / `L002`（error） |
+| Static Assets が verbatim で配信する全ファイル | `public/**`（現在 116 ファイル） | gate が列挙し、**1 ファイルにつきちょうど 1 件の記録**に主張されていなければ `L001` / `L002`（error） |
+| Vite が `src/**` から取り込んで `/assets/<hash>` として配信するバイト（Issue #780） | `src/**` の `import` / `export … from` / `import()` / CSS `url()` が指す画像・フォント・メディア（現在 10 ファイル = `src/home/digits/*.webp`） | 台帳ではなく **import 辺から導出**する（`collectServedSourceAssets`）。未記録は `L001`（error）、台帳に未レビューとして宣言されたものだけ `S002`（warn） |
 | 実行時に取得される参照資産（フォント） | `src/routes/__root.tsx`、`external/*/index.html` の `use.typekit.net` 参照 | 記録に「コピーを配布しない」ことを宣言させる。判定は `provider-terms` |
 | ライセンス証拠のバイト | `LICENSE` ほか | sha256 を記録し、レビュー後に変われば `L005`（error）で再レビューを強制する |
 
@@ -78,7 +79,7 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 
 ### 3.2 監査対象外（out of scope）とその理由
 
-- **`external/**`（Tool のソースと build 成果物）** — 同じバイトに 2 つの所有者が居ると記録の意味が失われる。Tool のライセンスファイル・lockfile・outbound host は Issue #466 の `quality/tool-artifact-inventory.json` と `pnpm run tools:artifact:check` が所有する。本 gate は audit に `public/**` だけを宣言している（`AUDITED_ROOTS`）。
+- **`external/**`（Tool のソースと build 成果物）** — 同じバイトに 2 つの所有者が居ると記録の意味が失われる。Tool のライセンスファイル・lockfile・outbound host は Issue #466 の `quality/tool-artifact-inventory.json` と `pnpm run tools:artifact:check` が所有する。本 gate は verbatim 配信の `public/**`（`AUDITED_ROOTS`）と、`src/**` の import から導出した配信バイト（`SOURCE_ROOTS`）を監査する。Issue #780 以前は前者だけだったため、同じバイトを `src/` に置いて import するだけで gate を回避できた。
 - **`docs/**` / `e2e/**` / `migrations/**` / `scripts/**`** — 訪問者に配信されない。
 - **`dist/client/**` の Tool 成果物** — build 後にしか存在しない。`publication:check` / `tools:artifact:check` の領域。
 - **R2 の `MEDIA` オブジェクト** — 実行時に書き込まれるため commit 済みの記録では列挙できない。key の公開範囲は Issue #577 の `r2:media:audit` が所有する。
@@ -120,7 +121,19 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 | `L017` | info | 検証方法が未検証（= 保留の理由） |
 | `L018` | info | 第三者を同梱しているのにライセンスが記録されていない（= 保留の理由） |
 
-### 4.2 記録の shape（`src/legal/inventory.ts`）
+### 4.2 スコープと台帳（`scripts/check-asset-licenses.mjs`）
+
+契約の外側で、gate 自身が監査範囲について出す code がある。**どれも権利判定ではない** — 判定の意味は `src/legal/**` のまま変わらない。
+
+| code | severity | 条件 |
+| --- | --- | --- |
+| `S001` | error | `src/**` の import が asset 拡張子を指しているのに、そのファイルが存在しない（監査対象が実態より小さくなる） |
+| `S002` | warn | 未記録の配信バイトで、`quality/asset-license-pending.json` に**未レビューとして宣言**されている。権利は依然として記録されていない（owner 判断待ち） |
+| `S003` | error | 台帳の行が実態より長生きしている（ファイルが消えた / 資産記録ができた） |
+
+`quality/asset-license-pending.json` は**権利の記録ではない**。`licence` / `rightsHolder` / `evidence` を持てず、`ownerDecision` は `"pending"` 以外を受け付けない（`"excluded"` を書くと台帳が読めず exit 2）。台帳に載っているファイルは `uncoveredFiles` に数えられ続け、毎回 `S002` として出る。したがって「除外を宣言した」ことは「公開可にした」ことを意味しない。資産記録を追加すれば `S003` で行の削除を強制される。
+
+### 4.3 記録の shape（`src/legal/inventory.ts`）
 
 `J001`〜`J005` は記録ファイルが読めない場合の error で、**部分的に読めた記録をレビューしない**（fail-closed）。未知キーは拒否するため、`attributionDeliverdAt` のようなタイプミスが「表示義務なし」に化けることはない。
 
@@ -147,3 +160,9 @@ pnpm exec vitest run src/legal
 4. **確認日は「存在する」ことしか検査しない**（`L013` は null のみ）。記録が古くなっても日数は数えない。鮮度を測る規則を追加することは owner 決定。
 5. **Tool の同梱資産は本 gate の対象外**（§3.2）。`/tools/<slug>/app/**` のライセンス証拠は Issue #466 が所有しており、本記録は `delegatedTo` で参照だけ行う。
 6. **`NOASSERTION` の判定そのものは法的な評価ではない**。この gate が問うのは「記録に証拠があるか」だけであり、条文の解釈や利用可否の判断は行わない。
+7. **`src/**` の検出は build ではなく静的スキャンである**（Issue #780）。`import` / `export … from` / `import()` / CSS `url()` の文字列リテラルだけを読み、`dist/client/bundle-graph.json` は読まない（`validate:fast` は build を含まないため）。近似の限界:
+   - `*.test.*` / `*.spec.*` / `*.stories.*` を importer から除く。テスト／Storybook は本番グラフに入らないので、その `?url` import は監査対象にしない（逆に、本番 module が同じファイルを import していれば対象になる）。
+   - `vite.config.ts` の `~` エイリアスだけを解決する。新しい alias を追加したら `SOURCE_PATH_ALIAS` を同じコミットで更新する（gate のテストが alias 解決を固定している）。
+   - 変数に入れた specifier（`import(variable)`）は検出できない。Vite 自身もその形で asset を静的 emit しないため実害はないが、「検出できた集合＝配信集合」ではないことはここに残す。
+   - 対象拡張子は `SERVED_SOURCE_ASSET_EXTENSIONS` の allowlist である。新しい種別（例: `.json` を asset として emit する、`.xml`）を増やすときは同じコミットで足す。
+8. **`src/home/digits/*.webp` の 10 件は未レビューのまま**（`S002`、Issue #780）。生成元は `scripts/generate-counter-digits.mjs` だが、ラスタライズ元フォントの権利は未確認で、資産記録の作成は **owner 判断待ち**である。台帳 `quality/asset-license-pending.json` はこの 10 件を「未レビュー」として宣言しているだけで、何も公開可にしていない。

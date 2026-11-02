@@ -92,6 +92,9 @@ const EXPECTED_FAST_PLAN = [
 	// committed snapshot the same way the structured-data gate reads its
 	// contract, so it runs next to it.
 	'pnpm run projects:check',
+	// Issue #316: the committed home git-facts snapshot behind the
+	// "現在地" section — the same kind of offline snapshot check.
+	'pnpm run current:facts:check',
 	// Issue #719: the committed keyboard-layout snapshot, checked the
 	// same way — the recorded provenance must still describe the
 	// committed bytes, and the daily refresh workflow runs this same

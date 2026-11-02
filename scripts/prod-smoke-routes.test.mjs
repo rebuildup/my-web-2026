@@ -58,7 +58,7 @@ const FIXTURES = {
 	'/': {
 		title: 'my-web-2026',
 		h1Text: 'my-web-2026',
-		unmatchedProbes: { sixSections: false, reactionsDisabled: true },
+		unmatchedProbes: { homeSections: false, reactionsDisabled: true },
 	},
 	'/about': {
 		title: 'fixture — About',
@@ -73,7 +73,9 @@ const FIXTURES = {
 	},
 	'/tools': {
 		title: 'Tools — my-web-2026',
-		h1Text: 'ツール / Tools',
+		// Issue #785: the index h1 is the Japanese surface title alone;
+		// the English word sits in the eyebrow, not in the heading.
+		h1Text: 'ツール',
 		unmatchedProbes: { allManifestSlugsListed: false, everyRowClassified: false },
 	},
 	'/api/v1/health': {
@@ -429,7 +431,7 @@ describe('resolveDefaultState — classification of the documented branches', ()
 	it('returns null when a probe was never observed — an unmeasured route is never green', () => {
 		const home = findRepresentativeRoute('/');
 		assert.equal(resolveDefaultState(home, {}), null);
-		assert.equal(resolveDefaultState(home, { sixSections: true }), null);
+		assert.equal(resolveDefaultState(home, { homeSections: true }), null);
 	});
 });
 

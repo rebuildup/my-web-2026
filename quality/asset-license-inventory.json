@@ -375,6 +375,53 @@
 			"externalHosts": []
 		},
 		{
+			"id": "pet-melty-sprites",
+			"kind": "artwork",
+			"title": "相棒キャラクター Melty のスプライト（Web 配信用ストリップ / 静止フレーム）",
+			"summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから静止フレーム、waving の 4 フレームストリップ、ドラッグ用 running の 8 フレームストリップ、look 方向の静止セル 4 種を導出する。",
+			"covers": ["public/pets/melty/**"],
+			"publicPaths": [
+				"/pets/melty/idle-rest.webp",
+				"/pets/melty/waving.webp",
+				"/pets/melty/running-right.webp",
+				"/pets/melty/running-left.webp",
+				"/pets/melty/look-up.webp",
+				"/pets/melty/look-right.webp",
+				"/pets/melty/look-down.webp",
+				"/pets/melty/look-left.webp"
+			],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"owner は 2026-11-01 に、Melty を自身のオリジナルキャラクターとして作成・所有していると申告した（owner attestation）。",
+					"資産単位のライセンス識別子は主張しない（NOASSERTION）。リポジトリ全体の LICENSE が適用される範囲はその文書の記述に従う。",
+					"生成モデル提供者の利用条件の本文はこのリポジトリでは取得していない（validate:fast はオフライン契約）。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-01",
+				"note": "根拠は docs/verification/legal/pet-melty-rights-review.md §1 の owner attestation。提供者条件の本文は未取得のままで、確認したことにはしない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "docs/verification/legal/pet-melty-rights-review.md",
+					"sha256": "c5a224f33d6fab2b6d1758d11ea0b77c47516649c80b07e977706afa76e03566"
+				},
+				{ "kind": "repository-file", "path": "docs/domain/pet-companion.md" },
+				{ "kind": "repository-file", "path": "scripts/build-pet-sprites.mjs" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
 			"id": "web-fonts-google",
 			"kind": "font",
 			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New）",
@@ -441,6 +488,43 @@
 			"publication": "published",
 			"externalHosts": ["use.typekit.net"],
 			"delegatedTo": "tools:artifact:check (Issue #466)"
+		},
+		{
+			"id": "tool-preview-screens",
+			"kind": "image",
+			"title": "ツール一覧のプレビュー画像（WebP）",
+			"summary": "scripts/capture-tool-previews.mjs が /tools/prototype の実画面を撮影して生成する。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark は表示不具合（Issue #786）が直るまで撮影対象から外しており、画像を持たない。",
+			"covers": ["public/tool-previews/**"],
+			"publicPaths": ["/tool-previews/prototype.webp"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"撮影対象は Tool の実画面のみで、外部サイトの画像・フォントファイルは含まない。",
+					"写っている Tool の出所と commit は src/tools/manifest.json の canonical_repo / pinned_sha が固定する。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-01",
+				"note": "撮影スクリプトと manifest の pinned_sha が、写っている画面の出所を指す。画像は 2026-11-01 にローカル preview から取得した。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/capture-tool-previews.mjs" },
+				{ "kind": "repository-file", "path": "src/tools/manifest.json" }
+			],
+			"publication": "published",
+			"externalHosts": []
 		}
 	]
 }

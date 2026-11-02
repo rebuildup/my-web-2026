@@ -11,79 +11,79 @@
 		"reproduce_locally": "pnpm run build && pnpm run bundle:budget:check",
 		"reproduce_in_ci": "the `validate` job of .github/workflows/ci.yml runs `pnpm run validate:integration`, which runs this check immediately after `pnpm run build:production`."
 	},
-	"headroom_policy": "Every JS cap in this file is the formula output of ONE measurement: the measured `initial_js_bytes` plus at least 0.35% headroom, rounded up to the next multiple of 5,000 bytes — `ceil(measured * 1.0035 / 5000) * 5000`. There is one shared CSS cap for the same reason there is one entry chunk: the initial stylesheet is a single asset every route pulls in, so a per-route CSS cap would be 18 copies of the same number.\n\nCURRENT MEASUREMENT (Issue #724, 2026-10-31): one `pnpm run build` of this ticket branch (base `60bf4134`) measured initial JS from 626,591 B (`/admin`) to 677,246 B (`/design-system`); the shared initial CSS measured 47,182 B, whose formula output is the 50,000 B cap. Measured per route: `/` 657,304 B, `/about` 647,824 B, `/admin` 626,591 B, `/admin/` 629,984 B, `/admin/emoji-catalog` 633,479 B, `/admin/images` 636,694 B, `/admin/invitations` 635,689 B, `/admin/invitations/accept` 634,408 B, `/admin/keys` 637,432 B, `/admin/login` 631,967 B, `/contact` 639,161 B, `/design-system` 677,246 B, `/keyboard` 662,188 B, `/portfolio/` 666,053 B, `/portfolio/$slug` 668,143 B, `/projects/dotfiles` 630,970 B, `/tools/` 631,075 B, `/tools/$slug` 634,128 B. The observed slack is +0.40% (`/admin/keys`) to +1.11% (`/about`).\n\nWHY THE CAPS MOVED DOWN (Issue #724): the previous caps were derived from a shell that carried ~1.06 MB of server-only code. The Better Auth **server** stack (the core package, Kysely, Drizzle, the SQLite dialects, the API-key plugin) was reachable from the client bundle through four admin modules' module-level imports, and `emoji-picker-react` (335 KB) was pulled into the shared entry chunk because its `EmojiStyle` / `Theme` string enums were imported as values, which defeated the `lazy()` split that was supposed to keep the picker out of first paint. The entry chunk is now 626,488 B — down 1,063,742 B (−63%) — and the picker is a separate lazy chunk. Every cap in this file is the formula output of that measurement, so every cap moved down; the CSS cap did not move (its formula output is unchanged).\n\nWHAT KEEPS THE SHELL SMALL NOW: a byte budget can say HOW BIG a chunk is, not WHAT is in it, so it can only react to a leak by a size delta — and the historical response to a leak was to raise the cap, seven times. `scripts/check-client-bundle-server-only.mjs` (Issue #724, `pnpm run bundle:server-only:check`, declared in `quality/client-bundle-policy.json`) closes that loop: it reads the same build graph, names the module that leaked, and fails. A leak is now a named failure to fix, not a number to renegotiate.\n\nMEASURED BYTES come from the files Rollup emitted (`writeBundle` in `vite.config.ts` -> `scripts/_client-bundle-graph.mjs`), so a cap is compared against the exact bytes a browser downloads — including the preload marker and dependency map that Vite injects after an ordinary user plugin's `generateBundle` runs. Because the entry shell is shared, a base merge that adds a few hundred bytes to the shell re-derives several route caps at once; that is why a release merge turns this gate red until the caps are re-measured with `pnpm run build && pnpm run bundle:budget:check`. It is the gate doing its job, not a flaky test. Raising a cap is not machine-checked (only an `exception` is), so a cap change is expected to carry its measurement and rationale in the PR diff.",
+	"headroom_policy": "Every JS cap in this file is the formula output of ONE measurement: the measured `initial_js_bytes` plus at least 0.35% headroom, rounded up to the next multiple of 5,000 bytes — `ceil(measured * 1.0035 / 5000) * 5000`. There is one shared CSS cap for the same reason there is one entry chunk: the initial stylesheet is a single asset every route pulls in, so a per-route CSS cap would be 18 copies of the same number.\n\nCURRENT MEASUREMENT (Issue #724, 2026-10-31): one `pnpm run build` of this ticket branch (base `60bf4134`) measured initial JS from 626,591 B (`/admin`) to 677,246 B (`/design-system`); the shared initial CSS measured 47,182 B, whose formula output was the 50,000 B cap then in force (superseded by SHARED CSS RE-DERIVATION below). Measured per route: `/` 657,304 B, `/about` 647,824 B, `/admin` 626,591 B, `/admin/` 629,984 B, `/admin/emoji-catalog` 633,479 B, `/admin/images` 636,694 B, `/admin/invitations` 635,689 B, `/admin/invitations/accept` 634,408 B, `/admin/keys` 637,432 B, `/admin/login` 631,967 B, `/contact` 639,161 B, `/design-system` 677,246 B, `/keyboard` 662,188 B, `/portfolio/` 666,053 B, `/portfolio/$slug` 668,143 B, `/projects/dotfiles` 630,970 B, `/tools/` 631,075 B, `/tools/$slug` 634,128 B. The observed slack is +0.40% (`/admin/keys`) to +1.11% (`/about`).\n\nTOOLS CHROME RE-DERIVATION (Issue #785, 2026-11-02): the owner restored `PublicNav` and `Breadcrumbs` on both Tools surfaces and abolished the Issue #288 chrome removal (「`/tools` は index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」), so the chrome chunks are now part of those two first-paint closures. One `pnpm run build` of the ticket branch measured `/tools/` 649,431 B and `/tools/$slug` 644,912 B; the formula outputs are 655,000 B and 650,000 B, and those are the only two caps this change moved. The added closure is named, not inferred: `assets/PublicNav-*.js` (4,298 B) plus the `Breadcrumbs.styles` chunk and its static imports (`Breadcrumbs.styles.ts`, `Breadcrumbs.tsx`, `route-labels.ts`, 2,999 B), and no other module entered either closure. The rest of each route's delta is the ticket's own code — the redesigned index (two sections, card grid, preview map) and the chrome-subtracting shell — not a leak; `bundle:server-only:check` reports nothing for either route. The same build measured the shared entry chunk at 629,440 B, +2,957 B over the branch point (`0e4d4740`), because TanStack Start's route tree imports the route modules eagerly and both Tools routes were edited; that shell growth pushed four untouched routes over their caps by 0.2–0.4 KiB, so those four caps are re-derived from the same measurement too — `/` 660,279 B -> 665,000 B, `/admin/keys` 640,384 B -> 645,000 B, `/design-system` 680,246 B -> 685,000 B, `/keyboard` 665,200 B -> 670,000 B. Their `+route` figures are unchanged from the branch point (30.1 / 10.7 / 49.6 / 34.9 KiB), which is what says the growth is the shell and not their own code. The same re-derivation covers every other route whose measured value the +2,957 B shell growth pushed across a 5,000 B cap boundary — `/admin` 629,543 B -> 635,000 B, `/admin/` 632,936 B -> 640,000 B, `/admin/images` 639,646 B -> 645,000 B, `/admin/invitations` 638,641 B -> 645,000 B, `/admin/login` 634,919 B -> 640,000 B, `/portfolio/` 669,075 B -> 675,000 B — so every cap in this file is once again the formula output of one measurement. `/projects/dotfiles` is NOT re-derived here: the base branch now carries Issue #802's re-derivation of that one route (640,000 B, from `ceil(635184 * 1.0035 / 5000) * 5000`), and this branch keeps that value unchanged. That matters because two `validate` jobs on the SAME commit measured different entry chunks (`index-2J0KjYJT.js`, shell 614.7 KiB, and `index-Cq6DKF8c.js`, shell 615.0 KiB): the build is not byte-identical across runners, and a cap that sits within a few hundred bytes of its measurement is a coin flip. A formula cap keeps 0.35% headroom (~2.2 KB at this size), which is what absorbs that variance.\n\nSHARED CSS RE-DERIVATION (Issue #785, 2026-11-02): the CSS cap is one number because the initial stylesheet is one asset every route pulls in, and the gate measures the pull-request MERGE commit (base + branch), not the branch alone. That merge measured initial_css_bytes = 50,308 B against 50,000 (CI run 41322419730, source sha `1acc5f74`; reproduced locally by extracting `git merge-tree origin/release-0-8-1 HEAD` and running the same build), and rule-level work that changes nothing on screen brought it to 50,204 B. The branch's net addition is therefore 298 B: 7 rules added (411 B) and 4 rules removed (113 B), measured by diffing the built stylesheet of `origin/release-0-8-1` (49,909 B) against the built merge. Added, each with the call site that makes it used: `flex:1 1 auto` 30 B (tools.$slug.tsx frame area and iframe — the base stylesheet has exactly one flex utility, `.flex_1{flex:1 1 0%}`, whose basis is 0% rather than auto); `grid-auto-rows:1fr` 33 B (the index card grid and planned grid — the base has no `grid-auto-rows` rule; it is the measured fix for the 22.4 px card-height difference); `min-height:100dvh` 33 B and `min-height:0` 36 B (the chrome-subtracting column and frame area — the base's min-heights are 100%, 13px and size tokens, `vh` does not subtract mobile browser chrome, and nothing else provides 0); `text-underline-offset:3px` 37 B (declared on the card title instead of inside `_hover`, which is why it is one plain utility and not a second compound hover selector); and the two card-hover rules — `text-decoration:underline` 118 B and the CTA colour 124 B — the affordance the file's own contract specifies now that a card may not use a border or a shadow. Removed: `margin:0 0 2` (23 B), `margin:0 0 4` (23 B), `margin-block-end:var(--spacing-12)` (44 B) and `opacity:.85` (23 B), which the previous index markup used and the redesign does not. Nothing here is dead CSS: Panda emits a utility only when a scanned source references it, and every added rule has the call site listed above. The 204 B still above the old cap was NOT shaved because it would mean deleting the hover affordance (242 B of the 298 B) to buy 0.08% of headroom, still below this policy's 0.35%. The stronger fact is that the old cap was already stale for the BASE branch: 49,909 B x 1.0035 = 50,084 B > 50,000 B, so `release-0-8-1` on its own no longer satisfied the headroom rule and any branch stacked on it would have failed this gate. The formula output is the same for the base tree and for the merge — `ceil(49909 * 1.0035 / 5000) * 5000` = `ceil(50204 * 1.0035 / 5000) * 5000` = 55,000 B — and that is the new shared CSS cap. It relaxes the CSS ceiling for all 18 routes by 5,000 B; the JS caps in this file are unaffected by this change.\n\nWHY THE CAPS MOVED DOWN (Issue #724): the previous caps were derived from a shell that carried ~1.06 MB of server-only code. The Better Auth **server** stack (the core package, Kysely, Drizzle, the SQLite dialects, the API-key plugin) was reachable from the client bundle through four admin modules' module-level imports, and `emoji-picker-react` (335 KB) was pulled into the shared entry chunk because its `EmojiStyle` / `Theme` string enums were imported as values, which defeated the `lazy()` split that was supposed to keep the picker out of first paint. The entry chunk is now 626,488 B — down 1,063,742 B (−63%) — and the picker is a separate lazy chunk. Every cap in this file is the formula output of that measurement, so every cap moved down; the CSS cap did not move (its formula output is unchanged).\n\nWHAT KEEPS THE SHELL SMALL NOW: a byte budget can say HOW BIG a chunk is, not WHAT is in it, so it can only react to a leak by a size delta — and the historical response to a leak was to raise the cap, seven times. `scripts/check-client-bundle-server-only.mjs` (Issue #724, `pnpm run bundle:server-only:check`, declared in `quality/client-bundle-policy.json`) closes that loop: it reads the same build graph, names the module that leaked, and fails. A leak is now a named failure to fix, not a number to renegotiate.\n\nMEASURED BYTES come from the files Rollup emitted (`writeBundle` in `vite.config.ts` -> `scripts/_client-bundle-graph.mjs`), so a cap is compared against the exact bytes a browser downloads — including the preload marker and dependency map that Vite injects after an ordinary user plugin's `generateBundle` runs. Because the entry shell is shared, a base merge that adds a few hundred bytes to the shell re-derives several route caps at once; that is why a release merge turns this gate red until the caps are re-measured with `pnpm run build && pnpm run bundle:budget:check`. It is the gate doing its job, not a flaky test. Raising a cap is not machine-checked (only an `exception` is), so a cap change is expected to carry its measurement and rationale in the PR diff.\n\nRE-DERIVED FOR ONE ROUTE (Issue #799, 2026-11-02): only `/projects/dotfiles` moved, from 635,000 B to 640,000 B. A `pnpm run build:production` of `4426ffba` measured 635,184 B on that route — 184 B above the #724 cap — while every other route stayed inside its cap, so this is one route's cap following the formula (`ceil(635184 * 1.0035 / 5000) * 5000 = 640,000`), not a re-measurement of the file. The increase is the route's own closure, not the shared shell: the breadcrumb mount (`a2612bc0`, PR #795) added 3,418 B of route-added JS (4,541 B at `e3be1fa3` -> 7,959 B, the `Breadcrumbs.styles` chunk), while the shared entry grew 737 B over the same span, of which Issue #793's SectionHeading is 301 B (`e3be1fa3` 631,029 B -> `26918979` 631,330 B). No other route's cap changed.\n\nRE-DERIVED (Issue #316, 2026-11-02, branch `316`): the current-projects section measures 40,670 B in `/`'s own route chunk on top of a 629,522 B entry shell. The shell is 3,034 B above the 626,488 B base, and that increment was attributed module by module: 2,877 B is the `current-projects-signature` record in `src/privacy/data-lifecycle.ts` (Issue #496 requires every stored store to be recorded there; the record is `pending`, so it renders nowhere until its wording is approved), and 157 B is the new server-function stub plus route-loader glue. Moving the stub to the route chunk does not help: a build that dynamically imports it inside the loader measured 629,576 B, 54 B MORE than the static import, because the stub's dependencies were already in the shell. The section is content `/` must ship, so `/`'s cap is re-derived from this measurement, together with the four routes whose remaining headroom was smaller than the shell's +3,034 B. Caps: `/` 660000 -> 675000, `/admin/keys` 640000 -> 645000, `/admin/login` 635000 -> 640000, `/design-system` 680000 -> 685000, `/keyboard` 665000 -> 670000. Every other cap in this file is unchanged.\n\nRE-DERIVED AGAIN AFTER THE RELEASE MERGE (Issue #316, 2026-11-02, branch `316` merged `origin/release-0-8-1` = 4426ffba, Issue #274 pet companion): the shared entry shell measured 630,259 B, 737 B above the 629,522 B measured on this branch before the merge. The increment is the release base's own shell content (`src/home/status/data-source.ts` is entry-resident; the companion itself is NOT — the entry chunk carries zero `pet/` modules, and the pet lands in `/`'s route chunk, which grew 40,670 -> 42,377 B). An entry increment is charged to every route, so four caps went over their formula output at once: `/admin` 630,362 B (cap 630000, formula 635000), `/admin/images` 640,465 B (cap 640000, formula 645000), `/portfolio/` 670,223 B (cap 670000, formula 675000), and the shared initial stylesheet 50,648 B (cap 50000, formula 55000 — the stylesheet is one asset for all 18 routes, so its cap moves once, not per route). Each new value is `ceil(measured * 1.0035 / 5000) * 5000`; the CSS cap therefore jumps 5,000 B for a 648 B stylesheet, which is the policy's own rounding granularity, not an extra allowance. `/projects/dotfiles` was NOT re-derived here: it is already 184 B over its own cap on the release base (Issue #793 SectionHeading, measured 635,184 B), that re-derivation belongs to its own PR, and this branch does not touch the 635000 cap. The five caps re-derived earlier in this branch keep their measured values: the merge moved their measurements by 737 B or less, all still inside the same formula output.\n\nRE-DERIVED FOR ONE ROUTE (Issue #799, 2026-11-02): only `/projects/dotfiles` moved, from 635,000 B to 640,000 B. A `pnpm run build:production` of `4426ffba` measured 635,184 B on that route — 184 B above the #724 cap — while every other route stayed inside its cap, so this is one route's cap following the formula (`ceil(635184 * 1.0035 / 5000) * 5000 = 640,000`), not a re-measurement of the file. The increase is the route's own closure, not the shared shell: the breadcrumb mount (`a2612bc0`, PR #795) added 3,418 B of route-added JS (4,541 B at `e3be1fa3` -> 7,959 B, the `Breadcrumbs.styles` chunk), while the shared entry grew 737 B over the same span, of which Issue #793's SectionHeading is 301 B (`e3be1fa3` 631,029 B -> `26918979` 631,330 B). No other route's cap changed.\n\nMERGE OF THE TWO RE-DERIVATIONS (Issue #316, 2026-11-02, branch `316` merged `origin/release-0-8-1` = c748b300, Issue #799 / PR #802): the `/projects/dotfiles` cap in this file is the base's 640,000 B, not this branch's; this branch does not re-derive it. Measured on the merge, that route is 638,218 B, inside 640,000 B. That measurement's own formula output would be 645,000 B, but the cap is deliberately left at the base's 640,000 B: raising it here would duplicate and pre-empt the re-derivation that measurement belongs to, and the route is inside budget without it.\n\nRE-MEASURED AFTER THE ISSUE #785 MERGE (Issue #316, 2026-11-02, merged `ce26a91b`): the release base's Tools chrome and route-tree imports grew the shared entry shell to 633,211 B (base measured 629,440 B before its own merge; this tree measures +3,952 B over the pre-#785 shell of 629,522 B + 737 B). Because the shell is charged to every route, seven caps crossed their formula output and are re-derived from THIS build, each as `ceil(measured * 1.0035 / 5000) * 5000`: / 675588 B (cap 675000, -> 680000), /about 655495 B (cap 655000, -> 660000), /admin/emoji-catalog 640202 B (cap 640000, -> 645000), /admin/invitations/accept 641131 B (cap 640000, -> 645000), /contact 646284 B (cap 645000, -> 650000), /portfolio/$slug 675276 B (cap 675000, -> 680000), /projects/dotfiles 641182 B (cap 640000, -> 645000). The other eleven caps already sit at or above this build's formula output and are left at their base values. `/projects/dotfiles` is re-derived here for the first time on this branch: Issue #802's 640,000 B was derived from the base tree's 635,184 B, and this branch's entry increment (the current-projects section) puts its own measurement at 641,182 B, so the formula output for this tree is 645,000 B.",
 	"routes": {
 		"/": {
-			"initial_js_bytes": 660000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 680000,
+			"initial_css_bytes": 55000
 		},
 		"/about": {
-			"initial_js_bytes": 655000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 660000,
+			"initial_css_bytes": 55000
 		},
 		"/admin": {
-			"initial_js_bytes": 630000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 635000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/": {
-			"initial_js_bytes": 635000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 640000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/emoji-catalog": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/images": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/invitations": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/invitations/accept": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/keys": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/admin/login": {
-			"initial_js_bytes": 635000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 640000,
+			"initial_css_bytes": 55000
 		},
 		"/contact": {
-			"initial_js_bytes": 645000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 650000,
+			"initial_css_bytes": 55000
 		},
 		"/design-system": {
-			"initial_js_bytes": 680000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 685000,
+			"initial_css_bytes": 55000
 		},
 		"/portfolio/": {
-			"initial_js_bytes": 670000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 675000,
+			"initial_css_bytes": 55000
 		},
 		"/portfolio/$slug": {
-			"initial_js_bytes": 675000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 680000,
+			"initial_css_bytes": 55000
 		},
 		"/tools/": {
-			"initial_js_bytes": 635000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 655000,
+			"initial_css_bytes": 55000
 		},
 		"/tools/$slug": {
-			"initial_js_bytes": 640000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 650000,
+			"initial_css_bytes": 55000
 		},
 		"/projects/dotfiles": {
-			"initial_js_bytes": 635000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 645000,
+			"initial_css_bytes": 55000
 		},
 		"/keyboard": {
-			"initial_js_bytes": 665000,
-			"initial_css_bytes": 50000
+			"initial_js_bytes": 670000,
+			"initial_css_bytes": 55000
 		}
 	},
 	"tool_iframe": {

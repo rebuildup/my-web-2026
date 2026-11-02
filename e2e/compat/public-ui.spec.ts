@@ -30,6 +30,21 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { NAV_ROSTER } from '../nav-roster';
 import { COMPAT_ROUTES, assertRouteContract, observeRoute } from './contract';
+import type { CompatRoute } from './contract';
+
+/**
+ * Look a route up in the ONE contract matrix instead of restating its
+ * copy here. The `<h1>` is a contract field (`CompatRoute.h1`), so a
+ * page-title rewrite must be a one-line change in `contract.ts`, not a
+ * hunt for every `toContainText('Tools')` in the specs (Issue #785 —
+ * the index title became 「ツール」 and this file kept asserting the old
+ * English word).
+ */
+function contractRoute(path: string): CompatRoute {
+	const route = COMPAT_ROUTES.find((candidate) => candidate.path === path);
+	if (!route) throw new Error(`compat contract has no entry for ${path}`);
+	return route;
+}
 
 const SCREENSHOT_DIR = join('.tmp', 'compat-screenshots');
 
@@ -101,7 +116,7 @@ test.describe('basic operations', () => {
 	test('browser history restores the previous public page', async ({ page }) => {
 		await page.goto('/', { waitUntil: 'load' });
 		await page.goto('/tools', { waitUntil: 'load' });
-		await expect(page.locator('h1').first()).toContainText('Tools');
+		await expect(page.locator('h1').first()).toContainText(contractRoute('/tools').h1);
 
 		await page.goBack({ waitUntil: 'load' });
 

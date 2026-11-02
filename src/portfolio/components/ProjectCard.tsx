@@ -24,11 +24,17 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * pseudo-element extends the hit area to the entire card
  * surface).
  *
- * Issue #172 — semantic category accent. The card carries a 4px
- * left-border using `accent.category.<facet>` so the four
- * content categories (design / code / writing / tool) read as a
- * visual hint on each list item without changing the existing
- * reading order. Facet → category mapping:
+ * Issue #794 (owner decision, 2026-11-01) — the left category rule is
+ * gone. Issue #172 painted an absolutely positioned 4px bar with
+ * `accent.category.<facet>` to hint the category, and the owner's
+ * decision is that a decorative left rule is not how a face is
+ * distinguished; a left border is an equally forbidden replacement.
+ * The card is now its own plane: `bg.surface` separates it from the
+ * page canvas, and the category is carried by the `StateMark`
+ * silhouette plus the upper-case category word. **No category hue is
+ * painted on this surface at all**, so removing colour removes
+ * nothing (SC 1.4.1) — the bar was `aria-hidden` reinforcement and the
+ * hue was never the message (Issue #411). Facet → category mapping:
  *   develop → code, video → tool, design → design, other → writing.
  *
  * Issue #490 — the facet group carries `role="group"`. The
@@ -50,19 +56,19 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * Issue measured and are left for a follow-up instead of being fixed
  * silently here.
  *
- * Issue #411 — the category rule is no longer the ONLY
- * non-textual cue, and it is no longer the only cue at all. Before
- * this ticket the 4px rule was four hues of one identical bar: a
- * visitor who cannot separate `accent.category.writing` from
+ * Issue #411 — the category cue is never colour alone. Before that
+ * ticket the 4px rule was four hues of one identical bar: a visitor
+ * who cannot separate `accent.category.writing` from
  * `accent.category.code` had nothing left to read the category from,
  * because the coloured rule was the only element that carried it
  * (the facet pills name the FACET, which is a different word for the
- * same fact). The card now pairs the rule with a `StateMark` whose
+ * same fact). The card pairs the category with a `StateMark` whose
  * silhouette is unique per category (diamond / square / bars /
- * chevron) and with the existing upper-case category word, so
- * shape + text carry the category when hue is removed — WCAG 2.2
- * SC 1.4.1 (Level A). The rule itself stays `aria-hidden` and keeps
- * its category colour as reinforcement only.
+ * chevron) and with the existing upper-case category word, so shape +
+ * text carry the category when hue is removed — WCAG 2.2 SC 1.4.1
+ * (Level A). Issue #794 then removed the hue from this surface
+ * entirely, so shape + text are now the whole cue rather than the
+ * fallback for it.
  */
 export interface ProjectCardProps {
 	project: PortfolioProject;
@@ -98,7 +104,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
 			// note above.
 			data-category={category ?? undefined}
 			className={css({
-				position: 'relative',
+				// Issue #794: the card is distinguished from the page by its
+				// own fill, not by a rule on its left edge. `bg.surface` is
+				// the raised-plane role; the hairline `borderTop` below only
+				// separates one card from the next and is unchanged.
+				backgroundColor: 'bg.surface',
 				display: 'grid',
 				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' },
 				columnGap: { base: '0', md: '8' },
@@ -107,17 +117,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
-			<div
-				aria-hidden="true"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					bottom: '0',
-					width: { base: '0', md: '4px' },
-					backgroundColor: category ? `accent.category.${category}` : 'transparent',
-				})}
-			/>
 			{cover ? (
 				<div className={css({ minWidth: '0' })}>
 					<PortfolioMediaFigure media={cover} loading="lazy" />

@@ -119,9 +119,16 @@ test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', ()
 		await expect(page.locator('[data-testid="tools-not-found"]')).toHaveText(
 			/ツールが見つかりません/,
 		);
-		// Issue #288: the 404 surface renders no header chrome —
-		// no PublicNav and no breadcrumb header.
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
+		// Issue #785 abolishes Issue #288: the 404 surface carries the
+		// public nav, so a visitor who mistyped a slug can leave without
+		// using the browser's back button. (Reversed assertion — it used
+		// to require count 0.)
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		// No breadcrumb here: the only labeled match for this URL is the
+		// `$slug` leaf, which `route-labels.ts` drops when the loader
+		// threw, so the chain resolves to nothing. Pinned so a future
+		// "empty breadcrumb band" regression is visible rather than
+		// silently accepted.
 		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
 	});
 });

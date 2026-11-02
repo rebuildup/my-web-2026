@@ -144,12 +144,14 @@ export const CANONICAL_PRODUCTION_ORIGIN = `https://${PRODUCTION_CUSTOM_DOMAIN}`
  * The five representative routes Issue #500 names, in navigation order
  * from the home page.
  *
- * `canonical` is `null` for `/` and `/tools` because neither route
- * declares `link[rel=canonical]` today — a fact recorded here rather
- * than asserted as a defect, because adding a canonical later is an
- * improvement, not a regression. The two routes that DO declare one are
- * pinned to their exact value so a canonical pointing at the debug host
- * (or at another origin) is still a red.
+ * `canonical` is `null` only for `/`, which declares no
+ * `link[rel=canonical]` today — a fact recorded here rather than
+ * asserted as a defect, because adding a canonical later is an
+ * improvement, not a regression. Every route that DOES declare one is
+ * pinned to its exact value so a canonical pointing at the debug host
+ * (or at another origin) is still a red. `/tools` joined that set with
+ * Issue #418's preferred-URL rule; this entry had kept the older `null`
+ * (Issue #785).
  */
 export const REPRESENTATIVE_ROUTES = Object.freeze([
 	Object.freeze({
@@ -167,8 +169,8 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'home-default',
 				description:
-					'all six default sections render and the reactions widget is configured (no disabled placeholder)',
-				probes: Object.freeze({ sixSections: true, reactionsDisabled: false }),
+					'all seven default sections render and the reactions widget is configured (no disabled placeholder)',
+				probes: Object.freeze({ homeSections: true, reactionsDisabled: false }),
 			}),
 		]),
 	}),
@@ -226,9 +228,12 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 		status: 200,
 		contentType: 'text/html',
 		titlePattern: /^Tools — my-web-2026$/,
-		canonical: null,
+		canonical: `${CANONICAL_PRODUCTION_ORIGIN}/tools`,
 		h1: 'h1',
-		h1TextPattern: /\/ Tools$/,
+		// Issue #785 rebuilt the index around a two-section card grid and
+		// replaced the old "my-web-2026 / Tools" hero title with the
+		// Japanese surface title.
+		h1TextPattern: /^ツール$/,
 		defaultStates: Object.freeze([
 			Object.freeze({
 				name: 'tools-registry',
@@ -315,14 +320,19 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * instead of as literals inside the Playwright adapter: one place to
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
- * against a real render (`e2e/smoke.spec.ts` for the six home sections,
+ * against a real render (`e2e/smoke.spec.ts` for the seven home sections,
  * `e2e/about.spec.ts` for the five narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
+ *
+ * `/` gained one section in Issue #316: `current-projects-heading`
+ * ("現在地 / Where I am now") sits between the hero and the capabilities
+ * grid, so the count went 6 -> 7 and `e2e/smoke.spec.ts` pins each id in
+ * its new position rather than only the total.
  *
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 6 }),
+	'/': Object.freeze({ labelled: 7 }),
 	'/about': Object.freeze({ narrative: 5 }),
 });
 
@@ -371,18 +381,21 @@ export const ONE_CLICK_ENTRIES = Object.freeze([
  * Representative page routes that mount `PublicNav` and therefore offer
  * a one-click link to every other representative page route.
  *
- * `/` and `/tools` are deliberately absent, not accidentally unchecked:
- * Issue #199 keeps site chrome off the home surface, and Issue #288
- * removed it from all three Tools surfaces because the iframe shell
- * wants the full viewport. Consequence, recorded so nobody reads the
- * absence as a gap: `/tools` currently has no in-site link back to `/`.
- * That is an information-architecture fact owned by the routes, and
- * changing it here would be whole-page composition work, which Issue
- * #500 explicitly defers.
+ * `/` is deliberately absent, not accidentally unchecked: Issue #199
+ * keeps site chrome off the home surface, so its one-click entries live
+ * in the page content (`ONE_CLICK_ENTRIES`).
+ *
+ * `/tools` used to be absent too, because Issue #288 removed the chrome
+ * from every Tools surface "because the iframe shell wants the full
+ * viewport". The owner abolished #288 (Issue #785, 2026-11-01), the
+ * shell now subtracts the chrome instead of dropping it, and the index
+ * carries `PublicNav` — so `/tools` is a chrome-nav route like the
+ * others, and it regains the in-site link back to `/` whose absence
+ * used to be recorded here as an information-architecture fact.
  *
  * @type {ReadonlyArray<string>}
  */
-export const CHROME_NAV_ROUTES = Object.freeze(['/about', '/portfolio']);
+export const CHROME_NAV_ROUTES = Object.freeze(['/about', '/portfolio', '/tools']);
 
 /**
  * @param {string} path

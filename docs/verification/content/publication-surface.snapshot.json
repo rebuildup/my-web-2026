@@ -429,6 +429,7 @@
 					"external/prototype/public/vite.svg",
 					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
+					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx"
 				]
 			},

@@ -14,7 +14,16 @@
 			"type": "array",
 			"items": {
 				"type": "object",
-				"required": ["slug", "source", "build", "delivery", "classification", "license"],
+				"required": [
+					"slug",
+					"display_name",
+					"description_ja",
+					"source",
+					"build",
+					"delivery",
+					"classification",
+					"license"
+				],
 				"properties": {
 					"slug": {
 						"description": "URL-safe slug. Lowercase letters, digits, dashes. Unique across all tools. Path segment under /tools/<slug>/ and the same-origin artifact location.",
@@ -24,6 +33,11 @@
 					"display_name": {
 						"description": "Human-readable name for the Tool Registry UI. Optional.",
 						"type": "string"
+					},
+					"description_ja": {
+						"description": "Japanese description shown on the /tools index (Issue #785). One or two sentences stating what the Tool does. Required: the index renders Japanese first, so a missing value would leave a row unexplained. The English `description` field remains for maintainers.",
+						"type": "string",
+						"minLength": 1
 					},
 					"source": {
 						"type": "object",

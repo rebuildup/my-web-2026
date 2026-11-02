@@ -59,6 +59,20 @@ import { ADMIN_SURFACE_NAMESPACE, isPathInNamespace } from '../../i18n/router-pa
 export const ANALYTICS_CONSENT_STORAGE_KEY = 'my-web-2026:analytics-consent';
 
 /**
+ * The custom property that carries the height the consent surface
+ * occupies at the bottom of the viewport.
+ *
+ * The value is published on `:root` by `AnalyticsConsent.tsx` and read
+ * back by `src/styles.css` (focus compensation, WCAG 2.2 SC 2.4.11) and
+ * by `src/editorial/pet/PetSprite.tsx`, which must sit ABOVE the surface
+ * rather than on top of it. It is exported here because two owners now
+ * read the same CSS contract: if one file renamed the property and the
+ * other kept the literal, the companion would silently stop clearing
+ * the consent surface and only a browser check would notice.
+ */
+export const ANALYTICS_CONSENT_OFFSET_PROPERTY = '--analytics-consent-offset';
+
+/**
  * Window event fired after a decision is recorded, so a component that
  * mounted the GA4 script decision separately (the head gate) can react
  * without a reload. Same-realm only — a cross-document signal would

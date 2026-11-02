@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
+import { PetCompanion } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -17,6 +18,10 @@ import type { AboutPageData } from '../types';
  *   - 04 — Current       (today)
  *   - 05 — Future        (active vs parked)
  *   - Footer             (finds-me-elsewhere external handles)
+ *
+ * The companion character (Issue #274) is not a section and owns no
+ * number: owner instruction 2026-11-01 moved Melty to a page-level
+ * floating overlay, drawn once after the footer.
  *
  * The Hero adopts the same 4/12 (rail) + 8/12 (lead) grid split
  * as the home hero. The body sections use the spread
@@ -87,6 +92,7 @@ export function AboutPage({ data }: AboutPageProps) {
 				<FutureSection active={future.active} parked={future.parked} />
 			</main>
 			<ExternalHandlesFooter handles={externalHandles} />
+			<PetCompanion />
 		</>
 	);
 }

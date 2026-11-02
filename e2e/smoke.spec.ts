@@ -69,10 +69,11 @@ test.describe('deployed Worker smoke', () => {
 /**
  * Home page composition (Issue #21).
  *
- * Verifies the five content sections plus the footer landmark render
- * with the required structure and the single `<h1>` invariant. Skips assertions on
- * exact prose so Japanese / English copy can land in any ticket
- * without breaking this smoke.
+ * Verifies the seven named sections (the hero plus six content
+ * sections, `current-projects-heading` added by Issue #316) plus the
+ * footer landmark render with the required structure and the single
+ * `<h1>` invariant. Skips assertions on exact prose so Japanese /
+ * English copy can land in any ticket without breaking this smoke.
  */
 test.describe('home page composition', () => {
 	test('renders the public preview sections and the canonical h1', async ({ page }) => {
@@ -86,20 +87,32 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveText('my-web-2026');
 		await expect(h1).toHaveAccessibleName('my-web-2026');
 
-		// Six content sections, in order, all anchored by aria-labelledby.
+		// Seven named sections, in order, all anchored by aria-labelledby.
+		//
+		// The count alone is not the assertion: every section is also
+		// named by the id that labels it, so a section that is removed,
+		// reordered or replaced by a different one fails here even when
+		// the count still matches.
+		//
+		// Issue #316 added exactly one — `current-projects-heading`
+		// ("現在地 / Where I am now"), rendered between the hero and the
+		// capabilities grid. The six sections that pre-date it are
+		// otherwise unchanged and keep their original relative order;
+		// each moved one position later in this list.
 		//
 		// The selector is scoped to the page subtree (Issue #664): the
 		// root layout's chrome — including the GA4 consent panel, which
 		// is itself a named `<section>` — is rendered outside it and is
 		// not a section of this page.
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
-		await expect(sections).toHaveCount(6);
+		await expect(sections).toHaveCount(7);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
-		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'status-heading');
-		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'reactions-heading');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
-		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'status-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'reactions-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
+		await expect(sections.nth(6)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Issue #287 — in-site destinations only: the hero CTA and the
 		// footer index entry both point at /portfolio, and no link to
@@ -157,6 +170,32 @@ test.describe('home page composition', () => {
 		const activityCard = section.locator('li').filter({ hasText: 'アクティビティ' });
 		await expect(activityCard.locator('text=planned')).toBeVisible();
 		await expect(activityCard.locator('a[href^="/"]')).toHaveCount(0);
+
+		// Issue #782 — every row starts at its grid column's x. The live
+		// rows used to carry a 24px `paddingInlineStart` plus an
+		// absolutely positioned 2px bar, so a live row and the planned row
+		// beside it in the same column did not share a start line. State is
+		// now carried by the badge alone, and no replacement decoration is
+		// allowed: an absolutely positioned child under a row is a bar.
+		await page.setViewportSize({ width: 1440, height: 1000 });
+		const rows = section.locator('li');
+		const rowCount = await rows.count();
+		for (let index = 0; index < rowCount; index += 1) {
+			const row = rows.nth(index);
+			const rowBox = await row.boundingBox();
+			const headingBox = await row.locator('h3').boundingBox();
+			expect(rowBox).not.toBeNull();
+			expect(headingBox).not.toBeNull();
+			expect(
+				Math.abs((headingBox?.x ?? Number.NaN) - (rowBox?.x ?? Number.NaN)),
+			).toBeLessThanOrEqual(0.5);
+		}
+		const absoluteBars = await section
+			.locator('li > span[aria-hidden="true"]')
+			.evaluateAll(
+				(nodes) => nodes.filter((node) => getComputedStyle(node).position === 'absolute').length,
+			);
+		expect(absoluteBars).toBe(0);
 	});
 
 	test('renders the system status section with three services', async ({ page }) => {

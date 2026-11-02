@@ -12,10 +12,10 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 25 |
+| Publicly reachable URLs (surface + Static Assets) | 26 |
 | External hosts | 33 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
+| Approved transition | 2 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -92,7 +92,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (2)
 
 - `/tools/ae-expression`
 - `/tools/mic-level`

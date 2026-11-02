@@ -83,7 +83,7 @@ declared once, in the Tool manifest, and read by three consumers:
 ```jsonc
 // src/tools/manifest.json — mic-level
 "delivery": {
-  "kind": "host_disabled",
+  "kind": "same_origin_static",
   "iframe": { "sandbox": "allow-scripts", "referrer_policy": "no-referrer", "allow": "microphone" }
 }
 ```
@@ -99,9 +99,12 @@ declared once, in the Tool manifest, and read by three consumers:
    `microphone=(self "https://rebuildup.dev")` in production.
 3. **Container** — the shell route renders
    `<iframe allow="microphone">` (`src/routes/tools.$slug.tsx`) once the
-   Tool graduates. Today `mic-level` is `host_disabled`, so the route
-   renders `DisabledPlaceholder` and no iframe exists yet; the grant is
-   declared and resolved ahead of that graduation.
+   Tool graduates. `mic-level` graduated in Issue #855 (2026-11-03), so
+   the route renders the iframe with the grant; the frame itself still
+   runs on an opaque origin under the shipped `sandbox="allow-scripts"`,
+   so `getUserMedia` is refused with `SecurityError` until ADR-0020
+   §2.1 lands — the measurements are in
+   `docs/verification/tools/mic-level-host-activation.md`.
 
 The fourth half — the framed document — is `public/_headers`, and it is
 where the platform forces a design decision (measured, Chromium, fake
@@ -120,8 +123,8 @@ frame, because under the shipped `sandbox="allow-scripts"` the frame has
 an opaque origin and Chromium refuses `getUserMedia` with
 `SecurityError: Invalid security origin` before Permissions-Policy is
 consulted. Only the first row is the configuration that ships today.
-The header contract below is what `mic-level` will need when it
-graduates; it is necessary, not sufficient.
+The header contract below is what `mic-level` needs now that it has
+graduated (Issue #855); it is necessary, not sufficient.
 
 Two findings, both load-bearing:
 
@@ -272,9 +275,10 @@ allowlist follows the origin that actually served the request, with no
 production value anywhere.
 
 Tool artefacts only exist when the Tool submodules are checked out.
-When they do, `/tools/<slug>/app/index.html` is measurable; a Tool that
-is still `host_disabled` (`mic-level`) has no artefact, and its rule is
-covered by the parity check plus the fixture used for the report.
+When they do, `/tools/<slug>/app/index.html` is measurable; the two
+shipped grants (`mic-level`, `ae-expression`) are covered by the parity
+check plus the fixture used for the report. A Tool that is still
+`host_disabled` has no artefact and no grant rule at all.
 
 To render those real responses in the verification image instead of the
 resolved rules, capture the dump into
@@ -314,11 +318,12 @@ result of that pass; the image is the same run rendered.
   origin, and Chromium rejects `getUserMedia` with
   `SecurityError: Invalid security origin` before Permissions-Policy is
   even consulted (measured; last row of the verification report). The
-  grant in this contract is therefore necessary but not sufficient: when
-  `mic-level` graduates it will also need `allow-same-origin` on that
-  one Tool, which `scripts/check-tools-manifest.mjs` deliberately flags
-  as dangerous and ADR-0006 forbids without a written reason. That is an
-  owner decision and is **not** taken here.
+  grant in this contract is therefore necessary but not sufficient: now
+  that `mic-level` has graduated (Issue #855) it will also need
+  `allow-same-origin` on that one Tool, which
+  `scripts/check-tools-manifest.mjs` deliberately flags as dangerous
+  and ADR-0006 forbids without a written reason. That is an owner
+  decision and is **not** taken here.
 - **`_headers` is static**, so the Tool-artefact grant names the
   canonical production origin rather than the request origin. This only
   matters for a locally served Tool artefact, where the frame loses the

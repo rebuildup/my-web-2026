@@ -225,7 +225,7 @@ const TOOL_PREVIEWS: Readonly<
 	},
 	pomodoro: {
 		src: '/tool-previews/pomodoro.webp',
-		alt: 'Pomodoro の初期画面。左上に「Warm up」と表示され、作業／休憩サイクルを表す大きな円形リングが描かれている。',
+		alt: 'Pomodoro の実行中の画面。左上に「Warm up」のフェーズ表示、その下にカウントダウン表示（14:58.75 のように減っている）、さらに下に作業／休憩のスケジュール一覧（Warm up 15 min / Short Break 3 min / Deep Work I 30 min など）が並ぶ。',
 		width: 1200,
 		height: 669,
 	},
@@ -243,7 +243,7 @@ const TOOL_PREVIEWS: Readonly<
 	},
 	'code-type-p5': {
 		src: '/tool-previews/code-type-p5.webp',
-		alt: 'Code Type p5 の初期画面。操作欄に「Play」「Edit Code」のボタンがあり、下に空のキャンバス領域が描かれている。',
+		alt: 'Code Type p5 の再生中の画面。操作欄に「Play」「Edit Code」のボタンがあり、下のキャンバスにサンプルプログラム（Rust のソースコード）が色付きで描かれている。',
 		width: 1200,
 		height: 669,
 	},

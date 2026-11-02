@@ -48,27 +48,25 @@ return applyHtmlCachePolicy(request, secured);
 ### The deny list, and why it is not deny-all
 
 ```
-bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(),
-hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(),
+microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 ```
 
 Every listed feature has no plausible use on this site: hardware
 bridges (`bluetooth`, `hid`, `serial`, `usb`), capture devices
 (`camera`, `display-capture`, `geolocation`, `microphone`), and
-platform-gated products (`payment`, `xr-spatial-tracking`). `downloads`
-is listed for the same reason as `microphone`: exactly one registered
-Tool writes a user-authored file from its frame (`ae-expression`, whose
-export button writes `expression.txt` / `expression.json`), so the
-capability is denied by default and granted to that Tool alone.
+platform-gated products (`payment`, `xr-spatial-tracking`).
 
 A feature that is **not** listed keeps the browser default allowlist
 (`self`). That is deliberate: it keeps the baseline honest — every
 entry has to justify itself — but it also means a grant may only name
 a feature on this list, because a grant for an unlisted feature would
-be a no-op (`scripts/check-security-headers.mjs` rejects it). So a new
-capability requires this baseline to be amended first, and then granted
-per Tool. `/admin` copies invitation URLs with `navigator.clipboard`;
-that works precisely because `clipboard-write` is not on the list.
+be a no-op (`scripts/check-security-headers.mjs` rejects it) — UNLESS
+the capability is a **sandbox-only** one (see §3), which the header
+cannot express at all. So a new header-expressible capability requires
+this baseline to be amended first, and then granted per Tool.
+`/admin` copies invitation URLs with `navigator.clipboard`; that works
+precisely because `clipboard-write` is not on the list.
 
 The baseline applies to every **host** response: all Worker-generated
 responses, and the host-owned static documents under `/share/**`. It
@@ -142,14 +140,16 @@ Two findings, both load-bearing:
   without a `Permissions-Policy` at all. Which Tool may actually ask is
   decided by the host route's `<iframe allow=…>`, driven by the manifest.
 
-### The second grant: `downloads` (ae-expression)
+### The sandbox-only capabilities: `downloads` and `fullscreen`
 
-`downloads` is the second declared grant (Issue #773), and it is the
-first one where the **sandbox** is the load-bearing half rather than
-the header. The `ae-expression` Tool's export button writes the
-generated expression as a file (`expression.txt` / `expression.json`)
-through `link.download`; a sandboxed frame without `allow-downloads`
-drops that download, so the Tool's own feature needs the token:
+`downloads` is the second declared capability (Issue #773, and the
+same capability Issue #817's second wave declares for `fillgen` /
+`code-type-p5`), and it is the first one where the **sandbox** is the
+whole grant rather than the header. The `ae-expression` Tool's export
+button writes the generated expression as a file (`expression.txt` /
+`expression.json`) through `link.download`; a sandboxed frame without
+`allow-downloads` drops that download, so the Tool's own feature needs
+the token:
 
 ```jsonc
 // src/tools/manifest.json — ae-expression
@@ -172,14 +172,33 @@ Measured 2026-11-03 in Chromium on the shipped route
 | control iframe | `allow-scripts` | **0** |
 
 That A/B is what makes the token the measured cause rather than a
-plausible story. The header half is comparatively inert: Chromium
+plausible story.
+
+The header half does not exist, and that is deliberate. Chromium
 implements **no** `downloads` Permissions-Policy feature (measured —
 `downloads=()`, `downloads=(self …)` and `downloads=*` all leave the
-download working), so `public/_headers` states the host's decision and
-the sandbox token is what actually enables the export. The grant is
-still declared, because the embed policy (Issue #465) requires a
-conditional sandbox token to name a capability and carry a written
-reason, and because a future browser may implement the feature.
+download working), so writing the feature into the header would make
+every browser log `Unrecognized feature: downloads` on every response
+— site-wide console noise for a grant the header cannot express. The
+same is true of `fullscreen`: the container half (`<iframe
+allow="fullscreen">`) is what grants it, an explicit
+`fullscreen=(self "…")` does not match a sandboxed frame's opaque
+origin, and the default allowlist (`self`) DOES match it — so
+denying it anywhere would kill the capability site-wide. Both are
+therefore recorded in `src/http/security-headers.json` under
+`sandbox_only_capabilities`, which the verifier enforces in two
+directions: such a capability must NOT appear in the deny baseline,
+and the Tool's artefact path must carry **no** `Permissions-Policy` at
+all. The capability is still declared in `delivery.iframe.allow`,
+because the embed policy (Issue #465) requires a conditional sandbox
+token to name a capability and carry a written reason.
+
+So the answer to "how does a Tool earn a capability" has two halves:
+a **header** capability (`microphone`) is denied site-wide and granted
+per Tool through `Permissions-Policy`, and a **sandbox-only**
+capability (`downloads`, `fullscreen`) is granted by the sandbox token
+(or the container attribute) alone and must not appear in any
+`Permissions-Policy` value.
 
 ### Residual exposure of that choice
 

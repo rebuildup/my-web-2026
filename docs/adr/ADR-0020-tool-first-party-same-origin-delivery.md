@@ -1,13 +1,13 @@
 # ADR-0020 — Tool を first-party 同一 origin で配信し、iframe sandbox を外す
 
-- Status: **Proposed** — 方向性（first-party の同一 origin Tool を sandbox
-  隔離しない）は owner が 2026-11-02 に承認。**本文の採否は保留**であり、
-  PR の review と E2E の確認後に owner が決める。
+- Status: **Accepted** — 本文の採択は **engineering decision**。owner が示した
+  のは「全 Tool を利用可能にする」**要件だけ**であり、sandbox / iframe /
+  本文の採否は owner の指示ではない（決定の出所は §0）。
 - Date: 2026-11-02
-- Accepted on: —（未承認。方向性の承認は
-  https://github.com/rebuildup/my-web-2026/issues/825#issuecomment-6567590107 ）
-- Ticket: Issue #825
-  （`refactor(tools): Tool を sandbox 付き iframe から first-party 同一 origin 配信へ変える`）
+- Accepted on: 2026-11-02（**本文の採択は engineering decision**。owner の
+  指示は要件のみ — https://github.com/rebuildup/my-web-2026/issues/769 ）
+- Ticket: Issue #769（判定）/ Issue #825
+  （`refactor(tools): Tool を sandbox 付き iframe から first-party 同一 origin 配信へ変える`、実装）
 - Target release: `release-0-8-1`（0.8.1）
 - Implemented at: `src/tools/`（`manifest.json` / `manifest.schema.json` /
   `embed-policy.ts` / `registry.ts`）、`src/routes/tools.$slug.tsx`
@@ -19,10 +19,34 @@
   Issue #465（embed policy）、Issue #498（third-party consent）、
   Issue #786（readmark の保存前提 — 本 ADR で設計方向を撤回）
 
-> **承認の記録。** owner が承認したのは**方向性**だけである（2026-11-02、
-> 上記 comment）。本文の採否は保留されており、agent がこの ADR を書いたこと・
-> 本行を編集したことは承認の証拠ではない（AGENTS.md §6 /
-> `docs/runbook/issue-lifecycle.md`）。実装は Issue #825。
+> **決定の記録。** owner が 2026-11-02 に示したのは **「全 Tool を利用可能に
+> する」**という要件だけである（Issue #769 本文に逐語引用）。**sandbox を外す
+> こと / iframe を残すこと / 本文の採否は owner の指示ではなく**、AGENTS.md §8
+> の決定優先順位から導出した engineering decision である（§0 の表）。
+> agent がこの ADR を書き、本行を編集し、Status を Accepted にしたことは
+> **owner 承認の証拠ではない**（AGENTS.md §6 /
+> `docs/runbook/issue-lifecycle.md`）。実装は Issue #825、15 Tool ごとの終了
+> 条件と実行順は
+> [`../verification/tools/completion-inventory.md`](../verification/tools/completion-inventory.md)。
+
+## 0. 決定の出所（Accepted の意味）
+
+| 事項 | 誰が決めたか | 出所 |
+| --- | --- | --- |
+| 「全 15 Tool を利用可能にする」 | **owner** | Issue #769 本文（2026-11-02 の逐語引用） |
+| `host_disabled` は恒久状態ではない | engineering decision | Issue #769 決定 1・2 / 本 ADR §2.6 |
+| `same_origin_static` の sandbox を外す | engineering decision | 本 ADR §2.1 / §1.2 の測定 |
+| iframe は URL / chrome / CSS の器であり security boundary ではない | engineering decision | 本 ADR §2.2 |
+| `mic-level` を `same_origin_static` へ移す | engineering decision | 本 ADR §4.5 / Issue #769 決定 3 |
+| 15 Tool の終了条件・実行順・担当 | engineering decision | `docs/verification/tools/completion-inventory.md` |
+
+owner が出したのは**要件**（ツールを全て使えるようにすること）だけである。
+sandbox / iframe / ADR 本文の採否は **owner の判断事項ではなく**
+（AGENTS.md §8「決定の優先順位」）、本 ADR の Status を Accepted にすることは
+**engineering decision** として行う。owner の artefact は Issue #769 の
+コメントではなく**同 Issue 本文の逐語引用**（要件）であり、本 ADR の本文を
+承認する owner の artefact は存在しない。**「Accepted」は owner 承認を意味
+しない**（AGENTS.md §6 / `docs/runbook/issue-lifecycle.md`）。
 
 ## 1. Context
 
@@ -40,6 +64,18 @@
    外すが iframe は残す」を選ぶなら、その理由を測定で示さなければならない
    （§2.2）。
 
+### 1.1.1 owner 要件（原文、2026-11-02 / Issue #769）
+
+> ツールはサンドボックスが必要か不要かそんなことは私が判断する必要がないことだ。
+> 他も同じ。**私が指示しているのはツールを全て使えるようにすることだ。**
+
+この要件が**owner が実際に示した内容**であり、本 ADR の採否・sandbox の採否・
+iframe の採否は**この要件を充足するための engineering decision** である
+（§0）。したがって本 ADR だけ不能满足ではなく、**15 Tool すべてが利用可能に
+なるところまでが要件**であり、終了条件と実行順は
+[`../verification/tools/completion-inventory.md`](../verification/tools/completion-inventory.md)
+が持つ。
+
 ### 1.2 現在の契約
 
 Tool は `same_origin_static` / `external_exception` / `host_disabled` の三状態で
@@ -47,8 +83,9 @@ Tool は `same_origin_static` / `external_exception` / `host_disabled` の三状
 2026-11-02 時点で実際に frame を出すのは `prototype` と `readmark` の 2 件だけで、
 どちらも `same_origin_static`、`sandbox: "allow-scripts"`、
 `referrer_policy: "no-referrer"` を宣言している。`mic-level` は
-`host_disabled` で、`external_exception` として卒業するための休眠中の
-`iframe` 宣言（`sandbox: "allow-scripts"`、`allow: "microphone"`）を持つ。
+`host_disabled` で、**`same_origin_static` として卒業する**ための休眠中の
+`iframe` 宣言（`sandbox: "allow-scripts"`、`allow: "microphone"`）を持つ
+（卒業先は §4.5 で決定）。
 
 `allow-same-origin` は Issue #465 の policy で**常に拒否**されている。理由は
 policy のコメントに書かれているとおりで、Tool の成果物は host と同じ origin
@@ -213,6 +250,29 @@ token は `allow` + `sandbox_rationale` 必須）。現時点で live な
 - `docs/tools/embed-policy.md` §1–§2 と §5a を書き直す。§5a の
   「すべての frame は opaque origin」という記述は first-party には
   成り立たなくなる（external には成り立つまま）。
+
+### 2.6 D6 — `host_disabled` は恒久状態ではない
+
+`host_disabled` は **Tool が利用できないことの一時的な記録**であり、
+**公開される Tool 集合の決定ではない**。owner の要件は「全 Tool を
+利用可能にする」こと（§1.1.1）であり、`host_disabled` を恒久的な状態として
+扱うことはその要件への未達である。
+
+したがって次の 3 つを契約とする。
+
+1. **各 Tool は終了条件を持つ。** 「何が足りないか（リポジトリ / ビルド /
+   権限 / 配信経路）」「どう測れば終わるか」を
+   [`../verification/tools/completion-inventory.md`](../verification/tools/completion-inventory.md)
+   に実測付きで记录的。終了条件の無い `host_disabled` は無い。
+2. **各 Tool は追跡 Issue を持つ。** 1 Tool 1 Issue（既存 Issue を使い、
+   重複を起票しない）。進捗はそこで持つ。
+3. **実行順と担当は本 repository が決める。** owner への提示を待つ必要はない
+   （AGENTS.md §8）。順序の根拠（リスクの低さ / 依存 / 到達可能性）は
+   同記録に書く。
+
+`host_disabled` の Tool を公開済みにしないのは、§3.6 の release 前条件を
+満たさないまま公開すること的后果を避けるためであり、**公開しないことが
+目的ではない**。
 
 ## 3. Security boundary
 
@@ -413,26 +473,77 @@ security boundary ではない」と明記する。`docs/security/security-heade
 の開示であり、同意は**信頼の gate** でもある。文言の変更は product / copy の
 決定であり、本 ADR では行わない（必要なら別 Issue + `copy:approval:check`）。
 
-### 4.5 `mic-level`（Issue #598）はマイク取得を維持し、`host_disabled` のまま
+### 4.5 `mic-level` は `same_origin_static` へ移し、マイク取得を維持する
 
 `mic-level` は `getUserMedia` によるマイク取得を**維持**する。本 ADR は
-「sandbox を外す」決定であり、機能を落とす決定ではない。`mic-level` は
-`host_disabled` のままとし、本 ticket で無理に有効化しない。
+「sandbox を外す」決定であり、機能を落とす決定ではない。`host_disabled` に
+据え置くことは、owner の要件「全 Tool を利用可能にする」（§1.1.1）への
+未達として扱う（§2.6）。したがって `mic-level` は **§3.6 の release 前条件を
+満たしたうえで `same_origin_static` へ移す**。卒業先の kind はここで決める。
 
-- 休眠中の `iframe` 宣言からは `sandbox` を外す（§2.3）。`allow: "microphone"`
-  と `referrer_policy` は残す。これは有効化ではない。
-- 卒業（`host_disabled` から公開へ）には、次の 3 つを満たす e2e が必要である。
-  1. **Tool 側 build**: standalone な Vite build が存在し、pin されること。
-  2. **browser grant**: 実際のブラウザで `getUserMedia` の許可 / 拒否の両方が
-     期待どおりに扱われること（拒否時に無言で失敗しない）。
-  3. **frame origin**: frame の `window.origin` と、`Permissions-Policy` の
-     `microphone` が実測で一致すること。host origin 配信なら sandbox なし、
-     external 配信なら sandbox 付きで `allow` + `sandbox_rationale` を持つ。
-- 卒業先の kind はそこで決める。`same_origin_static` を選ぶ場合は §3.6 の
-  release 前条件をすべて満たす。`external_exception` を選ぶ場合は §2.3 の
-  sandbox 規則に従う。
-- 旧選択肢 B（storage を使わない設計に寄せる、`getUserMedia` 前提を崩す）は
-  **却下**する。§6.2 と同じ理由であり、原因は sandbox であって設計ではない。
+前提条件は 4 つ。**4 つのうち 3 つは host 側で既に満たされている**（測定値と
+その出所を併記する）。
+
+1. **https（secure context）**: `getUserMedia` は secure context を要求する。
+   本番 origin は `https://rebuildup.dev`（ADR-0014）であり、満たされている。
+2. **Permissions-Policy（容器側）**: `src/tools/registry.ts` の
+   `toolRouteSecurityPolicy()` が manifest の `delivery.iframe.allow`
+   （`mic-level` は `"microphone"`）を読み、
+   `src/http/security-headers.ts` が
+   `Permissions-Policy: microphone=(self "https://rebuildup.dev")` を
+   `/tools/mic-level` の応答に付ける。**既に実装済み**（manifest の
+   `delivery.iframe.allow` と `public/_headers` の
+   `/tools/mic-level/app/*` 規則の**両方**が一致している —
+   `scripts/check-security-headers.mjs` がこの一致を gate している）。
+3. **明示同意**: マイク取得は**無言で起きない**。pinned `5df7ac6` の
+   `src/MicLevelClient.tsx:416`（ボタン「マイクを使用する」）→ `:364`
+   （`handleRequestPermission`）がユーザー操作を起点にする。host 側は
+   この明示同意を**妨げない**（同意 band で置き換えない）。
+4. **権限拒否時の非破壊 fallback**: `NotAllowedError` / `SecurityError` /
+   `NotFoundError` / `OverconstrainedError` で**状態を破壊しない**。pinned
+   `5df7ac6` の `src/MicLevelClient.tsx:287` 以降は `permission` を
+   `denied` / `unsupported` に遷移させ、メッセージを出して **`stream` を
+   止める**。sandbox を外してもこの fallback は壊れない（この Tool は
+   storage を使わない）。
+
+`host_disabled` のまま残す期間に付ける **休眠宣言**（§2.3）：
+`iframe` から `sandbox` を外し、`allow: "microphone"` と `referrer_policy`
+は残す。これは有効化ではない。
+
+#### 4.5.1 卒業に要る host 側の変更（#825 の後に 1 本）
+
+- `src/tools/manifest.json`: `delivery.kind` を `same_origin_static` にし、
+  `artifact_path: "/tools/mic-level/app"` と `entry_html` を追加する。
+  `iframe` は `referrer_policy` と `allow: "microphone"` を持ち、**`sandbox`
+  は持たない**（§2.1 / §2.3）。
+- submodule の追加と `source.pinned_sha` の bump（upstream の merge SHA）。
+- `quality/tool-artifact-inventory.json` の再生成（現状 license / dependencies
+  は `unverified` なので、build 後に measured 値へ更新する）。
+- `public/_headers` の `/tools/mic-level/app/*` 規則は**そのまま使う**
+  （manifest 側の `allow` を消すと `check-security-headers.mjs` が落ちる）。
+
+#### 4.5.2 検証可能な卒業条件（e2e）
+
+`mic-level` が「利用可能」と宣言されるのは、次の**すべて**を**実測**した
+ときだけである。証跡は `docs/verification/tools/` に置く。
+
+| # | 条件 | 測定方法 | 期待値 |
+| --- | --- | --- | --- |
+| 1 | 許可経路 | Playwright で microphone 権限を許可して `/tools/mic-level` を開く | `getUserMedia` が解決し、Tool が「許可済み」状態を表示する。レベル表示が更新される |
+| 2 | 拒否経路 | microphone 権限を**明示的に拒否**して同じ URL を開く | `NotAllowedError` で失敗し、Tool が**破壊せず**拒否状態を表示する。未処理例外が無い |
+| 3 | Permissions-Policy（容器側） | `GET /tools/mic-level` の応答ヘッダを実測 | `Permissions-Policy` に `microphone=(self "https://rebuildup.dev")` が含まれる |
+| 4 | Permissions-Policy（文書側） | `GET /tools/mic-level/app/index.html` の応答ヘッダを実測 | 同上（`public/_headers` の `/tools/mic-level/app/*` 規則が応答している） |
+| 5 | 許可属性 | `/tools/mic-level` の HTML を実測 | `<iframe allow="microphone">` が出る（manifest の `delivery.iframe.allow` と一致） |
+| 6 | sandbox 不在 | 同 iframe の属性を実測 | `sandbox` 属性が無い（§2.1） |
+| 7 | frame origin | frame 内の `window.origin` を実測 | host origin（`https://rebuildup.dev`）と一致する（§4.1 / §4.2） |
+
+1 と 2 は **許可 / 拒否の両方**を測る。片方だけの測定は「利用可能」の根拠に
+ならない。3 と 4 は**応答ヘッダの実測**であり、manifest の宣言だけでは
+満たせない。5・6・7 は配信された HTML と frame の**実測値**であり、
+「宣言している」だけでは足りない。
+
+旧選択肢 B（storage を使わない設計に寄せる、`getUserMedia` 前提を崩す）は
+**却下**する。§6.2 と同じ理由であり、原因は sandbox であって設計ではない。
 
 ## 5. 移行（Issue #825）
 
@@ -489,8 +600,9 @@ security boundary ではない」と明記する。`docs/security/security-heade
    `docs/verification/tools/` に置く。
 9. §3.6 の (a)–(h) のうち、本 ticket で該当する項目の実測 evidence を
    `docs/verification/tools/tool-first-party-delivery.md` に記録する。
-   `mic-level` は `host_disabled` のままであり、§4.5 の卒業条件は本 ticket の
-   受け入れに含めない。
+   `mic-level` の**卒業自体**（`host_disabled` → `same_origin_static`）は本
+   ticket の受け入れに含めない — 卒業は §4.5.2 の 7 条件を実測してから
+   別 ticket（Issue #360 / #769）で行う。
 
 ### 5.3 Rollback
 
@@ -553,8 +665,13 @@ owner の決定は「sandbox に収める必要がない」であり、新しい
 - Tool が host の DOM を読めるようになるため、`/tools/<slug>` の host chrome に
   表示される情報（visitor の状態など）は Tool から見える。現時点で機微な
   表示はないが、今後 `/tools/**` に secret を描画しない、という制約が生まれる。
-- `mic-level` の卒業（Issue #598）は external のままなので、sandbox と
-  `allow-same-origin` の議論は変わらない。
+- `mic-level` は §4.5 の条件を満たしたうえで `same_origin_static` へ移す。
+  卒業時に変わるのは **container 側と document 側の Permissions-Policy の
+  実測値**（`microphone=(self "https://rebuildup.dev")`）と frame の
+  `sandbox` 不在であり、**Tool 側の明示同意と拒否時 fallback はそのまま
+  使う**（pinned `5df7ac6` に既に実装済み）。旧 Issue #598 の問い
+  （`allow-same-origin` を付けるべきか）は、本 ADR の採用により**前提ごと
+  解消する**（§6.1 / §6.2）。
 - `host_message` の最初の consumer を作るとき、first-party なら origin は
   host origin でよい。external なら opaque origin の別契約が必要。
 
@@ -580,6 +697,9 @@ owner の決定は「sandbox に収める必要がない」であり、新しい
 - 実装 spec: `docs/tools/tool-first-party-delivery-implementation-spec.md`
 - ADR-0006（Tool submodule policy、Re-evaluation triggers）
 - Issue #465（embed policy）、#498（third-party consent）、
-  #598（`mic-level` のマイク取得）、#786（readmark storage）、
-  #825（本 ADR の実装）
+  #598（`mic-level` の `allow-same-origin` 論点 — 本 ADR の採用で解消）、
+  #769（判定・15 Tool の終了条件と実行順）、
+  #786（readmark storage）、#825（本 ADR の実装）
+- 15 Tool の終了条件・実行順・担当:
+  [`../verification/tools/completion-inventory.md`](../verification/tools/completion-inventory.md)
 - production 実測: `.tmp/issue-825/probe.mjs`（2026-11-02）

@@ -101,7 +101,10 @@ describe('Tool embed policy — the live manifest', () => {
 				.filter((token) => token.length > 0 && token !== 'allow-scripts');
 			if (extra.length === 0) continue;
 			expect(iframe?.allow, `${tool.slug} grants a token without an allow list`).toBeTruthy();
-			expect(iframe?.sandbox_rationale, `${tool.slug} grants a token without a reason`).toBeTruthy();
+			expect(
+				iframe?.sandbox_rationale,
+				`${tool.slug} grants a token without a reason`,
+			).toBeTruthy();
 			for (const token of extra) {
 				// The sandbox token names the capability (`allow-downloads`);
 				// the `allow` list names it the Permissions-Policy way

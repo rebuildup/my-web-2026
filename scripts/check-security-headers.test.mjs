@@ -127,12 +127,13 @@ describe('inspect — repository state', () => {
 	it('accepts the shipped public/_headers and manifest', () => {
 		const result = inspect();
 		assert.deepEqual(result.violations, []);
-		// The shipped state has exactly one Tool grant. If a second Tool
-		// starts declaring one, this assertion is the reminder to update
-		// the expectation rather than to widen the gate silently.
+		// The shipped state has exactly one Tool grant PER Tool that
+		// declares one. If a new Tool starts declaring a grant, this
+		// assertion is the reminder to update the expectation rather
+		// than to widen the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			['mic-level'],
+			['business-mail-block', 'mic-level'],
 		);
 	});
 

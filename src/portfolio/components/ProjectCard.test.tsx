@@ -48,7 +48,10 @@ const FACET_CATEGORY: Readonly<Record<PortfolioFacet, string>> = {
 	other: 'writing',
 };
 
-function project(facets: readonly PortfolioFacet[]): PortfolioProject {
+function project(
+	facets: readonly PortfolioFacet[],
+	overrides: Partial<PortfolioProject> = {},
+): PortfolioProject {
 	return {
 		id: 'p-1',
 		slug: 'a-project',
@@ -74,6 +77,7 @@ function project(facets: readonly PortfolioFacet[]): PortfolioProject {
 		updatedAt: 0,
 		links: [],
 		media: [],
+		...overrides,
 	};
 }
 
@@ -138,6 +142,65 @@ describe('ProjectCard category cue (Issue #411)', () => {
 			expect(renderToStaticMarkup(<ProjectCard project={project([facet])} />)).toContain(
 				`data-category="${category}"`,
 			);
+		}
+	});
+});
+
+/**
+ * The `role` row (Issue #813).
+ *
+ * The column mixes two claims — the role a person held ("Tool
+ * developer") and the kind of work ("Development", derived from the
+ * facets). The corrected decision keeps the first one and takes the
+ * second one out of the column: the eyebrow word and the facet pills
+ * already carry it, and 5 of the 64 derived values contradicted the
+ * eyebrow because the derivation order and the display order differ.
+ *
+ * The component only sees a stored string, so these cases pin the
+ * PUBLIC CONTRACT, not a live path: D1 declares `role` NOT NULL and
+ * the loader carries no `role_source`, so no row can be `null` today.
+ * The state below arrives with Issue #811's ingest, which makes the
+ * column nullable and writes no kind of work into it.
+ */
+
+/** How many times `needle` occurs in `haystack`. */
+function count(haystack: string, needle: string): number {
+	return haystack.split(needle).length - 1;
+}
+
+describe('ProjectCard — the role row (Issue #813)', () => {
+	it('prints a recorded role under the Role label', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { role: 'Tool developer' })} />,
+		);
+		expect(html).toContain('>Role</dt>');
+		expect(html).toContain('Tool developer');
+		// The label is `Role`: a person's role, not a kind of work.
+		expect(html).not.toContain('>Kind</dt>');
+	});
+
+	it('drops the role row for a derived value and keeps the facet wording', () => {
+		// `role: null` is the value Issue #811's ingest writes for a
+		// `facet-derived` row (the column is NOT NULL today, so no live
+		// row can be null yet). The kind of work stays where the facets
+		// are.
+		const html = renderToStaticMarkup(<ProjectCard project={project(['video'], { role: null })} />);
+		expect(html).not.toContain('>Role</dt>');
+		// The facet still names the work: the eyebrow word and the pill.
+		expect(count(html, '>Video<')).toBe(2);
+		// Neither the derived value nor a kind-of-work label appears.
+		expect(html).not.toContain('Video production');
+		expect(html).not.toContain('>Kind</dt>');
+	});
+
+	it('leaves no empty value cell behind when no role is recorded', () => {
+		for (const role of [null, '']) {
+			const html = renderToStaticMarkup(<ProjectCard project={project(['develop'], { role })} />);
+			expect(html).not.toContain('>Role</dt>');
+			expect(html).not.toMatch(/<dd[^>]*>\s*<\/dd>/);
+			// The period row is unconditional.
+			expect(html).toContain('>Period</dt>');
+			expect(html).toContain('2020 — 2021');
 		}
 	});
 });

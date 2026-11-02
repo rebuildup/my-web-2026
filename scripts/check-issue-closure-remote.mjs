@@ -62,12 +62,24 @@
  *
  * The window
  * ----------
- * The window starts at the ledger's own audited date
- * (`audit.closedAt`, 2026-10-31) by default, because that is the
- * population the ledger claims to cover; the history before it is out
- * of the audit's scope. `--since=` overrides it. A closure outside the
- * window is not an audit finding: closing an issue is normal development
- * work, and the gate is not a licence system.
+ * The ledger declares its windows in `audit.windows` (Issue #815). A
+ * window is a date range plus the population it covers:
+ *
+ *   - `population: <integer>` is a FROZEN window. The entries attributed
+ *     to it must number exactly that, so the 2026-10-31 sweep's 132
+ *     entries can never be silently trimmed or padded.
+ *   - `population: null` is a DERIVED window. Its population is the
+ *     entries attributed to it, so recording a new close cannot turn the
+ *     gate red. It still has a date range: an entry cannot be parked
+ *     outside the period it claims to cover.
+ *
+ * Every entry names its window (`entry.window`) and its `closedAt` must
+ * fall inside that window. The audit's `--since=` default is the
+ * earliest window start, because that is the population the ledger
+ * claims to cover; the history before it is out of the audit's scope.
+ * `--since=` overrides it. A closure outside every window is not an
+ * audit finding: closing an issue is normal development work, and the
+ * gate is not a licence system.
  *
  * Why it is a CI step and not part of `validate:fast`
  * --------------------------------------------------
@@ -82,10 +94,11 @@
  *   error → the step fails. An issue was closed with neither a ledger
  *           entry nor a trace (R001), the ledger and GitHub disagree
  *           about a tracked issue's state (R002 / R003), a ledger entry
- *           cannot be read (R004), the ledger's own population count
- *           does not match its entries (R005), or a mass closure used
- *           the release-branch template without a per-issue record
- *           (R006).
+ *           cannot be read (R004), the ledger's windows and its entries
+ *           disagree — an entry is unattributed or outside its window,
+ *           or a frozen window's entry count does not match (R005) — or
+ *           a mass closure used the release-branch template without a
+ *           per-issue record (R006).
  *   The API being unreachable is exit 2 (unusable input), never a clean
  *   bill of health: a registry outage must not read as "everything is
  *           accounted for".
@@ -359,6 +372,166 @@ export function closingComment(issue) {
 	return typeof last.body === 'string' && last.body.trim() !== '' ? last.body : null;
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isIsoDate(value) {
+	return typeof value === 'string' && ISO_DATE.test(value);
+}
+
+/**
+ * The earliest declared window start — the date the audit's default
+ * `--since=` begins. Falls back to `audit.closedAt` for a ledger written
+ * before windows existed.
+ *
+ * @param {unknown} ledger
+ * @returns {string|null}
+ */
+export function auditWindowStart(ledger) {
+	const windows = Array.isArray(ledger?.audit?.windows) ? ledger.audit.windows : [];
+	const starts = windows
+		.map((window) => window?.from)
+		.filter(isIsoDate)
+		.sort();
+	return starts[0] ?? (isIsoDate(ledger?.audit?.closedAt) ? ledger.audit.closedAt : null);
+}
+
+/**
+ * One line per declared window, for the human summary. This is not a
+ * score: it makes the ledger's own coverage visible.
+ *
+ * @param {unknown} ledger
+ * @returns {string[]}
+ */
+export function summarizeWindows(ledger) {
+	const entries = Array.isArray(ledger?.entries) ? ledger.entries : [];
+	const windows = Array.isArray(ledger?.audit?.windows) ? ledger.audit.windows : [];
+	const counts = new Map();
+	for (const entry of entries) {
+		const id = typeof entry?.window === 'string' ? entry.window : null;
+		if (id === null) continue;
+		counts.set(id, (counts.get(id) ?? 0) + 1);
+	}
+	return windows.map((window) => {
+		const id = typeof window?.id === 'string' ? window.id : '(unnamed)';
+		const population = Number.isInteger(window?.population)
+			? `frozen population ${window.population}`
+			: 'population derived from entries';
+		return `${id}: ${counts.get(id) ?? 0} recorded (${population})`;
+	});
+}
+
+/**
+ * R005 — the ledger's windows and its entries agree (Issue #815).
+ *
+ * The rule this replaces compared ONE frozen number (`audit.population`)
+ * with `entries.length`, which meant no new close could ever be
+ * recorded. The window keeps that guarantee where it is meaningful —
+ * a frozen historical population — and derives it everywhere the
+ * ledger keeps growing:
+ *
+ *   - every entry names a declared window, and its `closedAt` falls
+ *     inside that window's dates (so an entry cannot be parked in a
+ *     window that does not cover it);
+ *   - a frozen window carries exactly its declared number of entries
+ *     (so the 2026-10-31 population of 132 cannot be trimmed or padded);
+ *   - a derived window's population is its entries, and needs no count.
+ *
+ * @param {unknown} ledger
+ * @returns {Array<{rule: string, issue: number|null, message: string}>}
+ */
+export function checkWindows(ledger) {
+	const findings = [];
+	const entries = Array.isArray(ledger?.entries) ? ledger.entries : [];
+	const windows = Array.isArray(ledger?.audit?.windows) ? ledger.audit.windows : [];
+	const fail = (message) => findings.push({ rule: 'R005', issue: null, message });
+
+	if (windows.length === 0) {
+		if (entries.length > 0) {
+			fail(
+				`the ledger carries ${entries.length} entries but declares no audit window (audit.windows); every entry must belong to a declared window`,
+			);
+		}
+		return findings;
+	}
+
+	const byId = new Map();
+	for (const window of windows) {
+		if (!window || typeof window.id !== 'string' || window.id.trim() === '') {
+			fail('an audit window has no id');
+			continue;
+		}
+		if (byId.has(window.id)) {
+			fail(`audit window "${window.id}" is declared more than once`);
+			continue;
+		}
+		if (!isIsoDate(window.from) || (window.to !== null && !isIsoDate(window.to))) {
+			fail(`audit window "${window.id}" must declare from / to as ISO dates (to may be null)`);
+			continue;
+		}
+		if (window.to !== null && window.to < window.from) {
+			fail(`audit window "${window.id}" ends before it starts`);
+			continue;
+		}
+		if (
+			window.population !== null &&
+			!(Number.isInteger(window.population) && window.population >= 0)
+		) {
+			fail(
+				`audit window "${window.id}" must declare population as a non-negative integer (frozen) or null (derived)`,
+			);
+			continue;
+		}
+		byId.set(window.id, { ...window, members: [] });
+	}
+
+	const ordered = [...byId.values()].sort((a, b) => a.from.localeCompare(b.from));
+	for (let index = 1; index < ordered.length; index += 1) {
+		const previous = ordered[index - 1];
+		const previousEnd = previous.to ?? '9999-12-31';
+		if (ordered[index].from <= previousEnd) {
+			fail(`audit windows "${previous.id}" and "${ordered[index].id}" overlap`);
+		}
+	}
+
+	for (const entry of entries) {
+		const number = Number(entry?.issue);
+		const label = Number.isInteger(number) ? `#${number}` : 'an entry';
+		const id = entry?.window;
+		if (typeof id !== 'string' || id.trim() === '') {
+			fail(`entry ${label} names no audit window`);
+			continue;
+		}
+		const window = byId.get(id);
+		if (!window) {
+			fail(`entry ${label} names audit window "${id}", which is not declared`);
+			continue;
+		}
+		const closedAt = typeof entry?.closedAt === 'string' ? entry.closedAt.slice(0, 10) : '';
+		if (!isIsoDate(closedAt)) {
+			fail(`entry ${label} has no ISO closedAt date, so its window cannot be checked`);
+			continue;
+		}
+		if (closedAt < window.from || (window.to !== null && closedAt > window.to)) {
+			fail(
+				`entry ${label} was closed ${closedAt}, outside audit window "${window.id}" (${window.from}..${window.to ?? 'open'})`,
+			);
+			continue;
+		}
+		window.members.push(number);
+	}
+
+	for (const window of byId.values()) {
+		if (window.population === null) continue;
+		if (window.members.length !== window.population) {
+			fail(
+				`audit window "${window.id}" declares a frozen population of ${window.population}, but ${window.members.length} entries are attributed to it`,
+			);
+		}
+	}
+
+	return findings;
+}
+
 /**
  * Compare GitHub with the committed ledger.
  *
@@ -411,15 +584,7 @@ export function compare({ closed, ledger, states }) {
 		}
 	}
 
-	const population = Number(ledger?.audit?.population);
-	if (Number.isInteger(population) && population !== entries.length) {
-		findings.push({
-			rule: 'R005',
-			issue: null,
-			message: `the ledger declares an audited population of ${population}, but it carries ${entries.length} entries`,
-		});
-	}
-
+	findings.push(...checkWindows(ledger));
 	findings.push(...detectMassClosure({ closed, states, byIssue }));
 
 	return findings;
@@ -478,7 +643,7 @@ export async function main(argv) {
 		process.stderr.write(`${error}\n`);
 		return 2;
 	}
-	const since = args.since ?? ledger?.audit?.closedAt ?? '2026-10-31';
+	const since = args.since ?? auditWindowStart(ledger) ?? '2026-10-31';
 	const entries = Array.isArray(ledger?.entries) ? ledger.entries : [];
 	const tracked = entries.map((entry) => Number(entry?.issue)).filter(Number.isInteger);
 	const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null;
@@ -505,6 +670,9 @@ export async function main(argv) {
 	process.stdout.write(
 		`issue closure remote audit: ${tracked.length} tracked issue(s), ${closed.length} closure(s) still closed since ${since} in ${args.repo}\n`,
 	);
+	for (const line of summarizeWindows(ledger)) {
+		process.stdout.write(`  window ${line}\n`);
+	}
 	process.stdout.write(
 		`  closures with neither a ledger entry nor a trace: ${findings.filter((f) => f.rule === 'R001').length}\n`,
 	);

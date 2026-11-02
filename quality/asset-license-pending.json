@@ -1,0 +1,57 @@
+{
+	"schema": "asset-license-pending.v1",
+	"issue": 780,
+	"note": "未レビューの宣言であって権利の記録ではない。ここに載る行は licence / rightsHolder / evidence を持たず、何も公開可にしない。gate は毎回 S002（warn）で列挙し、台帳にない未記録バイトは L001（error）で落とす。行はファイルが消えたら・資産記録ができたら S003（error）になり、放置できない。",
+	"entries": [
+		{
+			"path": "src/home/digits/0.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/1.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/2.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/3.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/4.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/5.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/6.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/7.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/8.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		},
+		{
+			"path": "src/home/digits/9.webp",
+			"reason": "Vite が src/home/access/tiles.tsx から ?url で取り込む生成画像（scripts/generate-counter-digits.mjs）。ラスタライズ元フォントの権利が未確認のため、資産記録の作成は owner 判断待ち。",
+			"ownerDecision": "pending"
+		}
+	]
+}

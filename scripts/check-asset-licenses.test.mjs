@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url';
 
 import {
 	collectAuditedFiles,
+	collectServedSourceAssets,
 	main,
+	readPendingLedger,
 	renderConsoleReport,
 	renderHtmlReport,
 	renderMarkdownReport,
@@ -113,6 +115,100 @@ describe('collectAuditedFiles', () => {
 			'public/index.html',
 			'public/og/two.png',
 		]);
+	});
+});
+
+/**
+ * Issue #780 — the scope Vite emits from `src/**`.
+ *
+ * The gate used to audit `public/**` only, so identical bytes passed by
+ * sitting under `src/` and being imported instead. These tests fix the
+ * derivation: what an import names is in scope, and nothing else is.
+ */
+describe('collectServedSourceAssets', () => {
+	it('finds assets named by a relative import, including ?url and the ~ alias', () => {
+		const root = makeFixture({
+			'src/home/access/tiles.tsx':
+				"import zero from '../digits/0.webp?url';\nimport icon from '~/entry/icon.svg';\n",
+			'src/home/digits/0.webp': 'bytes',
+			'src/entry/icon.svg': 'bytes',
+			'src/entry/unused.png': 'bytes',
+		});
+		assert.deepEqual(collectServedSourceAssets(root).files, [
+			'src/entry/icon.svg',
+			'src/home/digits/0.webp',
+		]);
+	});
+
+	it('reads a stylesheet url() reference', () => {
+		const root = makeFixture({
+			'src/styles.css': '.x { background-image: url("./bg.png"); }\n',
+			'src/bg.png': 'bytes',
+		});
+		assert.deepEqual(collectServedSourceAssets(root).files, ['src/bg.png']);
+	});
+
+	it('ignores packages, non-asset targets and imports made only by a test file', () => {
+		const root = makeFixture({
+			'src/app.tsx':
+				"import { x } from 'some-package';\nimport './module.ts';\nimport './named.png';\n",
+			'src/module.ts': 'export const x = 1;\n',
+			'src/named.png': 'bytes',
+			// Only a test names this one. A test is not in the client
+			// build, so its `?url` import ships nothing — auditing it would
+			// make the scope larger than the bytes a visitor receives.
+			'src/home/digits/0.webp': 'bytes',
+			'src/home/access/tiles.test.tsx': "import zero from '../digits/0.webp?url';\n",
+		});
+		assert.deepEqual(collectServedSourceAssets(root).files, ['src/named.png']);
+	});
+
+	it('reports an asset import that resolves to no file instead of dropping it', () => {
+		const root = makeFixture({
+			'src/app.tsx': "import missing from './missing.webp';\n",
+		});
+		const result = collectServedSourceAssets(root);
+		assert.deepEqual(result.files, []);
+		assert.deepEqual(result.missing, [{ importer: 'src/app.tsx', target: 'src/missing.webp' }]);
+	});
+});
+
+describe('readPendingLedger', () => {
+	it('returns an absent ledger without inventing entries', () => {
+		assert.deepEqual(readPendingLedger(makeFixture({ 'public/a.png': 'b' })), {
+			present: false,
+			entries: [],
+			problems: [],
+		});
+	});
+
+	it('refuses a reason that is too short to explain anything', () => {
+		const root = makeFixture({
+			'quality/asset-license-pending.json': JSON.stringify({
+				schema: 'asset-license-pending.v1',
+				entries: [{ path: 'src/a.webp', reason: 'todo', ownerDecision: 'pending' }],
+			}),
+		});
+		assert.equal(readPendingLedger(root).entries.length, 0);
+		assert.ok(readPendingLedger(root).problems.length > 0);
+	});
+
+	it('refuses a decision other than "pending" — the ledger cannot clear anything', () => {
+		const root = makeFixture({
+			'quality/asset-license-pending.json': JSON.stringify({
+				schema: 'asset-license-pending.v1',
+				entries: [
+					{
+						path: 'src/a.webp',
+						reason: 'generated here, the source font rights are still unverified',
+						ownerDecision: 'excluded',
+					},
+				],
+			}),
+		});
+		const read = readPendingLedger(root);
+		assert.deepEqual(read.entries, []);
+		assert.match(read.problems.join('\n'), /ownerDecision/);
 	});
 });
 
@@ -312,7 +408,12 @@ describe('the gate', () => {
 			(total, match) => total + Number(match[1]),
 			0,
 		);
-		assert.equal(claimed, audited);
+		// Issue #780 — an audited byte is accounted for either by a record
+		// or by a ledger line declaring it unreviewed. The second is not a
+		// clearance, so the ledger count is added separately rather than
+		// folded into `claimed`.
+		const pending = Number(/pending, declared unreviewed: (\d+)/.exec(run.stdout)?.[1] ?? 0);
+		assert.equal(claimed + pending, audited);
 		// The fonts ship their licence text with the page, so they are
 		// cleared from the embedded declaration; the assets whose rights
 		// this repository cannot account for stay held.
@@ -355,6 +456,128 @@ describe('the gate', () => {
 		assert.equal(run.status, 0, run.stdout + run.stderr);
 		assert.doesNotMatch(run.stdout, /L001/);
 		assert.doesNotMatch(run.stdout, /L002/);
+	});
+
+	/**
+	 * Issue #780 — the hole this Issue was filed for.
+	 *
+	 * The same bytes passed the gate by living under `src/` instead of
+	 * `public/`. With the scope derived from the import graph they are
+	 * audited, and an unrecorded one is `L001` (fail-closed).
+	 */
+	it('fails when an asset imported from src/** has no record', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			'src/home/access/tiles.tsx': "import zero from '../digits/0.webp?url';\n",
+			'src/home/digits/0.webp': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify(recordFor()),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /L001 src\/home\/digits\/0\.webp/);
+	});
+
+	it('downgrades a declared-unreviewed asset to S002 without clearing it', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			'src/home/access/tiles.tsx': "import zero from '../digits/0.webp?url';\n",
+			'src/home/digits/0.webp': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify(recordFor()),
+			'quality/asset-license-pending.json': JSON.stringify({
+				schema: 'asset-license-pending.v1',
+				entries: [
+					{
+						path: 'src/home/digits/0.webp',
+						reason: 'generated here, but the rasterised font rights are unverified',
+						ownerDecision: 'pending',
+					},
+				],
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 0, output);
+		assert.match(output, /S002 src\/home\/digits\/0\.webp/);
+		assert.match(output, /pending, declared unreviewed: 1/);
+		// It is still uncovered: the ledger records an absence, not a
+		// clearance, so the record's file count stays at 1 (the one file
+		// under `public/`). If the ledger ever counted as a claim, this
+		// would read 2.
+		assert.match(output, /fixture-icons\s+image\s+1 files/);
+	});
+
+	it('fails when the ledger outlives the reason for an entry', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify(recordFor()),
+			'quality/asset-license-pending.json': JSON.stringify({
+				schema: 'asset-license-pending.v1',
+				entries: [
+					{
+						path: 'src/gone.webp',
+						reason: 'this file was deleted and the ledger was not updated',
+						ownerDecision: 'pending',
+					},
+				],
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /S003 src\/gone\.webp/);
+	});
+
+	it('fails when a ledger entry is now covered by a record', () => {
+		const root = makeFixture({
+			'public/icons/one.png': 'bytes',
+			'src/home/access/tiles.tsx': "import zero from '../digits/0.webp?url';\n",
+			'src/home/digits/0.webp': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify({
+				...recordFor(),
+				assets: [
+					{
+						...recordFor().assets[0],
+						id: 'fixture-digits',
+						covers: ['src/home/digits/**'],
+					},
+				],
+			}),
+			'quality/asset-license-pending.json': JSON.stringify({
+				schema: 'asset-license-pending.v1',
+				entries: [
+					{
+						path: 'src/home/digits/0.webp',
+						reason: 'declared before a record existed; the record now covers it',
+						ownerDecision: 'pending',
+					},
+				],
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		const output = `${run.stdout}${run.stderr}`;
+		assert.equal(run.status, 1, output);
+		assert.match(output, /S003 src\/home\/digits\/0\.webp/);
 	});
 
 	it('writes a Markdown report when asked, into the given path', () => {

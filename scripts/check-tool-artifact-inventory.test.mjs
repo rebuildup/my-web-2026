@@ -338,9 +338,13 @@ describe('the gate over this repository', () => {
 	// Submodules are only present when the tree was cloned with
 	// `--recursive` (CI does; a fresh shallow clone may not), so the
 	// steady-state assertion runs where the evidence can be read at all.
-	const submodulesPresent =
-		existsSync(join(repoRoot, 'external/prototype/.git')) &&
-		existsSync(join(repoRoot, 'external/readmark/.git'));
+	// The shipped count follows the submodules that are actually
+	// checked out: a `same_origin_static` Tool without a checkout is
+	// reported as inventory-only, not as shipped.
+	const shippedSubmodules = ['prototype', 'readmark', 'color-palette'].filter((slug) =>
+		existsSync(join(repoRoot, `external/${slug}/.git`)),
+	);
+	const submodulesPresent = shippedSubmodules.length === 3;
 
 	it(
 		'reports every shipped Tool as verified against the reviewed record',
@@ -349,8 +353,8 @@ describe('the gate over this repository', () => {
 			const result = runGate([]);
 			assert.equal(result.status, 0, result.stderr);
 			// A passing run writes its block to stdout.
-			assert.match(result.stdout, /2 shipped/);
-			assert.match(result.stdout, /2 pass/);
+			assert.match(result.stdout, new RegExp(`${shippedSubmodules.length} shipped`));
+			assert.match(result.stdout, new RegExp(`${shippedSubmodules.length} pass`));
 			assert.match(result.stdout, /Result: PASS/);
 		},
 	);

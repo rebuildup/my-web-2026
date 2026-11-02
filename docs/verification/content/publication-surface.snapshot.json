@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/color-palette",
 					"/tools/prototype",
 					"/tools/readmark"
 				],
@@ -315,6 +316,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/color-palette",
 			"/tools/prototype",
 			"/tools/readmark"
 		],
@@ -1280,7 +1282,9 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/tools/color-palette"
+		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [],
@@ -1289,6 +1293,12 @@
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/color-palette"
+			}
+		]
 	}
 }

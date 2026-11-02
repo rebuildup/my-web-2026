@@ -86,6 +86,56 @@ describe('composeMediaUrl — Decision 5 — R2 custom domain', () => {
 	});
 });
 
+describe('composeMediaUrl — Issue #808 — development surface', () => {
+	// The development data-source binding (#377) is injected ONLY by the
+	// dev server, so its presence is what says "this is the verification
+	// server, which serves /media/<key> on its own origin".
+	const devEnv = {
+		MEDIA: {} as R2Bucket,
+		MEDIA_PUBLIC_BASE_URL: undefined,
+		MY_WEB_2026_DATA_SOURCE: 'production-readonly',
+	};
+
+	it('composes a same-origin URL on the development surface', () => {
+		expect(composeMediaUrl(devEnv, 'portfolio/cover.webp')).toBe('/media/portfolio/cover.webp');
+	});
+
+	it('is port-independent (the base carries no origin)', () => {
+		// Same env, different port: the URL must not change, because the
+		// relative base is what keeps :3000 / :3011 / a rescaffolded port
+		// all correct without a configuration edit.
+		expect(composeMediaUrl(devEnv, 'reactions/deadbeef.png')).toBe(
+			'/media/reactions/deadbeef.png',
+		);
+	});
+
+	it('lets the production var win when both are present', () => {
+		const env = {
+			MEDIA: {} as R2Bucket,
+			MEDIA_PUBLIC_BASE_URL: 'https://rebuildup.dev/media',
+			MY_WEB_2026_DATA_SOURCE: 'production-readonly',
+		};
+		expect(composeMediaUrl(env, 'portfolio/cover.webp')).toBe(
+			'https://rebuildup.dev/media/portfolio/cover.webp',
+		);
+	});
+
+	it('treats an empty production var as absent', () => {
+		const env = { ...devEnv, MEDIA_PUBLIC_BASE_URL: '' };
+		expect(composeMediaUrl(env, 'portfolio/cover.webp')).toBe('/media/portfolio/cover.webp');
+	});
+
+	it('keeps the development surface fail-closed for private keys', () => {
+		expect(composeMediaUrl(devEnv, 'private/draft/secret.webp')).toBeNull();
+		expect(composeMediaUrl(devEnv, '../etc/passwd')).toBeNull();
+	});
+
+	it('stays null off the development surface with no base URL', () => {
+		const env = { MEDIA: {} as R2Bucket, MEDIA_PUBLIC_BASE_URL: undefined };
+		expect(composeMediaUrl(env, 'portfolio/cover.webp')).toBeNull();
+	});
+});
+
 describe('isValidR2Key', () => {
 	it('accepts canonical keys', () => {
 		expect(isValidR2Key('portfolio/cover.webp')).toBe(true);

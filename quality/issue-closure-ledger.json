@@ -2837,6 +2837,29 @@
 			"action": "kept-closed",
 			"note": "PR #809（merge 4d6be456）が開発面の media URL を相対 /media にし、PR #810（merge 4778028c）が実ブラウザの検証記録を追加した。受け入れ条件 1-6 は Issue の close コメントで証拠と対応づけられている。owner への確認依頼は未実施なので ownerConfirmation は unconfirmed のまま。",
 			"missing": null
+		},
+		{
+			"issue": 753,
+			"title": "release: v0.7.0 の tag と GitHub Release が未公開（main は 0.7.0 / 最新公開は v0.6.3）",
+			"closedAt": "2026-11-02",
+			"window": "tracked",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
+			"evidence": [
+				"https://github.com/rebuildup/my-web-2026/releases/tag/v0.8.0",
+				"https://github.com/rebuildup/my-web-2026/pull/619",
+				"https://github.com/rebuildup/my-web-2026/issues/753#issuecomment-6567669679"
+			],
+			"decision": {
+				"kind": "owner",
+				"reason": "v0.7.0 を遡及公開せず v0.8.0 に吸収する（Issue #753 の選択肢 2）。v0.8.0 の Release notes に「v0.7.0 の GitHub Release は未公開・その内容はすべて本リリースに含まれる」と PR #619（main へ 2026-10-22T13:59:58Z にマージ）を付して記録した。2026-11-02 の実測で refs/tags/v0.7.0 が存在しないことを確認。"
+			},
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "Release notes の公開（gh release edit v0.8.0）と tag 不在の実測が証拠。選択肢 2 の採択そのものがこの Issue の成果物であり、release branch への統合だけを根拠にはしていない。",
+			"missing": null
 		}
 	]
 }

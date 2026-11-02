@@ -226,6 +226,9 @@ const TOOL_PREVIEWS: Readonly<
 	'business-mail-block': {
 		src: '/tool-previews/business-mail-block.webp',
 		alt: 'Business Mail Block Tool の画面。見出しと説明の下に「Business」バッジとブロック検索欄・カテゴリフィルタ、テンプレート・バリデーション・ガイドライン・カスタムブロックのタブ、左に「利用可能なブロック」の挨拶ブロック一覧、右に「メール作成エリア」が並ぶ。',
+		width: 1200,
+		height: 669,
+	},
 	pomodoro: {
 		src: '/tool-previews/pomodoro.webp',
 		alt: 'Pomodoro の実行中の画面。左上に「Warm up」のフェーズ表示、その下にカウントダウン表示（14:58.75 のように減っている）、さらに下に作業／休憩のスケジュール一覧（Warm up 15 min / Short Break 3 min / Deep Work I 30 min など）が並ぶ。',

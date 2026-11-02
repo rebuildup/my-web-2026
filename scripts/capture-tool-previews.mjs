@@ -133,6 +133,8 @@ export const PREVIEW_TARGETS = [
 		/** What the committed artefact must show, for a human re-check. */
 		expect:
 			'Business Mail Block Tool の初期画面。見出しと説明の上に「Business」バッジと検索欄・カテゴリフィルタ（全カテゴリ / お気に入り）、タブ（テンプレート / バリデーション / ガイドライン / カスタムブロック）、左に「利用可能なブロック」の挨拶ブロックの一覧、右に「メール作成エリア」（「ここにブロックをドラッグ&ドロップしてください」）',
+	},
+	{
 		slug: 'pomodoro',
 		/** What the committed artefact must show, for a human re-check. */
 		expect:

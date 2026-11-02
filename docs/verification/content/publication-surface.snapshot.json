@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/business-mail-block",
 					"/tools/code-type-p5",
 					"/tools/color-palette",
 					"/tools/fillgen",
@@ -325,6 +326,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/business-mail-block",
 			"/tools/code-type-p5",
 			"/tools/color-palette",
 			"/tools/fillgen",
@@ -1387,107 +1389,21 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/code-type-p5",
-			"/tools/fillgen",
-			"/tools/pi-game",
-			"/tools/pomodoro"
+			"/tools/business-mail-block"
 		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://cdn.jsdelivr.net",
-			"https://cdn.jsdelivr.net/npm/p5@",
-			"https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json",
-			"https://via.placeholder.com",
-			"https://via.placeholder.com/300?text=Image+Error",
-			"https://www.youtube.com",
-			"https://www.youtube.com/embed/…",
-			"https://www.youtube.com/iframe_api"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"cdn.jsdelivr.net",
-			"via.placeholder.com",
-			"www.youtube.com"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host cdn.jsdelivr.net appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host via.placeholder.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host www.youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://cdn.jsdelivr.net"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://cdn.jsdelivr.net/npm/p5@"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://via.placeholder.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://via.placeholder.com/300?text=Image+Error"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.youtube.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.youtube.com/embed/…"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.youtube.com/iframe_api"
-			},
-			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/code-type-p5"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/fillgen"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/pi-game"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/pomodoro"
+				"message": "Public URL added: /tools/business-mail-block"
 			}
 		]
 	}

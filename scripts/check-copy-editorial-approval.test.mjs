@@ -189,6 +189,48 @@ describe('check-copy-editorial-approval — a rejected change set', () => {
 	});
 });
 
+describe('check-copy-editorial-approval — a record whose owner decision is still pending', () => {
+	it('is NEEDS REVIEW, never a pass', () => {
+		const { result } = runFixture('pending');
+		assert.equal(result.verdict, 'not run');
+		assert.equal(result.dimensions.approval, 'not run');
+		const finding = result.findings.find((item) => item.code === 'approval-awaiting-owner');
+		assert.ok(finding, 'the gate must name the missing owner decision');
+		assert.match(finding.message, /no owner decision yet/);
+		assert.match(finding.message, /un-reviewed/);
+	});
+
+	it('exits 1 without the advisory mode', () => {
+		const { result } = runFixture('pending');
+		assert.equal(exitCodeForVerdict(result.verdict), 1);
+		assert.equal(exitCodeForVerdict(result.verdict, { allowUnreviewed: true }), 0);
+	});
+
+	it('never passes, whatever the provenance says', () => {
+		const { fixture, changeSet } = runFixture('pending');
+		const record = {
+			...fixture.ledger.records[0],
+			provenance: {
+				kind: 'owner-review',
+				reference: 'https://github.com/rebuildup/my-web-2026/pull/512#pullrequestreview-1',
+				recordedBy: 'rebuildup',
+				ownerConfirmation: 'confirmed',
+			},
+		};
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'not run');
+		assert.equal(result.dimensions.approval, 'not run');
+	});
+
+	it('knows the pending decision as a decision value', () => {
+		assert.ok(DECISIONS.includes('pending'));
+	});
+});
+
 describe('check-copy-editorial-approval — a change set that changes no public copy', () => {
 	it('is not applicable and owes no review', () => {
 		const { changeSet, result } = runFixture('not-applicable');
@@ -324,6 +366,25 @@ describe('check-copy-editorial-approval — the repository declarations', () => 
 				assert.ok(
 					typeof record.provenance.reference === 'string' && record.provenance.reference.length > 0,
 					`${record.id} claims an owner review and must name the artefact`,
+				);
+			}
+		}
+	});
+
+	it('claims no owner decision that was never taken (Issue #754)', () => {
+		for (const record of ledger.records) {
+			if (record.decision === 'pending') {
+				assert.equal(
+					record.reviewer,
+					null,
+					`${record.id} has no owner decision, so it names no reviewer`,
+				);
+			}
+			if (record.provenance?.ownerConfirmation !== 'confirmed') {
+				assert.notEqual(
+					record.decision,
+					'approved',
+					`${record.id} was not confirmed by the owner and may not claim an approval`,
 				);
 			}
 		}

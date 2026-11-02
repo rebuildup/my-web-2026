@@ -491,6 +491,23 @@ describe('check-stale-content-review — the shipped registry', () => {
 			result.provenanceSummary.records,
 		);
 	});
+
+	it('names the side that wrote the row, not an owner approval (Issue #754)', () => {
+		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
+		for (const record of registry.expressions) {
+			// `reviewedBy` says WHO WROTE the ledger row. A row an
+			// automated side wrote may not claim the owner wrote it, and
+			// whether the owner confirmed the record is stated by the
+			// provenance alone.
+			if (record.provenance?.ownerConfirmation !== 'confirmed') {
+				assert.notEqual(
+					record.reviewedBy,
+					'owner',
+					`${record.id} was not confirmed by the owner and may not claim an owner row`,
+				);
+			}
+		}
+	});
 });
 
 describe('check-stale-content-review — the provenance of a review record (Issue #720)', () => {

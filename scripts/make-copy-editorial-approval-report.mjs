@@ -82,6 +82,10 @@ const FIXTURE_NOTES = {
 		'the owner rejected the change — the verdict is a fail, a different sentence from “not reviewed”.',
 	'stale-approval':
 		'an approval for other text does not cover this change set — the verdict is a fail.',
+	'agent-recorded':
+		'a record an automated side wrote, with no owner confirmation — the verdict is NEEDS REVIEW, never a pass.',
+	pending:
+		'a record whose owner decision is still pending (Issue #754) — the absence of a decision is reported as NEEDS REVIEW, never as approval.',
 	'not-applicable':
 		'a change that touches no public Japanese copy owes no review — the verdict is not applicable.',
 };

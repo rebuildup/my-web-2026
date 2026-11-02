@@ -12,6 +12,28 @@
 > と
 > [`../../runbook/stale-content-review.md`](../../runbook/stale-content-review.md)。
 
+## 0. Issue #754 による訂正（本監査の後）
+
+本監査（Issue #720）は **分類**（provenance）を足した。Issue #754 は、その
+訂正が **残した不整合** を直した: 台帳が `provenance.kind: "agent-recorded"` /
+`ownerConfirmation: "unconfirmed"` と書いているのに、`decision: "approved"` +
+`reviewer: "rebuildup"`（copy 台帳 6 件）と `reviewedBy: "owner"`（鮮度
+registry 21 件）は **owner 本人の判断を暗示していた**。
+
+| 台帳 | Issue #720 の監査時 | Issue #754 の訂正後 |
+| --- | --- | --- |
+| `quality/copy-editorial-approvals.json`（6 件） | `decision: "approved"` / `reviewer: "rebuildup"` | `decision: "pending"` / `reviewer: null` |
+| `quality/stale-content-review.json`（21 件） | `reviewedBy: "owner"` | `reviewedBy: "agent"` |
+
+`fingerprint` / `reviewedAt` / `provenance` / `note` / `comparisons` は
+**一切変更していない**。変えたのは **判断していないのに判断を主張していた
+語彙** だけである（re-classify, do not re-date / do not re-decide）。
+
+**以下の表は Issue #720 の監査時点の記録である。** 分類（provenance）は
+変わらない。owner が自分の判断を artefact として残した record だけが
+`approved` / `reviewedBy: "owner"` になり、それ以外は **owner 確認待ち** の
+まま報告される。
+
 ## 1. 何が問題だったか
 
 台帳は「approved」と書いていた。gate はその文字列を owner の判断として読み、
@@ -77,7 +99,8 @@ green の CI が「owner が確認済み」の証明のように読まれてい�
 
 ## 4. 監査結果 — 鮮度 registry（21 件）
 
-対象: `quality/stale-content-review.json`。`reviewedBy` は全件 `"owner"`
+対象: `quality/stale-content-review.json`。監査時点では `reviewedBy` は全件
+`"owner"` であった（Issue #754 で全件 `"agent"` に訂正された — §0）。
 （ Issue #437 の comment は「15 件」と数えている。後半 6 件は後から足された）。
 
 ### 4.1 最初の 15 件（commit `6db891ad`）
@@ -120,7 +143,7 @@ artefact（共通）: [Issue #437 comment](https://github.com/rebuildup/my-web-2
 - **日付・reviewed expression・note・dimension は一切変更していない。**
   分類（provenance）の追加のみである（Issue #720 の指示どおり「re-classify,
   do not re-date」）。
-- gate は `reviewedBy: "owner"` を **registry 自身の主張** として扱い、
+- gate は `reviewedBy` を **registry 自身の主張** として扱い、
   provenance を読む。鮮度ゲートは「owner がいつ読んだか」を **記録された主張**
   として報告し、owner artefact が無い記録を **owner 確認待ち** として示す。
 - gate は依然として **日付の陳腐化**（current / stale）を判定し、

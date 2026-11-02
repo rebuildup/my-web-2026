@@ -216,3 +216,19 @@ export const rawTokens = {
 } as const;
 
 export type RawTokens = typeof rawTokens;
+
+/**
+ * The spacing ramp on its own (Issue #812).
+ *
+ * `rawTokens` is one object literal, so a consumer that imports it
+ * keeps the WHOLE palette — every colour ramp — in the client bundle:
+ * a bundler cannot split an exported object literal across its
+ * consumers. The `/design-system` spacing ruler needs the spacing
+ * steps and nothing else, so the ramp is published as its own export;
+ * a consumer that imports ONLY this keeps the colour ramps out of the
+ * browser bundle (the palette now reaches the browser nowhere — the
+ * colour section resolves its hex pairs on the server).
+ *
+ * The values are the same objects; this is a projection, not a copy.
+ */
+export const spacingTokens = rawTokens.spacing;

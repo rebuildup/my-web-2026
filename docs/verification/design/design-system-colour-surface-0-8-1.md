@@ -19,11 +19,23 @@ surface からの引退、状態の分類色借用、操作は墨、の 4 点を
 | `src/editorial/semantic-tokens.ts` | `bg.canvas.value.base` を `{colors.neutral.25}` に。`_dark`（`charcoal.950`）は不変。 |
 | `src/editorial/colors.md` | surface ladder を `0 → 50 → 100` から `25 → 50 → 100` に。foreground 検査の基準を `neutral.25` (`#fcfcfd`) に直し、`neutral.0` が `text.inverse` 専用になった旨を 1 文追加。light の数値表を変更した行だけ `#fcfcfd` canvas / Issue #812 の値に差し替え（表の行は削除していない）。 |
 | `src/routes/design-system/DesignSystemPage.tsx` | `ColorSection()` のみ置換: `sectionStyle`（borderTop + 白地）をやめ `backgroundColor: 'bg.subtle'`、`variant="spread"` を外して `SectionHeading` の縦積みにする、`data-colour-section` を付ける。冒頭の読み順コメントの 01 行を「3 分類の色面 + 状態借用 + 操作墨 + token 台帳」に更新。他 section は不変。 |
-| `src/routes/design-system/sections/ColorSwatches.tsx` | 全面書き換え。旧 `PANE` / `SwatchTile` / `SwatchPane` / `data-token-swatch` を削除。3 分類の triptych（light field の内側に dark inset）、状態を借りる 2px ルール 3 本、墨の CTA 1 つ、21 token の text 台帳。`resolveSemanticRefs` / `resolveHex` は旧実装を維持し、`resolvePair` / `hexToRgb` / `relativeLuminance` / `contrastRatio` / `pickInk` を追加。 |
+| `src/routes/design-system/sections/ColorSwatches.tsx` | 全面書き換え。旧 `PANE` / `SwatchTile` / `SwatchPane` / `data-token-swatch` を削除。3 分類の triptych（light field の内側に dark inset）、状態を借りる 2px ルール 3 本、墨の CTA 1 つ、21 token の text 台帳。コントラスト計算（`hexToRgb` / `relativeLuminance` / `contrastRatio` / `pickInk`）は client 側に残す。 |
 | `src/routes/design-system/sections/StatusAccents.tsx` | カードの chrome（border / radius / `bg.canvas`）と category の 4px 左 border を削除。状態・分類の `StateMark` を語の左に置き、色は 8px の mark だけに限定。`CATEGORY_BORDER` を `CATEGORY_MARK` に置換し、`cx` import を削除。 |
 | `src/routes/__root.tsx` | light の `theme-color` を `#ffffff` → `#fcfcfd`（browser chrome を page 地色に一致）。dark の `#0a0b0e` は不変。 |
 
-### 1.1 新しい colour section の構成
+### 1.1 bundle 面の追補（CI `bundle:budget:check` 指摘への対処）
+
+| ファイル | 変更 |
+| --- | --- |
+| `src/routes/design-system/tokens.ts`（新規） | semantic token の path → hex 解決を server function として持つ。browser は 24 組の hex を受け取るだけで、raw palette 全体と semantic layer 全体を受信しない。 |
+| `src/routes/design-system.tsx` | route に loader を追加し、解決済みの token データを page に props として渡す。 |
+| `src/routes/design-system/DesignSystemPage.tsx` | `tokenData` を受け取り `ColorSwatches` へ渡す。 |
+| `src/editorial/tokens.ts` | `spacingTokens` を独立 export として追加（`rawTokens.spacing` と同じオブジェクトの projection）。spacing ruler が palette 全体を browser に載せるのを防ぐ。 |
+| `src/routes/design-system/sections/SpacingRuler.tsx` | import を `rawTokens` から `spacingTokens` に変更（描画は不変）。 |
+| `scripts/publication-surface.mjs` | 新規の route ディレクトリ内ファイル `src/routes/design-system/tokens.ts` を `ROUTE_DIR_INERT_FILES` に宣言。 |
+| `test/integration/privacy-projection.test.ts` | 「`/design-system` has no loader」というコメントを実態に合わせる（宣言のみ）。 |
+
+### 1.2 新しい colour section の構成
 
 | 帯 | 中身 | 色の扱い |
 | --- | --- | --- |
@@ -231,6 +243,11 @@ dark inset は 8,704 px²。`accent.category.*` の light / dark 値は token �
   「left-border で識別」と書いているが、#812 で left border は
   `StateMark` に置き換わった。spec §1.4 が「他 section は触らない」と
   決めているため今回は変更していない（後続 Issue の対象）。
+- **03 Spacing の描画**: `SpacingRuler.tsx` の import を `rawTokens` から
+  `spacingTokens`（同じオブジェクトの別 export）に変えたが、描画・DOM・
+  測定値はいずれも不変（§7.1 の bundle 対策）。
+- **budget の数値**: `quality/bundle-budget.json` は変更していない
+  （`/design-system` の cap は 685,000 のまま）。gate の閾値変更は owner 判断。
 
 ---
 
@@ -248,7 +265,64 @@ dark inset は 8,704 px²。`accent.category.*` の light / dark 値は token �
 
 失敗・skip なし。
 
-### 7.1 スクリーンショット
+### 7.1 bundle budget（`pnpm run bundle:budget:check`）
+
+CI の `validate` ジョブ（run 41374365319 / step 71/80）が、この変更で
+`/design-system` の initial JS が cap 685,000 を超えたと報告した。budget の
+数値は変更していない（owner 判断）。以下は内訳と対処の記録。
+
+#### 内訳（すべて同じ tree の `pnpm exec vite build` 実測）
+
+| 項目 | 実測 |
+| --- | --- |
+| base head `4778028c` の route chunk | 39,506 B |
+| 色セクション実装後（commit `530fba02`）の route chunk | 44,043 B（**+4,537 B**） |
+| うち `ColorSwatches.tsx` 単体の差（base 版と差し替え測定） | **+4,789 B** |
+| entry shell（entry chunk）の差 | ±0 B（token 変更は entry に影響しない） |
+| route chunk 内の token palette + semantic layer + resolver（stub 化で測定） | 3,580 B |
+
+つまり増えた 3.5 KiB は **新しい colour section 自身のコード**（表示データ・
+コントラスト計算・JSX・Panda の utility オブジェクト）であり、story / fixture
+の巻き込みや無関係なモジュールの混入ではない。route chunk は issue 実装前
+(base head) の 39,506 B に対して 44,043 B まで増えて cap を超えた。
+
+#### 対処（見た目を変えない削減）
+
+1. **token の hex 解決をサーバーへ移した**（`src/routes/design-system/tokens.ts`）。
+   route chunk から raw palette 全体・semantic layer 全体・resolver 群
+   （実測 3,580 B）が消えた。ブラウザは 24 組の hex を受け取るだけ。
+   コントラスト計算（`pickInk` ほか）は描画判断なので client 側に残す。
+2. **spacing ramp を独立 export にした**（`spacingTokens`）。spacing ruler が
+   `rawTokens` 全体を import していたため、palette の全 color ramp が browser
+   に載っていた。切替後、**palette の hex は route chunk のどこにも含まれない**
+   （`#be185d` 等の実測で 0 件）。
+3. **Panda の `css()` utility を module level の共通定数に寄せた**（`cx` で
+   合成）。同じ utility オブジェクトの重複表記をなくした。
+4. **未使用データを削除した**（台帳の `label` 列など）。
+
+#### 結果
+
+| 項目 | 修正前 | 修正後 | cap |
+| --- | --- | --- | --- |
+| `/design-system` initial JS | 688,632 B | **683,899 B** | 685,000 B（余裕 1,101 B） |
+| `/design-system` route chunk | 44,043 B | **39,183 B** | — |
+| entry shell | 633,211 B | 633,338 B（server fn の stub +127 B） | — |
+
+他の 17 route もすべて cap 内（最も余裕の小さいのは `/keyboard` の 562 B、
+`/admin/keys` の 718 B — base からの持ち越しで、本変更による加重は
+server fn stub の +127 B のみ）。
+
+#### 見た目が変わっていないことの証明
+
+- SSR HTML の差分: colour section の markup は **class 属性の順序のみ**が
+  異なる（`cx` 合成による）。要素・属性・テキスト・style 宣言は同一。
+- スクリーンショット 2 枚は再取得なしで **バイト同一**
+  （`design-system-colour-surface-{1440,390}-after.webp` と再生成分の比較）。
+- §4 の測定値（section height 1359.4 / 2502.3、彩色面積 309,024 / 292,094 px²、
+  unique hue 3、pure-white 面 0、field contrast 5.77 / 5.12 / 4.71 と
+  9.84 / 12.32 / 13.54）がすべて同一。
+
+### 7.2 スクリーンショット
 
 | ファイル | 内容 |
 | --- | --- |

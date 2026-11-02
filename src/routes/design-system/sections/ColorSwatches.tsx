@@ -1,7 +1,6 @@
-import { css } from '../../../../styled-system/css';
+import { css, cx } from '../../../../styled-system/css';
 import { StateMark } from '../../../editorial/primitives/StateMark';
-import { semanticTokens } from '../../../editorial/semantic-tokens';
-import { rawTokens } from '../../../editorial/tokens';
+import type { DesignSystemTokenData } from '../tokens';
 
 /**
  * ColorSwatches — the colour section of `/design-system`, rebuilt as
@@ -48,87 +47,27 @@ import { rawTokens } from '../../../editorial/tokens';
  * measures the field against the two ink candidates and returns the
  * one with the higher contrast ratio, so a field can never end up
  * with unreadable text.
- */
-
-interface TokenEntry {
-	/** Semantic path, e.g. `accent.positive`. */
-	path: string;
-	/** Human-readable label, e.g. `Positive` / `Border subtle`. */
-	label: string;
-}
-
-/**
- * Canonical catalog. Order is editorial, not alphabetic — surface
- * tokens first, then status, then category. The order mirrors the
- * table in `src/editorial/colors.md` so a reader cross-referencing
- * the guide finds the same row.
- */
-const TOKENS: ReadonlyArray<TokenEntry> = [
-	// Page surfaces (bg.*)
-	{ path: 'bg.canvas', label: 'Canvas' },
-	{ path: 'bg.surface', label: 'Surface' },
-	{ path: 'bg.subtle', label: 'Subtle' },
-	{ path: 'bg.accent', label: 'Accent fill' },
-	{ path: 'bg.inverse', label: 'Inverse' },
-	// Text (text.*)
-	{ path: 'text.default', label: 'Default' },
-	{ path: 'text.muted', label: 'Muted' },
-	{ path: 'text.accent', label: 'Accent text' },
-	{ path: 'text.inverse', label: 'Inverse' },
-	// Borders (border.*)
-	{ path: 'border.subtle', label: 'Subtle' },
-	{ path: 'border.strong', label: 'Strong' },
-	{ path: 'border.focus', label: 'Focus ring' },
-	// Accent features (accent.*)
-	{ path: 'accent.surface', label: 'Surface' },
-	{ path: 'accent.interactive', label: 'Interactive' },
-	{ path: 'accent.positive', label: 'Positive' },
-	{ path: 'accent.negative', label: 'Negative' },
-	{ path: 'accent.warning', label: 'Warning' },
-	// Category accents (accent.category.*)
-	{ path: 'accent.category.design', label: 'Design' },
-	{ path: 'accent.category.code', label: 'Code' },
-	{ path: 'accent.category.writing', label: 'Writing' },
-	{ path: 'accent.category.tool', label: 'Tool' },
-];
-
-/**
- * The three content classifications that are shown AS COLOUR (Issue
- * #812). `tool` keeps its token but is not a colour field: this
- * section shows the classification vocabulary of the content, and
- * the tool surfaces are not part of it.
  *
- * The word is the primary channel, the `StateMark` silhouette the
- * second, and the ordinal (01 / 02 / 03) the third.
+ * Where the hex values come from
+ * ------------------------------
+ * The token paths are resolved on the SERVER (`../tokens.ts`, a server
+ * function): the section renders resolved hex pairs, and resolving
+ * them in the browser meant shipping the whole raw palette plus the
+ * whole semantic layer in the route chunk (≈ 3.7 KB) to display 24
+ * pairs. The route loader passes the resolved pairs in as props; the
+ * rendered result is identical either way. The CONTRAST arithmetic
+ * stays here, because choosing the ink is a rendering decision and
+ * needs the resolved values in the browser.
  */
-const FAMILIES = [
-	{
-		id: 'design',
-		label: 'design',
-		token: 'accent.category.design',
-		note: '作品の分類は slug から決定的に導く。同じ作品は常に同じ面。',
-	},
-	{
-		id: 'code',
-		label: 'code',
-		token: 'accent.category.code',
-		note: '分類は語と形が担う。色は補助で、単独では意味を持たせない。',
-	},
-	{
-		id: 'writing',
-		label: 'writing',
-		token: 'accent.category.writing',
-		note: '長文の面には色を敷かない。色は 1 語・1 行・1 印まで。',
-	},
-] as const;
 
-type FamilyId = (typeof FAMILIES)[number]['id'];
-type Family = (typeof FAMILIES)[number];
-
-const FAMILY_BY_ID: Record<FamilyId, Family> = {
-	design: FAMILIES[0],
-	code: FAMILIES[1],
-	writing: FAMILIES[2],
+/**
+ * The sentence each classification carries. The classification id is
+ * the word (channel 1), so the copy is keyed by it.
+ */
+const FAMILY_NOTES: Record<string, string> = {
+	design: '作品の分類は slug から決定的に導く。同じ作品は常に同じ面。',
+	code: '分類は語と形が担う。色は補助で、単独では意味を持たせない。',
+	writing: '長文の面には色を敷かない。色は 1 語・1 行・1 印まで。',
 };
 
 /**
@@ -158,63 +97,6 @@ const STATUS_SPECIMENS = [
 	},
 ] as const;
 
-type SemanticLeaf = {
-	value?: string | { base?: string; _dark?: string };
-};
-
-function rawRefFromSemanticValue(value: string): string {
-	const match = /^\{colors\.([^}]+)\}$/.exec(value);
-	if (!match) {
-		throw new Error(`Unsupported semantic color reference: ${value}`);
-	}
-	return match[1];
-}
-
-/**
- * Resolve a semantic path to its raw palette reference in each
- * appearance. Both bindings are mandatory: Issue #290's audit rule is
- * that every semantic token carries a meaningful `_dark` value, and
- * this function is where that rule is enforced for the showcase.
- */
-function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string } {
-	let node: unknown = semanticTokens.colors;
-	for (const segment of path.split('.')) {
-		if (!node || typeof node !== 'object' || !(segment in node)) {
-			throw new Error(`Unknown semantic color token: ${path}`);
-		}
-		node = (node as Record<string, unknown>)[segment];
-	}
-
-	const value = (node as SemanticLeaf).value;
-	if (!value || typeof value === 'string') {
-		throw new Error(`Semantic color token must declare { base, _dark }: ${path}`);
-	}
-	if (!value.base || !value._dark) {
-		throw new Error(`Semantic color token has no _dark binding: ${path}`);
-	}
-
-	return {
-		lightRef: rawRefFromSemanticValue(value.base),
-		darkRef: rawRefFromSemanticValue(value._dark),
-	};
-}
-
-function resolveHex(ref: string): string {
-	const [family, step] = ref.split('.');
-	const palette = rawTokens.colors[family as keyof typeof rawTokens.colors] as
-		| Record<string, { value: string }>
-		| undefined;
-	return palette?.[step as string]?.value ?? '';
-}
-
-/**
- * Resolve one semantic path to the hex it paints in each appearance.
- */
-function resolvePair(path: string): { lightHex: string; darkHex: string } {
-	const { lightRef, darkRef } = resolveSemanticRefs(path);
-	return { lightHex: resolveHex(lightRef), darkHex: resolveHex(darkRef) };
-}
-
 /* ------------------------------------------------------------------ *
  * Contrast arithmetic
  *
@@ -225,17 +107,10 @@ function resolvePair(path: string): { lightHex: string; darkHex: string } {
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
 	const value = hex.replace('#', '');
-	const full =
-		value.length === 3
-			? value
-					.split('')
-					.map((c) => c + c)
-					.join('')
-			: value;
 	return {
-		r: Number.parseInt(full.slice(0, 2), 16),
-		g: Number.parseInt(full.slice(2, 4), 16),
-		b: Number.parseInt(full.slice(4, 6), 16),
+		r: Number.parseInt(value.slice(0, 2), 16),
+		g: Number.parseInt(value.slice(2, 4), 16),
+		b: Number.parseInt(value.slice(4, 6), 16),
 	};
 }
 
@@ -256,30 +131,64 @@ function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * The two inks a colour field may carry: the near-black body ink
- * (`text.default`, light value) and the near-white surface ink
- * (`bg.surface`, light value). Both are resolved through the
- * semantic layer, so they follow the palette.
- */
-const INK_CANDIDATES: ReadonlyArray<string> = [
-	resolvePair('text.default').lightHex,
-	resolvePair('bg.surface').lightHex,
-];
-
-/**
  * Pick the ink with the higher contrast against the field, and report
  * the measured ratio so the DOM can carry it (`data-contrast`).
+ *
+ * The two candidates are the light-appearance values of `text.default`
+ * and `bg.surface` — they arrive with the resolved token data, so the
+ * ink is never a hand-written hex.
  */
-function pickInk(fieldHex: string): { hex: string; ratio: number } {
-	return INK_CANDIDATES.map((hex) => ({
-		hex,
-		ratio: Number(contrastRatio(fieldHex, hex).toFixed(2)),
-	})).reduce((best, candidate) => (candidate.ratio > best.ratio ? candidate : best));
+function pickInk(
+	fieldHex: string,
+	candidates: ReadonlyArray<string>,
+): { hex: string; ratio: number } {
+	let best = {
+		hex: candidates[0],
+		ratio: Number(contrastRatio(fieldHex, candidates[0]).toFixed(2)),
+	};
+	for (const hex of candidates.slice(1)) {
+		const ratio = Number(contrastRatio(fieldHex, hex).toFixed(2));
+		if (ratio > best.ratio) best = { hex, ratio };
+	}
+	return best;
 }
 
 /* ------------------------------------------------------------------ *
- * Section sub-headings
+ * Style constants
+ *
+ * Panda's `css()` takes a plain object, so every call site pays for
+ * its own property names in the bundle. The utilities the section
+ * repeats are declared once here and composed with `cx`.
  * ------------------------------------------------------------------ */
+
+const listResetClassName = css({ margin: '0', padding: '0', listStyle: 'none' });
+
+const gridThreeClassName = css({
+	gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+});
+
+const flexBetweenClassName = css({
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'space-between',
+	gap: '2',
+});
+
+const monoLabelClassName = css({
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	letterSpacing: '0.08em',
+	textTransform: 'uppercase',
+});
+
+const monoCodeClassName = css({ fontFamily: 'mono', fontSize: 'xs' });
+
+const subSectionClassName = css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '3',
+	marginBlockStart: '10',
+});
 
 const subHeadingClassName = css({
 	margin: '0',
@@ -300,36 +209,33 @@ const subBodyClassName = css({
 	color: 'text.muted',
 });
 
-export function ColorSwatches() {
+export function ColorSwatches({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
 		<>
 			<ul
 				data-colour-triptych
-				className={css({
-					margin: '0',
-					padding: '0',
-					listStyle: 'none',
-					display: 'grid',
-					gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
-					gap: '0',
-				})}
+				className={cx(
+					listResetClassName,
+					css({
+						display: 'grid',
+						gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+						gap: '0',
+					}),
+				)}
 			>
-				{FAMILIES.map((family, index) => (
+				{tokenData.families.map((family, index) => (
 					<li key={family.id} className={css({ minWidth: '0' })}>
-						<FamilyField family={family} ordinal={index + 1} />
+						<FamilyField
+							family={family}
+							note={FAMILY_NOTES[family.id] ?? ''}
+							ordinal={index + 1}
+							inkCandidates={tokenData.inkCandidates}
+						/>
 					</li>
 				))}
 			</ul>
 
-			<section
-				aria-labelledby="design-system-colour-status"
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-					marginBlockStart: '10',
-				})}
-			>
+			<section aria-labelledby="design-system-colour-status" className={subSectionClassName}>
 				<h3 id="design-system-colour-status" className={subHeadingClassName}>
 					状態 — 分類の色を借りる
 				</h3>
@@ -337,18 +243,10 @@ export function ColorSwatches() {
 					状態は形（StateMark）と語で示し、新しい hue を足しません。色はその作品の分類から借ります。
 				</p>
 				<ul
-					className={css({
-						margin: '0',
-						padding: '0',
-						listStyle: 'none',
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
-						gap: '6',
-					})}
+					className={cx(listResetClassName, gridThreeClassName, css({ display: 'grid', gap: '6' }))}
 				>
 					{STATUS_SPECIMENS.map((specimen) => {
-						const family = FAMILY_BY_ID[specimen.family];
-						const { lightHex } = resolvePair(family.token);
+						const family = tokenData.families.find((entry) => entry.id === specimen.family);
 						return (
 							<li key={specimen.label}>
 								<div
@@ -356,7 +254,7 @@ export function ColorSwatches() {
 									data-hue={specimen.family}
 									data-coloured
 									className={css({ marginBlockEnd: '3' })}
-									style={{ backgroundColor: lightHex, height: '2px' }}
+									style={{ backgroundColor: family?.lightHex, height: '2px' }}
 								/>
 								<span
 									className={css({
@@ -382,7 +280,7 @@ export function ColorSwatches() {
 										color: 'text.muted',
 									})}
 								>
-									借用: {family.token}
+									借用: {family?.token}
 								</code>
 							</li>
 						);
@@ -390,15 +288,7 @@ export function ColorSwatches() {
 				</ul>
 			</section>
 
-			<section
-				aria-labelledby="design-system-colour-operation"
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-					marginBlockStart: '10',
-				})}
-			>
+			<section aria-labelledby="design-system-colour-operation" className={subSectionClassName}>
 				<h3 id="design-system-colour-operation" className={subHeadingClassName}>
 					操作 — 墨
 				</h3>
@@ -425,15 +315,7 @@ export function ColorSwatches() {
 				</span>
 			</section>
 
-			<section
-				aria-labelledby="design-system-colour-ledger"
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-					marginBlockStart: '10',
-				})}
-			>
+			<section aria-labelledby="design-system-colour-ledger" className={subSectionClassName}>
 				<h3 id="design-system-colour-ledger" className={subHeadingClassName}>
 					Token 台帳
 				</h3>
@@ -442,58 +324,55 @@ export function ColorSwatches() {
 					/ dark の hex で参照できます。
 				</p>
 				<ul
-					className={css({
-						margin: '0',
-						padding: '0',
-						listStyle: 'none',
-						display: 'grid',
-						gridTemplateColumns: {
-							base: '1fr',
-							sm: 'repeat(2, minmax(0, 1fr))',
-							lg: 'repeat(3, minmax(0, 1fr))',
-						},
-						columnGap: '6',
-						rowGap: '2',
-					})}
+					className={cx(
+						listResetClassName,
+						css({
+							display: 'grid',
+							gridTemplateColumns: {
+								base: '1fr',
+								sm: 'repeat(2, minmax(0, 1fr))',
+								lg: 'repeat(3, minmax(0, 1fr))',
+							},
+							columnGap: '6',
+							rowGap: '2',
+						}),
+					)}
 				>
-					{TOKENS.map((entry) => {
-						const { lightHex, darkHex } = resolvePair(entry.path);
-						return (
-							<li
-								key={entry.path}
-								data-token-path={entry.path}
+					{tokenData.ledger.map((entry) => (
+						<li
+							key={entry.path}
+							data-token-path={entry.path}
+							className={css({
+								display: 'grid',
+								gridTemplateColumns: 'minmax(0, 1fr) auto',
+								columnGap: '2',
+								minWidth: '0',
+							})}
+						>
+							<code
 								className={css({
-									display: 'grid',
-									gridTemplateColumns: 'minmax(0, 1fr) auto',
-									columnGap: '2',
-									minWidth: '0',
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.default',
+									whiteSpace: 'nowrap',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
 								})}
 							>
-								<code
-									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										color: 'text.default',
-										whiteSpace: 'nowrap',
-										overflow: 'hidden',
-										textOverflow: 'ellipsis',
-									})}
-								>
-									{entry.path}
-								</code>
-								<code
-									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										color: 'text.muted',
-										whiteSpace: 'nowrap',
-									})}
-								>
-									{lightHex} / {darkHex}
-								</code>
-							</li>
-						);
-					})}
+								{entry.path}
+							</code>
+							<code
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.muted',
+									whiteSpace: 'nowrap',
+								})}
+							>
+								{entry.lightHex} / {entry.darkHex}
+							</code>
+						</li>
+					))}
 				</ul>
 			</section>
 		</>
@@ -508,10 +387,19 @@ export function ColorSwatches() {
  * The ink on both is picked by measurement (`pickInk`), and the
  * measured ratio is published on the DOM as `data-contrast`.
  */
-function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
-	const { lightHex, darkHex } = resolvePair(family.token);
-	const onLight = pickInk(lightHex);
-	const onDark = pickInk(darkHex);
+function FamilyField({
+	family,
+	note,
+	ordinal,
+	inkCandidates,
+}: {
+	family: DesignSystemTokenData['families'][number];
+	note: string;
+	ordinal: number;
+	inkCandidates: ReadonlyArray<string>;
+}) {
+	const onLight = pickInk(family.lightHex, inkCandidates);
+	const onDark = pickInk(family.darkHex, inkCandidates);
 	const ordinalLabel = String(ordinal).padStart(2, '0');
 
 	return (
@@ -533,21 +421,16 @@ function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
 					paddingBlock: { base: '6', md: '8' },
 					paddingInline: { base: '6', md: '8' },
 				})}
-				style={{ backgroundColor: lightHex, color: onLight.hex }}
+				style={{ backgroundColor: family.lightHex, color: onLight.hex }}
 			>
 				{/* Channel 3 (position) + channel 2 (shape): the ordinal
 				    and the classification silhouette. The word comes
 				    below, in the body of the field. */}
 				<div
-					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						gap: '2',
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.08em',
-						textTransform: 'uppercase',
-					})}
+					className={cx(
+						monoLabelClassName,
+						css({ display: 'flex', alignItems: 'center', gap: '2' }),
+					)}
 				>
 					<span>{ordinalLabel} · CONTENT CLASSIFICATION</span>
 					<span className={css({ marginInlineStart: 'auto' })}>
@@ -575,7 +458,7 @@ function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
 							letterSpacing: '-0.02em',
 						})}
 					>
-						{family.label}
+						{family.id}
 					</span>
 					<p
 						className={css({
@@ -585,7 +468,7 @@ function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
 							lineHeight: '1.6',
 						})}
 					>
-						{family.note}
+						{note}
 					</p>
 				</div>
 
@@ -595,39 +478,15 @@ function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
 					data-colour-field="dark"
 					data-hue={family.id}
 					data-contrast={onDark.ratio}
-					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '2',
-						paddingBlock: '2',
-						paddingInline: '3',
-					})}
-					style={{ backgroundColor: darkHex, color: onDark.hex }}
+					className={cx(flexBetweenClassName, css({ paddingBlock: '2', paddingInline: '3' }))}
+					style={{ backgroundColor: family.darkHex, color: onDark.hex }}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.08em',
-							textTransform: 'uppercase',
-						})}
-					>
-						dark
-					</span>
-					<code className={css({ fontFamily: 'mono', fontSize: 'xs' })}>{darkHex}</code>
+					<span className={monoLabelClassName}>dark</span>
+					<code className={monoCodeClassName}>{family.darkHex}</code>
 				</div>
 
 				{/* The token this field paints, and its light value. */}
-				<div
-					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '2',
-						minWidth: '0',
-					})}
-				>
+				<div className={cx(flexBetweenClassName, css({ minWidth: '0' }))}>
 					<span
 						className={css({
 							fontFamily: 'mono',
@@ -639,7 +498,7 @@ function FamilyField({ family, ordinal }: { family: Family; ordinal: number }) {
 					>
 						{family.token}
 					</span>
-					<code className={css({ fontFamily: 'mono', fontSize: 'xs' })}>{lightHex}</code>
+					<code className={monoCodeClassName}>{family.lightHex}</code>
 				</div>
 			</div>
 		</article>

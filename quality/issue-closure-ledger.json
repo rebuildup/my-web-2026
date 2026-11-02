@@ -3284,6 +3284,29 @@
 			"action": "kept-closed",
 			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm() が sandbox 内で動くこと（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。",
 			"missing": null
+		},
+		{
+			"issue": 779,
+			"title": "audit(editorial): ホームだけ PublicNav が無く、ページ間で chrome が不一致",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
+			"evidence": [
+				"src/home/hero.tsx",
+				"src/home/footer.tsx",
+				"https://github.com/rebuildup/my-web-2026/issues/779#issuecomment-6568711245"
+			],
+			"decision": {
+				"kind": "owner",
+				"reason": "owner 判断 O-11（Issue #732 の委任判断 comment 6567589098、#779 への追記 comment 6568711245）:「Home に公開先への実用的なナビゲーションを置く。重複する navigation を増やさない」。後段から、Home のページ上部に PublicNav を重複させず hero の CTA（About me / Portfolio / GitHub）に集約する形が一意に決まる（AGENTS.md §8 の優先順位 1 → 2）。新しい公開面 UI は発明しない。"
+			},
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/779#issuecomment-6568711245",
+			"action": "kept-closed",
+			"note": "成果物は「測って、決めたこと」。実測は Issue 本文（/ だけ nav[aria-label=\"Public\"] が無い、masthead は 320–1920px で折返しなし、実際に折り返していたのは section heading）と、決定後の経路（hero CTA / footer リンク）。公開面のコード変更は行っていない。",
+			"missing": null
 		}
 	]
 }

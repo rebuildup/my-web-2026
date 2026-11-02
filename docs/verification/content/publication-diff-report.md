@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 31 |
 | External hosts | 36 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -97,9 +97,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/tools/ae-expression`
+- (none)
 
 ### Removed public URLs (0)
 
@@ -227,5 +227,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W004 public-url-added` Public URL added: /tools/ae-expression
+_No findings._
 

@@ -13,6 +13,8 @@
 		"app:icons:check": "node scripts/check-app-icons.mjs",
 		"architecture:check": "node scripts/check-architecture.mjs",
 		"assets:license:check": "node scripts/check-asset-licenses.mjs",
+		"portfolio:summary:check": "node scripts/check-portfolio-summary.mjs",
+		"portfolio:migrate:local": "node scripts/migrate-portfolio-from-2025.mjs --apply --target=local",
 		"issue:closure:check": "node scripts/check-issue-closure.mjs",
 		"issue:closure:audit": "node scripts/check-issue-closure-remote.mjs",
 		"assets:license:report": "node scripts/check-asset-licenses.mjs --report=html --report-out=.tmp/asset-license-review.html",

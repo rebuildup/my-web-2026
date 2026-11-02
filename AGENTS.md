@@ -326,7 +326,7 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   (`contract.ts`), the fail-closed reader of the reviewed record
   (`inventory.ts`), and the surface that shows one asset's rights,
   provenance, licence, conditions and evidence to a reader
-  (`AssetLicenseReview.tsx`). The publication decision is **derived**
+  (`AssetLicenseReview.tsx`). The **evidence status** is **derived**
   from evidence, never declared by a record, so an asset whose rights
   are unrecorded cannot present itself as cleared. It reads
   `quality/asset-license-inventory.json`, composes `editorial`
@@ -336,6 +336,16 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `docs/verification/legal/asset-license-review.md` and its
   machine-generated run record is
   `docs/verification/legal/asset-license-review-report.md`.
+  **The review is NOT a precondition for publication** (ADR-0019 /
+  Issue #811): the owner decides what is published, and the repository
+  states what it knows on two axes — `evidenceStatus` (`reviewed` /
+  `unreviewed` / `provider-terms` / `inconsistent`) and `publication`.
+  An `unreviewed` asset is published when the owner says so, and the
+  public surface MUST show that it is unreviewed. The gate is
+  fail-visible, not fail-open: the state itself is not an error, but
+  HIDING it is (`L022`, checked against the disclosure declared in
+  `quality/asset-license-publication-decision.json`). Rights records
+  are never fabricated to make a gate quiet.
   Byte-level licence evidence for a Tool's own checkout belongs to
   Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
   never claim the same files.

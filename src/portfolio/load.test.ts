@@ -516,6 +516,7 @@ describe('portfolio — CMS merge (Issue #765)', () => {
 			technologies: [],
 			visibility: 'public',
 			status: 'published',
+			evidenceStatus: 'reviewed',
 			pinned: false,
 			displayOrder: 0,
 			createdAt: 1_767_000_000_000,

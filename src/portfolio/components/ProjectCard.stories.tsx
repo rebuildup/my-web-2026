@@ -64,6 +64,7 @@ function placeholder(facet: PortfolioFacet, index: number): PortfolioProject {
 		technologies: [],
 		visibility: 'public',
 		status: 'published',
+		evidenceStatus: 'reviewed',
 		pinned: false,
 		displayOrder: index,
 		createdAt: 0,

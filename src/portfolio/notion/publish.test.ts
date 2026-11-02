@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { NotionRecord, ReadSnapshot } from './contract';
-import { compareProjects, isPublicRecord, publicProjects, publishedMedia } from './publish';
+import {
+	compareProjects,
+	isPublicRecord,
+	publicProjects,
+	publishedMedia,
+	recordEvidenceStatus,
+} from './publish';
 
 /**
  * Publication tests for CMS records (Issue #765).
@@ -85,7 +91,7 @@ describe('isPublicRecord', () => {
 });
 
 describe('publishedMedia', () => {
-	it('drops every asset whose rights are not recorded', () => {
+	it('keeps every asset, because the rights verdict is not a veto (ADR-0019)', () => {
 		const kept = publishedMedia(
 			record({
 				media: [
@@ -94,7 +100,17 @@ describe('publishedMedia', () => {
 				],
 			}),
 		);
-		expect(kept.map((entry) => entry.r2Key)).toEqual(['portfolio/sample/a.webp']);
+		expect(kept.map((entry) => entry.r2Key)).toEqual([
+			'portfolio/sample/a.webp',
+			'portfolio/sample/b.webp',
+		]);
+	});
+
+	it('reports the record as unreviewed when any asset has unrecorded rights', () => {
+		const reviewed = recordEvidenceStatus(record({ media: [media({ rights: 'recorded' })] }));
+		expect(reviewed).toBe('reviewed');
+		const unreviewed = recordEvidenceStatus(record({ media: [media({ rights: 'unrecorded' })] }));
+		expect(unreviewed).toBe('unreviewed');
 	});
 
 	it('puts the cover first, then follows display order', () => {
@@ -138,11 +154,12 @@ describe('publicProjects', () => {
 		expect(publicProjects(snapshot([record()], 'unavailable'))).toHaveLength(1);
 	});
 
-	it('never emits a URL for an asset with unrecorded rights', () => {
+	it('publishes an asset with unrecorded rights, and marks the record unreviewed', () => {
 		const [project] = publicProjects(
 			snapshot([record({ media: [media({ rights: 'unrecorded' })] })]),
 		);
-		expect(project?.media).toEqual([]);
+		expect(project?.media).toHaveLength(1);
+		expect(project?.evidenceStatus).toBe('unreviewed');
 	});
 });
 

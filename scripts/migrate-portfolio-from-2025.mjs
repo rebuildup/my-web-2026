@@ -25,8 +25,16 @@
  *
  *     publication — owner selection authority:
  *       approved        visibility = 'public' (the public loader will surface it)
- *       pending_owner   visibility = 'draft' (default; loader never sees it)
+ *       pending_owner   visibility = 'draft' (the pre-2026-11-02 default)
  *       rejected        NEVER insert (no surface at all)
+ *
+ *   The owner's 2026-11-02 decision (Issue #811,
+ *   `docs/domain/portfolio-migration-decisions.md`) changed the default:
+ *   EVERY work is published. The classification's `publication` column is
+ *   still read — it says whether the owner rejected a row outright — but
+ *   `pending_owner` no longer means "wait": it means "publish", because
+ *   the owner decided that waiting was the wrong answer. `--visibility=draft`
+ *   restores the pre-decision behaviour for a rehearsal.
  *
  *   Crucially, `migration_class = 'eligible'` does NOT imply
  *   `publication = 'approved'`. The 43 mechanically-eligible rows are
@@ -40,7 +48,10 @@
  *     publication_overrides   — per-legacy_id, sets `publication`
  *
  *   Role is set ONLY from `role_overrides`; facet/title inference is
- *   forbidden (AGENTS.md §3 + Issue #78 blocker #2).
+ *   forbidden (AGENTS.md §3 + Issue #78 blocker #2). A work with no
+ *   recorded role gets NULL, not a placeholder string: the owner's
+ *   decision forbids INVENTING text about the work (Issue #811), and
+ *   Issue #813 made the column nullable for exactly that reason.
  *
  * Preflight collision check (Issue #78 blocker #6):
  *   Before writing any SQL, the script queries the target D1 for any
@@ -97,7 +108,10 @@
  *     facets        ← content_tags aggregated as JSON array, intersected
  *                       with the closed PortfolioFacet enum
  *     technologies  ← content_tags aggregated as JSON array (non-facet tags)
- *     visibility    ← 'public' iff publication == 'approved'; else 'draft'
+ *     visibility    ← 'public' (owner decision, Issue #811); `--visibility=draft`
+ *                     writes the pre-decision 'draft' instead
+ *     evidence_status ← 'unreviewed' — the legacy corpus has no rights record
+ *                     at all, and the public surface says so (ADR-0019 §2.5)
  *     status        ← 'published'
  *     pinned        ← 0 (agent default; owner can set pinned via override)
  *     display_order ← 100 (NEW + KEEP+REWRITE get owner-assigned later)
@@ -126,7 +140,7 @@
  *   at startup and exits with a clear error otherwise.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -203,6 +217,16 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has('--dry-run');
 const apply = args.has('--apply');
 const target = parseArg(args, '--target') ?? 'local';
+/**
+ * The visibility the migration writes.
+ *
+ * `public` is the owner's decision (Issue #811, 2026-11-02): every work
+ * is published. `draft` restores the pre-decision behaviour, which is
+ * what a rehearsal of the old rule looks like.
+ */
+const visibilityMode = parseArg(args, '--visibility') ?? 'public';
+/** Write the migration ledger (151 rows) to the given path. */
+const ledgerPath = parseArg(args, '--ledger');
 
 if (!dryRun && !apply) {
 	console.error('Usage: node scripts/migrate-portfolio-from-2025.mjs --dry-run');
@@ -213,6 +237,10 @@ if (!dryRun && !apply) {
 }
 if (apply && target !== 'local' && target !== 'remote') {
 	console.error(`--target must be 'local' or 'remote', got: ${target}`);
+	process.exit(2);
+}
+if (visibilityMode !== 'public' && visibilityMode !== 'draft') {
+	console.error(`--visibility must be 'public' or 'draft', got: ${visibilityMode}`);
 	process.exit(2);
 }
 
@@ -408,7 +436,25 @@ function readSourceRow(dbPath) {
 			)
 			.get(main.id);
 
+		// The legacy `media` table holds the bytes (Issue #850). The count
+		// is only reported — the media rows themselves are written by
+		// `scripts/migrate-legacy-media.mjs`.
+		//
+		// Every legacy DB holds exactly ONE content, so the whole `media`
+		// table belongs to it — including the rows whose `content_id` is
+		// NULL (they are attributed by that single-content structure).
+		// Counting only the rows that carry a `content_id` would
+		// understate the corpus, so the count is over the table.
+		const mediaCount = db.prepare('SELECT COUNT(*) AS count FROM media').get()?.count ?? 0;
+
+		// `content_assets` rows are references to a file path or an
+		// external URL. They carry no bytes, so they are reported, not
+		// migrated.
+		const assetCount = db.prepare('SELECT COUNT(*) AS count FROM content_assets').get()?.count ?? 0;
+
 		return {
+			mediaCount,
+			assetCount,
 			legacyId: main.id,
 			title: main.title ?? '',
 			summary: main.summary ?? '',
@@ -426,7 +472,7 @@ function readSourceRow(dbPath) {
 }
 
 /** Build the INSERT statement for one portfolio_project row. */
-function buildProjectSql({ source, role, visibility, partition }) {
+function buildProjectSql({ source, role, visibility, partition, evidenceStatus = 'unreviewed' }) {
 	const slug = deriveSlug(source.legacyId);
 	const id = `legacy_${slug.replace(/[^a-z0-9-]/g, '_')}`;
 	const periodStart = parseIsoMs(source.publishedAt) ?? parseIsoMs(source.createdAt) ?? 0;
@@ -444,17 +490,18 @@ function buildProjectSql({ source, role, visibility, partition }) {
 	const implementationMd = partition.implementation_md.replace(/'/g, "''");
 	const evidenceMd = partition.evidence_md.replace(/'/g, "''");
 	const retrospectiveMd = partition.retrospective_md.replace(/'/g, "''");
-	// `role` is NOT NULL in the schema (see migrations/0007_portfolio.sql).
-	// We never hard-code a literal role (Issue #78 blocker #2). When the
-	// owner has not provided a `role_overrides` entry, we insert a
-	// clearly-marked placeholder that the verifier recognises and that
-	// the public loader can never reach because visibility is 'draft'.
-	const roleSql =
-		role === null ? sqlEscape('(unverified — owner review required)') : sqlEscape(role);
+	// `role` stays NOT NULL (migration 0010 explains why): "no role is
+	// recorded" is the EMPTY STRING. We never hard-code a literal role
+	// (Issue #78 blocker #2), and we never write a placeholder string
+	// either — a placeholder is text this repository invented about the
+	// work, which the owner's decision forbids. The loader maps the empty
+	// string to `null` (`src/portfolio/schema.ts#rowToProject`).
+	const roleSql = role === null ? sqlEscape('') : sqlEscape(role);
 	const visibilitySql = sqlEscape(visibility);
+	const evidenceStatusSql = sqlEscape(evidenceStatus);
 
 	const cols =
-		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at';
+		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at, evidence_status';
 	const values = [
 		sqlEscape(id),
 		sqlEscape(slug),
@@ -478,6 +525,7 @@ function buildProjectSql({ source, role, visibility, partition }) {
 		100,
 		createdAt,
 		updatedAt,
+		evidenceStatusSql,
 	].join(', ');
 
 	return { id, slug, sql: buildProjectUpsertSql({ cols, values }) };
@@ -567,6 +615,148 @@ function d1Query(sql) {
 	return queryRows(sql, { target: target === 'remote' ? 'production' : 'local' });
 }
 
+/**
+ * Why a legacy row is not a work.
+ *
+ * The classification's `mechanical_drop` is a MECHANICAL judgement, not
+ * a selection: the row does not describe a work, so there is nothing to
+ * publish. The three reasons are read off the row itself, and the ledger
+ * carries the reason so the count can be audited rather than trusted.
+ */
+function notAWorkState(row) {
+	const id = String(row.id ?? '');
+	if (/^(media-list|media-rt)-/.test(id)) {
+		return {
+			state: 'not-a-work:scaffold',
+			reason:
+				'旧サイトの media 一覧용の足場行（media-list-* / media-rt-*）。作品の本文・画像・リンクを持たない。',
+		};
+	}
+	if (/^test-/i.test(id)) {
+		return {
+			state: 'not-a-work:test-fixture',
+			reason: '旧サイトのテスト用フィクスチャ行（test-*）。作品ではない。',
+		};
+	}
+	return {
+		state: 'not-a-work:placeholder',
+		reason: 'draft かつリンク 0 件・本文 0 件で、作品の記述が無い行（プレースホルダ）。',
+	};
+}
+
+/**
+ * The migration ledger (151 rows).
+ *
+ * Every legacy row gets one line, and every line says what happened to
+ * it — published, or not-a-work with the reason. The owner decided that
+ * nothing is SELECTED, so the only thing that may keep a row out of the
+ * public surface is "this row is not a work", and that claim has to be
+ * visible per row.
+ */
+/** The legacy `media` table row count of one legacy database. */
+function mediaCountFor(dbFile) {
+	try {
+		const db = new DatabaseSync(join(refRoot, 'data/contents', dbFile), { readOnly: true });
+		try {
+			return db.prepare('SELECT COUNT(*) AS count FROM media').get()?.count ?? 0;
+		} finally {
+			db.close();
+		}
+	} catch {
+		return null;
+	}
+}
+
+function buildLedger({ classified, plan, retired, errors, visibilityMode, mediaCountFor }) {
+	const byLegacyId = new Map(plan.map((entry) => [entry.source.legacyId, entry]));
+	const rows = [];
+	const newCandidates = [];
+
+	for (const row of classified) {
+		if (!row.db) {
+			newCandidates.push({
+				legacyId: row.id ?? null,
+				state: 'not-in-legacy-corpus',
+				reason:
+					'旧サイトの 151 件に含まれない、移行後に追加された пунктыの候補（自動挿入しない）。',
+				note: row.note ?? null,
+			});
+			continue;
+		}
+		const inserted = byLegacyId.get(row.id);
+		if (inserted) {
+			rows.push({
+				legacyId: row.id,
+				db: row.db,
+				state: 'published',
+				reason: '旧サイトの制作物。owner 決定により公開する。',
+				migrationClass: row.migration_class ?? null,
+				slug: inserted.project.slug,
+				projectId: inserted.project.id,
+				visibility: inserted.visibility,
+				status: 'published',
+				evidenceStatus: 'unreviewed',
+				role: inserted.role ?? null,
+				linkRows: inserted.linkSqls.length,
+				legacyMediaRows: inserted.source.mediaCount ?? null,
+				legacyAssetRows: inserted.source.assetCount ?? null,
+			});
+			continue;
+		}
+		const notAWork = notAWorkState(row);
+		rows.push({
+			legacyId: row.id,
+			db: row.db,
+			state: notAWork.state,
+			reason: notAWork.reason,
+			migrationClass: row.migration_class ?? null,
+			slug: null,
+			projectId: null,
+			visibility: null,
+			status: null,
+			evidenceStatus: null,
+			role: null,
+			linkRows: 0,
+			legacyMediaRows: mediaCountFor(row.db),
+			legacyAssetRows: row.local_file_count ?? null,
+		});
+	}
+
+	const counts = rows.reduce((acc, row) => {
+		acc[row.state] = (acc[row.state] ?? 0) + 1;
+		return acc;
+	}, {});
+
+	return {
+		schema: 'portfolio-2025-to-2026-publication.v1',
+		issue: '#811',
+		generatedAt: new Date().toISOString(),
+		decision: 'docs/domain/portfolio-migration-decisions.md',
+		source: '.reference/my-web-2025/data/contents',
+		visibilityMode,
+		counts: {
+			legacyRows: rows.length,
+			published: counts.published ?? 0,
+			notAWork:
+				(counts['not-a-work:scaffold'] ?? 0) +
+				(counts['not-a-work:test-fixture'] ?? 0) +
+				(counts['not-a-work:placeholder'] ?? 0),
+			scaffold: counts['not-a-work:scaffold'] ?? 0,
+			testFixture: counts['not-a-work:test-fixture'] ?? 0,
+			placeholder: counts['not-a-work:placeholder'] ?? 0,
+			newCandidates: newCandidates.length,
+			errors: errors.length,
+		},
+		// The rows the legacy slug displaced. On a local database these are
+		// the reproduction of the state production was in (three rows D1
+		// already served under a legacy slug); the runbook says which
+		// production rows they correspond to.
+		retiredRows: retired,
+		rows,
+		newCandidates,
+	};
+}
+
 function main() {
 	const classificationPath = join(
 		root,
@@ -586,24 +776,36 @@ function main() {
 		process.exit(1);
 	}
 	const roleFile = JSON.parse(readFileSync(roleOverridePath, 'utf8'));
-	const roleByLegacyId = new Map((roleFile.role_overrides ?? []).map((r) => [r.legacy_id, r.role]));
+	// The legacy ids are written with both `_` and `-` in the committed
+	// overrides (`aulymo_v02` vs `aulymo-v02`), so the lookup key is
+	// normalised. Without this, an owner-recorded role silently misses
+	// the row it was recorded for.
+	const normalizeLegacyId = (value) => String(value).replace(/_/g, '-').toLowerCase();
+	const roleByLegacyId = new Map(
+		(roleFile.role_overrides ?? []).map((r) => [normalizeLegacyId(r.legacy_id), r.role]),
+	);
 	const publicationByLegacyId = new Map(
-		(roleFile.publication_overrides ?? []).map((r) => [r.legacy_id, r.publication]),
+		(roleFile.publication_overrides ?? []).map((r) => [
+			normalizeLegacyId(r.legacy_id),
+			r.publication,
+		]),
 	);
 
 	const summary = {
 		mechanical_drop: 0,
 		new_candidate: 0,
-		eligible_approved: 0,
-		eligible_pending: 0,
-		rewrite_required_approved: 0,
-		rewrite_required_pending: 0,
+		eligible_public: 0,
+		eligible_draft: 0,
+		rewrite_required_public: 0,
+		rewrite_required_draft: 0,
 		rejected: 0,
 		errors: 0,
 	};
 	const sqlStatements = [];
 	const skipped = [];
 	const collisions = [];
+	/** D1 rows the legacy slug displaces (retired, never deleted). */
+	const retired = [];
 	const errors = [];
 
 	// First pass: build the SQL surface from the classification.
@@ -613,7 +815,8 @@ function main() {
 
 	for (const row of classified) {
 		const cls = row.migration_class ?? 'mechanical_drop';
-		const pub = publicationByLegacyId.get(row.id) ?? row.publication ?? 'pending_owner';
+		const pub =
+			publicationByLegacyId.get(normalizeLegacyId(row.id)) ?? row.publication ?? 'pending_owner';
 
 		if (cls === 'mechanical_drop') {
 			summary.mechanical_drop++;
@@ -629,9 +832,6 @@ function main() {
 		}
 
 		// cls is eligible or rewrite_required
-		const key = `${cls}_${pub === 'approved' ? 'approved' : 'pending'}`;
-		summary[key] = (summary[key] ?? 0) + 1;
-
 		const dbPath = join(refRoot, 'data/contents', row.db);
 		const source = readSourceRow(dbPath);
 		if (source.error) {
@@ -640,25 +840,46 @@ function main() {
 			continue;
 		}
 
-		const role = roleByLegacyId.get(row.id) ?? null;
-		// Visibility is `public` only when the owner has signed off AND every
-		// publication_blocker is clear. Otherwise we write `draft` — the public
-		// loader must never surface an ungrounded project. CodeRabbit
-		// cycle 4 (Issue #78 blocker #6 / visibility gate).
+		const role = roleByLegacyId.get(normalizeLegacyId(row.id)) ?? null;
+		// Visibility (Issue #811, 2026-11-02): the owner decided that every
+		// work is published, so the blockers that used to hold a row at
+		// `draft` (missing role / missing media / missing narrative) are no
+		// longer a publication gate — they are facts the page shows. The
+		// pre-decision behaviour is still reachable with `--visibility=draft`.
 		const blockers = row.publication_blockers ?? [];
-		const visibility = pub === 'approved' && blockers.length === 0 ? 'public' : 'draft';
+		const visibility =
+			visibilityMode === 'public'
+				? 'public'
+				: pub === 'approved' && blockers.length === 0
+					? 'public'
+					: 'draft';
 		const partition = partitionMarkdownBySection(source.markdownBody);
 
 		let project;
 		let linkSqls;
 		try {
-			project = buildProjectSql({ source, role, visibility, partition });
+			project = buildProjectSql({
+				source,
+				role,
+				visibility,
+				partition,
+				// The legacy corpus has no rights record in this repository.
+				// The owner decided to publish it anyway (ADR-0019), and the
+				// public surface says so.
+				evidenceStatus: 'unreviewed',
+			});
 			linkSqls = buildLinkSqls(project.id, source.links);
 		} catch (err) {
 			errors.push({ id: row.id ?? row.db, error: err.message });
 			summary.errors++;
 			continue;
 		}
+
+		// The counters report the visibility that is actually WRITTEN,
+		// which after the owner's decision (Issue #811) is `public` for
+		// every work unless the rehearsal flag says otherwise.
+		const key = `${cls}_${visibility}`;
+		summary[key] = (summary[key] ?? 0) + 1;
 
 		intendedInsertIds.add(project.id);
 		intendedInsertSlugs.add(project.slug);
@@ -673,21 +894,62 @@ function main() {
 	// (e.g. previous run with different role-overrides produced a
 	// different id but the same slug). Either dimension being absent
 	// from the intended set is a real collision.
+	const d1ExistingSlugs = new Set();
 	if (apply) {
 		const existingProjects = d1Query('SELECT id, slug FROM portfolio_project');
+		for (const existing of existingProjects) d1ExistingSlugs.add(existing.slug);
 		for (const existing of existingProjects) {
 			const idKnown = intendedInsertIds.has(existing.id);
 			const slugKnown = intendedInsertSlugs.has(existing.slug);
+			if (idKnown && slugKnown) continue;
 			if (!idKnown && !slugKnown) {
+				// A row the migration did not produce, holding a slug the
+				// migration does not want: it competes for nothing, but the
+				// migration refuses to write into a database it does not
+				// own. The exception is the migration's OWN rows and the
+				// rows it retired earlier (both are recognisable), so that
+				// re-running the migration is safe.
+				const own = existing.id.startsWith('legacy_') || existing.slug.endsWith('-retired');
+				if (own) {
+					// A row this migration retired earlier is still a retired
+					// row: the ledger keeps naming it, so the record of what
+					// used to answer that URL survives every re-run.
+					if (existing.slug.endsWith('-retired')) {
+						retired.push({
+							id: existing.id,
+							slug: existing.slug,
+							alreadyRetired: true,
+							reason: 'already retired by an earlier run of this migration',
+						});
+					}
+					continue;
+				}
 				collisions.push(existing);
-			} else if (!idKnown || !slugKnown) {
-				// The migration's planned row matches one of the two
-				// keys but not the other — that means the migration is
-				// trying to write a different identity to the same row.
-				// This is also a hard collision; we don't silently let
-				// it through.
-				collisions.push({ ...existing, kind: 'id_slug_mismatch' });
+				continue;
 			}
+			if (!idKnown && slugKnown) {
+				// The legacy slug is the truth (owner decision, Issue #811,
+				// ADR-0019 §2.6): the row D1 already serves under that slug
+				// was made by the migration work, and it yields. The row is
+				// RETIRED, not deleted — the audit trail of what used to be
+				// published at that URL stays in the database.
+				//
+				// Retiring also has to FREE the slug, because the column is
+				// UNIQUE and the legacy row is about to take it. The retired
+				// row keeps its identity and its content under a retired
+				// slug; nothing is deleted.
+				retired.push({
+					id: existing.id,
+					slug: existing.slug,
+					reason: 'legacy slug wins (owner decision, ADR-0019 §2.6)',
+				});
+				continue;
+			}
+			// The migration's planned row matches the id but not the slug —
+			// that means the migration is trying to write a different
+			// identity to the same row. This is a hard collision; we don't
+			// silently let it through.
+			collisions.push({ ...existing, kind: 'id_slug_mismatch' });
 		}
 
 		// Same for portfolio_link — the migration generates a deterministic
@@ -715,6 +977,32 @@ function main() {
 		}
 	}
 
+	// Retire the rows the legacy slug displaces. The row is archived and
+	// hidden (`status='archived'`, `visibility='draft'`), never deleted:
+	// the URL it used to answer stays in the audit trail, and the public
+	// loader (`status='published' AND visibility='public'`) stops
+	// serving it. The ledger records what was retired and why.
+	//
+	// The slug is moved aside as well, because `portfolio_project.slug` is
+	// UNIQUE and the legacy row is about to answer that URL. The retired
+	// row keeps its identity and its content.
+	const takenSlugs = new Set([...intendedInsertSlugs, ...d1ExistingSlugs]);
+	for (const row of retired) {
+		if (row.alreadyRetired === true) continue;
+		let retiredSlug = `${row.slug}-retired`;
+		let counter = 2;
+		while (takenSlugs.has(retiredSlug)) {
+			retiredSlug = `${row.slug}-retired-${counter}`;
+			counter += 1;
+		}
+		takenSlugs.add(retiredSlug);
+		row.retiredSlug = retiredSlug;
+		sqlStatements.push(`-- RETIRE ${row.id} (${row.slug}) — ${row.reason}`);
+		sqlStatements.push(
+			`UPDATE portfolio_project SET slug = '${retiredSlug.replace(/'/g, "''")}', visibility = 'draft', status = 'archived' WHERE id = '${row.id.replace(/'/g, "''")}';`,
+		);
+	}
+
 	// Emit SQL.
 	for (const p of plan) {
 		sqlStatements.push(
@@ -724,13 +1012,35 @@ function main() {
 		for (const link of p.linkSqls) sqlStatements.push(link.sql);
 	}
 
+	// The ledger: 151 rows, one line each, with the state of every one.
+	if (ledgerPath !== null) {
+		const ledger = buildLedger({
+			classified,
+			plan,
+			retired,
+			errors,
+			visibilityMode,
+			mediaCountFor,
+		});
+		const ledgerFile = resolve(process.cwd(), ledgerPath);
+		mkdirSync(dirname(ledgerFile), { recursive: true });
+		// Tab indentation, because that is what the repository's formatter
+		// (Biome) writes: a generated file that the formatter would rewrite
+		// would make every regeneration a diff.
+		writeFileSync(ledgerFile, `${JSON.stringify(ledger, null, '\t')}\n`);
+		console.error(`[migrate] ledger written: ${ledgerPath}`);
+		console.error(
+			`[migrate]   published ${ledger.counts.published} / not-a-work ${ledger.counts.notAWork} (scaffold ${ledger.counts.scaffold} / test ${ledger.counts.testFixture} / placeholder ${ledger.counts.placeholder})`,
+		);
+	}
+
 	const header = [
 		`-- migrate-portfolio-from-2025.mjs — ${dryRun ? 'dry-run' : `apply to ${target} D1`}`,
 		`-- generated: ${new Date().toISOString()}`,
-		`-- eligible / approved (visibility=public):     ${summary.eligible_approved}`,
-		`-- eligible / pending_owner (visibility=draft): ${summary.eligible_pending}`,
-		`-- rewrite_required / approved (visibility=public):     ${summary.rewrite_required_approved}`,
-		`-- rewrite_required / pending_owner (visibility=draft): ${summary.rewrite_required_pending}`,
+		`-- eligible / published (visibility=public):       ${summary.eligible_public}`,
+		`-- eligible / draft (visibility=draft):          ${summary.eligible_draft}`,
+		`-- rewrite_required / published (visibility=public):   ${summary.rewrite_required_public}`,
+		`-- rewrite_required / draft (visibility=draft):      ${summary.rewrite_required_draft}`,
 		`-- mechanical_drop (never inserted):            ${summary.mechanical_drop}`,
 		`-- new_candidate (never auto-inserted):         ${summary.new_candidate}`,
 		`-- rejected by owner:                           ${summary.rejected}`,
@@ -742,15 +1052,13 @@ function main() {
 	if (dryRun) {
 		process.stdout.write(fullSql);
 		console.error('\n[migrate] dry-run complete:');
+		console.error(`  eligible / published       (visibility=public):  ${summary.eligible_public}`);
+		console.error(`  eligible / draft           (visibility=draft):  ${summary.eligible_draft}`);
 		console.error(
-			`  eligible / approved        (visibility=public):  ${summary.eligible_approved}`,
-		);
-		console.error(`  eligible / pending_owner   (visibility=draft):  ${summary.eligible_pending}`);
-		console.error(
-			`  rewrite_required / approved        (visibility=public):  ${summary.rewrite_required_approved}`,
+			`  rewrite_required / published       (visibility=public):  ${summary.rewrite_required_public}`,
 		);
 		console.error(
-			`  rewrite_required / pending_owner   (visibility=draft):  ${summary.rewrite_required_pending}`,
+			`  rewrite_required / draft           (visibility=draft):  ${summary.rewrite_required_draft}`,
 		);
 		console.error(`  mechanical_drop (skipped):     ${summary.mechanical_drop}`);
 		console.error(`  new_candidate (skipped):       ${summary.new_candidate}`);
@@ -785,16 +1093,16 @@ function main() {
 			`[migrate] applied ${plan.length} project(s) + ${sqlStatements.length} SQL statements to ${target} D1`,
 		);
 		console.error(
-			`[migrate]   eligible / approved (visibility=public):         ${summary.eligible_approved}`,
+			`[migrate]   eligible / published (visibility=public):       ${summary.eligible_public}`,
 		);
 		console.error(
-			`[migrate]   eligible / pending_owner (visibility=draft):     ${summary.eligible_pending}`,
+			`[migrate]   eligible / draft (visibility=draft):          ${summary.eligible_draft}`,
 		);
 		console.error(
-			`[migrate]   rewrite_required / approved (visibility=public): ${summary.rewrite_required_approved}`,
+			`[migrate]   rewrite_required / published (visibility=public):   ${summary.rewrite_required_public}`,
 		);
 		console.error(
-			`[migrate]   rewrite_required / pending_owner (visibility=draft): ${summary.rewrite_required_pending}`,
+			`[migrate]   rewrite_required / draft (visibility=draft):      ${summary.rewrite_required_draft}`,
 		);
 		if (errors.length > 0) {
 			console.error(`[migrate] ${errors.length} errors:`);

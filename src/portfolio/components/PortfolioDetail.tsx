@@ -6,6 +6,7 @@ import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../sche
 import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioMediaFigure } from './PortfolioMedia';
+import { PortfolioEvidenceNotice } from './PortfolioEvidenceNotice';
 
 /**
  * PortfolioDetail — `/portfolio/[slug]` route surface.
@@ -288,6 +289,10 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									</p>
 								) : null}
 							</div>
+							{/* ADR-0019 §2.5 — an asset published without a
+							    rights record says so, on the page that shows
+							    the asset. */}
+							<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
 						</Container>
 					</header>
 					{SECTION_DEFINITIONS.map((section) => {

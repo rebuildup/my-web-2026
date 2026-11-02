@@ -14,7 +14,7 @@ import {
  * properties under test are about what a READER is told — the assertions
  * are therefore presence and absence:
  *
- *   - the decision badge is the DERIVED decision, never the declared
+ *   - the status badge is the DERIVED status, never the declared
  *     publication state, so a held asset cannot present itself as
  *     reviewed because a record says it is published;
  *   - a rights holder nobody recorded renders as an explicit
@@ -71,23 +71,23 @@ function render(
 }
 
 describe('AssetLicenseReview', () => {
-	it('states the derived decision rather than the declared publication state', () => {
+	it('states the derived status rather than the declared publication state', () => {
 		const held = record({
 			origin: 'unknown-provenance',
 			rightsHolder: null,
 			license: { ...record().license, spdx: 'NOASSERTION' },
 			verification: { method: 'none', checkedOn: null, note: 'no evidence' },
 		});
-		const html = render(held);
-		expect(html).toContain('保留 / hold');
+		const html = render(held, { evidenceExists: () => true, sha256Of: () => null });
+		expect(html).toContain('未レビュー / unreviewed');
 		expect(html).toContain('公開状態: 公開中');
-		expect(html).toContain('data-decision="hold"');
+		expect(html).toContain('data-evidence-status="unreviewed"');
 	});
 
-	it('marks a publishable record as publishable', () => {
+	it('marks a reviewed record as reviewed', () => {
 		const html = render(record(), { evidenceExists: () => true, sha256Of: () => null });
-		expect(html).toContain('公開可 / publishable');
-		expect(html).toContain('data-decision="publishable"');
+		expect(html).toContain('根拠を確認済み / reviewed');
+		expect(html).toContain('data-evidence-status="reviewed"');
 	});
 
 	it('says a referenced asset is governed by provider terms, not cleared', () => {
@@ -116,7 +116,10 @@ describe('AssetLicenseReview', () => {
 	it('says evidence is unchecked on this surface by default', () => {
 		const html = render(record(), { evidenceExists: () => true, sha256Of: () => null });
 		expect(html).toContain('この画面では未確認');
-		expect(html).not.toContain('確認済み');
+		// The evidence row must not read as verified. (The status badge may
+		// say "reviewed" — that is the record's own state, which is a
+		// different claim from "this file was read".)
+		expect(html).not.toContain('リポジトリ内ファイル 確認済み');
 	});
 
 	it('reports a state the caller observed', () => {

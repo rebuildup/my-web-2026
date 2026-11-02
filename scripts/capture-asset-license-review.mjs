@@ -13,7 +13,7 @@
  * third-party asset whose licence text the shipped page declares
  * (`embedded-declaration`), the same card for the case that decides the
  * contract (bundled documents whose provenance this repository does not
- * record), every record's derived decision, and the audit's declared
+ * record), every record's derived evidence status, and the audit's declared
  * scope.
  *
  * The fixtures are the COMMITTED RECORD
@@ -417,9 +417,9 @@ async function main() {
 				// write a plausible-looking artefact.
 				await page.waitForSelector(`[data-testid="${GALLERY_TEST_ID}"]`, { timeout: 30_000 });
 				const cards = await page.locator(`[data-testid="${REVIEW_TEST_ID}"]`).count();
-				const decisions = await page
+				const statuses = await page
 					.locator(`[data-testid="${REVIEW_TEST_ID}"]`)
-					.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-decision')));
+					.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-evidence-status')));
 				const png = await page.screenshot({ fullPage: true, type: 'png' });
 				await sharp(png)
 					.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
@@ -433,7 +433,7 @@ async function main() {
 					viewport: { width: options.width, height: 900 },
 					deviceScaleFactor: 1,
 					cardsRendered: cards,
-					decisionsRendered: decisions,
+					statusesRendered: statuses,
 					width: meta.width ?? null,
 					height: meta.height ?? null,
 					quality: SCREENSHOT_QUALITY,
@@ -455,7 +455,7 @@ async function main() {
 				// Every check passed: replace the committed artefact once.
 				promoteStagedCapture({ staged: stagedPath, screenshot: options.screenshot });
 				process.stdout.write(
-					`[capture] wrote ${options.screenshot} (${capture.width}x${capture.height}, ${cards} cards [${decisions.join(', ')}], ${verdict.kb} kB)\n`,
+					`[capture] wrote ${options.screenshot} (${capture.width}x${capture.height}, ${cards} cards [${statuses.join(', ')}], ${verdict.kb} kB)\n`,
 				);
 			} finally {
 				await browser.close();

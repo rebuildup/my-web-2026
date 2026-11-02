@@ -75,7 +75,6 @@
 		"files scripts/log-redaction-report.mjs",
 		"files scripts/make-provenance-fixture.mjs",
 		"files scripts/markdown-format-report.mjs",
-		"files scripts/migrate-portfolio-from-2025.mjs",
 		"files scripts/render-session-cookie-report.mjs",
 		"files scripts/seed-portfolio-path-a.mjs",
 		"files scripts/seed-portfolio.mjs",

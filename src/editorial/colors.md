@@ -35,7 +35,7 @@ layer is the contract; the raw layer is implementation.
 | --- | --- | --- |
 | `accent.surface` | Hero / feature card background | Subtle tinted container that says "this is the featured region" without competing with the primary CTA. |
 | `accent.interactive` | CTA hover / pressed / focus fill | The "this button is being acted on" color. Distinct from `bg.accent` (idle CTA) so the interaction reads. |
-| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#ffffff` light / `#0a0b0e` dark, `charcoal.950`). |
+| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#fcfcfd` light — Issue #812 / `#0a0b0e` dark, `charcoal.950`). |
 | `accent.negative` | Error / unreachable status | Red status indicator. Same contrast guarantee as `accent.positive`. |
 | `accent.warning` | Degraded status | Amber status indicator. Same contrast guarantee. |
 | `accent.category.design` | Design content identifier | Pink. Non-text identifier hue paired with the `design` `StateMark` silhouette. |
@@ -142,7 +142,7 @@ rather than gray-washing the accent itself.
 
 | Group | Tokens | Rule |
 | --- | --- | --- |
-| Surface ladder | `bg.canvas` / `bg.surface` / `bg.subtle` | light steps *down* (`0 → 50 → 100`), dark steps *up* through `charcoal` `950 → 900 → 800`, one notch per tier, so depth still reads as successive layers |
+| Surface ladder | `bg.canvas` / `bg.surface` / `bg.subtle` | light steps *down* (`25 → 50 → 100`, Issue #812), dark steps *up* through `charcoal` `950 → 900 → 800`, one notch per tier, so depth still reads as successive layers |
 | Text ladder | `text.default` / `text.muted` / `text.accent` | near-white instead of white, near-neutral gray instead of slate, and the link **brightens** to `brand.500` on dark where it darkens to `brand.700` on light |
 | Borders | `border.subtle` / `border.strong` / `border.focus` | hairline `charcoal.800` (1.14 : 1), emphasis `charcoal.600` (4.19 : 1), focus `brand.300` (11.80 : 1) |
 | Tinted feature surface | `accent.surface` | `brand.50` in light, `brand.950` `#151b26` in dark — a sky whisper 1.14 : 1 above the canvas, the same "barely a tint" relationship as light's 1.07 : 1 |
@@ -193,9 +193,14 @@ fill. `bg.accent` / `text.accent` resolve to `brand.700` in light and
 `brand.500` in dark, hover / pressed resolves to `brand.800`, and the
 focus ring resolves to `brand.600` in light and `brand.300` in dark.
 
-Foreground tokens are checked against `bg.canvas` — `neutral.0`
-(`#ffffff`) in light, `charcoal.950` (`#0a0b0e`) in dark. Normal text
+Foreground tokens are checked against `bg.canvas` — `neutral.25`
+(`#fcfcfd`) in light, `charcoal.950` (`#0a0b0e`) in dark. Normal text
 uses 4.5 : 1; non-text indicators and fills use 3 : 1.
+
+Since Issue #812 `neutral.0` (`#ffffff`) is no longer a surface: it is
+reserved for `text.inverse` — the true-white foreground on a dark
+plate — and for the icon knockout in `src/home/mark.tsx`. The light
+canvas is `neutral.25` (`#fcfcfd`) instead.
 
 ### Dark — all 24 pairs pass (Issue #290)
 
@@ -231,24 +236,27 @@ two tokens survives the appearance change.
 
 ### Light
 
+The light canvas is `neutral.25` (`#fcfcfd`) since Issue #812 — the
+rows below are the measured pairs on that canvas.
+
 | Token / pair | Light value | Background | Contrast |
 | --- | --- | --- | --- |
-| `text.default` | `#0f172a` (neutral.900) | `#ffffff` canvas | 17.85 : 1 |
-| `text.muted` | `#475569` (neutral.600) | `#ffffff` canvas | 7.57 : 1 |
+| `text.default` | `#0f172a` (neutral.900) | `#fcfcfd` canvas (Issue #812) | 17.41 : 1 |
+| `text.muted` | `#475569` (neutral.600) | `#fcfcfd` canvas (Issue #812) | 7.39 : 1 |
 | `text.muted` | `#475569` | `#f8fafc` surface | 7.24 : 1 |
-| `text.accent` | `#0369a1` (brand.700) | `#ffffff` canvas | 5.93 : 1 |
+| `text.accent` | `#0369a1` (brand.700) | `#fcfcfd` canvas (Issue #812) | 5.79 : 1 |
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
-| `accent.positive` | `#047857` | `#ffffff` canvas | 5.48 : 1 |
-| `accent.negative` | `#be123c` | `#ffffff` canvas | 6.29 : 1 |
-| `accent.warning` | `#b45309` | `#ffffff` canvas | 5.02 : 1 |
-| `accent.category.design` | `#be185d` | `#ffffff` canvas | 6.04 : 1 |
-| `accent.category.code` | `#0e7490` | `#ffffff` canvas | 5.36 : 1 |
-| `accent.category.writing` | `#a16207` | `#ffffff` canvas | 4.92 : 1 |
-| `accent.category.tool` | `#4338ca` | `#ffffff` canvas | 7.90 : 1 |
-| `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#ffffff` canvas | 5.93 : 1 |
-| `border.focus` (non-text, 3 : 1) | `#0284c7` | `#ffffff` canvas | 4.10 : 1 |
-| `border.strong` (non-text, 3 : 1) | `#64748b` | `#ffffff` canvas | 4.76 : 1 |
+| `accent.positive` | `#047857` | `#fcfcfd` canvas (Issue #812) | 5.35 : 1 |
+| `accent.negative` | `#be123c` | `#fcfcfd` canvas (Issue #812) | 6.13 : 1 |
+| `accent.warning` | `#b45309` | `#fcfcfd` canvas (Issue #812) | 4.90 : 1 |
+| `accent.category.design` | `#be185d` | `#fcfcfd` canvas (Issue #812) | 5.89 : 1 |
+| `accent.category.code` | `#0e7490` | `#fcfcfd` canvas (Issue #812) | 5.23 : 1 |
+| `accent.category.writing` | `#a16207` | `#fcfcfd` canvas (Issue #812) | 4.80 : 1 |
+| `accent.category.tool` | `#4338ca` | `#fcfcfd` canvas (Issue #812) | 7.71 : 1 |
+| `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#fcfcfd` canvas (Issue #812) | 5.79 : 1 |
+| `border.focus` (non-text, 3 : 1) | `#0284c7` | `#fcfcfd` canvas (Issue #812) | 4.01 : 1 |
+| `border.strong` (non-text, 3 : 1) | `#64748b` | `#fcfcfd` canvas (Issue #812) | 4.64 : 1 |
 | `text.muted` on `bg.subtle` | `#475569` | `#f1f5f9` | 6.91 : 1 |
 | `text.muted` on `accent.surface` | `#475569` | `#f0f9ff` | 7.10 : 1 |
 

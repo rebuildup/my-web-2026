@@ -127,8 +127,10 @@ const PRIVATE_EVENT = PRIVATE_OWNER_RECORD.events[0];
  *
  * `/tools/text-counter` and `/tools/prototype` are two samples of the
  * same `$slug` loader (build-time Tool registry, not D1) because both
- * are public nav entries. `/design-system` has no loader and is in the
- * public nav. `/keyboard` reads the committed snapshot only. `/about`
+ * are public nav entries. `/design-system` has a loader (Issue #812: it
+ * resolves the semantic token hex pairs on the server so the browser
+ * does not ship the palette) and is in the public nav. `/keyboard` reads
+ * the committed snapshot only. `/about`
  * and `/portfolio` render here because the portfolio schema is
  * bootstrapped below.
  *

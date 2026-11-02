@@ -43,8 +43,13 @@
 export const semanticTokens = {
 	colors: {
 		bg: {
+			// Issue #812: the light canvas moved off pure white onto the
+			// new `neutral.25` step (`#fcfcfd`). Pure white is retired
+			// as a SURFACE value; `neutral.0` stays the true-white
+			// foreground (`text.inverse`) and the dark-plate knockout.
+			// The `_dark` binding is unchanged.
 			canvas: {
-				value: { base: '{colors.neutral.0}', _dark: '{colors.charcoal.950}' },
+				value: { base: '{colors.neutral.25}', _dark: '{colors.charcoal.950}' },
 			},
 			surface: {
 				value: { base: '{colors.neutral.50}', _dark: '{colors.charcoal.900}' },

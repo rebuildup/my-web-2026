@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PublicNav } from '../editorial/nav';
 import { DesignSystemPage } from './design-system/DesignSystemPage';
+import { getDesignSystemTokenData } from './design-system/tokens';
 
 /**
  * `/design-system` — editorial design-system showcase page (Issue #181, Issue #199).
@@ -20,6 +21,13 @@ import { DesignSystemPage } from './design-system/DesignSystemPage';
  * `src/editorial/colors.md` §"accent.* token roles" so the page reads
  * as a verifiable companion to that guide.
  *
+ * The route owns a loader (Issue #812): the colour section renders the
+ * RESOLVED hex pairs of the semantic tokens, and resolving them in the
+ * browser meant shipping the whole raw palette plus the whole semantic
+ * layer in this route's chunk to display 24 pairs. The loader resolves
+ * them on the server (`./design-system/tokens`) and hands the pairs to
+ * the page as props; the rendered result is identical.
+ *
  * Chrome convention (Issue #199). The `<PublicNav />` is rendered
  * here explicitly (rather than mounted at the `__root` level) so the
  * showcase page stays a self-contained surface — see
@@ -30,6 +38,7 @@ import { DesignSystemPage } from './design-system/DesignSystemPage';
  * return `null` for that leaf anyway.
  */
 export const Route = createFileRoute('/design-system')({
+	loader: () => getDesignSystemTokenData(),
 	head: () => ({
 		meta: [
 			{ charSet: 'utf-8' },
@@ -55,10 +64,11 @@ export const Route = createFileRoute('/design-system')({
 });
 
 function DesignSystemRoute() {
+	const tokenData = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
-			<DesignSystemPage />
+			<DesignSystemPage tokenData={tokenData} />
 		</>
 	);
 }

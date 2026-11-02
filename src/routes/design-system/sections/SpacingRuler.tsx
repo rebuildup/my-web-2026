@@ -1,5 +1,5 @@
 import { css } from '../../../../styled-system/css';
-import { rawTokens } from '../../../editorial/tokens';
+import { spacingTokens } from '../../../editorial/tokens';
 
 /**
  * SpacingRuler — visual bars showing the spacing scale declared in
@@ -28,7 +28,7 @@ import { rawTokens } from '../../../editorial/tokens';
  */
 
 interface SpacingEntry {
-	token: keyof typeof rawTokens.spacing;
+	token: keyof typeof spacingTokens;
 	label: string;
 	role: string;
 }
@@ -64,7 +64,7 @@ export function SpacingRuler() {
 }
 
 function SpacingRow({ step }: { step: SpacingEntry }) {
-	const raw = rawTokens.spacing[step.token];
+	const raw = spacingTokens[step.token];
 	const pxValue = raw?.value ?? '0';
 	return (
 		<li

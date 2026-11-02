@@ -493,7 +493,7 @@
 			"id": "tool-preview-screens",
 			"kind": "image",
 			"title": "ツール一覧のプレビュー画像（WebP）",
-			"summary": "scripts/capture-tool-previews.mjs が /tools/<slug> の実画面を撮影して生成する（現在13 Tool: prototype / readmark / color-palette / qr-generator / text-counter / sequential-png-preview / svg2tsx / business-mail-block / pomodoro / pi-game / fillgen / code-type-p5 / mic-level）。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark の画像は、sandbox frame で storage が拒否されて画面が停止していた期間（Issue #786）に撮影対象から外されていたが、上流の storage 廃止リデザイン（readmark ADR-0008）が入って再び実画面を写す。Issue #817 の9件（第1陣・第2陣・第3陣の有効化）と Issue #769 の color-palette は standalone build merge 後の初公開のため、撮影＝実ブラウザでの描画確認（quality-gate §19）を兼ねる。Issue #771 の business-mail-block も同様に standalone build merge 後の初公開であり、撮影に加えて host frame 内で Tool 実画面の描画・クリップボードへのコピー・ファイルダウンロードの機能（sandbox allow-downloads）を実測した。mic-level（第3陣）は upstream の standalone build が CSS パイプラインを持たないため、スタイル未適用（Tailwind 形式の class 名だけ）の実画面になる。これは Tool 側の状態であり、画像は偽造せずそのまま記録する。この記録は権利・出所の記録であり、owner 承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"summary": "scripts/capture-tool-previews.mjs が /tools/<slug> の実画面を撮影して生成する（現在14 Tool: prototype / readmark / color-palette / qr-generator / text-counter / sequential-png-preview / svg2tsx / business-mail-block / pomodoro / pi-game / fillgen / code-type-p5 / history-quiz / mic-level）。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark の画像は、sandbox frame で storage が拒否されて画面が停止していた期間（Issue #786）に撮影対象から外されていたが、上流の storage 廃止リデザイン（readmark ADR-0008）が入って再び実画面を写す。Issue #817 の9件（第1陣・第2陣・第3陣の有効化）と Issue #769 の color-palette は standalone build merge 後の初公開のため、撮影＝実ブラウザでの描画確認（quality-gate §19）を兼ねる。Issue #771 の business-mail-block も同様に standalone build merge 後の初公開であり、撮影に加えて host frame 内で Tool 実画面の描画・クリップボードへのコピー・ファイルダウンロードの機能（sandbox allow-downloads）を実測した。mic-level（第3陣）は upstream の standalone build が CSS パイプラインを持たないため、スタイル未適用（Tailwind 形式の class 名だけ）の実画面になる。これは Tool 側の状態であり、画像は偽造せずそのまま記録する。この記録は権利・出所の記録であり、owner 承認の記録ではない（ownerConfirmation: unconfirmed）。",
 			"covers": ["public/tool-previews/**"],
 			"publicPaths": [
 				"/tool-previews/prototype.webp",
@@ -508,6 +508,7 @@
 				"/tool-previews/pi-game.webp",
 				"/tool-previews/fillgen.webp",
 				"/tool-previews/code-type-p5.webp",
+				"/tool-previews/history-quiz.webp",
 				"/tool-previews/mic-level.webp"
 			],
 			"origin": "repository-generated",

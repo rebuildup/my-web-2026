@@ -260,13 +260,28 @@ jobs:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
           retention-days: 7
-      - name: Upload Cloudflare bundle
-        if: github.event_name == 'push'
+      # Issue #816 — the bytes the attestation manifest names, retrievable.
+      #
+      # `artifact:attestation:check` (the last step of
+      # `validate:integration`) hashes `.cloudflare/output/v0`, and the
+      # manifest is uploaded above. Until this step pointed at that path,
+      # it named `dist-cloudflare/`, which NO build produces: the upload
+      # silently succeeded with an empty artifact, so a release owner
+      # holding a published manifest could not obtain the bytes it
+      # describes. `if-no-files-found: error` makes a future path drift a
+      # red run instead of an empty artifact, and 90 days matches the
+      # manifest's own retention so the pair stays retrievable together.
+      # Only main / release-* pushes are uploaded: a ticket-branch build
+      # cannot produce a published release manifest, and retaining ~20 MB
+      # per force-push for 90 days would be storage paid for nothing.
+      - name: Upload Cloudflare Build Output (attested bytes)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dist-cloudflare-${{ github.sha }}
-          path: dist-cloudflare/
-          retention-days: 7
+          name: cf-build-output-${{ github.sha }}
+          path: .cloudflare/output/v0/
+          retention-days: 90
+          if-no-files-found: error
 
   # Issue #392 — the Storybook axe audit as its own job.
   #

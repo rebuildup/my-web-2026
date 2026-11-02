@@ -265,8 +265,12 @@ production domain to be wired (Issue #43 / ADR-0014):
    `validate` job in production mode, and records its source commit,
    `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
    digest and resolved package count. CI retains it as the
-   `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
-   does **not** attest the artifact Cloudflare Workers Builds deploys.
+   `artifact-attestation-<sha>` workflow artifact (90 days), and the bytes
+   it describes are retained alongside it as
+   `cf-build-output-<sha>` (90 days, Issue #816 — before that the upload
+   step named a directory no build produces, so the bytes were
+   unobtainable). The manifest does **not** attest the artifact
+   Cloudflare Workers Builds deploys.
    That comparison is out of scope by owner decision (2026-10-19): the
    attested scope of this Issue is the GitHub Actions production-mode
    Build Output, the manifest declares it through
@@ -295,8 +299,17 @@ production domain to be wired (Issue #43 / ADR-0014):
      unexecuted comparison is reported as "not executed" in the release
      report — never as a PASS.
    - Verify a published manifest against the artifact you hold and the
-     release tag itself with
-     `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
+     release tag itself. Fetch the attested bytes first (status-only
+     output; no credential is printed):
+     `gh run download <run-id> -n cf-build-output-<sha> -D .tmp/release-bytes/<sha>`,
+     then compare:
+     `pnpm run artifact:attestation:check -- --manifest=<path> --artifact-dir=.tmp/release-bytes/<sha> --release-tag="v$(node -p "require('./package.json').version")"`.
+     `actions/upload-artifact` v4 uploads the contents of the given
+     directory, so the download directory holds `config.json` and
+     `workers/` directly; point `--artifact-dir` at it. If the run
+     predates `cf-build-output-<sha>` (releases before 0.8.1), the bytes
+     cannot be fetched and the comparison is reported as **not
+     executed** — never as a PASS.
      The tag must resolve to the manifest's `source.commit` and name the
      manifest's package version, otherwise the check fails
      (`RELEASE_TAG_COMMIT_MISMATCH` / `RELEASE_TAG_VERSION_MISMATCH`).

@@ -6,7 +6,12 @@ repository. Two of them are documented here:
 - `actions-pin-check.webp` / `actions-pin-check-fixture-fail.webp` —
   the GitHub Actions supply-chain audit (Issue #472), below;
 - `secret-scan-fail.webp` — the repository credential gate (Issue #475),
-  [below](#secret-scan-issue-475).
+  [below](#secret-scan-issue-475);
+- `attestation-byte-comparison-2026-11-02.md` — the attestation
+  byte-comparison carryover (Issue #816): what "not executed" means for
+  the run-group v0.8.0 release, what is still checkable without the
+  bytes, and the CI change that makes the comparison executable from
+  0.8.1.
 
 ## Actions pin / permission verification (Issue #472)
 

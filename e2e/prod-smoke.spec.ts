@@ -750,7 +750,16 @@ test.describe('transport security (Issue #446)', () => {
 			expect(res.status()).toBe(200);
 			// Cloudflare can add its own zone-level HSTS on top of the
 			// Worker's, so every value is inspected rather than the first.
-			const values = await res.headerValues('strict-transport-security');
+			//
+			// `headerValues()` belongs to Playwright's `Response`;
+			// `request.get()` returns an `APIResponse`, whose equivalent is
+			// the synchronous `headersArray()`. Calling the wrong one threw
+			// before any assertion ran, so this test reported a JS error
+			// instead of a policy verdict (Issue #816).
+			const values = res
+				.headersArray()
+				.filter((header) => header.name.toLowerCase() === 'strict-transport-security')
+				.map((header) => header.value);
 			// Asserted PER SURFACE, not on the pooled count: a policy present
 			// on `/` and missing on `/api/v1/health` is exactly the dispatch
 			// inconsistency this smoke exists to catch, and a pooled `> 0`

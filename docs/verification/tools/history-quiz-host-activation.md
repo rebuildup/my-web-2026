@@ -94,6 +94,38 @@ capability を殺すため）。実測: 本ブランチで `security:headers:che
 2 枚目と 3 枚目は同じ操作・同じ frame 寸法（1300×820）で、sandbox 属性だけが
 違う。差分がそのまま画像になっている。
 
+### 4.1 受け入れ条件の実測（採点）
+
+Issue #772 の受け入れ条件「空欄入力 → 採点 → 正答表示をユーザー操作で確認する」を、
+同じ preview で実操作して測った（`/tmp/capture-772-ac.mjs`、リポジトリには含めない）。
+
+- frame 内の実測: `.quiz-section` 20 個 / `input.blank` 426 個 / 先頭セクションの
+  本文 1,256 文字 — 問題文・選択肢・入力が sandbox iframe 内に描画されている。
+- 操作: 先頭セクションの空欄 37 個に、`input.blank[data-ans]` の第 1 候補を入力し、
+  **1 個だけ**意図的に誤答（`__わざと誤答__`）を入れて「このセクションを採点」を押した。
+- 結果: `correct` 36 / `incorrect` 1 / 合計 37 — 採点が全空欄を分類した。
+
+| 画像 | 何を示すか |
+| --- | --- |
+| `history-quiz-desktop.webp` | 1440×900 の出題中（空欄のみ） |
+| `history-quiz-graded.webp` | 同じ画面で採点後。正答は緑の下線、誤答（1 個目）は赤で示される |
+| `history-quiz-mobile.webp` | 390×844（DPR 2）での表示 |
+
+### 4.2 390px は非対応（実測）
+
+`/tools/history-quiz` の frame 自体は 390 CSS px に収まる（ホスト文書の
+`scrollWidth` = `clientWidth` = 390、横スクロールなし）。しかし **iframe 内の文書は
+543 px** で横スクロールが必要になる。原因は Tool 側 artefact の
+`input.blank` が回答長に合わせて**固定幅**（実測: 最長 488 px、`x`=53）で置かれて
+いること。ホストは sandbox（`allow-same-origin` なし）なので frame 内の CSS を
+上書きできない。
+
+したがって Issue の「非対応デバイスの場合はその明示」に従い、**390px は非対応**と
+記録する。解禁の条件は Tool リポジトリ側の layout 変更（`input.blank` に
+`max-width: 100%` を当てるか、狭幅用の段組みを追加する）であり、本 PR では
+Tool リポジトリを変更しない方針のため未実施である。内容は欠けておらず
+（横スクロールで到達できる）、欠けているのは 1 画面に収まることだけである。
+
 ## 5. 変更ファイル
 
 - `src/tools/manifest.json` — history-quiz の `delivery.iframe` に

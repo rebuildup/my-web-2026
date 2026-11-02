@@ -1,7 +1,7 @@
 /**
  * Issue #764 — comparison board (WORKTREE ONLY, never merged).
  *
- * `/compare?path=/&theme=dark` puts A / B / C on one page, each drawn by the
+ * `/compare?path=/&theme=dark` puts the direction on one page, drawn by the
  * REAL route inside an iframe (desktop 1440 and mobile 390 side by side), so
  * the owner judges colour on screen instead of reading a contrast table.
  *
@@ -22,13 +22,13 @@ const ROUTES = [
 	{ path: '/design-system', label: 'Design system' },
 ];
 
+// owner の決定（2026-11-02）: direction は **B — MONOCHROME / SIGNAL**。
+// A / C は選択されなかったため、比較板とスタイルシートごと削除した。
 const DIRECTIONS = [
-	{ id: 'a', name: 'A — INK / SIGNAL', note: 'インク紺 + シアン + アンバー' },
 	{ id: 'b', name: 'B — MONOCHROME / SIGNAL', note: '無彩色 + mark の黄 1 色' },
-	{ id: 'c', name: 'C — SHARPENED CURRENT', note: '現行 sky / slate を dark 主に' },
 ] as const;
 
-/** The three or four colours that carry a direction; rendered, not listed. */
+/** The colours that carry a direction; rendered, not listed. */
 const CHIPS = [
 	{ role: 'canvas', label: 'canvas' },
 	{ role: 'surface', label: 'surface' },
@@ -126,7 +126,7 @@ section[class*="pos_fixed"] button{background:#262B33!important;color:#e8ecf3!im
 				<h2
 					style={{ font: '600 20px/1.3 ui-sans-serif, system-ui, sans-serif', margin: '0 0 4px' }}
 				>
-					参考 — A / B / C を実 route で並べた板（B 採用前の記録）
+					参考 — 採用 direction を実 route で描いた板
 				</h2>
 				<p
 					style={{
@@ -135,7 +135,8 @@ section[class*="pos_fixed"] button{background:#262B33!important;color:#e8ecf3!im
 						margin: '0 0 8px',
 					}}
 				>
-					下は各 case を実 route の iframe で描いたもの。direction の決定（B）はこの記録より後です。
+					下は採用 case を実 route の iframe で描いたもの。direction
+					の決定（B）はこの記録より後です。
 				</p>
 			</section>
 			{DIRECTIONS.map((d) => {
@@ -316,7 +317,7 @@ export const Route = createFileRoute('/compare')({
 			{
 				name: 'description',
 				content:
-					'Issue #764 の direction 比較ハーネス。A / B / C の色と階層を実 route で並べて確認するための、公開しない開発用の板。',
+					'Issue #764 の direction 比較ハーネス。採用した direction の色と階層を実 route で並べて確認するための、公開しない開発用の板。',
 			},
 			{ name: 'robots', content: 'noindex, nofollow' },
 		],

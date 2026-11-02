@@ -214,14 +214,17 @@ export const Route = createRootRoute({
 		scripts: [
 			{
 				// Issue #764 comparison preview (WORKTREE ONLY). Reads
-				// `?direction=a|b|c&theme=dark|light`, links the matching
+				// `?direction=b&theme=dark|light`, links the matching
 				// static stylesheet into <head>, and does it while the head
 				// is still parsing — so the palette is in effect before the
 				// first paint and React never owns the node (a <style> or a
 				// per-query attribute rendered through the component tree
 				// fails React 19 hydration in this shell).
+				//
+				// owner の決定（2026-11-02）: direction は B だけ。A / C の
+				// スタイルシートは削除したので、b 以外の指定は無視する。
 				children:
-					'(function(){try{var p=new URLSearchParams(location.search);var d=(p.get("direction")||"").toLowerCase();if(d!=="a"&&d!=="b"&&d!=="c")return;var t=(p.get("theme")||"").toLowerCase()==="light"?"light":"dark";var h="/preview-assets/dir-"+d+"-"+t+".css";if(document.getElementById("preview-css"))return;var e=document.createElement("link");e.id="preview-css";e.rel="stylesheet";e.href=h;document.head.appendChild(e)}catch(e){}})();',
+					'(function(){try{var p=new URLSearchParams(location.search);var d=(p.get("direction")||"").toLowerCase();if(d!=="b")return;var t=(p.get("theme")||"").toLowerCase()==="light"?"light":"dark";var h="/preview-assets/dir-"+d+"-"+t+".css";if(document.getElementById("preview-css"))return;var e=document.createElement("link");e.id="preview-css";e.rel="stylesheet";e.href=h;document.head.appendChild(e)}catch(e){}})();',
 			},
 			{
 				// Applies the non-blocking font stylesheet above. Written to
@@ -282,10 +285,10 @@ function RootComponent() {
 	// The `/admin/*` exclusion rule lives in `editorial/analytics/consent.ts`
 	// so it can be tested without a router — see `isAnalyticsMountPath`.
 	const isAdminPath = !isAnalyticsMountPath(pathname);
-	// Issue #764 comparison preview. `?direction=a|b|c&theme=dark|light`
+	// Issue #764 comparison preview. `?direction=b&theme=dark|light`
 	// re-skins the real route; without a query the page is the released one.
 	const preview = pathname.startsWith('/compare')
-		? { direction: 'a' as const, theme: 'dark' as const, on: false }
+		? { direction: 'b' as const, theme: 'dark' as const, on: false }
 		: parsePreview(searchStr);
 	return (
 		<html lang="ja">

@@ -7,8 +7,12 @@
  * 一色統一をしていない。
  *
  * したがってここにあるのは「候補色の一覧」ではなく、**役割 → 系統（family）** の
- * 割り当てと、その割り当てをどう運用するかの規則を 3 案にしたもの。
- * どの案を採るかは owner。この module は 3 案を並べるだけで、どれかを推さない。
+ * 割り当てと、その割り当てをどう運用するかの規則である。
+ *
+ * owner の決定（2026-11-02）: **III — コンテンツ分類固定** を採用。
+ * I（少数高彩度）/ II（多数中彩度）は選択されなかったため、この module からは
+ * 削除した。比較の記録と実測値は
+ * `docs/verification/design/direction-comparison-0-8-1.md` に残っている。
  */
 
 /** 系統。`light` / `dark` は「本文と同じ場所で読める明度」に置いた値。 */
@@ -27,35 +31,9 @@ export const FAMILY_BY_ID = Object.fromEntries(FAMILIES.map((f) => [f.id, f]));
 
 /**
  * 色の載せ方。`text` は文字色だけ、`tint` は面に薄く敷く、`rule` は細い罫線。
- * 塗りを大きくしないのは 3 案共通（B の骨格を壊さないための制約）。
+ * 塗りを大きくしないのは採用案（III）の骨格を壊さないための制約。
  */
 export const SYSTEMS = [
-	{
-		id: 'few',
-		name: 'I — 少数高彩度',
-		summary:
-			'使う系統は 4（操作 1 + 分類 3）。彩度は高いが、色はタグと見出しの一部にしか載らない。状態ピルは無彩色。',
-		action: 'action',
-		categories: ['design', 'code', 'writing'],
-		states: [],
-		tag: 'text',
-		state: 'mono',
-		rule: '色を持つのは「どの分類か」だけ。状態は文字の強弱で表す。',
-		limits: { hues: 4, area: 3 },
-	},
-	{
-		id: 'many',
-		name: 'II — 多数中彩度',
-		summary:
-			'系統は 7（操作 1 + 分類 3 + 状態 3）。中彩度に落として、タグと状態ピルが薄い塗りを持つ。',
-		action: 'action',
-		categories: ['design', 'code', 'writing'],
-		states: ['done', 'live', 'fail'],
-		tag: 'tint',
-		state: 'tint',
-		rule: '分類と状態が別の系統を持つ。色数は増えるが、1 色あたりの面積は小さいまま。',
-		limits: { hues: 7, area: 7 },
-	},
 	{
 		id: 'fixed',
 		name: 'III — コンテンツ分類固定',

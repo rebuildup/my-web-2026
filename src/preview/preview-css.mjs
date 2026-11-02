@@ -49,10 +49,10 @@ function vars(p) {
 }
 
 /**
- * Shared by all three directions: the owner's confirmed decisions
- * (2026-11-01) — full-width consent band, no decorative border, no left
- * colour bar, one 12-column grid. Only the palette and the structural
- * temper (below) differ between A / B / C.
+ * Shared by the direction: the owner's confirmed decisions (2026-11-01) —
+ * full-width consent band, no decorative border, no left colour bar, one
+ * 12-column grid. The palette and the structural temper (below) belong to
+ * the single surviving direction.
  */
 const SHARED = `
 	/* ── icons: self-hosted, no third-party request (delivery decision) ──
@@ -171,31 +171,6 @@ const SHARED = `
 `;
 
 const STRUCTURE = {
-	A: `
-		/* A — display-led: big label, hard rule under the kicker */
-		:root { --font-sizes-lg: 1.5rem; --font-sizes-xl: 1.625rem; --font-sizes-2xl: 2.5rem; }
-		h1, h2, h3 { line-height: 1.12; letter-spacing: 0.005em; }
-		h1[class*="fs_3xl"] { letter-spacing: -0.02em; }
-		section [class*="ff_sans"][class*="fs_sm"][class*="fw_600"],
-		section [class*="ff_mono"][class*="fs_sm"][class*="c_text.muted"] {
-			font-size: 11px !important; letter-spacing: 0.2em !important;
-			text-transform: uppercase; color: var(--colors-text-accent) !important;
-		}
-		header > h2::before {
-			content: ''; display: block; width: 56px; height: 4px;
-			margin-bottom: 18px; background: var(--colors-bg-accent);
-		}
-		header > h2[class*="fs_2xl"] { font-size: 2.5rem !important; }
-		#app-root > section:first-of-type {
-			background: var(--colors-bg-surface);
-		}
-		nav[class*="bd-be-w_1px"] {
-			background: var(--colors-bg-canvas);
-			border-bottom: 1px solid var(--colors-border-strong) !important;
-			position: sticky; top: 0; z-index: 30;
-		}
-		section[class*="pos_fixed"] { border-top: 4px solid var(--colors-bg-accent) !important; }
-	`,
 	B: `
 		/* B — mono + signal: squared off, one signal colour, hard rules */
 		:root { --font-sizes-lg: 1.375rem; --font-sizes-xl: 1.625rem; --font-sizes-2xl: 2.25rem; }
@@ -217,31 +192,19 @@ const STRUCTURE = {
 		}
 		section[class*="pos_fixed"] { border-bottom: 2px solid var(--colors-bg-accent) !important; }
 	`,
-	C: `
-		/* C — the current language, sharpened: same skeleton, stronger scale */
-		:root { --font-sizes-lg: 1.25rem; --font-sizes-xl: 1.5rem; --font-sizes-2xl: 2.5rem; }
-		h1, h2, h3 { line-height: 1.14; letter-spacing: -0.01em; }
-		header > h2[class*="fs_2xl"] { font-size: 2.5rem !important; font-weight: 700 !important; }
-		section [class*="ff_sans"][class*="fs_sm"][class*="fw_600"] {
-			letter-spacing: 0.12em !important; font-weight: 700 !important;
-			color: var(--colors-text-accent) !important;
-		}
-		nav[class*="bd-be-w_1px"] {
-			background: var(--colors-bg-canvas);
-			border-bottom: 1px solid var(--colors-border-strong) !important;
-			position: sticky; top: 0; z-index: 30;
-		}
-	`,
 };
 
 export function parsePreview(search) {
 	const params = new URLSearchParams(search ?? '');
 	const rawDir = (params.get('direction') ?? '').toLowerCase();
-	const direction = rawDir === 'b' ? 'b' : rawDir === 'c' ? 'c' : rawDir === 'a' ? 'a' : 'a';
+	// owner の決定（2026-11-02）: direction は **B** だけ。A / C のパレットと
+	// スタイルシートは削除したので、b 以外の指定は「プレビュー無し」になる。
+	const direction = 'b';
 	const theme = (params.get('theme') ?? '').toLowerCase() === 'light' ? 'light' : 'dark';
-	// `?direction=` present at all turns the preview on; without it the page
-	// renders exactly as released, so the owner can compare against reality.
-	return { direction, theme, on: params.has('direction') || params.has('theme') };
+	// `?direction=b` (or `?theme=`) present turns the preview on; without it
+	// the page renders exactly as released, so the owner can compare against
+	// reality.
+	return { direction, theme, on: rawDir === 'b' || params.has('theme') };
 }
 
 export function buildPreviewCss(direction, theme) {

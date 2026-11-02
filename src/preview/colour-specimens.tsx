@@ -5,8 +5,8 @@
  * 色は 1 色に収斂させない。コンテンツ（分類・状態）が自分の色を持ち、同じ画面に
  * 複数の色が同時に生きる。操作の系統は 1 つに固定し、地は無彩色のまま。
  *
- * 3 案はどれも **同じ題材**（同じ 3 作品・同じ 3 状態・同じ操作）で描くので、
- * 案の差は色の載り方だけになる。数値（同時色相数・彩色面積）は実描画から測る。
+ * 採用案は **III — コンテンツ分類固定**（owner 決定 2026-11-02）。I / II は
+ * 選択されなかったため描画ごと削除し、III の描画は変えていない。
  */
 import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react';
 import { FAMILY_BY_ID, RULES, SYSTEMS } from './colour-systems.mjs';
@@ -28,16 +28,6 @@ const STATE_LABEL: Record<string, string> = { done: '公開中', live: '連載�
 function familyColor(id: string, theme: Theme): string {
 	if (id === 'ink') return MONO[theme].text;
 	return FAMILY_BY_ID[id][theme];
-}
-
-/** 中彩度に落とす（II 案）。地に寄せるだけで、色相は変えない。 */
-function soften(colour: string, ground: string): string {
-	return `color-mix(in oklab, ${colour} 64%, ${ground})`;
-}
-
-/** 薄い塗り（タグ・ピル）。面の上に 16% だけ色を載せる。 */
-function wash(colour: string, surface: string): string {
-	return `color-mix(in oklab, ${colour} 16%, ${surface})`;
 }
 
 type Measure = { hues: number; area: number };
@@ -78,9 +68,7 @@ function WorkCard({
 	work,
 }: { system: System; theme: Theme; work: (typeof WORKS)[number] }) {
 	const m = MONO[theme] as Record<string, string>;
-	const raw = familyColor(work.kind, theme);
-	const colour = system.id === 'many' ? soften(raw, m.raised) : raw;
-	const stateColour = familyColor(work.state, theme);
+	const colour = familyColor(work.kind, theme);
 
 	const tagStyle: CSSProperties = {
 		font: `600 10px/1.2 ${FONT}`,
@@ -90,10 +78,6 @@ function WorkCard({
 		alignSelf: 'start',
 		justifySelf: 'start',
 	};
-	if (system.tag === 'tint') {
-		tagStyle.background = wash(colour, m.ground);
-		tagStyle.padding = '3px 8px';
-	}
 	if (system.tag === 'rule') {
 		tagStyle.borderBottom = `2px solid ${colour}`;
 		tagStyle.padding = '3px 0 2px';
@@ -105,15 +89,10 @@ function WorkCard({
 		alignSelf: 'start',
 		justifySelf: 'start',
 	};
-	if (system.state === 'tint') {
-		pillStyle.background = wash(stateColour, m.ground);
-		pillStyle.color = stateColour;
-	} else if (system.state === 'borrow') {
+	// 状態は色を足さない（borrow）: 分類の色を借りて、塗りは無彩色。
+	if (system.state === 'borrow') {
 		pillStyle.background = m.control;
 		pillStyle.color = colour;
-	} else {
-		pillStyle.background = m.control;
-		pillStyle.color = m.secondary;
 	}
 
 	return (
@@ -133,10 +112,8 @@ function WorkCard({
 				{work.title}。本文は無彩色のまま。色はここまでで、行全体は塗らない。
 			</p>
 			<span
-				data-coloured={system.state === 'mono' ? undefined : true}
-				data-family={
-					system.state === 'tint' ? work.state : system.state === 'borrow' ? work.kind : undefined
-				}
+				data-coloured={system.state === 'borrow' ? true : undefined}
+				data-family={system.state === 'borrow' ? work.kind : undefined}
 				style={pillStyle}
 			>
 				{STATE_LABEL[work.state]}
@@ -147,8 +124,7 @@ function WorkCard({
 
 function Specimen({ system, theme }: { system: System; theme: Theme }) {
 	const m = MONO[theme] as Record<string, string>;
-	const actionRaw = familyColor(system.action, theme);
-	const action = system.id === 'many' ? soften(actionRaw, m.ground) : actionRaw;
+	const action = familyColor(system.action, theme);
 	const [ref, measure] = useColourMeasure(`${system.id}-${theme}`);
 
 	// 実際にこの標本で色を持つ系統だけを並べる（説明と実描画をずらさない）。
@@ -253,10 +229,12 @@ export function ColourSystemSection() {
 			<p style={{ font: `12px/1.6 ${FONT}`, opacity: 0.66, margin: '0 0 6px', maxWidth: 820 }}>
 				色は「1
 				色を選ぶ」話ではありません。役割ごとに系統を持たせ、コンテンツ（分類・状態）が自分の色を持ち、
-				同じ画面で複数の色が同時に生きます。操作の系統だけは 1 つに固定し、地は無彩色のまま。3
-				案とも
+				同じ画面で複数の色が同時に生きます。操作の系統だけは 1
+				つに固定し、地は無彩色のまま。採用案は
+				<strong>III — コンテンツ分類固定</strong>
+				（owner 決定 2026-11-02）です。比較に供していた I / II は削除済みで、実描画は
 				<strong>同じ題材</strong>（同じ 3 作品・同じ 3
-				状態・同じ操作）で描いているので、差は色の載り方だけです。
+				状態・同じ操作）のままなので、系統と実測値（同時色相数・彩色面積）は実描画から測ったものです。
 			</p>
 			<ul
 				style={{

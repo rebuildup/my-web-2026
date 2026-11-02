@@ -445,17 +445,10 @@
 		{
 			"id": "preview-harness-stylesheets",
 			"kind": "config",
-			"title": "Issue #764 比較ハーネスの生成 CSS（6 ファイル）",
-			"summary": "scripts/generate-preview-css.mjs が src/preview/preview-css.mjs と src/preview/preview-palettes.mjs から生成する方向別スタイルシート。ハーネス（/compare と ?direction=）だけが読み、製品のページは参照しない。",
+			"title": "Issue #764 比較ハーネスの生成 CSS（2 ファイル）",
+			"summary": "scripts/generate-preview-css.mjs が src/preview/preview-css.mjs と src/preview/preview-palettes.mjs から生成する方向別スタイルシート。ハーネス（/compare と ?direction=）だけが読み、製品のページは参照しない。owner の決定（2026-11-02）で採用 direction は B のみになり、A / C のスタイルシートは削除した。",
 			"covers": ["public/preview-assets/*.css"],
-			"publicPaths": [
-				"/preview-assets/dir-a-dark.css",
-				"/preview-assets/dir-a-light.css",
-				"/preview-assets/dir-b-dark.css",
-				"/preview-assets/dir-b-light.css",
-				"/preview-assets/dir-c-dark.css",
-				"/preview-assets/dir-c-light.css"
-			],
+			"publicPaths": ["/preview-assets/dir-b-dark.css", "/preview-assets/dir-b-light.css"],
 			"origin": "repository-generated",
 			"rightsHolder": "rebuildup",
 			"license": {

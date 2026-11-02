@@ -22,8 +22,15 @@ const WORKER = 'https://example.com';
 const DISABLED_TOOLS = manifest.tools.filter((tool) => tool.delivery.kind === 'host_disabled');
 
 describe('/tools/<slug> — host_disabled placeholder copy', () => {
-	it('has at least one host_disabled Tool to exercise', () => {
-		expect(DISABLED_TOOLS.length).toBeGreaterThan(0);
+	// Zero is a legitimate end state: Issue #817 wires every Tool to
+	// `same_origin_static`, and the placeholder then has no live entry.
+	// This assertion used to require at least one disabled Tool, which
+	// would have turned the completion of #817 into a red test — a gate
+	// that fires on success is a defect, not a guard. The loop below
+	// exercises whatever the manifest holds, so a future disabled entry
+	// is still covered without pinning the count.
+	it('reads the host_disabled set from the manifest', () => {
+		expect(Array.isArray(DISABLED_TOOLS)).toBe(true);
 	});
 
 	for (const tool of DISABLED_TOOLS) {

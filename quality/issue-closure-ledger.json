@@ -3307,6 +3307,28 @@
 			"action": "kept-closed",
 			"note": "成果物は「測って、決めたこと」。実測は Issue 本文（/ だけ nav[aria-label=\"Public\"] が無い、masthead は 320–1920px で折返しなし、実際に折り返していたのは section heading）と、決定後の経路（hero CTA / footer リンク）。公開面のコード変更は行っていない。",
 			"missing": null
+		},
+		{
+			"issue": 718,
+			"title": "fix(a11y): 既知の公開axe違反を実装側で解消し baseline を減らす",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"5226f9a9",
+				"e2e/a11y/axe-baseline.json",
+				"e2e/a11y/axe-storybook-baseline.json",
+				"src/editorial/nav/PublicNav.tsx",
+				"src/home/status/tiles.tsx"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: commit 5226f9a9 が 3 系統（list SC 1.3.1 / definition-list SC 1.3.1 / label-content-name-mismatch SC 2.5.3）を実装側で修正し、両台帳の records は実測で 0 件になった。台帳照合の gate は残り、対象 route / story の除外や基準の緩和はしていない。",
+			"missing": null
 		}
 	]
 }

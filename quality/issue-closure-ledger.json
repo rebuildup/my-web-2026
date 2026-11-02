@@ -2860,6 +2860,29 @@
 			"action": "kept-closed",
 			"note": "Release notes の公開（gh release edit v0.8.0）と tag 不在の実測が証拠。選択肢 2 の採択そのものがこの Issue の成果物であり、release branch への統合だけを根拠にはしていない。",
 			"missing": null
+		},
+		{
+			"issue": 815,
+			"title": "chore(quality): Issue close 台帳の監査窓を広げ、新しい close を記録できるようにする",
+			"closedAt": "2026-11-02",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#818",
+				"0b9ff819",
+				"quality/issue-closure-ledger.json",
+				"scripts/check-issue-closure-remote.mjs",
+				"scripts/check-issue-closure-remote.test.mjs",
+				"docs/runbook/issue-lifecycle.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件 4 点の証跡: (1) derived window に新しい close（#808）を 1 件足しても issue:closure:check が exit 0 で通る。(2) 2026-10-31 の 132 件は population: 132 の frozen window として保持され、削減・水増しできない。(3) R005 の新しい意味は check-issue-closure-remote.test.mjs の「recording a new close in the derived window is not R005」ほかで固定。(4) runbook §4.1 の window 表と §5 step 3 が「新しい close をどの窓にどう記録するか」を記述。",
+			"missing": null
 		}
 	]
 }

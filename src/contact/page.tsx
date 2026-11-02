@@ -185,10 +185,15 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 	// the URL — selecting the rendered link yields no invisible
 	// characters.
 	const urlSegments = channel.url.split('/');
-	const verifiedLabel =
-		Number.isFinite(days) && days >= 0
-			? `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`
-			: '検証日不明 / verified_at unparseable';
+	const verifiedLabel = Number.isNaN(days)
+		? '検証日不明 / verified_at unparseable'
+		: days < 0
+			? // The gate in `filterActiveVerified` refuses to publish a future
+				// date, so this branch is defensive only: a row that reached the
+				// page with a negative day count is not "unparseable", it is
+				// dated ahead of now, and the label must not claim otherwise.
+				'検証日が未来 / verified_at is in the future'
+			: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<li
 			data-channel-id={channel.id}

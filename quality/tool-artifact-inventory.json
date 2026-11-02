@@ -52,7 +52,7 @@
 			}
 		},
 		"readmark": {
-			"pinned_sha": "906c90e57e51f1d7b3fe739f085cf9978445c0fb",
+			"pinned_sha": "f894b83b2f918d5f895017281fbd4e5ebaf3e9d5",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -62,18 +62,31 @@
 			"dependencies": {
 				"status": "verified",
 				"lockfile": "bun.lock",
-				"lockfile_sha256": "695c41bbf1f06c5b0452cbbd9939e44eb27f1716f9a2ea29fc6fae618bee2546",
-				"runtime": ["dexie", "pdfjs-dist", "react", "react-dom", "react-router-dom", "zustand"]
+				"lockfile_sha256": "cab03494fa87b0336686d5b7e5bd6ff0a3e3a4a5874d78b23aa069deaa6271c9",
+				"runtime": ["pdfjs-dist", "react", "react-dom", "react-router-dom", "zustand"]
 			},
 			"outbound": {
 				"observed": true,
 				"hosts": [
-					"bit.ly",
+					"${d}",
+					"${e}",
+					"${h}",
+					"a",
+					"b",
+					"creativecommons.org",
+					"example.com",
+					"foo.bar",
+					"github.com",
 					"localhost",
+					"ns.adobe.com",
 					"react.dev",
 					"reactrouter.com",
-					"tinyurl.com",
-					"www.w3.org"
+					"scripts.sil.org",
+					"www.apache.org",
+					"www.w3.org",
+					"www.xfa.org",
+					"x",
+					"xn--e1aybc"
 				]
 			}
 		},

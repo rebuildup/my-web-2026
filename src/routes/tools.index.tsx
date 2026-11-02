@@ -223,6 +223,12 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	'ae-expression': {
+		src: '/tool-previews/ae-expression.webp',
+		alt: 'AE Expression の画面。Tool 内のヘッダーの下にカテゴリ・難易度・詳細設定のフィルタが並び、その下にエクスプレッションの一覧（Wiggle、Loop Out、Time-based Rotation、Bounce など）がカードで並ぶ。',
+		width: 1200,
+		height: 669,
+	},
 	pomodoro: {
 		src: '/tool-previews/pomodoro.webp',
 		alt: 'Pomodoro の実行中の画面。左上に「Warm up」のフェーズ表示、その下にカウントダウン表示（14:58.75 のように減っている）、さらに下に作業／休憩のスケジュール一覧（Warm up 15 min / Short Break 3 min / Deep Work I 30 min など）が並ぶ。',

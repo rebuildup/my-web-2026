@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/ae-expression",
 					"/tools/code-type-p5",
 					"/tools/color-palette",
 					"/tools/fillgen",
@@ -326,6 +327,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/ae-expression",
 			"/tools/code-type-p5",
 			"/tools/color-palette",
 			"/tools/fillgen",
@@ -1388,7 +1390,9 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/tools/ae-expression"
+		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [],
@@ -1397,6 +1401,12 @@
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/ae-expression"
+			}
+		]
 	}
 }

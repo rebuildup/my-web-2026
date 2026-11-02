@@ -446,10 +446,11 @@
 			"slug": "ae-expression",
 			"display_name": "AE Expression",
 			"description_ja": "After Effects のエクスプレッションを選んでコピーできるリファレンス。バウンス・サイン波・ランダムなどの式とパラメータを確認できます。",
+			"description": "Browse After Effects expressions (bounce, sine wave, random, …), tune their parameters, and copy the generated code.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-ae-expression.git",
 				"submodule_path": "external/ae-expression",
-				"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+				"pinned_sha": "56bbbbd6174c1baee5b542565466f8154ad633ed",
 				"branch": "main"
 			},
 			"build": {
@@ -458,11 +459,27 @@
 				"package_manager": "pnpm"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/ae-expression/app",
+				"entry_html": "/tools/ae-expression/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "The Tool's export button writes the generated expression as a file (expression.txt / expression.json) through link.download, and a sandboxed frame without allow-downloads drops that download. Nothing else is granted: no allow-same-origin, no navigation, no popups, no storage."
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"purpose": {
+						"ja": "この Tool は読み込み時に third-party origin へ通信しません（宣言された origin は 0 件）。したがって送信先の目的はありません。",
+						"en": "This Tool contacts no third-party origin (the declared origin list is empty), so there is no third-party purpose to declare."
+					},
+					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin); the built bundle carries only React's own react.dev error-doc URL and the w3.org XML/SVG namespace strings, which are never requested; browser storage and clipboard access are guarded (in-memory / execCommand fallback), so the sandboxed opaque origin affects nothing; the export download writes a locally generated file to the reader's own machine and transmits nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-ae-expression PR #7 (commit 56bbbbd6174c1baee5b542565466f8154ad633ed = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`, base \"./\"); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/** and none fetched at load; browser storage and clipboard are guarded with in-memory / execCommand fallbacks, so the opaque origin of the sandbox (no allow-same-origin) breaks neither. The frame is granted exactly ONE capability beyond `allow-scripts`: `allow-downloads`, because the Tool's export button writes the generated expression as a file (expression.txt / expression.json) through link.download, and a sandboxed frame drops that download otherwise. Measured 2026-11-03 in Chromium (this repository's Playwright build) on the shipped host route /tools/ae-expression: the rendered iframe carries sandbox=\"allow-scripts allow-downloads\" and allow=\"downloads\"; clicking エクスポート fires a download event (suggested filename expression.txt, 111 B, content \"wiggle(2, 50)\"), with no download failure and no page error; and the SAME artefact bytes in a control iframe with sandbox=\"allow-scripts\" only fire 0 download events — that A/B is what makes the token the measured cause. The `allow` + `sandbox_rationale` pair is what the embed policy (Issue #465) requires for a conditional sandbox token; Chromium implements no `downloads` Permissions-Policy feature (measured: downloads=() does not block the download), so `downloads` is a sandbox-only capability: the host grants it through the sandbox token alone and no Permissions-Policy value mentions it (see docs/security/security-headers.md section 3). Nothing else is granted: no allow-same-origin, no navigation, no popups, no storage."
 		},
 		{
 			"slug": "mic-level",

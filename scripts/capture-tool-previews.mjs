@@ -129,6 +129,12 @@ export const PREVIEW_TARGETS = [
 		expect: 'SVG to TSX の画面。SVG入力欄と変換オプション、TSX出力のペイン',
 	},
 	{
+		slug: 'ae-expression',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'AE Expression の画面。エクスプレッションの一覧・式・パラメータが表示され、生成したコードをコピーできる',
+	},
+	{
 		slug: 'pomodoro',
 		/** What the committed artefact must show, for a human re-check. */
 		expect:

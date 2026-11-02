@@ -6,11 +6,13 @@ import { publicProjects } from './publish';
 /**
  * The snapshot the Worker bundles (Issue #765).
  *
- * Why a committed file rather than a fetch: the build-time sync
- * (`scripts/sync-portfolio-notion.mjs`) rewrites this file, Vite inlines it
- * at build time, and the request path reads it synchronously. That is what
- * makes "Notion is the authoring source of truth" compatible with "the
- * public site never depends on Notion being up" (ADR-0018 §2.1).
+ * Why a committed file rather than a fetch: the one-off build-time
+ * ingest (`scripts/sync-portfolio-notion.mjs`) rewrites this file, Vite
+ * inlines it at build time, and the request path reads it synchronously.
+ * That is what makes "Notion is the authoring source of truth" compatible
+ * with "the public site never depends on Notion being up" (ADR-0018 §§2.1,
+ * 2.2). There is no runtime call and no scheduled job to keep the two
+ * stores in step: a person runs the ingest when they mean to.
  *
  * The committed default is an **empty, `unavailable`** snapshot. That is
  * deliberate: a checkout that has never run the sync must contribute zero

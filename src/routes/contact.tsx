@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { getVisibleChannels } from '../contact/public';
 import { ContactPage } from '../contact/page';
+import { getVisibleChannels } from '../contact/public';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';

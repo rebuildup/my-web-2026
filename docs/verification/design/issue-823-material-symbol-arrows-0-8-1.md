@@ -162,7 +162,7 @@ capabilities 2 + contact CTA 1）、`/about` が +9（rail 4 + Current 4 + 本�
 | build | client entry shell | 判定 |
 | --- | --- | --- |
 | `ba4f2e8e`（path データ 1 モジュール版） | 625.0 KiB | **17 route OVER** |
-| 本commit（消費側ごとに path モジュールを分割） | **618.7 KiB**（633,558 B） | **18 route すべて ok** |
+| `99a20d1d`（path モジュールを消費側ごとに分割） | **618.7 KiB**（633,558 B） | **18 route すべて ok** |
 
 分割後、entry chunk に `arrow_forward` と `close` 以外の glyph path は含まれない
 （built asset を直接 grep して確認: `motion` / `keyboard` / `menu_book` /

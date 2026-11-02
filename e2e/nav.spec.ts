@@ -1,5 +1,43 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { NAV_ROSTER } from './nav-roster';
+
+/**
+ * The shipped Tool manifest, read from disk (Issue #861).
+ *
+ * The 「準備中」 placeholder only exists while some Tool is still
+ * waiting. The manifest is repo-controlled data, so the spec derives
+ * the state from it instead of freezing one slug: when the last
+ * waiting Tool lands, this surface is gone and the spec says so with
+ * a reason instead of failing.
+ */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+function readToolManifest(): Map<string, { kind: string; displayName: string }> {
+	const raw = JSON.parse(readFileSync(resolve(REPO_ROOT, 'src/tools/manifest.json'), 'utf8')) as {
+		tools: Array<{ slug: string; display_name: string; delivery: { kind: string } }>;
+	};
+	return new Map(
+		raw.tools.map((tool) => [
+			tool.slug,
+			{ kind: tool.delivery.kind, displayName: tool.display_name },
+		]),
+	);
+}
+
+const TOOL_MANIFEST = readToolManifest();
+
+/** The first waiting Tool of the shipped manifest, if any. */
+const FIRST_DISABLED_SLUG = [...TOOL_MANIFEST.entries()].find(
+	([, tool]) => tool.kind === 'host_disabled',
+)?.[0];
+
+/** The manifest's own display name for a slug (the breadcrumb leaf). */
+async function readToolDisplayName(slug: string): Promise<string> {
+	return TOOL_MANIFEST.get(slug)?.displayName ?? slug;
+}
 
 /**
  * PublicNav — per-page opt-in site chrome (Issue #168, re-scoped by
@@ -220,7 +258,17 @@ test.describe('public nav — Tools surfaces (Issue #288 abolished by #785)', ()
 	});
 
 	test('is mounted on the 「準備中」 placeholder', async ({ page }) => {
-		const res = await page.goto('/tools/text-counter');
+		if (!FIRST_DISABLED_SLUG) {
+			// Issue #861: the shipped manifest holds no waiting Tool, so
+			// the placeholder surface does not exist. The contract is
+			// covered against a synthetic manifest in
+			// `src/tools/registry.test.ts`.
+			test.skip(
+				true,
+				'shipped manifest has no host_disabled Tool — the 「準備中」 surface does not exist; the contract is covered by the synthetic-manifest unit tests (Issue #861)',
+			);
+		}
+		const res = await page.goto(`/tools/${FIRST_DISABLED_SLUG}`);
 		expect(res?.status()).toBe(200);
 		await expect(page.locator('[data-tool-state="host_disabled"]')).toBeVisible();
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
@@ -229,7 +277,7 @@ test.describe('public nav — Tools surfaces (Issue #288 abolished by #785)', ()
 		// fallback — `route-labels.ts` reads it off the loader's
 		// `{ state, tool }` wrapper.
 		await expect(page.locator('nav[aria-label="パンくず"] [aria-current="page"]')).toHaveText(
-			'Text Counter',
+			await readToolDisplayName(FIRST_DISABLED_SLUG),
 		);
 	});
 });

@@ -126,6 +126,22 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * declaration (today: every Tool), an unexpected message from the
  * frame reaches no host code at all.
  */
+/**
+ * The only manifest fields a `host_disabled` page may serialize into its
+ * hydration payload (Issue #836).
+ *
+ * The loader used to return the whole `ManifestTool`, so the SSR document
+ * carried `delivery.disabled_reason`, `build.command`, `source` and
+ * `notes` in `$_TSR` even after the visible field was removed. TanStack
+ * serializes loader data by default; the boundary therefore has to be
+ * drawn on the data, not on the JSX.
+ */
+interface DisabledToolView {
+	readonly slug: string;
+	readonly display_name: string;
+	readonly description_ja: string;
+}
+
 export const Route = createFileRoute('/tools/$slug')({
 	loader: ({ params }) => {
 		// Display-case tolerance (see module docstring). The manifest
@@ -152,7 +168,12 @@ export const Route = createFileRoute('/tools/$slug')({
 		}
 		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool, privacy };
 		if (tool.delivery.kind === 'host_disabled') {
-			return { state: 'disabled' as const, tool };
+			const view: DisabledToolView = {
+				slug: tool.slug,
+				display_name: tool.display_name,
+				description_ja: tool.description_ja,
+			};
+			return { state: 'disabled' as const, tool: view };
 		}
 		// Any other delivery.kind we don't yet support at /tools/<slug>.
 		// Today that is `not_integrable_yet`; fall through to notFound.
@@ -696,17 +717,17 @@ function BlockedPlaceholder({
  *
  * The `/tools` index lists every manifest entry; a user clicking
  * through to a `host_disabled` Tool must reach a meaningful
- * response (this placeholder) rather than a 404. The Tool name,
- * description, and `disabled_reason` all come from the manifest
- * via `getTool()`, so the page is informative even before the
- * Tool-side fix lands.
+ * response (this placeholder) rather than a 404. The Tool name and
+ * public Japanese description come from the manifest via `getTool()`.
+ * `disabled_reason` is operator documentation (Issue #836): it names
+ * build/repo facts a visitor cannot act on, so it stays in the
+ * manifest and never reaches this surface.
  *
  * It carries the same chrome as the embeddable shell (`ToolChrome`,
  * owner decision 2026-11-01): a 「準備中」 page that drops the site nav
  * strands the visitor on the one surface that has nothing to do.
  */
-function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
-	const reason = tool.delivery.kind === 'host_disabled' ? tool.delivery.disabled_reason : '';
+function DisabledPlaceholder({ tool }: { tool: DisabledToolView }) {
 	return (
 		<ToolChrome>
 			<Container as="section">
@@ -722,26 +743,7 @@ function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 					<SectionHeading
 						eyebrow="Coming soon"
 						title={tool.display_name}
-						description={
-							<>
-								{tool.description}
-								{reason ? (
-									<>
-										<br />
-										<br />
-										<span
-											data-tool-disabled-reason
-											className={css({
-												fontStyle: 'italic',
-												color: 'text.muted',
-											})}
-										>
-											{reason}
-										</span>
-									</>
-								) : null}
-							</>
-						}
+						description={tool.description_ja}
 					/>
 					<p
 						className={css({

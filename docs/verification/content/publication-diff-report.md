@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 28 |
 | External hosts | 36 |
 | First-party hosts | 0 |
-| Approved transition | 15 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -94,22 +94,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (4)
+### Added public URLs (0)
 
-- `/tools/code-type-p5`
-- `/tools/fillgen`
-- `/tools/pi-game`
-- `/tools/pomodoro`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (3)
+### Added external hosts (0)
 
-- `cdn.jsdelivr.net`
-- `via.placeholder.com`
-- `www.youtube.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -229,19 +224,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host cdn.jsdelivr.net appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host via.placeholder.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net
-- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net/npm/p5@
-- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json
-- **WARN** `W002 external-url-added` External URL added: https://via.placeholder.com
-- **WARN** `W002 external-url-added` External URL added: https://via.placeholder.com/300?text=Image+Error
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/embed/…
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/iframe_api
-- **WARN** `W004 public-url-added` Public URL added: /tools/code-type-p5
-- **WARN** `W004 public-url-added` Public URL added: /tools/fillgen
-- **WARN** `W004 public-url-added` Public URL added: /tools/pi-game
-- **WARN** `W004 public-url-added` Public URL added: /tools/pomodoro
+_No findings._
 

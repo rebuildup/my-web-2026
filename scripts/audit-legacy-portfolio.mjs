@@ -238,7 +238,9 @@ export const LEGACY_FACET_ROLES = Object.freeze({
  *
  *   * `display-label` was answered by a design decision inside this
  *     repository (Issue #813, `docs/domain/portfolio-vocabulary.md`). It is
- *     NOT an owner decision and is not recorded as one.
+ *     NOT an owner decision and is not recorded as one. The owner rejected the
+ *     first attempt (a uniform `Role` -> `Kind` relabel); the corrected
+ *     decision keeps `Role` and drops the derived value from the column.
  *   * `slug-collision` was answered by the repository owner on 2026-11-02.
  *     The quote is the artefact; an agent transcribing it is not.
  *
@@ -252,11 +254,13 @@ export const DECIDED = Object.freeze([
 			'Display label: the public surface labels the `Role` field "Role" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit ("Role: Video production"), which the derivation does not claim — it names the kind of work. Whether the label becomes "Type"/"種類" is an owner decision; no public page is affected while every migrated page is Draft.',
 		status: 'decided',
 		decided_by: 'issue-813',
-		// The value is the kind of work, so the label names that and nothing
-		// more. `Type` was rejected because the card already uses that word for
-		// the facet; `Role` because it claims a personal appointment.
+		// No new label. The owner rejected a uniform `Role` -> `Kind` relabel:
+		// `Tool developer` is a person's role and `Development` is a kind of
+		// work, and one label cannot cover both. `Role` therefore stays, and a
+		// facet-derived value — which is not a role — is not projected into the
+		// public column at all; the facet display carries the kind.
 		resolution:
-			'The public label is `Kind` (Japanese surfaces use the facet words). The value vocabulary stays kind-of-work nouns. This is a content-design decision recorded in `docs/domain/portfolio-vocabulary.md` (Issue #813) — not an owner decision.',
+			'No new label. `Role` stays, because a recorded person role (`Tool developer`, `Intern`) is what the column is for. A facet-derived value is a kind of work, not a role, so it is not written to the public column and the facet display carries the kind. The owner rejected a uniform `Role` -> `Kind` relabel on 2026-11-02; the way the column is split is a content-design decision recorded in `docs/domain/portfolio-vocabulary.md` (Issue #813) — not an owner decision.',
 		record: 'docs/domain/portfolio-vocabulary.md',
 	},
 	{

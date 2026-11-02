@@ -362,7 +362,12 @@ describe('buildInventory', () => {
 		assert.ok(decision, 'the display label has to stay traceable');
 		assert.equal(decision.status, 'decided');
 		assert.equal(decision.decided_by, 'issue-813');
-		assert.match(decision.resolution, /`Kind`/);
+		assert.match(decision.resolution, /`Role` stays/);
+		assert.match(decision.resolution, /not a role/);
+		// The owner rejected the uniform relabel, and the ledger records that
+		// rejection rather than a speculatively new label.
+		assert.match(decision.resolution, /rejected a uniform `Role` -> `Kind`/);
+		assert.doesNotMatch(decision.resolution, /The public label is/);
 		// The question is kept verbatim, including the part that is now false:
 		// it is what the 2026-11-01 run printed.
 		assert.match(decision.question, /^Display label:/);

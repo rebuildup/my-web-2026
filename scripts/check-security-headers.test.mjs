@@ -137,7 +137,6 @@ describe('inspect — repository state', () => {
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
 			['business-mail-block', 'code-type-p5', 'fillgen', 'history-quiz', 'pi-game', 'mic-level'],
-
 		);
 	});
 

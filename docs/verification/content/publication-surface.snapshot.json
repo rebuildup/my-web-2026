@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/business-mail-block",
 					"/tools/code-type-p5",
 					"/tools/color-palette",
 					"/tools/fillgen",
@@ -326,6 +327,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/business-mail-block",
 			"/tools/code-type-p5",
 			"/tools/color-palette",
 			"/tools/fillgen",
@@ -1389,7 +1391,7 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/history-quiz"
+			"/tools/business-mail-block"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1403,7 +1405,7 @@
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/history-quiz"
+				"message": "Public URL added: /tools/business-mail-block"
 			}
 		]
 	}

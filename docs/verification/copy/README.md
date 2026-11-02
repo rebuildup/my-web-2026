@@ -8,6 +8,7 @@ obligations.
 | `editorial-approval-gate.webp` | #506 | the editorial approval gate for public Japanese copy: the verdict, the three review dimensions, the extracted changed segments, the per-file classification, and the four verdicts resolved from the committed fixtures (see [`editorial-approval-gate.md`](editorial-approval-gate.md)) |
 | `japanese-diff-report.webp` | #425 | the Japanese copy review-target report: the live change set, a worked before/after example with number-drift, a withheld credential-shaped line, and every status resolved from the committed fixtures (see [`japanese-diff-report.md`](japanese-diff-report.md)) |
 | `meaning-diff-evaluation.webp` | #426 | the meaning-diff corpus evaluation: every proposal pair with the classification the gate gave it (meaning / surface / disposition), the evidence code behind each verdict, and the empty auto-apply vocabulary (see [`meaning-diff-evaluation.md`](meaning-diff-evaluation.md)) |
+| `copy-editorial-surface-scope-672.md` | #672 | the surface declaration of the copy gate after the file-level refinement: the per-file segment breakdown of the difference between the old and the new declaration, the criterion that decided each file, and the mixed-file cost (see [`copy-editorial-surface-scope-672.md`](copy-editorial-surface-scope-672.md)) |
 
 ## 公開日本語の編集レビュー承認 (Issue #506)
 

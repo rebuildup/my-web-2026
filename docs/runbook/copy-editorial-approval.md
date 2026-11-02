@@ -45,6 +45,16 @@ gate が主張するのは **証拠** だけである — 「この変更には 
 「対象の public copy が 1 つも無い」「判断記録が無い」「記録が別の文面を指す」
 をそれぞれ別の状態として報告する。
 
+宣言の **粒度** には 2 種類がある（Issue #672）。どちらが対象になるかは
+ディレクトリではなく **ファイル** で決まる。
+
+| 宣言の項目 | 粒度 | 使いどころ |
+| --- | --- | --- |
+| `publicCopyGlobs` | ディレクトリ / サブツリー | その obligation が持つファイルがすべて表示用である surface（`src/home/**`, `src/editorial/**` など）。後から追加されたファイルも追加の宣言なしで gate に入る |
+| `publicCopyFiles` | **ファイル 1 個** | 表示用ファイルと data / schema / 純ロジックが混在する surface（`src/keyboard/**`, `src/legal/**`, `src/privacy/**`）。描画先が読むのはファイルだから、単位もファイル |
+
+どちらの粒度でも `excludeGlobs` が優先される。判定基準は §6.1 に書く。
+
 ## 3. 判定の語彙
 
 ### 3.1 4 つの verdict
@@ -285,6 +295,85 @@ fingerprint は変わらない。
 **この対象外リストは owner の copy decision である。** 内部文書も対象に入れたい
 場合は `quality/copy-editorial-surfaces.json` の glob を広げ、記録運用を変える
 (owner decision であり agent が行わない)。
+
+### 6.1 判定基準 — 「表示文字列かどうか」
+
+**対象 file の列入基準は 1 つだけ**: **そのファイルは訪問者が読む文字列を
+持つか**（Issue #672 の owner 決定、comment 6567572805）。
+
+```text
+表示文字列を持つ  →  gate の対象（owner 承認が要る）
+表示文字列を持たない →  gate の対象外（承認は要らない）
+```
+
+「ディレクトリにある」ことは基準にならない。「表示されない定義を skip する」こと
+と「訪問者の文言を gate の外へ逃がす」ことは別である。**データやロジックの
+ファイルでも、描画先から読まれる本文は対象に入る** — `src/privacy/data-lifecycle.ts`
+は registry（data/logic）だが、privacy notice が描く本文はそこから出る。
+
+判定は **描画先を追跡** して行う:
+
+1. その文字列は、どの route / どの component が描くのか。
+2. その route / component は公開面か（`/admin` や Storybook サンプルでないか）。
+3. 公開面なら対象、でなければ対象外。
+
+#### 6.1.1 ファイル単位の宣言（`publicCopyFiles`）
+
+`src/keyboard/**` / `src/legal/**` / `src/privacy/**` は、表示用ファイルと
+data / schema / 純ロジックが混在するため、**ファイル 1 個ずつ**を宣言する。
+宣言の単位がファイルなので、**同じファイルの中に表示されない文字列が
+含まれることがある**（下記の「混在ファイル」）。
+
+| ファイル | 対象 | 描画先 |
+| --- | --- | --- |
+| `src/keyboard/components/KeyboardPage.tsx` | ○ | `/keyboard` のページ本体 |
+| `src/keyboard/components/KeyboardDiagram.tsx` | ○ | `/keyboard` のキー配置図と詳細 |
+| `src/keyboard/format.ts` | ○ | 図のキーキャップと詳細の説明文（`layerLabel` / `actionLabel` / `actionDescription`） |
+| `src/keyboard/catalog.ts` | ○ | プラットフォーム説明・解析失敗理由・解析メモ |
+| `src/keyboard/load.ts` | ○ | 配列を表示できない状態のメッセージ |
+| `src/keyboard/sources/manifest.json` | ○ | **採用 note だけ**が `/keyboard` の出典 callout に描画される |
+| `src/legal/contract.ts` | ○ | 権利 review カードのラベルと finding の文言 |
+| `src/legal/AssetLicenseReview.tsx` | ○ | 権利 review カードそのもの |
+| `src/privacy/data-lifecycle.ts` | ○ | フッターの privacy notice の本文 |
+
+#### 6.1.2 除外の根拠（`excludeGlobs`）
+
+| 除外 | 根拠 |
+| --- | --- |
+| `src/keyboard/sources/key-map-kanata/**` | 取り込み済みの Kanata 設定の key map。`parseExpressions` はコメント（`;;`）を行ごとに落とすので、ファイル内の日本語は **1 文字も画面に届かない**。ソースの記録であり表示ではない |
+| `src/keyboard/sources/pc-setup/**` | 取り込み済みの大西配列の JSON。日本語を持たない |
+| `src/keyboard/geometry.ts` | `note` は型に存在するが **描画されない**（`KeyboardDiagram` / `KeyboardPage` は `rows` と `caps` しか読まない）。位置の定義であって表示文ではない |
+| `src/keyboard/types.ts` | 純型定義。日本語は doc comment にしかなく、抽出器はコメント行を無視する |
+| `src/keyboard/parse-kanata.ts` / `src/keyboard/parse-onishi.ts` | パーサ。日本語を持たない（解析注記は固定の英語コード） |
+| `src/keyboard/index.ts` / `src/keyboard/components/index.ts` | 再輸出のみ。日本語を持たない |
+| `src/legal/inventory.ts` | 記録の **schema reader**。`J` 系の finding は **Storybook サンプルの中だけ**に描画され、公開面には出ない |
+| `src/legal/inventory-table.ts` | Storybook の roster 射影。公開面に載ることはない |
+| `**/*.stories.tsx` / `**/fixtures/**` / `**/*.md` / `**/*.test.*` | サンプル・デモ・内部文書・テスト。publish される copy ではない |
+
+この表の除外は **宣言として残す** ガードである。上の 9 ファイルは
+`publicCopyFiles` でファイル単位に宣言しているため、現状はそもそも対象では
+なく、レポートの除外理由にも出ない。将来 `src/keyboard/**` のような広い glob
+を足したときも、**表示されないファイルが二重に対象に入ることはない**。
+
+#### 6.1.3 混在ファイル（file 粒度の代償）
+
+file 単位の宣言には、**同じファイルの中の非表示文字列も一緒に gate に入る**
+という代償がある。混在ファイルは 2 つ:
+
+| ファイル | 画面に出る日本語 | gate に入るが画面には出ない日本語 | なぜ同時に gate に入るのか |
+| --- | --- | --- | --- |
+| `src/keyboard/sources/manifest.json` | `adoption.note`（1 セグメント） | `sources[].note`（4 セグメント） | 出典の注記はページに現れないが、同じファイルにある。file 単位の宣言では切り分けられない |
+| `src/privacy/data-lifecycle.ts` | `publication.status === 'approved'` の entry の本文 | `pending` の entry `current-projects-signature` の本文（3 セグメント） | `pending` の entry は `filterPublishedEntries` で描画されないが、同じファイルにある |
+
+この代償は **小さい**（373 セグメント中 7 セグメント）であり、放置する理由は
+「gate の外へ visitor 文言を逃がさない」ことである。逆向きの代償（非表示 115
+セグメントを対象に入れる）は大きい。
+
+#### 6.1.4 差分の実測
+
+現状の宣言と新宣言の差分セグメント内訳（ファイルごとの件数）は
+[`docs/verification/copy/copy-editorial-surface-scope-672.md`](../../verification/copy/copy-editorial-surface-scope-672.md)
+に記録した。
 
 ## 7. 既知の限界（隠さない）
 

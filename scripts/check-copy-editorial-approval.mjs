@@ -101,6 +101,19 @@
  * contract's per-capability locale opt-in
  * (`copy/resources.json`) is untouched by this gate.
  *
+ * The unit of the surface declaration
+ * ------------------------------------
+ * A file is public copy when it matches a `publicCopyGlobs` entry OR
+ * is named in `publicCopyFiles`, and no `excludeGlobs` entry matches
+ * it. The criterion (Issue #672) is whether the file holds a string a
+ * visitor reads — not whether it lives in a directory that also holds
+ * display-bearing files. A key map, a schema reader and a pure type
+ * module hold no visitor-visible sentence; a data file whose visible
+ * body IS rendered (`src/privacy/data-lifecycle.ts`) is public copy
+ * even though its source is data. Skipping a hidden definition and
+ * letting a visitor-facing sentence escape the gate are different
+ * things, and only the second one is a defect.
+ *
  * The editing aid and the provenance block are two faces of one rule:
  * **an automated side may prepare a review; only the owner may
  * approve it.** The gate never mistakes the first for the second.

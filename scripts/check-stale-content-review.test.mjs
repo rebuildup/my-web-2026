@@ -450,7 +450,7 @@ describe('check-stale-content-review — the shipped registry', () => {
 	 * genuinely future date (a typo, a hand-edited year) still
 	 * fails here until someone moves this line deliberately.
 	 */
-	const SHIPPED_TODAY = '2026-11-01';
+	const SHIPPED_TODAY = '2026-11-02';
 
 	it('parses and validates', () => {
 		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
@@ -465,7 +465,7 @@ describe('check-stale-content-review — the shipped registry', () => {
 			excludedPaths: registry.excludedPaths ?? [],
 			excludedExpressions: registry.excludedExpressions ?? [],
 		});
-		const result = evaluateRegistry({ segments, registry, today: TODAY });
+		const result = evaluateRegistry({ segments, registry, today: SHIPPED_TODAY });
 		assert.deepEqual(result.queue, [], 'the shipped registry must have no waiting expression');
 		assert.ok(result.entries.length > 0, 'the live tree must carry time-sensitive expressions');
 	});

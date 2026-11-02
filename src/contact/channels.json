@@ -7,9 +7,9 @@
 			"labelEn": "GitHub rebuildup org",
 			"purpose": "technical",
 			"url": "https://github.com/rebuildup",
-			"verified_at": "2026-09-27",
-			"active": true,
-			"$note": "development-facing identity / repository namespace per docs/personal/domain.md §1 (rebuildup). Observable via the git remote URL in `.git/config`."
+			"verified_at": "2026-11-03",
+			"active": false,
+			"$note": "development-facing identity / repository namespace per docs/personal/domain.md §1 (rebuildup). Observable via the git remote URL in `.git/config`. Retired 2026-11-03 (Issue #832): the org profile is reachable (HTTP 200) but carries no contact affordance of its own — no issues, no discussions, no public address — so it was not a route a visitor could use to reach the owner. See docs/verification/contact/channel-verification-2026-11-03.md."
 		},
 		{
 			"id": "github-rebuildup-my-web-2026",
@@ -17,9 +17,9 @@
 			"labelEn": "GitHub my-web-2026 repository",
 			"purpose": "technical",
 			"url": "https://github.com/rebuildup/my-web-2026",
-			"verified_at": "2026-09-27",
+			"verified_at": "2026-11-03",
 			"active": true,
-			"$note": "canonical source repository. Observable via the git remote URL in `.git/config`."
+			"$note": "canonical source repository. Observable via the git remote URL in `.git/config`. Re-verified 2026-11-03 (Issue #832): HTTP 200, and the repository is a route a visitor can use — Issues and Discussions are both enabled (`has_issues: true`, `has_discussions: true`) and /discussions answers 200."
 		},
 		{
 			"id": "yusuke-kim-com",
@@ -27,9 +27,9 @@
 			"labelEn": "Personal site (2025 edition)",
 			"purpose": "distribution",
 			"url": "https://yusuke-kim.com",
-			"verified_at": "2026-09-27",
-			"active": true,
-			"$note": "canonical personal domain per docs/personal/domain.md §1 and docs/personal/owner.md Identity summary. The 2025 edition remains published there."
+			"verified_at": "2026-11-03",
+			"active": false,
+			"$note": "canonical personal domain per docs/personal/domain.md §1 and docs/personal/owner.md Identity summary. The 2025 edition remains published there. Retired 2026-11-03 (Issue #832): the site answers 200, but it holds no contact route — /contact is 404 and no page carries a public address — so it could not be used to reach the owner from here. See docs/verification/contact/channel-verification-2026-11-03.md."
 		},
 		{
 			"id": "rebuildup-dev",
@@ -37,9 +37,9 @@
 			"labelEn": "Production origin",
 			"purpose": "distribution",
 			"url": "https://rebuildup.dev",
-			"verified_at": "2026-09-27",
-			"active": true,
-			"$note": "canonical production origin per AGENTS.md §4 (Canonical production domain)."
+			"verified_at": "2026-11-03",
+			"active": false,
+			"$note": "canonical production origin per AGENTS.md §4 (Canonical production domain). Retired 2026-11-03 (Issue #832): the link would point a visitor at this same origin, whose only contact route is the /contact page they are already on — a circular channel rather than a way to reach the owner. See docs/verification/contact/channel-verification-2026-11-03.md."
 		}
 	]
 }

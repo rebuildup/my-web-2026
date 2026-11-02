@@ -137,7 +137,7 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 							id="channels-heading"
 							eyebrow="01 — Channels"
 							title="現在利用可能な channel"
-							description="各 channel には用途 (採用・技術的な議論・配布) を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
+							description="各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
 							variant="default"
 						/>
 						{empty ? <EmptyState /> : <ChannelList channels={channels} now={now} />}
@@ -185,10 +185,15 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 	// the URL — selecting the rendered link yields no invisible
 	// characters.
 	const urlSegments = channel.url.split('/');
-	const verifiedLabel =
-		Number.isFinite(days) && days >= 0
-			? `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`
-			: '検証日不明 / verified_at unparseable';
+	const verifiedLabel = Number.isNaN(days)
+		? '検証日不明 / verified_at unparseable'
+		: days < 0
+			? // The gate in `filterActiveVerified` refuses to publish a future
+				// date, so this branch is defensive only: a row that reached the
+				// page with a negative day count is not "unparseable", it is
+				// dated ahead of now, and the label must not claim otherwise.
+				'検証日が未来 / verified_at is in the future'
+			: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<li
 			data-channel-id={channel.id}
@@ -327,9 +332,7 @@ function EmptyState() {
 			})}
 		>
 			<p lang="ja" className={css({ margin: '0' })}>
-				現在 re-verified されている channel はありません。channel を追加するには、
-				<code>src/contact/channels.json</code> に <code>active: true</code> と現在日付の{' '}
-				<code>verified_at</code> を持つ entry を追加してください。
+				現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。
 			</p>
 		</div>
 	);

@@ -12,10 +12,10 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 23 |
+| Publicly reachable URLs (surface + Static Assets) | 24 |
 | External hosts | 33 |
 | First-party hosts | 0 |
-| Approved transition | 5 finding(s) |
+| Approved transition | 1 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -56,6 +56,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
+- `/tools/color-palette`
 - `/tools/prototype`
 - `/tools/qr-generator`
 - `/tools/readmark`
@@ -89,12 +90,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (4)
+### Added public URLs (1)
 
-- `/tools/qr-generator`
-- `/tools/sequential-png-preview`
-- `/tools/svg2tsx`
-- `/tools/text-counter`
+- `/tools/color-palette`
 
 ### Removed public URLs (0)
 
@@ -214,9 +212,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://example.com/image.svg
-- **WARN** `W004 public-url-added` Public URL added: /tools/qr-generator
-- **WARN** `W004 public-url-added` Public URL added: /tools/sequential-png-preview
-- **WARN** `W004 public-url-added` Public URL added: /tools/svg2tsx
-- **WARN** `W004 public-url-added` Public URL added: /tools/text-counter
+- **WARN** `W004 public-url-added` Public URL added: /tools/color-palette
 

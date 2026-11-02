@@ -110,22 +110,22 @@
 			}
 		},
 		"color-palette": {
-			"pinned_sha": "0eb51503ba39712827497281ca489a379c8c912b",
+			"pinned_sha": "b3fed92bac4a6d32b48be21c35ad8b8239d4d5e5",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "8ac1bced922e4179937d946c4011cd9720621ba03793bbee45680c977bc03fcb",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"sequential-png-preview": {

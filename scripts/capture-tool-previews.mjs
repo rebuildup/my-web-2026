@@ -94,6 +94,12 @@ export const PREVIEW_TARGETS = [
 		expect: 'readmark のライブラリ画面（保存しない一行明示 + 空一覧 + import CTA）',
 	},
 	{
+		slug: 'color-palette',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Color Palette Generator の初期画面（左: Algorithm & Limits の設定欄と保存済みパレット欄、右: Generate Colors / Save の操作と生成パレットの表示欄）',
+	},
+	{
 		slug: 'qr-generator',
 		/** What the committed artefact must show, for a human re-check. */
 		expect:

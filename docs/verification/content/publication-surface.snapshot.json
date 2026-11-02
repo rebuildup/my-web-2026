@@ -277,6 +277,7 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/color-palette",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -319,6 +320,7 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/color-palette",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",
@@ -1298,15 +1300,10 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/qr-generator",
-			"/tools/sequential-png-preview",
-			"/tools/svg2tsx",
-			"/tools/text-counter"
+			"/tools/color-palette"
 		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://example.com/image.svg"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
@@ -1315,29 +1312,9 @@
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/image.svg"
-			},
-			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/qr-generator"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/sequential-png-preview"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/svg2tsx"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/text-counter"
+				"message": "Public URL added: /tools/color-palette"
 			}
 		]
 	}

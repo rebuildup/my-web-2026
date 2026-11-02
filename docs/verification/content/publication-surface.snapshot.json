@@ -277,11 +277,8 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
-					"/tools/code-type-p5",
 					"/tools/color-palette",
-					"/tools/fillgen",
-					"/tools/pi-game",
-					"/tools/pomodoro",
+					"/tools/mic-level",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -324,11 +321,8 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
-			"/tools/code-type-p5",
 			"/tools/color-palette",
-			"/tools/fillgen",
-			"/tools/pi-game",
-			"/tools/pomodoro",
+			"/tools/mic-level",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",
@@ -342,7 +336,6 @@
 			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
-			"cdn.jsdelivr.net",
 			"design.google",
 			"developers.google.com",
 			"example.com",
@@ -358,7 +351,6 @@
 			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
-			"via.placeholder.com",
 			"www.apache.org",
 			"www.facebook.com",
 			"www.googletagmanager.com",
@@ -370,7 +362,6 @@
 			"www.sitemaps.org",
 			"www.stat.go.jp",
 			"www.w3.org",
-			"www.youtube.com",
 			"x.com",
 			"yusuke-kim.com"
 		],
@@ -451,8 +442,7 @@
 					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
-					"src/home/mark.tsx",
-					"src/tools/manifest.json"
+					"src/home/mark.tsx"
 				]
 			},
 			{
@@ -498,33 +488,6 @@
 				"identifier": false,
 				"files": [
 					"src/external-api/github.ts"
-				]
-			},
-			{
-				"url": "https://cdn.jsdelivr.net",
-				"host": "cdn.jsdelivr.net",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://cdn.jsdelivr.net/npm/p5@",
-				"host": "cdn.jsdelivr.net",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json",
-				"host": "cdn.jsdelivr.net",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -1067,7 +1030,6 @@
 					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
-					"src/http/security-headers.json",
 					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
@@ -1229,24 +1191,6 @@
 				]
 			},
 			{
-				"url": "https://via.placeholder.com",
-				"host": "via.placeholder.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://via.placeholder.com/300?text=Image+Error",
-				"host": "via.placeholder.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
 				"url": "https://www.facebook.com/KosenProcon",
 				"host": "www.facebook.com",
 				"kind": "external",
@@ -1337,33 +1281,6 @@
 				]
 			},
 			{
-				"url": "https://www.youtube.com",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://www.youtube.com/embed/…",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://www.youtube.com/iframe_api",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/manifest.json"
-				]
-			},
-			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
@@ -1384,7 +1301,9 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/tools/mic-level"
+		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [],
@@ -1393,6 +1312,12 @@
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/mic-level"
+			}
+		]
 	}
 }

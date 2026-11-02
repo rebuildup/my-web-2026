@@ -247,6 +247,18 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	'mic-level': {
+		// Same namespace reasoning as the entries above: a host-rendered
+		// thumbnail must not sit inside the Tool's own artifact tree.
+		src: '/tool-previews/mic-level.webp',
+		alt: 'Mic Level Checker の初期画面。冒頭に Home / Tools / Mic Level Checker のパンくずとタイトル「Mic Level Checker」、説明文、プライバシーに関する注記（音声はこのブラウザ内だけで処理します / 録音・保存・アップロードは一切行いません / サーバーへ送信されることはありません / 音量解析はブラウザ内のみ）、「マイクを使用する」ボタンが並ぶ。',
+		// The capture is the Tool FRAME's box at the script's
+		// 1440 × 900 context, scaled to 1200 px wide. The numbers are
+		// the committed file's real dimensions (measured), so a stale
+		// pair cannot reserve the wrong box and shift the card on load.
+		width: 1200,
+		height: 669,
+	},
 };
 
 function ToolsIndexRoute() {

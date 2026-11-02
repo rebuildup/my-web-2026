@@ -432,11 +432,11 @@ export const usableProductExamples: readonly AppliedExample[] = [
 		],
 	},
 	{
-		id: 'text-counter',
+		id: 'history-quiz',
 		kind: 'tool',
-		subject: 'text-counter',
+		subject: 'history-quiz',
 		record: 'src/tools/manifest.json',
-		pointer: 'tools[slug=text-counter]',
+		pointer: 'tools[slug=history-quiz]',
 		facts: [
 			{ label: 'delivery.kind', value: 'host_disabled' },
 			{ label: 'classification', value: 'needs_tool_side_fix' },
@@ -446,7 +446,7 @@ export const usableProductExamples: readonly AppliedExample[] = [
 			{
 				stageId: 'acquire',
 				evidence:
-					'manifest が `delivery.kind: host_disabled` と `disabled_reason` に「Tool is currently a Next.js component library (no vite.config, no index.html). Embedding blocked until the Tool repo adds a standalone Vite build path (Issue #81 follow-up after pilot).」を宣言している。',
+					'manifest が `delivery.kind: host_disabled` と `disabled_reason` に「Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.」を宣言している。',
 				gap: null,
 				verdict: '不適合',
 				nextAction:
@@ -564,10 +564,10 @@ export const usableProductSections: readonly PreviewSection[] = [
 		bullets: [],
 	},
 	{
-		id: 'example-text-counter',
-		heading: '反例 — 公開できないTool（text-counter）',
+		id: 'example-history-quiz',
+		heading: '反例 — 公開できないTool（history-quiz）',
 		kind: 'example',
-		exampleId: 'text-counter',
+		exampleId: 'history-quiz',
 		paragraphs: [
 			'同じ manifest が「公開できない」ことも記録できる。manifest が host_disabled として持つ記録は、5 段階のどの段階で出口が閉じているかを語れる。',
 		],

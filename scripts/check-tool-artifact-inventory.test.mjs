@@ -348,9 +348,19 @@ describe('the gate over this repository', () => {
 		() => {
 			const result = runGate([]);
 			assert.equal(result.status, 0, result.stderr);
-			// A passing run writes its block to stdout.
-			assert.match(result.stdout, /2 shipped/);
-			assert.match(result.stdout, /2 pass/);
+			// A passing run writes its block to stdout. The count is derived
+			// from the same fact the gate counts (`shipped` = a checkout with
+			// `.git` + `package.json`), so activation PRs (#817 was the one
+			// that froze "2") do not have to remember this fixture.
+			const manifest = JSON.parse(readFileSync(join(repoRoot, 'src/tools/manifest.json'), 'utf8'));
+			const shipped = manifest.tools.filter(
+				(tool) =>
+					existsSync(join(repoRoot, tool.source.submodule_path, '.git')) &&
+					existsSync(join(repoRoot, tool.source.submodule_path, 'package.json')),
+			).length;
+			assert.ok(shipped > 0, 'the fixture needs at least one checkout');
+			assert.match(result.stdout, new RegExp(`${shipped} shipped`));
+			assert.match(result.stdout, new RegExp(`${shipped} pass`));
 			assert.match(result.stdout, /Result: PASS/);
 		},
 	);

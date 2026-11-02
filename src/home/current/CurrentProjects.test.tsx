@@ -188,7 +188,11 @@ describe('CurrentProjects — empty and links', () => {
 		const html = render([{ ...BARE, link: { label: '詳しく見る', href: '/about' } }]);
 		expect(html).toContain('href="/about"');
 		expect(html).toContain('詳しく見る');
-		expect(html).toContain('<span aria-hidden="true">→</span>');
+		// Issue #823 — the arrow is a DRAWN Material Symbols glyph, not a
+		// typed `→`. The glyph stays `aria-hidden` (the label carries the
+		// name) and the text layer carries no arrow character.
+		expect(html).toContain('<svg aria-hidden="true"');
+		expect(html).not.toContain('→');
 	});
 
 	it('drops an unpublishable link but keeps the project', () => {

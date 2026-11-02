@@ -1,5 +1,7 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { type RecipeVariantProps, css, cva } from '../../../styled-system/css';
+import { MaterialSymbol } from '../primitives/MaterialSymbol';
+import { CLOSE_PATH } from '../primitives/material-symbol-paths';
 import {
 	describeByTarget,
 	fieldIdSet,
@@ -35,10 +37,12 @@ import {
  * described to a sighted reviewer and read as silence to everyone
  * else.
  *
- * Styling note: the error state is carried by a text marker, a heavier
+ * Styling note: the error state is carried by an icon marker, a heavier
  * border, the sentence itself and `aria-invalid` — never by colour
  * alone (WCAG 2.2 1.4.1). The border colour uses `accent.negative`,
- * the audited status foreground token.
+ * the audited status foreground token. The marker is a Material Symbols
+ * glyph (Issue #823), not a typed `×`: a sign that carries meaning is
+ * drawn, never a character in the text layer.
  */
 
 /** Props the contract owns: a caller must not be able to break them. */
@@ -126,9 +130,7 @@ export function FieldFrame({
 			{control(controlProps)}
 			{hasError(error) ? (
 				<p id={ids.errorId} className={errorClassName} data-testid={`${name}-error`}>
-					<span className={errorMarkerClassName} aria-hidden="true">
-						×
-					</span>
+					<MaterialSymbol className={errorMarkerClassName} d={CLOSE_PATH} size={14} />
 					{error}
 				</p>
 			) : null}
@@ -273,8 +275,10 @@ const errorClassName = css({
 });
 
 const errorMarkerClassName = css({
-	fontFamily: 'mono',
-	fontSize: 'sm',
+	// The marker is a drawn glyph (Issue #823), so it carries no font
+	// metrics any more — only the flex behaviour and the colour it
+	// inherits from the error sentence.
+	flexShrink: '0',
 });
 
 const inputRecipe = cva({

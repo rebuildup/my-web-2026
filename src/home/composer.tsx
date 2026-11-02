@@ -1,6 +1,8 @@
 import { css } from '../../styled-system/css';
 import { PetCompanion } from '../editorial/pet';
 import { Container } from '../editorial/primitives/Container';
+import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
@@ -217,7 +219,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 									})}
 								>
 									<span lang="ja">Contact を見る</span>
-									<span aria-hidden="true">→</span>
+									<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
 								</a>
 							</div>
 						</SectionHeading>

@@ -6,6 +6,21 @@ Notion の page id・token・secret はここに書かない（台帳も `record
 
 本移行は `docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md` に従う。
 
+> **2026-11-02 の追記（Issue #811）。この文書は 2026-11-01 時点の実行記録であり、
+> 以下は書き換えない。** その後の owner 決定は
+> [`ADR-0019`](../adr/ADR-0019-publication-authority-and-unreviewed-assets.md) が持つ。
+> 本文中で「未決」「owner の決定待ち」と書かれた 2 件は、どちらも決着した。
+>
+> | 本文の箇所 | いまの状態 |
+> | --- | --- |
+> | §3 `Role` ラベル | **決定済み**。表示ラベルは `Kind`（Issue #813、`docs/domain/portfolio-vocabulary.md`）。owner 決定ではなく、内容設計の決定である |
+> | §5 slug 衝突 | **決定済み（owner、2026-11-02）**。「旧サイトのデータに合わせる」= 台帳の option (b)。旧サイト slug が正で、D1 の 3 行が移行時に退役する |
+> | §6 停止条件のうち rights `unrecorded` | **公開の前提ではなくなった**（ADR-0019 §2.1）。未レビューは公開を止めず、公開面に表示される。ただし表示の実装まではコードも挙動も変えない（同 §4） |
+>
+> 台帳側は `scripts/audit-legacy-portfolio.mjs#DECIDED` に移され、
+> `open_decisions` は空になった。生成済みの
+> `portfolio-2025-inventory.json` は 2026-11-01 の記録なので再生成しない。
+
 ## 1. 対象と前提
 
 | 項目 | 値 |
@@ -74,6 +89,9 @@ facet は**作品が何であるか**しか言っておらず、「この人が�
 
 この未決事項は台帳 `portfolio-2025-inventory.json#open_decisions` にも 1 行で残している
 （生成器 `scripts/audit-legacy-portfolio.mjs#OPEN_DECISIONS`）。**agent が答える項目ではない。**
+
+**2026-11-02 追記:** 解消済み。表示ラベルは `Kind`（Issue #813）。台帳では
+`DECIDED[0]` が `decided_by: 'issue-813'` として持つ。owner 決定ではない。
 
 ## 4. 書き込み結果
 
@@ -149,6 +167,11 @@ Notion を読む経路を持たず、公開面は書き込みの内容から独�
 **公開しても D1 行に隠れる**。選択肢は (a) 移行側の slug を付け替える（旧サイトの URL を捨てる）
 / (b) D1 行を畳んで移行側に寄せる（本文・画像の移し替えが要る）の 2 つで、
 **どちらも選ばず** owner の決定として台帳 `open_decisions` に残している。
+
+**2026-11-02 追記:** owner が選んだ。**(b)** — 旧サイト slug が正で、D1 の
+3 行が移行時に退役する（`ADR-0019` §2.6）。台帳では `DECIDED[1]` が持つ。
+台帳が書いていた「本文・画像の移し替えが要る」は不要である — 移行レコードが
+旧サイトのデータであり、辻褄を合わせるのは D1 側だからである。実行は 0.8.1 の外。
 
 ## 6. まだ公開できない理由
 

@@ -225,10 +225,60 @@ export const LEGACY_FACET_ROLES = Object.freeze({
  * Nothing here is a guess this script made — each is a question for the
  * owner, and the ledger says so rather than picking an answer.
  */
-export const OPEN_DECISIONS = Object.freeze([
-	'Display label: the public surface labels the `Role` field "Role" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit ("Role: Video production"), which the derivation does not claim — it names the kind of work. Whether the label becomes "Type"/"種類" is an owner decision; no public page is affected while every migrated page is Draft.',
-	"Slug collision: three migrated projects derive the same slug as a row that D1 already serves — aulymo-v01, aulymo-v02, multislicer. The current rule is that src/portfolio/load.ts resolves a collision in favour of D1, so a migrated record with one of these slugs stays hidden from /portfolio and from /portfolio/<slug> even after it is published. Either (a) the migrated slugs are changed, which abandons the old-site URL, or (b) the D1 rows are retired in favour of the migrated records, which means moving their text and media first. This ledger chooses neither; the choice is the owner's, and it is a public-URL decision, not a migration detail.",
+/**
+ * The decisions this ledger used to record as unresolved (Issue #811).
+ *
+ * Each entry keeps the ORIGINAL question verbatim, because a decision is only
+ * legible next to what it decided, and the text is what the 2026-11-01 run
+ * printed. What changed is the `status`: both are now decided, and each names
+ * where the decision came from and what it resolved to.
+ *
+ * The two decisions do NOT have the same authority, and the ledger must not
+ * blur them (AGENTS.md §6, Issue #741):
+ *
+ *   * `display-label` was answered by a design decision inside this
+ *     repository (Issue #813, `docs/domain/portfolio-vocabulary.md`). It is
+ *     NOT an owner decision and is not recorded as one.
+ *   * `slug-collision` was answered by the repository owner on 2026-11-02.
+ *     The quote is the artefact; an agent transcribing it is not.
+ *
+ * Neither resolution is executed here. ADR-0019 §4 keeps the vocabulary
+ * change and the migration itself out of this release cycle.
+ */
+export const DECIDED = Object.freeze([
+	{
+		id: 'display-label',
+		question:
+			'Display label: the public surface labels the `Role` field "Role" (ProjectCard.tsx, PortfolioDetail.tsx). A facet-derived value reads as a personal credit ("Role: Video production"), which the derivation does not claim — it names the kind of work. Whether the label becomes "Type"/"種類" is an owner decision; no public page is affected while every migrated page is Draft.',
+		status: 'decided',
+		decided_by: 'issue-813',
+		// The value is the kind of work, so the label names that and nothing
+		// more. `Type` was rejected because the card already uses that word for
+		// the facet; `Role` because it claims a personal appointment.
+		resolution:
+			'The public label is `Kind` (Japanese surfaces use the facet words). The value vocabulary stays kind-of-work nouns. This is a content-design decision recorded in `docs/domain/portfolio-vocabulary.md` (Issue #813) — not an owner decision.',
+		record: 'docs/domain/portfolio-vocabulary.md',
+	},
+	{
+		id: 'slug-collision',
+		question:
+			"Slug collision: three migrated projects derive the same slug as a row that D1 already serves — aulymo-v01, aulymo-v02, multislicer. The current rule is that src/portfolio/load.ts resolves a collision in favour of D1, so a migrated record with one of these slugs stays hidden from /portfolio and from /portfolio/<slug> even after it is published. Either (a) the migrated slugs are changed, which abandons the old-site URL, or (b) the D1 rows are retired in favour of the migrated records, which means moving their text and media first. This ledger chooses neither; the choice is the owner's, and it is a public-URL decision, not a migration detail.",
+		status: 'decided',
+		decided_by: 'owner',
+		owner_statement: '2026-11-02: 「slug 衝突は勝手に作った分でしょ？ 旧サイトのデータに合わせる」',
+		// Option (b), with the ledger's own ordering corrected: the migrated
+		// records ARE the old-site data, so there is no text to move first —
+		// the three D1 rows are the ones that were made up, and they are what
+		// yields. `load.ts` keeps resolving in favour of D1; what changes is
+		// who is in D1. Execution is out of this release cycle (ADR-0019 §4).
+		resolution:
+			'Option (b): the old-site slug wins. The three D1 rows (aulymo-v01, aulymo-v02, multislicer) are retired when the migrated records land. No text or media has to move first — the migrated records are the old-site data.',
+		record: 'docs/adr/ADR-0019-publication-authority-and-unreviewed-assets.md',
+	},
 ]);
+
+/** What is still open. Empty since Issue #811 — see `DECIDED` for the rest. */
+export const OPEN_DECISIONS = Object.freeze([]);
 
 /**
  * Which facet wins when an item carries several. Fixed, not ranked per
@@ -537,13 +587,16 @@ export function buildInventory({
 		},
 		rights: {
 			// Every legacy media byte starts here: `quality/asset-license-inventory.json`
-			// records no legacy asset, so nothing may be published
-			// until an owner decision records it (`src/legal/**` is fail-closed).
+			// records no legacy asset. That is a statement about the RECORD, not
+			// a publication verdict — the owner holds publication authority
+			// (ADR-0019 §2.1). The count stays in the ledger because a reader
+			// has to be able to see how much is unreviewed.
 			recorded: items.filter((item) => item.rights === 'recorded').length,
 			unrecorded: items.filter((item) => item.rights === 'unrecorded').length,
 		},
 		problems,
 		open_decisions: [...OPEN_DECISIONS],
+		decisions: DECIDED.map((decision) => ({ ...decision })),
 		content_digest: inventoryDigest(items),
 		items,
 	};

@@ -49,8 +49,15 @@ describe('/tools/<slug> — host_disabled placeholder copy', () => {
 			// Neither the internal reason nor the hook that carried it.
 			expect(html).not.toContain('data-tool-disabled-reason');
 			expect(html).not.toContain('Next.js component library');
-			if (tool.delivery.kind === 'host_disabled') {
-				expect(html).not.toContain(tool.delivery.disabled_reason);
+			// The manifest is imported as JSON, so the inferred element type
+			// is a union of per-entry object shapes and narrowing on
+			// `kind` does not reach `disabled_reason` once enough entries
+			// are present. The filter above already established that this
+			// entry is host_disabled, so read the field through its own
+			// shape instead of widening the assertion.
+			const reason = (tool.delivery as { disabled_reason?: unknown }).disabled_reason;
+			if (typeof reason === 'string' && reason.length > 0) {
+				expect(html).not.toContain(reason);
 			}
 		});
 	}

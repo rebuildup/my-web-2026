@@ -95,6 +95,13 @@ export type AssetVerificationMethod =
 	| 'upstream-reference'
 	| 'none';
 
+/**
+ * Whether the owner has confirmed the record. `unconfirmed` is the
+ * default (the field may be absent), so a record nobody has reviewed
+ * says so rather than staying silent.
+ */
+export type AssetOwnerConfirmation = 'confirmed' | 'unconfirmed';
+
 /** What the repository declares about publication today (an INPUT). */
 export type AssetPublicationState = 'published' | 'unpublished' | 'hold';
 
@@ -193,6 +200,22 @@ export interface AssetLicenseRecord {
 	readonly publication: AssetPublicationState;
 	/** Hostnames a visitor's browser fetches for this asset. */
 	readonly externalHosts?: readonly string[];
+	/**
+	 * Whether the repository OWNER has confirmed this record.
+	 *
+	 * `unconfirmed` (the default when the field is absent) says the
+	 * record is repository evidence only: the bytes, their licence and
+	 * their provenance were read and written down here, but nobody with
+	 * the authority to publish them has signed off. `confirmed` is a
+	 * claim about a human decision, so it is written down only when one
+	 * actually happened — the same rule the issue-closure ledger and
+	 * the copy-editorial approval ledger follow.
+	 *
+	 * A rights / provenance record is NOT an approval: the review
+	 * surface shows what was measured, and this field is what says
+	 * "measured, not approved".
+	 */
+	readonly ownerConfirmation?: AssetOwnerConfirmation;
 	/** Another gate that already owns these bytes, named for the reader. */
 	readonly delegatedTo?: string;
 }

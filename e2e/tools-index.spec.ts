@@ -173,8 +173,10 @@ test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', ()
 		await expect(surface).toBeVisible();
 		await expect(surface).toHaveAttribute('data-tool-slug', FIRST_DISABLED_SLUG);
 		await expect(surface).toHaveText(/Coming soon/);
-		// The manifest's `disabled_reason` is surfaced verbatim.
-		await expect(surface.locator('[data-tool-disabled-reason]')).toBeVisible();
+		// Issue #836 removed `disabled_reason` from this surface: it names
+		// build / repo facts a visitor cannot act on. The placeholder must
+		// not grow it back, so the absence is the assertion.
+		await expect(surface.locator('[data-tool-disabled-reason]')).toHaveCount(0);
 		// A back-link to the index so the visitor is not stranded.
 		await expect(surface.locator('a[href="/tools"]')).toBeVisible();
 	});

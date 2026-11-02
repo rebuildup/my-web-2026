@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 /**
@@ -26,7 +29,51 @@ import { expect, test } from '@playwright/test';
  * entry) 404s. That is exactly the behaviour #195 removed, so the
  * spec now asserts the placeholder contract and covers the genuine
  * unknown-slug 404 separately.
+ *
+ * Issue #861 — deriving the state from the manifest instead of
+ * freezing one slug:
+ *
+ *   The spec used to name `text-counter` as "the" `host_disabled`
+ *   entry, so it went red when #817 graduated that Tool, and it would
+ *   go red again when the last waiting Tool lands. The manifest is
+ *   repo-controlled data, so the spec now READS it and branches:
+ *
+ *     - a waiting Tool exists → the placeholder contract is asserted
+ *       on the FIRST waiting slug of the manifest;
+ *     - no waiting Tool exists → the index must carry NO coming-soon
+ *       badge and every card must link to its detail route, and the
+ *       placeholder-surface test is skipped WITH A REASON (the surface
+ *       does not exist; the contract itself is verified against a
+ *       synthetic manifest in `src/tools/registry.test.ts`).
  */
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * The shipped Tool manifest, read from disk.
+ *
+ * The same file the registry reads, so the spec's state can never
+ * drift from the shipped data.
+ */
+function readToolManifest(): {
+	slugs: string[];
+	disabledSlugs: string[];
+} {
+	const raw = JSON.parse(readFileSync(resolve(REPO_ROOT, 'src/tools/manifest.json'), 'utf8')) as {
+		tools: Array<{ slug: string; delivery: { kind: string } }>;
+	};
+	return {
+		slugs: raw.tools.map((tool) => tool.slug),
+		disabledSlugs: raw.tools
+			.filter((tool) => tool.delivery.kind === 'host_disabled')
+			.map((tool) => tool.slug),
+	};
+}
+
+const TOOL_MANIFEST = readToolManifest();
+
+/** The first waiting Tool of the shipped manifest, if any. */
+const FIRST_DISABLED_SLUG = TOOL_MANIFEST.disabledSlugs[0];
 
 test.describe('Tool Registry — /tools index (Issue #80, #195)', () => {
 	test('returns 200 and lists the public Tools', async ({ page }) => {
@@ -40,14 +87,26 @@ test.describe('Tool Registry — /tools index (Issue #80, #195)', () => {
 
 	test('host_disabled Tools are listed as non-link "Coming soon" rows', async ({ page }) => {
 		await page.goto('/tools');
-		// Issue #195 flipped the index to show-all. `text-counter`
-		// is `host_disabled` — it must appear, marked as coming
-		// soon, and must NOT link to its detail route.
-		const row = page.locator('[data-tool-slug="text-counter"]');
+		if (!FIRST_DISABLED_SLUG) {
+			// Issue #861: no Tool is waiting any more. The index must not
+			// keep a coming-soon row, and every card must be a link to
+			// its detail route.
+			await expect(page.locator('[data-tool-badge="coming-soon"]')).toHaveCount(0);
+			for (const slug of TOOL_MANIFEST.slugs) {
+				await expect(
+					page.locator(`[data-tool-slug="${slug}"] a[href="/tools/${slug}"]`),
+				).toHaveCount(1);
+			}
+			return;
+		}
+		// Issue #195 flipped the index to show-all. The first waiting
+		// Tool of the manifest must appear, marked as coming soon, and
+		// must NOT link to its detail route.
+		const row = page.locator(`[data-tool-slug="${FIRST_DISABLED_SLUG}"]`);
 		await expect(row).toBeVisible();
 		await expect(row).toHaveAttribute('data-tool-state', 'host_disabled');
 		await expect(row.locator('[data-tool-badge="coming-soon"]')).toBeVisible();
-		await expect(row.locator('a[href="/tools/text-counter"]')).toHaveCount(0);
+		await expect(row.locator(`a[href="/tools/${FIRST_DISABLED_SLUG}"]`)).toHaveCount(0);
 	});
 
 	test('card link points at /tools/<slug>', async ({ page }) => {
@@ -91,15 +150,28 @@ test.describe('Tool Registry — /tools index (Issue #80, #195)', () => {
 
 test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', () => {
 	test('a host_disabled slug renders the placeholder at 200, not 404', async ({ page }) => {
-		// `text-counter` is in the manifest with `delivery.kind:
-		// 'host_disabled'`. Pre-#195 this route threw notFound().
-		const res = await page.goto('/tools/text-counter');
+		if (!FIRST_DISABLED_SLUG) {
+			// Issue #861: the shipped manifest holds no waiting Tool, so
+			// the placeholder surface does not exist to be asserted here.
+			// The CONTRACT itself is verified against a synthetic manifest
+			// in `src/tools/registry.test.ts` (a waiting Tool is in
+			// listAllTools(), out of listPublicTools(), and carries a
+			// non-empty disabled_reason).
+			test.skip(
+				true,
+				'shipped manifest has no host_disabled Tool — the placeholder surface does not exist; the contract is covered by the synthetic-manifest unit tests (Issue #861)',
+			);
+		}
+		// The first waiting Tool of the manifest is in it with
+		// `delivery.kind: 'host_disabled'`. Pre-#195 this route threw
+		// notFound().
+		const res = await page.goto(`/tools/${FIRST_DISABLED_SLUG}`);
 		expect(res?.status()).toBe(200);
 
 		// The placeholder is the observable contract.
 		const surface = page.locator('[data-tool-state="host_disabled"]');
 		await expect(surface).toBeVisible();
-		await expect(surface).toHaveAttribute('data-tool-slug', 'text-counter');
+		await expect(surface).toHaveAttribute('data-tool-slug', FIRST_DISABLED_SLUG);
 		await expect(surface).toHaveText(/Coming soon/);
 		// The manifest's `disabled_reason` is surfaced verbatim.
 		await expect(surface.locator('[data-tool-disabled-reason]')).toBeVisible();

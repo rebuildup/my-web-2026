@@ -1,8 +1,9 @@
-import type { PortfolioProject, PortfolioLink, PortfolioAdjacent } from '../schema';
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
+import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
@@ -12,7 +13,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * First viewport contract:
  *   - Project name (h1)
  *   - One-sentence summary
- *   - Role + period + facet pills
+ *   - Role (only when a role is recorded) + period + facet pills
  *   - Representative media (cover)
  *   - Primary link
  *
@@ -83,13 +84,6 @@ const SECTION_DEFINITIONS: ReadonlyArray<{
 	},
 ];
 
-const FACET_LABEL: Readonly<Record<string, string>> = {
-	develop: 'Develop',
-	video: 'Video',
-	design: 'Design',
-	other: 'Other',
-};
-
 const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 	repo: 'Repository',
 	demo: 'Demo',
@@ -104,6 +98,12 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	const primaryLink = project.links[0] ?? null;
 	const showAdjacent = adjacent.prev !== null || adjacent.next !== null;
+	// The `Role` row exists only when a role is actually recorded
+	// (Issue #813). A kind of work is NOT projected here — the
+	// eyebrow word and the facet pills already carry it — and an empty
+	// `<dd>` would be a row that claims something while saying nothing.
+	// The printed string is the stored string, byte-exact.
+	const hasRole = project.role !== null && project.role.trim() !== '';
 	return (
 		<>
 			<a href="#portfolio-detail" className={skipLinkStyle}>
@@ -207,17 +207,21 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										color: 'text.muted',
 									})}
 								>
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Role
-									</dt>
-									<dd className={css({ margin: '0' })}>{project.role}</dd>
+									{hasRole ? (
+										<>
+											<dt
+												className={css({
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.04em',
+													textTransform: 'uppercase',
+												})}
+											>
+												Role
+											</dt>
+											<dd className={css({ margin: '0' })}>{project.role}</dd>
+										</>
+									) : null}
 									<dt
 										className={css({
 											fontFamily: 'mono',

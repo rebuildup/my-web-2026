@@ -1,7 +1,18 @@
 {
 	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner. Since Issue #720 every record also carries a `provenance` block: a review date is a RECORDED CLAIM about when the owner read the expression, and only a record whose provenance names a traceable owner artefact (kind=owner-review + a reference + ownerConfirmation=confirmed) may be presented as an owner review. The shipped records were filled in by an automated side on the basis of merge permission (the owner's own Issue #437 comment says so), so they are classified agent-recorded / unconfirmed and the gate reports them as awaiting owner confirmation. The audit is docs/verification/governance/approval-provenance.md.",
 	"version": 1,
-	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner. Since Issue #720 the gate also reports the provenance of each record: a record an automated side wrote is reported as awaiting owner confirmation, never as an owner review, and the gate never re-dates a record — re-classification is the only thing it does to this registry.",
+	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner. Since Issue #720 the gate also reports the provenance of each record: a record an automated side wrote is reported as awaiting owner confirmation, never as an owner review, and the gate never re-dates a record — re-classification is the only thing it does to this registry. Since Issue #754 `reviewedBy` names the side that WROTE the ledger row (`agent` for every record an automated side wrote, the owner's handle only when the owner wrote the row itself) — it is a claim about the record, not an owner approval: only the `provenance` block can say whether the owner confirmed the record.",
+	"record_shape": {
+		"id": "stable identifier of the record",
+		"path": "the surface (file) the expression lives in",
+		"expression": "the byte-exact displayed text the record is bound to",
+		"locale": "the locale the expression is written in",
+		"dimension": "prose | typography — which review the record belongs to",
+		"reviewedAt": "YYYY-MM-DD, the date the record claims the expression was read",
+		"reviewedBy": "WHO WROTE THIS LEDGER ROW — `agent` for a row an automated side wrote, the owner's handle only when the owner wrote the row. It is **not** an owner approval: a row written by an automated side says `agent`, never `owner`. Whether the owner confirmed the record is stated by `provenance` alone.",
+		"provenance": "the provenance of the record (Issue #720). `kind` is owner-review | agent-recorded | unverified; `reference` is a traceable owner artefact (a GitHub review / issue comment URL) or null; `recordedBy` names who wrote the row; `ownerConfirmation` is confirmed | unconfirmed. Only kind=owner-review with a reference and ownerConfirmation=confirmed is an owner review — anything else is awaiting owner confirmation.",
+		"note": "what was checked, in prose, with the file and the line"
+	},
 	"freshnessWindowDays": 90,
 	"locales": ["ja"],
 	"excludedPaths": [
@@ -30,7 +41,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -58,7 +69,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -86,7 +97,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -114,7 +125,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -142,7 +153,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -170,7 +181,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -198,7 +209,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -226,7 +237,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -254,7 +265,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -282,7 +293,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -310,7 +321,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -338,7 +349,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -366,7 +377,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -399,7 +410,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -427,7 +438,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -455,7 +466,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -483,7 +494,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -511,7 +522,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -539,7 +550,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -567,7 +578,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,
@@ -595,7 +606,7 @@
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
-			"reviewedBy": "owner",
+			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
 				"reference": null,

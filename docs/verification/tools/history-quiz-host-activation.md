@@ -75,6 +75,14 @@ frame の origin は opaque のまま、ホストのナビゲーション・popu
 実際に効いているのは sandbox token のみである。この非対称は manifest の
 `sandbox_rationale` に明記した。
 
+したがって `"modals"` は `src/http/security-headers.json#sandbox_only_capabilities`
+（Issue #817 第 2 陣が `downloads` / `fullscreen` のために作った登録簿）に
+加えた。登録がある capability には `permissions-policy` を書かない
+（書いても no-op か、逆に grant を壊す）ので、`security:headers:check` は
+history-quiz の artefact に `permissions-policy` が**無い**ことを期待し、
+`denied_permissions` に `modals` が入っていたら失敗する（site-wide の deny は
+capability を殺すため）。実測: 本ブランチで `security:headers:check` PASS。
+
 ## 4. 視覚確認（quality-gate §19）
 
 | 画像 | 何を示すか |

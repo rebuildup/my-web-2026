@@ -3,7 +3,7 @@ import { semanticTokens } from '../../../editorial/semantic-tokens';
 import { rawTokens } from '../../../editorial/tokens';
 
 /**
- * ColorSwatches — every editorial semantic token rendered in a 4-column
+ * ColorSwatches — every editorial semantic token rendered in a strict
  * grid as a side-by-side light / dark pair.
  *
  * The pair is the educational point of the section:
@@ -33,6 +33,14 @@ import { rawTokens } from '../../../editorial/tokens';
  * only then dereferenced into `tokens.ts`. The viewer therefore has
  * no second hand-written raw-token mapping that can drift from the
  * actual semantic contract.
+ *
+ * Issue #804 (owner feedback, 2026-11-01): the tiles were different
+ * heights because their role sentences wrapped by a different number
+ * of lines, and the sentences themselves were more explanation than a
+ * colour list needs. The tile anatomy is now fixed — label, path,
+ * swatch pair, hex readout — every tile uses the same rows, the
+ * swatch pair has one fixed height, and the role sentence is gone.
+ * The colour list reads as a grid, not as a set of small articles.
  */
 
 interface TokenEntry {
@@ -40,8 +48,6 @@ interface TokenEntry {
 	path: string;
 	/** Human-readable label, e.g. `Positive` / `Border subtle`. */
 	label: string;
-	/** Plain-English role description from `colors.md`. */
-	role: string;
 }
 
 /**
@@ -52,115 +58,31 @@ interface TokenEntry {
  */
 const TOKENS: ReadonlyArray<TokenEntry> = [
 	// Page surfaces (bg.*)
-	{
-		path: 'bg.canvas',
-		label: 'Canvas',
-		role: 'Page background',
-	},
-	{
-		path: 'bg.surface',
-		label: 'Surface',
-		role: 'Card surface (default)',
-	},
-	{
-		path: 'bg.subtle',
-		label: 'Subtle',
-		role: 'Tinted separator',
-	},
-	{
-		path: 'bg.accent',
-		label: 'Accent fill',
-		role: 'Primary CTA idle',
-	},
-	{
-		path: 'bg.inverse',
-		label: 'Inverse',
-		role: 'Inverse panel (static pair)',
-	},
+	{ path: 'bg.canvas', label: 'Canvas' },
+	{ path: 'bg.surface', label: 'Surface' },
+	{ path: 'bg.subtle', label: 'Subtle' },
+	{ path: 'bg.accent', label: 'Accent fill' },
+	{ path: 'bg.inverse', label: 'Inverse' },
 	// Text (text.*)
-	{
-		path: 'text.default',
-		label: 'Default',
-		role: 'Body text',
-	},
-	{
-		path: 'text.muted',
-		label: 'Muted',
-		role: 'Secondary text',
-	},
-	{
-		path: 'text.accent',
-		label: 'Accent text',
-		role: 'Inline link',
-	},
-	{
-		path: 'text.inverse',
-		label: 'Inverse',
-		role: 'Text on accent fill',
-	},
+	{ path: 'text.default', label: 'Default' },
+	{ path: 'text.muted', label: 'Muted' },
+	{ path: 'text.accent', label: 'Accent text' },
+	{ path: 'text.inverse', label: 'Inverse' },
 	// Borders (border.*)
-	{
-		path: 'border.subtle',
-		label: 'Subtle',
-		role: 'Default divider',
-	},
-	{
-		path: 'border.strong',
-		label: 'Strong',
-		role: 'Emphasis divider',
-	},
-	{
-		path: 'border.focus',
-		label: 'Focus ring',
-		role: 'Focus outline',
-	},
+	{ path: 'border.subtle', label: 'Subtle' },
+	{ path: 'border.strong', label: 'Strong' },
+	{ path: 'border.focus', label: 'Focus ring' },
 	// Accent features (accent.*)
-	{
-		path: 'accent.surface',
-		label: 'Surface',
-		role: 'Tinted feature surface',
-	},
-	{
-		path: 'accent.interactive',
-		label: 'Interactive',
-		role: 'CTA hover / pressed',
-	},
-	{
-		path: 'accent.positive',
-		label: 'Positive',
-		role: 'OK / live status',
-	},
-	{
-		path: 'accent.negative',
-		label: 'Negative',
-		role: 'Error / unreachable',
-	},
-	{
-		path: 'accent.warning',
-		label: 'Warning',
-		role: 'Degraded status',
-	},
+	{ path: 'accent.surface', label: 'Surface' },
+	{ path: 'accent.interactive', label: 'Interactive' },
+	{ path: 'accent.positive', label: 'Positive' },
+	{ path: 'accent.negative', label: 'Negative' },
+	{ path: 'accent.warning', label: 'Warning' },
 	// Category accents (accent.category.*)
-	{
-		path: 'accent.category.design',
-		label: 'Design',
-		role: 'Content category — design',
-	},
-	{
-		path: 'accent.category.code',
-		label: 'Code',
-		role: 'Content category — code',
-	},
-	{
-		path: 'accent.category.writing',
-		label: 'Writing',
-		role: 'Content category — writing',
-	},
-	{
-		path: 'accent.category.tool',
-		label: 'Tool',
-		role: 'Content category — tool',
-	},
+	{ path: 'accent.category.design', label: 'Design' },
+	{ path: 'accent.category.code', label: 'Code' },
+	{ path: 'accent.category.writing', label: 'Writing' },
+	{ path: 'accent.category.tool', label: 'Tool' },
 ];
 
 type SemanticLeaf = {
@@ -215,21 +137,19 @@ function resolveHex(ref: string): string {
 /**
  * Pane chrome for each appearance, sourced through the same
  * semantic → raw resolution every swatch uses: the surface the pane
- * sits on (`bg.canvas`), the text painted on it (`text.default`) and
- * the swatch hairline (`border.subtle`). Resolved once so the light
- * pane and the dark pane are guaranteed to be a faithful rendering of
- * the two appearances rather than a hand-picked "dark-ish" colour.
+ * sits on (`bg.canvas`) and the text painted on it (`text.default`).
+ * Resolved once so the light pane and the dark pane are guaranteed to
+ * be a faithful rendering of the two appearances rather than a
+ * hand-picked "dark-ish" colour.
  */
 const PANE = {
 	light: {
 		surface: resolveHex(resolveSemanticRefs('bg.canvas').lightRef),
 		label: resolveHex(resolveSemanticRefs('text.default').lightRef),
-		border: resolveHex(resolveSemanticRefs('border.subtle').lightRef),
 	},
 	dark: {
 		surface: resolveHex(resolveSemanticRefs('bg.canvas').darkRef),
 		label: resolveHex(resolveSemanticRefs('text.default').darkRef),
-		border: resolveHex(resolveSemanticRefs('border.subtle').darkRef),
 	},
 } as const;
 
@@ -244,9 +164,16 @@ export function ColorSwatches() {
 				gridTemplateColumns: {
 					base: '1fr',
 					sm: 'repeat(2, minmax(0, 1fr))',
-					lg: 'repeat(4, minmax(0, 1fr))',
+					// Three columns, not four: 21 tokens divide into 7 full
+					// rows, and every token path fits on one line at this
+					// width (`accent.category.writing` is the longest). The
+					// four-column grid left an orphan tile on the last row
+					// and truncated four paths.
+					lg: 'repeat(3, minmax(0, 1fr))',
 				},
-				gap: '4',
+				gridAutoRows: '1fr',
+				alignItems: 'stretch',
+				gap: '3',
 			})}
 		>
 			{TOKENS.map((entry) => {
@@ -256,7 +183,6 @@ export function ColorSwatches() {
 						key={entry.path}
 						path={entry.path}
 						label={entry.label}
-						role={entry.role}
 						lightHex={resolveHex(lightRef)}
 						darkHex={resolveHex(darkRef)}
 					/>
@@ -269,34 +195,37 @@ export function ColorSwatches() {
 interface TileProps {
 	path: string;
 	label: string;
-	role: string;
 	lightHex: string;
 	darkHex: string;
 }
 
-function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
+/**
+ * One tile. The three rows are fixed (`auto 5rem auto`) so every tile
+ * in a row has the same height even when a token path is long: the
+ * header is exactly two single-line rows, the swatch pair is exactly
+ * one fixed-height row, and the hex readout is one row.
+ */
+function SwatchTile({ path, label, lightHex, darkHex }: TileProps) {
 	return (
 		<li
 			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
+				display: 'grid',
+				gridTemplateRows: 'auto 5rem auto',
+				backgroundColor: 'bg.surface',
 				overflow: 'hidden',
 			})}
 		>
-			{/* Header — sits on the page surface and follows the current
+			{/* Header — sits on the card fill and follows the current
 			    appearance through the real tokens: this is the part of the
 			    tile that flips when the visitor's OS goes dark. */}
 			<div
 				className={css({
-					padding: '3',
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-					backgroundColor: 'bg.canvas',
+					display: 'grid',
+					gridTemplateRows: 'auto auto',
+					rowGap: '1',
+					paddingBlock: '3',
+					paddingInline: '3',
+					minWidth: '0',
 				})}
 			>
 				<span
@@ -306,57 +235,46 @@ function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 						letterSpacing: '0.04em',
 						textTransform: 'uppercase',
 						color: 'text.muted',
+						whiteSpace: 'nowrap',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
 					})}
 				>
 					{label}
 				</span>
 				<code
+					title={path}
 					className={css({
 						fontFamily: 'mono',
 						fontSize: 'sm',
+						lineHeight: '1.3',
 						color: 'text.default',
-						wordBreak: 'break-all',
+						whiteSpace: 'nowrap',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
 					})}
 				>
 					{path}
 				</code>
-				<span
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'xs',
-						color: 'text.muted',
-						lineHeight: '1.4',
-					})}
-				>
-					{role}
-				</span>
 			</div>
 			{/* Swatch pane pair — the left half paints the token's `base`
 			    value onto the light canvas, the right half paints its
 			    `_dark` value onto the dark canvas. Both pane surfaces come
 			    from `bg.canvas`, so this is the real appearance pair and not
 			    an `bg.inverse` simulation of one. */}
-			<div
-				className={css({
-					display: 'grid',
-					gridTemplateColumns: '1fr 1fr',
-					minHeight: '24',
-				})}
-			>
+			<div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '0' })}>
 				<SwatchPane variant="light" hex={lightHex} />
 				<SwatchPane variant="dark" hex={darkHex} />
 			</div>
-			{/* Token hex readout — sits below the swatch panes on the page surface. */}
+			{/* Token hex readout — one row, two columns, no divider. */}
 			<div
 				className={css({
-					padding: '2',
+					display: 'grid',
+					gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+					columnGap: '2',
+					paddingBlock: '2',
 					paddingInline: '3',
-					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'baseline',
-					gap: '2',
 					backgroundColor: 'bg.canvas',
-					borderTop: '1px solid {colors.border.subtle}',
 				})}
 			>
 				<code
@@ -364,6 +282,9 @@ function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 						fontFamily: 'mono',
 						fontSize: 'xs',
 						color: 'text.default',
+						whiteSpace: 'nowrap',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
 					})}
 				>
 					{lightHex}
@@ -373,9 +294,12 @@ function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 						fontFamily: 'mono',
 						fontSize: 'xs',
 						color: 'text.muted',
+						whiteSpace: 'nowrap',
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
 					})}
 				>
-					→ {darkHex}
+					{darkHex}
 				</code>
 			</div>
 		</li>
@@ -384,61 +308,53 @@ function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 
 /**
  * One half of the comparison. `variant` selects the appearance being
- * staged; `PANE` supplies that appearance's canvas, label colour and
- * hairline. Those colours are inlined as hex on purpose: they must
- * describe one *fixed* appearance, and a semantic token would follow
- * the page's own theme instead — which is exactly the fake this
- * section used to depend on.
+ * staged; `PANE` supplies that appearance's canvas and label colour.
+ * Those colours are inlined as hex on purpose: they must describe one
+ * *fixed* appearance, and a semantic token would follow the page's own
+ * theme instead — which is exactly the fake this section used to
+ * depend on.
  */
 function SwatchPane({ variant, hex }: { variant: 'light' | 'dark'; hex: string }) {
 	const pane = PANE[variant];
 	return (
 		<div
 			className={css({
-				position: 'relative',
-				padding: '3',
 				display: 'flex',
 				flexDirection: 'column',
-				justifyContent: 'flex-end',
+				justifyContent: 'space-between',
 				gap: '1',
+				paddingBlock: '2',
+				paddingInline: '2',
+				minWidth: '0',
 			})}
 			style={{ backgroundColor: pane.surface }}
 		>
-			<div
+			<span
 				aria-hidden="true"
 				className={css({
-					position: 'absolute',
-					insetBlockStart: '2',
-					insetInlineStart: '2',
 					fontFamily: 'mono',
 					fontSize: 'xs',
+					lineHeight: '1.2',
 					letterSpacing: '0.06em',
 					textTransform: 'uppercase',
 				})}
 				style={{ color: pane.label }}
 			>
 				{variant}
-			</div>
+			</span>
 			{/* Token swatch — the semantic token's own resolved value for this
 			    appearance. The hex is inlined (a deliberate showcase decision,
 			    not a component-level raw colour) so the pane reports exactly
-			    what the token resolves to in that mode. */}
+			    what the token resolves to in that mode. No outline: the
+			    fill is the whole statement. */}
 			<div
 				aria-hidden="true"
-				className={css({
-					height: '8',
-					borderRadius: 'sm',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-				})}
+				className={css({ height: '10', width: '100%' })}
 				data-token-swatch
 				data-variant={variant}
 				data-hex={hex}
-				style={{ backgroundColor: hex, borderColor: pane.border }}
+				style={{ backgroundColor: hex }}
 			/>
-			<code className={css({ fontFamily: 'mono', fontSize: 'xs' })} style={{ color: pane.label }}>
-				{hex}
-			</code>
 		</div>
 	);
 }

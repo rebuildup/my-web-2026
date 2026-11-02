@@ -7,15 +7,24 @@ import { rawTokens } from '../../../editorial/tokens';
  *
  * The scale steps at roughly 1.618x (golden ratio) so the contrast
  * between the small clusters (`4`/`8` px) and the page-level beats
- * (`96`/`128` px) is dramatic. Each bar in the ruler maps a hex
- * value to one raw `spacing.*` token (and its resolved px value)
- * so a designer can pick a tier by visual weight rather than by
- * memorizing the scale.
+ * (`96`/`128` px) is dramatic. Each bar in the ruler maps a raw
+ * `spacing.*` token to its resolved px value so a designer can pick a
+ * tier by visual weight rather than by memorizing the scale.
  *
- * Bars are drawn as a fixed-height stripe at the resolved width.
- * The token name and the resolved px value sit in the gutter so
- * both the abstract reference and the concrete value are visible
- * at once.
+ * Issue #804 (owner feedback, 2026-11-01): the bars did not share a
+ * left edge. The label column was `minmax(7.5rem, auto)`, so a row
+ * whose role sentence was wider than 7.5rem pushed its own bar to the
+ * right and every bar started at a different x. The column is now a
+ * fixed `10rem` at `md` and above, so all eight bars begin on the
+ * same vertical line; below `md` the label stacks above the bar and
+ * every bar starts at the container's left edge. The bar's 1px
+ * `border.subtle` outline is gone — the fill alone carries the bar,
+ * as the owner's grid rule requires. The fill moved from
+ * `accent.surface` (a near-canvas tint that only read as a bar
+ * *because* of its outline) to `border.strong`, the editorial
+ * neutral measured for emphasis rules: with no outline the bar has to
+ * carry its own contrast, and `border.strong` keeps it visible in
+ * both appearances without adding a colour.
  */
 
 interface SpacingEntry {
@@ -42,9 +51,9 @@ export function SpacingRuler() {
 				margin: '0',
 				padding: '0',
 				listStyle: 'none',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
+				display: 'grid',
+				gridTemplateColumns: '1fr',
+				rowGap: '3',
 			})}
 		>
 			{STEPS.map((step) => (
@@ -61,7 +70,10 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 		<li
 			className={css({
 				display: 'grid',
-				gridTemplateColumns: { base: '1fr', md: 'minmax(7.5rem, auto) minmax(0, 1fr)' },
+				// Fixed gutter: every bar in the ruler starts at the same x.
+				// `minmax(7.5rem, auto)` let a wide role sentence widen its own
+				// row, which is what made the left edges ragged (Issue #804).
+				gridTemplateColumns: { base: '1fr', md: '10rem minmax(0, 1fr)' },
 				columnGap: { base: '0', md: '6' },
 				rowGap: { base: '1', md: '0' },
 				alignItems: 'center',
@@ -72,6 +84,7 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 					display: 'flex',
 					flexDirection: 'column',
 					gap: '1',
+					minWidth: '0',
 				})}
 			>
 				<code
@@ -81,6 +94,7 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 						letterSpacing: '0.04em',
 						textTransform: 'uppercase',
 						color: 'text.default',
+						whiteSpace: 'nowrap',
 					})}
 				>
 					spacing.{step.label} · {pxValue}
@@ -100,10 +114,7 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 				className={css({
 					height: '2',
 					borderRadius: 'sm',
-					backgroundColor: 'accent.surface',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
+					backgroundColor: 'border.strong',
 				})}
 				data-spacing-token={step.token}
 				data-spacing-value={pxValue}

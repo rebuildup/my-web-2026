@@ -220,7 +220,7 @@ function ColorSection() {
 					id="design-system-color"
 					eyebrow="01 — Color"
 					title="色 / Semantic tokens"
-					description="bg.* / text.* / border.* と accent.* (surface / interactive / positive / negative / warning / category.*) の token を、それぞれの base / _dark 値を light / dark の canvas に並べます。ページ自体は prefers-color-scheme に従って切り替わります。"
+					description="bg.* / text.* / border.* / accent.* の token を、base / _dark の対で並べます。各タイルの左半分が light、右半分が dark の canvas です。"
 					variant="spread"
 				>
 					<ColorSwatches />
@@ -256,7 +256,7 @@ function SpacingSection() {
 					id="design-system-spacing"
 					eyebrow="03 — Spacing"
 					title="余白 / Whitespace scale"
-					description="editorial の余白は ≈1.618x で段階を刻みます。 小 cluster (4/8) → cluster separator (24) → page-level beat (96/128)。"
+					description="editorial の余白は ≈1.618x で段階を刻みます。 左端は固定のラベル列で揃え、バーは塗りの幅だけで示します。"
 					variant="spread"
 				>
 					<SpacingRuler />
@@ -274,7 +274,7 @@ function SurfaceSection() {
 					id="design-system-surface"
 					eyebrow="04 — Surface"
 					title="面 / Surface treatments"
-					description="bg.canvas / bg.surface / accent.surface の三段を、既存 primitive で組み立てたカード・タイルで示します。"
+					description="bg.canvas / bg.surface / accent.surface の三段を、border ではなく塗りの差だけで区別して示します。"
 					variant="spread"
 				>
 					<SurfaceTreatments />
@@ -292,7 +292,7 @@ function InteractiveSection() {
 					id="design-system-states"
 					eyebrow="05 — Interactive"
 					title="状態 / Default · Hover · Focus · Pressed"
-					description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。"
+					description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。secondary は border を持たず、塗りと反転で示します。"
 					variant="spread"
 				>
 					<InteractiveStates />

@@ -403,7 +403,7 @@
 						"ja": "この Tool は読み込み時に third-party origin へ通信しません（宣言された origin は 0 件）。したがって送信先の目的はありません。",
 						"en": "This Tool contacts no third-party origin (the declared origin list is empty), so there is no third-party purpose to declare."
 					},
-					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin), and the built bundle carries only the SVG/XML namespace constants (http://www.w3.org/...) and React's own error-doc URL (https://react.dev/errors/) as strings — neither is requested at load time. Browser storage and clipboard access are guarded (in-memory / execCommand fallback), so the sandboxed opaque origin breaks nothing; re-measure after a bump"
+					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin); the built bundle carries only React's own react.dev error-doc URL and the w3.org XML/SVG namespace strings, which are never requested; browser storage and clipboard access are guarded (in-memory / execCommand fallback), so the sandboxed opaque origin affects nothing; re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",

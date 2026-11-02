@@ -12,7 +12,7 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 24 |
+| Publicly reachable URLs (surface + Static Assets) | 25 |
 | External hosts | 33 |
 | First-party hosts | 0 |
 | Approved transition | 1 finding(s) |
@@ -56,6 +56,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
+- `/tools/ae-expression`
 - `/tools/color-palette`
 - `/tools/prototype`
 - `/tools/qr-generator`
@@ -92,7 +93,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ### Added public URLs (1)
 
-- `/tools/color-palette`
+- `/tools/ae-expression`
 
 ### Removed public URLs (0)
 
@@ -212,5 +213,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W004 public-url-added` Public URL added: /tools/color-palette
+- **WARN** `W004 public-url-added` Public URL added: /tools/ae-expression
 

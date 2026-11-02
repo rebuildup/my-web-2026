@@ -118,4 +118,5 @@ WebP（PNG なし）。before は `7311a46f`、after は本ブランチ。
 
 ## 6. ゲート
 
-`pnpm run validate:fast`（`.tmp/supervisor/bin/vfast` 経由、直列）: 結果は PR 本文に記録する。
+`pnpm run validate:fast`（`.tmp/supervisor/bin/vfast` 経由、直列、2026-11-02）:
+67 declared step(s)、exit 0。

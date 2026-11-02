@@ -141,6 +141,19 @@ pnpm run artifact:attestation:check
 pnpm run artifact:attestation:check -- \
   --manifest=release-assets/supply-chain/<version>/artifact-attestation.json
 
+# 公開済み manifest を、CI が保持している attested byte と照合する（Issue #816）
+gh run download <run-id> -n cf-build-output-<sha> -D .tmp/release-bytes/<sha>
+pnpm run artifact:attestation:check -- \
+  --manifest=<published-manifest.json> \
+  --artifact-dir=.tmp/release-bytes/<sha> \
+  --release-tag="v<version>"
+
+# byte を保持していない manifest の内部整合だけを検査する（Issue #816）
+# PASS は「記録が自己整合している」であり、byte 照合ではない。常に
+# bytes_verified=false を出力する
+node scripts/check-attestation-manifest-integrity.mjs \
+  --manifest=<published-manifest.json>
+
 # release tag の commit と照合する（tag は release owner の操作で作られる）
 pnpm run artifact:attestation:check -- \
   --manifest=release-assets/supply-chain/<version>/artifact-attestation.json \
@@ -224,8 +237,20 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   Builds の production artifact はこの gate の対象外である（§8-3）。
   そのため CI log の `PASS  Attested scope: ...` 行と manifest の
   `coverage` が、attest 済みの範囲を毎回明示する。
-- workflow は `artifact-attestation-<sha>` として 90 日保持する
-  （`.github/workflows/ci.yml`）。
+- workflow は manifest を `artifact-attestation-<sha>`、**その manifest が
+  記述する byte そのもの**を `cf-build-output-<sha>` として、どちらも
+  90 日保持する（`.github/workflows/ci.yml`）。byte の upload step は
+  Issue #816 まで `dist-cloudflare/` を指していたが、その directory を
+  作る build は存在せず、upload は**空の artifact として成功**していた。
+  つまり公開 manifest は手元に byte の無い文書だった。現在は
+  `artifact:attestation:check` が hash したのと同じ
+  `.cloudflare/output/v0` を upload し、`if-no-files-found: error` に
+  よって将来 path がずれた場合は赤になる。0.8.0 の byte はこの修正の
+  前の run で保持されていないため、v0.8.0 の byte 照合は取得不能で
+  あり「未実行」のままである
+  （`docs/verification/supply-chain/attestation-byte-comparison-2026-11-02.md`）。
+- 取得した byte と公開 manifest の照合は §4 の 2 コマンドで行う。
+  `gh run download` は status のみを出力し、credential を表示しない。
 - release では GitHub Release への添付を release owner の判断で行う。
   添付の前に `docs/release.md` step 9 / §8 の手順どおり
   `--release-tag="v<version>"` で manifest を tag と照合する。CI

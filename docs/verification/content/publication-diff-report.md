@@ -12,7 +12,7 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 25 |
+| Publicly reachable URLs (surface + Static Assets) | 26 |
 | External hosts | 33 |
 | First-party hosts | 0 |
 | Approved transition | 1 finding(s) |
@@ -58,6 +58,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/tools`
 - `/tools/business-mail-block`
 - `/tools/color-palette`
+- `/tools/mic-level`
 - `/tools/prototype`
 - `/tools/qr-generator`
 - `/tools/readmark`

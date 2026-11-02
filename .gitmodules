@@ -22,3 +22,6 @@
 [submodule "external/business-mail-block"]
 	path = external/business-mail-block
 	url = https://github.com/rebuildup/tool-business-mail-block.git
+[submodule "external/mic-level"]
+	path = external/mic-level
+	url = https://github.com/rebuildup/tool-mic-level.git

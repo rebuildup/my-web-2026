@@ -279,6 +279,7 @@
 				"urls": [
 					"/tools/business-mail-block",
 					"/tools/color-palette",
+					"/tools/mic-level",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -323,6 +324,7 @@
 			"/tools",
 			"/tools/business-mail-block",
 			"/tools/color-palette",
+			"/tools/mic-level",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",

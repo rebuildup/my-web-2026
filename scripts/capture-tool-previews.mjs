@@ -81,6 +81,12 @@ import sharp from 'sharp';
  * photographed through the same sandboxed iframe a visitor gets, so
  * a blank frame fails the run — the `expect` line of each target is
  * the human re-check for what the committed image must show.
+ *
+ * `mic-level` is the eighth target (Issue #817 第2陣). Its frame is
+ * photographed in the state a visitor meets before any permission
+ * decision: the privacy note and the 「マイクを使用する」 button. The
+ * capture never grants the microphone, so the image shows the screen
+ * as it is — not a simulated meter reading.
  */
 export const PREVIEW_TARGETS = [
 	{
@@ -127,6 +133,12 @@ export const PREVIEW_TARGETS = [
 		/** What the committed artefact must show, for a human re-check. */
 		expect:
 			'Business Mail Block Tool の初期画面。見出しと説明の上に「Business」バッジと検索欄・カテゴリフィルタ（全カテゴリ / お気に入り）、タブ（テンプレート / バリデーション / ガイドライン / カスタムブロック）、左に「利用可能なブロック」の挨拶ブロックの一覧、右に「メール作成エリア」（「ここにブロックをドラッグ&ドロップしてください」）',
+	},
+	{
+		slug: 'mic-level',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Mic Level Checker の初期画面。冒頭に Home / Tools / Mic Level Checker のパンくず、タイトル「Mic Level Checker」、プライバシーに関する注記（音声はこのブラウザ内だけで処理します）、そして「マイクを使用する」ボタン',
 	},
 ];
 

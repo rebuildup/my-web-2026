@@ -749,6 +749,8 @@ bundle_budget:
     - 'a route that produced no client chunk FAILS — an unmeasured route must not pass at 0 bytes'
     - 'an overage is allowed only via an `exception` carrying a reason of at least 20 characters; a shorter or missing reason is a configuration error and FAILS'
     - 'a missing `tool_iframe` section FAILS — deleting it would silently switch the Tool cap off'
+    - 'a `tool_iframe.per_tool` entry without `reason` (20 characters minimum) or without any numeric cap FAILS — a per-Tool cap is the one place a ceiling can be set without a route exception, so an unreasoned one is a disabled guard'
+    - 'a `per_tool` entry that names a Tool with no build output is a WARNING (`stale-tool-cap`), the same way a missing Tool build output is a warning'
     - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
     - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'

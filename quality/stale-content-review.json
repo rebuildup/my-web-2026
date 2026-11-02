@@ -1,5 +1,5 @@
 {
-	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner. Since Issue #720 every record also carries a `provenance` block: a review date is a RECORDED CLAIM about when the owner read the expression, and only a record whose provenance names a traceable owner artefact (kind=owner-review + a reference + ownerConfirmation=confirmed) may be presented as an owner review. The shipped records were filled in by an automated side on the basis of merge permission (the owner's own Issue #437 comment says so), so they are classified agent-recorded / unconfirmed and the gate reports them as awaiting owner confirmation. The audit is docs/verification/governance/approval-provenance.md.",
+	"$comment": "Owner review registry for the time-sensitive public copy (Issue #437). One entry per public expression that points at *now*: when the owner last read it, what kind of review it was, and what the expression was checked against. The gate (scripts/check-stale-content-review.mjs) matches the registry against the text of the public copy surfaces — so editing a sentence invalidates its record and the sentence waits for a review again. The registry is owner data, not an application obligation: it is read by the gate and written by the owner. Since Issue #720 every record also carries a `provenance` block: a review date is a RECORDED CLAIM about when the owner read the expression, and only a record whose provenance names a traceable owner artefact (kind=owner-review + a reference + ownerConfirmation=confirmed) may be presented as an owner review. The shipped records were filled in by an automated side on the basis of merge permission (the owner's own Issue #437 comment says so), so they are classified agent-recorded / unconfirmed and the gate reports them as awaiting owner confirmation. The audit is docs/verification/governance/approval-provenance.md. Issue #672 added six records for the surfaces that entered the copy declaration with it (src/keyboard/**, src/privacy/**): their review date is the owner's review of those surfaces (Issue #672 comment 6567378693), the record is agent-written, and the owner confirmation is still pending. Three expressions of the unpublished `current-projects-signature` entry are excluded instead: that entry renders nowhere.",
 	"version": 1,
 	"policy": "A review date means: the owner read this expression on this day and confirmed that it still says what it says. The freshness window is the span after which the record is treated as waiting for a re-read; it is a reading interval, not a truth interval. The gate may do exactly three things: report which expressions carry a record, report which expressions are waiting for a review, and report which locales were not examined. The gate may NOT decide that an expression is untrue, may NOT remove a sentence from the publication, may NOT propose a replacement wording, and may NOT publish anything. Unpublishing is an owner decision that this repository cannot make for the owner. Since Issue #720 the gate also reports the provenance of each record: a record an automated side wrote is reported as awaiting owner confirmation, never as an owner review, and the gate never re-dates a record — re-classification is the only thing it does to this registry.",
 	"freshnessWindowDays": 90,
@@ -20,6 +20,21 @@
 			"path": "src/home/current/derive.ts",
 			"expression": "今日",
 			"reason": "runtime-message"
+		},
+		{
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "現在地セクションの前回表示署名（ブラウザの localStorage `mw_home_current_projects_v1`）",
+			"reason": "not-published: the registry entry `current-projects-signature` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
+		},
+		{
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」に並ぶ各プロジェクトについて、識別子・名称・一行説明・保存された事実（日付・段階・計測値）とその出所を連結した文字列 1 本ずつ。訪問者の識別子、IP、閲覧履歴、端末情報は含みません。導出値（「1 か月」「12 日前」など）は保存しません。",
+			"reason": "not-published: the registry entry `current-projects-signature` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
+		},
+		{
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.",
+			"reason": "not-published: the registry entry `current-projects-signature` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
 		}
 	],
 	"expressions": [
@@ -681,6 +696,174 @@
 				]
 			},
 			"note": "The fail-closed sentence of the home current-projects section (src/home/current/CurrentProjects.tsx:105): when the snapshot publishes nothing, the section says so in one sentence instead of rendering an empty list. It mirrors the about page's own empty sentence (src/about/components/AboutPage.tsx). OWNER REVIEW PENDING: the owner has not read this wording yet."
+		},
+		{
+			"id": "keyboard-sync-age-warning",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "最終同期から ${data.ageDays} 日経過しています。表示は取得時点の内容で、現在の設定と異なる可能性があります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The freshness sentence of the /keyboard status strip (src/keyboard/components/KeyboardPage.tsx:542), rendered when the committed snapshot is older than the stale window. It points at 'now' by design: the number of days is computed from the snapshot's syncedAt, and the wording tells the reader that the page shows the state at the time of the sync."
+		},
+		{
+			"id": "keyboard-provenance-description",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "表示しているのは公開リポジトリの特定 commit から取得したバイト列です。採用元と最新 head を分けて記録します。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The description of the /keyboard provenance section (src/keyboard/components/KeyboardPage.tsx:764). The word 'latest' is the now-word the detector sees; the sentence distinguishes the adopted ref from the repository's latest head, which is exactly the distinction the section makes."
+		},
+		{
+			"id": "keyboard-unavailable-title",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "現在、配列を表示できません",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The title of the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:867), rendered when the committed manifest fails validation. '現在' states that the page cannot show the layout right now, not that the layout never existed."
+		},
+		{
+			"id": "keyboard-unavailable-description",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The description under the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:869). It states what the page does NOT do (it does not show stale or incomplete data as the current configuration) and what it does instead (it records diagnostic codes only)."
+		},
+		{
+			"id": "keyboard-manifest-provenance-unverified",
+			"path": "src/keyboard/load.ts",
+			"expression": "同期マニフェストの来歴を検証できませんでした。ページは古い内容を現在のものとして表示しません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The message of the /keyboard unavailable state (src/keyboard/load.ts:186), rendered as the safe panel's message when the committed manifest's provenance cannot be verified. The registry that carries this record is the same one that owns the committed snapshot."
+		},
+		{
+			"id": "keyboard-adoption-note",
+			"path": "src/keyboard/sources/manifest.json",
+			"expression": "macOS の Kanata 設定は key-map-kanata の最新 head ではなく、pc-setup installer が pin する config_ref を採用する。installer が更新されるまで自動追随しない。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "owner",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The adoption note of the committed keyboard snapshot (src/keyboard/sources/manifest.json:62), rendered by the /keyboard provenance callout (src/keyboard/components/KeyboardPage.tsx:956). It names the ref the macOS configuration adopts and says the snapshot does not follow the repository's latest head until the installer changes."
 		}
 	]
 }

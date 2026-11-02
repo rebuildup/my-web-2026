@@ -693,7 +693,9 @@ node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を�
 
 訪問者が読む日本語の文言を PR で書き換えたとき、その変更に **owner の判断** が
 記録されていることを要求する gate。対象は「公開日本語 copy の surface」
-（`quality/copy-editorial-surfaces.json` の opt-in glob 宣言）と、判断記録
+（`quality/copy-editorial-surfaces.json` の opt-in 宣言。ディレクトリ粒度の
+`publicCopyGlobs` と、表示用ファイルが data / schema と混在する surface の
+ためのファイル粒度の `publicCopyFiles`）と、判断記録
 （`quality/copy-editorial-approvals.json`）の 2 ファイル。gate 自体は
 `src/**` を import せず、差分と 2 つの JSON だけを読む。
 

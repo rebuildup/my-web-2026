@@ -104,22 +104,44 @@ export function matchesGlob(glob, path) {
 /**
  * Classify one changed file against a surface declaration.
  *
- * The declaration is opt-in: a file is public copy only when it matches
- * a `publicCopyGlobs` entry and no `excludeGlobs` entry. The reason is
+ * The declaration is opt-in, and it carries TWO kinds of entry:
+ *
+ *   - `publicCopyGlobs` — a directory (or subtree) whose files are
+ *     public copy as a whole. Used for the surfaces whose obligation
+ *     owns every file in the subtree.
+ *   - `publicCopyFiles` — ONE file, named exactly. Used for the
+ *     surfaces that mix display-bearing files with data, schema and
+ *     pure logic: there, the unit that matters is the FILE, because a
+ *     file is what a render target actually reads (Issue #672).
+ *
+ * A file is public copy when it matches a glob entry OR is named in
+ * the file list, and no `excludeGlobs` entry matches it. The reason is
  * returned so the report can say *why* a file was out of scope — a
  * silent skip would be indistinguishable from a missed file.
+ *
+ * `excludeGlobs` wins over both kinds of entry, so an exclusion can
+ * never be defeated by a broader glob. A file that is named in
+ * `publicCopyFiles` AND matched by an `excludeGlobs` entry is a
+ * contradiction in the declaration; the shipped declaration has none,
+ * and the test suite asserts that.
  */
 export function classifyFile(path, surfaces) {
 	const include = surfaces?.publicCopyGlobs ?? [];
+	const files = surfaces?.publicCopyFiles ?? [];
 	const exclude = surfaces?.excludeGlobs ?? [];
-	if (!include.some((glob) => matchesGlob(glob, path))) {
+	const namedFile = Array.isArray(files) && files.includes(path);
+	const matchedGlob = include.some((glob) => matchesGlob(glob, path));
+	if (!namedFile && !matchedGlob) {
 		return { public: false, reason: 'not a declared public copy surface' };
 	}
 	const excludedBy = exclude.find((glob) => matchesGlob(glob, path));
 	if (excludedBy) {
 		return { public: false, reason: `excluded by "${excludedBy}"` };
 	}
-	return { public: true, reason: 'declared public copy surface' };
+	return {
+		public: true,
+		reason: namedFile ? 'declared public copy file' : 'declared public copy surface',
+	};
 }
 
 /**

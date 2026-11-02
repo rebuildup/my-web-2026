@@ -6,7 +6,7 @@ what the public surface shows.
 closure.
 
 This runbook exists because of an incident, not because a process needed
-tidying. On **2026-10-31** an automated backlog sweep closed **132 issues**
+tidying. On **2026-10-31** an automated backlog sweep closed **133 issues**
 with `state_reason: completed`. **124 of them** carried the identical
 comment:
 
@@ -107,15 +107,24 @@ is a date range plus the population it covers:
 
 | Window | Range | Population | Meaning |
 | --- | --- | --- | --- |
-| `sweep-2026-10-31` | 2026-10-31 〜 2026-10-31 | `132`（**frozen**） | 一括 close の履歴。この件数は動かさない。 |
+| `sweep-2026-10-31` | 2026-10-31 〜 2026-10-31 | `133`（**frozen**） | 一括 close の履歴。この件数は動かさない。 |
 | `tracked` | 2026-11-01 〜 open | `null`（**derived**） | 以後の close をすべて記録する窓。母集団は要素数から導出する。 |
 
 `population` が整数の窓は **frozen**: その窓に属する entry の数が一致
-しなければ `R005`（error）になる。2026-10-31 の 132 件を黙って削ることも
+しなければ `R005`（error）になる。2026-10-31 の 133 件を黙って削ることも
 水増しすることもできない。`population` が `null` の窓は **derived**: 母集団は
 その窓に属する entry そのものなので、新しい close を足しても件数の
 更新は要らない。ただし窓には日付範囲があり、`closedAt` がその範囲外の
 entry は `R005` になる。
+
+**母集団の訂正は 1 回だけ起きている（2026-11-02）。** 当初 132 と数えたのは
+`closed:2026-10-31` の検索（`closedAt` 基準）で、**同じ日に close されて同じ
+日に reopen された #534** が `closedAt: null` のため検索母集団から外れていた
+ためだった。issue-events API で再列挙すると当日の `closed` イベントは 157 件
+（うち 24 件は PR）で **Issue は 133 件**。差分の根拠と実測は
+[`docs/verification/backlog/closure-population-correction-2026-11-02.md`](../verification/backlog/closure-population-correction-2026-11-02.md)。
+これは「entry 数に合わせて population を書き換えた」のではなく、**列挙から
+漏れていた 1 件を母集団に戻した**訂正であり、以後の frozen window は動かさない。
 
 ### 4.2 The offline gate — `pnpm run issue:closure:check`
 
@@ -173,6 +182,14 @@ green through it.
      entry count, and never re-date an entry to fit a window. The frozen
      number is the history the audit exists to preserve; a mismatch is
      the finding, not the thing to silence.
+     - The one correction that has happened (2026-11-02: `132` → `133`,
+       #534 を追加) was **not** this: it repaired an incomplete
+       enumeration — an issue that was closed and reopened on the same
+       day has `closedAt: null` and therefore never appeared in the
+       `closed:2026-10-31` search. The measurement is recorded in
+       [`docs/verification/backlog/closure-population-correction-2026-11-02.md`](../verification/backlog/closure-population-correction-2026-11-02.md).
+       A correction of that kind carries its own measurement; a change
+       that only makes the numbers agree does not.
    - **Leave `ownerConfirmation: "unconfirmed"`** unless a traceable
      owner artefact (a review, an issue comment, a decision record)
      points at the entry, and then set `ownerReference` to its URL.

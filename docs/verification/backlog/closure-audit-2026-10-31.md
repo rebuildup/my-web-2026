@@ -5,17 +5,31 @@
 **台帳**: `quality/issue-closure-ledger.json`
 **手順**: `docs/runbook/issue-lifecycle.md`
 
+> **訂正 (2026-11-02)**: 母集団は **132 件ではなく 133 件** である。当該日の
+> `closed` イベントを issue-events API で再列挙すると 157 件（うち 24 件は PR）
+> で **Issue は 133 件**。差の 1 件は **#534** で、2026-10-31 の 02:43:36Z に
+> close され同じ日の 19:54:35Z に reopen されたため、`closedAt` が null になり
+> `closed:2026-10-31` を用いる検索母集団に現れなかった 것이다。訂正の根拠・実測・
+> 台帳への反映は
+> [`closure-population-correction-2026-11-02.md`](closure-population-correction-2026-11-02.md)。
+> **この document の §3 の内訳と §7 の一覧は 2026-11-01 のスナップショット**で
+> ある（§1 の母集団のみ訂正済み）。現在の状態は台帳
+> （`quality/issue-closure-ledger.json`）が正本であり、第 1 段階の原典照合
+> （https://github.com/rebuildup/my-web-2026/issues/741#issuecomment-6568788551）
+> で #274 / #315 / #316 / #330 / #331 の状態と根拠、#534 の追加が行われている。
+
 ## 1. 監査母集団と抽出方法
 
-母集団は **132 件** です。GitHub 検索 API で `repo:rebuildup/my-web-2026 is:issue closed:2026-10-31` を実行し、`issueCount` が 132 であること、GraphQL の `pageInfo` で 2 ページ（100 + 32）に分けて **全件** を取得したことで確認しました。10-30 / 11-01 のクローズは 0 件です（`closed:2026-10-30` = 0、`closed:2026-11-01` = 0）。10-31 以外の同日クローズは存在しません。
+母集団は **133 件** です（訂正前 132 件。訂正の理由は冒頭の訂正注記を参照）。
+GitHub 検索 API で `repo:rebuildup/my-web-2026 is:issue closed:2026-10-31` を実行し、`issueCount` が 132 であること、GraphQL の `pageInfo` で 2 ページ（100 + 32）に分けて **全件** を取得したことで確認しました。10-30 / 11-01 のクローズは 0 件です（`closed:2026-10-30` = 0、`closed:2026-11-01` = 0）。10-31 以外の同日クローズは存在しません。
 
 | 項目 | 実測 |
 | --- | --- |
-| 母集団 | 132 件 |
+| 母集団 | 133 件（訂正前 132 件 + #534） |
 | クローズ理由 | 132 件すべて `completed` |
 | 同一コメント「回収完了。release-0-8-0統合完了（#679待機中）。」 | **124 件** |
 | `closedByPullRequestsReferences` が空の Issue | 131 件 |
-| クロellinカされた merged PR が 1 件も無い Issue | **78 件** |
+| クローリンクされた merged PR が 1 件も無い Issue | **78 件** |
 | クローズ実行者 | 132 件すべて `rebuildup`（自動化は owner 資格で実行され、GitHub 上の実行主体と自動判別できない） |
 
 ## 2. 判定の基準

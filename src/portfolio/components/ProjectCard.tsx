@@ -2,7 +2,6 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import type { PortfolioProject } from '../schema';
-import { FACET_LABEL, KIND_LABEL } from '../vocabulary';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
@@ -13,7 +12,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *   2. project type (facet label, mono / muted),
  *   3. title,
  *   4. summary,
- *   5. kind of work + period,
+ *   5. role + period,
  *   6. facet pills,
  *   7. detail link.
  *
@@ -75,6 +74,13 @@ export interface ProjectCardProps {
 	project: PortfolioProject;
 }
 
+const FACET_LABEL: Readonly<Record<string, string>> = {
+	develop: 'Develop',
+	video: 'Video',
+	design: 'Design',
+	other: 'Other',
+};
+
 const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 'tool'>> = {
 	develop: 'code',
 	video: 'tool',
@@ -84,7 +90,9 @@ const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 't
 
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
-	const type = project.facets[0] ? FACET_LABEL[project.facets[0]] : 'Project';
+	const type = project.facets[0]
+		? (FACET_LABEL[project.facets[0]] ?? project.facets[0])
+		: 'Project';
 	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
 	return (
 		<article
@@ -215,7 +223,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 							textTransform: 'uppercase',
 						})}
 					>
-						{KIND_LABEL}
+						Role
 					</dt>
 					<dd className={css({ margin: '0' })}>{project.role}</dd>
 					<dt

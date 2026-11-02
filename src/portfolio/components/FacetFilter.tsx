@@ -2,7 +2,6 @@ import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
 import type { PortfolioFacet } from '../schema';
 import { PORTFOLIO_FACETS } from '../schema';
-import { FACET_LABEL, FACET_LABEL_JA } from '../vocabulary';
 
 /**
  * FacetFilter — URL-synced facet toggle (Issue #77).
@@ -37,6 +36,13 @@ import { FACET_LABEL, FACET_LABEL_JA } from '../vocabulary';
 export interface FacetFilterProps {
 	value: readonly PortfolioFacet[];
 }
+
+const FACET_LABELS: Readonly<Record<PortfolioFacet, { ja: string; en: string }>> = {
+	develop: { ja: '開発', en: 'Develop' },
+	video: { ja: '映像', en: 'Video' },
+	design: { ja: 'デザイン', en: 'Design' },
+	other: { ja: 'その他', en: 'Other' },
+};
 
 export function FacetFilter({ value }: FacetFilterProps) {
 	const router = useRouter();
@@ -95,7 +101,7 @@ export function FacetFilter({ value }: FacetFilterProps) {
 			>
 				{PORTFOLIO_FACETS.map((facet) => {
 					const isActive = active.has(facet);
-					const label = { ja: FACET_LABEL_JA[facet], en: FACET_LABEL[facet] };
+					const label = FACET_LABELS[facet];
 					return (
 						<button
 							key={facet}

@@ -1,9 +1,8 @@
+import type { PortfolioProject, PortfolioLink, PortfolioAdjacent } from '../schema';
 import { css } from '../../../styled-system/css';
-import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { Badge } from '../../editorial/primitives/Badge';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
-import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
-import { FACET_LABEL, KIND_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
@@ -13,7 +12,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * First viewport contract:
  *   - Project name (h1)
  *   - One-sentence summary
- *   - Kind of work + period + facet pills
+ *   - Role + period + facet pills
  *   - Representative media (cover)
  *   - Primary link
  *
@@ -83,6 +82,13 @@ const SECTION_DEFINITIONS: ReadonlyArray<{
 		field: 'retrospectiveMd',
 	},
 ];
+
+const FACET_LABEL: Readonly<Record<string, string>> = {
+	develop: 'Develop',
+	video: 'Video',
+	design: 'Design',
+	other: 'Other',
+};
 
 const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 	repo: 'Repository',
@@ -209,7 +215,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											textTransform: 'uppercase',
 										})}
 									>
-										{KIND_LABEL}
+										Role
 									</dt>
 									<dd className={css({ margin: '0' })}>{project.role}</dd>
 									<dt
@@ -237,7 +243,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											key={facet}
 											tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
 										>
-											{FACET_LABEL[facet]}
+											{FACET_LABEL[facet] ?? facet}
 										</Badge>
 									))}
 								</div>

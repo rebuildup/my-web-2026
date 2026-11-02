@@ -278,6 +278,7 @@
 				],
 				"urls": [
 					"/tools/color-palette",
+					"/tools/history-quiz",
 					"/tools/mic-level",
 					"/tools/prototype",
 					"/tools/qr-generator",
@@ -322,6 +323,7 @@
 			"/share/procon2026/",
 			"/tools",
 			"/tools/color-palette",
+			"/tools/history-quiz",
 			"/tools/mic-level",
 			"/tools/prototype",
 			"/tools/qr-generator",
@@ -1302,7 +1304,7 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/mic-level"
+			"/tools/history-quiz"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1316,7 +1318,7 @@
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/mic-level"
+				"message": "Public URL added: /tools/history-quiz"
 			}
 		]
 	}

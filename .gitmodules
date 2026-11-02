@@ -22,6 +22,9 @@
 [submodule "external/business-mail-block"]
 	path = external/business-mail-block
 	url = https://github.com/rebuildup/tool-business-mail-block.git
+[submodule "external/ae-expression"]
+	path = external/ae-expression
+	url = https://github.com/rebuildup/tool-ae-expression.git
 [submodule "external/pomodoro"]
 	path = external/pomodoro
 	url = https://github.com/rebuildup/tool-pomodoro.git

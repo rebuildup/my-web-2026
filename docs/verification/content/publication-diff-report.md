@@ -56,7 +56,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
-- `/tools/business-mail-block`
+- `/tools/ae-expression`
 - `/tools/code-type-p5`
 - `/tools/color-palette`
 - `/tools/fillgen`
@@ -99,7 +99,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ### Added public URLs (1)
 
-- `/tools/business-mail-block`
+- `/tools/ae-expression`
 
 ### Removed public URLs (0)
 
@@ -227,5 +227,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W004 public-url-added` Public URL added: /tools/business-mail-block
+- **WARN** `W004 public-url-added` Public URL added: /tools/ae-expression
 

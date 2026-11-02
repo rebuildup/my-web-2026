@@ -127,16 +127,26 @@ describe('inspect — repository state', () => {
 	it('accepts the shipped public/_headers and manifest', () => {
 		const result = inspect();
 		assert.deepEqual(result.violations, []);
-		// The shipped state has six Tool grants (Issue #817's second wave
-		// added pi-game → fullscreen, fillgen / code-type-p5 → downloads
-		// beside mic-level → microphone; Issue #772 added history-quiz →
-		// modals, a sandbox-only capability with no header half, and
-		// Issue #771 added business-mail-block → downloads). If a Tool
-		// starts declaring one, this assertion is the reminder to update
-		// the expectation rather than to widen the gate silently.
+		// The shipped state has seven Tool grants (Issue #817's second
+		// wave added pi-game → fullscreen, fillgen / code-type-p5 →
+		// downloads beside mic-level → microphone; Issue #772 added
+		// history-quiz → modals, a sandbox-only capability with no header
+		// half; Issue #771 added business-mail-block → downloads and
+		// Issue #773 added ae-expression → downloads, both the same
+		// sandbox-only kind). If a Tool starts declaring one, this
+		// assertion is the reminder to update the expectation rather than
+		// to widen the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			['business-mail-block', 'code-type-p5', 'fillgen', 'history-quiz', 'pi-game', 'mic-level'],
+			[
+				'business-mail-block',
+				'code-type-p5',
+				'fillgen',
+				'history-quiz',
+				'pi-game',
+				'ae-expression',
+				'mic-level',
+			],
 		);
 	});
 

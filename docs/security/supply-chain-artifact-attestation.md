@@ -148,6 +148,11 @@ pnpm run artifact:attestation:check -- \
   --artifact-dir=.tmp/release-bytes/<sha> \
   --release-tag="v<version>"
 
+# 取得した byte 自体を照合する（reason code 付き）。byte の中身は表示しない
+pnpm run artifact:bytes:check -- \
+  --artifact-dir=.tmp/release-bytes/<sha> \
+  --manifest=<published-manifest.json>
+
 # byte を保持していない manifest の内部整合だけを検査する（Issue #816）
 # PASS は「記録が自己整合している」であり、byte 照合ではない。常に
 # bytes_verified=false を出力する
@@ -174,6 +179,13 @@ pnpm run artifact:attestation:report
 | `--build-uuid=<id>` | 取得済みの Cloudflare Workers Builds UUID |
 | `--deploy-id=<id>` | 取得済みの Cloudflare deploy id。無い場合は指定しない |
 | `--allow-dirty` | dirty tree からの**ローカル観測専用**。CI では使わない |
+
+`pnpm run artifact:bytes:check`（`scripts/check-build-output-artifact.mjs`）は
+**取得した** byte 自体を検査する。reason code は
+`SHAPE_MISMATCH` / `PATH_SET_MISMATCH` / `FILE_DIGEST_MISMATCH` /
+`AGGREGATE_DIGEST_MISMATCH` / `SYMLINK_PRESENT` / `SECRET_SHAPE_DETECTED`。
+出力は件数・path・digest・detector id のみで、file の内容も credential も
+表示しない（AGENTS.md §4）。
 
 exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 出力は status-only で、artifact の内容や secret 値は表示しない。
@@ -249,8 +261,18 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   前の run で保持されていないため、v0.8.0 の byte 照合は取得不能で
   あり「未実行」のままである
   （`docs/verification/supply-chain/attestation-byte-comparison-2026-11-02.md`）。
+  owner 決定（2026-11-02、§8-5 / Issue #816 コメント
+  [#816](https://github.com/rebuildup/my-web-2026/issues/816#issuecomment-6567573215)
+  — agent 転記記録）を受けて byte の upload は **main /
+  release-* だけでなく全ての push run** で走る。理由は 1 つで、byte 照合が
+  必須 gate になったため、**review 対象の commit の run** にも byte が
+  存在しなければならない。pull_request run は merge commit を build する
+  ので evidence にはせず、upload しない。
 - 取得した byte と公開 manifest の照合は §4 の 2 コマンドで行う。
   `gh run download` は status のみを出力し、credential を表示しない。
+- **byte 照合は release 必須 gate である**（owner 決定 2026-11-02、
+  §8-5）。実行していない / FAIL / 根拠 artifact 不在は release を
+  停止する。手順・担当・記録先は `docs/release.md` step 9.1。
 - release では GitHub Release への添付を release owner の判断で行う。
   添付の前に `docs/release.md` step 9 / §8 の手順どおり
   `--release-tag="v<version>"` で manifest を tag と照合する。CI
@@ -268,6 +290,11 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   release 承認のいずれも変更しない。
 
 ## 8. 既知の制約と owner 決定
+
+> **この節の書き方**: 各項目の「owner 決定」は **owner が公開したコメントの
+> URL を引用した、agent による転記記録**である。owner がこの文書を書いた
+> わけではない。原文はリンク先にあるコメントが正であり、引用 URL が消えた
+> 時点でこの節は信頼を失う。
 
 owner 決定（2026-10-19、Issue #476 コメント
 [#476](https://github.com/rebuildup/my-web-2026/issues/476#issuecomment-6262116147) /
@@ -309,3 +336,22 @@ attestation の対象範囲を **GitHub Actions の production-mode Build Output
    時点で、別 Issue として deploy 経路の変更を owner が判断する。
 4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
    Release publish と同じ human gate の下に置く。
+5. **byte 照合は release 必須条件である（owner 決定 2026-11-02）。**
+   出典: Issue #816 の owner コメント
+   [#816](https://github.com/rebuildup/my-web-2026/issues/816#issuecomment-6567573215)
+   （2026-11-02）。**転記であり、原文はリンク先。** 決定の要点は (a) A/B/C
+   のうち **B を採用**し、同一ビルドの manifest と artifact の **byte 照合
+   PASS を release 完了前の必須 human/CI gate** とすること、(b) **未実行 /
+   FAIL / 根拠 artifact 不在は release 停止**（少なくとも出荷完了と記録
+   しない）こと、(c) まず**安全なテスト入力**で upload / download / verify
+   の一連を実行し、実 release の tag が無い段階で tag での PASS を記録
+   しないこと、(d) 署名や Cloudflare deploy 済み byte の attestation へ
+   自動的に範囲を拡張しないこと（§8-3 の範囲は変えない）、(e) **v0.8.0 は
+   未検証のまま**残すこと。
+   - 実装: `docs/release.md` step 9.1（担当・タイミング・コマンド・記録先）、
+     `scripts/check-build-output-artifact.mjs`（取得した byte の照合と
+     secret 形状検査）、`.github/workflows/ci.yml`（push run ごとの byte
+     保持）。
+   - **この gate は release PR merge / tag / Release publish の human gate
+     を弱めない**（AGENTS.md §6）。gate が増えるだけで、release の実行主体
+     は変わらない。

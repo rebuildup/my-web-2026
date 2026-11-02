@@ -271,11 +271,22 @@ jobs:
       # describes. `if-no-files-found: error` makes a future path drift a
       # red run instead of an empty artifact, and 90 days matches the
       # manifest's own retention so the pair stays retrievable together.
-      # Only main / release-* pushes are uploaded: a ticket-branch build
-      # cannot produce a published release manifest, and retaining ~20 MB
-      # per force-push for 90 days would be storage paid for nothing.
+      #
+      # Issue #816 (owner decision, 2026-11-02): the byte comparison is
+      # a MANDATORY release gate, so the bytes have to exist for the
+      # commit under review — not only for main. The step therefore runs
+      # on every PUSH run, and the evidence is the pair this run
+      # produced (`artifact-attestation-<sha>` + `cf-build-output-<sha>`,
+      # same `github.sha`), which the operator compares with
+      # `gh run download` and `pnpm run artifact:attestation:check` /
+      # `pnpm run artifact:bytes:check` (see
+      # docs/release.md step 9 and
+      # docs/security/supply-chain-artifact-attestation.md section 7).
+      # The pull_request run is deliberately NOT uploaded: it builds the
+      # merge commit, not the reviewed commit, so its bytes would name a
+      # commit nobody can check out.
       - name: Upload Cloudflare Build Output (attested bytes)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cf-build-output-${{ github.sha }}

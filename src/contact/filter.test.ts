@@ -21,9 +21,14 @@ import {
  *   2. Channels with no recent verified_at are dropped.
  *   3. Channels with verified_at == now - 1 day are kept.
  *   4. Channels with verified_at < now - window are dropped.
- *   5. Channels with verified_at in the future are kept (treated as
- *      just-verified, since the operator may have set a future date
- *      and the only question is "is the channel still active").
+ *   5. A `verified_at` dated in the future is DROPPED (Issue #832).
+ *      The value is an authored JST calendar day; a date ahead of the
+ *      request time is a wrong record, and presenting it as verified
+ *      would be the same fail-open the gate exists to prevent.
+ *   5a. The day is read as JST, so a channel verified "today" in JST
+ *      is still listed during the 9 hours when UTC is on the previous
+ *      day. Parsing at UTC midnight made that row render `days = -1`
+ *      and the UI label it "unparseable".
  *   6. Ordering is stable: most-recently verified first, then id
  *      ascending on tie.
  *   7. Malformed verified_at values drop the channel (fail-closed).
@@ -116,6 +121,47 @@ describe('filterActiveVerified', () => {
 			NOW,
 		);
 		expect(out).toHaveLength(1);
+	});
+
+	it('keeps a same-day JST verification while UTC is still on the previous day', () => {
+		// 2026-09-28T00:30+09:00 == 2026-09-27T15:30Z. The record says
+		// 2026-09-28; a UTC-anchored parse would place it 8.5 hours AHEAD
+		// of `now` and the row rendered as "unparseable" instead of "today".
+		const now = Date.UTC(2026, 8, 27, 15, 30, 0);
+		const out = filterActiveVerified(
+			[
+				{
+					id: 'jst-today',
+					label: 'J',
+					labelEn: 'J',
+					purpose: 'technical',
+					url: 'https://example.com',
+					verified_at: '2026-09-28',
+					active: true,
+				},
+			],
+			now,
+		);
+		expect(out).toHaveLength(1);
+		expect(daysSinceVerified(out[0], now)).toBe(0);
+	});
+
+	it('drops a channel dated in the future', () => {
+		const out = filterActiveVerified(
+			[
+				{
+					id: 'future',
+					label: 'F',
+					labelEn: 'F',
+					purpose: 'technical',
+					url: 'https://example.com',
+					verified_at: '2026-12-31',
+					active: true,
+				},
+			],
+			NOW,
+		);
+		expect(out).toHaveLength(0);
 	});
 
 	it('drops channels with unparseable verified_at', () => {

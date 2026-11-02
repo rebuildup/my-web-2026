@@ -21,9 +21,31 @@ import { css } from '../../../../styled-system/css';
  *   - `bg.accent`            primary CTA fill, idle.
  *   - `accent.interactive`   CTA fill on hover / pressed / focus.
  *   - `text.inverse`         CTA foreground.
- *   - `border.subtle`        outline / hairline.
+ *   - `bg.subtle`            secondary CTA fill, idle.
+ *   - `text.default` / `bg.canvas`  secondary CTA ink inversion on hover.
+ *   - `accent.interactive`   secondary CTA fill on press.
  *   - `border.focus`         keyboard focus ring.
  *   - `text.accent`          inline link text.
+ *
+ * Issue #804 (owner feedback, 2026-11-01): the secondary CTA used to
+ * be `bg.canvas` (the page fill) plus a `border.subtle` hairline. On
+ * the light appearance that is a near-white fill with a near-white
+ * outline — it read as text, not as a button, and it is the same
+ * "white border" the owner rejected on the surface samples. The
+ * outline is gone; the button is now identified by fill alone:
+ * `bg.subtle` at rest, an ink inversion on hover (`text.default` fill,
+ * `bg.canvas` label), and `accent.interactive` under the finger on
+ * press. The neutral ramp only has one step below `bg.subtle`, so a
+ * neutral hover would have finished on `bg.surface` — a 1.05:1 fill
+ * difference, i.e. no visible state at all — and a neutral press on
+ * `bg.canvas` would have erased the button exactly when the visitor
+ * pressed it. The hover and press steps therefore leave the neutral
+ * ramp: hover uses the ink token, press uses the accent the primary
+ * already uses for its own hover. A dedicated `bg.control` /
+ * `bg.pressed` role is the follow-up that would keep both states
+ * neutral, not this PR. The border tokens are no longer part of the
+ * secondary contract; `border.focus` stays, because a keyboard focus
+ * ring is a focus indicator, not a surface divider.
  *
  * IMPORTANT: the inline `style` override does NOT bypass the
  * token layer. Each override still resolves to the same hex
@@ -59,7 +81,7 @@ export function InteractiveStates() {
 			/>
 			<Row
 				label="Secondary — anchor"
-				caption="<a> on bg.canvas, bordered with border.subtle, text.text.default → border.strong on hover"
+				caption="<a> filled with bg.subtle, text.text.default → ink inversion on hover → accent.interactive on press. No border."
 				overrides={secondaryOverrides}
 				render={(state) => (
 					<a
@@ -130,10 +152,13 @@ const primaryOverrides: OverrideMap = {
 
 const secondaryOverrides: OverrideMap = {
 	default: {},
-	hover: { borderColor: 'var(--colors-border-strong)' },
+	hover: {
+		backgroundColor: 'var(--colors-text-default)',
+		color: 'var(--colors-bg-canvas)',
+	},
 	pressed: {
-		borderColor: 'var(--colors-border-strong)',
-		backgroundColor: 'var(--colors-bg-surface)',
+		backgroundColor: 'var(--colors-accent-interactive)',
+		color: 'var(--colors-text-inverse)',
 	},
 	focus: {
 		outline: '2px solid var(--colors-border-focus)',
@@ -162,11 +187,13 @@ function Row({ label, caption, render }: RowProps) {
 	return (
 		<section
 			className={css({
+				// Issue #804: the hairline above each row was another
+				// border doing a layout job. The rows are separated by
+				// the parent's `gap` and this header-to-samples gap
+				// only; no divider is drawn.
 				display: 'flex',
 				flexDirection: 'column',
-				gap: '3',
-				paddingBlock: '4',
-				borderTop: '1px solid {colors.border.subtle}',
+				gap: '6',
 			})}
 		>
 			<header
@@ -284,10 +311,12 @@ function ctaSecondaryClass() {
 		paddingBlock: '2',
 		paddingInline: '4',
 		borderRadius: 'md',
-		borderWidth: '1px',
+		// Issue #804: fill, not outline. `bg.subtle` is one step off
+		// `bg.canvas`, so the button is identifiable at rest without a
+		// border; hover and press each move one step closer to the page.
+		borderWidth: '0',
 		borderStyle: 'solid',
-		borderColor: 'border.subtle',
-		backgroundColor: 'bg.canvas',
+		backgroundColor: 'bg.subtle',
 		color: 'text.default',
 		fontFamily: 'sans',
 		fontSize: 'sm',
@@ -295,11 +324,12 @@ function ctaSecondaryClass() {
 		textDecoration: 'none',
 		cursor: 'pointer',
 		_hover: {
-			borderColor: 'border.strong',
+			backgroundColor: 'text.default',
+			color: 'bg.canvas',
 		},
 		_active: {
-			borderColor: 'border.strong',
-			backgroundColor: 'bg.surface',
+			backgroundColor: 'accent.interactive',
+			color: 'text.inverse',
 		},
 		_focusVisible: {
 			outline: '2px solid {colors.border.focus}',

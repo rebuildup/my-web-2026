@@ -215,7 +215,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-business-mail-block.git",
 				"submodule_path": "external/business-mail-block",
-				"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+				"pinned_sha": "1495b2e5feae6b4d38e1d985e1066b2913d39391",
 				"branch": "main"
 			},
 			"build": {
@@ -224,11 +224,23 @@
 				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library and uses bun as package manager. Embedding blocked until the Tool repo adds a standalone Vite build path (consistent with the other tool-* repos)."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/business-mail-block/app",
+				"entry_html": "/tools/business-mail-block/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "business-mail-block の「ダウンロード」ボタンは、組み立てたメールを .txt として、テンプレートを .json として保存する（src/components/useMailBlockState.ts#downloadEmail が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた（実測: allow-downloads なしの build では同じボタンで download イベントが発火しなかった）。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned business-mail-block e88be11f and re-checked at 52124c7 and 1495b2e (the bumps change only style attributes of two Draggable renderers and the generated-mail heading row, so the file set, the request-on-load set and the storage API set are unchanged): the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API, so the opaque-origin sandbox affects nothing; the file download the Tool offers is a blob URL it creates inside the frame (URL.createObjectURL), so it contacts no origin at all; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134), then bumped to PR #7 (merge commit 52124c735d1706ea8dadd66272b34da11e6033c1), which closes the Tool's Issue #6: both Draggable renderers replaced the style object dnd supplies, discarding the lift geometry (`position` / `transform` / `top` / `left`) from `provided.draggableProps.style`, so a card never visibly lifted, the drop animation never completed and `onDragEnd` never ran — measured on the host at the previous pin, dragging a block from 利用可能なブロック to メール作成エリア composed nothing. The fix spreads `provided.draggableProps.style` first in src/components/AvailableBlocks.tsx and src/components/ComposedBlocks.tsx; measured on the Tool's own built preview at that pin, the drop composes the block and the composed text is `挨拶 継続挨拶 いつもお世話になっております.{company}の{name}です.` It is then bumped to PR #9 (merge commit 1495b2e5feae6b4d38e1d985e1066b2913d39391 = pinned submodule HEAD, verified with git ls-remote + submodule status), which closes the Tool's Issue #8: at 390px the 「生成されたメール」 heading row did not wrap, so each action label broke one character per line (「コ / ピ / ー」); the row now wraps the action group below the heading and every label stays on one line (measured at 390×844: heading 1 line / 143px, buttons 104px, 152px and 184px). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox grants no Permissions-Policy feature and the frame keeps its opaque origin. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts); measured on the built preview, the コピー button does put the composed mail on the clipboard through that fallback. The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts): measured on the built preview with `sandbox=\"allow-scripts\"` the browser discarded it (no download event), and with `allow-downloads` added the same button produces one — that is why the sandbox carries the token and `delivery.iframe.allow` declares the `downloads` capability. `downloads` is a sandbox-only capability (src/http/security-headers.json#sandbox_only_capabilities): it has no Permissions-Policy header half, so the grant is the sandbox token alone."
 		},
 		{
 			"slug": "code-type-p5",

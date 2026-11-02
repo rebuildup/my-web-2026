@@ -279,7 +279,10 @@ export function inspect(options = {}) {
 	expectHeader(hostStatic, REFERRER_POLICY, policy.referrer_policy.host);
 	expectHeader(hostStatic, PERMISSIONS_POLICY, baseline);
 
-	// 3. Manifest grants must be bare feature names the baseline denies.
+	// 3. Manifest grants must be bare feature names the baseline denies,
+	//    or a capability whose grant is a SANDBOX token (there is no
+	//    header for it — `downloads` is the one; see
+	//    `src/http/security-headers.json#sandbox_only_capabilities`).
 	const grantedTools = [];
 	for (const tool of manifest.tools) {
 		const declared = declaredFeatures(tool.delivery?.iframe?.allow);
@@ -295,6 +298,19 @@ export function inspect(options = {}) {
 					`src/tools/manifest.json  ${tool.slug}  delivery.iframe.allow: "${token}" is not a bare feature name (the host owns the origin allowlist)`,
 				);
 			}
+			if (policy.sandbox_only_capabilities?.includes(token)) {
+				// A sandbox-only capability must NOT be in the deny baseline:
+				// the baseline is emitted on EVERY response, so denying it
+				// site-wide would kill the capability the Tool declared
+				// (measured: an explicit deny wins over the container
+				// attribute, so the Tool would lose the feature).
+				if (policy.denied_permissions.includes(token)) {
+					violations.push(
+						`src/http/security-headers.json  denied_permissions: "${token}" is a sandbox-only capability and must not be denied site-wide — the grant is the sandbox token / the container attribute, not a header`,
+					);
+				}
+				continue;
+			}
 			if (!policy.denied_permissions.includes(token)) {
 				violations.push(
 					`src/tools/manifest.json  ${tool.slug}  delivery.iframe.allow: "${token}" is not in the denied baseline, so the grant would be a no-op`,
@@ -307,10 +323,16 @@ export function inspect(options = {}) {
 	//    grant is delegated by the host route instead). A Tool that
 	//    declares a grant is checked whether or not it is served yet —
 	//    that is what makes the grant reviewable before the Tool has a
-	//    standalone build.
+	//    standalone build. Only the REAL features reach the header: a
+	//    sandbox-only capability (downloads) has no header half at all,
+	//    and writing one would make every browser log an unrecognized
+	//    feature on every response.
 	for (const tool of manifest.tools) {
 		const sample = `${artifactPathFor(tool)}/index.html`;
 		const declared = declaredFeatures(tool.delivery?.iframe?.allow);
+		const headerFeatures = declared.filter((feature) =>
+			policy.denied_permissions.includes(feature),
+		);
 		if (tool.delivery?.kind === 'same_origin_static') {
 			expectHeader(
 				sample,
@@ -318,11 +340,11 @@ export function inspect(options = {}) {
 				tool.delivery.iframe?.referrer_policy ?? policy.referrer_policy.tool_app,
 			);
 		}
-		if (declared.length > 0) {
+		if (headerFeatures.length > 0) {
 			expectHeader(
 				sample,
 				PERMISSIONS_POLICY,
-				permissionsPolicyValue(policy, productionOrigin, declared),
+				permissionsPolicyValue(policy, productionOrigin, headerFeatures),
 			);
 		} else if (tool.delivery?.kind === 'same_origin_static') {
 			expectAbsent(sample, PERMISSIONS_POLICY);
@@ -338,19 +360,27 @@ export function inspect(options = {}) {
 		const probe = probePathFor(rule.path, manifest);
 		const granted = grantedFeatures(resolveHeadersForPath(rules, probe)[PERMISSIONS_POLICY]);
 		for (const feature of granted) {
-			const owner = manifest.tools.find((tool) =>
+			// More than one Tool may declare the SAME capability (Issue #817:
+			// fillgen and code-type-p5 both need `downloads`), so the owner
+			// is not "the first tool that declares it" but "every tool that
+			// declares it". The invariant is unchanged: the feature may
+			// appear only inside the artefact namespace of a Tool that
+			// declares it — so the rule passes when the probed path lies in
+			// the namespace of ANY declaring Tool, and fails when it lies in
+			// none of them.
+			const owners = manifest.tools.filter((tool) =>
 				declaredFeatures(tool.delivery?.iframe?.allow).includes(feature),
 			);
-			if (!owner) {
+			if (owners.length === 0) {
 				violations.push(
 					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" but no Tool manifest entry declares it`,
 				);
 				continue;
 			}
-			const namespace = artifactPathFor(owner);
-			if (!pathnameMatches(namespace, probe)) {
+			const namespaces = owners.map((owner) => artifactPathFor(owner));
+			if (!namespaces.some((namespace) => pathnameMatches(namespace, probe))) {
 				violations.push(
-					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" outside the declaring Tool's namespace ${namespace} (probe ${probe})`,
+					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" outside the declaring Tool's namespace ${namespaces.join(' / ')} (probe ${probe})`,
 				);
 			}
 		}

@@ -66,21 +66,43 @@ describe('Tool embed policy — the live manifest', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('both served Tools declare allow-scripts + no-referrer', () => {
+	it('every served Tool declares allow-scripts + no-referrer, and a conditional token comes with its grant and reason', () => {
 		const served = listAllTools().filter(
 			(
 				t,
 			): t is typeof t & {
 				delivery: {
 					kind: 'same_origin_static';
-					iframe?: { sandbox: string; referrer_policy: string };
+					iframe?: {
+						sandbox: string;
+						referrer_policy: string;
+						allow?: string;
+						sandbox_rationale?: string;
+					};
 				};
 			} => t.delivery.kind === 'same_origin_static',
 		);
 		expect(served.length).toBeGreaterThan(0);
 		for (const tool of served) {
-			expect(tool.delivery.iframe?.sandbox).toBe('allow-scripts');
-			expect(tool.delivery.iframe?.referrer_policy).toBe('no-referrer');
+			const iframe = tool.delivery.iframe;
+			// `allow-scripts` is the token every Tool needs, and it comes
+			// first (the manifest schema's advisory pattern).
+			expect(iframe?.sandbox.split(' ')[0]).toBe('allow-scripts');
+			expect(iframe?.referrer_policy).toBe('no-referrer');
+			// A conditional token (Issue #817 added `allow-downloads` for
+			// fillgen and code-type-p5) is only valid with the capability
+			// grant and the written reason — the same contract the policy
+			// module enforces, asserted here over the LIVE manifest.
+			const conditional = (iframe?.sandbox ?? '')
+				.split(' ')
+				.filter((token) => token !== 'allow-scripts');
+			for (const token of conditional) {
+				expect(iframe?.allow?.trim(), `${tool.slug}: ${token} without a grant`).toBeTruthy();
+				expect(
+					iframe?.sandbox_rationale?.trim(),
+					`${tool.slug}: ${token} without a written reason`,
+				).toBeTruthy();
+			}
 		}
 	});
 

@@ -12,11 +12,11 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 25 |
-| External hosts | 33 |
+| Publicly reachable URLs (surface + Static Assets) | 29 |
+| External hosts | 36 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | 15 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -56,8 +56,12 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
+- `/tools/code-type-p5`
 - `/tools/color-palette`
+- `/tools/fillgen`
 - `/tools/mic-level`
+- `/tools/pi-game`
+- `/tools/pomodoro`
 - `/tools/prototype`
 - `/tools/qr-generator`
 - `/tools/readmark`
@@ -91,17 +95,22 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (4)
 
-- `/tools/mic-level`
+- `/tools/code-type-p5`
+- `/tools/fillgen`
+- `/tools/pi-game`
+- `/tools/pomodoro`
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (3)
 
-- (none)
+- `cdn.jsdelivr.net`
+- `via.placeholder.com`
+- `www.youtube.com`
 
 ### Removed external hosts (0)
 
@@ -129,12 +138,15 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
+| `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
@@ -198,6 +210,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
+| `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
+| `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com` | `www.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
@@ -208,10 +222,27 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
+| `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/embed/…` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/iframe_api` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-- **WARN** `W004 public-url-added` Public URL added: /tools/mic-level
+- **ERROR** `E004 external-host-added` New external host cdn.jsdelivr.net appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host via.placeholder.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host www.youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net
+- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net/npm/p5@
+- **WARN** `W002 external-url-added` External URL added: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json
+- **WARN** `W002 external-url-added` External URL added: https://via.placeholder.com
+- **WARN** `W002 external-url-added` External URL added: https://via.placeholder.com/300?text=Image+Error
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/embed/…
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/iframe_api
+- **WARN** `W004 public-url-added` Public URL added: /tools/code-type-p5
+- **WARN** `W004 public-url-added` Public URL added: /tools/fillgen
+- **WARN** `W004 public-url-added` Public URL added: /tools/pi-game
+- **WARN** `W004 public-url-added` Public URL added: /tools/pomodoro
 

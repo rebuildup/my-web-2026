@@ -377,10 +377,11 @@
 			"slug": "ae-expression",
 			"display_name": "AE Expression",
 			"description_ja": "After Effects のエクスプレッションを選んでコピーできるリファレンス。バウンス・サイン波・ランダムなどの式とパラメータを確認できます。",
+			"description": "Browse After Effects expressions (bounce, sine wave, random, …), tune their parameters, and copy the generated code.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-ae-expression.git",
 				"submodule_path": "external/ae-expression",
-				"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+				"pinned_sha": "56bbbbd6174c1baee5b542565466f8154ad633ed",
 				"branch": "main"
 			},
 			"build": {
@@ -389,11 +390,25 @@
 				"package_manager": "pnpm"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/ae-expression/app",
+				"entry_html": "/tools/ae-expression/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"purpose": {
+						"ja": "この Tool は読み込み時に third-party origin へ通信しません（宣言された origin は 0 件）。したがって送信先の目的はありません。",
+						"en": "This Tool contacts no third-party origin (the declared origin list is empty), so there is no third-party purpose to declare."
+					},
+					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin), and the built bundle carries only the SVG/XML namespace constants (http://www.w3.org/...) and React's own error-doc URL (https://react.dev/errors/) as strings — neither is requested at load time. Browser storage and clipboard access are guarded (in-memory / execCommand fallback), so the sandboxed opaque origin breaks nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-ae-expression PR #7 (commit 56bbbbd6174c1baee5b542565466f8154ad633ed = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`, base \"./\"); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/** and none fetched at load; browser storage and clipboard are guarded with in-memory / execCommand fallbacks, so sandbox=\"allow-scripts\" (no allow-same-origin) does not break them."
 		},
 		{
 			"slug": "mic-level",

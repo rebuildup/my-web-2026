@@ -49,6 +49,11 @@ export const rawTokens = {
 		// page. The dark appearance uses `charcoal` instead.
 		neutral: {
 			0: { value: '#ffffff' },
+			// 25 (Issue #812) — the light canvas step. Pure white (`0`)
+			// is retired as a SURFACE value: the page ground uses this
+			// near-white instead of pure white. `0` remains the true-white
+			// foreground (`text.inverse`) and dark-plate knockout value.
+			25: { value: '#fcfcfd' },
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
 			500: { value: '#64748b' },

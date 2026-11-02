@@ -52,7 +52,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/readmark.git",
 				"submodule_path": "external/readmark",
-				"pinned_sha": "906c90e57e51f1d7b3fe739f085cf9978445c0fb",
+				"pinned_sha": "889595910ae62ebfb3f6b8000d635283196f9b0e",
 				"branch": "main"
 			},
 			"build": {
@@ -70,12 +70,12 @@
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned readmark 906c90e: no external origin in index.html or src/**; re-measure after a bump"
+					"basis": "measured at pinned readmark 8895959 (ADR-0008 storage-free redesign, merged via readmark PR #86): no external origin in index.html or src/**, and a sandboxed-frame run observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "PDF reading MVP (Dexie local-first + pdfjs-dist 5.x + React Router). Uses bun as package manager. COOP/COEP headers required for SharedArrayBuffer pdfjs decode — host already serves https via rebuildup.dev canonical origin, so headers are deployable."
+			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router; Dexie removed). Uses bun as package manager. COOP/COEP headers required for SharedArrayBuffer pdfjs decode — host already serves https via rebuildup.dev canonical origin, so headers are deployable. Storage (Issue #786 / readmark ADR-0008): readmark keeps NO browser storage — documents, metadata and reading state live in a per-tab in-memory session store, and the library says so in one line. The sandboxed frame's opaque origin (every storage API denied, measured) therefore no longer matters: a reload starts an empty library by design. Zero external origins, so no consent gate."
 		},
 		{
 			"slug": "text-counter",

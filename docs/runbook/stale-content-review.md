@@ -117,6 +117,12 @@ pnpm run copy:stale:check
 `kind: "agent-recorded"` / `ownerConfirmation: "unconfirmed"` を書き、gate は
 それを **owner 確認待ち** として報告する。
 
+**`reviewedBy` は「その台帳行を書いた主体」である (Issue #754)。** owner の承認
+ではない。owner 自身が読まずに agent が記入した行は `reviewedBy: "agent"` であり、
+`reviewedBy: "owner"` にしてはならない（owner がその行を書いていないなら）。
+**owner が確認したかどうかは `provenance` だけが述べる。** `reviewedBy` を
+owner の名前に書き換えても、owner 確認の証拠にはならない。
+
 ### 4.4 再確認
 
 ```bash
@@ -171,7 +177,10 @@ opt-in すると、その locale の文面は検出されない（`not-scanned` 
   採る。**生の JSX テキスト（英語）は採れない。**
 - **reviewer の同一性を検証しない。** `reviewedBy` は記録された文字列で
   あり、その人物が owner であることの証明ではない。実際の権限は PR review
-  にある（AGENTS.md §6）。
+  にある（AGENTS.md §6）。**Issue #754 以降、`reviewedBy` は「台帳の行を
+  書いた主体」を名指しする欄である** — owner が承認したという意味ではない。
+  自動化された側が書いた行は `agent` であり、owner 確認の有無は `provenance`
+  だけが述べる。
 - **review date は「記録された主張」である (Issue #720)。** registry の
   `reviewedAt` は「owner がこの文を読んだ日」という **主張** であり、owner が
   読んだことそのものではない。gate は record の `provenance` を読む:

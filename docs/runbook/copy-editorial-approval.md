@@ -66,7 +66,7 @@ gate が主張するのは **証拠** だけである — 「この変更には 
 | --- | --- | --- |
 | `proposal` | 編集補助 (yomiyasu と同種) を変更文面に対して実行し、その提案を**採否した** | `records[].proposal` |
 | `semantic` | 原文と変更後の文面を **意味として** 突き合わせた | `records[].comparisons[]` |
-| `approval` | owner が **採否** した (approved / rejected) | `records[].decision` / `reviewer` / `reviewedAt` |
+| `approval` | owner が **採否** した (approved / rejected)。owner がまだ決めていなければ `pending` | `records[].decision` / `reviewer` / `reviewedAt` |
 | `approval` の **前提** | その判断が **owner のものである**ことを裏付ける traceable な artefact | `records[].provenance` (Issue #720) |
 
 **編集補助の出力は evidence であり、approval ではない。** `proposal` だけが整った
@@ -87,6 +87,8 @@ owner 承認として数える。
 | `approval` | `decision: "approved"` かつ `reviewer` と `reviewedAt` があり、**かつ** `provenance` が owner 承認として成立する |
 
 `decision: "rejected"` は `approval` dimension が `fail` になる。
+`decision: "pending"`（owner がまだ決めていない）は `approval` dimension が
+**`not run`** になる（verdict: NEEDS REVIEW）。**pass にはならない。**
 `fingerprint` が一致しない record は **別文面の承認** なので `fail` (stale) になる。
 
 ### 3.4 provenance — 「approved」と書かれた record の owner-ness (Issue #720)
@@ -213,6 +215,23 @@ pnpm run copy:approval:check -- --base=release-0-7-0 --print-fingerprint
 `comparisons[]` は **変更された segment 1 つ 1 つ** に対応する。1 つでも欠けると
 `semantic` dimension は `not run` になる。
 
+**`reviewer` に書くのは owner が実際に決めた場合だけである (Issue #754)。**
+`reviewer` は「判断した人」の識別子であり、**owner が判断していない record に
+owner の識別子を書いてはならない**。自動化された側 (agent) が書いた record は
+`reviewer: null` である。
+
+**owner がまだ決めていない record は `decision: "pending"` で書く (Issue #754)。**
+`approved` のまま `reviewer` に owner の識別子を書くと、**誰も取っていない判断を
+owner が取ったように見える**（台帳は `provenance.kind: "agent-recorded"` /
+`ownerConfirmation: "unconfirmed"` であるのに、owner の判断を暗示してしまう）。
+`pending` の record は gate が `approval` dimension = `not run`、verdict =
+NEEDS REVIEW として報告する（rule id `approval-awaiting-owner`）。**pass には
+ならない。** `proposal` / `comparisons`（レビューが **準備された** 証拠）は
+そのまま残してよい — それらは evidence であり approval ではない。
+
+**「gate が PASS だった」ことは owner 承認の根拠にならない。** gate は
+「その record が owner の artefact を指しているか」しか見ていない。
+
 `provenance` は **その判断が owner のものである**ことを示す欄である
 (Issue #720)。`reference` には **owner がその判断を述べた review / issue comment
 の URL** を書く。owner 自身が読まずに agent が書いた record には
@@ -242,10 +261,18 @@ owner 確認済みにする手順は:
    `ownerConfirmation: "confirmed"` に更新する。
 
 **fingerprint は変えない。** 変更集合が変わっていない限り fingerprint は
-変わらない。`decision` は `approved` のままでよい（既に判断が記録されて
-いるなら）。**「gate が PASS だったから」で `ownerConfirmation` を
-`confirmed` にしてはならない** — それは owner 自身の artefact でなければならない
-ならない。
+変わらない。**`decision` は `approved` のままでよい — ただし、それは
+「owner が既に判断を記録済みで、`ownerConfirmation: "confirmed"` にする
+owner 自身の artefact がある」場合の話である。** Issue #754 の訂正で
+`decision: "pending"` / `reviewer: null` になっている record は、**この手順の
+3 をして owner が判断を記したうえで初めて** `decision: "approved"` と
+`reviewer: "<owner の識別子>"` に直す。**「gate が PASS だったから」で
+`ownerConfirmation` を `confirmed` にしてはならない** — それは owner 自身の
+artefact でなければならない。
+
+**順序は owner artefact → decision → provenance である。** 「gate が緑だ」
+「record がある」「マージが許可された」はいずれも owner 判断の artefact では
+ない（[監査](../../verification/governance/approval-provenance.md) §2）。
 
 ## 5. fingerprint とは
 
@@ -337,13 +364,14 @@ node --test scripts/check-copy-editorial-approval.test.mjs
 pnpm run verify:copy-editorial-approval-screenshot -- --base=origin/release-0-7-0
 ```
 
-fixture は `test/fixtures/copy/editorial-approval/` に 6 件ある。
+fixture は `test/fixtures/copy/editorial-approval/` に 7 件ある。
 
 | fixture | verdict | 何を証明するか |
 | --- | --- | --- |
 | `approved.json` | `pass` | 完全な承認記録がある変更集合（provenance は owner-review + reference） |
 | `needs-review.json` | `not run` | 記録が無い変更集合は pass にならない |
 | `agent-recorded.json` | `not run` | agent が書いた記録（`ownerConfirmation: "unconfirmed"`）は owner 承認にならない (Issue #720) |
+| `pending.json` | `not run` | owner がまだ決めていない記録（`decision: "pending"`, `reviewer: null`）は承認にならない (Issue #754) |
 | `rejected.json` | `fail` | owner が拒否した変更集合 |
 | `stale-approval.json` | `fail` | 別の文面への承認は流用できない |
 | `not-applicable.json` | `not applicable` | 公開日本語が変わらない PR はレビュー不要 |

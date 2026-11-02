@@ -39,7 +39,7 @@
 | expression 選択 | 「Wiggle」を選択 → パラメータ設定に `frequency (Hz)` / `amplitude (px)` が出る |
 | 生成コード | `wiggle(2, 50)`（frequency 2 / amplitude 50）。「エクスプレッションは正常です」の正常表示 |
 | コピー | コピーボタンが **「コピー完了」** に変わる（押下後の実測） |
-| パラメータ入力 | `input` 要素 5 件（range / number）が実在し、初期値が反映されている |
+| パラメータ入力 | `input` 要素 5 件（range / number）が実在。`frequency` を `2` → `3` に変更すると生成コードが `wiggle(2, 50)` → `wiggle(3, 50)` に追従する |
 | `next/link` 由来の nav | 残っていない（Tool 内のパンくずは `Home / Tools / After Effects Expression Helper` を静的表示するのみで、host のルートは持ち込まない） |
 
 ## 3. 視覚確認（quality-gate §19）

@@ -151,14 +151,16 @@ describe('ProjectCard category cue (Issue #411)', () => {
  *
  * The column mixes two claims — the role a person held ("Tool
  * developer") and the kind of work ("Development", derived from the
- * facets). The corrected decision keeps the first one and projects the
- * second one nowhere: the eyebrow word and the facet pills already
- * carry it, and 5 of the 64 derived values contradicted the eyebrow
- * because the derivation order and the display order differ.
+ * facets). The corrected decision keeps the first one and takes the
+ * second one out of the column: the eyebrow word and the facet pills
+ * already carry it, and 5 of the 64 derived values contradicted the
+ * eyebrow because the derivation order and the display order differ.
  *
- * So the public contract is TWO states — a role is recorded, or no
- * role is recorded — and the three cases below are those states, seen
- * at the layer where they appear.
+ * The component only sees a stored string, so these cases pin the
+ * PUBLIC CONTRACT, not a live path: D1 declares `role` NOT NULL and
+ * the loader carries no `role_source`, so no row can be `null` today.
+ * The state below arrives with Issue #811's ingest, which makes the
+ * column nullable and writes no kind of work into it.
  */
 
 /** How many times `needle` occurs in `haystack`. */
@@ -178,8 +180,10 @@ describe('ProjectCard — the role row (Issue #813)', () => {
 	});
 
 	it('drops the role row for a derived value and keeps the facet wording', () => {
-		// `role: null` is what the ledger's `facet-derived` state
-		// publishes. The kind of work stays where the facets are.
+		// `role: null` is the value Issue #811's ingest writes for a
+		// `facet-derived` row (the column is NOT NULL today, so no live
+		// row can be null yet). The kind of work stays where the facets
+		// are.
 		const html = renderToStaticMarkup(<ProjectCard project={project(['video'], { role: null })} />);
 		expect(html).not.toContain('>Role</dt>');
 		// The facet still names the work: the eyebrow word and the pill.

@@ -15,9 +15,15 @@ import type { PortfolioFacet } from './schema';
  * developer", "Intern") and a kind of work ("Development", "Video
  * production"). The second one is a restatement of `facets`, which
  * the card and the detail already show as the eyebrow word and as the
- * facet pills, so the public surface projects it nowhere and has no
- * label for it. The label that does exist — `Role` — is the person's
- * role, and it is printed only when a role is recorded.
+ * facet pills, so it must not be projected to the public surface and
+ * there is no label for it. The label that does exist — `Role` — is
+ * the person's role, and it is printed only when a role is recorded.
+ *
+ * Keeping the kind out of the column is the WRITE path's job (Issue
+ * #811: `role_source` plus a nullable `role`). The reader cannot tell
+ * where a stored value came from, so a non-null value is printed
+ * as-is. Until #811 lands, a facet-derived value already in D1 would
+ * still print under `Role`.
  *
  * The reasoning, the measurements and the three-state data contract
  * live in `docs/domain/portfolio-vocabulary.md`.

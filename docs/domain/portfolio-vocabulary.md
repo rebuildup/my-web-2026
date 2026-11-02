@@ -74,13 +74,22 @@ Issue #813（2026-11-02）。
 ### 2.3 D1 の現状
 
 `migrations/0007_portfolio.sql:59` は `role TEXT NOT NULL`。
-`scripts/migrate-portfolio-from-2025.mjs:447-453` は、override の無い行に
-`'(unverified — owner review required)'` という文を書き込む（`NOT NULL` を
-満たすため）。同スクリプトは facet からの推測を明示的に拒否している。
+`scripts/migrate-portfolio-from-2025.mjs:429-455` は `role_overrides` にある値
+だけを書き、それ以外の行には `'(unverified — owner review required)'` という
+文を入れる（`NOT NULL` を満たすため）。facet からの推測は明示的に拒否している。
 
-移行 151 件はまだ D1 に存在しない（`publication: pending_owner` が 60 件、
-残りは `null`）。したがって**現時点の公開面に生成値は 1 件も出ていない**。
-この問題は、#811 の移行が着地したときに初めて表面化する。
+**この文書は D1 の実際の中身を断定しない。** 決められるのは契約上の事実だけ
+である。
+
+- `role` は `NOT NULL` なので、**D1 の行に `null` は存在し得ない**。
+- loader（`src/portfolio/schema.ts`）に `role_source` が無いので、値の由来を
+  実行時に区別できない。
+
+したがって **非 null の値は、override の値でも sentinel でも、そのまま
+`Role` として描画される**。台帳の 64 件が持つ facet 由来の値が D1 に入れば、
+それも `Role` として描画される。0.8.1 はこの描画を変えない（§8）。
+「公開面に出ていない」のは、published な行が無いためであって、直したから
+ではない。
 
 ### 2.4 生成値と facet 表示の一致
 
@@ -145,15 +154,22 @@ Issue #813（2026-11-02）。
   nullable になった後は NULL を書き、未検証である事実は台帳の
   `role_source` に残す。担当が未検証であることは、担当が無いことと同じ
   公開上の意味を持つ。
-- **R4 — 公開契約は 2 状態（担当あり / なし）で足りる。** 生成値と値なしは
+- **R4 — 公開投影は 2 状態（担当あり / なし）で足りる。** 生成値と値なしは
   どちらも「この仕事について記録された担当はない」を意味し、同じ描画になる。
   生成値の由来を公開面で見せるのは、仕事ではなく**こちらの移行手順**について
-  の主張になるため、§10 の owner 判断待ちに置く。
+  の主張になるため、§10 の owner 判断待ちに置く。3 状態は台帳（と、#811 が
+  D1 に足す場合の `role_source`）に残るが、`PortfolioProject` には出さない。
 
 `src/portfolio/schema.ts` の `PortfolioProject.role` / `PortfolioProjectRow.role`
 は `string` から **`string | null`** に広げる。D1 の列を nullable にするのは
 #811 の ingest と同じ変更で行う（§8）。それまでは型だけが状態を許し、実際に
 `null` を返す経路は無い。
+
+**R1〜R3 は書き込み側に課す規則であり、0.8.1 では適用されていない。** 適用
+されるのは #811 の ingest が `role_source` を導入し、`role` を nullable に
+してからである。それまでの実行時挙動は変わらない: D1 に非 null の値があれば
+`Role` 行が出る（§2.3）。この Issue が用意するのは**型・表示規則・語彙**で
+あって、直った状態ではない。
 
 ## 5. そもそも表示する必要があるか
 
@@ -211,40 +227,57 @@ facet の表示（見出し語・pill・フィルタ）は変更しない。仕�
 | # | ケース | 入力 | 期待 |
 | --- | --- | --- | --- |
 | 1 | 実証された担当値 | `role: 'Tool developer'` | `<dt>Role</dt>` と値が出る。生成値の語（`Development`）は出ない |
-| 2 | 生成値 | 台帳が `facet-derived` の行。公開列は `role: null` | `Role` 行が出ない。facet の見出し語と pill は出る。`Development` も `Kind` も出ない |
+| 2 | 生成値 | `role: null`（#811 の ingest が `facet-derived` に対して書く値） | `Role` 行が出ない。facet の見出し語と pill は出る。`Development` も `Kind` も出ない |
 | 3 | 値なし | `role: null`、facet は任意 | `Role` 行が出ない。空の `<dd>` を残さない |
 
-ケース 2 は 2 か所で固定する。
+ケース 2 の完全な固定には 2 か所が要る。**0.8.1 で入るのは表示側の 1 か所
+だけ**である。
 
-- **書き込み境界**（`scripts/migrate-portfolio-from-2025.mjs` の単体テスト）:
-  `facet-derived` の行に `role = NULL` を書く。生成値の文字列も sentinel も
-  書かない。`owner-recorded` の 4 件だけが値を書く。
-- **表示**（`ProjectCard.test.tsx` / `PortfolioDetail.test.tsx`）:
-  `role: null` で `Role` 行が出ず、facet の表示は残る。
+- **表示**（`ProjectCard.test.tsx` / `PortfolioDetail.test.tsx`、この Issue）:
+  `role: null` で `Role` 行が出ず、facet の表示は残る。ただし**現行 D1 に
+  `role: null` の行は作れない**（`NOT NULL`）ので、このケースは契約の固定で
+  あって、いま動いている経路の固定ではない。
+- **書き込み境界**（`scripts/migrate-portfolio-from-2025.mjs` の単体テスト、
+  #811）: `facet-derived` の行に `role = NULL` を書く。生成値の文字列も
+  sentinel も書かない。`owner-recorded` の 4 件だけが値を書く。**未実施。**
 
 追加で、公開面に `Kind` というラベルが存在しないことを固定する
 （初版の一括置換が戻ってこないようにする）。
 
-## 8. 変更内容
+## 8. 変更内容と、この Issue の完了条件
 
-### 0.8.1 で入れるもの（この Issue）
+### この Issue の完了条件
+
+**型と語彙の準備が入っていること。** それ以上ではない。
+
+- 実行時の描画は変わらない。`role` が非 null の行は、いまも `Role` として
+  描画される
+- `role` が null になる経路は #811 の ingest（`role_source` 導入 +
+  `role` の nullable 化）まで存在しない
+- したがって「facet 由来の値が `Role` として描画されない」ことは、この Issue
+  では達成していない。**「修正完了」と書かない。**
+
+### 入れるもの
 
 - `src/portfolio/schema.ts` — `role: string` → `string | null`（`PortfolioProject`
   と `PortfolioProjectRow` の両方、および写像）
 - `src/portfolio/components/ProjectCard.tsx` / `PortfolioDetail.tsx` —
-  `role` が非 null のときだけ `Role` 行を出す。ラベルは `Role` のまま
-- `src/portfolio/vocabulary.ts` — `FACET_LABEL` / `FACET_LABEL_JA` の集約は
-  **残す**（3 コンポーネントに複製されていた対応表を 1 箇所にする変更で、
-  ラベルの問題とは独立である）。`KIND_LABEL` は**削除**
+  `role` が非 null のときだけ `Role` 行を出す。ラベルは `Role` のまま。
+  **非 null の値はそのまま描画する**（由来を判定する材料がコンポーネントに
+  無いため）
+- `src/portfolio/vocabulary.ts` — `FACET_LABEL` / `FACET_LABEL_JA` の集約。
+  `KIND_LABEL` は持たない
 - `docs/domain/portfolio-vocabulary.md` — この文書
 
-### #811 の ingest で行うもの（この Issue ではやらない）
+### #811 の ingest で行うもの（残作業）
 
 - `migrations/` — `portfolio_project.role` を nullable にする。SQLite は
-  `ALTER TABLE` で `NOT NULL` を外せないため、テーブル再構築になる。
-  行数が少ないうちに 1 回だけ行う
-- `role_source` 列の追加と、台帳からの書き込み（R1–R3）
+  `ALTER TABLE` で `NOT NULL` を外せないため、テーブル再構築になる
+- `role_source` 列の追加と、台帳からの書き込み（R1–R3）。`role_source` は
+  **書き込み時に台帳の 3 状態を読むため**の provenance であり、公開投影
+  `PortfolioProject` には出さない（表示は 2 状態で足りる。R4）
 - 151 件の移行本体、sentinel の廃止
+- 書き込み境界のテスト（ケース 2 の残り半分）
 
 ## 9. この決定が主張しないこと
 
@@ -269,5 +302,9 @@ facet の表示（見出し語・pill・フィルタ）は変更しない。仕�
 - **台帳の未決事項。** `scripts/audit-legacy-portfolio.mjs` の
   `OPEN_DECISIONS` にあった「表示ラベルは owner 判断」という項目は、この
   決定で解消する（ラベルは `Role` のまま、種類は表示しない）。台帳側の
-  組み替えは Issue #811 が行うが、**#811 が記録した `Kind` の記述はこの
-  訂正に合わせて直す必要がある**（`decided_by: 'issue-813'` の resolution）。
+  組み替えは Issue #811 が行う。`Kind` の記述は #811 ブランチで訂正済み
+  （`215e8395`）。
+- **残作業の帰属。** `role` の nullable 化・`role_source` の導入・
+  facet 由来の値を書かない規則・sentinel の廃止は、すべて **Issue #811** が
+  持つ。この Issue (#813) は型と語彙の準備で完了であり、描画はまだ変わって
+  いない（§8）。

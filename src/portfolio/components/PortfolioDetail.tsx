@@ -99,10 +99,15 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const primaryLink = project.links[0] ?? null;
 	const showAdjacent = adjacent.prev !== null || adjacent.next !== null;
 	// The `Role` row exists only when a role is actually recorded
-	// (Issue #813). A kind of work is NOT projected here — the
-	// eyebrow word and the facet pills already carry it — and an empty
-	// `<dd>` would be a row that claims something while saying nothing.
-	// The printed string is the stored string, byte-exact.
+	// (Issue #813). A kind of work does not belong in this column — the
+	// eyebrow word and the facet pills already carry it — but this
+	// component cannot tell where a stored value came from, so it
+	// prints a non-null value as it is. Keeping the kind out of the
+	// column is the write path's job (Issue #811); until that lands, a
+	// facet-derived value already stored would still print here. An
+	// empty `<dd>` would be a row that claims something while saying
+	// nothing, so it is dropped. The printed string is the stored
+	// string, byte-exact.
 	const hasRole = project.role !== null && project.role.trim() !== '';
 	return (
 		<>

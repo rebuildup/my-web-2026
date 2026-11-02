@@ -28,7 +28,25 @@
 <https://github.com/google/material-design-icons>）。`arrow_forward` は既存の
 実装を再利用しただけで、glyph の集合を闇雲に増やしていない。
 
-### 1.2 primitive 側で行った 1 つの変更
+### 1.2 glyph の path データは「消費側ごとに 1 モジュール」に分けている
+
+`MaterialSymbol` は glyph 名を受け取るのではなく、path データ（`d`）を **prop**
+として受け取る。path データは 2 モジュールに分けている。
+
+| モジュール | glyph | 到達範囲 |
+| --- | --- | --- |
+| `src/editorial/primitives/material-symbol-paths.ts` | `arrow_forward` / `close` | プラットフォーム自身の面（entry shell から到達） |
+| `src/editorial/primitives/material-symbol-tool-paths.ts` | Tools index 専用 16 glyph | `src/routes/tools.index.tsx` のみ（route chunk に落ちる） |
+
+理由: entry shell と route chunk の両方から import されるモジュールは
+「import 者の最小共通祖先」= entry chunk に hoist される。1 つの表に全部の
+glyph を入れてしまうと、entry が描かない ~6.4 KB の path データが全 route の
+first paint に入り、per-route JS budget（Issue #482）を超えた（この PR の
+1 回目の CI 失敗がその実測）。`d` を prop にして、消費側ごとにモジュールを
+分けたことで、entry shell は 625.0 KiB → **618.7 KiB** に下がり、全 18 route が
+budget 内に戻った。**budget の数値は変更していない。**
+
+### 1.3 primitive 側で行った 1 つの変更
 
 Panda の preflight（`reset` layer）が `svg { display: block }` を宣言しているため、
 本文の中に置く glyph（`/about` の hero rail）は行の中でブロックになり、語が
@@ -136,3 +154,18 @@ capabilities 2 + contact CTA 1）、`/about` が +9（rail 4 + Current 4 + 本�
   残っていないことを検証する形へ更新。
 - `src/editorial/forms/forms.test.tsx` — Field のエラー印が SVG であり、
   マークアップに `×` が残っていないことを検証するテストを追加。
+
+## 6. bundle budget（Issue #482）
+
+`pnpm run build` → `pnpm run bundle:budget:check` を同じツリーで実行した実測。
+
+| build | client entry shell | 判定 |
+| --- | --- | --- |
+| `ba4f2e8e`（path データ 1 モジュール版） | 625.0 KiB | **17 route OVER** |
+| 本commit（消費側ごとに path モジュールを分割） | **618.7 KiB**（633,558 B） | **18 route すべて ok** |
+
+分割後、entry chunk に `arrow_forward` と `close` 以外の glyph path は含まれない
+（built asset を直接 grep して確認: `motion` / `keyboard` / `menu_book` /
+`palette` / `mic` の path はいずれも entry には不在、Tools index の chunk
+`tools.index-*.js` にのみ存在）。共有 path は 196 B の独立 chunk
+（`material-symbol-paths-*.js`）に落ちる。budget の閾値は変更していない。

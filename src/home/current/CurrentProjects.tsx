@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import {
 	CURRENT_LOCATION_CHANGE_MOTION,
@@ -359,7 +360,7 @@ function ProjectRow({ project, today, changed, reducedMotion, grouped }: Project
 			{project.link ? (
 				<a href={project.link.href} className={linkClassName}>
 					<span>{project.link.label}</span>
-					<MaterialSymbol name="arrow_forward" size={16} />
+					<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 				</a>
 			) : null}
 		</li>

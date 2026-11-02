@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { type RecipeVariantProps, css, cva } from '../../../styled-system/css';
 import { MaterialSymbol } from '../primitives/MaterialSymbol';
+import { CLOSE_PATH } from '../primitives/material-symbol-paths';
 import {
 	describeByTarget,
 	fieldIdSet,
@@ -129,7 +130,7 @@ export function FieldFrame({
 			{control(controlProps)}
 			{hasError(error) ? (
 				<p id={ids.errorId} className={errorClassName} data-testid={`${name}-error`}>
-					<MaterialSymbol className={errorMarkerClassName} name="close" size={14} />
+					<MaterialSymbol className={errorMarkerClassName} d={CLOSE_PATH} size={14} />
 					{error}
 				</p>
 			) : null}

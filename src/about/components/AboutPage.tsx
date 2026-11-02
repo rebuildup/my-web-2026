@@ -4,6 +4,7 @@ import { PetCompanion } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { AboutPageData } from '../types';
@@ -150,7 +151,7 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 									{index > 0 ? (
 										<>
 											{' '}
-											<MaterialSymbol name="arrow_forward" size={12} />{' '}
+											<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
 										</>
 									) : null}
 									{step}
@@ -623,7 +624,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 										flexShrink: '0',
 										color: 'text.muted',
 									})}
-									name="arrow_forward"
+									d={ARROW_FORWARD_PATH}
 									size={12}
 								/>
 								<span>{item}</span>
@@ -881,7 +882,7 @@ function ExternalHandlesFooter({
 							})}
 						>
 							キーボード配列 / Keyboard
-							<MaterialSymbol name="arrow_forward" size={16} />
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 						</a>
 					</nav>
 				</div>

@@ -93,12 +93,13 @@ describe('Web App Manifest + icon links (Issue #504)', () => {
 		// The site ships two appearances (Issue #290), so an unconditioned
 		// single value would be wrong for half of the visitors. The
 		// values are `bg.canvas` light / dark from
-		// `src/editorial/semantic-tokens.ts`.
+		// `src/editorial/semantic-tokens.ts`. Issue #812 moved the light
+		// canvas off pure white onto `neutral.25` (`#fcfcfd`).
 		expect(metas).toEqual([
 			{
 				name: 'theme-color',
 				media: '(prefers-color-scheme: light)',
-				content: '#ffffff',
+				content: '#fcfcfd',
 			},
 			{
 				name: 'theme-color',

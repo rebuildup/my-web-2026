@@ -1,7 +1,15 @@
-# Notion → portfolio snapshot sync（operator runbook）
+# Notion → portfolio snapshot の取り込み（operator runbook）
 
-Issue #765 / ADR-0018。Notion の database を portfolio の **authoring SoT** として
-扱い、build 時にだけ snapshot へ取り込む手順。
+Issue #765 / ADR-0018 / Issue #814。Notion の database を portfolio の
+**authoring SoT** として扱い、operator が **1 回だけ** 実行して snapshot を
+作る手順。
+
+> **これは「同期」ではない（Issue #814、owner 言い直し 2026-11-02）。**
+> 「厳密には同期ではない。書き換えは単発で行うし、サイト側は読み込みを行う
+> だけでいい。」この手順は 2 つの store の一致を保たない。人が 1 回実行し、
+> サイトはできあがった snapshot を読むだけである。ファイル名
+> `sync-portfolio-notion.md` / `scripts/sync-portfolio-notion.mjs` は既存の
+> 参照が指す識別子なので変えないが、指している責務は単発の取り込みである。
 
 > **この runbook は「token を持っていない状態」の検証から始まる。**
 > owner が Infisical `dev` に `NOTION_TOKEN` / `NOTION_PORTFOLIO_DB_ID` を投入済みで、
@@ -11,12 +19,15 @@ Issue #765 / ADR-0018。Notion の database を portfolio の **authoring SoT** 
 
 | はい | いいえ |
 | --- | --- |
-| build 時に operator が 1 回実行する同期 | 定期実行（cron / schedule / workflow） |
+| operator が 1 回実行する単発の取り込み | 定期実行（cron / schedule / workflow） |
 | commit された snapshot を build が読む | Worker がリクエスト時に Notion を読む |
-| 「Notion で編集 → 次の build で反映」 | 「Notion で Publish した瞬間に公開」 |
+| 「Notion で編集 → 人が取り込み → 次の build で反映」 | 「Notion で Publish した瞬間に公開」 |
+| サイトは snapshot と D1 を読む | Notion と D1 の一致を自動で保つ |
 
-**scheduled sync は明示的に禁止**されている（owner 指示 2026-11-01 項目 4）。
-`.github/workflows/` に portfolio 同期の workflow を足してはいけない。
+**定期実行は明示的に禁止**されている（owner 指示 2026-11-01 項目 4）。
+`.github/workflows/` に portfolio の取り込みを実行する workflow を足しては
+いけない。禁止しているのは「2 つの store の一致を自動で保つ仕組み」であり、
+この runbook はその仕組みを作らない。
 
 ## 2. Notion 側の前提（owner が行う）
 
@@ -50,7 +61,7 @@ multi_select / select / checkbox。**名前は完全一致**で読まれる。
 | `Title` | title | ✔ | 公開タイトル |
 | `Slug` | rich_text | ✔ | `[a-z0-9][a-z0-9-]{0,127}`。Notion で編集できる識別子 |
 | `Summary` | rich_text | ✔ | 一覧に出る 1〜2 文 |
-| `Role` | rich_text | ✔ | 関与の内容 |
+| `Role` | rich_text | ✔ | 仕事の種類。表示ラベルは `Kind`（Issue #813 の語彙決定）。property 名 `Role` の改名は Issue #813 の未解決項目 |
 | `PeriodStart` | number | ✔ | 西暦（例 `2024`） |
 | `PeriodEnd` | number | | 未完了なら空 |
 | `Period` | rich_text | | 表示用の期間文字列（例 `2024`） |
@@ -69,7 +80,7 @@ multi_select / select / checkbox。**名前は完全一致**で読まれる。
 
 | 見出し | section |
 | --- | --- |
-| `Motivation` / `動機` | motivation（**必須**。本文が空なら sync は `missing_motivation` で拒否する） |
+| `Motivation` / `動機` | motivation（**必須**。本文が空なら取り込みは `missing_motivation` で拒否する） |
 | `Architecture` / `設計` | architecture |
 | `Constraints` / `制約` | constraints |
 | `Implementation` / `実装` | implementation |
@@ -98,9 +109,9 @@ credential** である。根拠:
 
 | 事実 | 帰結 |
 | --- | --- |
-| `pnpm build` は Notion sync を呼ばない（実測: `vite build` → `build-tools` → `check-client-bundle`） | build のたびに token を要さない |
+| `pnpm build` は Notion の取り込みを呼ばない（実測: `vite build` → `build-tools` → `check-client-bundle`） | build のたびに token を要さない |
 | Worker は Notion を読まない（snapshot を bundle しているだけ） | runtime secret ではない |
-| ADR-0018 §2.2 で定期同期を却下しており、CI / Workers Builds に sync step は無い | CI も token を要さない |
+| ADR-0018 §2.2 で定期実行を却下しており、CI / Workers Builds に取り込み step は無い | CI も token を要さない |
 | `wrangler*.jsonc#secrets.required` に名前を足さない | `prod` に置くと「宣言されていない prod secret」になり、`cf:config:drift:check` の観点で乖離する |
 
 つまり `prod` に置くのは **本番 runtime が読む secret だけ**にする。
@@ -227,7 +238,7 @@ Notion で database を開いたときの URL の `?v=` より前の 32 桁 hex
 
 ```
 Notion で本文を編集
-  → operator が sync を実行
+  → operator が取り込みを実行
   → snapshot.json の差分を review して commit
   → PR → release branch → main
   → Cloudflare Workers Builds が deploy
@@ -258,7 +269,7 @@ Notion で本文を編集
 
 - token の値を echo / printenv / log / Issue / PR / commit のどこにも出さない。
 - `wrangler*.jsonc#secrets.required` に `NOTION_TOKEN` を足さない。
-- `.github/workflows/` に portfolio 同期の workflow を作らない。
+- `.github/workflows/` に portfolio の取り込みを実行する workflow を作らない。
 - `quality/integration-scope.json#allowlist.entries` を agent が書かない
   （owner の記録である）。
 - `snapshot.json` を手で編集しない。気づかないうちに契約から外れ、reader が

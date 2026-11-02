@@ -1,25 +1,25 @@
-import { css, cx } from '../../../../styled-system/css';
+import { css } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
+import { StateMark } from '../../../editorial/primitives/StateMark';
 
 /**
- * StatusAccents — `positive / negative / warning` status badges
- * paired with the four content-category left-border treatments.
+ * StatusAccents — `positive / negative / warning` status marks
+ * paired with the four content-category marks.
  *
- * The status badges use the existing `Badge` primitive with a
- * tone mapping that consumes the semantic accent tokens directly
- * (see below). The category left-border cards use a 4px border
- * on the inline-start edge painted by the category token — this is
- * the same left-border pattern the portfolio cards use to identify
- * their first facet.
+ * Issue #812: the state and the classification are carried by the
+ * WORD and by the SHAPE (`StateMark`), never by colour alone. The
+ * colour is a secondary mark beside them — an 8px silhouette — so
+ * the heading word itself is never painted in a status or category
+ * hue, and the cards carry no chrome (no frame, no radius, no
+ * canvas fill) that would put a white surface back on the page.
  *
  * Tokens consumed:
  *
- *   - `accent.positive`              OK / live status foreground.
- *   - `accent.negative`              error / unreachable foreground.
- *   - `accent.warning`               degraded status foreground.
+ *   - `accent.positive`              OK / live status mark.
+ *   - `accent.negative`              error / unreachable mark.
+ *   - `accent.warning`               degraded status mark.
  *   - `accent.category.{design,code,writing,tool}`
- *                                   content-category identifier.
- *   - `border.subtle`                card outline.
+ *                                   content-category mark.
  */
 
 export function StatusAccents() {
@@ -45,6 +45,7 @@ function StatusRow() {
 			label: 'Live',
 			note: 'Running, healthy, available — green.',
 			tone: 'positive',
+			mark: 'ok',
 		},
 		{
 			token: 'accent.negative',
@@ -52,6 +53,7 @@ function StatusRow() {
 			label: 'Error',
 			note: 'Service down, build failed — red.',
 			tone: 'negative',
+			mark: 'unreachable',
 		},
 		{
 			token: 'accent.warning',
@@ -59,6 +61,7 @@ function StatusRow() {
 			label: 'Degraded',
 			note: 'Partially healthy, needs attention — amber.',
 			tone: 'warning',
+			mark: 'degraded',
 		},
 	];
 	return (
@@ -69,7 +72,6 @@ function StatusRow() {
 				flexDirection: 'column',
 				gap: '3',
 				paddingBlock: '4',
-				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<header
@@ -98,8 +100,8 @@ function StatusRow() {
 						color: 'text.muted',
 					})}
 				>
-					Three status accents — positive / negative / warning. Foreground contrast 4.5 : 1 以上
-					(WCAG AA) を `bg.canvas` の light / dark 両 appearance で満たします。
+					Three status accents — positive / negative / warning. The state is carried by the mark and
+					the word; the colour is a secondary mark beside them, never the identifier.
 				</p>
 			</header>
 			<ul
@@ -128,6 +130,12 @@ interface StatusEntry {
 	label: string;
 	note: string;
 	tone: 'positive' | 'negative' | 'warning';
+	/**
+	 * The silhouette that carries the state (Issue #812). The tone
+	 * colour paints the 8px mark only — the heading word stays in
+	 * `text.default`.
+	 */
+	mark: 'ok' | 'unreachable' | 'degraded';
 }
 
 const STATUS_FG = {
@@ -143,13 +151,8 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 				display: 'flex',
 				flexDirection: 'column',
 				gap: '3',
-				paddingBlock: '6',
+				paddingBlock: '2',
 				paddingInline: '6',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
-				backgroundColor: 'bg.canvas',
 			})}
 			data-status-token={entry.token}
 		>
@@ -165,6 +168,9 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 			<h3
 				className={css({
 					margin: '0',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
 					fontFamily: 'heading',
 					fontSize: 'xl',
 					fontWeight: '700',
@@ -172,7 +178,10 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 					letterSpacing: '-0.01em',
 				})}
 			>
-				<span className={STATUS_FG[entry.tone]}>{entry.label}</span>
+				<span className={STATUS_FG[entry.tone]}>
+					<StateMark kind={entry.mark} size="sm" />
+				</span>
+				{entry.label}
 			</h3>
 			<p
 				className={css({
@@ -188,8 +197,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 			<footer
 				className={css({
 					marginBlockStart: 'auto',
-					paddingBlockStart: '3',
-					borderTop: '1px solid {colors.border.subtle}',
+					paddingBlockStart: '2',
 				})}
 			>
 				<code
@@ -216,16 +224,19 @@ interface CategoryEntry {
 }
 
 /**
- * Per-family left-border colour map. Each entry maps the family
- * name to the literal semantic token path so Panda's
- * `borderInlineStartColor` accepts the value statically
- * (dynamic template strings are not a supported token path).
+ * Per-family mark colour map. Each entry maps the family name to the
+ * literal semantic token path so Panda's `color` utility accepts the
+ * value statically (dynamic template strings are not a supported
+ * token path).
+ *
+ * Issue #812: the family colour paints the 8px mark only. The word
+ * beside it stays in `text.default`.
  */
-const CATEGORY_BORDER = {
-	design: css({ borderInlineStartColor: 'accent.category.design' }),
-	code: css({ borderInlineStartColor: 'accent.category.code' }),
-	writing: css({ borderInlineStartColor: 'accent.category.writing' }),
-	tool: css({ borderInlineStartColor: 'accent.category.tool' }),
+const CATEGORY_MARK = {
+	design: css({ color: 'accent.category.design' }),
+	code: css({ color: 'accent.category.code' }),
+	writing: css({ color: 'accent.category.writing' }),
+	tool: css({ color: 'accent.category.tool' }),
 } as const;
 
 function CategoryRow() {
@@ -233,25 +244,25 @@ function CategoryRow() {
 		{
 			token: 'accent.category.design',
 			label: 'Design',
-			note: 'Pink. Portfolio facet が design 起点の作品、 左border で識別。',
+			note: '分類は diamond の形と語で示す。色は補助。',
 			family: 'design',
 		},
 		{
 			token: 'accent.category.code',
 			label: 'Code',
-			note: 'Cyan. Portfolio facet が develop 起点の作品、 実装寄りの surface で識別。',
+			note: '分類は square の形と語で示す。色は補助。',
 			family: 'code',
 		},
 		{
 			token: 'accent.category.writing',
 			label: 'Writing',
-			note: 'Yellow-brown. Portfolio facet が other / 散文寄りの作品。',
+			note: '分類は stacked bars の形と語で示す。色は補助。',
 			family: 'writing',
 		},
 		{
 			token: 'accent.category.tool',
 			label: 'Tool',
-			note: 'Indigo. Tool surface の category tag、 portfolio facet が video の作品。',
+			note: '分類は chevron の形と語で示す。色は補助。',
 			family: 'tool',
 		},
 	];
@@ -263,7 +274,6 @@ function CategoryRow() {
 				flexDirection: 'column',
 				gap: '3',
 				paddingBlock: '4',
-				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<header
@@ -292,8 +302,9 @@ function CategoryRow() {
 						color: 'text.muted',
 					})}
 				>
-					Content category の 4 色。 同程度の彩度 × 異なる hue (pink ≈ 330°, cyan ≈ 190°, yellow ≈
-					50°, indigo ≈ 240°) で一目で区別できます。
+					Content category の 4
+					系統。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
+					色だけを変える表現は使いません。
 				</p>
 			</header>
 			<ul
@@ -319,38 +330,20 @@ function CategoryRow() {
 function CategoryCard({ entry }: { entry: CategoryEntry }) {
 	return (
 		<article
-			/*
-			 * The 4px inline-start rule lives on THIS element, so the
-			 * category colour has to be set here too. It used to be set
-			 * on the inner div, which carries no border width, so the
-			 * rule painted `border.subtle` and the category identifier
-			 * never showed (Issue #290). Panda emits the `border-inline
-			 * -start-color` longhand after the `border-color` shorthand
-			 * in the utilities layer, so the category class wins.
-			 */
-			className={cx(
-				css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '2',
-					paddingBlock: '4',
-					paddingInline: '6',
-					borderRadius: 'md',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
-					backgroundColor: 'bg.canvas',
-					borderInlineStartWidth: '4px',
-				}),
-				CATEGORY_BORDER[entry.family],
-			)}
+			className={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2',
+				paddingBlock: '4',
+				paddingInline: '6',
+			})}
 			data-category-token={entry.token}
 		>
 			<div>
 				<header
 					className={css({
 						display: 'flex',
-						alignItems: 'baseline',
+						alignItems: 'center',
 						justifyContent: 'space-between',
 						gap: '3',
 						paddingBlock: '1',
@@ -359,6 +352,9 @@ function CategoryCard({ entry }: { entry: CategoryEntry }) {
 					<h3
 						className={css({
 							margin: '0',
+							display: 'flex',
+							alignItems: 'center',
+							gap: '2',
 							fontFamily: 'heading',
 							fontSize: 'lg',
 							fontWeight: '700',
@@ -366,6 +362,9 @@ function CategoryCard({ entry }: { entry: CategoryEntry }) {
 							letterSpacing: '-0.01em',
 						})}
 					>
+						<span className={CATEGORY_MARK[entry.family]}>
+							<StateMark kind={entry.family} size="sm" />
+						</span>
 						{entry.label}
 					</h3>
 					<code

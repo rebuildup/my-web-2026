@@ -450,7 +450,7 @@ describe('check-stale-content-review — the shipped registry', () => {
 	 * genuinely future date (a typo, a hand-edited year) still
 	 * fails here until someone moves this line deliberately.
 	 */
-	const SHIPPED_TODAY = '2026-11-01';
+	const SHIPPED_TODAY = '2026-11-02';
 
 	it('parses and validates', () => {
 		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
@@ -465,7 +465,7 @@ describe('check-stale-content-review — the shipped registry', () => {
 			excludedPaths: registry.excludedPaths ?? [],
 			excludedExpressions: registry.excludedExpressions ?? [],
 		});
-		const result = evaluateRegistry({ segments, registry, today: TODAY });
+		const result = evaluateRegistry({ segments, registry, today: SHIPPED_TODAY });
 		assert.deepEqual(result.queue, [], 'the shipped registry must have no waiting expression');
 		assert.ok(result.entries.length > 0, 'the live tree must carry time-sensitive expressions');
 	});
@@ -490,6 +490,23 @@ describe('check-stale-content-review — the shipped registry', () => {
 			result.provenanceSummary.ownerConfirmed + result.provenanceSummary.awaitingConfirmation,
 			result.provenanceSummary.records,
 		);
+	});
+
+	it('names the side that wrote the row, not an owner approval (Issue #754)', () => {
+		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));
+		for (const record of registry.expressions) {
+			// `reviewedBy` says WHO WROTE the ledger row. A row an
+			// automated side wrote may not claim the owner wrote it, and
+			// whether the owner confirmed the record is stated by the
+			// provenance alone.
+			if (record.provenance?.ownerConfirmation !== 'confirmed') {
+				assert.notEqual(
+					record.reviewedBy,
+					'owner',
+					`${record.id} was not confirmed by the owner and may not claim an owner row`,
+				);
+			}
+		}
 	});
 });
 

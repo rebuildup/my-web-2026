@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	auditWindowStart,
+	checkWindows,
 	closingComment,
 	compare,
 	fetchIssueStates,
 	hasClosureTrace,
 	isSweepTemplate,
 	listClosedIssues,
+	summarizeWindows,
 } from './check-issue-closure-remote.mjs';
 
 function fakeFetch(items) {
@@ -66,6 +69,26 @@ function state(overrides = {}) {
  */
 function comment(body, createdAt = '2026-10-31T00:00:00Z') {
 	return { body, createdAt };
+}
+
+/** The frozen 2026-10-31 window, with a population the test can trim. */
+function frozenWindow(population = 1) {
+	return {
+		id: 'sweep-2026-10-31',
+		from: '2026-10-31',
+		to: '2026-10-31',
+		population,
+	};
+}
+
+/** The open-ended window every closure after the sweep is recorded in. */
+function trackedWindow() {
+	return {
+		id: 'tracked',
+		from: '2026-11-01',
+		to: null,
+		population: null,
+	};
 }
 
 test('listClosedIssues skips pull requests and keeps issues', async () => {
@@ -201,7 +224,12 @@ test('a closed issue with no ledger entry and no trace is R001', () => {
 test('a closed issue with a ledger entry produces no finding', () => {
 	const findings = compare({
 		closed: [{ number: 274, title: 'x', closedAt: '2026-10-31' }],
-		ledger: { entries: [{ issue: 274, action: 'kept-closed' }] },
+		ledger: {
+			audit: { windows: [frozenWindow()] },
+			entries: [
+				{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31', action: 'kept-closed' },
+			],
+		},
 		states: new Map([[274, state({ number: 274 })]]),
 	});
 	assert.deepEqual(findings, []);
@@ -243,13 +271,108 @@ test('a ledger record GitHub cannot read is R004', () => {
 	assert.ok(findings.some((f) => f.rule === 'R004'));
 });
 
-test('a ledger population that does not match its entries is R005', () => {
-	const findings = compare({
-		closed: [],
-		ledger: { audit: { population: 132 }, entries: [] },
-		states: new Map(),
+test('recording a new close in the derived window is not R005 (Issue #815)', () => {
+	// The defect this pins: the ledger's population used to be ONE frozen
+	// number compared with entries.length, so adding a genuine close turned
+	// the gate red. A derived window has no frozen count to break.
+	const findings = checkWindows({
+		audit: { windows: [frozenWindow(1), trackedWindow()] },
+		entries: [
+			{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31' },
+			{ issue: 808, closedAt: '2026-11-02', window: 'tracked' },
+		],
 	});
-	assert.ok(findings.some((f) => f.rule === 'R005'));
+	assert.deepEqual(findings, []);
+});
+
+test('a frozen window must carry exactly its declared population', () => {
+	const ledger = {
+		audit: { windows: [frozenWindow(132), trackedWindow()] },
+		entries: [{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31' }],
+	};
+	const findings = checkWindows(ledger);
+	assert.equal(findings.length, 1);
+	assert.equal(findings[0].rule, 'R005');
+	assert.match(findings[0].message, /frozen population of 132/);
+});
+
+test('an entry closed outside its window date range is R005', () => {
+	const findings = checkWindows({
+		audit: { windows: [frozenWindow(1), trackedWindow()] },
+		entries: [
+			{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31' },
+			// A 2026-10-31 close cannot claim the post-sweep window.
+			{ issue: 275, closedAt: '2026-10-31', window: 'tracked' },
+		],
+	});
+	assert.equal(findings.length, 1);
+	assert.equal(findings[0].rule, 'R005');
+	assert.match(findings[0].message, /#275 was closed 2026-10-31, outside audit window "tracked"/);
+});
+
+test('an entry that names no window, or an undeclared one, is R005', () => {
+	const unnamed = checkWindows({
+		audit: { windows: [{ id: 'w', from: '2026-10-31', to: null, population: null }] },
+		entries: [{ issue: 274, closedAt: '2026-10-31' }],
+	});
+	assert.equal(unnamed.length, 1);
+	assert.match(unnamed[0].message, /#274 names no audit window/);
+
+	const undeclared = checkWindows({
+		audit: { windows: [{ id: 'w', from: '2026-10-31', to: null, population: null }] },
+		entries: [{ issue: 274, closedAt: '2026-10-31', window: 'nowhere' }],
+	});
+	assert.equal(undeclared.length, 1);
+	assert.match(undeclared[0].message, /#274 names audit window "nowhere", which is not declared/);
+});
+
+test('overlapping windows are R005 because attribution would be ambiguous', () => {
+	const findings = checkWindows({
+		audit: {
+			windows: [
+				{ id: 'a', from: '2026-10-31', to: '2026-11-05', population: null },
+				{ id: 'b', from: '2026-11-01', to: null, population: null },
+			],
+		},
+		entries: [],
+	});
+	assert.equal(findings.length, 1);
+	assert.match(findings[0].message, /overlap/);
+});
+
+test('a ledger with entries but no declared window is R005', () => {
+	const findings = checkWindows({
+		entries: [{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31' }],
+	});
+	assert.equal(findings.length, 1);
+	assert.match(findings[0].message, /declares no audit window/);
+});
+
+test('the derived window has no count assertion, and the summary names it', () => {
+	const ledger = {
+		audit: { windows: [frozenWindow(2), trackedWindow()] },
+		entries: [
+			{ issue: 274, closedAt: '2026-10-31', window: 'sweep-2026-10-31' },
+			{ issue: 275, closedAt: '2026-10-31', window: 'sweep-2026-10-31' },
+			{ issue: 808, closedAt: '2026-11-02', window: 'tracked' },
+			{ issue: 809, closedAt: '2026-11-03', window: 'tracked' },
+		],
+	};
+	assert.deepEqual(checkWindows(ledger), []);
+	assert.deepEqual(summarizeWindows(ledger), [
+		'sweep-2026-10-31: 2 recorded (frozen population 2)',
+		'tracked: 2 recorded (population derived from entries)',
+	]);
+});
+
+test('the audit window starts at the earliest declared window', () => {
+	assert.equal(
+		auditWindowStart({ audit: { windows: [trackedWindow(), frozenWindow(1)] } }),
+		'2026-10-31',
+	);
+	// A ledger written before windows existed still has a start date.
+	assert.equal(auditWindowStart({ audit: { closedAt: '2026-10-01' } }), '2026-10-01');
+	assert.equal(auditWindowStart({}), null);
 });
 
 test('a mass closure that used the release-branch template is R006', () => {

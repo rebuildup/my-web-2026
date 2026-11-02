@@ -3,6 +3,8 @@ import { css } from '../../../styled-system/css';
 import { PetCompanion } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { AboutPageData } from '../types';
@@ -101,6 +103,16 @@ export function AboutPage({ data }: AboutPageProps) {
 /* Hero                                                                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The narrative order the hero rail names (Issue #823).
+ *
+ * The separators between the steps are DRAWN, not typed: the `→`
+ * is a Material Symbols glyph, so the rail carries no `→`
+ * character in the text layer any more (the rail itself is
+ * `aria-hidden`, so the sequence stays a visual cue).
+ */
+const NARRATIVE_ORDER = ['identity', 'interests', 'experience', 'current', 'future'] as const;
+
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
 		<section
@@ -133,7 +145,19 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 					>
 						<span lang="en">about</span>
 						<span lang="en">samuido · profile</span>
-						<span lang="en">identity → interests → experience → current → future</span>
+						<span lang="en">
+							{NARRATIVE_ORDER.map((step, index) => (
+								<Fragment key={step}>
+									{index > 0 ? (
+										<>
+											{' '}
+											<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
+										</>
+									) : null}
+									{step}
+								</Fragment>
+							))}
+						</span>
 					</aside>
 					<div
 						className={css({
@@ -595,18 +619,14 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 									paddingBlockStart: '3',
 								})}
 							>
-								<span
-									aria-hidden="true"
+								<MaterialSymbol
 									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										letterSpacing: '0.06em',
-										textTransform: 'uppercase',
+										flexShrink: '0',
 										color: 'text.muted',
 									})}
-								>
-									→
-								</span>
+									d={ARROW_FORWARD_PATH}
+									size={12}
+								/>
 								<span>{item}</span>
 							</li>
 						))}
@@ -862,7 +882,7 @@ function ExternalHandlesFooter({
 							})}
 						>
 							キーボード配列 / Keyboard
-							<span aria-hidden="true">→</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 						</a>
 					</nav>
 				</div>

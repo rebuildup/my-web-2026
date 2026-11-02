@@ -5,12 +5,12 @@ import { FacetSchema, PORTFOLIO_FACETS, SlugSchema } from '../schema';
 /**
  * Notion CMS snapshot contract (Issue #765).
  *
- * The Worker never calls Notion. A build-time step reads the database,
- * maps each page to a record here, and writes `generated/snapshot.json`,
- * which the reader validates before any of it can reach a public surface.
- * Three rules make that safe:
+ * The Worker never calls Notion. A one-off build-time step reads the
+ * database, maps each page to a record here, and writes
+ * `generated/snapshot.json`, which the reader validates before any of it
+ * can reach a public surface. Three rules make that safe:
  *
- *   1. **The reader is the gate, not the writer.** The sync script is a
+ *   1. **The reader is the gate, not the writer.** The ingest script is a
  *      convenience; a stale, hand-edited or partially-written file must
  *      still fail closed here. Every structural problem is a refusal to
  *      publish, never a default value.
@@ -29,7 +29,9 @@ import { FacetSchema, PORTFOLIO_FACETS, SlugSchema } from '../schema';
  * `quality/asset-license-inventory.json` is a repository artefact, not a
  * Worker binding, so the sync script consults it offline and records the
  * verdict per asset. The reader accepts exactly `recorded` and refuses
- * everything else (AGENTS.md §3 legal, fail-closed).
+ * everything else (AGENTS.md §3 legal, fail-closed). Issue #811 revisits
+ * that premise on the owner's authority; until its ADR lands, this is
+ * what the code does.
  */
 
 export const NOTION_SNAPSHOT_SCHEMA = 'portfolio-notion-snapshot.v1';

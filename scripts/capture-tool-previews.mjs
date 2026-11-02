@@ -193,6 +193,12 @@ export const PREVIEW_TARGETS = [
 		},
 	},
 	{
+		slug: 'history-quiz',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'History Quiz の出題中の画面。上部に第1回〜第5回のタブ、その下に「第1回 第二次世界大戦の終焉」の見出しと空欄入りの問題文',
+	},
+	{
 		slug: 'mic-level',
 		/** What the committed artefact must show, for a human re-check. */
 		expect:

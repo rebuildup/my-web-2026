@@ -5,6 +5,7 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import {
 	CALCULATE_PATH,
@@ -24,7 +25,6 @@ import {
 	TEXT_FIELDS_PATH,
 	TIMER_PATH,
 } from '../editorial/primitives/material-symbol-tool-paths';
-import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { listAllTools } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
@@ -244,6 +244,12 @@ const TOOL_PREVIEWS: Readonly<
 	'code-type-p5': {
 		src: '/tool-previews/code-type-p5.webp',
 		alt: 'Code Type p5 の再生中の画面。操作欄に「Play」「Edit Code」のボタンがあり、下のキャンバスにサンプルプログラム（Rust のソースコード）が色付きで描かれている。',
+		width: 1200,
+		height: 669,
+	},
+	'history-quiz': {
+		src: '/tool-previews/history-quiz.webp',
+		alt: 'History Quiz の出題中の画面。上部に第1回〜第5回のタブが並び、その下に「第1回 第二次世界大戦の終焉」の見出しと、空欄入りの問題文（枢軸国の敗北・日本の敗戦）が続く。',
 		width: 1200,
 		height: 669,
 	},

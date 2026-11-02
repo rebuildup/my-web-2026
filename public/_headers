@@ -192,6 +192,16 @@
   Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
   Content-Security-Policy: frame-ancestors 'self'
 
+# `fillgen` and `code-type-p5` declare the `downloads` capability, and
+# `pi-game` declares `fullscreen`. None of the three has a Permissions-
+# Policy half: `downloads` is not a Permissions-Policy feature at all
+# (the grant is the SANDBOX token `allow-downloads`), and `fullscreen`
+# cannot be re-granted to a sandboxed frame by a `self`-scoped header
+# (the frame runs in an opaque origin — measured, see
+# `src/http/security-headers.json#sandbox_only_capabilities`). Both are
+# granted by the container / the sandbox token alone, so this file says
+# nothing about them.
+
 # ---------------------------------------------------------------------------
 # Inbound embed policy — public static documents (Issue #448)
 #

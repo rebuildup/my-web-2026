@@ -52,7 +52,8 @@ import type { ManifestTool } from '../tools/registry';
  *     the roadmap: a denser 2-column list with no links and no images.
  *   - A screenshot appears only where it is true of the WHOLE group.
  *     `readmark` had none while Issue #786 left its frame on
- *     「読み込み中…」 (a sandboxed frame is denied every storage API):
+ *     「読み込み中…」 (the then-sandboxed frame was denied every storage
+ *     API):
  *     a picture of a broken screen is worse than no picture, and the
  *     owner's rule is that an image may not be faked. The fix was the
  *     upstream storage-free redesign (rebuildup/readmark ADR-0008 —
@@ -140,11 +141,12 @@ const FALLBACK_TOOL_ICON = EXTENSION_PATH;
  * `quality/asset-license-inventory.json`; the alt text describes the
  * captured screen.
  *
- * `readmark` returned with the Issue #786 fix: its sandboxed frame
+ * `readmark` returned with the Issue #786 fix: its then-sandboxed frame
  * used to stop on 「読み込み中…」 (an opaque-origin frame is denied
- * every storage API) and had no image here; the Tool no longer uses
- * browser storage at all (rebuildup/readmark ADR-0008), the screen
- * is real, and the capture is committed like any other.
+ * every storage API) and had no image here. ADR-0020 removed that
+ * sandbox, so the current frame runs on the host origin; the Tool also
+ * no longer uses browser storage at all (rebuildup/readmark ADR-0008),
+ * the screen is real, and the capture is committed like any other.
  */
 const TOOL_PREVIEWS: Readonly<
 	Record<string, { src: string; alt: string; width: number; height: number }>

@@ -141,7 +141,7 @@ describe('Tool manifest — embed policy gate (Issue #465)', () => {
 		return evaluateToolEmbedPolicy(toEmbedSubject('fixture', delivery)).map((v) => v.code);
 	}
 
-	const okIframe = { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' };
+	const okIframe = { referrer_policy: 'no-referrer' };
 
 	it('passes the current manifest shape', () => {
 		assert.deepEqual(
@@ -155,16 +155,19 @@ describe('Tool manifest — embed policy gate (Issue #465)', () => {
 		);
 	});
 
-	it('fails the build for allow-scripts + allow-same-origin (was: "document the reason")', () => {
-		assert.deepEqual(
-			violationCodes({
-				kind: 'same_origin_static',
-				artifact_path: '/tools/fixture/app',
-				entry_html: '/tools/fixture/app/index.html',
-				iframe: { sandbox: 'allow-scripts allow-same-origin', referrer_policy: 'no-referrer' },
-			}).sort(),
-			['embed.sandbox.forbidden-token', 'embed.sandbox.same-origin-escape'],
-		);
+	it('fails the build for ANY sandbox on a first-party entry (ADR-0020)', () => {
+		for (const sandbox of ['allow-scripts', 'allow-scripts allow-same-origin', '']) {
+			assert.deepEqual(
+				violationCodes({
+					kind: 'same_origin_static',
+					artifact_path: '/tools/fixture/app',
+					entry_html: '/tools/fixture/app/index.html',
+					iframe: { sandbox, referrer_policy: 'no-referrer' },
+				}),
+				['embed.sandbox.not-allowed-for-first-party'],
+				JSON.stringify(sandbox),
+			);
+		}
 	});
 
 	it('fails the build when delivery.iframe is absent (no implicit default)', () => {
@@ -184,7 +187,7 @@ describe('Tool manifest — embed policy gate (Issue #465)', () => {
 				kind: 'same_origin_static',
 				artifact_path: '/tools/fixture/app',
 				entry_html: '/tools/fixture/app/index.html',
-				iframe: { sandbox: 'allow-scripts' },
+				iframe: {},
 			}),
 			['embed.referrer-policy.missing'],
 		);

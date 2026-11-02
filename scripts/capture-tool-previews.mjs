@@ -15,7 +15,8 @@
  * What it captures
  * ----------------
  * The Tool's own frame, not the host chrome: the `/tools/<slug>` shell
- * renders the Tool in an `<iframe sandbox="allow-scripts">`, and the
+ * renders the Tool in an `<iframe>` (first-party, no sandbox — ADR-0020),
+ * and the
  * screenshot is taken from that element's box. That is the surface a
  * visitor sees after choosing a row, and it keeps the host's nav /
  * breadcrumb out of a thumbnail that illustrates the Tool.
@@ -67,18 +68,16 @@ import sharp from 'sharp';
  * `TOOL_PREVIEWS` in `src/routes/tools.index.tsx`.
  *
  * `readmark` returned as a target with the Issue #786 fix: the
- * sandboxed frame used to stop on 「読み込み中…」 (an opaque-origin
- * frame is denied every storage API), and the index therefore
- * carried no image for it. readmark no longer uses browser storage
- * at all (readmark ADR-0008 — session-scoped, stated in one line on
- * screen), so the frame renders the real library screen and the
- * capture photographs it as it is: the owner's rule (an image may
- * not be faked, a defect may not be shown) is satisfied by
- * photographing a working screen.
+ * pre-ADR-0020 sandboxed frame stopped on 「読み込み中…」 (an
+ * opaque-origin frame is denied every storage API). ADR-0020 removed
+ * that sandbox, so the current frame runs on the host origin and
+ * storage works. The capture photographs a working screen as it is:
+ * the owner's rule (an image may not be faked, a defect may not be
+ * shown) is satisfied rather than asserted.
  *
  * Issue #817 added the first four activated Tools (qr-generator /
  * text-counter / sequential-png-preview / svg2tsx). Their frames are
- * photographed through the same sandboxed iframe a visitor gets, so
+ * photographed through the same Tool iframe a visitor gets, so
  * a blank frame fails the run — the `expect` line of each target is
  * the human re-check for what the committed image must show.
  *

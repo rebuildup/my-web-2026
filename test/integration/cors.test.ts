@@ -268,9 +268,9 @@ const PROBES: readonly Probe[] = [
 		expectCredentials: ABSENT,
 	},
 	{
-		label: 'sandboxed Tool iframe (Origin: null) on the auth route',
+		label: 'opaque-origin request (Origin: null) on the auth route',
 		meaning:
-			'refused: the opaque origin of /tools/<slug>/app/* is never allow-listed; Better Auth owns this actual-request refusal',
+			'refused: an opaque origin is never allow-listed; this case no longer describes the shipped first-party Tool frame (ADR-0020), which runs on the host origin',
 		method: 'POST',
 		path: '/api/v1/auth/sign-in/email',
 		origin: 'null',

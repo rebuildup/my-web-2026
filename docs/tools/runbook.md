@@ -48,9 +48,10 @@ The verifier asserts:
   entries.
 - For `same_origin_static` entries, the actual gitlink SHA equals
   `source.pinned_sha` (mechanical SHA match).
-- For `same_origin_static` entries, the iframe sandbox does **not**
-  contain the dangerous `allow-scripts allow-same-origin` combination
-  without an explicit override.
+- For `same_origin_static` entries, the iframe declares **no**
+  sandbox at all (ADR-0020: a first-party frame is not a security
+  boundary). An `external_exception` entry is checked by the sandbox
+  token grammar, which always rejects `allow-same-origin`.
 - `classification=needs_tool_side_fix` + `delivery.kind=same_origin_static`
   is a contradiction and is reported as a violation.
 
@@ -59,8 +60,9 @@ policy pass: for every embeddable entry the verifier now runs
 `evaluateToolEmbedPolicy()` from
 [`src/tools/embed-policy.ts`](../../src/tools/embed-policy.ts) — the
 same function the `/tools/<slug>` route runs per request. That covers
-the sandbox token classes, `referrer_policy`, the frame origin, and
-the optional `host_message` origin contract. The rules are defined
+the first-party no-sandbox rule, the external sandbox token classes,
+`referrer_policy`, the frame origin, and the optional `host_message`
+origin contract. The rules are defined
 once; this gate and the route cannot drift apart.
 
 Run it before committing any change to `manifest.json`. CI runs it as
@@ -75,9 +77,9 @@ screenshot:
 pnpm run tools:embed-policy:report -- --out=.tmp/tool-iframe-sandbox.html
 ```
 
-It renders every manifest entry with its sandbox / referrer /
-message verdict, plus the hostile-message fixture matrix (what the
-host guard does with each injected event). The report is generated
+It renders every manifest entry with its sandbox (first-party: none) /
+referrer / message verdict, plus the hostile-message fixture matrix
+(what the host guard does with each injected event). The report is generated
 into `.tmp/` and is never committed.
 
 ## 3. Run the build orchestrator

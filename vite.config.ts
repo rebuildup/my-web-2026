@@ -132,19 +132,19 @@ function clientBundleGraphPlugin(): Plugin {
  *
  * Why this plugin exists:
  *
- * Tool iframes are sandboxed `allow-scripts` only (no
- * `allow-same-origin`). The iframe document therefore has an opaque
- * origin, and any `<script type="module">` and
- * `<link rel="stylesheet">` inside it becomes a CORS request — module
+ * Before ADR-0020 Tool iframes were sandboxed `allow-scripts` only, so
+ * the document had an opaque origin and any `<script type="module">` /
+ * `<link rel="stylesheet">` inside it became a CORS request — module
  * scripts are always fetched with CORS, even without the
- * `crossorigin` attribute. The default `vite preview` response does
- * not include `Access-Control-Allow-Origin`, so the browser blocks
- * the bundle and React never mounts. We scope the wildcard CORS to
- * `/tools/<slug>/app/*` only — the namespacing guarantees these are
- * same-origin Tool artefacts emitted by the Tool build orchestrator
- * (`scripts/build-tools.mjs`). The host's own `/assets/*` keeps its
- * default behaviour (same-origin module scripts from the host page,
- * no CORS).
+ * `crossorigin` attribute. The wildcard is retained for that historical
+ * reason: a first-party frame is now same-origin and does not need it,
+ * but `/tools/<slug>/app/*` is a public static namespace and removing a
+ * permissive CORS header is a separate header-tightening ticket. We
+ * scope the wildcard CORS to `/tools/<slug>/app/*` only — the
+ * namespacing guarantees these are same-origin Tool artefacts emitted
+ * by the Tool build orchestrator (`scripts/build-tools.mjs`). The
+ * host's own `/assets/*` keeps its default behaviour (same-origin
+ * module scripts from the host page, no CORS).
  *
  * The hook runs in `configurePreviewServer` so the change applies to
  * `vite preview` only (NOT `vite dev` — the dev server does not serve

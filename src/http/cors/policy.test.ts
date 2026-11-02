@@ -110,7 +110,7 @@ describe('origin allow-list', () => {
 		expect(normalizeOrigin('file:///tmp/x')).toBeNull();
 	});
 
-	it('never accepts the opaque `null` origin of a sandboxed iframe', () => {
+	it('never accepts the opaque `null` origin of an external frame', () => {
 		expect(isAllowedOrigin('null', [CANONICAL])).toBe(false);
 		// Even if an operator misconfigured the allow-list with the
 		// literal string, the normalizer refuses it.

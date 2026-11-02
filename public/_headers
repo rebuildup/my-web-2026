@@ -90,13 +90,14 @@
 # ---------------------------------------------------------------------------
 # CORS — Tool iframes
 #
-# Tool iframes are sandboxed `allow-scripts` only (no
-# `allow-same-origin`). The iframe document therefore has an opaque
-# origin, and any `<script type="module">` and `<link rel="stylesheet">`
-# inside it becomes a CORS request — module scripts are always fetched
-# with CORS, even without the `crossorigin` attribute. The default
-# Static Assets response does not include `Access-Control-Allow-Origin`,
-# so the browser blocks the bundle and React never mounts.
+# Tool artefacts are served same-origin (ADR-0020), so the first-party
+# iframe fetches its module scripts without CORS. The wildcard below is
+# historical: while the frame was sandboxed to an opaque origin, every
+# `<script type="module">` / `<link rel="stylesheet">` inside it became
+# a CORS request and the browser blocked the bundle without
+# `Access-Control-Allow-Origin`. It is retained (scoped to
+# `/tools/:slug/app/*` only) and is no longer load-bearing for the
+# first-party frame.
 #
 # We scope the wildcard CORS to `/tools/:slug/app/*` only — the
 # namespacing guarantees these are same-origin Tool artefacts emitted
@@ -129,9 +130,8 @@
 # Tool namespace is covered whichever one a future entry HTML lands on.
 #
 # Do NOT write `'none'` here: Tool documents are framed BY us, so `'none'`
-# breaks every integrated Tool. (The `allow-scripts`-only sandbox gives the
-# framed document an opaque origin, but `frame-ancestors` is matched
-# against the ANCESTOR's origin, which is still the host.) Do NOT write
+# breaks every integrated Tool. (`frame-ancestors` is matched against
+# the ANCESTOR's origin, which is the host.) Do NOT write
 # `*`: that is precisely the third-party framing this issue denies.
 # `scripts/check-frame-ancestors-policy.mjs` enforces both directions, and
 # `test/integration/frame-ancestors.test.ts` proves the Worker half.
@@ -192,15 +192,14 @@
   Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
   Content-Security-Policy: frame-ancestors 'self'
 
-# `fillgen` and `code-type-p5` declare the `downloads` capability, and
-# `pi-game` declares `fullscreen`. None of the three has a Permissions-
-# Policy half: `downloads` is not a Permissions-Policy feature at all
-# (the grant is the SANDBOX token `allow-downloads`), and `fullscreen`
-# cannot be re-granted to a sandboxed frame by a `self`-scoped header
-# (the frame runs in an opaque origin — measured, see
-# `src/http/security-headers.json#sandbox_only_capabilities`). Both are
-# granted by the container / the sandbox token alone, so this file says
-# nothing about them.
+# `pi-game` declares `fullscreen`; it is granted by the container half
+# (`allow="fullscreen"` + `allowfullscreen`), so this file says nothing
+# about it. The sandbox-only grants (`downloads` on fillgen /
+# code-type-p5 / business-mail-block / ae-expression, `modals` on
+# history-quiz) were removed with the first-party sandbox in ADR-0020
+# and are no longer declared by any Tool; `src/http/security-headers.json
+# #sandbox_only_capabilities` records why such a capability has no
+# header half at all.
 
 # ---------------------------------------------------------------------------
 # Inbound embed policy — public static documents (Issue #448)

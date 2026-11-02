@@ -12,7 +12,8 @@ import manifestJson from './manifest.json' with { type: 'json' };
  *   - which Tools are integrated
  *   - which delivery mode each Tool uses (same_origin_static,
  *     external_exception, host_disabled)
- *   - the iframe sandbox / referrer policy for the iframe route
+ *   - the iframe referrer policy (and, for an external frame, its
+ *     sandbox) for the iframe route
  *   - the entry HTML URL for the iframe src
  *
  * Routes under `src/routes/tools.*` consume this module. The Tool
@@ -70,7 +71,8 @@ import manifestJson from './manifest.json' with { type: 'json' };
  *
  * Embed policy (Issue #465): this module does NOT decide whether a
  * Tool may be framed. `src/tools/embed-policy.ts` owns that decision
- * (sandbox tokens, referrer policy, frame origin, message origin) and
+ * (referrer policy, frame origin, message origin, and the sandbox that
+ * only an external frame declares — ADR-0020) and
  * both `scripts/check-tools-manifest.mjs` and the `/tools/<slug>`
  * route consume it. What this module contributes is the resolved
  * frame `src` (`resolveToolEntryHtml`), so the route never has to
@@ -119,11 +121,14 @@ export interface ManifestTool {
 				readonly kind: 'same_origin_static';
 				readonly artifact_path: string;
 				readonly entry_html?: string;
+				// ADR-0020: a first-party Tool is served without a
+				// sandbox. The iframe is a layout / URL / CSS-DOM
+				// container; the build / review / release boundary is
+				// what constrains the code. `sandbox` is therefore
+				// absent by contract, not merely optional.
 				readonly iframe?: {
-					readonly sandbox: string;
 					readonly referrer_policy: string;
 					readonly allow?: string;
-					readonly sandbox_rationale?: string;
 				};
 				readonly host_message?: ToolHostMessageDeclaration;
 				readonly privacy?: ToolPrivacyDeclaration;
@@ -183,7 +188,13 @@ export interface PublicToolSummary {
 	readonly license: string | null;
 	readonly entry_html: string;
 	readonly iframe: {
-		readonly sandbox: string;
+		/**
+		 * ADR-0020: only an `external_exception` frame carries a
+		 * sandbox. A first-party (`same_origin_static`) summary leaves
+		 * this `undefined`, and the route consequently renders no
+		 * `sandbox` attribute at all.
+		 */
+		readonly sandbox?: string;
 		readonly referrer_policy: string;
 		// Issue #465: the declared capability grant. Rendered on the
 		// <iframe> as `allow` so the manifest declaration is not inert —
@@ -354,10 +365,11 @@ export function resolveToolEntryHtml(tool: ManifestTool): string {
  * for the delivery kind — the root-relative artefact path for
  * `same_origin_static`, the declared external URL for
  * `external_exception`, `''` for anything else. The declared `iframe`
- * policy (sandbox / referrer policy) is carried for every embeddable
- * kind so the route never has to re-read the manifest; a Tool that
- * declares no `iframe` block surfaces as empty strings, and
- * `evaluateToolEmbedPolicy` refuses to frame it at all.
+ * policy (referrer policy, plus a sandbox for the external kind) is
+ * carried for every embeddable kind so the route never has to re-read
+ * the manifest; a Tool that declares no `iframe` block surfaces as an
+ * empty referrer policy, and `evaluateToolEmbedPolicy` refuses to frame
+ * it at all.
  */
 function toSummary(tool: ManifestTool): PublicToolSummary {
 	const declared = tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.iframe;
@@ -368,7 +380,7 @@ function toSummary(tool: ManifestTool): PublicToolSummary {
 		classification: tool.classification,
 		license: tool.license,
 		entry_html: resolveToolEntryHtml(tool),
-		iframe: declared ?? { sandbox: '', referrer_policy: '' },
+		iframe: declared ?? { referrer_policy: '' },
 		privacy: tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.privacy,
 	};
 }

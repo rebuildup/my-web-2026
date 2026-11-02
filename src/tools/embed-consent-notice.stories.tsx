@@ -149,7 +149,7 @@ export const Activated: Story = {
 					padding: '12px 16px',
 				}}
 			>
-				activated: the host mounts one iframe with the declared sandbox / referrer policy.
+				activated: the host mounts one iframe with the declared referrer policy.
 				<br />
 				(Storybook renders <code>about:blank</code> here on purpose — a preview contacts nothing.)
 			</div>

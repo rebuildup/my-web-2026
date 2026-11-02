@@ -220,9 +220,11 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 		const iframes = [...html.matchAll(/<iframe\b[^>]*>/gi)].map((match) => match[0]);
 		expect(iframes).toHaveLength(1);
 		expect(iframes[0]).toContain('src="/tools/readmark/app/index.html"');
-		// The shell keeps its sandbox; making the shell lazy is not a
-		// licence to relax the Tool isolation contract.
-		expect(iframes[0]).toContain('sandbox="allow-scripts"');
+		// ADR-0020: a first-party Tool is served without a sandbox. The
+		// iframe is a layout / URL / CSS-DOM container, not a security
+		// boundary, so the rendered HTML must carry NO sandbox attribute.
+		expect(iframes[0]).not.toContain('sandbox=');
+		expect(iframes[0]).toContain('referrerPolicy="no-referrer"');
 	});
 
 	it('a Tool that declares third-party contacts mounts no frame before activation (#498)', () => {

@@ -10,9 +10,10 @@
 
 ## Why this document exists
 
-[`embed-policy.md`](./embed-policy.md) (Issue #465) decides whether a
-Tool **may** be framed: sandbox tokens, referrer policy, frame origin,
-message channel. It says nothing about what the framed document does
+[`embed-policy.md`](./embed-policy.md) (Issue #465, scoped by ADR-0020)
+decides whether a Tool **may** be framed: referrer policy, frame origin,
+message channel, and the sandbox that only an `external_exception` frame
+declares. It says nothing about what the framed document does
 once it is mounted — and the gap was not theoretical. Measured against
 the two Tools the registry ships, `/tools/prototype` mounted a
 document that, before the visitor touched anything, contacted:
@@ -144,8 +145,8 @@ the current choice stays deliberate rather than accidental.
   both locales, the "no consent record is stored" note, and one
   `<button type=button>`.
 - Pressing it flips the state and mounts the ordinary
-  `ToolEmbedShell` — same sandbox, same referrer policy, same message
-  contract as before this Issue.
+  `ToolEmbedShell` — same referrer policy, same message contract as
+  before this Issue (a first-party frame has no sandbox — ADR-0020).
 
 The notice has no visitor-specific content (no analytics id, no
 account, no personal data): it is rendered for every visitor of the
@@ -177,8 +178,9 @@ behaviour. Re-declaring is therefore a manual duty on every Tool bump:
    host it references.
 2. Ignore the ones that cannot be fetched: XML namespace identifiers
    (`www.w3.org`), licence/doc links, `<a href>` navigation targets
-   (the Tool frame is sandboxed without `allow-top-navigation` /
-   `allow-popups`, so a link cannot fire a request).
+   (the Tool frame declares no `allow-top-navigation` / `allow-popups`
+   capability and a same-origin link cannot fire a third-party request
+   from the host document).
 3. Write the remainder into `third_party_origins`, update `purpose`
    and `basis`, and re-run `pnpm run verify:embed-privacy-screenshot`.
 4. A new origin shows up as a publication-surface delta

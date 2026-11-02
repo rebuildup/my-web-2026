@@ -10,10 +10,14 @@
   （`refactor(tools): Tool を sandbox 付き iframe から first-party 同一 origin 配信へ変える`、実装）
 - Target release: `release-0-8-1`（0.8.1）
 - Implemented at: `src/tools/`（`manifest.json` / `manifest.schema.json` /
-  `embed-policy.ts` / `registry.ts`）、`src/routes/tools.$slug.tsx`
+  `embed-policy.ts` / `registry.ts`）、`src/routes/tools.$slug.tsx`、
+  `scripts/check-tools-manifest.mjs`（first-party の `sandbox` 宣言を
+  `embed.sandbox.not-allowed-for-first-party` で拒否）、
+  `docs/tools/embed-policy.md`
 - Evidence: `.tmp/issue-825/probe.mjs` による production 実測（2026-11-02、
   `https://rebuildup.dev/tools/readmark`）。実装後の証跡は
-  `docs/verification/tools/tool-first-party-delivery.md` に置く。
+  `docs/verification/tools/tool-first-party-delivery.md` に置く
+  （agent 記録、owner 未確認）。
 - Related: ADR-0006（Tool submodule / artefact namespace）、
   `docs/tools/embed-policy.md`、`docs/tools/embed-privacy.md`、
   Issue #465（embed policy）、Issue #498（third-party consent）、

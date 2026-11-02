@@ -417,7 +417,7 @@ Three things this gate is **not**:
 - It is not a rendering-speed measurement of any kind. It counts shipped bytes.
 
 Tool bundles under `/tools/<slug>/app/**` are independent Vite builds loaded in
-a sandboxed iframe, so they are aggregated and capped separately — a heavy Tool
+a Tool iframe, so they are aggregated and capped separately — a heavy Tool
 cannot hide behind a host route's budget.
 
 Accepting an overage needs a reason:

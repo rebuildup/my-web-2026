@@ -638,7 +638,8 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		// (Google Fonts / Typekit / Apps Script) must not be paid for by
 		// someone who only looked at the page.
 		expect(tool.preActivationIframeCount).toBe(0);
-		// The shell must still mount its sandboxed iframe …
+		// The shell must still mount its first-party iframe (no sandbox —
+		// ADR-0020) …
 		expect(tool.iframeSrcs).toEqual(['/tools/prototype/app/index.html']);
 		// … and the Tool surface must not gain media elements the
 		// home-side rule was measured against.

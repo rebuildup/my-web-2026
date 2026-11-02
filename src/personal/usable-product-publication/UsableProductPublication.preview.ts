@@ -329,7 +329,7 @@ export const usableProductExamples: readonly AppliedExample[] = [
 			{
 				stageId: 'acquire',
 				evidence:
-					'manifest が `same_origin_static` として配布 path（`/tools/readmark/app`）と entry HTML（`/tools/readmark/app/index.html`）を宣言し、iframe は `sandbox: allow-scripts` / `referrer_policy: no-referrer`。',
+					'manifest が `same_origin_static` として配布 path（`/tools/readmark/app`）と entry HTML（`/tools/readmark/app/index.html`）を宣言し、iframe は `referrer_policy: no-referrer`（sandbox なし、ADR-0020）。',
 				gap: '配布の前提（Tool の build が host の release に載る条件）は manifest に宣言されていない。',
 				verdict: '未確認',
 				nextAction:

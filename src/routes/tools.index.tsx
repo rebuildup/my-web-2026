@@ -5,7 +5,25 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
-import type { MaterialSymbolName } from '../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
+import {
+	CALCULATE_PATH,
+	CODE_PATH,
+	EDIT_NOTE_PATH,
+	EXTENSION_PATH,
+	FUNCTIONS_PATH,
+	HISTORY_EDU_PATH,
+	KEYBOARD_PATH,
+	MAIL_PATH,
+	MENU_BOOK_PATH,
+	MIC_PATH,
+	MOTION_PATH,
+	MOVIE_PATH,
+	PALETTE_PATH,
+	QR_CODE_2_PATH,
+	TEXT_FIELDS_PATH,
+	TIMER_PATH,
+} from '../editorial/primitives/material-symbol-tool-paths';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { listAllTools } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
@@ -85,27 +103,33 @@ export const Route = createFileRoute('/tools/')({
 
 /**
  * One glyph per Tool, so a card is identifiable before it is read.
- * Material Symbols names (`src/editorial/primitives/MaterialSymbol.tsx`);
- * `extension` is the explicit fallback for a manifest entry nobody has
- * classified yet — a new Tool renders, it just is not mislabelled.
+ * The paths come from `material-symbol-tool-paths.ts`, the module that
+ * belongs to THIS route alone (Issue #823): the Tools glyph set must
+ * not be reachable from the client entry shell, or every route would
+ * download path data it never draws. `extension` is the explicit
+ * fallback for a manifest entry nobody has classified yet — a new Tool
+ * renders, it just is not mislabelled.
  */
-const TOOL_ICONS: Readonly<Record<string, MaterialSymbolName>> = {
-	prototype: 'keyboard',
-	readmark: 'menu_book',
-	'text-counter': 'text_fields',
-	'color-palette': 'palette',
-	'sequential-png-preview': 'motion',
-	svg2tsx: 'code',
-	'business-mail-block': 'mail',
-	'code-type-p5': 'movie',
-	fillgen: 'edit_note',
-	'qr-generator': 'qr_code_2',
-	pomodoro: 'timer',
-	'history-quiz': 'history_edu',
-	'pi-game': 'calculate',
-	'ae-expression': 'functions',
-	'mic-level': 'mic',
+const TOOL_ICONS: Readonly<Record<string, string>> = {
+	prototype: KEYBOARD_PATH,
+	readmark: MENU_BOOK_PATH,
+	'text-counter': TEXT_FIELDS_PATH,
+	'color-palette': PALETTE_PATH,
+	'sequential-png-preview': MOTION_PATH,
+	svg2tsx: CODE_PATH,
+	'business-mail-block': MAIL_PATH,
+	'code-type-p5': MOVIE_PATH,
+	fillgen: EDIT_NOTE_PATH,
+	'qr-generator': QR_CODE_2_PATH,
+	pomodoro: TIMER_PATH,
+	'history-quiz': HISTORY_EDU_PATH,
+	'pi-game': CALCULATE_PATH,
+	'ae-expression': FUNCTIONS_PATH,
+	'mic-level': MIC_PATH,
 };
+
+/** The glyph an unclassified Tool renders. */
+const FALLBACK_TOOL_ICON = EXTENSION_PATH;
 
 /**
  * Screenshots, for the Tools whose screen explains them better than a
@@ -448,7 +472,7 @@ const plannedDescription = css({
 });
 
 function ToolCard({ tool }: { tool: ManifestTool }) {
-	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
+	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	const preview = TOOL_PREVIEWS[tool.slug];
 	// No `data-tool-state` on an OPEN card: the attribute is the disabled
 	// marker the prod-smoke row-classification probe reads
@@ -483,7 +507,7 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 					/>
 				) : null}
 				<span className={titleRow}>
-					<MaterialSymbol className={toolIcon} name={icon} size={18} />
+					<MaterialSymbol className={toolIcon} d={icon} size={18} />
 					<span data-tool-title className={toolTitle}>
 						{tool.display_name}
 					</span>
@@ -491,7 +515,7 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 				<span className={toolDescription}>{tool.description_ja}</span>
 				<span data-tool-cta className={cta}>
 					開く
-					<MaterialSymbol name="arrow_forward" size={16} />
+					<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 				</span>
 			</Link>
 		</li>
@@ -499,11 +523,11 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 }
 
 function PlannedToolItem({ tool }: { tool: ManifestTool }) {
-	const icon = TOOL_ICONS[tool.slug] ?? 'extension';
+	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	return (
 		<li data-tool-slug={tool.slug} data-tool-state="host_disabled" className={plannedItem}>
 			<span className={titleRow}>
-				<MaterialSymbol className={toolIcon} name={icon} size={18} />
+				<MaterialSymbol className={toolIcon} d={icon} size={18} />
 				<span className={plannedTitle}>{tool.display_name}</span>
 				{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
 				    asserts a host_disabled row by (Issue #195); the

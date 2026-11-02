@@ -64,6 +64,7 @@
 			"/tools/:slug/app/*",
 			"/tools/:slug/app",
 			"/tools/mic-level/app/*",
+			"/tools/business-mail-block/app/*",
 			"/assets/*",
 			"/icons/*",
 			"/site.webmanifest"

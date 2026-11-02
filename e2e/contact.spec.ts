@@ -79,7 +79,17 @@ test.describe('/contact page composition', () => {
 		expect(populated || emptyRendered).toBe(true);
 		expect(populated && emptyRendered).toBe(false);
 
-		if (!populated) return; // empty-state already validated
+		// Issue #832 — the shipped channel list must actually reach the
+		// public page. Before this assertion the spec returned early on the
+		// empty branch, so a stale `verified_at` (every channel filtered out
+		// by the freshness gate) passed CI while /contact rendered nothing.
+		// A red here means the release needs its channels re-verified, not
+		// that this assertion is too strict.
+		expect(
+			populated,
+			'no channel reached the public /contact page: every active channel is outside the 30-day freshness window (src/contact/channels.json#verified_at)',
+		).toBe(true);
+		expect(emptyRendered).toBe(false);
 
 		// Every channel row carries label / labelEn / purpose / url / verified.
 		const rows = list.locator('li[data-channel-id]');

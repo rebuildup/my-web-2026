@@ -99,9 +99,32 @@ export const ChannelsFileSchema = z.object({
 export type ChannelsFile = z.infer<typeof ChannelsFileSchema>;
 
 /**
+ * `verified_at` is an AUTHORED calendar day, and the day is JST.
+ *
+ * Issue #832: the record is written when the operator checks a channel,
+ * which they do on a JST calendar day. Anchoring the parse at UTC
+ * midnight made a same-day verification read as 23:00 of the previous
+ * day — the row rendered `days = -1`, which the UI then labelled
+ * 「検証日不明 / verified_at unparseable」 even though the value was
+ * perfectly well-formed, and the fail-closed gate happily listed it.
+ * Anchor at JST midnight instead: the day the operator wrote is the day
+ * the platform means, and `days >= 0` again holds for a same-day check.
+ */
+const VERIFIED_AT_SUFFIX = 'T00:00:00+09:00';
+
+function verifiedAtMs(ch: Channel): number {
+	return Date.parse(`${ch.verified_at}${VERIFIED_AT_SUFFIX}`);
+}
+
+/**
  * Filter active + verified channels from a list.
  *
- * Fail-closed: a channel without a recent `verified_at` is dropped.
+ * Fail-closed in both directions: a channel whose `verified_at` is older
+ * than the freshness window is dropped, and so is one dated in the
+ * future (a verification cannot precede the day it was performed; a
+ * future date means the record is wrong, so the platform must not
+ * present it as verified).
+ *
  * The caller supplies `now` so the test can pin the clock and the
  * route can pass the request time deterministically.
  *
@@ -118,15 +141,16 @@ export function filterActiveVerified(
 	const out: Channel[] = [];
 	for (const ch of input) {
 		if (!ch.active) continue;
-		const verifiedMs = Date.parse(`${ch.verified_at}T00:00:00Z`);
+		const verifiedMs = verifiedAtMs(ch);
 		if (Number.isNaN(verifiedMs)) continue;
 		if (verifiedMs < cutoff) continue;
+		if (verifiedMs > now) continue;
 		out.push(ch);
 	}
 	// Stable order: most-recently verified first, then id ascending.
 	return out.sort((a, b) => {
-		const va = Date.parse(`${a.verified_at}T00:00:00Z`);
-		const vb = Date.parse(`${b.verified_at}T00:00:00Z`);
+		const va = verifiedAtMs(a);
+		const vb = verifiedAtMs(b);
 		if (vb !== va) return vb - va;
 		return a.id.localeCompare(b.id);
 	});
@@ -134,10 +158,11 @@ export function filterActiveVerified(
 
 /**
  * Days since `verified_at` — exposed for UI display ("verified N days ago").
- * Negative values mean `verified_at` is in the future relative to `now`.
+ * Negative values mean `verified_at` is in the future relative to `now`
+ * (which {@link filterActiveVerified} refuses to publish).
  */
 export function daysSinceVerified(ch: Channel, now: number): number {
-	const verifiedMs = Date.parse(`${ch.verified_at}T00:00:00Z`);
+	const verifiedMs = verifiedAtMs(ch);
 	if (Number.isNaN(verifiedMs)) return Number.NaN;
 	return Math.floor((now - verifiedMs) / (24 * 60 * 60 * 1000));
 }

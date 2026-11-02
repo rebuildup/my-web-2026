@@ -35,6 +35,8 @@
 		"cf:config:drift:check": "node scripts/check-cloudflare-config-drift.mjs",
 		"cf:config:drift:report": "node scripts/make-cloudflare-config-drift-report.mjs",
 		"db:migrate:apply:local": "node scripts/d1.mjs apply --target=local",
+		"media:legacy:dry-run": "node scripts/migrate-legacy-media.mjs --dry-run",
+		"media:legacy:apply:local": "node scripts/migrate-legacy-media.mjs --apply --target=local",
 		"db:migrate:apply:production": "node scripts/d1.mjs apply --target=production --execute",
 		"db:migrate:list:local": "node scripts/d1.mjs list --target=local",
 		"db:migrate:list:production": "node scripts/d1.mjs list --target=production",

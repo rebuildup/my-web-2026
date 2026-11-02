@@ -181,6 +181,18 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	'color-palette': {
+		// Same namespace reasoning as the entries above: a host-rendered
+		// thumbnail must not sit inside the Tool's own artifact tree.
+		src: '/tool-previews/color-palette.webp',
+		alt: 'Color Palette Generator の初期画面。左に Algorithm & Limits の設定欄（Algorithm / Count / Sort By と Hue・Sat スライダー）と Saved Palettes（No saved palettes.）、右に Generate Colors と Save Palette のボタン、Generated Palette（Click "Generate Colors" to begin.）と Export がある。',
+		// The capture is the Tool FRAME's box at the script's
+		// 1440 × 900 context, scaled to 1200 px wide. The numbers are
+		// the committed file's real dimensions (measured), so a stale
+		// pair cannot reserve the wrong box and shift the card on load.
+		width: 1200,
+		height: 669,
+	},
 };
 
 function ToolsIndexRoute() {

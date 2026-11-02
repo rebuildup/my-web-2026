@@ -12,7 +12,7 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 29 |
+| Publicly reachable URLs (surface + Static Assets) | 30 |
 | External hosts | 36 |
 | First-party hosts | 0 |
 | Approved transition | no delta (first record, or unchanged surface) |
@@ -59,6 +59,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/tools/code-type-p5`
 - `/tools/color-palette`
 - `/tools/fillgen`
+- `/tools/history-quiz`
 - `/tools/mic-level`
 - `/tools/pi-game`
 - `/tools/pomodoro`

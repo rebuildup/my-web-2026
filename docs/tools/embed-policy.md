@@ -43,6 +43,31 @@ frame origin, the message channel — was convention expressed in
 silently weaken a live Tool's sandbox, because the route stops
 rendering instead of rendering something weaker.
 
+**Where the 「準備中」 (`disabled`) contract is verified (Issue #861).**
+The `disabled` state is a contract, but it must not be verified against
+a fact that is about to disappear: the last waiting Tool
+(`business-mail-block` / `history-quiz` / `ae-expression`) lands with
+its own PR, and a test that needs a waiting Tool to EXIST would turn
+that PR red. So the contract is split by what each half can know:
+
+- **Unit tests = a synthetic manifest.** `createToolRegistry(manifest)`
+  (`src/tools/registry.ts`) builds a registry over any manifest, and
+  `src/tools/registry.test.ts` states the contract against a synthetic
+  one that holds a waiting Tool (it is in `listAllTools()`, out of
+  `listPublicTools()`, `getPublicTool()` is `undefined`, and
+  `disabled_reason` is non-empty) and against one that holds none (every
+  API still answers). The shipped manifest is asserted only on
+  structural invariants (unique slugs, a non-empty `disabled_reason` on
+  every waiting Tool, a non-empty Japanese description) — never on a
+  frozen count or a frozen slug.
+- **E2E = the shipped manifest, derived.** `e2e/nav.spec.ts` and
+  `e2e/tools-index.spec.ts` read `src/tools/manifest.json` and branch
+  on it: with a waiting Tool they assert the placeholder surface on the
+  FIRST waiting slug; with none they assert that the index carries NO
+  coming-soon badge and that every card links to its detail route, and
+  the placeholder-surface test is skipped **with a reason** (the surface
+  does not exist).
+
 ## Rules
 
 ### 1. `delivery.iframe` is mandatory (no implicit default)
@@ -89,6 +114,24 @@ resolves the manifest declaration through `toolRouteSecurityPolicy()`
 response, while `public/_headers` carries the same grant for
 `/tools/<slug>/app/**`. The values and their origin scoping are specified
 in [`docs/security/security-headers.md`](../security/security-headers.md)
+
+**Some capabilities have no header half.** `downloads`, `fullscreen` and
+`modals` are capabilities a Tool really needs, but Permissions-Policy
+cannot grant them to a sandboxed frame: `modals` is not a feature name at
+all (the `allow` attribute is inert and the browser logs `Unrecognized
+feature: modals.`), `downloads` has no feature in the current spec, and
+an explicit `fullscreen=(self …)` does not match a frame running in an
+opaque origin. For these the enforced grant is the **sandbox token**
+(`allow-modals`, `allow-downloads`) or the **container attribute**
+(`allowfullscreen`). Their names are still declared in `iframe.allow`,
+because the embed policy requires a capability name beside every
+conditional token, and they are registered in
+`src/http/security-headers.json#sandbox_only_capabilities` so
+`pnpm run security:headers:check` neither demands a header that would be
+a no-op nor lets a deny baseline kill the capability site-wide. The two
+halves of a sandbox-only grant are measured, not assumed: Issue #772's
+A/B on history-quiz is
+[`docs/verification/tools/history-quiz-host-activation.md`](../verification/tools/history-quiz-host-activation.md).
 §3, and `pnpm run security:headers:check` fails the build when the Worker
 half and `_headers` disagree.
 

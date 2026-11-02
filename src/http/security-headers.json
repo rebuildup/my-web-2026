@@ -10,6 +10,7 @@
 		"bluetooth",
 		"camera",
 		"display-capture",
+		"downloads",
 		"geolocation",
 		"hid",
 		"microphone",
@@ -19,5 +20,5 @@
 		"xr-spatial-tracking"
 	],
 	"granted_origin_token": "(self \"{origin}\")",
-	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide."
+	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide. `downloads` is listed for the same per-Tool reason (business-mail-block needs the download capability), but it is NOT a Permissions-Policy feature: browsers ignore an unknown feature in this header, so the entry is a declaration slot, not an enforcement mechanism. The browser-side enforcement of a Tool's download capability is the `allow-downloads` sandbox token in `delivery.iframe.sandbox` (src/tools/embed-policy.ts), and the header half exists so the grant is scoped to the declaring Tool's namespace by the same gate that scopes every other grant."
 }

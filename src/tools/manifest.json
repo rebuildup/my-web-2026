@@ -228,17 +228,19 @@
 				"artifact_path": "/tools/business-mail-block/app",
 				"entry_html": "/tools/business-mail-block/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
-					"referrer_policy": "no-referrer"
+					"sandbox": "allow-scripts allow-downloads",
+					"referrer_policy": "no-referrer",
+					"allow": "downloads",
+					"sandbox_rationale": "The Tool ships a file download (the composed mail as .txt and a saved template as .json — src/components/useMailBlockState.ts). Measured at the pin on the built preview: with `sandbox=\"allow-scripts\"` the browser discards that download (the Tool's own ダウンロード button produced no download event), so the feature was dead inside the host frame. `allow-downloads` is added for exactly that reason and grants nothing else: the frame keeps its opaque origin (`allow-same-origin` is never granted), no storage API is unlocked, and the frame cannot navigate the host. `delivery.iframe.allow` names the same capability so the grant is declared in the one field the gate reads; `downloads` is not a Permissions-Policy feature, so the response-header half of that declaration is inert and the sandbox token is what the browser enforces."
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned business-mail-block e88be11f: the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API, so the opaque-origin sandbox affects nothing; re-measure after a bump"
+					"basis": "measured at pinned business-mail-block e88be11f: the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API, so the opaque-origin sandbox affects nothing; the file download the Tool offers is a blob URL it creates inside the frame (URL.createObjectURL), so it contacts no origin at all; re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox stays `allow-scripts` with `no-referrer` and no Permissions-Policy feature is granted. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts). The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts); the sandbox grants no `allow-downloads`, so that button is expected to be blocked inside the frame — recorded as a known gap, not silently widened."
+			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox grants no Permissions-Policy feature and the frame keeps its opaque origin. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts); measured on the built preview, the コピー button does put the composed mail on the clipboard through that fallback. The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts): measured on the built preview with `sandbox=\"allow-scripts\"` the browser discarded it (no download event), and with `allow-downloads` added the same button produces one — that is why the sandbox carries the token and `delivery.iframe.allow` declares the `downloads` capability."
 		},
 		{
 			"slug": "code-type-p5",

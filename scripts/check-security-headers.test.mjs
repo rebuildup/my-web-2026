@@ -152,7 +152,7 @@ describe('inspect — repository state', () => {
 		// wildcard Tool rule instead of adding the per-slug one, so the
 		// capture device stops being a per-Tool decision.
 		const baseline =
-			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
+			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
 		const text = readHeadersText();
 		const ruleStart = text.indexOf('/tools/:slug/app/*');
 		const lineStart = text.indexOf(baseline, ruleStart);

@@ -183,7 +183,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							id="contact-cta-heading"
 							eyebrow="05 — Contact"
 							title="Contact / お問い合わせ"
-							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途 (採用 / 技術的な議論 / 配布) 別の説明が添えてあります。"
+							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
 							variant="spread"
 						>
 							<div

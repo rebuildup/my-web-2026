@@ -137,7 +137,7 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 							id="channels-heading"
 							eyebrow="01 — Channels"
 							title="現在利用可能な channel"
-							description="各 channel には用途 (採用・技術的な議論・配布) を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
+							description="各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
 							variant="default"
 						/>
 						{empty ? <EmptyState /> : <ChannelList channels={channels} now={now} />}
@@ -327,9 +327,7 @@ function EmptyState() {
 			})}
 		>
 			<p lang="ja" className={css({ margin: '0' })}>
-				現在 re-verified されている channel はありません。channel を追加するには、
-				<code>src/contact/channels.json</code> に <code>active: true</code> と現在日付の{' '}
-				<code>verified_at</code> を持つ entry を追加してください。
+				現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。
 			</p>
 		</div>
 	);

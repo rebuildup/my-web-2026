@@ -432,11 +432,11 @@ export const usableProductExamples: readonly AppliedExample[] = [
 		],
 	},
 	{
-		id: 'history-quiz',
+		id: 'fillgen',
 		kind: 'tool',
-		subject: 'history-quiz',
+		subject: 'fillgen',
 		record: 'src/tools/manifest.json',
-		pointer: 'tools[slug=history-quiz]',
+		pointer: 'tools[slug=fillgen]',
 		facts: [
 			{ label: 'delivery.kind', value: 'host_disabled' },
 			{ label: 'classification', value: 'needs_tool_side_fix' },
@@ -564,12 +564,12 @@ export const usableProductSections: readonly PreviewSection[] = [
 		bullets: [],
 	},
 	{
-		id: 'example-history-quiz',
-		heading: '反例 — 公開できないTool（history-quiz）',
+		id: 'example-fillgen',
+		heading: '反例 — 公開できないTool（fillgen）',
 		kind: 'example',
-		exampleId: 'history-quiz',
+		exampleId: 'fillgen',
 		paragraphs: [
-			'同じ manifest が「公開できない」ことも記録できる。manifest が host_disabled として持つ記録は、5 段階のどの段階で出口が閉じているかを語れる。',
+			'同じ manifest が「公開できない」ことも記録できる。manifest が host_disabled として持つ記録は、5 段階のどの段階で出口が閉じているかを語れる。（反例の題材は 2026-11-03 に history-quiz から fillgen へ替えた。history-quiz は upstream の standalone build（release-0-1-0 / 0246766）で same_origin_static になり、「公開できない Tool」という反例的前提を満たさなくなったため。）',
 		],
 		bullets: [],
 	},

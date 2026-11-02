@@ -19,3 +19,6 @@
 [submodule "external/svg2tsx"]
 	path = external/svg2tsx
 	url = https://github.com/rebuildup/tool-svg2tsx.git
+[submodule "external/history-quiz"]
+	path = external/history-quiz
+	url = https://github.com/rebuildup/tool-history-quiz.git

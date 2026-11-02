@@ -336,20 +336,30 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-history-quiz.git",
 				"submodule_path": "external/history-quiz",
-				"pinned_sha": "72328139de1ac5ceee84babbf76cd82899fde8c3",
-				"branch": "main"
+				"pinned_sha": "024676693fd3d91401ddcacb1294ea988801c6eb",
+				"branch": "release-0-1-0"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/history-quiz/app",
+				"entry_html": "/tools/history-quiz/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned history-quiz 02467669: no external origin in index.html / src/** (the only absolute URLs in the shipped bundle are XML namespace strings and the react.dev error-page link, neither of which is fetched) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-history-quiz PR #6 (commit 024676693fd3d91401ddcacb1294ea988801c6eb = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `tsc -b && vite build`); LICENSE (MIT) present in the checkout. The upstream default branch `main` (72328139) still carries the Next.js-only component library — the standalone build lives on `release-0-1-0`, so `source.branch` records the branch the pinned SHA was drawn from. The quiz content is owned by the Tool repo (`public/history-quiz.html`, 89,935 B, ported from my-web-2025/public/history-quiz.html) and is shipped inside the artefact, so the frame fetches it relative to the document URL and needs no host-side file. Measured at the pin: `dist/index.html` references `./assets/...` relatively, the frame renders 20 sections / 426 blanks, an answer is graded correct/incorrect on user input, and the frame issues same-origin requests only. Known limitation: the upstream reset control calls `window.confirm()`, which a sandboxed frame without `allow-modals` refuses, so reset is inert in the host embed (grading and answer display are unaffected)."
 		},
 		{
 			"slug": "pi-game",

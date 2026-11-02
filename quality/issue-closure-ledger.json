@@ -1238,16 +1238,20 @@
 			"title": "feat(tools): マイクレベルチェッカー をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#855",
+				"docs/verification/tools/mic-level-host-activation.md",
+				"src/tools/manifest.json"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "svg2tsx と同型の未着工ツール。ブラウザ API 権限の扱いは owner 承認が必要な領域でもある。",
-			"missing": "standalone build の取得、/tools/mic-level の実描画、許可/拒否の mic permission 状態の UI、artifact 欠落の CI 検知。"
+			"action": "kept-closed",
+			"note": "履歴: 2026-10-31 の一括 close（closedAt はこの日付）を 2026-11-01 に reopened として記録し、2026-11-03 に証拠つきで再 close した。PR #855 で same_origin_static へ移して有効化し、実コンテンツの描画・入力操作・microphone 権限の宣言と拒否時の非破壊 fallback を docs/verification/tools/mic-level-host-activation.md に実測記録。artifact 欠落の CI 検知は tools:check / tools:artifact:check。",
+			"missing": null
 		},
 		{
 			"issue": 361,
@@ -1593,23 +1597,23 @@
 			"title": "feat(dev): ローカル開発の本番API・モック切替を見える化",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "partial",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"index.ts",
-				"fixtures.ts",
-				"mock.test.ts",
-				"access.ts",
-				"reactions.ts",
-				"src/http/hono.ts"
+				"16905c28",
+				"src/cloudflare/data-source.ts",
+				"src/home/status",
+				"docs/runbook/development-data-source.md",
+				"docs/verification/development/mock-source.webp",
+				"docs/verification/development/production-readonly-source.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "切替の仕組み自体は Issue #186 で存在するが、この issue の目的である『見える化』（source 表示）が未実装。",
-			"missing": "現在のデータソース（モック / 公開本番 read-only）が開発画面上で判別できる表示、および未設定時に暗黙で本番へ抜かないことの明示。"
+			"action": "kept-closed",
+			"note": "履歴: 2026-10-31 の一括 close（closedAt はこの日付）を 2026-11-01 に reopened として記録し、2026-11-03 に証拠つきで再 close した。実装は commit 16905c28。契約は src/cloudflare/data-source.ts（binding-free、MY_WEB_2026_DATA_SOURCE の不在 = 本番 Worker、未知値は fail-closed）、開発画面の判別は home/status、未設定時に暗黙の本番利用をしないことを runbook と実装が明示。mock / production-readonly の 2 画面を WebP で記録。",
+			"missing": null
 		},
 		{
 			"issue": 378,

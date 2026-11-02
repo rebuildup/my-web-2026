@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	SANDBOX_TOKENS,
+	SANDBOX_TOKENS_FORBIDDEN,
 	attachToolMessageGuard,
 	classifyToolFrameSrc,
 	createToolMessageGuard,
@@ -66,7 +67,7 @@ describe('Tool embed policy — the live manifest', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('both served Tools declare allow-scripts + no-referrer', () => {
+	it('every served Tool declares allow-scripts + no-referrer, and nothing stronger', () => {
 		const served = listAllTools().filter(
 			(
 				t,
@@ -79,8 +80,20 @@ describe('Tool embed policy — the live manifest', () => {
 		);
 		expect(served.length).toBeGreaterThan(0);
 		for (const tool of served) {
-			expect(tool.delivery.iframe?.sandbox).toBe('allow-scripts');
+			// `allow-scripts` is the free token every served Tool carries,
+			// and `no-referrer` is the only referrer policy a Tool frame
+			// may declare.
+			expect(parseTokenList(tool.delivery.iframe?.sandbox)).toContain('allow-scripts');
 			expect(tool.delivery.iframe?.referrer_policy).toBe('no-referrer');
+			// The tripwire is the ISOLATION, not the exact token string: a
+			// served Tool may hold a conditional token (Issue #465 grants
+			// one only with a capability grant and a written reason, and
+			// `evaluateToolEmbedPolicy` above proves every served entry
+			// satisfies that), but it must never hold a token that
+			// escapes the sandbox.
+			for (const token of parseTokenList(tool.delivery.iframe?.sandbox)) {
+				expect(SANDBOX_TOKENS_FORBIDDEN.has(token)).toBe(false);
+			}
 		}
 	});
 

@@ -22,3 +22,6 @@
 [submodule "external/history-quiz"]
 	path = external/history-quiz
 	url = https://github.com/rebuildup/tool-history-quiz.git
+[submodule "external/mic-level"]
+	path = external/mic-level
+	url = https://github.com/rebuildup/tool-mic-level.git

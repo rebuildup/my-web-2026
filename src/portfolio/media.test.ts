@@ -104,9 +104,7 @@ describe('composeMediaUrl — Issue #808 — development surface', () => {
 		// Same env, different port: the URL must not change, because the
 		// relative base is what keeps :3000 / :3011 / a rescaffolded port
 		// all correct without a configuration edit.
-		expect(composeMediaUrl(devEnv, 'reactions/deadbeef.png')).toBe(
-			'/media/reactions/deadbeef.png',
-		);
+		expect(composeMediaUrl(devEnv, 'reactions/deadbeef.png')).toBe('/media/reactions/deadbeef.png');
 	});
 
 	it('lets the production var win when both are present', () => {

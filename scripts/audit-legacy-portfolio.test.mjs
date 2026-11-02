@@ -351,23 +351,40 @@ describe('buildInventory', () => {
 		assert.deepEqual(document.counts.by_role_source, { 'facet-derived': 1, null: 1 });
 	});
 
-	it('records the decisions it does not own instead of answering them', () => {
+	it('keeps no decision open, and keeps the questions it decided', () => {
 		assert.ok(Array.isArray(document.open_decisions));
-		assert.equal(document.open_decisions.length, 2);
-		assert.match(document.open_decisions[0], /Display label/);
+		assert.equal(document.open_decisions.length, 0);
+		assert.equal(document.decisions.length, 2);
 	});
 
-	it('names the three colliding slugs and both ways out, without picking one', () => {
-		const [decision] = document.open_decisions.filter((entry) => /^Slug collision/.test(entry));
-		assert.ok(decision, 'the slug collision has to be an open decision');
+	it('does not present a design decision as an owner decision (Issue #813)', () => {
+		const decision = document.decisions.find((entry) => entry.id === 'display-label');
+		assert.ok(decision, 'the display label has to stay traceable');
+		assert.equal(decision.status, 'decided');
+		assert.equal(decision.decided_by, 'issue-813');
+		assert.match(decision.resolution, /`Role` stays/);
+		assert.match(decision.resolution, /not a role/);
+		// The owner rejected the uniform relabel, and the ledger records that
+		// rejection rather than a speculatively new label.
+		assert.match(decision.resolution, /rejected a uniform `Role` -> `Kind`/);
+		assert.doesNotMatch(decision.resolution, /The public label is/);
+		// The question is kept verbatim, including the part that is now false:
+		// it is what the 2026-11-01 run printed.
+		assert.match(decision.question, /^Display label:/);
+	});
+
+	it('records the owner slug resolution as option (b), with the quote', () => {
+		const decision = document.decisions.find((entry) => entry.id === 'slug-collision');
+		assert.ok(decision, 'the slug collision has to stay traceable');
+		assert.equal(decision.decided_by, 'owner');
+		assert.match(decision.owner_statement, /旧サイトのデータに合わせる/);
 		for (const slug of ['aulymo-v01', 'aulymo-v02', 'multislicer']) {
-			assert.ok(decision.includes(slug), `${slug} is one of the collisions`);
+			assert.ok(decision.resolution.includes(slug), `${slug} is one of the collisions`);
 		}
-		// The rule, not a preference: D1 wins, so the migrated row stays hidden.
-		assert.match(decision, /load\.ts resolves a collision in favour of D1/);
-		assert.match(decision, /\(a\) the migrated slugs are changed/);
-		assert.match(decision, /\(b\) the D1 rows are retired/);
-		assert.match(decision, /chooses neither/);
+		// The rule stays: D1 wins. What changes is which row is in D1.
+		assert.match(decision.question, /load\.ts resolves a collision in favour of D1/);
+		assert.match(decision.resolution, /old-site slug wins/);
+		assert.doesNotMatch(decision.resolution, /migrated slugs are changed/);
 	});
 
 	it('stamps an unmigrated item with the reason it was left behind', () => {

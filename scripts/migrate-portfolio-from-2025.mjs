@@ -910,7 +910,20 @@ function main() {
 				// rows it retired earlier (both are recognisable), so that
 				// re-running the migration is safe.
 				const own = existing.id.startsWith('legacy_') || existing.slug.endsWith('-retired');
-				if (own) continue;
+				if (own) {
+					// A row this migration retired earlier is still a retired
+					// row: the ledger keeps naming it, so the record of what
+					// used to answer that URL survives every re-run.
+					if (existing.slug.endsWith('-retired')) {
+						retired.push({
+							id: existing.id,
+							slug: existing.slug,
+							alreadyRetired: true,
+							reason: 'already retired by an earlier run of this migration',
+						});
+					}
+					continue;
+				}
 				collisions.push(existing);
 				continue;
 			}
@@ -975,6 +988,7 @@ function main() {
 	// row keeps its identity and its content.
 	const takenSlugs = new Set([...intendedInsertSlugs, ...d1ExistingSlugs]);
 	for (const row of retired) {
+		if (row.alreadyRetired === true) continue;
 		let retiredSlug = `${row.slug}-retired`;
 		let counter = 2;
 		while (takenSlugs.has(retiredSlug)) {
@@ -1010,7 +1024,10 @@ function main() {
 		});
 		const ledgerFile = resolve(process.cwd(), ledgerPath);
 		mkdirSync(dirname(ledgerFile), { recursive: true });
-		writeFileSync(ledgerFile, `${JSON.stringify(ledger, null, 2)}\n`);
+		// Tab indentation, because that is what the repository's formatter
+		// (Biome) writes: a generated file that the formatter would rewrite
+		// would make every regeneration a diff.
+		writeFileSync(ledgerFile, `${JSON.stringify(ledger, null, '\t')}\n`);
 		console.error(`[migrate] ledger written: ${ledgerPath}`);
 		console.error(
 			`[migrate]   published ${ledger.counts.published} / not-a-work ${ledger.counts.notAWork} (scaffold ${ledger.counts.scaffold} / test ${ledger.counts.testFixture} / placeholder ${ledger.counts.placeholder})`,

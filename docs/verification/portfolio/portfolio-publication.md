@@ -52,21 +52,58 @@ local D1 は `scripts/d1.mjs apply --target=local` で 0001–0010 を適用し�
 
 ## 3. 公開面（local preview の実測）
 
-`pnpm run build` → `node scripts/sync-cf-build-output.mjs` →
-`vite preview`（built 出力）で実測。
+### 3.1 再現可能な手順（何を、どの状態で動かしたか）
+
+| 項目 | 値 |
+| --- | --- |
+| D1 の persist 先 | `.tmp/d1state`（`scripts/_cloudflare-identity.mjs#LOCAL_STATE_DIR`。preview の `persistState` と同じ場所） |
+| migration | `node scripts/d1.mjs apply --target=local`（0001–0010 を適用） |
+| テキスト移行 | `MY_WEB_2025_REF=<旧 corpus> node scripts/migrate-portfolio-from-2025.mjs --apply --target=local --ledger=docs/migration/portfolio-2025-to-2026-publication.json` |
+| メディア移行 | `node scripts/migrate-legacy-media.mjs --apply --target=local`（Issue #850 の script。base 26476862 で入庫済み） |
+| build | `pnpm run build` → `node scripts/sync-cf-build-output.mjs` |
+| preview | `./node_modules/.bin/vite preview --port 4188 --host 127.0.0.1`（built 出力。`.tmp/d1state` を読む） |
+| 旧 corpus の場所 | `.reference/my-web-2025`（無ければ `MY_WEB_2025_REF` で指定） |
+
+### 3.2 DOM から数えた件数（推測ではない）
+
+`/portfolio` を Chromium で開き、DOM を数えた値:
+
+| 実測項目（DOM） | 値 |
+| --- | --- |
+| `document.querySelectorAll('#portfolio-list li').length` | **60** |
+| `document.querySelectorAll('#portfolio-list article').length` | **60** |
+| `document.querySelectorAll('#portfolio-list a[href^="/portfolio/"]').length` | **60** |
+| 異なる href の数 | **60** |
+| 高さが 0 でない card の数（= 実際に描画されている） | **60** |
+| 先頭の 3 件のタイトル | 「アイコン 手書きアニメーション」「SNSアイコン」「Aeプラグイン FoldLayers」 |
+
+SSR（`domcontentloaded` 直後）と hydration 後（`networkidle` 直後）で
+同じ 60 だった。**数え方は上のとおりで、「写っている枚数」ではなく DOM の
+要素数**である。
+
+### 3.3 その他の実測
 
 | 実測項目 | 値 |
 | --- | --- |
-| `GET /portfolio` | 200、掲載カード **60** |
+| `GET /portfolio` | 200 |
 | `GET /portfolio/propose` | 200 |
-| 詳細ページの未レビュー表示 | `data-evidence-status="unreviewed"` が 1 個、表示文言「権利レビュー未実施 / Rights review: unreviewed」 |
+| 詳細ページの未レビュー表示 | `document.querySelectorAll('[data-evidence-status="unreviewed"]').length` = **1**、表示文言「RIGHTS REVIEW: UNREVIEWED / 権利レビュー未実施」 |
 | 詳細ページの `<img>` | `naturalWidth=1080` / `naturalHeight=1920`（**デコード済み**。壊れた画像ではない） |
 | `GET /media/portfolio/propose/propose/media_…png`（local origin） | 200 / `image/png` |
 | D1 の内訳 | `portfolio_project` 63 / 公開 60 / retire 3、`portfolio_link` 103、`portfolio_media` 130（cover 23、media を持つ project 23） |
 
-スクリーンショットは WebP（PNG は保存していない）。検証のために
-canonical production origin の media URL を local origin へ向け替えて
-採取した（production にはこの key が無いため）。
+スクリーンショットは WebP（PNG は保存していない）:
+
+- `portfolio-publication-list-811.webp` — `/portfolio` の一覧上部（**カードが
+  写っている**: 3 件の card とその画像）
+- `portfolio-publication-811.webp` — `/portfolio/propose` の詳細（移行した画像
+  と未レビュー表示）
+
+検証のために canonical production origin の media URL を local origin へ
+向け替えて採取した（production にはこの key が無いため）。一覧は
+`#portfolio-list` へスクロールしてから採取している（**先ほどの版の
+スクリーンショットは一覧の領域を写しておらず、/cards が 1 枚も無い
+—was。** この節の DOM 実測値とスクリーンショットで置き換えた）。
 
 ## 4. 「加していない」ことの機械的確認（実測）
 
@@ -143,7 +180,7 @@ node scripts/d1.mjs apply --target=local
 node scripts/migrate-portfolio-from-2025.mjs --apply --target=local \
   --ledger=docs/migration/portfolio-2025-to-2026-publication.json
 
-# 3) メディア移行（Issue #850 / PR #852 の script）
+# 3) メディア移行（Issue #850 の script）
 node scripts/migrate-legacy-media.mjs --apply --target=local
 
 # 4) 加筆検査

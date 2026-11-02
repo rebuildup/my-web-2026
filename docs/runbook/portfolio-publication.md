@@ -12,7 +12,7 @@
 | --- | --- |
 | production D1 `portfolio_project` | 60 行を追加（`visibility='public'`、`evidence_status='unreviewed'`）。slug が衝突する既存行があれば retire（削除しない） |
 | production D1 `portfolio_link` | 103 行を追加（移行対象のリンクのみ） |
-| production D1 `portfolio_media` | 130 行を追加（PR #852 / Issue #850 の成果物） |
+| production D1 `portfolio_media` | 130 行を追加（Issue #850 の成果物。`scripts/migrate-legacy-media.mjs`） |
 | production R2 `MEDIA` | `portfolio/` prefix 配下に 116 object |
 | production Worker | 変更しない（migration 0010 の適用のみ） |
 
@@ -42,7 +42,7 @@ production への書き込みは、次の**すべて**が満たされたとき�
      `docs/domain/portfolio-migration-decisions.md` にある。
 2. 本 Issue の Draft PR が **merged** であること（migration 0010 が
    production に適用される前提）。
-3. Issue #850 / PR #852（メディア移行）が **merged** であること
+3. Issue #850（メディア移行）が **merged** であること
    （`portfolio_media` 行と R2 object の前提）。
 4. operator が**この runbook の手順を 1 通実行する権限**を持つこと。
    AGENTS.md §6 により、agent は release PR を merge しない。本手順の
@@ -165,4 +165,4 @@ cf r2 object list --bucket-name my-web-2026 --prefix portfolio/   # 出力は op
 - [`docs/domain/portfolio-migration-decisions.md`](../domain/portfolio-migration-decisions.md)（決定）
 - [`docs/verification/portfolio/portfolio-publication.md`](../verification/portfolio/portfolio-publication.md)（local の実測）
 - [ADR-0019](../../docs/adr/ADR-0019-publication-authority-and-unreviewed-assets.md)
-- `docs/runbook/legacy-media-migration.md`（Issue #850 のメディア手順。PR #852 で追加される）
+- [`docs/runbook/legacy-media-migration.md`](legacy-media-migration.md)（Issue #850 のメディア手順）

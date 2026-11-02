@@ -43,6 +43,31 @@ frame origin, the message channel — was convention expressed in
 silently weaken a live Tool's sandbox, because the route stops
 rendering instead of rendering something weaker.
 
+**Where the 「準備中」 (`disabled`) contract is verified (Issue #861).**
+The `disabled` state is a contract, but it must not be verified against
+a fact that is about to disappear: the last waiting Tool
+(`business-mail-block` / `history-quiz` / `ae-expression`) lands with
+its own PR, and a test that needs a waiting Tool to EXIST would turn
+that PR red. So the contract is split by what each half can know:
+
+- **Unit tests = a synthetic manifest.** `createToolRegistry(manifest)`
+  (`src/tools/registry.ts`) builds a registry over any manifest, and
+  `src/tools/registry.test.ts` states the contract against a synthetic
+  one that holds a waiting Tool (it is in `listAllTools()`, out of
+  `listPublicTools()`, `getPublicTool()` is `undefined`, and
+  `disabled_reason` is non-empty) and against one that holds none (every
+  API still answers). The shipped manifest is asserted only on
+  structural invariants (unique slugs, a non-empty `disabled_reason` on
+  every waiting Tool, a non-empty Japanese description) — never on a
+  frozen count or a frozen slug.
+- **E2E = the shipped manifest, derived.** `e2e/nav.spec.ts` and
+  `e2e/tools-index.spec.ts` read `src/tools/manifest.json` and branch
+  on it: with a waiting Tool they assert the placeholder surface on the
+  FIRST waiting slug; with none they assert that the index carries NO
+  coming-soon badge and that every card links to its detail route, and
+  the placeholder-surface test is skipped **with a reason** (the surface
+  does not exist).
+
 ## Rules
 
 ### 1. `delivery.iframe` is mandatory (no implicit default)

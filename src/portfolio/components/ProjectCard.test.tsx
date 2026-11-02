@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { PortfolioFacet, PortfolioProject } from '../schema';
+import { KIND_LABEL } from '../vocabulary';
 import { ProjectCard } from './ProjectCard';
 
 /**
@@ -139,5 +140,14 @@ describe('ProjectCard category cue (Issue #411)', () => {
 				`data-category="${category}"`,
 			);
 		}
+	});
+
+	it('labels the facet-derived value as its kind, not as a role (Issue #813)', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['develop'])} />);
+		// The value comes from the project's facet, so the label may only
+		// name the kind of work. "Role" claimed a personal position the
+		// derivation never asserted.
+		expect(html).toContain(`>${KIND_LABEL}</dt>`);
+		expect(html).not.toContain('>Role</dt>');
 	});
 });

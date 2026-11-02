@@ -5,6 +5,7 @@
   `docs/runbook/issue-lifecycle.md`
 - owner 決定: **2026-11-02「窓を広げる」**（Issue #815）
 - 状態: 実装・検証済み。2026-10-31 の 132 件は履歴として保持し、#808 を台帳に追加した
+  （母集団は 2026-11-02 の別件で 133 件に訂正された: [`closure-population-correction-2026-11-02.md`](closure-population-correction-2026-11-02.md)）
 
 ## 1. 何が起きていたか
 

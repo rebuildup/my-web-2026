@@ -279,6 +279,7 @@
 				"urls": [
 					"/tools/ae-expression",
 					"/tools/color-palette",
+					"/tools/mic-level",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -323,6 +324,7 @@
 			"/tools",
 			"/tools/ae-expression",
 			"/tools/color-palette",
+			"/tools/mic-level",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",
@@ -1302,7 +1304,8 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/ae-expression"
+			"/tools/ae-expression",
+			"/tools/mic-level"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1317,6 +1320,11 @@
 				"code": "W004 public-url-added",
 				"severity": "warn",
 				"message": "Public URL added: /tools/ae-expression"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/mic-level"
 			}
 		]
 	}

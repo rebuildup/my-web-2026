@@ -1390,9 +1390,7 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/tools/ae-expression"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [],
@@ -1401,12 +1399,6 @@
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /tools/ae-expression"
-			}
-		]
+		"findings": []
 	}
 }

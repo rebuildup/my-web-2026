@@ -4,3 +4,6 @@
 [submodule "external/readmark"]
 	path = external/readmark
 	url = https://github.com/rebuildup/readmark.git
+[submodule "external/color-palette"]
+	path = external/color-palette
+	url = https://github.com/rebuildup/tool-color-palette.git

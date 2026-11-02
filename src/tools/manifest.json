@@ -106,20 +106,30 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-color-palette.git",
 				"submodule_path": "external/color-palette",
-				"pinned_sha": "0eb51503ba39712827497281ca489a379c8c912b",
+				"pinned_sha": "b3fed92bac4a6d32b48be21c35ad8b8239d4d5e5",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/color-palette/app",
+				"entry_html": "/tools/color-palette/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned tool-color-palette b3fed92: no external origin in index.html or src/**; the built bundle carries only React's own react.dev error-doc URL and w3.org XML-namespace strings, which are never requested; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build added upstream in tool-color-palette PR #6 (merge commit b3fed92): the repo now ships index.html / src/main.tsx / vite.config.ts and `bun run build` emits a static SPA into dist/. Vite base is './', so the emitted asset references stay relative and resolve under /tools/color-palette/app/. Measured at b3fed92: no external origin in index.html or src/** (no analytics, CDN or webfont fetch); the shipped bundle's only outbound host references are react.dev (React's error-documentation URL) and www.w3.org (XML namespace strings), recorded in quality/tool-artifact-inventory.json. The frame runs sandboxed without allow-same-origin (opaque origin), and the app guards every localStorage access with try/catch (src/components/ColorPaletteGenerator.tsx), so it keeps working with in-memory state there. Uses bun as package manager."
 		},
 		{
 			"slug": "sequential-png-preview",

@@ -48,22 +48,27 @@ return applyHtmlCachePolicy(request, secured);
 ### The deny list, and why it is not deny-all
 
 ```
-bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(),
-microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(),
+hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 ```
 
 Every listed feature has no plausible use on this site: hardware
 bridges (`bluetooth`, `hid`, `serial`, `usb`), capture devices
 (`camera`, `display-capture`, `geolocation`, `microphone`), and
-platform-gated products (`payment`, `xr-spatial-tracking`).
+platform-gated products (`payment`, `xr-spatial-tracking`). `downloads`
+is listed for the same reason as `microphone`: exactly one registered
+Tool writes a user-authored file from its frame (`ae-expression`, whose
+export button writes `expression.txt` / `expression.json`), so the
+capability is denied by default and granted to that Tool alone.
 
 A feature that is **not** listed keeps the browser default allowlist
-(`self`). That is deliberate: it means a future Tool that needs a new
-capability can be granted it per Tool without amending the host
-baseline first, and it keeps the baseline honest — every entry has to
-justify itself. `/admin` copies invitation URLs with
-`navigator.clipboard`; that works precisely because `clipboard-write`
-is not on the list.
+(`self`). That is deliberate: it keeps the baseline honest — every
+entry has to justify itself — but it also means a grant may only name
+a feature on this list, because a grant for an unlisted feature would
+be a no-op (`scripts/check-security-headers.mjs` rejects it). So a new
+capability requires this baseline to be amended first, and then granted
+per Tool. `/admin` copies invitation URLs with `navigator.clipboard`;
+that works precisely because `clipboard-write` is not on the list.
 
 The baseline applies to every **host** response: all Worker-generated
 responses, and the host-owned static documents under `/share/**`. It
@@ -133,6 +138,45 @@ Two findings, both load-bearing:
   `/share/*` (host-owned documents) and leaves the Tool namespace
   without a `Permissions-Policy` at all. Which Tool may actually ask is
   decided by the host route's `<iframe allow=…>`, driven by the manifest.
+
+### The second grant: `downloads` (ae-expression)
+
+`downloads` is the second declared grant (Issue #773), and it is the
+first one where the **sandbox** is the load-bearing half rather than
+the header. The `ae-expression` Tool's export button writes the
+generated expression as a file (`expression.txt` / `expression.json`)
+through `link.download`; a sandboxed frame without `allow-downloads`
+drops that download, so the Tool's own feature needs the token:
+
+```jsonc
+// src/tools/manifest.json — ae-expression
+"delivery": {
+  "iframe": {
+    "sandbox": "allow-scripts allow-downloads",
+    "referrer_policy": "no-referrer",
+    "allow": "downloads",
+    "sandbox_rationale": "…writes the generated expression as a file…"
+  }
+}
+```
+
+Measured 2026-11-03 in Chromium on the shipped route
+`/tools/ae-expression`, with the same artefact bytes in both frames:
+
+| Frame | `sandbox` | Download events |
+| --- | --- | --- |
+| the shipped iframe | `allow-scripts allow-downloads` | **1** (`expression.txt`, 111 B) |
+| control iframe | `allow-scripts` | **0** |
+
+That A/B is what makes the token the measured cause rather than a
+plausible story. The header half is comparatively inert: Chromium
+implements **no** `downloads` Permissions-Policy feature (measured —
+`downloads=()`, `downloads=(self …)` and `downloads=*` all leave the
+download working), so `public/_headers` states the host's decision and
+the sandbox token is what actually enables the export. The grant is
+still declared, because the embed policy (Issue #465) requires a
+conditional sandbox token to name a capability and carry a written
+reason, and because a future browser may implement the feature.
 
 ### Residual exposure of that choice
 

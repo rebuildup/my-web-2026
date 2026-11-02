@@ -10,6 +10,7 @@
 		"bluetooth",
 		"camera",
 		"display-capture",
+		"downloads",
 		"geolocation",
 		"hid",
 		"microphone",
@@ -19,5 +20,5 @@
 		"xr-spatial-tracking"
 	],
 	"granted_origin_token": "(self \"{origin}\")",
-	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide."
+	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a grant for it would be a no-op; the verifier rejects such a grant, which is why a new capability requires this baseline to be amended before a Tool can declare it. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide. downloads is listed for the same reason: exactly one registered Tool (ae-expression) writes a user-authored file from its frame, so the capability is denied by default and granted to that Tool alone. A grant may only name a listed feature (scripts/check-security-headers.mjs rejects a grant that is not on this list), so a new capability does require this baseline to be amended first."
 }

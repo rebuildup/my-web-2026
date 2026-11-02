@@ -127,12 +127,14 @@ describe('inspect — repository state', () => {
 	it('accepts the shipped public/_headers and manifest', () => {
 		const result = inspect();
 		assert.deepEqual(result.violations, []);
-		// The shipped state has exactly one Tool grant. If a second Tool
-		// starts declaring one, this assertion is the reminder to update
-		// the expectation rather than to widen the gate silently.
+		// The shipped state declares exactly two Tool grants: the
+		// microphone grant for mic-level and the download grant for
+		// ae-expression (Issue #773). If a third Tool starts declaring
+		// one, this assertion is the reminder to update the expectation
+		// rather than to widen the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			['mic-level'],
+			['ae-expression', 'mic-level'],
 		);
 	});
 
@@ -152,7 +154,7 @@ describe('inspect — repository state', () => {
 		// wildcard Tool rule instead of adding the per-slug one, so the
 		// capture device stops being a per-Tool decision.
 		const baseline =
-			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
+			'  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()';
 		const text = readHeadersText();
 		const ruleStart = text.indexOf('/tools/:slug/app/*');
 		const lineStart = text.indexOf(baseline, ruleStart);

@@ -66,21 +66,55 @@ describe('Tool embed policy — the live manifest', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('both served Tools declare allow-scripts + no-referrer', () => {
+	it('every served Tool declares allow-scripts + no-referrer, and any extra token is declared', () => {
 		const served = listAllTools().filter(
 			(
 				t,
 			): t is typeof t & {
 				delivery: {
 					kind: 'same_origin_static';
-					iframe?: { sandbox: string; referrer_policy: string };
+					iframe?: {
+						sandbox: string;
+						referrer_policy: string;
+						allow?: string;
+						sandbox_rationale?: string;
+					};
 				};
 			} => t.delivery.kind === 'same_origin_static',
 		);
 		expect(served.length).toBeGreaterThan(0);
 		for (const tool of served) {
-			expect(tool.delivery.iframe?.sandbox).toBe('allow-scripts');
-			expect(tool.delivery.iframe?.referrer_policy).toBe('no-referrer');
+			const iframe = tool.delivery.iframe;
+			expect(iframe?.sandbox).toBeDefined();
+			// `allow-scripts` is the baseline every frame must carry; a
+			// conditional token (e.g. `allow-downloads`, Issue #773) may
+			// be ADDED to it, but the baseline may never be dropped.
+			expect(iframe?.sandbox?.split(/\s+/)).toContain('allow-scripts');
+			expect(iframe?.referrer_policy).toBe('no-referrer');
+			// Every token beyond the baseline is a capability the host
+			// grants, so it must be named in `allow` and carry a written
+			// reason (Issue #465). The policy evaluator enforces the
+			// same rule; this assertion keeps the live manifest honest
+			// about which Tool asks for what.
+			const extra = (iframe?.sandbox ?? '')
+				.split(/\s+/)
+				.filter((token) => token.length > 0 && token !== 'allow-scripts');
+			if (extra.length === 0) continue;
+			expect(iframe?.allow, `${tool.slug} grants a token without an allow list`).toBeTruthy();
+			expect(iframe?.sandbox_rationale, `${tool.slug} grants a token without a reason`).toBeTruthy();
+			for (const token of extra) {
+				// The sandbox token names the capability (`allow-downloads`);
+				// the `allow` list names it the Permissions-Policy way
+				// (`downloads`). Either spelling is accepted, but the
+				// capability must be NAMED — an unnamed grant is a
+				// capability nobody reviewed.
+				const feature = token.replace(/^allow-/, '');
+				const grants = iframe?.allow?.split(/\s+/) ?? [];
+				expect(
+					grants.includes(token) || grants.includes(feature),
+					`${tool.slug}: sandbox token "${token}" is not named in delivery.iframe.allow`,
+				).toBe(true);
+			}
 		}
 	});
 

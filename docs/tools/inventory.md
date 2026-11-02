@@ -1,4 +1,4 @@
-# Tool inventory (Issue #80 — fresh state, 2026-09-27; #195 — readmark added 2026-09-29)
+# Tool inventory (Issue #80 — fresh state, 2026-09-27; #195 — readmark added 2026-09-29; #773 — ae-expression graduated to `same_origin_static` 2026-11-03)
 
 > Canonical inventory of the 15 standalone Tool repositories tracked in
 > `src/tools/manifest.json`. 14 of these are inherited from
@@ -49,15 +49,15 @@ declares no license), default branch `main` (except `tool-pi-game` =
 | `pomodoro` | [rebuildup/tool-pomodoro](https://github.com/rebuildup/tool-pomodoro) | `954cfd898dba6f46c8ef250d69b1b64245c0eecf` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `Notification`, `Audio` | `needs_tool_side_fix` |
 | `history-quiz` | [rebuildup/tool-history-quiz](https://github.com/rebuildup/tool-history-quiz) | `72328139de1ac5ceee84babbf76cd82899fde8c3` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (quiz state machine) | `needs_tool_side_fix` |
 | `pi-game` | [rebuildup/tool-pi-game](https://github.com/rebuildup/tool-pi-game) | `9e19ec5d63c84fad9be625b33b0455e922ba3570` | **`develop`** | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (typing game) | `needs_tool_side_fix` (note: default branch `develop`, not `main`) |
-| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `cd136e251ae7372143a0ee4af4c727324df47655` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `navigator.clipboard` | `needs_tool_side_fix` |
+| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `56bbbbd6174c1baee5b542565466f8154ad633ed` | `main` | MIT | pnpm (`pnpm-lock.yaml`, no `next` peer) | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`, `base: "./"`; Issue #6 / PR #7) | `navigator.clipboard` (with `document.execCommand("copy")` fallback), `URL.createObjectURL` + `link.download` (file export) | `same_origin_static` (graduated 2026-11-03, Issue #773: embedded from the host's own origin with `sandbox="allow-scripts allow-downloads"` — the export writes a file, and a sandboxed frame drops the download without that token; measured, see `docs/security/security-headers.md` §3) |
 | `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3` | `main` | MIT | pnpm + `bun test` (dep `next: ^16.3.0`) | NONE — Next.js component library | `navigator.mediaDevices.getUserMedia({ audio: true })` | `external_exception` (mic capture requires `https` + user gesture; the host grants it via `Permissions-Policy: microphone=(self "<serving origin>")` and `<iframe allow="microphone">` — see `docs/security/security-headers.md`; CSP is not the gate and is out of scope for #449) |
 
 ## Counts
 
 | classification | count |
 | --- | --- |
-| `same_origin_static` | 2 (ProtoType, readmark) |
-| `needs_tool_side_fix` | 12 |
+| `same_origin_static` | 3 (ProtoType, readmark, ae-expression) |
+| `needs_tool_side_fix` | 11 |
 | `external_exception` | 1 (mic-level) |
 | `not_integrable_yet` | 0 |
 | **total** | **15** |

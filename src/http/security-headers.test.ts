@@ -58,7 +58,7 @@ describe('permissionsPolicyValue', () => {
 
 	it('emits a stable, comma-separated value in deny-list order', () => {
 		expect(permissionsPolicyValue('https://rebuildup.dev')).toBe(
-			'bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()',
+			'bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()',
 		);
 	});
 });

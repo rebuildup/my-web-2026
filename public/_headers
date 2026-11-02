@@ -86,7 +86,7 @@
   # inbound embed policy for these documents.
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy: frame-ancestors 'self'
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 # ---------------------------------------------------------------------------
 # CORS — Tool iframes
 #
@@ -189,7 +189,21 @@
   # request time the way the Worker half does; the grant is still
   # origin-scoped, which is what keeps it off any other site that
   # embeds the Tool.
-  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: frame-ancestors 'self'
+
+/tools/ae-expression/app/*
+  # Document half of the grant declared by `delivery.iframe.allow` in
+  # the Tool manifest. The Tool's export button writes the generated
+  # expression as a file, so the frame is granted the download
+  # capability and nothing else. The frame itself still runs in an
+  # opaque origin (the sandbox does NOT carry `allow-same-origin`).
+  #
+  # Chromium implements no `downloads` Permissions-Policy feature
+  # (measured 2026-11-03: `downloads=()` does not block the download),
+  # so this header states the host's decision rather than enforcing it;
+  # the sandbox token `allow-downloads` is what enables the download.
+  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), downloads=(self "https://rebuildup.dev"), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
   Content-Security-Policy: frame-ancestors 'self'
 
 # ---------------------------------------------------------------------------

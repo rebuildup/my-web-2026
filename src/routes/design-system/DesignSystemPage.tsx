@@ -11,6 +11,7 @@ import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
 import { TableCode } from './sections/TableCode';
 import { Typography } from './sections/Typography';
+import type { DesignSystemTokenData } from './tokens';
 
 /**
  * DesignSystemPage — `/design-system` route surface (presentation only).
@@ -22,10 +23,13 @@ import { Typography } from './sections/Typography';
  *
  * Reading order:
  *   - Hero          (page title + intro)
- *   - 01 Color swatches    every `accent.*` + `bg.*` + `text.*` + `border.*`
- *                          token, rendered as its `base` / `_dark` pair on
- *                          the matching `bg.canvas` appearance, so both
- *                          appearances are visible at a glance.
+ *   - 01 Color surfaces   three content-classification colour fields
+ *                          (design / code / writing), the status row
+ *                          that BORROWS a classification colour, the
+ *                          ink-only operation row, and the token
+ *                          ledger. Colour is the subject here; the
+ *                          word, the shape (StateMark) and the
+ *                          position carry the meaning.
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
@@ -72,12 +76,12 @@ import { Typography } from './sections/Typography';
  * accent hex values — every color is sourced through the semantic
  * layer so the showcase stays accurate when the palette evolves.
  */
-export function DesignSystemPage() {
+export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
 		<>
 			<Hero />
 			<main id="design-system-main">
-				<ColorSection />
+				<ColorSection tokenData={tokenData} />
 				<TypographySection />
 				<SpacingSection />
 				<SurfaceSection />
@@ -212,19 +216,24 @@ function Hero() {
 	);
 }
 
-function ColorSection() {
+function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
-		<section aria-labelledby="design-system-color" className={sectionStyle}>
+		<section
+			aria-labelledby="design-system-color"
+			className={css({
+				paddingBlock: { base: '16', lg: '24' },
+				backgroundColor: 'bg.subtle',
+			})}
+			data-colour-section
+		>
 			<Container>
 				<SectionHeading
 					id="design-system-color"
 					eyebrow="01 — Color"
-					title="色 / Semantic tokens"
-					description="bg.* / text.* / border.* / accent.* の token を、base / _dark の対で並べます。各タイルの左半分が light、右半分が dark の canvas です。"
-					variant="spread"
-				>
-					<ColorSwatches />
-				</SectionHeading>
+					title="色 / Colour as surface"
+					description="色そのものが面です。分類は語・形・位置が担い、色は従属します。状態は分類色を借り、操作は墨です。"
+				/>
+				<ColorSwatches tokenData={tokenData} />
 			</Container>
 		</section>
 	);

@@ -44,7 +44,7 @@ export function publishedMedia(record: NotionRecord): readonly NotionMedia[] {
 
 function toMedia(record: NotionRecord, media: NotionMedia): PortfolioMedia {
 	return {
-		// Stable across syncs: the page id plus the key names the same asset.
+		// Stable across ingests: the page id plus the key names the same asset.
 		id: `${record.pageId}:${media.displayOrder}`,
 		r2Key: media.r2Key,
 		contentType: media.contentType,
@@ -73,7 +73,7 @@ function toLink(link: NotionRecord['links'][number]): PortfolioLink {
 /**
  * Project a record into the shape the public pages already render.
  *
- * `updatedAt` is Notion's `last_edited_time`, not the sync instant: the
+ * `updatedAt` is Notion's `last_edited_time`, not the ingest instant: the
  * page's ordering and its "last updated" line should move when the author
  * edits, not when the build ran.
  *

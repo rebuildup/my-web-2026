@@ -1,14 +1,17 @@
 # ADR-0018 — Notion を portfolio の CMS SoT とし、build-time で snapshot を取り込む
 
-- Status: **Accepted**（owner 決定 2026-11-01）
+- Status: **Accepted**（owner 決定 2026-11-01） / **Amended 2026-11-02**（Issue #814 —
+  「同期」ではなく「単発の書き込み + サイトは読み取りのみ」）
 - Date: 2026-11-01
 - Accepted on: 2026-11-01 — owner が「Accepted を選ぶ」と決定（総合監督経由で伝達）
 - Owner instruction: `.tmp/supervisor/portfolio/OWNER-2026-11-01.md`（build-time のみ /
   scheduled sync 禁止 / 編集可能性の実証 / 全件移行は不要）
-- Ticket: Issue #765（採用と同期基盤） / Issue #766（旧サイトからの代表例の移行）
+- Ticket: Issue #765（採用と取り込み基盤） / Issue #766（旧サイトからの代表例の移行） /
+  Issue #814（責務の言い換えと実行時依存の固定）
 - Target release: `release-0-8-1`（0.8.1）
 - Implemented at: `src/portfolio/notion/`（contract / publish / reader / generated
-  snapshot）、`scripts/sync-portfolio-notion.mjs`（sync）、
+  snapshot）、`scripts/sync-portfolio-notion.mjs`（単発の取り込み。ファイル名は
+  実行手順と既存の参照が指す識別子なので変えない）、
   `scripts/_notion-mapper.mjs`（Notion block → Markdown）、
   `scripts/_notion-transport.mjs`（Notion API read）
 - Companion docs:
@@ -24,6 +27,21 @@
 > 指示であり、この行はその**記録**であって認定ではない。
 > 決定内容（本文）は Proposed 時点から変えていない。§5 に残る未決事項は
 > Accepted の範囲外ではなく、実装側で順に解く対象である。
+
+> **2026-11-02 の更新（Issue #814）。** owner の言い直し:
+> 「厳密には同期ではない。書き換えは単発で行うし、サイト側は読み込みを行うだけでいい。」
+> この ADR が定める責務は、次の 2 つであり、それ以外を含まない。
+>
+> | 責務 | 主体 | いつ | 何を保証しないか |
+> | --- | --- | --- | --- |
+> | **書き込み（単発）** — Notion の database に内容を入れる | 人が 1 回実行する | 任意のタイミング | 定期的な一致、双方向の反映、次回実行の存在 |
+> | **読み取り** — サイトが公開データを読む | Worker / build | リクエスト時 / build 時 | Notion への到達性、編集の即時反映 |
+>
+> 「同期」は 2 つの store の一致を維持する責務を意味する。この系はその責務を
+> 持たないので、以下では同期という語を使わない（残る箇所は「こう呼ばない」と
+> 書いてある箇所だけである）。2 つの store は Notion（authoring）と D1（公開
+> データ）であり、一致は人間の単発操作と、build 時に取り込む committed
+> snapshot の review によって保たれる。自動で保たれるとは主張しない。
 
 ## 1. Context
 
@@ -58,11 +76,25 @@ owner は 2026-11-01 に「Notion を Portfolio の CMS の source of truth と�
 
 ### 2.1 Notion は **authoring の SoT** であり、公開時の runtime dependency ではない
 
-文章・タグ・リンク・メディア参照の正は Notion の database に置く。公開サイトは
-**リクエスト時に Notion を読まない**。`src/portfolio/notion/transport` に相当する
-通信コードは `scripts/` にのみ存在し、Worker の import graph に入らない。
+文章・タグ・リンク・メディア参照の正は Notion の database に置く。**書き込みは
+人が 1 回実行する単発の操作**であり、定期的な取り込みも、Notion から D1 への
+双方向の反映も存在しない。公開サイトは **リクエスト時に Notion を読まない**。
+`src/portfolio/notion/transport` に相当する通信コードは `scripts/` にのみ存在し、
+Worker の import graph に入らない。
 
-### 2.2 取得は **build-time のみ**。scheduled sync は作らない
+サイトの読み取り先は 2 つで、どちらも実行時の external call ではない。
+
+| 読み取り先 | いつ | 依存 |
+| --- | --- | --- |
+| D1 `portfolio_project` / `portfolio_link` / `portfolio_media` | リクエスト時 | Worker binding（`DB`） |
+| `src/portfolio/notion/generated/snapshot.json`（commit 済み） | build 時（Vite が bundle に inline） | リポジトリのファイル |
+
+Notion への実行時依存は 0 である — network call なし、binding なし、
+credential なし。この性質は `src/portfolio/notion/runtime-boundary.test.ts` が
+固定する（`fetch` / `NOTION_TOKEN` / provider endpoint が bundle 対象の
+モジュールに現れないこと）。
+
+### 2.2 取り込みは **build-time の単発実行のみ**。定期実行は作らない
 
 ```
 Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
@@ -76,8 +108,10 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 ```
 
 - 実行主体は **operator（またはリリース手順）**。`.github/workflows/*` に
-  portfolio 同期の workflow は置かない。`projects-sync.yml` と同じ形の定期
-  同期は **明示的に禁止**（owner 指示 2026-11-01 項目 4）。
+  portfolio の取り込みを実行する workflow は置かない。`projects-sync.yml` と
+  同じ形の定期実行は **明示的に禁止**（owner 指示 2026-11-01 項目 4）。
+  禁止しているのは「2 つの store の一致を自動で保つ仕組み」であり、その
+  名前が「同期」である。
 - 出力は **status-only**（件数・digest の先頭・理由コード）。本文・タイトル・
   token を stdout に書かない。
 - snapshot は commit され、ticket PR の差分として review される。差分が
@@ -105,11 +139,14 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 **沈黙して落とさない**ことが要点である。落とした段落は「作者が書かなかった
 段落」と区別がつかない。
 
-### 2.4 更新の伝播
+### 2.4 変更が公開面に届くまで
 
-1. owner が Notion で本文・property を編集する。
-2. operator が `node scripts/sync-portfolio-notion.mjs` を実行する
-   （`--dry-run` で先に確認できる）。
+**この手順は自動で走らない。** 下の 1〜5 のどこかで人が止めれば、公開面は
+そのまま古い内容を出し続ける。それがこの系の仕様である。
+
+1. owner が Notion で本文・property を編集する（サイトはまだ何も知らない）。
+2. operator が `node scripts/sync-portfolio-notion.mjs` を **1 回** 実行する
+   （`--dry-run` で先に確認できる）。「書き込み（単発）」はこの 1 回だけである。
 3. 内容 digest が変わっていれば `src/portfolio/notion/generated/snapshot.json`
    が書き換わる。変わっていなければ `unchanged` と表示し、書かない。
 4. 差分を commit し、PR を経て release branch → `main` に届く。
@@ -142,6 +179,13 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
   公開しない（`toProject` は `published` 以外で `null`）。
 - 権利未記録の asset は、反映後も公開されない（`src/legal/**` の判定を
   offline で通り、`rights: 'recorded'` 以外は URL を持たない）。
+  **この行は 2026-11-02 時点の `src/legal/**` の挙動を記述している。**
+  owner は 2026-11-02 に「旧サイトは全て移行する必要がある。権利がなんだとかは
+  無駄」「選別はいらない。全て公開する」と述べており、公開権限の置き場を
+  変える決定は Issue #811 の ADR が持つ（AGENTS.md §4 の順序により、
+  `src/legal/**` の変更はその ADR の着地後に行う）。#811 が着地したとき、
+  この項目は「未 review の asset も公開され、公開面がその状態を表示する」に
+  置き換わる。**この ADR はその置き換えを行わない。**
 
 ### 2.7 実行時は bundle された snapshot を読む（apply を挟まない）
 
@@ -234,7 +278,7 @@ token を使うため、refresh 経路は不要であり、ledger に refresh �
 
 - §4 の Cloudflare service は増やさない。KV / Queues / Workflows は不要。
 - `/integrations/*` は **404 のまま**。
-- `src/http/**` は inbound 境界のまま。sync は `scripts/**` に置く。
+- `src/http/**` は inbound 境界のまま。取り込みは `scripts/**` に置く。
 - D1 / R2 の binding と公開 prefix は変えない。
 - 旧サイト全件移行（#766）はこの ADR の範囲外。代表 2〜3 件で経路を証明する。
 

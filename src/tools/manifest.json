@@ -349,8 +349,10 @@
 				"artifact_path": "/tools/history-quiz/app",
 				"entry_html": "/tools/history-quiz/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
-					"referrer_policy": "no-referrer"
+					"sandbox": "allow-scripts allow-modals",
+					"referrer_policy": "no-referrer",
+					"allow": "modals",
+					"sandbox_rationale": "Reset calls `confirm()` (`history-quiz.html`), and a sandboxed frame without `allow-modals` refuses it: with `allow-scripts` alone the dialog never fires, `confirm()` returns false and the section is not cleared (measured A/B: docs/verification/tools/history-quiz-host-activation.md). `modals` is not a Permissions-Policy feature, so the `allow` attribute half is inert; the sandbox token is the enforced grant."
 				},
 				"privacy": {
 					"third_party_origins": [],
@@ -359,7 +361,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-history-quiz PR #6 (commit 024676693fd3d91401ddcacb1294ea988801c6eb = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `tsc -b && vite build`); LICENSE (MIT) present in the checkout. The upstream default branch `main` (72328139) still carries the Next.js-only component library — the standalone build lives on `release-0-1-0`, so `source.branch` records the branch the pinned SHA was drawn from. The quiz content is owned by the Tool repo (`public/history-quiz.html`, 89,935 B, ported from my-web-2025/public/history-quiz.html) and is shipped inside the artefact, so the frame fetches it relative to the document URL and needs no host-side file. Measured at the pin: `dist/index.html` references `./assets/...` relatively, the frame renders 20 sections / 426 blanks, an answer is graded correct/incorrect on user input, and the frame issues same-origin requests only. Known limitation: the upstream reset control calls `window.confirm()`, which a sandboxed frame without `allow-modals` refuses, so reset is inert in the host embed (grading and answer display are unaffected)."
+			"notes": "Standalone Vite build merged via rebuildup/tool-history-quiz PR #6 (commit 024676693fd3d91401ddcacb1294ea988801c6eb = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `tsc -b && vite build`); LICENSE (MIT) present in the checkout. The upstream default branch `main` (72328139) still carries the Next.js-only component library — the standalone build lives on `release-0-1-0`, so `source.branch` records the branch the pinned SHA was drawn from. The quiz content is owned by the Tool repo (`public/history-quiz.html`, 89,935 B, ported from my-web-2025/public/history-quiz.html) and is shipped inside the artefact, so the frame fetches it relative to the document URL and needs no host-side file. Measured at the pin: `dist/index.html` references `./assets/...` relatively, the frame renders 20 sections / 426 blanks, an answer is graded correct/incorrect on user input, and the frame issues same-origin requests only. The frame is granted exactly ONE capability beyond `allow-scripts`: `allow-modals`, because the reset control calls `confirm()` and a sandboxed frame refuses it otherwise — with `sandbox=\"allow-scripts\"` the dialog never fires and the section is not cleared, and with `allow-modals` added the same button raises the dialog and clearing works; that A/B is what makes the token the measured cause. Nothing else is granted: no `allow-same-origin`, no navigation, no popups, no storage."
 		},
 		{
 			"slug": "pi-game",

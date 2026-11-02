@@ -94,7 +94,7 @@ export interface ExampleNote {
 export interface AppliedExample {
 	/** Stable id — also the slug or the resource the example is about. */
 	id: string;
-	kind: 'tool' | 'api';
+	kind: 'tool' | 'api' | 'schema';
 	/** The subject as the committed record names it. */
 	subject: string;
 	/** The committed record the example was read from (repository-relative). */
@@ -432,25 +432,25 @@ export const usableProductExamples: readonly AppliedExample[] = [
 		],
 	},
 	{
-		id: 'fillgen',
-		kind: 'tool',
-		subject: 'fillgen',
-		record: 'src/tools/manifest.json',
-		pointer: 'tools[slug=fillgen]',
+		id: 'host-disabled',
+		kind: 'schema',
+		subject: 'delivery.kind = host_disabled',
+		record: 'src/tools/manifest.schema.json',
+		pointer: 'delivery.kind の enum ／ delivery.disabled_reason',
 		facts: [
 			{ label: 'delivery.kind', value: 'host_disabled' },
+			{ label: 'disabled_reason', value: 'Required when kind = host_disabled.' },
 			{ label: 'classification', value: 'needs_tool_side_fix' },
-			{ label: 'license', value: 'MIT' },
 		],
 		notes: [
 			{
 				stageId: 'acquire',
 				evidence:
-					'manifest が `delivery.kind: host_disabled` と `disabled_reason` に「Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.」を宣言している。',
+					'schema が `delivery.kind` の enum に `host_disabled` を持ち、`delivery.disabled_reason` を「Required when kind = host_disabled.」として要求している。',
 				gap: null,
 				verdict: '不適合',
 				nextAction:
-					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と entry HTML が manifest に載る）。',
+					'記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と entry HTML が manifest に載る）。',
 			},
 			{
 				stageId: 'operate',
@@ -458,15 +458,16 @@ export const usableProductExamples: readonly AppliedExample[] = [
 				gap: '利用者が入るべき入口が存在しない。',
 				verdict: '不適合',
 				nextAction:
-					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と操作の入口が manifest に載る）。',
+					'記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と操作の入口が manifest に載る）。',
 			},
 			{
 				stageId: 'explain',
-				evidence: '`disabled_reason` が「なぜ公開できないか」を説明している。',
+				evidence:
+					'`disabled_reason` が「なぜ公開できないか」を書く欄として schema に定義されている。',
 				gap: null,
 				verdict: '不適合',
 				nextAction:
-					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（対象とライセンスの説明が manifest に載る）。',
+					'記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（対象とライセンスの説明が manifest に載る）。',
 			},
 			{
 				stageId: 'recover',
@@ -474,16 +475,16 @@ export const usableProductExamples: readonly AppliedExample[] = [
 				gap: '失敗した利用者に「待つ」以外の復帰手段が無い。',
 				verdict: '不適合',
 				nextAction:
-					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布に失敗したときの表示が manifest に載る）。',
+					'記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布に失敗したときの表示が manifest に載る）。',
 			},
 			{
 				stageId: 'retire',
 				evidence:
-					'`disabled_reason` が解禁の条件（Tool リポジトリ側に standalone Vite build path を追加する）を書いている。',
+					'`disabled_reason` が解禁の条件（Tool リポジトリ側に standalone Vite build path を追加する）を書く欄である。',
 				gap: '終了の告知は該当しない（そもそも未公開）。',
 				verdict: '不適合',
 				nextAction:
-					'manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（解禁の条件と移行先が manifest に載る）。',
+					'記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（解禁の条件と移行先が manifest に載る）。',
 			},
 		],
 	},
@@ -564,12 +565,12 @@ export const usableProductSections: readonly PreviewSection[] = [
 		bullets: [],
 	},
 	{
-		id: 'example-fillgen',
-		heading: '反例 — 公開できないTool（fillgen）',
+		id: 'example-host-disabled',
+		heading: '反例 — 公開できない記録（delivery.kind = host_disabled）',
 		kind: 'example',
-		exampleId: 'fillgen',
+		exampleId: 'host-disabled',
 		paragraphs: [
-			'同じ manifest が「公開できない」ことも記録できる。manifest が host_disabled として持つ記録は、5 段階のどの段階で出口が閉じているかを語れる。（反例の題材は 2026-11-03 に history-quiz から fillgen へ替えた。history-quiz は upstream の standalone build（release-0-1-0 / 0246766）で same_origin_static になり、「公開できない Tool」という反例的前提を満たさなくなったため。）',
+			'同じ manifest が「公開できない」ことも記録できる。`delivery.kind = host_disabled` の記録は、5 段階のどの段階で出口が閉じているかを語れる。ここでは特定の Tool ではなく、記録形そのものを schema から読む（どの Tool がこの形を持つかは manifest が決める。2026-11-03 時点で公開中の Tool はすべて same_origin_static である。以前この節は history-quiz、次いで fillgen を題材にしていたが、どちらも standalone build が載って公開されたため、公開状態に依存しない記録形へ引き上げた）。',
 		],
 		bullets: [],
 	},

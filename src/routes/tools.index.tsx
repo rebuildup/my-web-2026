@@ -193,6 +193,36 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	'qr-generator': {
+		// Same namespace reasoning as the entries above: a host-rendered
+		// thumbnail must not sit inside the Tool's own artifact tree.
+		src: '/tool-previews/qr-generator.webp',
+		alt: 'QR Generator の画面。左に入力設定・QRパラメータ・色の設定、右に生成結果パネル（初期状態はデータなし）が並ぶ。',
+		// The capture is the Tool FRAME's box at the script's
+		// 1440 × 900 context, scaled to 1200 px wide. The numbers are
+		// the committed file's real dimensions (measured), so a stale
+		// pair cannot reserve the wrong box and shift the card on load.
+		width: 1200,
+		height: 669,
+	},
+	'text-counter': {
+		src: '/tool-previews/text-counter.webp',
+		alt: 'Text Counter の画面。テキスト入力欄と、文字数・単語数・行数・バイト数・文字種別（かな・漢字など）の集計結果が並ぶ。',
+		width: 1200,
+		height: 669,
+	},
+	'sequential-png-preview': {
+		src: '/tool-previews/sequential-png-preview.webp',
+		alt: 'Sequential PNG Preview の画面。複数ファイル・フォルダ・ZIP の読み込みタブと、PNG ファイルをドロップする領域が並ぶ。',
+		width: 1200,
+		height: 669,
+	},
+	svg2tsx: {
+		src: '/tool-previews/svg2tsx.webp',
+		alt: 'SVG to TSX の画面。SVGの入力欄、変換オプションのトグル、TSXの出力ペインが並ぶ。',
+		width: 1200,
+		height: 669,
+	},
 };
 
 function ToolsIndexRoute() {

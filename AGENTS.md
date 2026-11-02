@@ -739,9 +739,11 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   `pnpm run issue:closure:check` (offline, part of `validate:fast`) and
   `pnpm run issue:closure:audit` (network, CI step). The canonical
   procedure is [`docs/runbook/issue-lifecycle.md`](docs/runbook/issue-lifecycle.md).
-- Background for the rule: the 2026-10-31 sweep closed 132 Issues with
+- Background for the rule: the 2026-10-31 sweep closed 133 Issues with
   one templated comment; the per-Issue audit is
-  `docs/verification/backlog/closure-audit-2026-10-31.md`.
+  `docs/verification/backlog/closure-audit-2026-10-31.md` (the population
+  was corrected from 132 to 133 on 2026-11-02 — see
+  `docs/verification/backlog/closure-population-correction-2026-11-02.md`).
 
 ## 7. Recovery
 

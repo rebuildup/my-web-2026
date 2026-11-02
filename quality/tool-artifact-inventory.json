@@ -91,22 +91,22 @@
 			}
 		},
 		"text-counter": {
-			"pinned_sha": "5371479f6b49e2139424ebb9388287cc5e1a6e03",
+			"pinned_sha": "b0c7ba203df7d822a87387d367fd1415d13382e6",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "15f4d17afe35f7d32f264db1ee30bc69b943669daa54d842a6c73fbd82c9a3cb",
+				"runtime": ["js-tiktoken", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"color-palette": {
@@ -129,41 +129,41 @@
 			}
 		},
 		"sequential-png-preview": {
-			"pinned_sha": "2bcad8a121f0b058d3f17ac900c76bcc4d47a34e",
+			"pinned_sha": "ddec2729d8b244ebab3370d2eccb95be25e2a43a",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "c42dc586316869a6f388ecdde1cfb62ca649dcd2bf4639df32285bbdbab43206",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"svg2tsx": {
-			"pinned_sha": "4e85e922d87bfd75c62d4e0b6cfe595b8289368a",
+			"pinned_sha": "6289e2c89a484c3a31bd9b8cba368d6b38c414a0",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "c676fb2b9290d33d8c52f35af84504d474bee81f2b9c5e9584c3552035cfcbc5",
+				"runtime": ["dompurify", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["example.com", "react.dev", "www.w3.org"]
 			}
 		},
 		"business-mail-block": {
@@ -224,22 +224,22 @@
 			}
 		},
 		"qr-generator": {
-			"pinned_sha": "19fd50bb32d4cc1fd1e6129de32a6771c2e6667f",
+			"pinned_sha": "0df1a99e32cea8d34a56f41dbc580db3e494c8d3",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "75e58cc99b4f60b2d884b81a3174e5b71e5025f0703b68d5b6d34f3368a79980",
+				"runtime": ["qrcode", "qrcode.react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"pomodoro": {

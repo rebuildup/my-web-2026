@@ -81,23 +81,34 @@
 			"slug": "text-counter",
 			"display_name": "Text Counter",
 			"description_ja": "入力したテキストの文字数・単語数・行数・段落数・UTF-8 バイト数を数え、js-tiktoken によるトークン数と日本語の文字種別の内訳も表示するツール。",
+			"description": "Count characters, words, lines, paragraphs, UTF-8 bytes and tokens (js-tiktoken) for pasted text, with a Japanese character-type breakdown.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-text-counter.git",
 				"submodule_path": "external/text-counter",
-				"pinned_sha": "5371479f6b49e2139424ebb9388287cc5e1a6e03",
+				"pinned_sha": "b0c7ba203df7d822a87387d367fd1415d13382e6",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library (no vite.config, no index.html). Embedding blocked until the Tool repo adds a standalone Vite build path (Issue #81 follow-up after pilot)."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/text-counter/app",
+				"entry_html": "/tools/text-counter/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned text-counter b0c7ba20: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-text-counter PR #6 (commit b0c7ba203df7d822a87387d367fd1415d13382e6 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
 		},
 		{
 			"slug": "color-palette",
@@ -135,45 +146,67 @@
 			"slug": "sequential-png-preview",
 			"display_name": "Sequential PNG Preview",
 			"description_ja": "連番 PNG を読み込んでアニメーションとして再生し、GIF や MP4 に書き出せるプレビューツール。",
+			"description": "Load a sequence of numbered PNGs, play them as an animation, and export GIF or MP4.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-sequential-png-preview.git",
 				"submodule_path": "external/sequential-png-preview",
-				"pinned_sha": "2bcad8a121f0b058d3f17ac900c76bcc4d47a34e",
+				"pinned_sha": "ddec2729d8b244ebab3370d2eccb95be25e2a43a",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/sequential-png-preview/app",
+				"entry_html": "/tools/sequential-png-preview/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned sequential-png-preview ddec2729: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-sequential-png-preview PR #5 (commit ddec2729d8b244ebab3370d2eccb95be25e2a43a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
 		},
 		{
 			"slug": "svg2tsx",
 			"display_name": "SVG to TSX",
 			"description_ja": "SVG を React の TSX コンポーネントに変換するツール。色の変数化、パスの最適化、不要属性の削除を切り替えられます。",
+			"description": "Convert an SVG into a React TSX component, with toggles for colour variables, path optimisation and dropping unnecessary attributes.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-svg2tsx.git",
 				"submodule_path": "external/svg2tsx",
-				"pinned_sha": "4e85e922d87bfd75c62d4e0b6cfe595b8289368a",
+				"pinned_sha": "6289e2c89a484c3a31bd9b8cba368d6b38c414a0",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm"
+				"package_manager": "bun"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/svg2tsx/app",
+				"entry_html": "/tools/svg2tsx/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned svg2tsx 6289e2c: no FIXED external origin in index.html or src/** (the only absolute URL is the input placeholder https://example.com/image.svg, which is text, not a request); the SVG-URL field does fetch() a URL the visitor pastes (src/components/SVGInput.tsx:71) — user-initiated, so no fixed origin exists to declare; no browser-storage usage; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-svg2tsx PR #6 (commit 6289e2c89a484c3a31bd9b8cba368d6b38c414a0 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed). Runtime note (measured): SVGInput.tsx fetch()es a URL the visitor pastes — user-initiated contact to an arbitrary origin; inside the sandbox that fetch is CORS-constrained (opaque origin) and was NOT exercised here."
 		},
 		{
 			"slug": "business-mail-block",
@@ -245,10 +278,11 @@
 			"slug": "qr-generator",
 			"display_name": "QR Generator",
 			"description_ja": "テキストや URL から QR コードを生成するツール。色やパラメータを調整し、PNG / SVG で保存できます。",
+			"description": "Generate a QR code from text or a URL and save it as PNG or SVG, with adjustable colours and parameters.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-qr-generator.git",
 				"submodule_path": "external/qr-generator",
-				"pinned_sha": "19fd50bb32d4cc1fd1e6129de32a6771c2e6667f",
+				"pinned_sha": "0df1a99e32cea8d34a56f41dbc580db3e494c8d3",
 				"branch": "main"
 			},
 			"build": {
@@ -257,11 +291,21 @@
 				"package_manager": "pnpm"
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/qr-generator/app",
+				"entry_html": "/tools/qr-generator/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured at pinned qr-generator 0df1a99: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+				}
 			},
-			"classification": "needs_tool_side_fix",
-			"license": "MIT"
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Standalone Vite build merged via rebuildup/tool-qr-generator PR #4 (commit 0df1a99e32cea8d34a56f41dbc580db3e494c8d3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
 		},
 		{
 			"slug": "pomodoro",

@@ -7,3 +7,15 @@
 [submodule "external/color-palette"]
 	path = external/color-palette
 	url = https://github.com/rebuildup/tool-color-palette.git
+[submodule "external/qr-generator"]
+	path = external/qr-generator
+	url = https://github.com/rebuildup/tool-qr-generator.git
+[submodule "external/text-counter"]
+	path = external/text-counter
+	url = https://github.com/rebuildup/tool-text-counter.git
+[submodule "external/sequential-png-preview"]
+	path = external/sequential-png-preview
+	url = https://github.com/rebuildup/tool-sequential-png-preview.git
+[submodule "external/svg2tsx"]
+	path = external/svg2tsx
+	url = https://github.com/rebuildup/tool-svg2tsx.git

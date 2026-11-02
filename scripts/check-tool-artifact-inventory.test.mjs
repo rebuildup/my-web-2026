@@ -338,13 +338,9 @@ describe('the gate over this repository', () => {
 	// Submodules are only present when the tree was cloned with
 	// `--recursive` (CI does; a fresh shallow clone may not), so the
 	// steady-state assertion runs where the evidence can be read at all.
-	// The shipped count follows the submodules that are actually
-	// checked out: a `same_origin_static` Tool without a checkout is
-	// reported as inventory-only, not as shipped.
-	const shippedSubmodules = ['prototype', 'readmark', 'color-palette'].filter((slug) =>
-		existsSync(join(repoRoot, `external/${slug}/.git`)),
-	);
-	const submodulesPresent = shippedSubmodules.length === 3;
+	const submodulesPresent =
+		existsSync(join(repoRoot, 'external/prototype/.git')) &&
+		existsSync(join(repoRoot, 'external/readmark/.git'));
 
 	it(
 		'reports every shipped Tool as verified against the reviewed record',
@@ -352,9 +348,19 @@ describe('the gate over this repository', () => {
 		() => {
 			const result = runGate([]);
 			assert.equal(result.status, 0, result.stderr);
-			// A passing run writes its block to stdout.
-			assert.match(result.stdout, new RegExp(`${shippedSubmodules.length} shipped`));
-			assert.match(result.stdout, new RegExp(`${shippedSubmodules.length} pass`));
+			// A passing run writes its block to stdout. The count is derived
+			// from the same fact the gate counts (`shipped` = a checkout with
+			// `.git` + `package.json`), so activation PRs (#817 was the one
+			// that froze "2") do not have to remember this fixture.
+			const manifest = JSON.parse(readFileSync(join(repoRoot, 'src/tools/manifest.json'), 'utf8'));
+			const shipped = manifest.tools.filter(
+				(tool) =>
+					existsSync(join(repoRoot, tool.source.submodule_path, '.git')) &&
+					existsSync(join(repoRoot, tool.source.submodule_path, 'package.json')),
+			).length;
+			assert.ok(shipped > 0, 'the fixture needs at least one checkout');
+			assert.match(result.stdout, new RegExp(`${shipped} shipped`));
+			assert.match(result.stdout, new RegExp(`${shipped} pass`));
 			assert.match(result.stdout, /Result: PASS/);
 		},
 	);

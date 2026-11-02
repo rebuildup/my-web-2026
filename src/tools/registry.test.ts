@@ -100,11 +100,18 @@ describe('Tool Registry — public surface', () => {
 	});
 
 	it('host_disabled Tools never appear in listPublicTools', () => {
-		// text-counter is currently host_disabled. If this fails, either
-		// text-counter flipped to same_origin_static / external_exception
-		// (and the test should be updated) or listPublicTools regressed.
+		// Derived from the manifest instead of one frozen slug: Issue #817
+		// activated text-counter (and three more), which is exactly the
+		// "the test should be updated" branch this comment used to name.
+		// Whichever Tools are disabled stay absent, and a regression (a
+		// host_disabled slug leaking into the public list) still fails for
+		// whichever slug is disabled at the time.
 		const publicSlugs = new Set(listPublicTools().map((t) => t.slug));
-		assert.ok(!publicSlugs.has('text-counter'), 'text-counter is host_disabled');
+		const disabled = listAllTools().filter((t) => t.delivery.kind === 'host_disabled');
+		assert.ok(disabled.length > 0, 'the fixture needs at least one host_disabled Tool');
+		for (const tool of disabled) {
+			assert.ok(!publicSlugs.has(tool.slug), `${tool.slug} is host_disabled`);
+		}
 	});
 
 	it('ProtoType summary strips private fields', () => {
@@ -162,7 +169,12 @@ describe('Tool Registry — public surface', () => {
 	});
 
 	it('returns undefined for a host_disabled slug', () => {
-		assert.equal(getPublicTool('text-counter'), undefined);
+		// Same derivation as above: assert against whichever Tool the
+		// manifest currently withholds, so an activation PR does not have
+		// to remember this fixture.
+		const disabled = listAllTools().find((t) => t.delivery.kind === 'host_disabled');
+		assert.ok(disabled, 'the fixture needs at least one host_disabled Tool');
+		assert.equal(getPublicTool(disabled.slug), undefined);
 	});
 
 	it('returns undefined for an unknown slug', () => {

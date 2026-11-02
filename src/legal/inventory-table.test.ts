@@ -70,12 +70,12 @@ describe('faceValueObservations', () => {
 });
 
 describe('assetInventoryTable', () => {
-	it('puts the record id in the row-header column and the DERIVED decision in a cell', () => {
+	it('puts the record id in the row-header column and the DERIVED status in a cell', () => {
 		const table = assetInventoryTable([baseRecord()]);
 
 		expect(table.columns.map((column) => column.key)).toEqual([
 			'record',
-			'decision',
+			'status',
 			'kind',
 			'spdx',
 			'covers',
@@ -87,15 +87,15 @@ describe('assetInventoryTable', () => {
 		expect(table.columns[0]?.label).toBe('記録 id');
 		expect(table.rows[0]?.key).toBe('r');
 		expect(table.rows[0]?.cells.record).toBe('r');
-		expect(table.rows[0]?.cells.decision).toBe('公開可 / publishable');
+		expect(table.rows[0]?.cells.status).toBe('根拠を確認済み / reviewed');
 		expect(table.rows[0]?.cells.spdx).toBe('MIT');
 		expect(table.rows[0]?.cells.covers).toBe('public/fixtures/**');
 	});
 
-	it('shows the derived decision, never the declared publication state', () => {
+	it('shows the derived status, never the declared publication state', () => {
 		const held = baseRecord({
-			// Bundled third-party bytes with no recorded licence is the hold
-			// case (`L018`), and unverified rights are `L017`.
+			// Bundled third-party bytes with no recorded licence is the
+			// unreviewed case (`L018`), and unverified rights are `L017`.
 			origin: 'unknown-provenance',
 			license: {
 				spdx: 'NOASSERTION',
@@ -110,11 +110,11 @@ describe('assetInventoryTable', () => {
 			publication: 'published',
 		});
 		const table = assetInventoryTable([held]);
-		expect(table.rows[0]?.cells.decision).toBe('保留 / hold');
+		expect(table.rows[0]?.cells.status).toBe('未レビュー / unreviewed');
 		// The row agrees with the gate because both call the same function.
-		expect(table.rows[0]?.cells.decision).toBe(
-			evaluateAssetLicense(held, faceValueObservations([held])).decision === 'hold'
-				? '保留 / hold'
+		expect(table.rows[0]?.cells.status).toBe(
+			evaluateAssetLicense(held, faceValueObservations([held])).evidenceStatus === 'unreviewed'
+				? '未レビュー / unreviewed'
 				: 'other',
 		);
 	});
@@ -153,6 +153,9 @@ describe('assetInventoryTable', () => {
 			records,
 			auditedFiles: ['public/fixtures/a.png'],
 			observations: faceValueObservations(records),
+			// No owner publication decision is recorded for these fixtures,
+			// so an unreviewed asset would be a warning, not a clearance.
+			authority: { publishesUnreviewed: false, source: null, scope: [] },
 		});
 		const table = assetInventoryTable(records);
 		expect(table.rows).toHaveLength(result.summary.records);

@@ -1,0 +1,20 @@
+{
+	"schema": "asset-license-publication-decision.v1",
+	"issue": "#811",
+	"decidedOn": "2026-11-02",
+	"ownerConfirmation": "confirmed",
+	"decision": "publish-unreviewed-with-disclosure",
+	"quote": "旧サイトは全て移行する必要がある。権利がなんだとかは無駄 / 選別はいらない。全て公開する。",
+	"source": "docs/domain/portfolio-migration-decisions.md",
+	"publications": [
+		{
+			"id": "legacy-portfolio-2025-corpus",
+			"title": "旧サイト my-web-2025 の作品（Issue #811 で移行する 60 件）とその添付メディア",
+			"publication": "published",
+			"disclosure": {
+				"source": "src/portfolio/components/PortfolioEvidenceNotice.tsx",
+				"marker": "data-evidence-status=\"unreviewed\""
+			}
+		}
+	]
+}

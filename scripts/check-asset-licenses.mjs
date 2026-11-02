@@ -32,7 +32,7 @@
  *
  * The rules themselves live in `src/legal/contract.ts`, so this script,
  * the review screen (`src/legal/AssetLicenseReview.tsx`) and the tests
- * cannot disagree about what "publishable" means.
+ * cannot disagree about what "evidence status" means.
  *
  * Severity contract
  * -----------------
@@ -40,12 +40,25 @@
  *           records claiming one file, evidence that is missing or has
  *           drifted, a licence id that cannot mean anything here) and a
  *           record whose shape is unusable.
- *   warn  → review, do not block. Chiefly `L010`: an asset the contract
- *           holds is still declared published. Whether to unpublish it
- *           is an owner publication decision, so the gate keeps it
- *           visible every run instead of resolving it here.
- *   info  → the state itself (`hold`, `provider-terms`), recorded so a
- *           reader of the report sees why a decision is what it is.
+ *   warn  → review, do not block. Chiefly `L010` (a record that
+ *           contradicts the repository's own facts is still declared
+ *           published) and `L019` (an unreviewed asset is published
+ *           outside the owner's publication decision). Both are owner
+ *           questions, so the gate keeps them visible every run
+ *           instead of resolving them here.
+ *   info  → the state itself (`unreviewed`, `provider-terms`), recorded
+ *           so a reader of the report sees why a status is what it is.
+ *
+ * Fail-visible (ADR-0019 §2.1 / §2.3)
+ * -----------------------------------
+ * An unreviewed asset does NOT fail this gate: the owner decides what
+ * is published, and the repository records that decision in
+ * `quality/asset-license-publication-decision.json`. What DOES fail is
+ * hiding the state: every publication the decision covers must declare
+ * where its "unreviewed" status is shown (`L022`), and the gate checks
+ * that the named source file really carries that marker. The gate is
+ * therefore fail-visible, not fail-open: silence about the state is an
+ * error, the state itself is not.
  *
  * Properties that make the output safe to paste into a PR
  * ---------------------------------------------------------
@@ -92,6 +105,170 @@ const repoRoot = resolve(here, '..');
 
 /** The reviewed record: the only place a human records what they saw. */
 export const RECORD_RELATIVE_PATH = 'quality/asset-license-inventory.json';
+
+/**
+ * The owner's publication decision (ADR-0019 §2.1).
+ *
+ * It lives in the repository, not in an environment variable, because a
+ * flag that can be flipped at run time is not a decision — it is a
+ * switch. The file records WHO decided, WHEN, in WHICH words, and
+ * WHERE the "unreviewed" status is shown for every publication the
+ * decision covers.
+ */
+export const PUBLICATION_DECISION_RELATIVE_PATH = 'quality/asset-license-publication-decision.json';
+export const PUBLICATION_DECISION_SCHEMA = 'asset-license-publication-decision.v1';
+
+/**
+ * Read the owner's publication decision.
+ *
+ * A missing file is NOT an error: it means "no decision is recorded",
+ * and the contract then keeps the old question for anything the
+ * decision would have covered. A malformed file IS an error — a
+ * decision that cannot be read cannot authorise a publication.
+ */
+export function readPublicationDecision(root, relativePath = PUBLICATION_DECISION_RELATIVE_PATH) {
+	const full = join(root, relativePath);
+	if (!existsSync(full)) {
+		return {
+			present: false,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: [],
+		};
+	}
+	let value;
+	try {
+		value = JSON.parse(readFileSync(full, 'utf8'));
+	} catch {
+		return {
+			present: true,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: ['decision file is not valid JSON'],
+		};
+	}
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		return {
+			present: true,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: ['decision file is not an object'],
+		};
+	}
+	const problems = [];
+	if (value.schema !== PUBLICATION_DECISION_SCHEMA) {
+		problems.push(`decision schema must be "${PUBLICATION_DECISION_SCHEMA}"`);
+	}
+	if (value.ownerConfirmation !== 'confirmed') {
+		problems.push('decision ownerConfirmation must be "confirmed"');
+	}
+	if (typeof value.decidedOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.decidedOn)) {
+		problems.push('decision decidedOn must be YYYY-MM-DD');
+	}
+	if (typeof value.quote !== 'string' || value.quote.trim().length === 0) {
+		problems.push("decision quote must carry the owner's own words");
+	}
+	if (typeof value.source !== 'string' || value.source.trim().length === 0) {
+		problems.push('decision source must name the document that records the decision');
+	}
+	if (!Array.isArray(value.publications)) {
+		problems.push('decision publications must be an array');
+	}
+	const publications = [];
+	const seen = new Set();
+	for (const [index, entry] of (value.publications ?? []).entries()) {
+		const at = `publications[${index}]`;
+		if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+			problems.push(`${at} is not an object`);
+			continue;
+		}
+		if (typeof entry.id !== 'string' || entry.id.trim().length === 0) {
+			problems.push(`${at}.id must be a non-empty string`);
+			continue;
+		}
+		if (seen.has(entry.id)) problems.push(`${at}.id is listed twice`);
+		seen.add(entry.id);
+		const disclosure = entry.disclosure;
+		if (typeof disclosure !== 'object' || disclosure === null) {
+			problems.push(`${at}.disclosure must be an object`);
+			continue;
+		}
+		if (
+			typeof disclosure.source !== 'string' ||
+			disclosure.source.trim().length === 0 ||
+			disclosure.source.startsWith('/') ||
+			disclosure.source.includes('..')
+		) {
+			problems.push(`${at}.disclosure.source must be a repository-relative path`);
+			continue;
+		}
+		if (typeof disclosure.marker !== 'string' || disclosure.marker.trim().length === 0) {
+			problems.push(`${at}.disclosure.marker must name the marker the surface renders`);
+			continue;
+		}
+		publications.push({
+			id: entry.id,
+			title: typeof entry.title === 'string' ? entry.title : entry.id,
+			publication: entry.publication === 'published' ? 'published' : 'unpublished',
+			disclosure: { source: disclosure.source, marker: disclosure.marker },
+		});
+	}
+	return {
+		present: true,
+		publishesUnreviewed: value.decision === 'publish-unreviewed-with-disclosure',
+		source: typeof value.source === 'string' ? value.source : null,
+		publications,
+		problems,
+	};
+}
+
+/**
+ * The fail-visible check (ADR-0019 §2.5).
+ *
+ * Every publication the owner's decision covers must say, in the shipped
+ * source, that its assets are unreviewed. The gate reads the named file
+ * and looks for the named marker: a decision that points at a file which
+ * no longer carries the marker is a HIDDEN state, and hiding it is the
+ * error — not the absence of a rights record.
+ */
+export function checkPublicationDisclosures(root, decision) {
+	const findings = [];
+	for (const publication of decision.publications) {
+		if (publication.publication !== 'published') continue;
+		const full = join(root, publication.disclosure.source);
+		if (!existsSync(full)) {
+			findings.push({
+				code: 'L022',
+				severity: 'error',
+				subject: publication.id,
+				message: `未レビュー資産の表示場所 "${publication.disclosure.source}" がリポジトリに存在しません。`,
+				remedy:
+					'表示を実装するか、決定記録の表示場所を正しいファイルに直す（未レビューであることは隠せない）。',
+			});
+			continue;
+		}
+		let text;
+		try {
+			text = readFileSync(full, 'utf8');
+		} catch {
+			text = '';
+		}
+		if (!text.includes(publication.disclosure.marker)) {
+			findings.push({
+				code: 'L022',
+				severity: 'error',
+				subject: publication.id,
+				message: `未レビュー資産の表示場所 "${publication.disclosure.source}" に印 "${publication.disclosure.marker}" がありません。`,
+				remedy:
+					'公開面に未レビューである旨を表示する（ADR-0019 §2.5）。表示しないまま公開することは不可。',
+			});
+		}
+	}
+	return findings;
+}
 
 /**
  * The verbatim half of the audited scope.
@@ -444,7 +621,7 @@ const SEVERITY_MARK = { error: 'ERROR', warn: 'WARN ', info: 'INFO ' };
 /**
  * Status-only report text.
  *
- * One line per record (id / kind / decision / files / licence / origin)
+ * One line per record (id / kind / evidence status / files / licence / origin)
  * and one line per finding. A licence evidence path is printed as a path;
  * a provider reference is printed as a hostname, because the path or the
  * query of someone else's URL is not this gate's business.
@@ -466,7 +643,7 @@ export function renderConsoleReport({
 	}
 	for (const review of reviews) {
 		lines.push(
-			`  ${review.decision.padEnd(15)} ${review.id.padEnd(28)} ${review.kind.padEnd(9)} ${String(review.files.length).padStart(3)} files  ${review.spdx.padEnd(12)} ${review.origin}`,
+			`  ${review.evidenceStatus.padEnd(15)} ${review.id.padEnd(28)} ${review.kind.padEnd(9)} ${String(review.files.length).padStart(3)} files  ${review.spdx.padEnd(12)} ${review.origin}`,
 		);
 	}
 	for (const item of findings) {
@@ -492,7 +669,7 @@ export function renderMarkdownReport({
 		`- 判定: **${verdict}** / 記録: \`${recordPath}\` / 監査対象ファイル: ${auditedFileCount}`,
 	);
 	lines.push(
-		`- 資産記録 ${summary.records} 件（公開可 ${summary.publishable} / 保留 ${summary.hold} / 提供者条件 ${summary.providerTerms}）`,
+		`- 資産記録 ${summary.records} 件（根拠を確認済み ${summary.reviewed} / 未レビュー ${summary.unreviewed} / 提供者条件 ${summary.providerTerms} / 記録が矛盾 ${summary.inconsistent}）`,
 	);
 	lines.push(
 		`- 記録済みファイル ${summary.claimedFiles} / 未記録 ${summary.uncoveredFiles} / findings ${summary.findings}（error ${summary.errors} / warn ${summary.warnings} / info ${summary.infos}）`,
@@ -502,7 +679,7 @@ export function renderMarkdownReport({
 	lines.push('| --- | --- | --- | --- | --- | --- |');
 	for (const review of reviews) {
 		lines.push(
-			`| ${review.decision} | \`${review.id}\` | ${review.kind} | ${review.files.length} | ${review.origin} | ${review.publication} |`,
+			`| ${review.evidenceStatus} | \`${review.id}\` | ${review.kind} | ${review.files.length} | ${review.origin} | ${review.publication} |`,
 		);
 	}
 	lines.push('');
@@ -533,7 +710,7 @@ export function renderHtmlReport({
 	const rows = reviews
 		.map(
 			(review) => `<tr>
-				<td><code>${escapeHtml(review.decision)}</code></td>
+				<td><code>${escapeHtml(review.evidenceStatus)}</code></td>
 				<td><code>${escapeHtml(review.id)}</code></td>
 				<td>${escapeHtml(review.kind)}</td>
 				<td>${review.files.length}</td>
@@ -579,7 +756,7 @@ export function renderHtmlReport({
 		<p class="summary">
 			判定 <strong>${escapeHtml(verdict)}</strong> / 記録 <code>${escapeHtml(recordPath)}</code> /
 			監査対象ファイル ${auditedFileCount} / 資産記録 ${summary.records} 件
-			（公開可 ${summary.publishable} / 保留 ${summary.hold} / 提供者条件 ${summary.providerTerms}）
+			（根拠を確認済み ${summary.reviewed} / 未レビュー ${summary.unreviewed} / 提供者条件 ${summary.providerTerms} / 記録が矛盾 ${summary.inconsistent}）
 		</p>
 		<table>
 			<thead>
@@ -648,6 +825,16 @@ export function main(argv = process.argv.slice(2)) {
 		return 2;
 	}
 
+	// ADR-0019 §2.1 — the owner's publication decision, read from the
+	// repository. A malformed decision is unusable input (exit 2), not a
+	// silent pass: a decision nobody can read authorises nothing.
+	const decision = readPublicationDecision(options.root);
+	if (decision.problems.length > 0) {
+		process.stderr.write(`unusable decision ${PUBLICATION_DECISION_RELATIVE_PATH}:\n`);
+		for (const problem of decision.problems) process.stderr.write(`  ${problem}\n`);
+		return 2;
+	}
+
 	const read = parseAssetInventory(readFileSync(recordPath, 'utf8'));
 	if (!read.ok) {
 		process.stderr.write(
@@ -672,6 +859,11 @@ export function main(argv = process.argv.slice(2)) {
 			},
 			sha256Of: (path) => sha256OfFile(options.root, path),
 		},
+		authority: {
+			publishesUnreviewed: decision.publishesUnreviewed,
+			source: decision.source,
+			scope: decision.publications.map((publication) => publication.id),
+		},
 	});
 
 	// A source import that names an asset but resolves to no file is a
@@ -687,7 +879,11 @@ export function main(argv = process.argv.slice(2)) {
 	}));
 
 	const deferred = applyPendingLedger({
-		findings: [...evaluation.findings, ...scopeFindings],
+		findings: [
+			...evaluation.findings,
+			...scopeFindings,
+			...checkPublicationDisclosures(options.root, decision),
+		],
 		reviews: evaluation.reviews,
 		auditedFiles,
 		entries: ledger.entries,

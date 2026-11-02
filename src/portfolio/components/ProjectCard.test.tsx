@@ -71,6 +71,7 @@ function project(
 		technologies: [],
 		visibility: 'public',
 		status: 'published',
+		evidenceStatus: 'reviewed',
 		pinned: false,
 		displayOrder: 1,
 		createdAt: 0,

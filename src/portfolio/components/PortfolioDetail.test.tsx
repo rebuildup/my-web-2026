@@ -39,6 +39,7 @@ function project(overrides: Partial<PortfolioProject> = {}): PortfolioProject {
 		technologies: [],
 		visibility: 'public',
 		status: 'published',
+		evidenceStatus: 'reviewed',
 		pinned: false,
 		displayOrder: 1,
 		createdAt: 0,

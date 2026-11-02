@@ -1,7 +1,7 @@
 import {
 	type AssetLicenseRecord,
 	type AssetReview,
-	DECISION_LABEL,
+	EVIDENCE_STATUS_LABEL,
 	KIND_LABEL,
 	evaluateAssetLicense,
 } from './contract.ts';
@@ -13,8 +13,8 @@ import { faceValueObservations } from './inventory.ts';
  * Why the row data lives HERE rather than in the story
  * ----------------------------------------------------
  * Panda reads an object literal in a module that imports a style function
- * as a style candidate, so `{ key: 'decision', label: '判定' }` written
- * inside a story would ship `#key_decision { key: decision; label: 判定 }`
+ * as a style candidate, so `{ key: 'status', label: '判定' }` written
+ * inside a story would ship `#key_status { key: status; label: 判定 }`
  * and fail `pnpm run css:check` (Issue #407, same trap as
  * `src/home/format.compare.ts`). This module imports no style function, so
  * the roster stays data and the rendered table stays the primitive's job.
@@ -43,11 +43,11 @@ export interface AssetInventoryTable {
 /**
  * The first column's key names the row header cell the primitive renders
  * (`columns.slice(1)` supplies the `<td>`s), so the record id goes first
- * and the DERIVED decision is an ordinary cell after it.
+ * and the DERIVED evidence status is an ordinary cell after it.
  */
 const INVENTORY_COLUMNS: readonly AssetInventoryColumn[] = [
 	{ key: 'record', label: '記録 id' },
-	{ key: 'decision', label: '判定' },
+	{ key: 'status', label: '判定' },
 	{ key: 'kind', label: '種別' },
 	{ key: 'spdx', label: 'ライセンス' },
 	{ key: 'covers', label: '対象' },
@@ -65,7 +65,7 @@ function claimedPatterns(record: AssetLicenseRecord): string {
 }
 
 /**
- * One row per record, keyed by id, with the decision DERIVED from the
+ * One row per record, keyed by id, with the status DERIVED from the
  * same pure evaluation the story's cards use.
  */
 export function assetInventoryTable(records: readonly AssetLicenseRecord[]): AssetInventoryTable {
@@ -79,7 +79,7 @@ export function assetInventoryTable(records: readonly AssetLicenseRecord[]): Ass
 			label: record.id,
 			cells: {
 				record: record.id,
-				decision: DECISION_LABEL[review.decision],
+				status: EVIDENCE_STATUS_LABEL[review.evidenceStatus],
 				kind: KIND_LABEL[record.kind],
 				spdx: record.license.spdx,
 				covers: claimedPatterns(record),

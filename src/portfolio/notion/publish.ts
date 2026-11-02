@@ -12,13 +12,12 @@ import type { NotionMedia, NotionRecord, ReadSnapshot } from './contract';
  *   * `status`/`visibility` follow the same rule the D1 loader enforces in
  *     SQL (`published` + `public`). A CMS record that says `unlisted` is
  *     never listed, even though its slug would resolve.
- *   * **Rights are fail-closed per asset, not per record.** An image whose
- *     offline verdict is not `recorded` produces no URL and no `<img>`; the
- *     surrounding text still publishes. That matches ADR-0018 §2.5 (image →
- *     placeholder) and `src/legal/**`, which refuses a cleared verdict for
- *     anything it has no record of. Dropping the whole project would hide
- *     text the author wrote; publishing the image would publish a byte
- *     nobody cleared. Neither is acceptable, so the asset is what goes.
+ *   * **Rights are reported per asset, not used as a veto (ADR-0019
+ *     §2.1).** An image whose offline verdict is not `recorded` is no
+ *     longer dropped: the owner decides what is published, and the
+ *     repository's job is to say what it knows. The project's
+ *     `evidenceStatus` becomes `unreviewed` and the public surface
+ *     renders that state next to the image.
  */
 
 /** Does this record belong on a public surface at all? */
@@ -27,19 +26,35 @@ export function isPublicRecord(record: NotionRecord): boolean {
 }
 
 /**
- * The media a public surface may render: rights `recorded` only.
+ * The media a public surface renders.
+ *
+ * Every media of a published record is rendered. The rights verdict is
+ * NOT a filter any more (ADR-0019 §2.1): dropping an asset because the
+ * repository holds no rights record would make the owner's publication
+ * decision impossible, and it would hide the very fact the surface has
+ * to show. What the verdict decides is the project's `evidenceStatus`,
+ * which the surface renders.
  *
  * The ordering is the record's own (`isCover` first, then `displayOrder`),
  * so the cover contract the D1 loader preserves is preserved here too.
  */
 export function publishedMedia(record: NotionRecord): readonly NotionMedia[] {
-	return record.media
-		.filter((media) => media.rights === 'recorded')
-		.slice()
-		.sort((left, right) => {
-			if (left.isCover !== right.isCover) return left.isCover ? -1 : 1;
-			return left.displayOrder - right.displayOrder;
-		});
+	return record.media.slice().sort((left, right) => {
+		if (left.isCover !== right.isCover) return left.isCover ? -1 : 1;
+		return left.displayOrder - right.displayOrder;
+	});
+}
+
+/**
+ * What the repository knows about this record's assets.
+ *
+ * `recorded` is the rights gate's word for "the evidence is in the
+ * repository and the gate confirmed it"; `unrecorded` is its word for
+ * "there is no rights record". The two axes of ADR-0019 §2.2 are
+ * expressed here in the portfolio vocabulary.
+ */
+export function recordEvidenceStatus(record: NotionRecord): 'reviewed' | 'unreviewed' {
+	return record.media.every((media) => media.rights === 'recorded') ? 'reviewed' : 'unreviewed';
 }
 
 function toMedia(record: NotionRecord, media: NotionMedia): PortfolioMedia {
@@ -106,6 +121,7 @@ export function toProject(record: NotionRecord): PortfolioProject | null {
 		technologies: record.technologies,
 		visibility: record.visibility,
 		status: record.status,
+		evidenceStatus: recordEvidenceStatus(record),
 		pinned: record.pinned,
 		displayOrder: record.displayOrder,
 		createdAt: Date.parse(record.editedAt),

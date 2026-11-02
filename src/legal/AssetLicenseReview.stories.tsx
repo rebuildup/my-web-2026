@@ -6,7 +6,7 @@ import { AssetLicenseReview } from './AssetLicenseReview';
 import {
 	type AssetLicenseRecord,
 	type AssetReview,
-	DECISION_LABEL,
+	EVIDENCE_STATUS_LABEL,
 	KIND_LABEL,
 	evaluateAssetLicense,
 } from './contract.ts';
@@ -193,7 +193,7 @@ const SCOPE_ITEMS: readonly { label: string; body: string }[] = [
 /**
  * The verification screen the capture script photographs: the featured
  * asset's review, a bundled third-party asset whose licence travels
- * with the bytes, the held asset's review, every record's decision, and
+ * with the bytes, the unreviewed asset's review, every record's status, and
  * the scope the audit covers.
  */
 export function AssetLicenseReviewGallery() {
@@ -294,7 +294,7 @@ export const HeldAsset: Story = {
 	args: { record: recordFor(HELD_RECORD_ID), review: reviewFor(HELD_RECORD_ID) },
 };
 
-/** A referenced font: nothing is redistributed, so the decision is its own. */
+/** A referenced font: nothing is redistributed, so the status is its own. */
 export const ReferencedFont: Story = {
 	args: { record: recordFor('web-fonts-google'), review: reviewFor('web-fonts-google') },
 };

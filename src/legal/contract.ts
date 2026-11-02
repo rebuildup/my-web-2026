@@ -13,7 +13,7 @@
  * them: the gate (`scripts/check-asset-licenses.mjs`), the review
  * component (`src/legal/AssetLicenseReview.tsx`) and their tests. A
  * rule cannot hold in the gate and be contradicted on screen, because
- * there is only one definition of `publishable` and one of `hold`.
+ * there is only one definition of `evidenceStatus`.
  *
  * The vocabulary, and why each word is a decision
  * ------------------------------------------------
@@ -44,13 +44,30 @@
  *                licences without either record claiming the other's
  *                bytes.
  *
- * The decision is DERIVED, never declared
- * --------------------------------------
+ * The evidence status is DERIVED, never declared
+ * ---------------------------------------------
  * A record may claim `publication: 'published'`; it may not claim that
- * it is cleared. `evaluateAssetLicense` computes the decision from the
- * evidence, and the UI renders the computed value. That is the whole
- * point of the obligation: an asset whose rights were never recorded
- * cannot be published *as reviewed*, whatever the record says about it.
+ * it is cleared. `evaluateAssetLicense` computes the evidence status
+ * from the evidence, and the UI renders the computed value.
+ *
+ * Two axes, not one (ADR-0019 §2.2)
+ * ----------------------------------
+ * The single word `hold` used to carry BOTH "we know nothing about this
+ * asset" and "therefore it must not be published". Those are two
+ * different facts with two different owners, and collapsing them made
+ * the owner's publication authority unrepresentable. So:
+ *
+ *   - axis A — `evidenceStatus`: what this repository KNOWS about the
+ *     asset's rights. `reviewed` / `unreviewed` / `provider-terms` /
+ *     `inconsistent`. This module computes it.
+ *   - axis B — `publication`: whether the asset is published. The owner
+ *     decides it; the record only states it, and this module never
+ *     derives it.
+ *
+ * An `unreviewed` asset is therefore published when the owner says so,
+ * and it must say so ON SCREEN (ADR-0019 §2.5). The gate's job moved
+ * from "may this be published?" to "does the repository correctly say
+ * what it knows and what it does not?" — fail-visible, not fail-open.
  *
  * Deliberate non-goals
  * --------------------
@@ -99,16 +116,56 @@ export type AssetVerificationMethod =
 export type AssetPublicationState = 'published' | 'unpublished' | 'hold';
 
 /**
- * The computed publication decision.
+ * Axis A — what this repository KNOWS about the asset's rights.
+ *
+ * `reviewed` means the evidence is in the repository and the gate
+ * confirmed its existence and digest. It is NOT a permission and NOT a
+ * statement that the licence permits redistribution.
+ *
+ * `unreviewed` is the honest state of an asset whose rights were never
+ * recorded. It does not stop publication (ADR-0019 §2.1): the owner
+ * decides that. It obliges the public surface to SAY so.
  *
  * `provider-terms` is neither clearance nor prohibition: the asset is
  * fetched by the visitor from the provider, this repository ships no
  * copy, and the terms live in an account or a page this repository
- * cannot read offline. Reporting it as `publishable` would assert
- * something unverifiable; reporting it as `hold` would assert a
- * violation. It is its own state so neither has to be faked.
+ * cannot read offline.
+ *
+ * `inconsistent` means the record contradicts a fact this repository
+ * can check (a missing evidence file, a digest that drifted, a licence
+ * id that cannot mean anything here). That stays an error.
  */
-export type AssetPublicationDecision = 'publishable' | 'hold' | 'provider-terms';
+export type AssetEvidenceStatus = 'reviewed' | 'unreviewed' | 'provider-terms' | 'inconsistent';
+
+/**
+ * Axis B — the owner's publication authority, as the repository records
+ * it (ADR-0019 §2.1).
+ *
+ * `publishesUnreviewed` is true when the repository carries an owner
+ * decision that unreviewed assets may be published. It is an INPUT read
+ * from a committed record (`quality/asset-license-publication-decision.json`),
+ * never an environment variable and never a flag a script can pass to
+ * make a gate quiet.
+ *
+ * The decision does not make an asset `reviewed`. It only says that
+ * "we do not know" is not a reason to withhold; the obligation to show
+ * it stays.
+ */
+export interface AssetPublicationAuthority {
+	/** Whether an owner decision to publish unreviewed assets is recorded. */
+	readonly publishesUnreviewed: boolean;
+	/** Where the decision is recorded (repository-relative path). */
+	readonly source: string | null;
+	/**
+	 * Record ids the decision covers.
+	 *
+	 * A decision is about a set of assets, not about every asset that
+	 * happens to be unreviewed. A record outside the set keeps the old
+	 * question (L019, warning) so it stays visible without blocking a
+	 * publication the owner made before the decision existed.
+	 */
+	readonly scope: readonly string[];
+}
 
 /** Evidence read from this repository. A declared digest pins the bytes. */
 export interface AssetEvidenceFile {
@@ -256,18 +313,22 @@ export const PUBLICATION_LABEL: Readonly<Record<AssetPublicationState, string>> 
 	hold: '保留',
 };
 
-export const DECISION_LABEL: Readonly<Record<AssetPublicationDecision, string>> = {
-	publishable: '公開可 / publishable',
-	hold: '保留 / hold',
+export const EVIDENCE_STATUS_LABEL: Readonly<Record<AssetEvidenceStatus, string>> = {
+	reviewed: '根拠を確認済み / reviewed',
+	unreviewed: '未レビュー / unreviewed',
 	'provider-terms': '提供者条件 / provider-terms',
+	inconsistent: '記録が矛盾 / inconsistent',
 };
 
-/** What each decision means, in the words the gate justifies it with. */
-export const DECISION_MEANING: Readonly<Record<AssetPublicationDecision, string>> = {
-	publishable:
-		'このリポジトリのファイルが権利・出典・ライセンスを示している。根拠ファイルの存在と一致は gate が確認する。',
-	hold: '権利記録がリポジトリに無いため、レビュー済みとしては公開できない。',
+/** What each status means, in the words the gate justifies it with. */
+export const EVIDENCE_STATUS_MEANING: Readonly<Record<AssetEvidenceStatus, string>> = {
+	reviewed:
+		'このリポジトリのファイルが権利・出典・ライセンスを示している。根拠ファイルの存在と一致は gate が確認する。公開を許諾する言葉ではない。',
+	unreviewed:
+		'権利・出典・ライセンスの証拠がこのリポジトリにない。公開の可否は owner の決定に従い、公開面上ではこの状態を表示する。',
 	'provider-terms': 'コピーを配布しておらず、条件は提供側にある。',
+	inconsistent:
+		'記録がリポジトリ自身の事実と矛盾している（根拠の欠落・digest の不一致など）。公開の可否とは別の問題として error とする。',
 };
 
 /** One finding. `remedy` says what a reviewer has to do, never a verdict. */
@@ -288,7 +349,8 @@ export interface AssetReview {
 	/** The identifier the record declares, `NOASSERTION` when none is. */
 	readonly spdx: AssetLicenseId;
 	readonly publication: AssetPublicationState;
-	readonly decision: AssetPublicationDecision;
+	/** Axis A — what this repository knows. Never a publication decision. */
+	readonly evidenceStatus: AssetEvidenceStatus;
 	/** Audited files this record claims (empty for a referenced asset). */
 	readonly files: readonly string[];
 	readonly findings: readonly AssetReviewFinding[];
@@ -307,6 +369,13 @@ export interface AssetInventoryInput {
 	/** Every file inside the audited scope, repository-relative. */
 	readonly auditedFiles: readonly string[];
 	readonly observations: AssetReviewObservations;
+	/**
+	 * The owner's publication authority, as the repository records it.
+	 *
+	 * Absent (or `publishesUnreviewed: false`) means the old question
+	 * applies again: an unreviewed asset may not be published silently.
+	 */
+	readonly authority: AssetPublicationAuthority;
 }
 
 export interface AssetReviewSummary {
@@ -315,9 +384,10 @@ export interface AssetReviewSummary {
 	readonly auditedFiles: number;
 	readonly claimedFiles: number;
 	readonly uncoveredFiles: number;
-	readonly publishable: number;
-	readonly hold: number;
+	readonly reviewed: number;
+	readonly unreviewed: number;
 	readonly providerTerms: number;
+	readonly inconsistent: number;
 	readonly findings: number;
 	readonly errors: number;
 	readonly warnings: number;
@@ -442,19 +512,26 @@ export function isRepositoryOrigin(origin: AssetOrigin): boolean {
 /**
  * Decide one record, from its evidence only.
  *
- * The decision is the conjunction of everything below, so a record
- * cannot be cleared by omitting a field: `hold` wins over every other
- * outcome, and an error-severity finding forces it.
+ * The evidence status is the conjunction of everything below, so a
+ * record cannot be read as `reviewed` by omitting a field: a
+ * contradiction (`inconsistent`) wins over every other outcome, and an
+ * absence of evidence (`unreviewed`) wins over the provider-terms
+ * reading.
  */
 export function evaluateAssetLicense(
 	record: AssetLicenseRecord,
 	observations: AssetReviewObservations,
 ): AssetReview {
 	const findings: AssetReviewFinding[] = [];
-	let hold = false;
+	// `inconsistent` replaces the retired `hold`: a record that
+	// contradicts a fact this repository can check (ADR-0019 §2.2).
+	let inconsistent = false;
+	// `unreviewed` replaces the "no evidence ⇒ do not publish" reading:
+	// the absence of a rights record is a fact to DISPLAY, not a veto.
+	let unreviewed = false;
 
 	if (!isKnownAssetLicenseId(record.license.spdx)) {
-		hold = true;
+		inconsistent = true;
 		findings.push(
 			finding(
 				'L003',
@@ -469,7 +546,7 @@ export function evaluateAssetLicense(
 	for (const item of record.evidence) {
 		if (item.kind === 'repository-file') {
 			if (!observations.evidenceExists(item.path)) {
-				hold = true;
+				inconsistent = true;
 				findings.push(
 					finding(
 						'L004',
@@ -484,7 +561,7 @@ export function evaluateAssetLicense(
 			if (item.sha256 === undefined) continue;
 			const actual = observations.sha256Of(item.path);
 			if (actual !== item.sha256.toLowerCase()) {
-				hold = true;
+				inconsistent = true;
 				findings.push(
 					finding(
 						'L005',
@@ -498,7 +575,7 @@ export function evaluateAssetLicense(
 			continue;
 		}
 		if (!isUsableProviderReference(item.url)) {
-			hold = true;
+			inconsistent = true;
 			findings.push(
 				finding(
 					'L016',
@@ -512,27 +589,30 @@ export function evaluateAssetLicense(
 	}
 
 	if (!isRepositoryOrigin(record.origin) && record.evidence.length === 0) {
-		hold = true;
+		// ADR-0019 §2.3: L006 moves from `inconsistent` to `unreviewed`.
+		// "No evidence recorded" is not a lie about the repository's own
+		// files — it is the absence of a record, and the absence is shown.
+		unreviewed = true;
 		findings.push(
 			finding(
 				'L006',
-				'error',
+				'info',
 				record.id,
-				'このリポジトリで管理されていない資産に、根拠が 1 件も宣言されていません。',
-				'確認したファイル（ライセンス表記・生成スクリプト・配信元など）を根拠として宣言する。',
+				'このリポジトリで管理されていない資産に、根拠が 1 件も宣言されていません（未レビューとして扱います）。',
+				'確認したファイル（ライセンス表記・生成スクリプト・配信元など）を根拠として宣言すると、レビュー済みとして扱えます。',
 			),
 		);
 	}
 
 	if (record.verification.method === 'none') {
-		hold = true;
+		unreviewed = true;
 		findings.push(
 			finding(
 				'L017',
 				'info',
 				record.id,
-				'検証方法が未検証です。権利・出典・ライセンスの証拠はこのリポジトリにありません。',
-				'証拠が揃うまで公開を保留するか、非公開にする。',
+				'検証方法が未検証です。権利・出典・ライセンスの証拠はこのリポジトリにありません（未レビューとして扱います）。',
+				'証拠が揃うまで未レビューとして公開し、公開面上にその状態を表示する。',
 			),
 		);
 	} else if (record.verification.checkedOn === null) {
@@ -552,20 +632,20 @@ export function evaluateAssetLicense(
 		record.license.spdx === 'NOASSERTION' &&
 		record.license.redistribution === 'bundled'
 	) {
-		hold = true;
+		unreviewed = true;
 		findings.push(
 			finding(
 				'L018',
 				'info',
 				record.id,
-				'第三者を同梱しているのにライセンスが記録されていません（NOASSERTION）。',
-				'ライセンス表記を同梱するか、公開を保留する。',
+				'第三者を同梱しているのにライセンスが記録されていません（NOASSERTION・未レビューとして扱います）。',
+				'ライセンス表記を同梱すると、レビュー済みとして扱えます。',
 			),
 		);
 	}
 
 	if (record.license.attributionRequired && record.license.attributionText === null) {
-		hold = true;
+		inconsistent = true;
 		findings.push(
 			finding(
 				'L007',
@@ -599,25 +679,31 @@ export function evaluateAssetLicense(
 		);
 	}
 
-	const decision: AssetPublicationDecision = hold
-		? 'hold'
-		: record.origin === 'third-party-referenced'
-			? 'provider-terms'
-			: 'publishable';
+	// Axis A. The order matters: a contradiction outranks an absence,
+	// and an absence outranks the provider-terms reading (a provider
+	// asset we never looked at is not "the provider's terms apply" — it
+	// is simply unexamined).
+	const evidenceStatus: AssetEvidenceStatus = inconsistent
+		? 'inconsistent'
+		: unreviewed
+			? 'unreviewed'
+			: record.origin === 'third-party-referenced'
+				? 'provider-terms'
+				: 'reviewed';
 
-	if (decision === 'hold' && record.publication === 'published') {
+	if (evidenceStatus === 'inconsistent' && record.publication === 'published') {
 		findings.push(
 			finding(
 				'L010',
 				'warn',
 				record.id,
-				'証拠が不足している（保留）にもかかわらず、このリポジトリでは公開中と宣言されています。',
-				'公開の継続は owner の公開判断としてレビューする。取り下げ・ライセンス同梱のどちらかを記録する。',
+				'記録がリポジトリ自身の事実と矛盾しているにもかかわらず、このリポジトリでは公開中と宣言されています。',
+				'矛盾を解く（根拠を直す / 取り下げのどちらかを記録する）。公開の可否は owner の決定であり、矛盾は矛盾のまま記録する。',
 			),
 		);
 	}
 
-	if (decision === 'provider-terms') {
+	if (evidenceStatus === 'provider-terms') {
 		findings.push(
 			finding(
 				'L011',
@@ -635,7 +721,7 @@ export function evaluateAssetLicense(
 		origin: record.origin,
 		spdx: record.license.spdx,
 		publication: record.publication,
-		decision,
+		evidenceStatus,
 		files: [],
 		findings,
 	};
@@ -711,6 +797,50 @@ export function evaluateAssetInventory(input: AssetInventoryInput): AssetInvento
 		return { ...own, files };
 	});
 
+	// ADR-0019 §2.1 / §2.3 — the publication question, answered by the
+	// owner and recorded in the repository. An unreviewed asset that is
+	// published is NOT an error by itself; an unreviewed asset that is
+	// published WITHOUT the owner decision that covers it, or without the
+	// public disclosure the decision obliges, IS.
+	for (const review of reviews) {
+		if (review.evidenceStatus !== 'unreviewed') continue;
+		if (review.publication !== 'published') continue;
+		const inScope = input.authority.scope.includes(review.id);
+		if (!inScope) {
+			findings.push(
+				finding(
+					'L019',
+					'warn',
+					review.id,
+					'未レビューの資産が公開されています（owner の公開決定の対象外です）。',
+					'公開面にはこの状態を表示する（ADR-0019 §2.5）。owner が公開を許可した記録に追加するか、記録の根拠を揃える。',
+				),
+			);
+			continue;
+		}
+		if (!input.authority.publishesUnreviewed) {
+			findings.push(
+				finding(
+					'L020',
+					'error',
+					review.id,
+					'owner の公開決定の対象である未レビュー資産が公開されていますが、その決定が記録されていません。',
+					'決定記録（quality/asset-license-publication-decision.json）を更新するか、資産を取り下げ。',
+				),
+			);
+			continue;
+		}
+		findings.push(
+			finding(
+				'L021',
+				'info',
+				review.id,
+				`未レビューの資産が owner の決定により公開されています（決定記録: ${input.authority.source ?? '未記録'}）。`,
+				'公開面上に「未レビュー」の状態を表示し続ける。',
+			),
+		);
+	}
+
 	for (const file of input.auditedFiles) {
 		const owners = claimedBy.get(file);
 		if (owners === undefined || owners.length === 0) {
@@ -758,13 +888,15 @@ export interface AssetSummaryInput {
 
 /** Counts a report and the review screen both render. */
 export function summarizeAssetReview(input: AssetSummaryInput): AssetReviewSummary {
-	let publishable = 0;
-	let hold = 0;
+	let reviewed = 0;
+	let unreviewed = 0;
 	let providerTerms = 0;
+	let inconsistent = 0;
 	let claimedFiles = 0;
 	for (const review of input.reviews) {
-		if (review.decision === 'publishable') publishable += 1;
-		else if (review.decision === 'hold') hold += 1;
+		if (review.evidenceStatus === 'reviewed') reviewed += 1;
+		else if (review.evidenceStatus === 'unreviewed') unreviewed += 1;
+		else if (review.evidenceStatus === 'inconsistent') inconsistent += 1;
 		else providerTerms += 1;
 		claimedFiles += review.files.length;
 	}
@@ -782,9 +914,10 @@ export function summarizeAssetReview(input: AssetSummaryInput): AssetReviewSumma
 		auditedFiles: input.auditedFiles,
 		claimedFiles,
 		uncoveredFiles: input.uncoveredFiles,
-		publishable,
-		hold,
+		reviewed,
+		unreviewed,
 		providerTerms,
+		inconsistent,
 		findings: input.findings.length,
 		errors,
 		warnings,

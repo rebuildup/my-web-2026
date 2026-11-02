@@ -1796,15 +1796,15 @@
 			"id": "pr-819",
 			"pr": 819,
 			"base": "release-0-8-1",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-11-02",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:c74954d61791b3ffa0752806de467bbdf9ee4315dc6a2bfeb8ac1d5f0080a92d",
 			"proposal": {
 				"tool": "none — the editing aid was not run for this change set",
 				"ran": false,
 				"summary": "編集補助は実行していない。この変更集合は日本語の新規執筆を含まない: 4 つの日本語 facet 語 (開発 / 映像 / デザイン / その他) は src/portfolio/components/FacetFilter.tsx のローカル定数から src/portfolio/vocabulary.ts の FACET_LABEL_JA へ移動しただけで、文字列は移動前と移動後で byte-identical である。",
-				"disposition": "提案 0 件 (未実行)。編集補助を実行しなかった理由: 審査対象が「移動した同一文字列」であり、新規に書かれた日本語が存在しないため、語調・否定・許可の判断が発生しない。owner は 2026-11-02 に公開日本語 copy の一覧画面 (3 surface の 324 件とこの変更の 8 セグメント) を見て一括で承認した。8 セグメントはいずれも移動元と移動先で同一文字列であり、意味の変化がないため verdict は equivalent。"
+				"disposition": "提案 0 件 (未実行)。編集補助を実行しなかった理由: 審査対象が「移動した同一文字列」であり、新規に書かれた日本語が存在しないため、語調・否定・許可の判断が発生しない。この変更集合について traceable な owner 判断の artefact は記録していないため、decision は pending とする (Issue #754 の語彙)。8 セグメントはいずれも移動元と移動先で同一文字列であり、意味の変化がないため verdict は equivalent。"
 			},
 			"comparisons": [
 				{

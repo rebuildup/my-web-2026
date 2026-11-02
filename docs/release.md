@@ -265,8 +265,12 @@ production domain to be wired (Issue #43 / ADR-0014):
    `validate` job in production mode, and records its source commit,
    `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
    digest and resolved package count. CI retains it as the
-   `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
-   does **not** attest the artifact Cloudflare Workers Builds deploys.
+   `artifact-attestation-<sha>` workflow artifact (90 days), and the bytes
+   it describes are retained alongside it as
+   `cf-build-output-<sha>` (90 days, Issue #816 — before that the upload
+   step named a directory no build produces, so the bytes were
+   unobtainable). The manifest does **not** attest the artifact
+   Cloudflare Workers Builds deploys.
    That comparison is out of scope by owner decision (2026-10-19): the
    attested scope of this Issue is the GitHub Actions production-mode
    Build Output, the manifest declares it through
@@ -291,17 +295,50 @@ production domain to be wired (Issue #43 / ADR-0014):
      action under the same human gate as the release merge / tag /
      Release publish (the `Release PR merge human gate` rule in
      `AGENTS.md` §6, not a step of this pre-merge checklist). The
-     release-tag comparison is that owner's command too, and an
-     unexecuted comparison is reported as "not executed" in the release
-     report — never as a PASS.
+     release-tag comparison is that owner's command too.
    - Verify a published manifest against the artifact you hold and the
-     release tag itself with
-     `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
+     release tag itself. Fetch the attested bytes first (status-only
+     output; no credential is printed):
+     `gh run download <run-id> -n cf-build-output-<sha> -D .tmp/release-bytes/<sha>`,
+     then compare:
+     `pnpm run artifact:attestation:check -- --manifest=<path> --artifact-dir=.tmp/release-bytes/<sha> --release-tag="v$(node -p "require('./package.json').version")"`.
+     `actions/upload-artifact` v4 uploads the contents of the given
+     directory, so the download directory holds `config.json` and
+     `workers/` directly; point `--artifact-dir` at it.
      The tag must resolve to the manifest's `source.commit` and name the
      manifest's package version, otherwise the check fails
      (`RELEASE_TAG_COMMIT_MISMATCH` / `RELEASE_TAG_VERSION_MISMATCH`).
      Generation never accepts `--source-sha` or `--release-tag`: it
      always attests the checked-out HEAD.
+
+   ### 9.1 Byte comparison — a mandatory release gate
+
+   Owner decision (Issue #816, 2026-11-02, transcribed from the owner
+   comment
+   [#816](https://github.com/rebuildup/my-web-2026/issues/816#issuecomment-6567573215)
+   — this document is an agent-maintained transcription, the comment is
+   the source of truth): **from the next release onwards, the byte
+   comparison between the published manifest and the bytes of the SAME CI
+   run is a mandatory gate.** "Not executed", a FAIL, and a missing
+   evidence artifact all STOP the release: the release is not recorded as
+   shipped, and the release report says "not executed" — never a PASS.
+
+   | question | answer |
+   | --- | --- |
+   | Who | the release owner (human). The manifest, the bytes and the tag live outside the runner, and `AGENTS.md` §6 keeps the release PR merge / tag / publish under the same human gate. |
+   | When | after the release branch's **push** run is green and **before** the release PR is merged (step 10 / 11). The `--release-tag` comparison runs after step 12 created the tag and before the GitHub Release is published. |
+   | Which run | the release branch's push run — the run whose `github.sha` is the release commit. The pull_request run builds the merge commit, not the released commit, so it is not the evidence. |
+   | Which commands | `gh run download <run-id> -n artifact-attestation-<sha> -D .tmp/release-manifest/<sha>` and `gh run download <run-id> -n cf-build-output-<sha> -D .tmp/release-bytes/<sha>`, then `pnpm run artifact:attestation:check -- --manifest=<downloaded manifest> --artifact-dir=.tmp/release-bytes/<sha>` and `pnpm run artifact:bytes:check -- --artifact-dir=.tmp/release-bytes/<sha> --manifest=<downloaded manifest>` (the second command states the reason code when the retained bytes differ from the recorded ones, and scans the retained bytes for a secret shape). |
+   | Where the result is recorded | the release report, and the verification record `docs/verification/supply-chain/attestation-byte-comparison-<date>.md` (run id, commit, artifact names, both verdicts, the tag). A run without that record is "not executed". |
+
+   The manifest's internal-integrity check
+   (`scripts/check-attestation-manifest-integrity.mjs`) is **not** a
+   substitute: it prints `bytes_verified=false` on every PASS, because it
+   compares no bytes.
+
+   Releases before 0.8.1 are exempt because their runs retained no
+   bytes: `v0.8.0` stays recorded as **not executed**
+   ([attestation byte comparison](verification/supply-chain/attestation-byte-comparison-2026-11-02.md)).
 
    See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
 

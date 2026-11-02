@@ -267,6 +267,7 @@
 		"verify:d1-backup-restore-screenshot": "node scripts/make-d1-backup-restore-report.mjs",
 		"artifact:attestation:report": "node scripts/artifact-attestation-report.mjs",
 		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
+		"artifact:bytes:check": "node scripts/check-build-output-artifact.mjs",
 		"compat:stress:check": "node scripts/check-layout-stress.mjs",
 		"verify:compat-stress-screenshot": "node scripts/make-layout-stress-report.mjs",
 		"capture:pseudo-locale": "node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs",

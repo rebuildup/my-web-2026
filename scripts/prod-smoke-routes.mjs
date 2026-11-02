@@ -161,7 +161,13 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 		label: 'Home',
 		status: 200,
 		contentType: 'text/html',
-		titlePattern: /^my-web-2026$/,
+		// Issue #418 gave the document title the origin suffix; the <h1>
+		// stayed the bare product name, so the two patterns differ on
+		// purpose. Production served this title for a whole release
+		// window while the registry still expected the bare name, which
+		// made the post-deploy smoke red for a document that was correct
+		// (Issue #816).
+		titlePattern: /^my-web-2026 — rebuildup\.dev$/,
 		canonical: null,
 		h1: 'h1',
 		h1TextPattern: /^my-web-2026$/,

@@ -260,13 +260,39 @@ jobs:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
           retention-days: 7
-      - name: Upload Cloudflare bundle
+      # Issue #816 — the bytes the attestation manifest names, retrievable.
+      #
+      # `artifact:attestation:check` (the last step of
+      # `validate:integration`) hashes `.cloudflare/output/v0`, and the
+      # manifest is uploaded above. Until this step pointed at that path,
+      # it named `dist-cloudflare/`, which NO build produces: the upload
+      # silently succeeded with an empty artifact, so a release owner
+      # holding a published manifest could not obtain the bytes it
+      # describes. `if-no-files-found: error` makes a future path drift a
+      # red run instead of an empty artifact, and 90 days matches the
+      # manifest's own retention so the pair stays retrievable together.
+      #
+      # Issue #816 (owner decision, 2026-11-02): the byte comparison is
+      # a MANDATORY release gate, so the bytes have to exist for the
+      # commit under review — not only for main. The step therefore runs
+      # on every PUSH run, and the evidence is the pair this run
+      # produced (`artifact-attestation-<sha>` + `cf-build-output-<sha>`,
+      # same `github.sha`), which the operator compares with
+      # `gh run download` and `pnpm run artifact:attestation:check` /
+      # `pnpm run artifact:bytes:check` (see
+      # docs/release.md step 9 and
+      # docs/security/supply-chain-artifact-attestation.md section 7).
+      # The pull_request run is deliberately NOT uploaded: it builds the
+      # merge commit, not the reviewed commit, so its bytes would name a
+      # commit nobody can check out.
+      - name: Upload Cloudflare Build Output (attested bytes)
         if: github.event_name == 'push'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dist-cloudflare-${{ github.sha }}
-          path: dist-cloudflare/
-          retention-days: 7
+          name: cf-build-output-${{ github.sha }}
+          path: .cloudflare/output/v0/
+          retention-days: 90
+          if-no-files-found: error
 
   # Issue #392 — the Storybook axe audit as its own job.
   #

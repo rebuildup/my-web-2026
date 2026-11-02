@@ -66,20 +66,26 @@ import sharp from 'sharp';
  * The Tools that ship a preview. Keep in step with
  * `TOOL_PREVIEWS` in `src/routes/tools.index.tsx`.
  *
- * `readmark` is NOT a target while Issue #786 is open: its frame stops
- * on 「読み込み中…」 (the sandboxed frame is denied IndexedDB, and
- * production behaves the same way), so every run of this script would
- * produce the same picture of a broken screen. The owner's rule
- * (2026-11-01) is that a preview may not be faked and a defect may not
- * be shown on the public index, so the index renders readmark without
- * an image and nothing is drawn in its place. Re-add the target when
- * #786 is fixed and the capture shows the real screen.
+ * `readmark` returned as a target with the Issue #786 fix: the
+ * sandboxed frame used to stop on 「読み込み中…」 (an opaque-origin
+ * frame is denied every storage API), and the index therefore
+ * carried no image for it. readmark no longer uses browser storage
+ * at all (readmark ADR-0008 — session-scoped, stated in one line on
+ * screen), so the frame renders the real library screen and the
+ * capture photographs it as it is: the owner's rule (an image may
+ * not be faked, a defect may not be shown) is satisfied by
+ * photographing a working screen.
  */
 export const PREVIEW_TARGETS = [
 	{
 		slug: 'prototype',
 		/** What the committed artefact must show, for a human re-check. */
 		expect: 'ProtoType のタイピングゲーム画面',
+	},
+	{
+		slug: 'readmark',
+		/** What the committed artefact must show, for a human re-check. */
+		expect: 'readmark のライブラリ画面（保存しない一行明示 + 空一覧 + import CTA）',
 	},
 ];
 

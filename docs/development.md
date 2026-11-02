@@ -439,6 +439,16 @@ from the generated tree, so forgetting the budget fails loudly instead of
 silently shipping an uncapped page. `tool_iframe` is required for the same
 reason — deleting the section would turn the Tool cap off without a word.
 
+Each Tool is held to the shared `max_js_bytes_per_tool` unless
+`tool_iframe.per_tool[<slug>]` names a cap for it. A per-Tool cap exists for
+a Tool whose build is a structurally different program — readmark ships the
+pdf.js worker, its lazy route chunks and the decoder fallbacks pdf.js loads
+when WebAssembly is unavailable — so holding it to a ceiling calibrated on
+the lightest Tool would mean either raising the ceiling for every Tool or
+shipping a smaller program than the Tool's job needs. A per-Tool entry
+requires a `reason`, exactly like a route exception, because it is the one
+place a cap can be set without a route to carry the exception.
+
 Raising a cap is **not** machine-checked. The gate compares numbers; it does
 not compare a cap against the previous cap, so a PR that multiplies
 `initial_js_bytes` gets a green run. What holds the line is review: a cap

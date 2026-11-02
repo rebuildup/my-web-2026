@@ -493,9 +493,9 @@
 			"id": "tool-preview-screens",
 			"kind": "image",
 			"title": "ツール一覧のプレビュー画像（WebP）",
-			"summary": "scripts/capture-tool-previews.mjs が /tools/prototype の実画面を撮影して生成する。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark は表示不具合（Issue #786）が直るまで撮影対象から外しており、画像を持たない。",
+			"summary": "scripts/capture-tool-previews.mjs が /tools/prototype と /tools/readmark の実画面を撮影して生成する。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark の画像は、sandbox frame で storage が拒否されて画面が停止していた期間（Issue #786）に撮影対象から外されていたが、上流の storage 廃止リデザイン（readmark ADR-0008）が入って再び実画面を写す。",
 			"covers": ["public/tool-previews/**"],
-			"publicPaths": ["/tool-previews/prototype.webp"],
+			"publicPaths": ["/tool-previews/prototype.webp", "/tool-previews/readmark.webp"],
 			"origin": "repository-generated",
 			"rightsHolder": "rebuildup",
 			"license": {

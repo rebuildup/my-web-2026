@@ -51,13 +51,15 @@ import type { ManifestTool } from '../tools/registry';
  *     cards on the 2-up body grid, each a whole-card link. 「準備中」 is
  *     the roadmap: a denser 2-column list with no links and no images.
  *   - A screenshot appears only where it is true of the WHOLE group.
- *     `readmark` currently renders 「読み込み中…」 forever inside the
- *     Tool frame (Issue #786, reproduced on production), so its preview
- *     was removed rather than re-shot or replaced by a placeholder: the
- *     owner's rule is that an image may not be faked, and a picture of a
- *     broken screen is worse than no picture. The card keeps the same
- *     geometry with its text block vertically centred, so the grid row
- *     stays even.
+ *     `readmark` had none while Issue #786 left its frame on
+ *     「読み込み中…」 (a sandboxed frame is denied every storage API):
+ *     a picture of a broken screen is worse than no picture, and the
+ *     owner's rule is that an image may not be faked. The fix was the
+ *     upstream storage-free redesign (rebuildup/readmark ADR-0008 —
+ *     no browser storage at all), which made its screen real again, so
+ *     the capture script shoots it like any other target. The
+ *     no-image branch still exists: the text block is vertically
+ *     centred so a grid row stays even without one.
  *
  * Layout — the card grid is `repeat(2, minmax(0, 1fr))` with the 24 px
  * gutter and the 40 px row beat the other public surfaces use
@@ -138,11 +140,11 @@ const FALLBACK_TOOL_ICON = EXTENSION_PATH;
  * `quality/asset-license-inventory.json`; the alt text describes the
  * captured screen.
  *
- * `readmark` is deliberately absent. Its frame currently stops on
- * 「読み込み中…」 (Issue #786 — the sandboxed frame is denied IndexedDB,
- * and the same thing happens on production), so the capture script
- * excludes it and this map has no entry: a broken screen is not a
- * preview, and nothing is drawn in its place.
+ * `readmark` returned with the Issue #786 fix: its sandboxed frame
+ * used to stop on 「読み込み中…」 (an opaque-origin frame is denied
+ * every storage API) and had no image here; the Tool no longer uses
+ * browser storage at all (rebuildup/readmark ADR-0008), the screen
+ * is real, and the capture is committed like any other.
  */
 const TOOL_PREVIEWS: Readonly<
 	Record<string, { src: string; alt: string; width: number; height: number }>
@@ -166,6 +168,18 @@ const TOOL_PREVIEWS: Readonly<
 		// reserve the wrong box and shift the card on load.
 		width: 1200,
 		height: 676,
+	},
+	readmark: {
+		// Same namespace reasoning as the entry above: a host-rendered
+		// thumbnail must not sit inside the Tool's own artifact tree.
+		src: '/tool-previews/readmark.webp',
+		alt: 'readmark のライブラリ画面。冒頭に「この readmark は保存しません」という一行の明示があり、空の一覧に「まだ文書がありません」と import の案内が出ている。',
+		// The capture is the Tool FRAME's box at the script's
+		// 1440 × 900 context, scaled to 1200 px wide. The numbers are
+		// the committed file's real dimensions (measured), so a stale
+		// pair cannot reserve the wrong box and shift the card on load.
+		width: 1200,
+		height: 669,
 	},
 };
 

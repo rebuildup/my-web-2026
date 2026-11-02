@@ -12,11 +12,11 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 19 |
+| Publicly reachable URLs (surface + Static Assets) | 23 |
 | External hosts | 33 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 5 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -57,7 +57,11 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/share/procon2026/`
 - `/tools`
 - `/tools/prototype`
+- `/tools/qr-generator`
 - `/tools/readmark`
+- `/tools/sequential-png-preview`
+- `/tools/svg2tsx`
+- `/tools/text-counter`
 
 ## Declared surfaces
 
@@ -85,9 +89,12 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (4)
 
-- (none)
+- `/tools/qr-generator`
+- `/tools/sequential-png-preview`
+- `/tools/svg2tsx`
+- `/tools/text-counter`
 
 ### Removed public URLs (0)
 
@@ -134,6 +141,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
 | `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
+| `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
@@ -206,5 +214,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: https://example.com/image.svg
+- **WARN** `W004 public-url-added` Public URL added: /tools/qr-generator
+- **WARN** `W004 public-url-added` Public URL added: /tools/sequential-png-preview
+- **WARN** `W004 public-url-added` Public URL added: /tools/svg2tsx
+- **WARN** `W004 public-url-added` Public URL added: /tools/text-counter
 

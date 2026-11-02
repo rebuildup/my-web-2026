@@ -278,7 +278,11 @@
 				],
 				"urls": [
 					"/tools/prototype",
-					"/tools/readmark"
+					"/tools/qr-generator",
+					"/tools/readmark",
+					"/tools/sequential-png-preview",
+					"/tools/svg2tsx",
+					"/tools/text-counter"
 				],
 				"reason": "Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind, but the shell declares `robots: noindex` in its own head, so it is not a sitemap target."
 			}
@@ -316,7 +320,11 @@
 			"/share/procon2026/",
 			"/tools",
 			"/tools/prototype",
-			"/tools/readmark"
+			"/tools/qr-generator",
+			"/tools/readmark",
+			"/tools/sequential-png-preview",
+			"/tools/svg2tsx",
+			"/tools/text-counter"
 		],
 		"externalHosts": [
 			"*.analytics.google.com",
@@ -521,6 +529,15 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/fixtures/markdown/hostile.md"
+				]
+			},
+			{
+				"url": "https://example.com/image.svg",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -1280,15 +1297,48 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/tools/qr-generator",
+			"/tools/sequential-png-preview",
+			"/tools/svg2tsx",
+			"/tools/text-counter"
+		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://example.com/image.svg"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://example.com/image.svg"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/qr-generator"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/sequential-png-preview"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/svg2tsx"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/text-counter"
+			}
+		]
 	}
 }

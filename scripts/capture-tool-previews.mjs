@@ -75,6 +75,12 @@ import sharp from 'sharp';
  * capture photographs it as it is: the owner's rule (an image may
  * not be faked, a defect may not be shown) is satisfied by
  * photographing a working screen.
+ *
+ * Issue #817 added the first four activated Tools (qr-generator /
+ * text-counter / sequential-png-preview / svg2tsx). Their frames are
+ * photographed through the same sandboxed iframe a visitor gets, so
+ * a blank frame fails the run — the `expect` line of each target is
+ * the human re-check for what the committed image must show.
  */
 export const PREVIEW_TARGETS = [
 	{
@@ -86,6 +92,29 @@ export const PREVIEW_TARGETS = [
 		slug: 'readmark',
 		/** What the committed artefact must show, for a human re-check. */
 		expect: 'readmark のライブラリ画面（保存しない一行明示 + 空一覧 + import CTA）',
+	},
+	{
+		slug: 'qr-generator',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'QR Code Generator の画面。左に入力・QRパラメータ・色の設定、右に「Generated QR Code」パネル（初期状態は [ No Data ]）',
+	},
+	{
+		slug: 'text-counter',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Text Counter の画面。テキスト入力欄と、文字数・単語数・行数・バイト数などのカウント結果',
+	},
+	{
+		slug: 'sequential-png-preview',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Sequential PNG Preview の初期画面。複数ファイル・フォルダ・ZIP の3タブと、PNG を読み込むドロップ領域',
+	},
+	{
+		slug: 'svg2tsx',
+		/** What the committed artefact must show, for a human re-check. */
+		expect: 'SVG to TSX の画面。SVG入力欄と変換オプション、TSX出力のペイン',
 	},
 ];
 

@@ -139,11 +139,15 @@ let home: string;
 let toolsIndex: string;
 let toolRoute: string;
 let ungatedToolRoute: string;
-let disabledRoute: string;
+let disabledRoute: string | undefined;
 
 beforeAll(async () => {
 	await applyD1Migrations(D1(), REACTIONS_MIGRATIONS);
-	expect(DISABLED_TOOL, 'manifest must keep at least one host_disabled Tool').toBeDefined();
+	// Issue #771 wired the last `host_disabled` Tool (business-mail-block)
+	// to `same_origin_static`, so zero is now the expected end state: the
+	// disabled-route assertion below skips rather than requiring a
+	// disabled entry to exist. A future disabled entry is still covered,
+	// because the route is read from the manifest, not hard-coded.
 	expect(
 		UNGATED_TOOL,
 		'the manifest must keep at least one embeddable Tool that declares no third-party contact',
@@ -153,7 +157,7 @@ beforeAll(async () => {
 		fetchDocument('/tools'),
 		fetchDocument('/tools/prototype'),
 		fetchDocument(`/tools/${UNGATED_TOOL?.slug}`),
-		fetchDocument(`/tools/${DISABLED_TOOL?.slug}`),
+		DISABLED_TOOL ? fetchDocument(`/tools/${DISABLED_TOOL.slug}`) : Promise.resolve(''),
 	]);
 });
 
@@ -232,8 +236,8 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 		expect(html).toContain('data-testid="tool-embed-consent"');
 	});
 
-	it('a host_disabled Tool mounts no iframe and no artifact', () => {
-		const html = markup(disabledRoute);
+	it.skipIf(!DISABLED_TOOL)('a host_disabled Tool mounts no iframe and no artifact', () => {
+		const html = markup(disabledRoute ?? '');
 		expect(html).not.toMatch(EMBEDDED_MEDIA);
 		expect(html).not.toContain('/app/index.html');
 	});

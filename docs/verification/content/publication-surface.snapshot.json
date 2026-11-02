@@ -278,6 +278,7 @@
 				],
 				"urls": [
 					"/tools/ae-expression",
+					"/tools/business-mail-block",
 					"/tools/code-type-p5",
 					"/tools/color-palette",
 					"/tools/fillgen",
@@ -328,6 +329,7 @@
 			"/share/procon2026/",
 			"/tools",
 			"/tools/ae-expression",
+			"/tools/business-mail-block",
 			"/tools/code-type-p5",
 			"/tools/color-palette",
 			"/tools/fillgen",
@@ -1390,7 +1392,9 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/tools/business-mail-block"
+		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [],
@@ -1399,6 +1403,12 @@
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/business-mail-block"
+			}
+		]
 	}
 }

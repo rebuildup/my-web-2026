@@ -223,6 +223,12 @@ const TOOL_PREVIEWS: Readonly<
 		width: 1200,
 		height: 669,
 	},
+	'business-mail-block': {
+		src: '/tool-previews/business-mail-block.webp',
+		alt: 'Business Mail Block Tool の画面。見出しと説明の下に「Business」バッジとブロック検索欄・カテゴリフィルタ、テンプレート・バリデーション・ガイドライン・カスタムブロックのタブ、左に「利用可能なブロック」の挨拶ブロック一覧、右に「メール作成エリア」が並ぶ。',
+		width: 1200,
+		height: 669,
+	},
 	'ae-expression': {
 		src: '/tool-previews/ae-expression.webp',
 		alt: 'AE Expression の画面。Tool 内のヘッダーの下にカテゴリ・難易度・詳細設定のフィルタが並び、その下にエクスプレッションの一覧（Wiggle、Loop Out、Time-based Rotation、Bounce など）がカードで並ぶ。',

@@ -167,22 +167,22 @@
 			}
 		},
 		"business-mail-block": {
-			"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+			"pinned_sha": "1495b2e5feae6b4d38e1d985e1066b2913d39391",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "7edfc11b426e045e37ee9fe56259f1d86e27e083f004e64a304cdf347dfdccf7",
+				"runtime": ["@hello-pangea/dnd", "lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "redux.js.org", "www.w3.org"]
 			}
 		},
 		"code-type-p5": {

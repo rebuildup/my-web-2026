@@ -1,4 +1,4 @@
-# Tool inventory (Issue #80 — fresh state, 2026-09-27; #195 — readmark added 2026-09-29)
+# Tool inventory (Issue #80 — fresh state, 2026-09-27; #195 — readmark added 2026-09-29; #773 — ae-expression graduated to `same_origin_static` 2026-11-03; #855 — mic-level graduated to `same_origin_static` 2026-11-03)
 
 > Canonical inventory of the 15 standalone Tool repositories tracked in
 > `src/tools/manifest.json`. 14 of these are inherited from
@@ -38,27 +38,37 @@ declares no license), default branch `main` (except `tool-pi-game` =
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `prototype` | [rebuildup/ProtoType](https://github.com/rebuildup/ProtoType) | `18e925272ca274e428e143c45194950d562bc096` | `main` | (none) | pnpm | `pnpm run build` (`tsc -b && vite build`) — full Vite app with `index.html` | fetch, canvas / WebGL, three.js, gsap | `same_origin_static` (heavy: ~14 prod deps; large bundle) |
 | `readmark` | [rebuildup/readmark](https://github.com/rebuildup/readmark) | `906c90e57e51f1d7b3fe739f085cf9978445c0fb` | `main` | MIT | `bun@1.4.2` (`engines.bun >= 1.4.0`) | `tsc -b --noCheck && vite build` (Vite app with `index.html`, `vite.config.ts`, `bun.lock`) | `pdfjs-dist` 5.x (PDF decode via `SharedArrayBuffer`, needs COOP/COEP headers), Dexie (IndexedDB local-first), React Router | `same_origin_static` (PDF reading MVP; MIT; added by #195) |
-| `text-counter` | [rebuildup/tool-text-counter](https://github.com/rebuildup/tool-text-counter) | `5371479f6b49e2139424ebb9388287cc5e1a6e03` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library, exports `./src/index.ts` | none (pure text processing) | `needs_tool_side_fix` |
-| `color-palette` | [rebuildup/tool-color-palette](https://github.com/rebuildup/tool-color-palette) | `0eb51503ba39712827497281ca489a379c8c912b` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (pure color math) | `needs_tool_side_fix` |
-| `sequential-png-preview` | [rebuildup/tool-sequential-png-preview](https://github.com/rebuildup/tool-sequential-png-preview) | `2bcad8a121f0b058d3f17ac900c76bcc4d47a34e` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `<input type="file">` for drag-drop, `<img>`, `URL.createObjectURL` | `needs_tool_side_fix` |
-| `svg2tsx` | [rebuildup/tool-svg2tsx](https://github.com/rebuildup/tool-svg2tsx) | `4e85e922d87bfd75c62d4e0b6cfe595b8289368a` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `<input type="file">`, `URL.createObjectURL` | `needs_tool_side_fix` |
-| `business-mail-block` | [rebuildup/tool-business-mail-block](https://github.com/rebuildup/tool-business-mail-block) | `d1ea054adc87315ed6555751b21109366b16710f` | `main` | MIT | `bun@1.3.10` (peer `next: ^16.3.0`) | NONE — Next.js component library | `@hello-pangea/dnd` (drag-drop), `navigator.clipboard` | `needs_tool_side_fix` |
-| `code-type-p5` | [rebuildup/tool-code-type-p5](https://github.com/rebuildup/tool-code-type-p5) | `509c2873a434673befeee08c3bf6d4b2c8473b94` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | canvas (p5.js) | `needs_tool_side_fix` |
-| `fillgen` | [rebuildup/tool-fillgen](https://github.com/rebuildup/tool-fillgen) | `01d53b84e9884352aa2bc44a6b917708de5f5199` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | canvas | `needs_tool_side_fix` |
-| `qr-generator` | [rebuildup/tool-qr-generator](https://github.com/rebuildup/tool-qr-generator) | `19fd50bb32d4cc1fd1e6129de32a6771c2e6667f` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `qrcode` + `qrcode.react` (canvas / SVG render) | `needs_tool_side_fix` |
-| `pomodoro` | [rebuildup/tool-pomodoro](https://github.com/rebuildup/tool-pomodoro) | `954cfd898dba6f46c8ef250d69b1b64245c0eecf` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `Notification`, `Audio` | `needs_tool_side_fix` |
-| `history-quiz` | [rebuildup/tool-history-quiz](https://github.com/rebuildup/tool-history-quiz) | `72328139de1ac5ceee84babbf76cd82899fde8c3` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (quiz state machine) | `needs_tool_side_fix` |
-| `pi-game` | [rebuildup/tool-pi-game](https://github.com/rebuildup/tool-pi-game) | `9e19ec5d63c84fad9be625b33b0455e922ba3570` | **`develop`** | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (typing game) | `needs_tool_side_fix` (note: default branch `develop`, not `main`) |
-| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `cd136e251ae7372143a0ee4af4c727324df47655` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `navigator.clipboard` | `needs_tool_side_fix` |
-| `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3` | `main` | MIT | pnpm + `bun test` (dep `next: ^16.3.0`) | NONE — Next.js component library | `navigator.mediaDevices.getUserMedia({ audio: true })` | `external_exception` (mic capture requires `https` + user gesture; the host grants it via `Permissions-Policy: microphone=(self "<serving origin>")` and `<iframe allow="microphone">` — see `docs/security/security-headers.md`; CSP is not the gate and is out of scope for #449) |
+| `text-counter` | [rebuildup/tool-text-counter](https://github.com/rebuildup/tool-text-counter) | `b0c7ba203df7d822a87387d367fd1415d13382e6` | `main` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | none (pure text processing) | `same_origin_static`
+| `color-palette` | [rebuildup/tool-color-palette](https://github.com/rebuildup/tool-color-palette) | `b3fed92bac4a6d32b48be21c35ad8b8239d4d5e5` | `main` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | none (pure color math) | `same_origin_static`
+| `sequential-png-preview` | [rebuildup/tool-sequential-png-preview](https://github.com/rebuildup/tool-sequential-png-preview) | `ddec2729d8b244ebab3370d2eccb95be25e2a43a` | `main` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | `<input type="file">` for drag-drop, `<img>`, `URL.createObjectURL` | `same_origin_static`
+| `svg2tsx` | [rebuildup/tool-svg2tsx](https://github.com/rebuildup/tool-svg2tsx) | `6289e2c89a484c3a31bd9b8cba368d6b38c414a0` | `main` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | `<input type="file">`, `URL.createObjectURL` | `same_origin_static`
+| `business-mail-block` | [rebuildup/tool-business-mail-block](https://github.com/rebuildup/tool-business-mail-block) | `d1ea054adc87315ed6555751b21109366b16710f` | `main` | MIT | bun | NONE — Next.js component library (no standalone build yet; the manifest keeps the Tool `host_disabled`)  | `@hello-pangea/dnd` (drag-drop), `navigator.clipboard` | `needs_tool_side_fix`
+| `code-type-p5` | [rebuildup/tool-code-type-p5](https://github.com/rebuildup/tool-code-type-p5) | `2e1193111faa837d3653d72410aa0e3c97a176b3` | `main` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | canvas (p5.js) | `same_origin_static`
+| `fillgen` | [rebuildup/tool-fillgen](https://github.com/rebuildup/tool-fillgen) | `962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a` | `release-0-1-0` | MIT | bun | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`) | canvas | `same_origin_static`
+| `qr-generator` | [rebuildup/tool-qr-generator](https://github.com/rebuildup/tool-qr-generator) | `0df1a99e32cea8d34a56f41dbc580db3e494c8d3` | `main` | MIT | pnpm | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`) | `qrcode` + `qrcode.react` (canvas / SVG render) | `same_origin_static`
+| `pomodoro` | [rebuildup/tool-pomodoro](https://github.com/rebuildup/tool-pomodoro) | `7ce10d78dc6efc1a71aebd2051e29b80216dfd2c` | `main` | MIT | pnpm | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`) | `Notification`, `Audio` | `same_origin_static`
+| `history-quiz` | [rebuildup/tool-history-quiz](https://github.com/rebuildup/tool-history-quiz) | `72328139de1ac5ceee84babbf76cd82899fde8c3` | `main` | MIT | pnpm | NONE — Next.js component library (no standalone build yet; the manifest keeps the Tool `host_disabled`)  | none (quiz state machine) | `needs_tool_side_fix`
+| `pi-game` | [rebuildup/tool-pi-game](https://github.com/rebuildup/tool-pi-game) | `e67d9cec91bc431ab10003aa229205466a822425` | `develop` | MIT | pnpm | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`) | none (typing game) | `same_origin_static`
+| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `56bbbbd6174c1baee5b542565466f8154ad633ed` | `main` | MIT | pnpm (`pnpm-lock.yaml`, no `next` peer) | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`, `base: "./"`; Issue #6 / PR #7) | `navigator.clipboard` (with `document.execCommand("copy")` fallback), `URL.createObjectURL` + `link.download` (file export) | `same_origin_static` (graduated 2026-11-03, Issue #773: embedded from the host's own origin with `sandbox="allow-scripts allow-downloads"` — the export writes a file, and a sandboxed frame drops the download without that token; measured, see `docs/security/security-headers.md` §3) |
+| `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `9506e4619541d8912346648ced1239607acea199` | `main` | MIT | bun (`bun.lock`, `bun test`) | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`; tool PR #4) | `navigator.mediaDevices.getUserMedia({ audio: true })` | `same_origin_static` (graduated 2026-11-03, Issue #855: shipped from the host's own origin; the microphone is granted per-Tool via `Permissions-Policy: microphone=(self "<serving origin>")` + `<iframe allow="microphone">`; the measurements are in `docs/verification/tools/mic-level-host-activation.md`) |
 
 ## Counts
 
+The counts follow the canonical `classification` field of
+`src/tools/manifest.json` as of this branch's merge with
+`origin/release-0-8-1` = `df766a82` (2026-11-03): 13 Tools are
+`same_origin_static`, 2 are `needs_tool_side_fix`, 0 are
+`external_exception`. The per-row `build path` / `HEAD SHA` columns
+are the 2026-09-27 (#80) / #195 reading of each Tool repo, refreshed
+for every row whose pin and classification the manifest now states
+differently (the Issue #817 waves and this branch's #773 / #855
+changes) — the manifest is the authority for the current pin.
+
 | classification | count |
 | --- | --- |
-| `same_origin_static` | 2 (ProtoType, readmark) |
-| `needs_tool_side_fix` | 12 |
-| `external_exception` | 1 (mic-level) |
+| `same_origin_static` | 13 (ProtoType, readmark, text-counter, color-palette, sequential-png-preview, svg2tsx, qr-generator, code-type-p5, fillgen, pomodoro, pi-game, ae-expression, mic-level) |
+| `needs_tool_side_fix` | 2 (business-mail-block, history-quiz) |
+| `external_exception` | 0 |
 | `not_integrable_yet` | 0 |
 | **total** | **15** |
 
@@ -77,14 +87,16 @@ declares no license), default branch `main` (except `tool-pi-game` =
    test of the orchestration: a heavy multi-route Vite SPA must be
    collectable under `/tools/prototype/`.
 
-3. **`tool-mic-level` is the only `external_exception`** candidate —
-   it captures the user's microphone via `getUserMedia`. Same-origin
-   hosting works as long as the iframe is served over `https` (which
-   the canonical production origin `rebuildup.dev` provides). The
-   CSP / `Permissions-Policy: microphone=(self "https://rebuildup.dev")`
-   requirement is a header concern, not an origin concern. It may
-   graduate to `same_origin_static` once we add a Tool-side build
-   script.
+3. **`tool-mic-level` graduated to `same_origin_static`** (Issue #855,
+   2026-11-03) — the `external_exception` class is now empty. The
+   Tool-side standalone build landed (`bun run build` → `dist/`), and
+   the microphone is granted per-Tool rather than host-wide: the
+   origin-scoped `Permissions-Policy: microphone=(self
+   "https://rebuildup.dev")` grant plus `<iframe allow="microphone">`
+   on the host route. The framed document keeps an opaque origin under
+   the shipped `sandbox="allow-scripts"`, so `getUserMedia` is refused
+   until ADR-0020 §2.1 lands — the measurements are in
+   `docs/verification/tools/mic-level-host-activation.md`.
 
 4. **`tool-pi-game` has `default_branch = develop`**, not `main`. This
    affects the registered gitlink branch in `.gitmodules` if we ever
@@ -155,8 +167,9 @@ The Tool repo becomes self-hosting — the my-web-2026 parent just
 invokes the Tool's own `pnpm run build` and copies `dist/` into
 `dist/client/tools/<slug>/`.
 
-For `mic-level`, the same standalone build is also possible; the
-only difference is that the iframe hosting it must carry
+For `mic-level`, the standalone build has landed (Issue #855) and the
+shipped frame is served from the host's own origin; the only
+difference is that the iframe hosting it must carry
 `Permissions-Policy: microphone=(self "https://rebuildup.dev")` — the
 origin-scoped form `self` alone cannot satisfy, because the framed
 document has an opaque origin under the shipped

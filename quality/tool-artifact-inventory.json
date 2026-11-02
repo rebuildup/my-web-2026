@@ -316,22 +316,22 @@
 			}
 		},
 		"ae-expression": {
-			"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+			"pinned_sha": "56bbbbd6174c1baee5b542565466f8154ad633ed",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "e725004c619289985936cad8efce2491752e577cea255e27ec32023651048220",
+				"runtime": ["lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"mic-level": {

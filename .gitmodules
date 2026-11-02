@@ -19,6 +19,9 @@
 [submodule "external/svg2tsx"]
 	path = external/svg2tsx
 	url = https://github.com/rebuildup/tool-svg2tsx.git
+[submodule "external/ae-expression"]
+	path = external/ae-expression
+	url = https://github.com/rebuildup/tool-ae-expression.git
 [submodule "external/pomodoro"]
 	path = external/pomodoro
 	url = https://github.com/rebuildup/tool-pomodoro.git

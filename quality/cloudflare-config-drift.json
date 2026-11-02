@@ -64,7 +64,6 @@
 			"/tools/:slug/app/*",
 			"/tools/:slug/app",
 			"/tools/mic-level/app/*",
-			"/tools/ae-expression/app/*",
 			"/assets/*",
 			"/icons/*",
 			"/site.webmanifest"

@@ -277,9 +277,12 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
-					"/tools/ae-expression",
+					"/tools/code-type-p5",
 					"/tools/color-palette",
+					"/tools/fillgen",
 					"/tools/mic-level",
+					"/tools/pi-game",
+					"/tools/pomodoro",
 					"/tools/prototype",
 					"/tools/qr-generator",
 					"/tools/readmark",
@@ -322,9 +325,12 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
-			"/tools/ae-expression",
+			"/tools/code-type-p5",
 			"/tools/color-palette",
+			"/tools/fillgen",
 			"/tools/mic-level",
+			"/tools/pi-game",
+			"/tools/pomodoro",
 			"/tools/prototype",
 			"/tools/qr-generator",
 			"/tools/readmark",
@@ -338,6 +344,7 @@
 			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
+			"cdn.jsdelivr.net",
 			"design.google",
 			"developers.google.com",
 			"example.com",
@@ -353,6 +360,7 @@
 			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
+			"via.placeholder.com",
 			"www.apache.org",
 			"www.facebook.com",
 			"www.googletagmanager.com",
@@ -364,6 +372,7 @@
 			"www.sitemaps.org",
 			"www.stat.go.jp",
 			"www.w3.org",
+			"www.youtube.com",
 			"x.com",
 			"yusuke-kim.com"
 		],
@@ -444,7 +453,8 @@
 					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
-					"src/home/mark.tsx"
+					"src/home/mark.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -490,6 +500,33 @@
 				"identifier": false,
 				"files": [
 					"src/external-api/github.ts"
+				]
+			},
+			{
+				"url": "https://cdn.jsdelivr.net",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://cdn.jsdelivr.net/npm/p5@",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -1032,6 +1069,7 @@
 					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
+					"src/http/security-headers.json",
 					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
@@ -1193,6 +1231,24 @@
 				]
 			},
 			{
+				"url": "https://via.placeholder.com",
+				"host": "via.placeholder.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://via.placeholder.com/300?text=Image+Error",
+				"host": "via.placeholder.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://www.facebook.com/KosenProcon",
 				"host": "www.facebook.com",
 				"kind": "external",
@@ -1283,6 +1339,33 @@
 				]
 			},
 			{
+				"url": "https://www.youtube.com",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/embed/…",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/iframe_api",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
@@ -1304,27 +1387,107 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/ae-expression",
-			"/tools/mic-level"
+			"/tools/code-type-p5",
+			"/tools/fillgen",
+			"/tools/pi-game",
+			"/tools/pomodoro"
 		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://cdn.jsdelivr.net",
+			"https://cdn.jsdelivr.net/npm/p5@",
+			"https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json",
+			"https://via.placeholder.com",
+			"https://via.placeholder.com/300?text=Image+Error",
+			"https://www.youtube.com",
+			"https://www.youtube.com/embed/…",
+			"https://www.youtube.com/iframe_api"
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"cdn.jsdelivr.net",
+			"via.placeholder.com",
+			"www.youtube.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W004 public-url-added",
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host cdn.jsdelivr.net appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host via.placeholder.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/ae-expression"
+				"message": "External URL added: https://cdn.jsdelivr.net"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://cdn.jsdelivr.net/npm/p5@"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://via.placeholder.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://via.placeholder.com/300?text=Image+Error"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/embed/…"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/iframe_api"
 			},
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/mic-level"
+				"message": "Public URL added: /tools/code-type-p5"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/fillgen"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/pi-game"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /tools/pomodoro"
 			}
 		]
 	}

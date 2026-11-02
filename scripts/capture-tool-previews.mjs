@@ -135,6 +135,70 @@ export const PREVIEW_TARGETS = [
 			'AE Expression の画面。エクスプレッションの一覧・式・パラメータが表示され、生成したコードをコピーできる',
 	},
 	{
+		slug: 'pomodoro',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Pomodoro の実行中の画面。左上に「Warm up」のフェーズ表示、その下にカウントダウン表示（15:00.00 から減っている）、下に作業／休憩のスケジュール一覧',
+		/**
+		 * The Tool shows its countdown only after the timer is started,
+		 * and the first frame of the timer is an empty ring with a
+		 * phase label — a faithful picture that says nothing about what
+		 * the Tool does. Pressing the timer is what a visitor does, and
+		 * the capture waits until the displayed time has actually moved
+		 * (i.e. the countdown is running) before it photographs.
+		 */
+		prepare: async ({ frame, page }) => {
+			const timer = frame.locator('button').first();
+			const before = (await timer.innerText()).trim();
+			await timer.click();
+			const deadline = Date.now() + 15_000;
+			while (Date.now() < deadline) {
+				const now = (await timer.innerText()).trim();
+				if (now.length > 0 && now !== before) return;
+				await page.waitForTimeout(200);
+			}
+			throw new Error('pomodoro: the countdown did not start — refusing to commit a still frame');
+		},
+	},
+	{
+		slug: 'pi-game',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Pi Memory Game の初期画面。タイトルと説明文、左に「全画面」ボタン、中央に「3 to Start」と数字の盤面（7 8 9 / 4 5 6 / 1 2 3）',
+	},
+	{
+		slug: 'fillgen',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'穴埋めプリントジェネレーターの初期画面。ページ追加ボタン付きのエディタ（ページ1）と、プレビュー／HTML／React タブの出力欄',
+	},
+	{
+		slug: 'code-type-p5',
+		/** What the committed artefact must show, for a human re-check. */
+		expect:
+			'Code Type p5 の再生中の画面。操作欄に「Play」と「Edit Code」のボタンがあり、下のキャンバスにサンプルプログラム（Rust）が色付きソースコードとして描かれている',
+		/**
+		 * The Tool renders its sample program on the p5 canvas only
+		 * while the playback runs, so the un-prepared frame is an empty
+		 * canvas. Pressing "Play" is what a visitor does; the capture
+		 * then waits until the canvas actually carries ink (measured as
+		 * a non-zero channel deviation in the canvas bitmap), so a
+		 * blank canvas can never be committed.
+		 */
+		prepare: async ({ frame, page }) => {
+			await frame.getByRole('button', { name: 'Play' }).click();
+			const canvas = frame.locator('canvas').first();
+			const deadline = Date.now() + 20_000;
+			while (Date.now() < deadline) {
+				const png = await canvas.screenshot();
+				const stats = await sharp(png).stats();
+				if (stats.channels.some((channel) => channel.stdev > 1)) return;
+				await page.waitForTimeout(300);
+			}
+			throw new Error('code-type-p5: the canvas stayed blank — refusing to commit a blank frame');
+		},
+	},
+	{
 		slug: 'mic-level',
 		/** What the committed artefact must show, for a human re-check. */
 		expect:
@@ -210,6 +274,16 @@ try {
 			throw new Error(
 				`${target.slug}: Tool frame looks blank (${bodyText.length} chars) — not committing a blank preview`,
 			);
+		}
+		// A Tool whose own screen only appears after the visitor acts on
+		// it (a countdown that must be started, a canvas that only
+		// draws while it plays) is prepared the way a visitor would
+		// prepare it, and the preparation WAITS for the state it wants
+		// (a moved countdown, ink on the canvas). A target that cannot
+		// reach its state fails the capture instead of committing the
+		// empty state it started from.
+		if (target.prepare) {
+			await target.prepare({ frame, page });
 		}
 		// Clicking the consent button scrolls the host page (the button
 		// sits below the fold), which leaves the frame's top edge

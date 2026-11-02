@@ -79,6 +79,7 @@
 		"security:redirect:report": "node scripts/redirect-validation-report.mjs",
 		"capture:analytics-consent": "node scripts/capture-analytics-consent.mjs",
 		"capture:home-current-projects": "node scripts/capture-home-current-projects.mjs",
+		"capture:project-card-category": "node scripts/capture-project-card-category-bar.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
 		"capture:dev-data-source": "node scripts/capture-dev-data-source.mjs",
 		"verify:status-incident-screenshot": "node scripts/capture-status-incident-context.mjs",

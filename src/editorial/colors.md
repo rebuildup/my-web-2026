@@ -38,14 +38,24 @@ layer is the contract; the raw layer is implementation.
 | `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#ffffff` light / `#0a0b0e` dark, `charcoal.950`). |
 | `accent.negative` | Error / unreachable status | Red status indicator. Same contrast guarantee as `accent.positive`. |
 | `accent.warning` | Degraded status | Amber status indicator. Same contrast guarantee. |
-| `accent.category.design` | Design content identifier | Pink. Used as left-border on portfolio cards whose first facet is `design`. |
-| `accent.category.code` | Code content identifier | Cyan. Used as left-border on portfolio cards whose first facet is `develop`. |
-| `accent.category.writing` | Writing / long-form content identifier | Yellow-brown. Used as left-border on portfolio cards whose first facet is `other`. |
-| `accent.category.tool` | Tool / utility content identifier | Indigo. Used as left-border on portfolio cards whose first facet is `video` (and to category-tag tool surfaces). |
+| `accent.category.design` | Design content identifier | Pink. Non-text identifier hue paired with the `design` `StateMark` silhouette. |
+| `accent.category.code` | Code content identifier | Cyan. Same role for `develop`. |
+| `accent.category.writing` | Writing / long-form content identifier | Yellow-brown. Same role for `other`. |
+| `accent.category.tool` | Tool / utility content identifier | Indigo. Same role for `video` (and the tool surfaces' category tag). |
 
 The four category hues are deliberately separable at a glance —
 they sit at comparable saturation and distinct hue angles
 (pink ≈ 330°, cyan ≈ 190°, yellow ≈ 50°, indigo ≈ 240°).
+
+**Not painted on the portfolio card (Issue #794).** These four roles
+used to be the left-border of a portfolio card. The owner's decision
+(2026-11-01) removed that rule and forbids a left border as its
+replacement: the card is separated from the page by its own fill
+(`bg.surface`) and the category is carried by the `StateMark`
+silhouette plus the upper-case category word. The hues remain a
+non-text identifier role for surfaces that pair them with a mark (the
+`/design-system` identifier tiles do), never a background for text —
+a 700/300-step solid cannot carry a text-bearing face at 4.5:1.
 
 ### These hues are reinforcement, never the message (Issue #411)
 
@@ -64,8 +74,10 @@ and the human review that are explicitly separated) lives in
 
 **Scope of the rule, and the one surface that does not satisfy it yet.**
 The rule binds any consumer that paints an `accent.*` status or
-`accent.category.*` hue as a state cue. This ticket wired two of them:
-the home status badges and the portfolio card category rules. One
+`accent.category.*` hue as a state cue. Issue #411 wired two of them:
+the home status badges and the portfolio card category rules; Issue
+#794 then removed the rule from the portfolio card entirely (the
+category is shape + word there, with no hue at all). One
 consumer is **not** wired: the external-read card badges
 (`src/external-api/ExternalReadCard.tsx` — fresh / stale / failed /
 blocked / loading) still render `Badge tone={accent | neutral}` with no

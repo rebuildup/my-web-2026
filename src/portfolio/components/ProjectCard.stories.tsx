@@ -1,17 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MonochromeProof } from '../../../.storybook/MonochromeProof';
+import { css } from '../../../styled-system/css';
 import type { PortfolioFacet, PortfolioProject } from '../schema';
 import { ProjectCard } from './ProjectCard';
 
 /**
  * ProjectCard stories (Issue #411).
  *
- * The card is the surface where the content category was encoded by
- * hue alone: a 4px rule painted `accent.category.<facet>` and
- * nothing else. These fixtures put all four categories in one frame so
- * the non-colour half of the cue — the `StateMark` silhouette and the
- * upper-case category word — can be compared side by side, and then
- * the same frame in greyscale.
+ * The card is the surface where the content category used to be
+ * encoded by hue alone: a 4px rule painted `accent.category.<facet>`
+ * and nothing else. Issue #794 removed that rule (owner decision,
+ * 2026-11-01 — no left rule, no left border), so what these fixtures
+ * compare is now three separate things:
+ *
+ *   1. the PLANE — the card's own `bg.surface` against the page's
+ *      `bg.canvas`, a luminance step rather than a hue, which is why it
+ *      survives the greyscale frame below;
+ *   2. the SHAPE — the `StateMark` silhouette, one per category
+ *      (diamond / square / chevron / stacked bars);
+ *   3. the WORD — the upper-case category label beside the mark.
+ *
+ * All four categories sit in one frame so 1–3 can be compared side by
+ * side, and then the same frame in greyscale. Nothing on this card is
+ * painted with a category hue, so the greyscale frame is not an
+ * approximation of the cue — it IS the cue.
  *
  * Every row is a SYNTHETIC placeholder on purpose. A story must never
  * be able to invent a portfolio fact: the titles, roles and periods
@@ -65,7 +77,16 @@ const FACETS: readonly PortfolioFacet[] = ['design', 'develop', 'video', 'other'
 
 function Row({ facets }: { facets: readonly PortfolioFacet[] }) {
 	return (
-		<div style={{ display: 'flex', flexDirection: 'column' }}>
+		<div
+			// The page canvas, so the card's `bg.surface` plane is visible
+			// against the same background it ships on.
+			className={css({
+				display: 'flex',
+				flexDirection: 'column',
+				backgroundColor: 'bg.canvas',
+				padding: '6',
+			})}
+		>
 			{facets.map((facet, index) => (
 				<ProjectCard key={facet} project={placeholder(facet, index)} />
 			))}
@@ -83,7 +104,7 @@ export const AllCategories: Story = {
 export const Monochrome: Story = {
 	args: { project: placeholder('design', 0) },
 	render: () => (
-		<MonochromeProof caption="greyscale — category shapes: diamond = design, square = code, chevron = tool, bars = writing">
+		<MonochromeProof caption="greyscale — the plane is a luminance step (not a hue); category shapes: diamond = design, square = code, chevron = tool, bars = writing">
 			<Row facets={FACETS} />
 		</MonochromeProof>
 	),

@@ -277,10 +277,10 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
-					"/tools/ae-expression",
 					"/tools/code-type-p5",
 					"/tools/color-palette",
 					"/tools/fillgen",
+					"/tools/history-quiz",
 					"/tools/mic-level",
 					"/tools/pi-game",
 					"/tools/pomodoro",
@@ -326,10 +326,10 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
-			"/tools/ae-expression",
 			"/tools/code-type-p5",
 			"/tools/color-palette",
 			"/tools/fillgen",
+			"/tools/history-quiz",
 			"/tools/mic-level",
 			"/tools/pi-game",
 			"/tools/pomodoro",
@@ -1389,7 +1389,7 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/tools/ae-expression"
+			"/tools/history-quiz"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
@@ -1403,7 +1403,7 @@
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/ae-expression"
+				"message": "Public URL added: /tools/history-quiz"
 			}
 		]
 	}

@@ -60,6 +60,7 @@ const DOCUMENT_PATH = 'docs/personal/usable-product-publication.md';
 
 /** The committed records the preview's facts were read from. */
 const TOOL_MANIFEST_PATH = 'src/tools/manifest.json';
+const TOOL_SCHEMA_PATH = 'src/tools/manifest.schema.json';
 const API_CATALOG_PATH = 'src/http/api-directory/catalog.ts';
 
 const documentText = readFileSync(join(REPO_ROOT, DOCUMENT_PATH), 'utf8');
@@ -400,6 +401,7 @@ describe('decision parity', () => {
 describe('the preview still matches the committed records', () => {
 	const manifest = JSON.parse(readFileSync(join(REPO_ROOT, TOOL_MANIFEST_PATH), 'utf8'));
 	const catalogSource = readFileSync(join(REPO_ROOT, API_CATALOG_PATH), 'utf8');
+	const schemaSource = readFileSync(join(REPO_ROOT, TOOL_SCHEMA_PATH), 'utf8');
 
 	for (const example of usableProductExamples) {
 		if (example.kind === 'tool') {
@@ -411,6 +413,24 @@ describe('the preview still matches the committed records', () => {
 					assert.equal(actual, fact.value, `${example.subject}.${fact.label}`);
 				}
 				assert.ok(example.pointer.includes(example.subject));
+			});
+			continue;
+		}
+
+		if (example.kind === 'schema') {
+			// The counterexample is a RECORD SHAPE, not a Tool. Pinning it to
+			// a slug made it a claim about which Tools are unpublished, and
+			// that claim goes false the moment the last such Tool ships (it
+			// did: every shipped Tool is same_origin_static as of Issue #772).
+			// The shape itself is durable, so it is read from the schema.
+			it(`matches the Tool manifest schema for ${example.subject}`, () => {
+				assert.equal(example.record, TOOL_SCHEMA_PATH);
+				for (const fact of example.facts) {
+					assert.ok(
+						schemaSource.includes(fact.value),
+						`${example.subject}: the schema does not carry "${fact.value}"`,
+					);
+				}
 			});
 			continue;
 		}

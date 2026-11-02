@@ -278,22 +278,22 @@
 			}
 		},
 		"history-quiz": {
-			"pinned_sha": "72328139de1ac5ceee84babbf76cd82899fde8c3",
+			"pinned_sha": "024676693fd3d91401ddcacb1294ea988801c6eb",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "bfa4bebc1bc9d7df256bcfe6d868cf92ddb50fbb15be7164425a62e3a4524ebc",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"pi-game": {

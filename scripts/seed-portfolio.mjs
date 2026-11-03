@@ -26,7 +26,17 @@ const root = resolve(here, '..');
 
 const dryRun = process.argv.includes('--dry-run');
 
-/** Load the seed entry list by reading the TS file and regex-extracting slug + title + facets. */
+/**
+ * Load the seed entry list by reading the TS file and
+ * regex-extracting slug + title + facets + periodLabel.
+ *
+ * Issue #767 — `period_label` used to be written as NULL even though
+ * `src/portfolio/seed.ts` records a label for every entry, so the
+ * seeded `/portfolio` cards showed a `PERIOD` label with an empty
+ * value. The label is a committed user-facing string, so the seed
+ * writes it; `period_start` / `period_end` stay out of this skeleton
+ * parse (they are `Date.UTC(...)` expressions, not literals).
+ */
 function loadSeedEntries() {
 	const seedPath = join(root, 'src/portfolio/seed.ts');
 	const source = readFileSync(seedPath, 'utf8');
@@ -41,17 +51,21 @@ function loadSeedEntries() {
 	// JSON. The values are a closed enum so we don't need to escape
 	// anything; we just write the array back into the SQL.
 	const facetsRaw = [...source.matchAll(/facets:\s*\[([^\]]*)\]/g)].map((m) => m[1]);
-	return { slugs, titles, facetsRaw };
+	// `periodLabel: '2025-09 - present'` — a single-quoted literal per
+	// entry. The interface also declares `periodLabel: string;`; the
+	// quoted capture cannot match a type annotation.
+	const periodLabels = [...source.matchAll(/periodLabel:\s*'([^']*)'/g)].map((m) => m[1]);
+	return { slugs, titles, facetsRaw, periodLabels };
 }
 
-const { slugs, titles, facetsRaw } = loadSeedEntries();
+const { slugs, titles, facetsRaw, periodLabels } = loadSeedEntries();
 if (slugs.length === 0) {
 	console.error('[seed-portfolio] failed to extract any seed entries from src/portfolio/seed.ts');
 	process.exit(1);
 }
-if (slugs.length !== titles.length) {
+if (slugs.length !== titles.length || slugs.length !== periodLabels.length) {
 	console.error(
-		'[seed-portfolio] slug/title count mismatch — refusing to seed to avoid corruption',
+		'[seed-portfolio] slug/title/periodLabel count mismatch — refusing to seed to avoid corruption',
 	);
 	process.exit(1);
 }
@@ -79,13 +93,13 @@ for (let i = 0; i < slugs.length; i++) {
 		.join(',');
 	const id = `seed_${slug.replace(/[^a-z0-9-]/g, '_')}`;
 	const now = Date.now();
-	// period_start / period_end come from the seed module — we
-	// can't decode them via regex without parsing the whole TS.
-	// For the foundation we record slug + title + facets only;
-	// the rest of the body is filled in via subsequent admin / PR
-	// updates (or by the #78 migration ticket).
+	const periodLabel = escapeSingleQuote(periodLabels[i]);
+	// period_start / period_end are `Date.UTC(...)` expressions in the
+	// seed module, so this regex-based skeleton leaves them at the
+	// seed timestamp. The display label IS extracted and written: it is
+	// the user-facing value the card and detail page print.
 	sqlStatements.push(
-		`INSERT OR IGNORE INTO portfolio_project (id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at) VALUES ('${id}', '${slug}', '${escapeSingleQuote(title)}', '', 'Solo developer', ${now}, NULL, NULL, '', '[${facetsJson}]', '[]', 'public', 'published', 0, 100, ${now}, ${now});`,
+		`INSERT OR IGNORE INTO portfolio_project (id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at) VALUES ('${id}', '${slug}', '${escapeSingleQuote(title)}', '', 'Solo developer', ${now}, NULL, '${periodLabel}', '', '[${facetsJson}]', '[]', 'public', 'published', 0, 100, ${now}, ${now});`,
 	);
 }
 

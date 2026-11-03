@@ -3329,6 +3329,31 @@
 			"action": "kept-closed",
 			"note": "受け入れ条件の証跡: commit 5226f9a9 が 3 系統（list SC 1.3.1 / definition-list SC 1.3.1 / label-content-name-mismatch SC 2.5.3）を実装側で修正し、両台帳の records は実測で 0 件になった。台帳照合の gate は残り、対象 route / story の除外や基準の緩和はしていない。",
 			"missing": null
+		},
+		{
+			"issue": 870,
+			"title": "feat(portfolio): 旧サイトの YouTube 動画 44 件に再生導線を作る（click-to-load・第三者要求 0 から）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#873",
+				"3045f24f",
+				"src/portfolio/video-facade.ts",
+				"src/portfolio/components/PortfolioVideoFacade.tsx",
+				"src/portfolio/video-facade.test.ts",
+				"src/portfolio/components/PortfolioVideoFacade.client.test.tsx",
+				"docs/verification/portfolio/video-facade.md",
+				"docs/verification/portfolio/video-facade/measurement-summary.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #873（merge 3045f24f）が release-0-8-1 に着地。受入条件 2-7 はテスト・実測記録・WebP と CI で満たした。条件 1「初期表示の第三者要求 0 件」は、動画起因の要求が押下前 0 件であることを Playwright の request 観測で記録した（YouTube 系 origin 0 件、iframe 0 個）。ただし同一ページから変更前より存在する Google Fonts への 32〜34 件の要求が出るため、字義どおりの「第三者要求 0」ではない。この差は docs/verification/portfolio/video-facade.md §4.1 と Issue コメントに明記し、字義どおりの 0 件化は #876（フォント自己ホスト）で追跡する。",
+			"missing": null
 		}
 	]
 }

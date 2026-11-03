@@ -309,7 +309,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-qr-generator.git",
 				"submodule_path": "external/qr-generator",
-				"pinned_sha": "0df1a99e32cea8d34a56f41dbc580db3e494c8d3",
+				"pinned_sha": "2a7d64308e1286108c42bbe88b8d9f762e7e8fa3",
 				"branch": "main"
 			},
 			"build": {
@@ -326,12 +326,12 @@
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned qr-generator 0df1a99: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
+					"basis": "measured at pinned qr-generator 2a7d643: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-qr-generator PR #4 (commit 0df1a99e32cea8d34a56f41dbc580db3e494c8d3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed)."
+			"notes": "Standalone Vite build merged via rebuildup/tool-qr-generator PR #4 (commit 0df1a99e32cea8d34a56f41dbc580db3e494c8d3 = the previous pinned submodule HEAD). This pin is PR #6 (commit 2a7d64308e1286108c42bbe88b8d9f762e7e8fa3), the 390px layout fix from Issue #5 / host #867. Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed)."
 		},
 		{
 			"slug": "pomodoro",
@@ -408,7 +408,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pi-game.git",
 				"submodule_path": "external/pi-game",
-				"pinned_sha": "e67d9cec91bc431ab10003aa229205466a822425",
+				"pinned_sha": "b234aa0569ade70a885c8ee8941861fccf7a3603",
 				"branch": "develop"
 			},
 			"build": {
@@ -426,12 +426,12 @@
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
+					"basis": "measured at pinned pi-game b234aa05: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-pi-game PR #4 (commit e67d9cec91bc431ab10003aa229205466a822425 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. The upstream default branch of this repo is develop, and the standalone build landed there; main (9e19ec5d) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage."
+			"notes": "Standalone Vite build merged via rebuildup/tool-pi-game PR #4 (commit e67d9cec91bc431ab10003aa229205466a822425 = the previous pinned submodule HEAD). This pin is PR #6 (commit b234aa0569ade70a885c8ee8941861fccf7a3603), the 390px `box-sizing` fix from Issue #5 / host #867. Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. The upstream default branch of this repo is develop, and the standalone build landed there; main (9e19ec5d) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage."
 		},
 		{
 			"slug": "ae-expression",

@@ -24,15 +24,16 @@
 - worktree: `/Users/rebui/work/my-web-2026.767-fix`（branch `767-fix`）
 - `pnpm run build` → `node scripts/sync-cf-build-output.mjs`
   → `pnpm exec vite preview --port 4471 --strictPort`
-- ローカル D1 に migration 0001–0010 を適用し、修正版
-  `node scripts/seed-portfolio.mjs` で 6 件を投入。
-  修正前の測定は seed 修正前の DB（`period_label` が NULL）で行い、
-  修正後は seed を再実行して label が入った状態で測った。
+- ローカル D1 に migration 0001–0010 を適用した。修正前の測定は
+  修正前の `scripts/seed-portfolio.mjs` で 6 件を投入した DB
+  （`period_label` が NULL）で行い、修正後は seed 行を削除して
+  修正版 seed を再実行し、label が入った状態で測った。
 - Playwright（`@playwright/test` の Chromium、headless）で
   `networkidle` + `document.fonts.ready` + 待機後に測定。
   - viewport: 390×844 / 1440×900、`deviceScaleFactor: 2`
   - 各ページで GA4 同意の「拒否する」を先に押した。privacy の
-    `<details>` は開いた状態でスクロール位置を測った。
+    `<details>` は閉じたまま測定した（Chromium は閉じた内容にも
+    `Range.getClientRects()` の矩形を返す点に注意）。
 - スクロール位置ごとの測定は `window.scrollTo(0, y)` の 400ms 後に
   `Range.getClientRects()` で全テキスト行の矩形を取り、pet の
   子要素矩形との交差面積を計算した。
@@ -107,6 +108,10 @@ cover なしの 390×844 では article が x=16 / width=358、
 | 1200 | 2 / 532.23px² | 0 / 0px² |
 | 2400 | 2 / 2294.12px² | 0 / 0px² |
 | max (5057 → 5637) | 5 / 5158.18px² | 0 / 0px² |
+
+maxScroll の修正前 5 行には、閉じた privacy `<details>` 内の
+テキスト矩形（画面には描画されない内容）が含まれる。scroll 0–2400 の
+交差は可視の本文で、修正後はいずれも 0 である。
 
 付随して NOW lead の幅が 358px → 282px になり、折り返しが増えたため
 lead の top は 704.38 → 824.36 に下がった。本文の右端は 374 → 298 となり、

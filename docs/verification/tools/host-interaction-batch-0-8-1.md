@@ -74,16 +74,18 @@
 | ユーザー操作 | iframe 内の Content 欄に `https://example.com` を入力 |
 | 観測結果 | 生成表示 `#1: https://example.com`、`canvas` 256×256 が出現 |
 | 390px host 横スクロール | なし（390 = 390） |
-| 390px frame 横スクロール | **あり（`scrollWidth` 686 > `clientWidth` 390）** |
-| 1440 スクリーンショット | [qr-generator-desktop.webp](./qr-generator-desktop.webp)（2880×2000） |
-| 390 スクリーンショット | [qr-generator-mobile.webp](./qr-generator-mobile.webp)（780×1688） |
+| 390px frame 横スクロール | 初回 **686 / 390** → 修正後 **390 / 390**（Issue #867 再測定） |
+| 1440 スクリーンショット | [qr-generator-desktop.webp](./qr-generator-desktop.webp)（2880×1800、Issue #867 再取得） |
+| 390 スクリーンショット | [qr-generator-mobile.webp](./qr-generator-mobile.webp)（780×1688、Issue #867 再取得） |
+
+再測定は 2026-11-03、Tool pin を `2a7d643`（rebuildup/tool-qr-generator PR #6）へ
+bump した後に行った。詳細は §12。
 
 未確認:
 
 - `Download PNG` / `Download SVG` のダウンロード内容。
 - Bulk モード（複数 URL）。
 - Email / Phone / WiFi の各入力型。
-- 390px で QR パネルが横にはみ出す原因の修正要否（レイアウトは Tool 側の責務）。
 
 ## 3. sequential-png-preview
 
@@ -209,9 +211,12 @@ bump した後に行った。詳細は §12。
 | ユーザー操作 | 中央の `3 to Start` キーを押して開始し、テンキーで `3 → 1 → 4` を入力 |
 | 観測結果 | 結果画面に `結果 : 0桁` / `3..` / `3 to Retry` が出現 |
 | 390px host 横スクロール | なし（390 = 390） |
-| 390px frame 横スクロール | **あり（`scrollWidth` 422 > `clientWidth` 390）** |
-| 1440 スクリーンショット | [pi-game-desktop.webp](./pi-game-desktop.webp)（2880×2000） |
-| 390 スクリーンショット | [pi-game-mobile.webp](./pi-game-mobile.webp)（780×1688） |
+| 390px frame 横スクロール | 初回 **422 / 390** → 修正後 **390 / 390**（Issue #867 再測定） |
+| 1440 スクリーンショット | [pi-game-desktop.webp](./pi-game-desktop.webp)（2880×1800、Issue #867 再取得） |
+| 390 スクリーンショット | [pi-game-mobile.webp](./pi-game-mobile.webp)（780×1688、Issue #867 再取得） |
+
+再測定は 2026-11-03、Tool pin を `b234aa0`（rebuildup/tool-pi-game PR #6）へ
+bump した後に行った。詳細は §12。
 
 未確認:
 
@@ -305,25 +310,88 @@ bump した後に行った。詳細は §12。
 - PDF 本文の表示・ページ送り・読書状態の復元。
 - EPUB / Markdown / テキストの取り込み。
 
+
 ## 11. 横スクロールのまとめ（390px）
 
 | slug | host `scrollWidth` / `clientWidth` | frame `scrollWidth` / `clientWidth` | frame 横スクロール |
 | --- | --- | --- | --- |
 | text-counter | 390 / 390 | 390 / 390 | なし |
-| qr-generator | 390 / 390 | 686 / 390 | **あり** |
+| qr-generator | 390 / 390 | 初回 686 / 390 → **390 / 390** | なし（Issue #867 修正後） |
 | sequential-png-preview | 390 / 390 | 390 / 390 | なし |
 | svg2tsx | 390 / 390 | 390 / 390 | なし |
 | pomodoro | 390 / 390 | 390 / 390 | なし（CSS 未読込は Issue #868 で修正。幅は初回から 390） |
 | fillgen | 390 / 390 | 390 / 390 | なし |
-| pi-game | 390 / 390 | 422 / 390 | **あり** |
+| pi-game | 390 / 390 | 初回 422 / 390 → **390 / 390** | なし（Issue #867 修正後） |
 | code-type-p5 | 390 / 390 | 390 / 390 | なし |
 | prototype | 390 / 390 | 390 / 390 | なし |
 | readmark | 390 / 390 | 390 / 390 | なし |
 
-host ページ自体はいずれも 390px で横スクロールしない。`qr-generator` と
-`pi-game` は **frame 内だけ**が横にはみ出す。
+host ページ自体はいずれも 390px で横スクロールしない。初回測定で
+`qr-generator` と `pi-game` の **frame 内だけ**が横にはみ出していたが、
+Issue #867 の Tool pin bump 後に再測定し、いずれも 390 = 390 になった（§12）。
+`pomodoro` は幅ではなく stylesheet の未読込が Issue #868 の対象だった（§13）。
 
-## 12. Issue #868 再測定（pomodoro の standalone CSS）
+## 12. Issue #867 再測定（qr-generator / pi-game の 390px 横スクロール）
+
+- 再測定日: **2026-11-03**
+- 対象ブランチ: `867`（base `origin/release-0-8-1`）
+- 測定環境: ローカル preview `http://127.0.0.1:5181`
+  （`pnpm run build` → `node scripts/sync-cf-build-output.mjs` →
+  `vite preview --port 5181 --strictPort`）、`@playwright/test` 同梱の
+  bundled Chromium（headless、DPR 2）
+- viewport: **390×844** と **1440×900**
+- 全ページで GA4 同意バンドの「拒否する」を先に押下した。
+- 両 Tool とも activation gate はない（`third_party_origins` が空）。
+- 測定値は iframe の `contentWindow.document.documentElement` の
+  `scrollWidth` / `clientWidth`（same-origin のため直接読める）。
+
+### Tool pin
+
+| slug | 修正前 pin | 修正後 pin | Tool repo PR |
+| --- | --- | --- | --- |
+| qr-generator | `0df1a99` | `2a7d643` | rebuildup/tool-qr-generator #6 |
+| pi-game | `e67d9ce` | `b234aa0` | rebuildup/tool-pi-game #6 |
+
+### 実測値
+
+| slug | viewport | host `scrollWidth` / `clientWidth` | frame `scrollWidth` / `clientWidth` | 判定 |
+| --- | --- | --- | --- | --- |
+| qr-generator | 390×844 | 390 / 390 | **390 / 390**（修正前 686 / 390） | 解消 |
+| qr-generator | 1440×900 | 1440 / 1440 | 1440 / 1440 | 回帰なし |
+| pi-game | 390×844 | 390 / 390 | **390 / 390**（修正前 422 / 390） | 解消 |
+| pi-game | 1440×900 | 1440 / 1440 | 1440 / 1440 | 回帰なし |
+
+- qr-generator は iframe 内の Content 欄に `https://example.com` を入力し、
+  QR を生成した状態で測定した。
+- pi-game は `3 → 1 → 4` を入力し、結果画面（`結果 : 0桁`）で測定した。
+
+### 原因と修正（Tool 側）
+
+- qr-generator: 2 カラム grid が `1fr 1fr; gap: 40px` 固定で、狭幅用の分岐が
+  なかった。左カラムの min-content（約 358px）と右カラム（QR canvas 288px）の
+  合計が 686px になり viewport を超えていた。`src/styles.css` を追加し、
+  768px 未満で 1 カラムに stack するよう変更（desktop は 2 カラムのまま）。
+- pi-game: `src/styles.css` に `box-sizing` リセットがなく、
+  `mx-auto w-full px-4` の padding 32px が 100% 幅に加算されていた。
+  `*, *::before, *::after { box-sizing: border-box; }` を追加。
+
+host 側は iframe を置くだけで、`overflow: hidden` などで差分を隠す変更は
+行っていない。manifest の `pinned_sha`、privacy basis、
+`quality/tool-artifact-inventory.json` を gitlink と同時に更新した。
+
+### 証跡
+
+- [qr-generator-desktop.webp](./qr-generator-desktop.webp)（2880×1800）
+- [qr-generator-mobile.webp](./qr-generator-mobile.webp)（780×1688）
+- [pi-game-desktop.webp](./pi-game-desktop.webp)（2880×1800）
+- [pi-game-mobile.webp](./pi-game-mobile.webp)（780×1688）
+
+未確認:
+
+- 390px 未満（例: 360px）での挙動。
+- qr-generator の Bulk / Email / Phone / WiFi 入力型での横幅。
+
+## 13. Issue #868 再測定（pomodoro の standalone CSS）
 
 - 再測定日: **2026-11-03**
 - 対象ブランチ: `868`（base `origin/release-0-8-1`）

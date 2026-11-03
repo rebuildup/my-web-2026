@@ -363,6 +363,21 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													display: 'inline-flex',
 													gap: '3',
 													alignItems: 'baseline',
+													// Issue #871: a URL with no break opportunity
+													// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
+													// is one unbreakable run. Without these three
+													// properties the anchor's max-content width
+													// exceeds the viewport at 390px and the WHOLE
+													// document scrolls sideways (measured
+													// 410 / 390). `flexWrap` lets the label and the
+													// URL sit on separate lines; `minWidth: 0` lets
+													// the flex item shrink below its content size;
+													// `overflowWrap` supplies the break opportunity
+													// inside the URL itself.
+													flexWrap: 'wrap',
+													minWidth: '0',
+													maxWidth: '100%',
+													overflowWrap: 'anywhere',
 													fontFamily: 'sans',
 													fontSize: 'md',
 													color: 'text.accent',

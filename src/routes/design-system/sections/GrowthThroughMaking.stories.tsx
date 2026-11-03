@@ -108,7 +108,7 @@ const sectionClassName = css({
 	paddingBlockStart: '8',
 	borderTopWidth: '1',
 	borderTopStyle: 'solid',
-	borderTopColor: 'border.divider',
+	borderTopColor: 'border.subtle',
 });
 
 const caseFrameClassName = css({
@@ -116,8 +116,8 @@ const caseFrameClassName = css({
 	borderRadius: 'md',
 	borderWidth: '1',
 	borderStyle: 'solid',
-	borderColor: 'border.divider',
-	backgroundColor: 'surface.sunken',
+	borderColor: 'border.subtle',
+	backgroundColor: 'bg.subtle',
 });
 
 /**

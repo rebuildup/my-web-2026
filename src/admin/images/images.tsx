@@ -217,7 +217,7 @@ function UploadForm() {
 					fontSize: 'md',
 					fontWeight: '600',
 					color: 'text.inverse',
-					background: 'signal.action',
+					background: 'bg.accent',
 					border: 'none',
 					borderRadius: '4',
 					paddingBlock: '3',
@@ -259,7 +259,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 				alignItems: 'center',
 				gap: { base: '2', md: '6' },
 				paddingBlock: '4',
-				borderBlockStart: '1px solid {colors.border.divider}',
+				borderBlockStart: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<img
@@ -279,7 +279,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 					height: '48px',
 					objectFit: 'cover',
 					borderRadius: '4',
-					border: '1px solid {colors.border.divider}',
+					border: '1px solid {colors.border.subtle}',
 				})}
 			/>
 			<span
@@ -325,7 +325,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 						fontWeight: '600',
 						color: 'text.muted',
 						background: 'transparent',
-						border: '1px solid {colors.border.divider}',
+						border: '1px solid {colors.border.subtle}',
 						borderRadius: 'full',
 						paddingInline: '3',
 						paddingBlock: '1',

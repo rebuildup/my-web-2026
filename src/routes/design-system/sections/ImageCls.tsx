@@ -128,9 +128,9 @@ export function ImageCls() {
 				data-cls-spacer="lazy-offset"
 				className={css({
 					height: '220vh',
-					borderBlock: '1px dashed {colors.border.divider}',
+					borderBlock: '1px dashed {colors.border.subtle}',
 					backgroundImage:
-						'repeating-linear-gradient(45deg, {colors.surface.sunken} 0 12px, transparent 12px 24px)',
+						'repeating-linear-gradient(45deg, {colors.bg.subtle} 0 12px, transparent 12px 24px)',
 				})}
 			/>
 
@@ -168,9 +168,9 @@ export function ImageCls() {
 					className={css({
 						margin: '0',
 						padding: '5',
-						border: '1px solid {colors.border.divider}',
+						border: '1px solid {colors.border.subtle}',
 						borderRadius: '6px',
-						backgroundColor: 'surface.sunken',
+						backgroundColor: 'bg.subtle',
 						fontFamily: 'mono',
 						fontSize: 'sm',
 						color: 'text.muted',
@@ -218,9 +218,9 @@ function Cell({
 				flexDirection: 'column',
 				gap: '3',
 				padding: '5',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: '6px',
-				backgroundColor: 'surface.raised',
+				backgroundColor: 'bg.surface',
 			})}
 		>
 			<figcaption

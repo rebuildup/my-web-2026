@@ -46,7 +46,7 @@ export const breadcrumbsChrome = css({
 	// is put on the grid.
 	borderBlockEndWidth: '1px',
 	borderBlockEndStyle: 'solid',
-	borderBlockEndColor: 'border.divider',
+	borderBlockEndColor: 'border.subtle',
 	'& ol': {
 		// Issue #300: the chain hung at x=8 (`paddingInline: 2` on
 		// the full-width band) while every other public element

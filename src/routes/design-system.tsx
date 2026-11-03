@@ -18,15 +18,15 @@ import { getDesignSystemTokenData } from './design-system/tokens';
  * `Badge` — and never reaches into raw color literals or feature code.
  *
  * Section order is documented in `DesignSystemPage.tsx` and matches
- * `src/editorial/colors.md` §"direction B role map" so the page reads
+ * `src/editorial/colors.md` §"accent.* token roles" so the page reads
  * as a verifiable companion to that guide.
  *
  * The route owns a loader (Issue #812): the colour section renders the
  * RESOLVED hex pairs of the semantic tokens, and resolving them in the
  * browser meant shipping the whole raw palette plus the whole semantic
- * layer in this route's chunk. The loader resolves them on the server
- * (`./design-system/tokens`) and hands the pairs to the page as props;
- * the rendered result is identical.
+ * layer in this route's chunk to display 24 pairs. The loader resolves
+ * them on the server (`./design-system/tokens`) and hands the pairs to
+ * the page as props; the rendered result is identical.
  *
  * Chrome convention (Issue #199). The `<PublicNav />` is rendered
  * here explicitly (rather than mounted at the `__root` level) so the
@@ -47,14 +47,14 @@ export const Route = createFileRoute('/design-system')({
 			{
 				name: 'description',
 				content:
-					'Editorial visual language showcase — monochrome surface / text / border roles, signal and content colour roles, typography scale, spacing scale, interactive states.',
+					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status / category accents.',
 			},
 			{ property: 'og:type', content: 'website' },
 			{ property: 'og:title', content: 'Design System — rebuildup.dev' },
 			{
 				property: 'og:description',
 				content:
-					'Editorial visual language showcase — monochrome surface / text / border roles, signal and content colour roles, typography scale, spacing scale, interactive states.',
+					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status / category accents.',
 			},
 			{ property: 'og:url', content: 'https://rebuildup.dev/design-system' },
 		],

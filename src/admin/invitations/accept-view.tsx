@@ -97,7 +97,7 @@ function ErrorPanel({ message }: { message: string }) {
 				fontFamily: 'sans',
 				fontSize: 'md',
 				color: 'text.muted',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: '4',
 			})}
 		>
@@ -230,7 +230,7 @@ function AcceptForm({
 					fontSize: 'md',
 					fontWeight: '600',
 					color: 'text.inverse',
-					background: 'signal.action',
+					background: 'bg.accent',
 					border: 'none',
 					borderRadius: '4',
 					paddingBlock: '3',

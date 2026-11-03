@@ -123,29 +123,24 @@ test('the shipped token modules resolve every token the matrix names', async () 
 
 test('the matrix declares the pairs the Issue names, with the SC thresholds', () => {
 	const wanted = [
-		['text.default', 'surface.canvas', 4.5],
-		['text.default', 'surface.raised', 4.5],
-		['text.default', 'surface.sunken', 4.5],
-		['text.default', 'surface.control', 4.5],
-		['text.muted', 'surface.canvas', 4.5],
-		['text.muted', 'surface.raised', 4.5],
-		['text.muted', 'surface.sunken', 4.5],
-		['text.muted', 'surface.control', 4.5],
-		['text.muted', 'surface.feature', 4.5],
-		['text.inverse', 'signal.action', 4.5],
-		['text.inverse', 'signal.actionActive', 4.5],
-		['text.inverse', 'surface.inverse', 4.5],
-		['text.accent', 'surface.canvas', 4.5],
-		['text.accent', 'surface.feature', 3],
-		['signal.positive', 'surface.canvas', 4.5],
-		['signal.negative', 'surface.canvas', 4.5],
-		['signal.warning', 'surface.canvas', 4.5],
-		['signal.content.rose', 'surface.canvas', 3],
-		['signal.content.cyan', 'surface.canvas', 3],
-		['signal.content.amber', 'surface.canvas', 3],
-		['signal.action', 'surface.canvas', 3],
-		['border.focus', 'surface.canvas', 3],
-		['border.strong', 'surface.canvas', 3],
+		['text.default', 'bg.canvas', 4.5],
+		['text.default', 'bg.surface', 4.5],
+		['text.default', 'bg.subtle', 4.5],
+		['text.muted', 'bg.canvas', 4.5],
+		['text.muted', 'bg.surface', 4.5],
+		['text.muted', 'accent.surface', 4.5],
+		['text.inverse', 'bg.accent', 4.5],
+		['text.inverse', 'bg.inverse', 4.5],
+		['text.accent', 'bg.canvas', 4.5],
+		['accent.positive', 'bg.canvas', 4.5],
+		['accent.negative', 'bg.canvas', 4.5],
+		['accent.warning', 'bg.canvas', 4.5],
+		['accent.category.design', 'bg.canvas', 3],
+		['accent.category.code', 'bg.canvas', 3],
+		['accent.category.writing', 'bg.canvas', 3],
+		['accent.category.tool', 'bg.canvas', 3],
+		['border.focus', 'bg.canvas', 3],
+		['border.strong', 'bg.canvas', 3],
 	];
 	for (const [fg, bg, threshold] of wanted) {
 		const pair = CONTRAST_PAIRS.find((entry) => entry.fg === fg && entry.bg === bg);
@@ -156,17 +151,10 @@ test('the matrix declares the pairs the Issue names, with the SC thresholds', ()
 	}
 });
 
-test('every excluded token is stated with a reason, not dropped silently', () => {
-	const divider = EXCLUDED_TOKENS.find((entry) => entry.token === 'border.divider');
-	assert.ok(divider);
-	assert.match(divider.reason, /separator/);
-	for (const entry of EXCLUDED_TOKENS) {
-		assert.ok(entry.reason.length > 20, `${entry.token} needs a reason`);
-	}
-	assert.equal(
-		CONTRAST_PAIRS.some((pair) => pair.fg === 'border.divider' || pair.bg === 'border.divider'),
-		false,
-	);
+test('the excluded token is stated with a reason, not dropped silently', () => {
+	const subtle = EXCLUDED_TOKENS.find((entry) => entry.token === 'border.subtle');
+	assert.ok(subtle);
+	assert.match(subtle.reason, /decorative/);
 });
 
 test('a pair below the threshold is a violation with the matching rule', () => {
@@ -442,7 +430,7 @@ test('the report separates machine-checked facts from human evaluation', async (
 	assert.match(report, /not machine-checked \(human evaluation\):/);
 	assert.ok(report.indexOf('machine-checked:') < report.indexOf('not machine-checked'));
 	assert.match(report, /SC 1\.4\.3/);
-	assert.match(report, /border\.divider/);
+	assert.match(report, /border\.subtle/);
 	for (const item of HUMAN_EVALUATION) assert.ok(report.includes(item));
 });
 

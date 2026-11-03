@@ -25,7 +25,7 @@ export const Default: Story = {
 				className={css({
 					paddingBlock: '8',
 					borderRadius: 'md',
-					backgroundColor: 'surface.sunken',
+					backgroundColor: 'bg.subtle',
 					textAlign: 'center',
 					fontFamily: 'sans',
 					color: 'text.muted',

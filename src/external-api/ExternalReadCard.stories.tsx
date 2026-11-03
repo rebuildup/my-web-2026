@@ -246,7 +246,7 @@ export function ApiTimeoutFallbackGallery() {
 				flexDirection: 'column',
 				gap: '6',
 				padding: { base: '4', md: '8' },
-				bg: 'surface.canvas',
+				bg: 'bg.canvas',
 				color: 'text.default',
 				fontFamily: 'sans',
 			})}
@@ -357,8 +357,8 @@ export function ApiTimeoutFallbackGallery() {
 							borderRadius: 'md',
 							borderWidth: '1px',
 							borderStyle: 'solid',
-							borderColor: 'border.divider',
-							bg: 'surface.raised',
+							borderColor: 'border.subtle',
+							bg: 'bg.surface',
 						})}
 					>
 						{[

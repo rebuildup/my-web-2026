@@ -21,11 +21,11 @@ const badgeRecipe = cva({
 	variants: {
 		tone: {
 			neutral: {
-				bg: 'surface.sunken',
+				bg: 'bg.subtle',
 				color: 'text.muted',
 			},
 			accent: {
-				bg: 'signal.action',
+				bg: 'bg.accent',
 				color: 'text.inverse',
 			},
 		},

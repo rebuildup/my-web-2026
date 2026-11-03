@@ -276,7 +276,7 @@ export function harnessHtml({
 			* { box-sizing: border-box; }
 			:root {
 				${offsetProperty}: ${overlayHeight}px;
-				--colors-surface-canvas: ${escapeXml(canvas)};
+				--colors-bg-canvas: ${escapeXml(canvas)};
 				--colors-text-default: ${escapeXml(textColor)};
 				--colors-border-focus: ${escapeXml(focusColor)};
 				color-scheme: light;
@@ -284,7 +284,7 @@ export function harnessHtml({
 			${compensationCss(rules, { enabled })}
 			body {
 				margin: 0;
-				background: var(--colors-surface-canvas);
+				background: var(--colors-bg-canvas);
 				color: var(--colors-text-default);
 				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 				scroll-behavior: auto;
@@ -663,7 +663,7 @@ async function main() {
 	const { rawTokens, semanticTokens } = await loadTokenModules();
 	const canvas = resolveRawColor(
 		rawTokens,
-		resolveSemanticValue(semanticTokens, 'surface.canvas', 'base').reference,
+		resolveSemanticValue(semanticTokens, 'bg.canvas', 'base').reference,
 	);
 	const textColor = resolveRawColor(
 		rawTokens,

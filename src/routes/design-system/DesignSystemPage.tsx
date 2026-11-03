@@ -23,14 +23,13 @@ import type { DesignSystemTokenData } from './tokens';
  *
  * Reading order:
  *   - Hero          (page title + intro)
- *   - 01 Color roles      the monochrome role table (surface / text /
- *                          border), the operation + status signals,
- *                          and the three content-hue families (plus
- *                          the Tool face, which has no hue) with the
- *                          deterministic assignment rule. Colour is
- *                          the subject here; the word, the shape
- *                          (StateMark) and the position carry the
- *                          meaning.
+ *   - 01 Color surfaces   three content-classification colour fields
+ *                          (design / code / writing), the status row
+ *                          that BORROWS a classification colour, the
+ *                          ink-only operation row, and the token
+ *                          ledger. Colour is the subject here; the
+ *                          word, the shape (StateMark) and the
+ *                          position carry the meaning.
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
@@ -99,13 +98,8 @@ export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenDa
 const sectionStyle = css({
 	// Issue #300: canonical body-section beat (layout-system.md §3.3).
 	// Was {12, 16} — a rhythm only /design-system used.
-	//
-	// Issue #764 (direction B): the decorative 1px rule above every
-	// section is gone. Direction B separates surfaces by fill and by
-	// the spacing beat, not by a border; `border.divider` remains a
-	// STRUCTURAL token for real data boundaries, not a section
-	// decoration.
 	paddingBlock: { base: '16', lg: '24' },
+	borderTop: '1px solid {colors.border.subtle}',
 });
 
 function Hero() {
@@ -228,7 +222,7 @@ function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 			aria-labelledby="design-system-color"
 			className={css({
 				paddingBlock: { base: '16', lg: '24' },
-				backgroundColor: 'surface.sunken',
+				backgroundColor: 'bg.subtle',
 			})}
 			data-colour-section
 		>
@@ -236,8 +230,8 @@ function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 				<SectionHeading
 					id="design-system-color"
 					eyebrow="01 — Color"
-					title="色 / Colour as signal"
-					description="面は無彩色の階層で組み、色は signal にだけ使います。色は 1 行・1 語・1 ピルまで。画面ごとの彩色面積は 5% 以下を上限とし、状態は語と形（StateMark）を必ず併用します。"
+					title="色 / Colour as surface"
+					description="色そのものが面です。分類は語・形・位置が担い、色は従属します。状態は分類色を借り、操作は墨です。"
 				/>
 				<ColorSwatches tokenData={tokenData} />
 			</Container>
@@ -289,7 +283,7 @@ function SurfaceSection() {
 					id="design-system-surface"
 					eyebrow="04 — Surface"
 					title="面 / Surface treatments"
-					description="surface.canvas / surface.raised / surface.feature の三段を、border ではなく塗りの差だけで区別して示します。"
+					description="bg.canvas / bg.surface / accent.surface の三段を、border ではなく塗りの差だけで区別して示します。"
 					variant="spread"
 				>
 					<SurfaceTreatments />
@@ -326,7 +320,7 @@ function StatusSection() {
 					id="design-system-status"
 					eyebrow="06 — Status"
 					title="識別子 / Status & category accents"
-					description="positive / negative / warning の status badge と、design / code / writing / tool の content category を、形（StateMark）と語で識別します。色は補助の印で、単独では意味を持たせません。"
+					description="positive / negative / warning の status badge、 と design / code / writing / tool の content category を left-border で識別。"
 					variant="spread"
 				>
 					<StatusAccents />

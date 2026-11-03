@@ -81,7 +81,7 @@ function FamilyBlock({ family, familyName, token, familyRole }: FamilyBlockProps
 				flexDirection: 'column',
 				gap: '4',
 				paddingBlock: '4',
-				borderTop: '1px solid {colors.border.divider}',
+				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<header

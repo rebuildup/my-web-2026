@@ -231,7 +231,7 @@ export function buildPanels(evidence, { rawTokens, semanticTokens }) {
 	return APPEARANCES.map((appearance) => {
 		const canvas = resolveRawColor(
 			rawTokens,
-			resolveSemanticValue(semanticTokens, 'surface.canvas', appearance.condition).reference,
+			resolveSemanticValue(semanticTokens, 'bg.canvas', appearance.condition).reference,
 		);
 		const labelColor = resolveRawColor(
 			rawTokens,

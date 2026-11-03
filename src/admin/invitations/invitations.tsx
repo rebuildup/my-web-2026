@@ -111,7 +111,7 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
 				alignItems: 'baseline',
 				gap: { base: '2', md: '6' },
 				paddingBlock: '4',
-				borderBlockStart: '1px solid {colors.border.divider}',
+				borderBlockStart: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<span
@@ -173,7 +173,7 @@ function RevokeButton({ id }: { id: string }) {
 				fontWeight: '600',
 				color: 'text.muted',
 				background: 'transparent',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: 'full',
 				paddingInline: '3',
 				paddingBlock: '1',

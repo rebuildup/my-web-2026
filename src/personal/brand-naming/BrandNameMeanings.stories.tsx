@@ -65,8 +65,8 @@ function PublishedState() {
 				borderRadius: 'md',
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: 'border.divider',
-				backgroundColor: 'surface.raised',
+				borderColor: 'border.subtle',
+				backgroundColor: 'bg.surface',
 			})}
 		>
 			<h3
@@ -182,7 +182,7 @@ function Card({ heading, points }: { heading: string; points: readonly string[] 
 				flexDirection: 'column',
 				gap: '2',
 				paddingBlock: '4',
-				borderTop: '1px solid {colors.border.divider}',
+				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<h3
@@ -279,7 +279,7 @@ export const Narrow: Story = {
 				display: 'flex',
 				justifyContent: 'center',
 				paddingInline: '4',
-				backgroundColor: 'surface.sunken',
+				backgroundColor: 'bg.subtle',
 			})}
 		>
 			<div className={css({ width: '100%', maxWidth: '375px' })}>

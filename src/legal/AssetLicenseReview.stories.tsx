@@ -76,7 +76,7 @@ const HELD_RECORD_ID = 'share-procon2026-pdfs';
 
 const pageClassName = css({
 	fontFamily: 'sans',
-	background: 'surface.canvas',
+	background: 'bg.canvas',
 	color: 'text.default',
 	padding: '8',
 	display: 'flex',
@@ -92,7 +92,7 @@ const introClassName = css({
 	gap: '2',
 	borderBottomWidth: '1px',
 	borderBottomStyle: 'solid',
-	borderBottomColor: 'border.divider',
+	borderBottomColor: 'border.subtle',
 	paddingBottom: '5',
 });
 
@@ -134,7 +134,7 @@ const scopeItemClassName = css({
 	gap: '2',
 	padding: '4',
 	borderRadius: '3',
-	background: 'surface.sunken',
+	background: 'bg.subtle',
 });
 
 const scopeLabelClassName = css({

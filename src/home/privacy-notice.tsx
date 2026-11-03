@@ -66,7 +66,7 @@ export function PrivacyNotice({ entries = getPublishedDataLifecycle() }: Privacy
 				marginBlockStart: '10',
 				paddingBlockStart: '6',
 				borderBlockStartWidth: '1px',
-				borderBlockStartColor: 'border.divider',
+				borderBlockStartColor: 'border.subtle',
 				borderBlockStartStyle: 'solid',
 				fontFamily: 'sans',
 				fontSize: 'sm',

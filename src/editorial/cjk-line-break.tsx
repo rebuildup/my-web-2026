@@ -193,7 +193,7 @@ function ModeMasthead({ spec }: { spec: CjkModeSpec }) {
 				gap: '2',
 				paddingBlockEnd: '4',
 				marginBlockEnd: '4',
-				borderBottom: '1px solid {colors.border.divider}',
+				borderBottom: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<p

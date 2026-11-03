@@ -157,7 +157,7 @@ function LoginRoute() {
 								fontSize: 'md',
 								fontWeight: '600',
 								color: 'text.inverse',
-								background: 'signal.action',
+								background: 'bg.accent',
 								border: 'none',
 								borderRadius: '4',
 								paddingBlock: '3',

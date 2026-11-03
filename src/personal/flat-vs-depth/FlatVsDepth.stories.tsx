@@ -287,7 +287,7 @@ function Section({
 			aria-labelledby={`flat-vs-depth-${index}`}
 			className={css({
 				paddingBlock: { base: '10', lg: '16' },
-				borderTop: '1px solid {colors.border.divider}',
+				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<SectionHeading
@@ -341,7 +341,7 @@ function Notes({ notes }: { notes: readonly string[] }) {
 						lineHeight: '1.6',
 						color: 'text.muted',
 						paddingInlineStart: '3',
-						borderInlineStart: '2px solid {colors.border.divider}',
+						borderInlineStart: '2px solid {colors.border.subtle}',
 					})}
 				>
 					{note}
@@ -363,9 +363,9 @@ function ScreenPanel({ screen }: { screen: FlatVsDepthScreen }) {
 				flexDirection: 'column',
 				gap: '3',
 				padding: '4',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: 'md',
-				backgroundColor: 'surface.canvas',
+				backgroundColor: 'bg.canvas',
 			})}
 		>
 			<header className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
@@ -469,9 +469,9 @@ function Schematic({ screen }: { screen: FlatVsDepthScreen }) {
 					gridTemplateColumns: '1fr 2fr',
 					gap: '2',
 					padding: '2',
-					border: '1px solid {colors.border.divider}',
+					border: '1px solid {colors.border.subtle}',
 					borderRadius: 'md',
-					backgroundColor: 'surface.raised',
+					backgroundColor: 'bg.surface',
 				})}
 			>
 				{placement.map(({ block, row, column }) => (
@@ -486,10 +486,10 @@ function Schematic({ screen }: { screen: FlatVsDepthScreen }) {
 							minHeight: `${block.weight * 14 + 12}px`,
 							padding: '2',
 							border: block.absent
-								? '1px dashed {colors.border.divider}'
-								: '1px solid {colors.border.divider}',
+								? '1px dashed {colors.border.subtle}'
+								: '1px solid {colors.border.subtle}',
 							borderRadius: 'sm',
-							backgroundColor: block.absent ? 'transparent' : 'surface.canvas',
+							backgroundColor: block.absent ? 'transparent' : 'bg.canvas',
 						})}
 					>
 						<span
@@ -570,7 +570,7 @@ function Measurements({ screen }: { screen: FlatVsDepthScreen }) {
 							fontFamily: 'sans',
 							fontWeight: '600',
 							color: 'text.muted',
-							borderBottom: '1px solid {colors.border.divider}',
+							borderBottom: '1px solid {colors.border.subtle}',
 							paddingBlockEnd: '1',
 						})}
 					>
@@ -583,7 +583,7 @@ function Measurements({ screen }: { screen: FlatVsDepthScreen }) {
 							fontFamily: 'sans',
 							fontWeight: '600',
 							color: 'text.muted',
-							borderBottom: '1px solid {colors.border.divider}',
+							borderBottom: '1px solid {colors.border.subtle}',
 							paddingBlockEnd: '1',
 						})}
 					>
@@ -644,9 +644,9 @@ function CandidateList({ candidates }: { candidates: readonly FlatVsDepthCandida
 						flexDirection: 'column',
 						gap: '1',
 						padding: '3',
-						border: '1px solid {colors.border.divider}',
+						border: '1px solid {colors.border.subtle}',
 						borderRadius: 'md',
-						backgroundColor: 'surface.canvas',
+						backgroundColor: 'bg.canvas',
 					})}
 				>
 					<div
@@ -706,7 +706,7 @@ function DecisionList({ decisions }: { decisions: readonly FlatVsDepthDecision[]
 						gap: '1',
 						padding: '3',
 						borderInlineStart: '3px solid {colors.border.accent}',
-						backgroundColor: 'surface.raised',
+						backgroundColor: 'bg.surface',
 					})}
 				>
 					<div

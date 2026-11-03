@@ -97,7 +97,7 @@ function MatrixTable({ matrix }: { matrix: AudiencePurposeMatrix }) {
 							className={css({
 								textAlign: 'start',
 								fontWeight: '600',
-								backgroundColor: 'surface.sunken',
+								backgroundColor: 'bg.subtle',
 								borderBottom: '1px solid {colors.border.strong}',
 								padding: '2',
 								verticalAlign: 'top',
@@ -116,8 +116,8 @@ function MatrixTable({ matrix }: { matrix: AudiencePurposeMatrix }) {
 							className={css({
 								textAlign: 'start',
 								fontWeight: '600',
-								backgroundColor: 'surface.sunken',
-								borderBottom: '1px solid {colors.border.divider}',
+								backgroundColor: 'bg.subtle',
+								borderBottom: '1px solid {colors.border.subtle}',
 								padding: '2',
 								verticalAlign: 'top',
 								whiteSpace: 'nowrap',
@@ -129,7 +129,7 @@ function MatrixTable({ matrix }: { matrix: AudiencePurposeMatrix }) {
 							<td
 								key={cell}
 								className={css({
-									borderBottom: '1px solid {colors.border.divider}',
+									borderBottom: '1px solid {colors.border.subtle}',
 									padding: '2',
 									verticalAlign: 'top',
 									lineHeight: '1.6',
@@ -162,7 +162,7 @@ function PolicySection({
 				flexDirection: 'column',
 				gap: '4',
 				paddingBlock: '8',
-				borderTop: '1px solid {colors.border.divider}',
+				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<SectionHeading
@@ -207,7 +207,7 @@ export function AudiencePurposeMatrixPreview({ width }: { width?: number }) {
 		<div
 			style={width === undefined ? undefined : { maxWidth: `${width}px` }}
 			className={css({
-				backgroundColor: 'surface.canvas',
+				backgroundColor: 'bg.canvas',
 				paddingBlock: '8',
 			})}
 		>

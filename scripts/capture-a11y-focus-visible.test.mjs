@@ -122,7 +122,7 @@ test('the two states differ only by the compensation', () => {
 	// The canvas declaration is part of the same shipped rule, and it
 	// stays in both states — otherwise the two screenshots would differ
 	// in more than the compensation.
-	assert.ok(uncompensated.includes('--colors-surface-canvas'));
+	assert.ok(uncompensated.includes('--colors-bg-canvas'));
 });
 
 test('the focus ring is read from the shipped navigation', () => {

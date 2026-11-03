@@ -122,11 +122,6 @@ gates:
       # Issue #80: the Tool Registry manifest — manifest pin == gitlink
       # == checked-out commit, read from `src/tools/manifest.json`.
       - 'pnpm run tools:check'
-      # Issue #764: a raw colour literal may appear only in the palette
-      # owner (`src/editorial/tokens.ts`) or in `ALLOWED_RAW_COLORS`
-      # (per file, per literal, with a reason). This is the gate half of
-      # "raw color / hardcoded token の直書きが gate で検出される".
-      - 'pnpm run raw-color:check'
       # Issue #474: the dependency install-lifecycle audit. The reviewed
       # policy is `quality/install-scripts.json`; the runbook is
       # docs/runbook/install-script-audit.md.

@@ -65,7 +65,7 @@ const BLOCKED_LINK_STYLE = {
 	fontFamily: 'sans',
 	color: 'text.muted',
 	textDecorationLine: 'none',
-	backgroundColor: 'surface.sunken',
+	backgroundColor: 'bg.subtle',
 	borderRadius: '2px',
 	paddingInline: '1',
 } as const;
@@ -238,7 +238,7 @@ function renderBlock(
 					className={css({
 						margin: '0',
 						paddingInlineStart: '4',
-						borderInlineStart: '2px solid {colors.border.divider}',
+						borderInlineStart: '2px solid {colors.border.subtle}',
 						color: 'text.muted',
 						maxWidth: '640px',
 					})}
@@ -252,7 +252,7 @@ function renderBlock(
 					key={key}
 					className={css({
 						border: 'none',
-						borderTop: '1px solid {colors.border.divider}',
+						borderTop: '1px solid {colors.border.subtle}',
 						maxWidth: '640px',
 					})}
 				/>

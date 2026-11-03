@@ -83,7 +83,7 @@ const verdictListClassName = css({
 	marginBlockStart: '5',
 	padding: 0,
 	listStyle: 'none',
-	borderBlockStart: '1px solid {colors.border.divider}',
+	borderBlockStart: '1px solid {colors.border.subtle}',
 	paddingBlockStart: '4',
 });
 
@@ -132,7 +132,7 @@ export function LanguageOfParts({
 	const columnClassName = compact
 		? css({
 				maxWidth: '320px',
-				borderInlineStart: '2px solid {colors.border.divider}',
+				borderInlineStart: '2px solid {colors.border.subtle}',
 				paddingInlineStart: '4',
 			})
 		: css({ maxWidth: '68ch' });
@@ -216,7 +216,7 @@ export function LanguageOfPartsCriteria() {
 							key={heading}
 							scope="col"
 							className={css({
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 								padding: '2',
 								fontFamily: 'mono',
 								fontSize: 'xs',
@@ -235,7 +235,7 @@ export function LanguageOfPartsCriteria() {
 						<th
 							scope="row"
 							className={css({
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 								padding: '2',
 								textAlign: 'start',
 								fontWeight: '600',
@@ -246,7 +246,7 @@ export function LanguageOfPartsCriteria() {
 						</th>
 						<td
 							className={css({
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 								padding: '2',
 								color: 'text.default',
 							})}
@@ -255,7 +255,7 @@ export function LanguageOfPartsCriteria() {
 						</td>
 						<td
 							className={css({
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 								padding: '2',
 								fontFamily: 'mono',
 								color: row.checked === 'machine' ? 'text.default' : 'text.muted',
@@ -265,7 +265,7 @@ export function LanguageOfPartsCriteria() {
 						</td>
 						<td
 							className={css({
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 								padding: '2',
 								color: 'text.muted',
 							})}

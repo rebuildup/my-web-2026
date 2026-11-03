@@ -1,11 +1,10 @@
 import { css } from '../../../../styled-system/css';
-import { contentSignalToken } from '../../../editorial/content-signal';
 import { Badge } from '../../../editorial/primitives/Badge';
 import { StateMark } from '../../../editorial/primitives/StateMark';
 
 /**
  * StatusAccents — `positive / negative / warning` status marks
- * paired with the three content-category marks and the Tool face.
+ * paired with the four content-category marks.
  *
  * Issue #812: the state and the classification are carried by the
  * WORD and by the SHAPE (`StateMark`), never by colour alone. The
@@ -16,13 +15,11 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
  *
  * Tokens consumed:
  *
- *   - `signal.positive`              OK / live status mark.
- *   - `signal.negative`              error / unreachable mark.
- *   - `signal.warning`               degraded status mark.
- *   - `signal.content.{rose,cyan,amber}`
- *                                    content-category mark.
- *   - `text.default`                 the Tool mark — a Tool is not a
- *                                    content class and has no hue.
+ *   - `accent.positive`              OK / live status mark.
+ *   - `accent.negative`              error / unreachable mark.
+ *   - `accent.warning`               degraded status mark.
+ *   - `accent.category.{design,code,writing,tool}`
+ *                                   content-category mark.
  */
 
 export function StatusAccents() {
@@ -43,7 +40,7 @@ export function StatusAccents() {
 function StatusRow() {
 	const entries: ReadonlyArray<StatusEntry> = [
 		{
-			token: 'signal.positive',
+			token: 'accent.positive',
 			role: 'OK / live',
 			label: 'Live',
 			note: 'Running, healthy, available — green.',
@@ -51,7 +48,7 @@ function StatusRow() {
 			mark: 'ok',
 		},
 		{
-			token: 'signal.negative',
+			token: 'accent.negative',
 			role: 'Error / unreachable',
 			label: 'Error',
 			note: 'Service down, build failed — red.',
@@ -59,7 +56,7 @@ function StatusRow() {
 			mark: 'unreachable',
 		},
 		{
-			token: 'signal.warning',
+			token: 'accent.warning',
 			role: 'Degraded',
 			label: 'Degraded',
 			note: 'Partially healthy, needs attention — amber.',
@@ -142,9 +139,9 @@ interface StatusEntry {
 }
 
 const STATUS_FG = {
-	positive: css({ color: 'signal.positive' }),
-	negative: css({ color: 'signal.negative' }),
-	warning: css({ color: 'signal.warning' }),
+	positive: css({ color: 'accent.positive' }),
+	negative: css({ color: 'accent.negative' }),
+	warning: css({ color: 'accent.warning' }),
 };
 
 function StatusTile({ entry }: { entry: StatusEntry }) {
@@ -220,13 +217,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 type CategoryFamily = 'design' | 'code' | 'writing' | 'tool';
 
 interface CategoryEntry {
-	/**
-	 * The token path read from `contentSignalToken`, displayed as the
-	 * caption under the mark. Kept as a plain string because the owner
-	 * returns a path; the mark itself is painted from the static
-	 * `CATEGORY_MARK` map.
-	 */
-	token: string;
+	token: `accent.category.${CategoryFamily}`;
 	label: string;
 	note: string;
 	family: CategoryFamily;
@@ -240,50 +231,38 @@ interface CategoryEntry {
  *
  * Issue #812: the family colour paints the 8px mark only. The word
  * beside it stays in `text.default`.
- *
- * Issue #764: which family a category receives is owned by
- * `contentSignalToken`; the literals below are the same mapping, kept
- * static because Panda resolves token paths at build time. The
- * displayed `token` in each entry is read from the owner, so this
- * table cannot silently disagree with it.
  */
 const CATEGORY_MARK = {
-	design: css({ color: 'signal.content.rose' }),
-	code: css({ color: 'signal.content.cyan' }),
-	writing: css({ color: 'signal.content.amber' }),
-	// Colour system III (Issue #812): a Tool is not a content class, so
-	// it has no content hue. The silhouette still distinguishes it; the
-	// mark is painted with the operation ink.
-	tool: css({ color: 'text.default' }),
+	design: css({ color: 'accent.category.design' }),
+	code: css({ color: 'accent.category.code' }),
+	writing: css({ color: 'accent.category.writing' }),
+	tool: css({ color: 'accent.category.tool' }),
 } as const;
 
 function CategoryRow() {
 	const entries: ReadonlyArray<CategoryEntry> = [
 		{
-			token: contentSignalToken('design'),
+			token: 'accent.category.design',
 			label: 'Design',
 			note: '分類は diamond の形と語で示す。色は補助。',
 			family: 'design',
 		},
 		{
-			token: contentSignalToken('code'),
+			token: 'accent.category.code',
 			label: 'Code',
 			note: '分類は square の形と語で示す。色は補助。',
 			family: 'code',
 		},
 		{
-			token: contentSignalToken('writing'),
+			token: 'accent.category.writing',
 			label: 'Writing',
 			note: '分類は stacked bars の形と語で示す。色は補助。',
 			family: 'writing',
 		},
 		{
-			// Issue #812 / colour system III: a Tool is not a content
-			// class. It keeps its chevron silhouette but is painted with
-			// the operation ink, so there is no fourth content token.
-			token: 'text.default',
+			token: 'accent.category.tool',
 			label: 'Tool',
-			note: '分類は chevron の形と語で示す。Tool はコンテンツ分類ではないため色面を持たず、操作の墨で描く。',
+			note: '分類は chevron の形と語で示す。色は補助。',
 			family: 'tool',
 		},
 	];
@@ -323,8 +302,8 @@ function CategoryRow() {
 						color: 'text.muted',
 					})}
 				>
-					Content category の 3 系統と、色面を持たない
-					Tool。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
+					Content category の 4
+					系統。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
 					色だけを変える表現は使いません。
 				</p>
 			</header>

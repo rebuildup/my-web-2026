@@ -66,7 +66,7 @@ function AdminIndexRoute() {
 							fontWeight: 600,
 							color: 'var(--colors-text-muted)',
 							background: 'transparent',
-							border: '1px solid var(--colors-border-divider)',
+							border: '1px solid var(--colors-border-subtle)',
 							borderRadius: 9999,
 							paddingInline: 12,
 							paddingBlock: 4,

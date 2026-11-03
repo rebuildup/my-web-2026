@@ -126,7 +126,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 					left: '0',
 					top: '0',
 					padding: '2',
-					backgroundColor: 'surface.canvas',
+					backgroundColor: 'bg.canvas',
 					color: 'text.default',
 					textDecoration: 'none',
 					transform: 'translateY(-200%)',
@@ -230,7 +230,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 									paddingInlineStart: '4',
 									borderInlineStartWidth: '2px',
 									borderInlineStartStyle: 'solid',
-									borderInlineStartColor: 'border.divider',
+									borderInlineStartColor: 'border.subtle',
 									maxWidth: '720px',
 								})}
 							>
@@ -285,7 +285,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 									minHeight: '10',
 									paddingInline: '4',
 									borderRadius: 'full',
-									backgroundColor: 'signal.action',
+									backgroundColor: 'bg.accent',
 									color: 'text.inverse',
 									fontFamily: 'sans',
 									fontSize: 'sm',
@@ -312,7 +312,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 										borderRadius: 'full',
 										borderWidth: '1px',
 										borderStyle: 'solid',
-										borderColor: 'border.divider',
+										borderColor: 'border.subtle',
 										color: 'text.default',
 										fontFamily: 'sans',
 										fontSize: 'sm',
@@ -369,7 +369,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 											paddingBlock: '4',
 											borderBlockStartWidth: '1px',
 											borderBlockStartStyle: 'solid',
-											borderBlockStartColor: 'border.divider',
+											borderBlockStartColor: 'border.subtle',
 										})}
 									>
 										<a
@@ -438,7 +438,7 @@ function BoundarySection({
 							padding: '6',
 							borderWidth: '1px',
 							borderStyle: 'solid',
-							borderColor: 'border.divider',
+							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>
@@ -468,7 +468,7 @@ function BoundarySection({
 							padding: '6',
 							borderWidth: '1px',
 							borderStyle: 'solid',
-							borderColor: 'border.divider',
+							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>
@@ -536,7 +536,7 @@ function ReadmeSection({
 				paddingBlock: { base: '10', lg: '16' },
 				borderBlockStartWidth: '1px',
 				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.divider',
+				borderBlockStartColor: 'border.subtle',
 			})}
 		>
 			<Container>
@@ -597,9 +597,9 @@ function ReadmeSection({
 											paddingInline: '2',
 											borderWidth: '1px',
 											borderStyle: 'solid',
-											borderColor: 'border.divider',
+											borderColor: 'border.subtle',
 											borderRadius: 'md',
-											backgroundColor: 'surface.sunken',
+											backgroundColor: 'bg.subtle',
 											fontFamily: 'mono',
 											fontSize: 'sm',
 											color: 'text.default',
@@ -672,9 +672,9 @@ function FreshnessNotice({ view }: { readonly view: ProjectIntroductionView }) {
 						paddingInline: '4',
 						borderWidth: '1px',
 						borderStyle: 'solid',
-						borderColor: 'border.divider',
+						borderColor: 'border.subtle',
 						borderRadius: 'md',
-						backgroundColor: isCurrent ? 'surface.canvas' : 'surface.sunken',
+						backgroundColor: isCurrent ? 'bg.canvas' : 'bg.subtle',
 					})}
 				>
 					<StateMark kind={FRESHNESS_MARK[freshness]} size="sm" />
@@ -772,7 +772,7 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 				paddingBlock: { base: '10', lg: '16' },
 				borderBlockStartWidth: '1px',
 				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.divider',
+				borderBlockStartColor: 'border.subtle',
 			})}
 		>
 			<Container>

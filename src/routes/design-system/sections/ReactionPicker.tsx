@@ -96,21 +96,21 @@ export function ReactionPicker() {
 						height: '9',
 						borderRadius: 'md',
 						// Issue #804: fill, not outline — the same secondary
-						// contract as `InteractiveStates` (`surface.sunken` at
+						// contract as `InteractiveStates` (`bg.subtle` at
 						// rest, ink inversion on hover, accent on press).
 						borderWidth: '0',
 						borderStyle: 'solid',
-						backgroundColor: 'surface.sunken',
+						backgroundColor: 'bg.subtle',
 						color: 'text.default',
 						fontFamily: 'sans',
 						fontSize: 'md',
 						cursor: 'pointer',
 						_hover: {
 							backgroundColor: 'text.default',
-							color: 'surface.canvas',
+							color: 'bg.canvas',
 						},
 						_active: {
-							backgroundColor: 'signal.actionActive',
+							backgroundColor: 'accent.interactive',
 							color: 'text.inverse',
 						},
 						_focusVisible: {

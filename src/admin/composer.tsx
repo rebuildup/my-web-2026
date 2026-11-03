@@ -64,7 +64,7 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 								flexDirection: 'column',
 								gap: '4',
 								paddingBlock: '6',
-								borderBlockEnd: '1px solid {colors.border.divider}',
+								borderBlockEnd: '1px solid {colors.border.subtle}',
 							})}
 						>
 							<span

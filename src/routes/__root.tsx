@@ -275,25 +275,13 @@ function RootComponent() {
 				    deepest route winning (see the head-merge note above):
 				    two `theme-color` entries in `head()` collapse into
 				    one, which is exactly the case the two media queries
-				    exist to avoid. The values are the two `surface.canvas`
+				    exist to avoid. The values are the two `bg.canvas`
 				    steps from `src/editorial/semantic-tokens.ts`:
 				    `neutral.25` (light, Issue #812) and `charcoal.950`
 				    (dark). The
 				    manifest's single `theme_color` cannot be
 				    appearance-conditional, so it carries the static
-				    accent step (`brand.700`) instead.
-
-				    The two values are written as literals ON PURPOSE.
-				    `content` cannot take `var()`, and importing the
-				    palette here would put the whole token module in the
-				    client bundle for two constants. The duplication is
-				    gate-checked instead: `scripts/check-app-icons.mjs`
-				    fails when either literal stops existing in
-				    `src/editorial/tokens.ts`, and
-				    `scripts/check-raw-color.mjs` carries the two
-				    allowlist entries that admit exactly these values in
-				    exactly this file. Do not "fix" this into an import
-				    without moving that membership check with it. */}
+				    accent step (`brand.700`) instead. */}
 				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcfd" />
 				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
 				{/* Measurement (Issue #171) behind the consent gate

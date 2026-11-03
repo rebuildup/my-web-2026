@@ -194,7 +194,7 @@ test('buildPalette resolves the shipped semantic tokens into CSS', async () => {
 		import('../src/editorial/semantic-tokens.ts'),
 	]);
 	const palette = buildPalette(editorial.rawTokens, semantic.semanticTokens);
-	assert.match(palette, /--surface-canvas: #[0-9a-f]{6};/);
+	assert.match(palette, /--bg-canvas: #[0-9a-f]{6};/);
 	assert.equal(
 		palette.includes('{colors.'),
 		false,

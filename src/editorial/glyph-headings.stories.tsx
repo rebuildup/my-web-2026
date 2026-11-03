@@ -103,7 +103,7 @@ function SampleRow({ sample }: { sample: GlyphHeadingSample }) {
 				gap: '2',
 				paddingBottom: '6',
 				borderBottom: '1px solid',
-				borderColor: 'border.divider',
+				borderColor: 'border.subtle',
 			})}
 		>
 			<span

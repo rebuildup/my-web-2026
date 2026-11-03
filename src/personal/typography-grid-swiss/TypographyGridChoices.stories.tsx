@@ -117,14 +117,14 @@ const metaListClassName = css({
 const sectionClassName = css({
 	marginBlockStart: '12',
 	paddingBlockStart: '8',
-	borderTop: '1px solid {colors.border.divider}',
+	borderTop: '1px solid {colors.border.subtle}',
 });
 
 /** The frame of a comparison panel (before / after / counter-example). */
 const panelClassName = css({
 	marginBlockStart: '12',
 	paddingBlockStart: '8',
-	borderTop: '1px solid {colors.border.divider}',
+	borderTop: '1px solid {colors.border.subtle}',
 });
 
 /** The caption that names what a panel shows. */

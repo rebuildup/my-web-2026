@@ -62,7 +62,7 @@
  *   node --experimental-strip-types scripts/check-a11y-contrast.mjs [--quiet] [--json=FILE]
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -133,7 +133,7 @@ export const RULES = [
  * The pair matrix — the single declaration of what this repository claims
  * about its own contrast.
  *
- * `fg` / `bg` are SEMANTIC token paths (`text.default`, `surface.canvas`).
+ * `fg` / `bg` are SEMANTIC token paths (`text.default`, `bg.canvas`).
  * `threshold` repeats the SC 1.4.3 number so a reader of the report does
  * not have to know the `kind` to know what was demanded; `kind` selects
  * the rule and the threshold, and the two must agree.
@@ -141,161 +141,140 @@ export const RULES = [
 export const CONTRAST_PAIRS = [
 	{
 		fg: 'text.default',
-		bg: 'surface.canvas',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'body copy on the page',
 	},
 	{
 		fg: 'text.default',
-		bg: 'surface.raised',
+		bg: 'bg.surface',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'body copy on a raised card',
 	},
 	{
 		fg: 'text.default',
-		bg: 'surface.sunken',
+		bg: 'bg.subtle',
 		kind: 'normal',
 		threshold: 4.5,
-		note: 'body copy on a recessed region',
-	},
-	{
-		fg: 'text.default',
-		bg: 'surface.control',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'the label on a pressable control fill',
+		note: 'body copy on a subtle inset',
 	},
 	{
 		fg: 'text.muted',
-		bg: 'surface.canvas',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'secondary copy on the page',
 	},
 	{
 		fg: 'text.muted',
-		bg: 'surface.raised',
+		bg: 'bg.surface',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'secondary copy on a raised card',
 	},
 	{
 		fg: 'text.muted',
-		bg: 'surface.sunken',
+		bg: 'bg.subtle',
 		kind: 'normal',
 		threshold: 4.5,
-		note: 'secondary copy on a recessed region',
+		note: 'secondary copy on a subtle inset',
 	},
 	{
 		fg: 'text.muted',
-		bg: 'surface.control',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'secondary copy on a pressable control fill',
-	},
-	{
-		fg: 'text.muted',
-		bg: 'surface.feature',
+		bg: 'accent.surface',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'secondary copy on the tinted feature region',
 	},
 	{
 		fg: 'text.inverse',
-		bg: 'signal.action',
+		bg: 'bg.accent',
 		kind: 'normal',
 		threshold: 4.5,
-		note: 'the CTA label on the operation fill',
+		note: 'the CTA label on the accent fill',
 	},
 	{
 		fg: 'text.inverse',
-		bg: 'signal.actionActive',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'the CTA label on the pressed / hovered operation fill',
-	},
-	{
-		fg: 'text.inverse',
-		bg: 'surface.inverse',
+		bg: 'bg.inverse',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'the inverse panel label',
 	},
 	{
 		fg: 'text.accent',
-		bg: 'surface.canvas',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'a link on the page',
 	},
 	{
 		fg: 'text.accent',
-		bg: 'surface.feature',
+		bg: 'accent.surface',
 		kind: 'large',
 		threshold: 3,
 		note: 'a large link / heading on the tinted feature region',
 	},
 	{
-		fg: 'signal.positive',
-		bg: 'surface.canvas',
+		fg: 'accent.positive',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'the status label "ok"',
 	},
 	{
-		fg: 'signal.negative',
-		bg: 'surface.canvas',
+		fg: 'accent.negative',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'the status label "error"',
 	},
 	{
-		fg: 'signal.warning',
-		bg: 'surface.canvas',
+		fg: 'accent.warning',
+		bg: 'bg.canvas',
 		kind: 'normal',
 		threshold: 4.5,
 		note: 'the status label "degraded"',
 	},
 	{
-		fg: 'signal.content.rose',
-		bg: 'surface.canvas',
+		fg: 'accent.category.design',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
-		note: 'the design content-family identifier',
+		note: 'the design category identifier',
 	},
 	{
-		fg: 'signal.content.cyan',
-		bg: 'surface.canvas',
+		fg: 'accent.category.code',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
-		note: 'the code content-family identifier',
+		note: 'the code category identifier',
 	},
 	{
-		fg: 'signal.content.amber',
-		bg: 'surface.canvas',
+		fg: 'accent.category.writing',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
-		note: 'the writing content-family identifier',
+		note: 'the writing category identifier',
 	},
 	{
-		fg: 'signal.action',
-		bg: 'surface.canvas',
+		fg: 'accent.category.tool',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
-		note: 'the operation fill boundary against the page',
+		note: 'the tool category identifier',
 	},
 	{
 		fg: 'border.focus',
-		bg: 'surface.canvas',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
 		note: 'the focus indicator',
 	},
 	{
 		fg: 'border.strong',
-		bg: 'surface.canvas',
+		bg: 'bg.canvas',
 		kind: 'non-text',
 		threshold: 3,
 		note: 'the emphasis boundary rule',
@@ -305,25 +284,17 @@ export const CONTRAST_PAIRS = [
 /**
  * Tokens deliberately NOT in the matrix, with the reason.
  *
- * Each entry names the token and why SC 1.4.3 does not demand a pair
- * for it. Excluding a token is a decision, so it is printed with the
- * report instead of being silently dropped.
+ * `border.subtle` is the decorative hairline separator: it carries no
+ * information of its own, so SC 1.4.3 (which asks for the contrast of a
+ * component boundary that IDENTIFIES a component) does not apply to it.
+ * Excluding it is a decision, so it is printed with the report instead of
+ * being silently dropped.
  */
 export const EXCLUDED_TOKENS = [
 	{
-		token: 'border.divider',
+		token: 'border.subtle',
 		reason:
-			'structural separator — it marks a data boundary but identifies no component state, so the 3:1 non-text minimum does not apply (SC 1.4.3 requires it only for a boundary that identifies a component)',
-	},
-	{
-		token: 'text.disabled',
-		reason:
-			'disabled text — SC 1.4.3 exempts inactive controls, and direction B signals disabled state by word and shape rather than by colour alone',
-	},
-	{
-		token: 'signal.actionActive',
-		reason:
-			'pressed / hovered operation fill — the pressed state is not the resting boundary of a control, so it is not measured against the page; its own label pair (text.inverse on signal.actionActive) IS in the matrix',
+			'decorative separator — it carries no information of its own, so the 3:1 non-text minimum does not apply (SC 1.4.3 requires it only for a boundary that identifies a component)',
 	},
 ];
 
@@ -333,7 +304,7 @@ export const EXCLUDED_TOKENS = [
  */
 export const HUMAN_EVALUATION = [
 	'whether a status colour is semantically adequate (does "green" read as "ok" to a reader)',
-	'whether the three category hues stay distinguishable after a palette change',
+	'whether the four category hues stay distinguishable after a palette change',
 	'contrast of text over photography, gradients or images (not token pairs)',
 	'how the palette reads on an uncalibrated or low-quality display',
 ];

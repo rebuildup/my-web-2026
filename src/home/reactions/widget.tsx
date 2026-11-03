@@ -266,11 +266,11 @@ export function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 					// the modal border so the picker and the dialog
 					// read as one surface (no doubled hairline). The
 					// picker's default #e7e7e7 is too light against
-					// surface.canvas, so we override the CSS variable to
+					// bg.canvas, so we override the CSS variable to
 					// `border.strong` instead of stacking another
 					// border on the wrapper.
 					'--epr-picker-border-color': 'colors.border.strong',
-					backgroundColor: 'surface.canvas',
+					backgroundColor: 'bg.canvas',
 					// Picker's internal `.epr-body` is the only
 					// scrollable element. Style its scrollbar to
 					// match the editorial palette: thin, rounded,
@@ -609,9 +609,9 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 									height: '8',
 									borderRadius: 'full',
 									borderWidth: '1px',
-									borderColor: 'border.divider',
+									borderColor: 'border.subtle',
 									borderStyle: 'solid',
-									backgroundColor: 'surface.canvas',
+									backgroundColor: 'bg.canvas',
 									color: 'text.default',
 									fontFamily: 'sans',
 									fontSize: 'md',
@@ -652,9 +652,9 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 						height: '9',
 						borderRadius: 'md',
 						borderWidth: '1px',
-						borderColor: 'border.divider',
+						borderColor: 'border.subtle',
 						borderStyle: 'solid',
-						backgroundColor: 'surface.canvas',
+						backgroundColor: 'bg.canvas',
 						color: 'text.default',
 						fontFamily: 'sans',
 						fontSize: 'md',

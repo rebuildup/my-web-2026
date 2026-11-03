@@ -97,9 +97,9 @@ const EVIDENCE_STATUS_TONE: Readonly<Record<AssetEvidenceStatus, 'accent' | 'neu
 const cardClassName = css({
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.divider',
+	borderColor: 'border.subtle',
 	borderRadius: '4',
-	background: 'surface.canvas',
+	background: 'bg.canvas',
 	padding: '5',
 	display: 'flex',
 	flexDirection: 'column',
@@ -153,7 +153,7 @@ const factClassName = css({
 	margin: '0',
 	padding: '3',
 	borderRadius: '3',
-	background: 'surface.sunken',
+	background: 'bg.subtle',
 });
 
 const factLabelClassName = css({
@@ -228,8 +228,8 @@ const sectionLabelClassName = css({
 });
 
 const FINDING_BORDER: Readonly<Record<AssetReviewSeverity, string>> = {
-	error: 'signal.negative',
-	warn: 'signal.warning',
+	error: 'accent.negative',
+	warn: 'accent.warning',
 	info: 'border.strong',
 };
 

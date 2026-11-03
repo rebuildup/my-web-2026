@@ -117,9 +117,9 @@ const GUTTER_PROBE_IDS = ['gutter-band', 'gutter-container'];
  *
  *   font stacks          src/editorial/tokens.ts#fonts
  *   colours              src/editorial/semantic-tokens.ts#colors
- *                         (surface.canvas = neutral.50, surface.raised = neutral.25,
- *                         text.default = neutral.900, text.muted = neutral.600,
- *                         border.divider = neutral.200)
+ *                         (bg.canvas = neutral.0, bg.surface = neutral.50,
+ *                         text.default = neutral.900, text.muted = neutral.500,
+ *                         border.subtle = neutral.100)
  *   type scale           src/editorial/tokens.ts#fontSizes
  *   radius               src/editorial/tokens.ts#radii
  *   page width / padding src/editorial/primitives/Container.tsx

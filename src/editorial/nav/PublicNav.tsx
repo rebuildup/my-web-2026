@@ -202,9 +202,9 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 			aria-label={NAV_LABEL_TEXT}
 			className={css({
 				borderBlockEndWidth: '1px',
-				borderBlockEndColor: 'border.divider',
+				borderBlockEndColor: 'border.subtle',
 				borderBlockEndStyle: 'solid',
-				backgroundColor: 'surface.canvas',
+				backgroundColor: 'bg.canvas',
 				// Issue #777: the strip's collapse threshold is a
 				// container query (see NAV_STRIP_QUERY), so the nav is
 				// the query container for the strip, the trigger and the
@@ -313,8 +313,8 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						borderRadius: 'md',
 						borderWidth: '1px',
 						borderStyle: 'solid',
-						borderColor: 'border.divider',
-						backgroundColor: 'surface.canvas',
+						borderColor: 'border.subtle',
+						backgroundColor: 'bg.canvas',
 						color: 'text.default',
 						fontFamily: 'sans',
 						fontSize: 'sm',
@@ -345,7 +345,7 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 				data-testid="public-nav-mobile-panel"
 				className={css({
 					borderBlockStartWidth: '1px',
-					borderBlockStartColor: 'border.divider',
+					borderBlockStartColor: 'border.subtle',
 					borderBlockStartStyle: 'solid',
 					paddingInline: { base: '4', md: '6' },
 					paddingBlock: '4',
@@ -430,10 +430,10 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 					_hover: { color: 'text.default' },
 				}),
 				...(isMobile && {
-					_hover: { backgroundColor: 'surface.raised' },
+					_hover: { backgroundColor: 'bg.surface' },
 					borderWidth: '1px',
 					borderStyle: 'solid',
-					borderColor: isActive ? 'border.strong' : 'border.divider',
+					borderColor: isActive ? 'border.strong' : 'border.subtle',
 				}),
 				_focusVisible: {
 					outline: '2px solid {colors.border.focus}',

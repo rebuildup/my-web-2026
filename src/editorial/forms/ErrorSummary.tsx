@@ -130,10 +130,10 @@ export function ErrorSummary({
 const summaryClassName = css({
 	paddingBlock: '3',
 	paddingInline: '4',
-	border: '2px solid {colors.border.divider}',
-	borderLeftColor: 'signal.negative',
+	border: '2px solid {colors.border.subtle}',
+	borderLeftColor: 'accent.negative',
 	borderRadius: '4',
-	background: 'surface.raised',
+	background: 'bg.surface',
 	maxWidth: '640px',
 });
 
@@ -142,7 +142,7 @@ const headingClassName = css({
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '700',
-	color: 'signal.negative',
+	color: 'accent.negative',
 });
 
 const listClassName = css({
@@ -160,7 +160,7 @@ const linkClassName = css({
 	color: 'text.default',
 	fontWeight: '600',
 	textDecoration: 'underline',
-	_hover: { color: 'signal.negative' },
+	_hover: { color: 'accent.negative' },
 });
 
 const labelClassName = css({

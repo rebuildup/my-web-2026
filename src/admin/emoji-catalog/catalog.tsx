@@ -115,7 +115,7 @@ function CatalogRow({ entry }: { entry: AdminCatalogEntry }) {
 				alignItems: 'baseline',
 				gap: { base: '2', md: '6' },
 				paddingBlock: '4',
-				borderBlockStart: '1px solid {colors.border.divider}',
+				borderBlockStart: '1px solid {colors.border.subtle}',
 			})}
 		>
 			<span
@@ -194,7 +194,7 @@ function ToggleButton({ slug, enabled }: { slug: string; enabled: boolean }) {
 				fontWeight: '600',
 				color: 'text.muted',
 				background: 'transparent',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: 'full',
 				paddingInline: '3',
 				paddingBlock: '1',
@@ -233,7 +233,7 @@ function RebindButton({ slug, codepoint }: { slug: string; codepoint: string }) 
 				fontWeight: '600',
 				color: 'text.muted',
 				background: 'transparent',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: 'full',
 				paddingInline: '3',
 				paddingBlock: '1',
@@ -274,7 +274,7 @@ function RemoveButton({ slug }: { slug: string }) {
 				fontWeight: '600',
 				color: 'text.muted',
 				background: 'transparent',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: 'full',
 				paddingInline: '3',
 				paddingBlock: '1',

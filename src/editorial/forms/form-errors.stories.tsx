@@ -36,7 +36,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const panelClassName = css({
-	borderTop: '1px solid {colors.border.divider}',
+	borderTop: '1px solid {colors.border.subtle}',
 	paddingBlock: { base: '10', lg: '14' },
 });
 
@@ -73,7 +73,7 @@ const submitClassName = css({
 	fontSize: 'md',
 	fontWeight: '600',
 	color: 'text.inverse',
-	background: 'signal.action',
+	background: 'bg.accent',
 	border: 'none',
 	borderRadius: '4',
 	paddingBlock: '3',

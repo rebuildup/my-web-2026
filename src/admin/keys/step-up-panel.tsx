@@ -159,9 +159,9 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 				gap: '3',
 				paddingBlock: '4',
 				paddingInline: '4',
-				border: '1px solid {colors.border.divider}',
+				border: '1px solid {colors.border.subtle}',
 				borderRadius: '4',
-				background: 'surface.raised',
+				background: 'bg.surface',
 			})}
 		>
 			<div
@@ -237,9 +237,9 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 								fontSize: 'md',
 								paddingInline: '3',
 								paddingBlock: '2',
-								border: '1px solid {colors.border.divider}',
+								border: '1px solid {colors.border.subtle}',
 								borderRadius: '4',
-								background: 'surface.raised',
+								background: 'bg.surface',
 								color: 'text.default',
 							})}
 						/>
@@ -252,7 +252,7 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 							fontSize: 'md',
 							fontWeight: '600',
 							color: 'text.inverse',
-							background: 'signal.action',
+							background: 'bg.accent',
 							border: 'none',
 							borderRadius: '4',
 							paddingBlock: '3',

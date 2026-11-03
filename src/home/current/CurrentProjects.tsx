@@ -141,7 +141,7 @@ const groupHeadingClassName = /* @__PURE__ */ css({
 	margin: '0',
 	marginBlockEnd: '3',
 	paddingBlockEnd: '2',
-	borderBlockEnd: '1px solid {colors.border.divider}',
+	borderBlockEnd: '1px solid {colors.border.subtle}',
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '600',
@@ -151,7 +151,7 @@ const groupHeadingClassName = /* @__PURE__ */ css({
 
 const rowClassName = /* @__PURE__ */ css({
 	paddingBlock: '5',
-	borderBlockEnd: '1px solid {colors.border.divider}',
+	borderBlockEnd: '1px solid {colors.border.subtle}',
 	'&:last-child': {
 		borderBlockEnd: 'none',
 	},

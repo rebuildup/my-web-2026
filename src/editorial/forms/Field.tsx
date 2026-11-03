@@ -39,7 +39,7 @@ import {
  *
  * Styling note: the error state is carried by an icon marker, a heavier
  * border, the sentence itself and `aria-invalid` — never by colour
- * alone (WCAG 2.2 1.4.1). The border colour uses `signal.negative`,
+ * alone (WCAG 2.2 1.4.1). The border colour uses `accent.negative`,
  * the audited status foreground token. The marker is a Material Symbols
  * glyph (Issue #823), not a typed `×`: a sign that carries meaning is
  * drawn, never a character in the text layer.
@@ -267,7 +267,7 @@ const errorClassName = css({
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	lineHeight: '1.6',
-	color: 'signal.negative',
+	color: 'accent.negative',
 	// The one place the shipped colour layer carries meaning, so it
 	// also carries weight: colour alone is not a signal
 	// (WCAG 2.2 1.4.1).
@@ -289,9 +289,9 @@ const inputRecipe = cva({
 		paddingBlock: '2',
 		width: '100%',
 		minWidth: '0',
-		border: '1px solid {colors.border.divider}',
+		border: '1px solid {colors.border.subtle}',
 		borderRadius: '4',
-		background: 'surface.raised',
+		background: 'bg.surface',
 		color: 'text.default',
 	},
 	variants: {
@@ -299,7 +299,7 @@ const inputRecipe = cva({
 			true: {
 				// A heavier border so the state is legible next to the
 				// sentence below the control, not only as a hue shift.
-				borderColor: 'signal.negative',
+				borderColor: 'accent.negative',
 				borderWidth: '2px',
 			},
 			false: {},

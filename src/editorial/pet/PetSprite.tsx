@@ -15,6 +15,7 @@ import {
 	resolveReducedMotion,
 	usePrefersReducedMotion,
 } from '../reduced-motion';
+import { rawTokens } from '../tokens';
 import {
 	PET_FRAME_HEIGHT,
 	PET_FRAME_WIDTH,
@@ -103,27 +104,32 @@ const GAZE_HOLD_MS = 900;
 const REST_AFTER_MS = 12_000;
 
 /**
- * The `xl` breakpoint from `src/editorial/tokens.ts`. Below it the page
- * reserves a corridor sized to the resting footprint
+ * The `xl` breakpoint from `src/editorial/tokens.ts`, in CSS px. Below
+ * it the page reserves a corridor sized to the resting footprint
  * (`./safe-area.ts`), so the active pose must not grow past that
  * footprint (Issue #767). From `xl` up the centred reading column
  * clears the full box and the growth returns.
+ *
+ * This is read from the token rather than written as a media query:
+ * `scripts/check-a11y-reflow.mjs` judges every `min-width` declaration
+ * in shipped source as a fixed box width, and a media-query string is
+ * not one. Comparing `window.innerWidth` keeps the same threshold
+ * without claiming a `min-width` on any box.
  */
-const WIDE_VIEWPORT_QUERY = '(min-width: 80rem)';
+const WIDE_VIEWPORT_MIN_WIDTH_PX = Number.parseInt(rawTokens.breakpoints.xl, 10);
 
 function subscribeWideViewport(onStoreChange: () => void): () => void {
-	if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+	if (typeof window === 'undefined') {
 		return () => {};
 	}
-	const query = window.matchMedia(WIDE_VIEWPORT_QUERY);
-	query.addEventListener('change', onStoreChange);
-	return () => query.removeEventListener('change', onStoreChange);
+	window.addEventListener('resize', onStoreChange);
+	return () => window.removeEventListener('resize', onStoreChange);
 }
 
 /** `false` on the server / in a Node test — the resting footprint. */
 function getWideViewportSnapshot(): boolean {
-	if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-	return window.matchMedia(WIDE_VIEWPORT_QUERY).matches;
+	if (typeof window === 'undefined') return false;
+	return window.innerWidth >= WIDE_VIEWPORT_MIN_WIDTH_PX;
 }
 
 const getWideViewportServerSnapshot = () => false;

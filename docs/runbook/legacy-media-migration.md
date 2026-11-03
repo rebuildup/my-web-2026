@@ -53,7 +53,7 @@ project 行の有無は `scripts/migrate-portfolio-from-2025.mjs`（本文移行
 | `publication = 'rejected'` | 同じく skip | 0 |
 
 skip された 166 行 / 4,135,229 byte は **`media-list-*` / `media-rt-*` /
-`test-otu-*` という自動生成の test fixture** が全件である。portfolo の
+`test-otu-*` という自動生成の test fixture** が全件である。portfolio の
 作品として公開してはならないので、これらは project 行ごと作らない。
 
 **`content_id` が無い行の帰属**: その行を含む DB は `contents` を 1 件だけ
@@ -142,7 +142,7 @@ node scripts/migrate-legacy-media.mjs --apply --target=production
 | 同じ project 内の同一 sha256 | object は **1 回だけ**アップロード。行は **media 行ごとに作る**（重複を勝手に削らない） |
 | 別の project の同一 sha256 | project ごとに object を持つ（key namespace が project 単位であり、行が自分の key を所有する） |
 
-行を消さないのは、**重複は旧 item の事実**であり、移行が 사실을削除する
+行を消さないのは、**重複は旧 item の事実**であり、移行が事実を削除する
 権利を持っていないためである。実測で 130 行 / 116 object（重複 14 行分）。
 
 ## 7. fail closed になる規則
@@ -218,7 +218,7 @@ node scripts/d1.mjs query --target=local --sql \
 移行後の 60 project は**すべて `visibility='draft'`** のまま。これは
 `publication` が 60 件とも `pending_owner` だからであり、移行スクリプトが
 判断したわけではない。owner が publication を `approved` に替えたとき、
-project は公開され、本 runbook の §8.1 と同じ経路で画像届时する。
+project は公開され、本 runbook の §8.1 と同じ経路で画像が配信される。
 
 ## 10. rollback
 

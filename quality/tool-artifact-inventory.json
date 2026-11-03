@@ -240,7 +240,7 @@
 			}
 		},
 		"qr-generator": {
-			"pinned_sha": "0df1a99e32cea8d34a56f41dbc580db3e494c8d3",
+			"pinned_sha": "2a7d64308e1286108c42bbe88b8d9f762e7e8fa3",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -297,7 +297,7 @@
 			}
 		},
 		"pi-game": {
-			"pinned_sha": "e67d9cec91bc431ab10003aa229205466a822425",
+			"pinned_sha": "b234aa0569ade70a885c8ee8941861fccf7a3603",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",

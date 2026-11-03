@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
-import { PetCompanion } from '../../editorial/pet';
+import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
@@ -81,7 +81,10 @@ const skipLinkStyle = css({
 export function AboutPage({ data }: AboutPageProps) {
 	const { identity, interests, experience, current, future, externalHandles } = data;
 	return (
-		<>
+		// Issue #767 — the fixed companion occupies the bottom-right
+		// corner; the page reserves that corridor so its text never
+		// scrolls underneath. See `src/editorial/pet/safe-area.ts`.
+		<div className={petSafeAreaStyle}>
 			<a href="#about-main" className={skipLinkStyle}>
 				本文へスキップ
 			</a>
@@ -95,7 +98,7 @@ export function AboutPage({ data }: AboutPageProps) {
 			</main>
 			<ExternalHandlesFooter handles={externalHandles} />
 			<PetCompanion />
-		</>
+		</div>
 	);
 }
 

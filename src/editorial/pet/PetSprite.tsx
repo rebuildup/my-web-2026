@@ -6,6 +6,7 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from 'react';
 import { css } from '../../../styled-system/css';
 import { ANALYTICS_CONSENT_OFFSET_PROPERTY } from '../analytics/consent';
@@ -14,8 +15,12 @@ import {
 	resolveReducedMotion,
 	usePrefersReducedMotion,
 } from '../reduced-motion';
+import { rawTokens } from '../tokens';
 import {
+	PET_FRAME_HEIGHT,
+	PET_FRAME_WIDTH,
 	PET_POSITION_MARGIN,
+	PET_REST_SCALE,
 	PET_TRAVEL_INSETS,
 	type PetPositionPixels,
 	type PetTravelInsets,
@@ -84,12 +89,10 @@ import { PET_DRAG_THRESHOLD_PX, type PetPose, dragPose, lookPose, scrollPose } f
  * simply keeps that position.
  */
 
-/** Display size in CSS px: the 192 x 208 atlas cell at DPR 2. */
-const FRAME_WIDTH = 96;
-const FRAME_HEIGHT = 104;
-
-/** Resting scale — the character shrinks so it never covers the column. */
-const REST_SCALE = 0.62;
+/** Local aliases for the geometry owned by `./position.ts`. */
+const FRAME_WIDTH = PET_FRAME_WIDTH;
+const FRAME_HEIGHT = PET_FRAME_HEIGHT;
+const REST_SCALE = PET_REST_SCALE;
 
 /** The greeting, played once when the character first appears. */
 const ARRIVAL_MS = 700;
@@ -99,6 +102,45 @@ const GAZE_HOLD_MS = 900;
 
 /** Silence before the character goes back to its resting scale. */
 const REST_AFTER_MS = 12_000;
+
+/**
+ * The `xl` breakpoint from `src/editorial/tokens.ts`, in CSS px. Below
+ * it the page reserves a corridor sized to the resting footprint
+ * (`./safe-area.ts`), so the active pose must not grow past that
+ * footprint (Issue #767). From `xl` up the centred reading column
+ * clears the full box and the growth returns.
+ *
+ * This is read from the token rather than written as a media query:
+ * `scripts/check-a11y-reflow.mjs` judges every `min-width` declaration
+ * in shipped source as a fixed box width, and a media-query string is
+ * not a box width. Comparing `window.innerWidth` keeps the same
+ * threshold without claiming a `min-width` on any box.
+ */
+const WIDE_VIEWPORT_MIN_WIDTH_PX = Number.parseInt(rawTokens.breakpoints.xl, 10);
+
+function subscribeWideViewport(onStoreChange: () => void): () => void {
+	if (typeof window === 'undefined') {
+		return () => {};
+	}
+	window.addEventListener('resize', onStoreChange);
+	return () => window.removeEventListener('resize', onStoreChange);
+}
+
+/** `false` on the server / in a Node test — the resting footprint. */
+function getWideViewportSnapshot(): boolean {
+	if (typeof window === 'undefined') return false;
+	return window.innerWidth >= WIDE_VIEWPORT_MIN_WIDTH_PX;
+}
+
+const getWideViewportServerSnapshot = () => false;
+
+function useWideViewport(): boolean {
+	return useSyncExternalStore(
+		subscribeWideViewport,
+		getWideViewportSnapshot,
+		getWideViewportServerSnapshot,
+	);
+}
 
 /**
  * The custom property that carries this overlay's footprint to the
@@ -493,8 +535,13 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const overlayStyle = css({
 		position: 'fixed',
 		zIndex: '30',
-		width: `${FRAME_WIDTH}px`,
-		height: `${FRAME_HEIGHT}px`,
+		// Literals on purpose: Panda's static extractor does not
+		// evaluate imported constants, and a computed width silently
+		// produces no class. The JS math uses `PET_FRAME_WIDTH` /
+		// `PET_FRAME_HEIGHT`; `safe-area.test.ts` keeps the corridor in
+		// step with the same numbers.
+		width: '96px',
+		height: '104px',
 		transformOrigin: '100% 100%',
 		transition: 'transform 200ms ease',
 		pointerEvents: 'none',
@@ -518,7 +565,8 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 		top: '0',
 		display: 'block',
 		maxWidth: 'none',
-		height: `${FRAME_HEIGHT}px`,
+		// Literal for the same extractor reason as the overlay above.
+		height: '104px',
 	});
 
 	const waveStyle = css({ animation: `petReaction ${ARRIVAL_MS}ms steps(4, jump-none) 1` });
@@ -534,7 +582,14 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	// Growing is itself a reaction, so it is one of the things reduced
 	// motion turns off: the character keeps its resting size and never
 	// resizes on scroll, approach or drag.
-	const scale = active && !reducedMotion ? 1 : REST_SCALE;
+	//
+	// Issue #767 — below `xl` the active pose keeps the resting scale.
+	// The page reserves a corridor sized to the resting footprint
+	// (`./safe-area.ts`), and growing to 1.0 would push the sprite back
+	// into that corridor on narrow screens. From `xl` up the centred
+	// reading column leaves the full box clear, so the growth returns.
+	const wideViewport = useWideViewport();
+	const scale = active && !reducedMotion && wideViewport ? 1 : REST_SCALE;
 	const positionStyle: CSSProperties =
 		position === null
 			? {

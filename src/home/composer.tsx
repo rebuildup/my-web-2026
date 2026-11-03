@@ -1,5 +1,5 @@
 import { css } from '../../styled-system/css';
-import { PetCompanion } from '../editorial/pet';
+import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Container } from '../editorial/primitives/Container';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
@@ -98,7 +98,10 @@ export interface HomePageProps {
  */
 export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	return (
-		<>
+		// Issue #767 — the page reserves the bottom-right corridor the
+		// fixed companion occupies, so the reading column never scrolls
+		// under it. See `src/editorial/pet/safe-area.ts`.
+		<div className={petSafeAreaStyle}>
 			<a
 				href="#main"
 				className={css({
@@ -228,6 +231,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</main>
 			<Footer />
 			<PetCompanion />
-		</>
+		</div>
 	);
 }

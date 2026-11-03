@@ -13,7 +13,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *   2. project type (facet label, mono / muted),
  *   3. title,
  *   4. summary,
- *   5. role (only when a role is recorded) + period,
+ *   5. role / period (each only when recorded),
  *   6. facet pills,
  *   7. detail link.
  *
@@ -97,6 +97,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
 	// nothing, so it is dropped. The printed string is the stored
 	// string, byte-exact.
 	const hasRole = project.role !== null && project.role.trim() !== '';
+	// Issue #767 — the `Period` row follows the same rule as `Role`:
+	// `periodLabel` is nullable in the schema, and an empty `<dd>` is a
+	// row that claims a fact while saying nothing. The seed writes a
+	// label; a stored null / empty string is dropped rather than printed.
+	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<article
 			// Issue #411: the category is a published fact of the card,
@@ -113,7 +118,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				// separates one card from the next and is unchanged.
 				backgroundColor: 'bg.surface',
 				display: 'grid',
-				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' },
+				// Issue #767 — the two-column composition is the
+				// cover + copy layout. With no cover the copy is the only
+				// child, so a fixed 4fr/8fr grid would strand it in the
+				// narrow column and leave the rest of the row empty. One
+				// column lets the copy — and its title — use the card's
+				// full width.
+				gridTemplateColumns: cover ? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
 				columnGap: { base: '0', md: '8' },
 				rowGap: { base: '4', md: '0' },
 				paddingBlock: '8',
@@ -233,17 +244,21 @@ export function ProjectCard({ project }: ProjectCardProps) {
 							<dd className={css({ margin: '0' })}>{project.role}</dd>
 						</>
 					) : null}
-					<dt
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Period
-					</dt>
-					<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+					{hasPeriod ? (
+						<>
+							<dt
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+								})}
+							>
+								Period
+							</dt>
+							<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+						</>
+					) : null}
 				</dl>
 				{/* biome-ignore lint/a11y/useSemanticElements: `role="group"` is the right grouping for a set of static facet badges. A `<fieldset>` would claim a form-control grouping these badges are not, and the card's role / period pairs already use a `<dl>`. */}
 				<div

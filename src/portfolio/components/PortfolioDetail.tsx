@@ -120,6 +120,10 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	// nothing, so it is dropped. The printed string is the stored
 	// string, byte-exact.
 	const hasRole = project.role !== null && project.role.trim() !== '';
+	// Issue #767 — `periodLabel` is nullable; an empty `<dd>` beside a
+	// `Period` label claims a recorded period while showing nothing, so
+	// the pair is dropped exactly as `Role` is.
+	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<>
 			<a href="#portfolio-detail" className={skipLinkStyle}>
@@ -238,17 +242,21 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											<dd className={css({ margin: '0' })}>{project.role}</dd>
 										</>
 									) : null}
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Period
-									</dt>
-									<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+									{hasPeriod ? (
+										<>
+											<dt
+												className={css({
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.04em',
+													textTransform: 'uppercase',
+												})}
+											>
+												Period
+											</dt>
+											<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+										</>
+									) : null}
 								</dl>
 								<div
 									aria-label="facets"
@@ -401,11 +409,24 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							})}
 						>
 							<Container>
+								{/*
+								 * Issue #767 — no eyebrow here. The numbered
+								 * eyebrows belong to the body sections, and those
+								 * are omitted when their markdown body is empty:
+								 * an adjacent-only page showed a bare `08` with no
+								 * `01`–`07` to belong to. The number is dropped
+								 * rather than renumbered, because the visible
+								 * numbering is a property of the rendered page and
+								 * not of this fixed slot.
+								 *
+								 * The description used to name the SQL columns
+								 * (`display_order`, `updated_at`); that is the
+								 * implementation's vocabulary, not the reader's.
+								 */}
 								<SectionHeading
 									id="portfolio-section-adjacent"
-									eyebrow="08"
 									title="隣接 project / Adjacent"
-									description="Canonical sort 順 (pinned → display_order → updated_at → id) で隣接する project。"
+									description="このプロジェクトの前後に並ぶ project。"
 								/>
 								<ul
 									className={css({

@@ -71,6 +71,10 @@ placeholder 分岐で描画され、この 404 は probe の想定内である�
 
 probe 行は測定後に削除した。
 
+cover なしの 390×844 では article が x=16 / width=358、
+`grid-template-columns: 358px`、子 358px、`h3` は 358×60（2 行）。
+390 は元から 1 列なので、cover ありも cover なしも縦積みになる。
+
 ## 4. pet と本文の衝突（findings 1–2）
 
 ### 修正内容

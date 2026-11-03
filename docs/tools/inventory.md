@@ -49,7 +49,7 @@ declares no license), default branch `main` (except `tool-pi-game` =
 | `pomodoro` | [rebuildup/tool-pomodoro](https://github.com/rebuildup/tool-pomodoro) | `7ce10d78dc6efc1a71aebd2051e29b80216dfd2c` | `main` | MIT | pnpm | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`) | `Notification`, `Audio` | `same_origin_static`
 | `history-quiz` | [rebuildup/tool-history-quiz](https://github.com/rebuildup/tool-history-quiz) | `72328139de1ac5ceee84babbf76cd82899fde8c3` | `main` | MIT | pnpm | NONE — Next.js component library (no standalone build yet; the manifest keeps the Tool `host_disabled`)  | none (quiz state machine) | `needs_tool_side_fix`
 | `pi-game` | [rebuildup/tool-pi-game](https://github.com/rebuildup/tool-pi-game) | `e67d9cec91bc431ab10003aa229205466a822425` | `develop` | MIT | pnpm | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`) | none (typing game) | `same_origin_static`
-| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `56bbbbd6174c1baee5b542565466f8154ad633ed` | `main` | MIT | pnpm (`pnpm-lock.yaml`, no `next` peer) | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`, `base: "./"`; Issue #6 / PR #7) | `navigator.clipboard` (with `document.execCommand("copy")` fallback), `URL.createObjectURL` + `link.download` (file export) | `same_origin_static` (graduated 2026-11-03, Issue #773: embedded from the host's own origin with `sandbox="allow-scripts allow-downloads"` — the export writes a file, and a sandboxed frame drops the download without that token; measured, see `docs/security/security-headers.md` §3) |
+| `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `56bbbbd6174c1baee5b542565466f8154ad633ed` | `main` | MIT | pnpm (`pnpm-lock.yaml`, no `next` peer) | `pnpm install --frozen-lockfile && pnpm run build` — standalone Vite SPA (`index.html`, `base: "./"`; Issue #6 / PR #7) | `navigator.clipboard` (with `document.execCommand("copy")` fallback), `URL.createObjectURL` + `link.download` (file export) | `same_origin_static` (graduated 2026-11-03, Issue #773: embedded from the host's own origin. ADR-0020 removed the first-party sandbox; the historical `sandbox="allow-scripts allow-downloads"` A/B — the export writes a file, and a sandboxed frame drops the download without that token — is recorded in `docs/security/security-headers.md` §3) |
 | `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `9506e4619541d8912346648ced1239607acea199` | `main` | MIT | bun (`bun.lock`, `bun test`) | `bun install --frozen-lockfile && bun run build` — standalone Vite SPA (`index.html`; tool PR #4) | `navigator.mediaDevices.getUserMedia({ audio: true })` | `same_origin_static` (graduated 2026-11-03, Issue #855: shipped from the host's own origin; the microphone is granted per-Tool via `Permissions-Policy: microphone=(self "<serving origin>")` + `<iframe allow="microphone">`; the measurements are in `docs/verification/tools/mic-level-host-activation.md`) |
 
 ## Counts
@@ -93,9 +93,10 @@ changes) — the manifest is the authority for the current pin.
    the microphone is granted per-Tool rather than host-wide: the
    origin-scoped `Permissions-Policy: microphone=(self
    "https://rebuildup.dev")` grant plus `<iframe allow="microphone">`
-   on the host route. The framed document keeps an opaque origin under
-   the shipped `sandbox="allow-scripts"`, so `getUserMedia` is refused
-   until ADR-0020 §2.1 lands — the measurements are in
+   on the host route. The frame is first-party and has no sandbox
+   (ADR-0020, Issue #825), so it runs on the host origin and the grant
+   is sufficient — the earlier opaque-origin blocker is historical. The
+   measurements are in
    `docs/verification/tools/mic-level-host-activation.md`.
 
 4. **`tool-pi-game` has `default_branch = develop`**, not `main`. This
@@ -168,12 +169,12 @@ invokes the Tool's own `pnpm run build` and copies `dist/` into
 `dist/client/tools/<slug>/`.
 
 For `mic-level`, the standalone build has landed (Issue #855) and the
-shipped frame is served from the host's own origin; the only
-difference is that the iframe hosting it must carry
-`Permissions-Policy: microphone=(self "https://rebuildup.dev")` — the
-origin-scoped form `self` alone cannot satisfy, because the framed
-document has an opaque origin under the shipped
-`sandbox="allow-scripts"` (Issue #449; see
+shipped frame is served from the host's own origin; the iframe hosting
+it carries
+`Permissions-Policy: microphone=(self "https://rebuildup.dev")` and
+`<iframe allow="microphone">`. ADR-0020 removed the first-party
+sandbox, so the frame keeps the host origin the grant names (Issue
+#449; see
 [`docs/security/security-headers.md`](../security/security-headers.md)).
 
 ## Policy change (2026-09-29, Issue #195)

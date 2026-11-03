@@ -4,8 +4,9 @@
  * Problem this module solves
  * --------------------------
  * `src/tools/embed-policy.ts` (Issue #465) decides *whether a Tool may be
- * framed* (sandbox tokens, referrer policy, frame origin, message
- * channel). It says nothing about what the framed document does once it
+ * framed* (referrer policy, frame origin, message channel, and the
+ * sandbox that only an external frame declares — ADR-0020). It says
+ * nothing about what the framed document does once it
  * is mounted. Measured against the two Tools the registry ships today
  * (`pnpm run verify:embed-privacy-screenshot` re-measures), that gap is
  * not theoretical: the pinned ProtoType artifact loads

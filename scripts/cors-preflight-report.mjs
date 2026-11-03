@@ -203,7 +203,7 @@ export const BROWSER_ROWS = [
 			'counterfactual: the same wildcard WITHOUT credentials — the browser hands the body over. This is the mechanism a wildcard would open on a credentialed route (the body here is the probe’s own synthetic 403 JSON, not API data)',
 	},
 	{
-		key: 'sandboxed Tool iframe (Origin: null) on the auth route',
+		key: 'opaque-origin request (Origin: null) on the auth route',
 		credentials: 'include',
 		claim: 'REFUSED: the wildcard in _headers for /tools/<slug>/app/* cannot become API access',
 	},

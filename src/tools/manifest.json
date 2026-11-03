@@ -23,7 +23,6 @@
 				"artifact_path": "/tools/prototype/app",
 				"entry_html": "/tools/prototype/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
@@ -65,17 +64,16 @@
 				"artifact_path": "/tools/readmark/app",
 				"entry_html": "/tools/readmark/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned readmark 8895959 (ADR-0008 storage-free redesign, merged via readmark PR #86): no external origin in index.html or src/**, and a sandboxed-frame run observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont); re-measure after a bump"
+					"basis": "measured at pinned readmark 8895959 (readmark ADR-0008 storage-free redesign, merged via readmark PR #86): no external origin in index.html or src/**, and a run of the built frame observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont). The storage-free design means browser storage is not required, though the first-party frame (ADR-0020) no longer blocks it. re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router; Dexie removed). Uses bun as package manager. COOP/COEP headers required for SharedArrayBuffer pdfjs decode — host already serves https via rebuildup.dev canonical origin, so headers are deployable. Storage (Issue #786 / readmark ADR-0008): readmark keeps NO browser storage — documents, metadata and reading state live in a per-tab in-memory session store, and the library says so in one line. The sandboxed frame's opaque origin (every storage API denied, measured) therefore no longer matters: a reload starts an empty library by design. Zero external origins, so no consent gate."
+			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router). Uses bun as package manager. ADR-0020 / Issue #825: the frame is first-party on the host origin and carries no sandbox, so IndexedDB / localStorage are available. The pinned build (8895959) is a scaffold: the import button is disabled and the reader is a placeholder; reaching the empty-library state at /tools/readmark is the acceptance range of #825, and enabling import / the reader follows an upstream pin bump in a separate ticket. Zero external origins, so no consent gate."
 		},
 		{
 			"slug": "text-counter",
@@ -98,17 +96,16 @@
 				"artifact_path": "/tools/text-counter/app",
 				"entry_html": "/tools/text-counter/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned text-counter b0c7ba20: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned text-counter b0c7ba20: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-text-counter PR #6 (commit b0c7ba203df7d822a87387d367fd1415d13382e6 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
+			"notes": "Standalone Vite build merged via rebuildup/tool-text-counter PR #6 (commit b0c7ba203df7d822a87387d367fd1415d13382e6 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed)."
 		},
 		{
 			"slug": "color-palette",
@@ -130,7 +127,6 @@
 				"artifact_path": "/tools/color-palette/app",
 				"entry_html": "/tools/color-palette/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
@@ -140,7 +136,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build added upstream in tool-color-palette PR #6 (merge commit b3fed92): the repo now ships index.html / src/main.tsx / vite.config.ts and `bun run build` emits a static SPA into dist/. Vite base is './', so the emitted asset references stay relative and resolve under /tools/color-palette/app/. Measured at b3fed92: no external origin in index.html or src/** (no analytics, CDN or webfont fetch); the shipped bundle's only outbound host references are react.dev (React's error-documentation URL) and www.w3.org (XML namespace strings), recorded in quality/tool-artifact-inventory.json. The frame runs sandboxed without allow-same-origin (opaque origin), and the app guards every localStorage access with try/catch (src/components/ColorPaletteGenerator.tsx), so it keeps working with in-memory state there. Uses bun as package manager."
+			"notes": "Standalone Vite build added upstream in tool-color-palette PR #6 (merge commit b3fed92): the repo now ships index.html / src/main.tsx / vite.config.ts and `bun run build` emits a static SPA into dist/. Vite base is './', so the emitted asset references stay relative and resolve under /tools/color-palette/app/. Measured at b3fed92: no external origin in index.html or src/** (no analytics, CDN or webfont fetch); the shipped bundle's only outbound host references are react.dev (React's error-documentation URL) and www.w3.org (XML namespace strings), recorded in quality/tool-artifact-inventory.json. The frame is first-party with no sandbox (ADR-0020), so localStorage is available; the app also guards every localStorage access with try/catch (src/components/ColorPaletteGenerator.tsx), so it still works when storage is unavailable. Uses bun as package manager."
 		},
 		{
 			"slug": "sequential-png-preview",
@@ -163,17 +159,16 @@
 				"artifact_path": "/tools/sequential-png-preview/app",
 				"entry_html": "/tools/sequential-png-preview/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned sequential-png-preview ddec2729: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned sequential-png-preview ddec2729: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-sequential-png-preview PR #5 (commit ddec2729d8b244ebab3370d2eccb95be25e2a43a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
+			"notes": "Standalone Vite build merged via rebuildup/tool-sequential-png-preview PR #5 (commit ddec2729d8b244ebab3370d2eccb95be25e2a43a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed)."
 		},
 		{
 			"slug": "svg2tsx",
@@ -196,7 +191,6 @@
 				"artifact_path": "/tools/svg2tsx/app",
 				"entry_html": "/tools/svg2tsx/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
@@ -206,7 +200,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-svg2tsx PR #6 (commit 6289e2c89a484c3a31bd9b8cba368d6b38c414a0 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed). Runtime note (measured): SVGInput.tsx fetch()es a URL the visitor pastes — user-initiated contact to an arbitrary origin; inside the sandbox that fetch is CORS-constrained (opaque origin) and was NOT exercised here."
+			"notes": "Standalone Vite build merged via rebuildup/tool-svg2tsx PR #6 (commit 6289e2c89a484c3a31bd9b8cba368d6b38c414a0 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed). Runtime note (measured): SVGInput.tsx fetch()es a URL the visitor pastes — user-initiated contact to an arbitrary origin; that fetch is a cross-origin request, constrained by the pasted origin's CORS policy and was NOT exercised here."
 		},
 		{
 			"slug": "business-mail-block",
@@ -228,19 +222,16 @@
 				"artifact_path": "/tools/business-mail-block/app",
 				"entry_html": "/tools/business-mail-block/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts allow-downloads",
-					"referrer_policy": "no-referrer",
-					"allow": "downloads",
-					"sandbox_rationale": "business-mail-block の「ダウンロード」ボタンは、組み立てたメールを .txt として、テンプレートを .json として保存する（src/components/useMailBlockState.ts#downloadEmail が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた（実測: allow-downloads なしの build では同じボタンで download イベントが発火しなかった）。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned business-mail-block e88be11f and re-checked at 52124c7 and 1495b2e (the bumps change only style attributes of two Draggable renderers and the generated-mail heading row, so the file set, the request-on-load set and the storage API set are unchanged): the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API, so the opaque-origin sandbox affects nothing; the file download the Tool offers is a blob URL it creates inside the frame (URL.createObjectURL), so it contacts no origin at all; re-measure after a bump"
+					"basis": "measured at pinned business-mail-block e88be11f and re-checked at 52124c7 and 1495b2e (the bumps change only style attributes of two Draggable renderers and the generated-mail heading row, so the file set, the request-on-load set and the storage API set are unchanged): the standalone Vite build output (dist/index.html + dist/assets/*) and the source (index.html, src/**) carry no URL that is fetched on load — the only absolute URLs in the bundle are XML namespace constants (www.w3.org) and library error-documentation links (react.dev, redux.js.org) that are never requested; no localStorage / sessionStorage / indexedDB / cookie usage and no camera / microphone API; the frame is first-party with no sandbox (ADR-0020); the file download the Tool offers is a blob URL it creates inside the frame (URL.createObjectURL), so it contacts no origin at all; re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134), then bumped to PR #7 (merge commit 52124c735d1706ea8dadd66272b34da11e6033c1), which closes the Tool's Issue #6: both Draggable renderers replaced the style object dnd supplies, discarding the lift geometry (`position` / `transform` / `top` / `left`) from `provided.draggableProps.style`, so a card never visibly lifted, the drop animation never completed and `onDragEnd` never ran — measured on the host at the previous pin, dragging a block from 利用可能なブロック to メール作成エリア composed nothing. The fix spreads `provided.draggableProps.style` first in src/components/AvailableBlocks.tsx and src/components/ComposedBlocks.tsx; measured on the Tool's own built preview at that pin, the drop composes the block and the composed text is `挨拶 継続挨拶 いつもお世話になっております.{company}の{name}です.` It is then bumped to PR #9 (merge commit 1495b2e5feae6b4d38e1d985e1066b2913d39391 = pinned submodule HEAD, verified with git ls-remote + submodule status), which closes the Tool's Issue #8: at 390px the 「生成されたメール」 heading row did not wrap, so each action label broke one character per line (「コ / ピ / ー」); the row now wraps the action group below the heading and every label stays on one line (measured at 390×844: heading 1 line / 143px, buttons 104px, 152px and 184px). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the sandbox grants no Permissions-Policy feature and the frame keeps its opaque origin. The Tool's own copy path falls back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable in the opaque-origin frame (read at the pin in src/components/useMailBlockState.ts); measured on the built preview, the コピー button does put the composed mail on the clipboard through that fallback. The Tool also offers a `.txt` / `.json` file download (src/components/useMailBlockState.ts): measured on the built preview with `sandbox=\"allow-scripts\"` the browser discarded it (no download event), and with `allow-downloads` added the same button produces one — that is why the sandbox carries the token and `delivery.iframe.allow` declares the `downloads` capability. `downloads` is a sandbox-only capability (src/http/security-headers.json#sandbox_only_capabilities): it has no Permissions-Policy header half, so the grant is the sandbox token alone."
+			"notes": "Standalone Vite build merged via rebuildup/tool-business-mail-block PR #5 (commit e88be11f55bde1bd6ac6fd3b2776a45c83eb9134), then bumped to PR #7 (merge commit 52124c735d1706ea8dadd66272b34da11e6033c1), which closes the Tool's Issue #6: both Draggable renderers replaced the style object dnd supplies, discarding the lift geometry (`position` / `transform` / `top` / `left`) from `provided.draggableProps.style`, so a card never visibly lifted, the drop animation never completed and `onDragEnd` never ran — measured on the host at the previous pin, dragging a block from 利用可能なブロック to メール作成エリア composed nothing. The fix spreads `provided.draggableProps.style` first in src/components/AvailableBlocks.tsx and src/components/ComposedBlocks.tsx; measured on the Tool's own built preview at that pin, the drop composes the block and the composed text is `挨拶 継続挨拶 いつもお世話になっております.{company}の{name}です.` It is then bumped to PR #9 (merge commit 1495b2e5feae6b4d38e1d985e1066b2913d39391 = pinned submodule HEAD, verified with git ls-remote + submodule status), which closes the Tool's Issue #8: at 390px the 「生成されたメール」 heading row did not wrap, so each action label broke one character per line (「コ / ピ / ー」); the row now wraps the action group below the heading and every label stays on one line (measured at 390×844: heading 1 line / 143px, buttons 104px, 152px and 184px). Build: bun (bun.lock present, `vite build`, packageManager bun@1.4.2); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin contacted on load, no browser-storage usage, no camera / microphone API — so the Tool declares no Permissions-Policy feature. ADR-0020: the frame is served first-party and carries no sandbox, so the copy path uses `navigator.clipboard` where available (its `document.execCommand` fallback remains for older browsers) and the `.txt` / `.json` download needs no `allow-downloads` token; the manifest declares no conditional token. The historical A/B (with `sandbox=\"allow-scripts\"` the download was discarded; adding `allow-downloads` restored it) is why the sandbox was removed rather than kept."
 		},
 		{
 			"slug": "code-type-p5",
@@ -263,10 +254,7 @@
 				"artifact_path": "/tools/code-type-p5/app",
 				"entry_html": "/tools/code-type-p5/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts allow-downloads",
-					"referrer_policy": "no-referrer",
-					"allow": "downloads",
-					"sandbox_rationale": "code-type-p5 の「Export PNG Sequence (ZIP)」は、描画したフレームを ZIP にまとめて保存する（src/lib/001_Editors/003_VideoEncoder.ts#finalizeZip が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した ZIP を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": ["https://cdn.jsdelivr.net"],
@@ -274,12 +262,12 @@
 						"ja": "読み込みを開始すると、埋め込み中の Code Type p5 は p5.js 本体の翻訳ファイル（例: p5@2.3/translations/ja/translation.json）を cdn.jsdelivr.net から取得します。ブラウザの言語が日本語のときに実際に取得されることを実測で確認しています。",
 						"en": "Once the load starts, the embedded Code Type p5 fetches the p5.js translation files (e.g. p5@2.3/translations/ja/translation.json) from cdn.jsdelivr.net. Measured: the request really happens when the browser language is Japanese."
 					},
-					"basis": "measured at pinned code-type-p5 2e119311: index.html and src/** contain no external origin of their own; the contact comes from the p5.js runtime the Tool bundles. p5's i18next backend (node_modules/p5/lib/p5.esm.js, `backend.loadPath = https://cdn.jsdelivr.net/npm/p5@${major.minor}/translations/{{lng}}/{{ns}}.json`) is initialised on p5 startup, and a Playwright run against the built artifact with locale ja-JP observed exactly one external request: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json. The same run with the default en locale requested nothing external, because the English strings are bundled. The granted sandbox capability (allow-downloads) adds no third-party contact: the exported ZIP is produced inside the frame and never uploaded anywhere. re-measure after a bump"
+					"basis": "measured at pinned code-type-p5 2e119311: index.html and src/** contain no external origin of their own; the contact comes from the p5.js runtime the Tool bundles. p5's i18next backend (node_modules/p5/lib/p5.esm.js, `backend.loadPath = https://cdn.jsdelivr.net/npm/p5@${major.minor}/translations/{{lng}}/{{ns}}.json`) is initialised on p5 startup, and a Playwright run against the built artifact with locale ja-JP observed exactly one external request: https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json. The same run with the default en locale requested nothing external, because the English strings are bundled. The export download adds no third-party contact: the exported ZIP is produced inside the frame and never uploaded anywhere. re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-code-type-p5 PR #5 (commit 2e1193111faa837d3653d72410aa0e3c97a176b3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no browser-storage usage under sandbox=\"allow-scripts\", and the only third-party contact is the p5.js translation fetch described in delivery.privacy. Bundle: 1,482,260 B of JS, inside the shared 1,600,000 B Tool cap."
+			"notes": "Standalone Vite build merged via rebuildup/tool-code-type-p5 PR #5 (commit 2e1193111faa837d3653d72410aa0e3c97a176b3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no browser-storage usage, and the only third-party contact is the p5.js translation fetch described in delivery.privacy. Bundle: 1,482,260 B of JS, inside the shared 1,600,000 B Tool cap."
 		},
 		{
 			"slug": "fillgen",
@@ -302,19 +290,16 @@
 				"artifact_path": "/tools/fillgen/app",
 				"entry_html": "/tools/fillgen/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts allow-downloads",
-					"referrer_policy": "no-referrer",
-					"allow": "downloads",
-					"sandbox_rationale": "fillgen の出力パネル（HTML / React タブ）の「ダウンロード」ボタンは、生成したコードをファイルとして保存する（src/components/utils.ts#downloadFile が a[download] をクリックする）。sandbox に allow-downloads がないと、ブラウザは frame 内のダウンロードをすべて拒否するため、この Tool の書き出し機能は host 内でフレームに載せると死んでいた。downloads は frame 内で生成した内容を訪問者のディスクに書き出すだけで、host origin のデータも第三者にも触れないため、宣言して許可する（Issue #465 の conditional token は allow と理由の記述を要求する）。"
+					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned fillgen 962ae889: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted sandbox capability (allow-downloads) adds no third-party contact: the saved file is produced inside the frame and never uploaded anywhere"
+					"basis": "measured at pinned fillgen 962ae889: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump. The export download adds no third-party contact: the saved file is produced inside the frame and never uploaded anywhere"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-fillgen PR #3 (commit 962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. The pin is the head of the upstream release-0-1-0 branch, which carries the standalone build; the upstream main branch (01d53b84) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\"."
+			"notes": "Standalone Vite build merged via rebuildup/tool-fillgen PR #3 (commit 962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. The pin is the head of the upstream release-0-1-0 branch, which carries the standalone build; the upstream main branch (01d53b84) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage."
 		},
 		{
 			"slug": "qr-generator",
@@ -337,17 +322,16 @@
 				"artifact_path": "/tools/qr-generator/app",
 				"entry_html": "/tools/qr-generator/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned qr-generator 0df1a99: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned qr-generator 0df1a99: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-qr-generator PR #4 (commit 0df1a99e32cea8d34a56f41dbc580db3e494c8d3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\" (no storage fallback needed)."
+			"notes": "Standalone Vite build merged via rebuildup/tool-qr-generator PR #4 (commit 0df1a99e32cea8d34a56f41dbc580db3e494c8d3 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage (no storage fallback needed)."
 		},
 		{
 			"slug": "pomodoro",
@@ -370,7 +354,6 @@
 				"artifact_path": "/tools/pomodoro/app",
 				"entry_html": "/tools/pomodoro/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
@@ -384,7 +367,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts, so the sandboxed opaque origin denies it and the hook logs the failure and keeps the in-memory value — the timer still runs. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
+			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts; with the first-party frame (ADR-0020) it is available, and the hook still falls back to an in-memory value if storage throws. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
 		},
 		{
 			"slug": "history-quiz",
@@ -406,19 +389,16 @@
 				"artifact_path": "/tools/history-quiz/app",
 				"entry_html": "/tools/history-quiz/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts allow-modals",
-					"referrer_policy": "no-referrer",
-					"allow": "modals",
-					"sandbox_rationale": "Reset calls `confirm()` (`history-quiz.html`), and a sandboxed frame without `allow-modals` refuses it: with `allow-scripts` alone the dialog never fires, `confirm()` returns false and the section is not cleared (measured A/B: docs/verification/tools/history-quiz-host-activation.md). `modals` is not a Permissions-Policy feature, so the `allow` attribute half is inert; the sandbox token is the enforced grant."
+					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned history-quiz 02467669: no external origin in index.html / src/** (the only absolute URLs in the shipped bundle are XML namespace strings and the react.dev error-page link, neither of which is fetched) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump"
+					"basis": "measured at pinned history-quiz 02467669: no external origin in index.html / src/** (the only absolute URLs in the shipped bundle are XML namespace strings and the react.dev error-page link, neither of which is fetched) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-history-quiz PR #6 (commit 024676693fd3d91401ddcacb1294ea988801c6eb = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `tsc -b && vite build`); LICENSE (MIT) present in the checkout. The upstream default branch `main` (72328139) still carries the Next.js-only component library — the standalone build lives on `release-0-1-0`, so `source.branch` records the branch the pinned SHA was drawn from. The quiz content is owned by the Tool repo (`public/history-quiz.html`, 89,935 B, ported from my-web-2025/public/history-quiz.html) and is shipped inside the artefact, so the frame fetches it relative to the document URL and needs no host-side file. Measured at the pin: `dist/index.html` references `./assets/...` relatively, the frame renders 20 sections / 426 blanks, an answer is graded correct/incorrect on user input, and the frame issues same-origin requests only. The frame is granted exactly ONE capability beyond `allow-scripts`: `allow-modals`, because the reset control calls `confirm()` and a sandboxed frame refuses it otherwise — with `sandbox=\"allow-scripts\"` the dialog never fires and the section is not cleared, and with `allow-modals` added the same button raises the dialog and clearing works; that A/B is what makes the token the measured cause. Nothing else is granted: no `allow-same-origin`, no navigation, no popups, no storage."
+			"notes": "Standalone Vite build merged via rebuildup/tool-history-quiz PR #6 (commit 024676693fd3d91401ddcacb1294ea988801c6eb = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `tsc -b && vite build`); LICENSE (MIT) present in the checkout. The upstream default branch `main` (72328139) still carries the Next.js-only component library — the standalone build lives on `release-0-1-0`, so `source.branch` records the branch the pinned SHA was drawn from. The quiz content is owned by the Tool repo (`public/history-quiz.html`, 89,935 B, ported from my-web-2025/public/history-quiz.html) and is shipped inside the artefact, so the frame fetches it relative to the document URL and needs no host-side file. Measured at the pin: `dist/index.html` references `./assets/...` relatively, the frame renders 20 sections / 426 blanks, an answer is graded correct/incorrect on user input, and the frame issues same-origin requests only. ADR-0020: the frame is first-party and carries no sandbox, so the reset control's `confirm()` works without an `allow-modals` token and the manifest declares no conditional token. (Historical A/B: with `sandbox=\"allow-scripts\"` the dialog never fired and the section was not cleared; adding `allow-modals` made it work — that measurement is why the sandbox was removed rather than a token granted.)"
 		},
 		{
 			"slug": "pi-game",
@@ -441,18 +421,17 @@
 				"artifact_path": "/tools/pi-game/app",
 				"entry_html": "/tools/pi-game/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer",
 					"allow": "fullscreen"
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage, so the sandboxed opaque origin affects nothing; re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
+					"basis": "measured at pinned pi-game e67d9cec: no external origin in index.html or src/** (URL scan at the pin) and no browser-storage usage; the frame is first-party with no sandbox (ADR-0020); re-measure after a bump. The granted capability (fullscreen) adds no third-party contact: the Tool only asks the browser for its own frame to fill the screen"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-pi-game PR #4 (commit e67d9cec91bc431ab10003aa229205466a822425 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. The upstream default branch of this repo is develop, and the standalone build landed there; main (9e19ec5d) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage under sandbox=\"allow-scripts\"."
+			"notes": "Standalone Vite build merged via rebuildup/tool-pi-game PR #4 (commit e67d9cec91bc431ab10003aa229205466a822425 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. The upstream default branch of this repo is develop, and the standalone build landed there; main (9e19ec5d) still predates it. Measured at the pin: no external origin in index.html / src/**, no browser-storage usage."
 		},
 		{
 			"slug": "ae-expression",
@@ -475,10 +454,7 @@
 				"artifact_path": "/tools/ae-expression/app",
 				"entry_html": "/tools/ae-expression/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts allow-downloads",
-					"referrer_policy": "no-referrer",
-					"allow": "downloads",
-					"sandbox_rationale": "The Tool's export button writes the generated expression as a file (expression.txt / expression.json) through link.download, and a sandboxed frame without allow-downloads drops that download. Nothing else is granted: no allow-same-origin, no navigation, no popups, no storage."
+					"referrer_policy": "no-referrer"
 				},
 				"privacy": {
 					"third_party_origins": [],
@@ -486,12 +462,12 @@
 						"ja": "この Tool は読み込み時に third-party origin へ通信しません（宣言された origin は 0 件）。したがって送信先の目的はありません。",
 						"en": "This Tool contacts no third-party origin (the declared origin list is empty), so there is no third-party purpose to declare."
 					},
-					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin); the built bundle carries only React's own react.dev error-doc URL and the w3.org XML/SVG namespace strings, which are never requested; browser storage and clipboard access are guarded (in-memory / execCommand fallback), so the sandboxed opaque origin affects nothing; the export download writes a locally generated file to the reader's own machine and transmits nothing; re-measure after a bump"
+					"basis": "measured at pinned ae-expression 56bbbbd6: no external origin in index.html or src/** (URL scan at the pin); the built bundle carries only React's own react.dev error-doc URL and the w3.org XML/SVG namespace strings, which are never requested; browser storage and clipboard access are guarded (in-memory / execCommand fallback); the frame is first-party with no sandbox (ADR-0020); the export download writes a locally generated file to the reader's own machine and transmits nothing; re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-ae-expression PR #7 (commit 56bbbbd6174c1baee5b542565466f8154ad633ed = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`, base \"./\"); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/** and none fetched at load; browser storage and clipboard are guarded with in-memory / execCommand fallbacks, so the opaque origin of the sandbox (no allow-same-origin) breaks neither. The frame is granted exactly ONE capability beyond `allow-scripts`: `allow-downloads`, because the Tool's export button writes the generated expression as a file (expression.txt / expression.json) through link.download, and a sandboxed frame drops that download otherwise. Measured 2026-11-03 in Chromium (this repository's Playwright build) on the shipped host route /tools/ae-expression: the rendered iframe carries sandbox=\"allow-scripts allow-downloads\" and allow=\"downloads\"; clicking エクスポート fires a download event (suggested filename expression.txt, 111 B, content \"wiggle(2, 50)\"), with no download failure and no page error; and the SAME artefact bytes in a control iframe with sandbox=\"allow-scripts\" only fire 0 download events — that A/B is what makes the token the measured cause. The `allow` + `sandbox_rationale` pair is what the embed policy (Issue #465) requires for a conditional sandbox token; Chromium implements no `downloads` Permissions-Policy feature (measured: downloads=() does not block the download), so `downloads` is a sandbox-only capability: the host grants it through the sandbox token alone and no Permissions-Policy value mentions it (see docs/security/security-headers.md section 3). Nothing else is granted: no allow-same-origin, no navigation, no popups, no storage."
+			"notes": "Standalone Vite build merged via rebuildup/tool-ae-expression PR #7 (commit 56bbbbd6174c1baee5b542565466f8154ad633ed = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`, base \"./\"); LICENSE (MIT) present in the checkout. Measured at the pin: no external origin in index.html / src/** and none fetched at load; browser storage and clipboard are guarded with in-memory / execCommand fallbacks. The Tool's export button writes the generated expression as a file (expression.txt / expression.json) through link.download. ADR-0020: the frame is first-party and carries no sandbox, so the download needs no `allow-downloads` token and the manifest declares none. Measured 2026-11-03 in Chromium (this repository's Playwright build) on the shipped host route /tools/ae-expression before the contract change: the rendered frame carried `sandbox=\"allow-scripts allow-downloads\"` and `allow=\"downloads\"`; clicking エクスポート fired a download event (suggested filename expression.txt, 111 B, content \"wiggle(2, 50)\"), and the SAME artefact bytes in a control iframe with `sandbox=\"allow-scripts\"` only fired 0 download events. That A/B is why the sandbox was removed in Issue #825 rather than kept with a conditional token."
 		},
 		{
 			"slug": "mic-level",
@@ -514,7 +490,6 @@
 				"artifact_path": "/tools/mic-level/app",
 				"entry_html": "/tools/mic-level/app/index.html",
 				"iframe": {
-					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer",
 					"allow": "microphone"
 				},
@@ -525,7 +500,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-mic-level PR #4 (commit 9506e4619541d8912346648ced1239607acea199 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Microphone: `delivery.iframe.allow: microphone` is mirrored into the host-side Permissions-Policy grant (src/tools/registry.ts#toolRouteSecurityPolicy) and the artefact-side grant (public/_headers `/tools/mic-level/app/*`). Measured at the pin: dist = index.html 513 B + assets/index-DI3G-JcY.js 248,619 B (gzip 78.20 kB), zero third-party origins, no browser-storage usage. Measured in the host preview: the retained `sandbox=\"allow-scripts\"` leaves the frame on an opaque origin, so getUserMedia is refused (SecurityError) until ADR-0020 §2.1 lands — the measurements are in docs/verification/tools/mic-level-host-activation.md."
+			"notes": "Standalone Vite build merged via rebuildup/tool-mic-level PR #4 (commit 9506e4619541d8912346648ced1239607acea199 = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: bun (bun.lock present, `vite build`); LICENSE (MIT) present in the checkout. Microphone: `delivery.iframe.allow: microphone` is mirrored into the host-side Permissions-Policy grant (src/tools/registry.ts#toolRouteSecurityPolicy) and the artefact-side grant (public/_headers `/tools/mic-level/app/*`). Measured at the pin: dist = index.html 513 B + assets/index-DI3G-JcY.js 248,619 B (gzip 78.20 kB), zero third-party origins, no browser-storage usage. ADR-0020: the frame is first-party and carries no sandbox, so getUserMedia is no longer blocked by an opaque origin; the remaining requirement is the Permissions-Policy grant above (plus the browser permission prompt). The earlier opaque-origin measurement is recorded in docs/verification/tools/mic-level-host-activation.md."
 		}
 	]
 }

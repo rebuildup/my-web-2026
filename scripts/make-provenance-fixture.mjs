@@ -154,7 +154,7 @@ const served = (slug) => ({
 	kind: 'same_origin_static',
 	artifact_path: `/tools/${slug}/app`,
 	entry_html: `/tools/${slug}/app/index.html`,
-	iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+	iframe: { referrer_policy: 'no-referrer' },
 });
 
 // 1. healthy: pin == gitlink == checkout HEAD, origin matches, stamp matches.

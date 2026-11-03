@@ -99,13 +99,18 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * `evaluateToolEmbedPolicy()` (src/tools/embed-policy.ts) over the
  * manifest entry BEFORE deciding to render a frame. Three states:
  *
- *   - `embeddable` — the entry satisfies every sandbox / referrer /
- *     origin rule. The iframe renders with the DECLARED
- *     `sandbox` + `referrerPolicy`; nothing is defaulted here.
+ *   - `embeddable` — the entry satisfies every referrer / origin /
+ *     privacy rule. The iframe renders with the DECLARED
+ *     `referrerPolicy` (and `allow`); nothing is defaulted here. A
+ *     first-party `same_origin_static` Tool carries NO `sandbox`
+ *     (ADR-0020) — the frame is a layout / URL / CSS-DOM container,
+ *     not a security boundary. Only an `external_exception` frame
+ *     renders one.
  *   - `blocked`   — the entry violates the policy. The route renders
  *     a placeholder naming each violation code and NO iframe, so a
- *     manifest edit cannot silently downgrade the sandbox of a
- *     live Tool (e.g. adding `allow-same-origin`, or pointing
+ *     manifest edit cannot silently downgrade a live Tool's contract
+ *     (e.g. declaring a sandbox on a first-party entry, adding
+ *     `allow-same-origin` to an external one, or pointing
  *     `entry_html` at a foreign origin).
  *   - `disabled`  — the manifest marks the Tool `host_disabled`
  *     (nothing to police; see the "Coming soon" copy below).
@@ -433,7 +438,7 @@ function ToolEmbedGate({
 	displayName: string;
 	privacy: EmbedPrivacyVerdict;
 	src: string;
-	sandbox: string;
+	sandbox?: string | undefined;
 	referrerPolicy: string;
 	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
@@ -505,12 +510,13 @@ function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
  *
  * Three responsibilities:
  *
- *   1. Render the iframe with the manifest's DECLARED sandbox,
- *      referrer policy and capability grant (`allow`) — no defaults,
- *      no client-side "upgrade". `allow` is what makes a conditional
- *      sandbox token usable at all: the policy REQUIRES the manifest
- *      to declare it, so dropping it here would make every such
- *      declaration inert while the gate reported it as valid.
+ *   1. Render the iframe with the manifest's DECLARED referrer policy
+ *      and capability grant (`allow`) — no defaults, no client-side
+ *      "upgrade". A first-party `same_origin_static` Tool declares no
+ *      sandbox (ADR-0020), so `sandbox` is `undefined` and React omits
+ *      the attribute; only an `external_exception` frame renders one.
+ *      `allow` remains the Permissions-Policy delegation for either
+ *      kind (see `docs/tools/embed-policy.md` §2).
  *   2. Host the message channel. `useToolHostMessage` attaches a
  *      `message` listener only when the manifest declares
  *      `delivery.host_message`; otherwise there is no listener at all.
@@ -533,7 +539,7 @@ function ToolEmbedShell({
 	slug: string;
 	displayName: string;
 	src: string;
-	sandbox: string;
+	sandbox?: string | undefined;
 	referrerPolicy: string;
 	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
@@ -571,19 +577,20 @@ function ToolEmbedShell({
 					ref={frameRef}
 					title={`${displayName} Tool`}
 					src={src}
+					// ADR-0020: `undefined` for a first-party Tool, so
+					// React renders NO `sandbox` attribute. A sandbox on a
+					// `same_origin_static` entry is a build-time violation
+					// (`embed.sandbox.not-allowed-for-first-party`), not a
+					// weaker declaration.
 					sandbox={sandbox}
 					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
 					// Issue #465: render the DECLARED capability grant.
-					// `allow` only intersects with the host's own
-					// `Permissions-Policy` response header, and since
-					// Issue #449 that header IS sent: the shell route
-					// goes through `toolRouteSecurityPolicy()` in
-					// `src/server.ts` and `public/_headers` carries the
+					// `allow` is the Permissions-Policy delegation; since
+					// Issue #449 the matching response header IS sent: the
+					// shell route goes through `toolRouteSecurityPolicy()`
+					// in `src/server.ts` and `public/_headers` carries the
 					// grant for `/tools/<slug>/app/**` (see
-					// `docs/security/security-headers.md` §3). What stays
-					// undecided is `mic-level`'s graduation to
-					// `allow-same-origin` (Issue #598); the header half is
-					// delivered, the sandbox half is not. See
+					// `docs/security/security-headers.md` §3). See
 					// `docs/tools/embed-policy.md` §2.
 					allow={allow}
 					// Issue #817: the Permissions-Policy half of the
@@ -613,10 +620,11 @@ function ToolEmbedShell({
  * Blocked state (Issue #465) — the manifest entry violates the host
  * embed policy, so the host renders NO iframe.
  *
- * This is the fail-closed surface: a bad sandbox token, a missing
- * referrer policy, or a frame `src` whose origin contradicts the
- * delivery kind stops at this page instead of at the browser. Each
- * violation code is rendered so the fix is mechanical.
+ * This is the fail-closed surface: a sandbox declared on a first-party
+ * entry, a bad external sandbox token, a missing referrer policy, or a
+ * frame `src` whose origin contradicts the delivery kind stops at this
+ * page instead of at the browser. Each violation code is rendered so
+ * the fix is mechanical.
  *
  * It carries the site chrome (`ToolChrome`, owner decision
  * 2026-11-01) — a blocked Tool is the surface where a visitor most
@@ -657,7 +665,7 @@ function BlockedPlaceholder({
 						title={tool.display_name}
 						description={
 							<>
-								この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）または
+								この Tool はホストの埋め込みポリシー（referrerPolicy / origin 契約）または
 								第三者通信の契約に違反するため、iframe は描画されません。
 								<br />
 								This Tool is not embedded: its registry entry violates the host embed policy or the

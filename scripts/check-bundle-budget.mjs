@@ -447,7 +447,7 @@ function listFilesRecursively(dir) {
  * Aggregate the Tool iframe bundles separately from the host routes.
  *
  * Each Tool is its own Vite build with its own `index.html`, loaded inside a
- * sandboxed iframe. Charging its bytes to `/tools` would both overstate the
+ * Tool iframe. Charging its bytes to `/tools` would both overstate the
  * host route and let a heavy Tool hide behind the host's cap, so the two are
  * measured and capped independently.
  */

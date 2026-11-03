@@ -29,8 +29,10 @@ import type { Page } from '@playwright/test';
  * `openWithFrame`, which performs that activation — and the two new
  * tests assert the gate itself.
  *
- * The iframe is sandboxed at `allow-scripts` only (no `allow-same-origin`).
- * The spec verifies the HOST-side contract:
+ * The iframe is first-party (ADR-0020): it carries NO `sandbox`
+ * attribute, runs on the host origin, and is a layout / URL / CSS-DOM
+ * container rather than a security boundary. The spec verifies the
+ * HOST-side contract:
  *
  *   1. `/tools/prototype` returns 200 HTML and contains an iframe.
  *   2. The iframe's `src` is the same-origin Tool artifact
@@ -59,8 +61,11 @@ import type { Page } from '@playwright/test';
  *
  *   The React-tree mount assertion was intentionally excluded from
  *   the initial pilot spec because ProtoType crashed at module load
- *   under the opaque-origin sandbox (`localStorage` access threw,
- *   because `allow-scripts` only → opaque origin). ProtoType#4
+ *   under the opaque-origin sandbox that shipped at the time
+ *   (`localStorage` access threw, because `allow-scripts` only →
+ *   opaque origin). ADR-0020 removed that sandbox, so the frame now
+ *   runs on the host origin; the Tool-side storage fix below is still
+ *   what keeps the mount safe on its own. ProtoType#4
  *   (https://github.com/rebuildup/ProtoType/issues/4) replaced
  *   `src/SiteInterface.ts` + `src/gamesets/020_cacheControl.ts` to
  *   import from a new `src/lib/safeStorage.ts` that probes
@@ -295,12 +300,19 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		// Host-side contract: the iframe's document must have been
 		// served and must contain both the React mount target
 		// (`<div id="root">`) and the bundled JS reference. Reaching
-		// into a sandboxed iframe via `frameLocator` requires the
+		// into a first-party iframe via `frameLocator` requires the
 		// iframe document to be ready. We assert on structural
 		// selectors that prove the bundle reached the iframe; the
 		// React tree mounting children is a Tool-side concern
 		// (documented at the top of this file).
 		await openWithFrame(page);
+		// ADR-0020: the frame is same-origin, so its own document can
+		// report the host origin. This is the runtime counterpart of the
+		// "no sandbox attribute" assertion in the rendered HTML.
+		const frameOrigin = await page
+			.locator('iframe[title="ProtoType Tool"]')
+			.evaluate((element) => (element as HTMLIFrameElement).contentWindow?.location.origin ?? null);
+		expect(frameOrigin).toBe(new URL(page.url()).origin);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 		await expect(frame.locator('body')).toHaveCount(1, { timeout: 15_000 });
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
@@ -353,7 +365,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		page,
 	}) => {
 		// Issue #81 closure — the Tool-side storage fix (ProtoType#4,
-		// PR #5) means the React tree mounts inside the sandboxed
+		// PR #5) means the React tree mounts inside the first-party
 		// iframe without throwing on `localStorage`. Assert the mount
 		// contract and a representative interaction (click the Ranking
 		// tab, observe the heading appear).

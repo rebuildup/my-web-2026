@@ -26,16 +26,15 @@
  *     `/<namespace>/<path>` with no `//` artifacts.
  *   - The `crossorigin` attribute is stripped from rewritten
  *     `script` and `link` tags. Vite emits `crossorigin` so the
- *     browser uses modulepreload for the entry script; but the Tool
- *     is hosted inside a sandboxed iframe (`allow-scripts` only) on
- *     the same origin, and the iframe's opaque origin makes any
- *     same-origin fetch with `crossorigin` a CORS request that the
- *     static-asset server (`vite preview`, Cloudflare Workers Static
- *     Assets) does NOT respond to with `Access-Control-Allow-Origin`.
- *     Stripping `crossorigin` falls back to the default same-origin
- *     module-script / stylesheet fetch, which has no CORS
- *     requirement. `crossorigin` on tags that we did not touch (no
- *     rewrite) is preserved.
+ *     browser uses modulepreload for the entry script. The original
+ *     reason was the pre-ADR-0020 sandbox: the Tool ran in an
+ *     opaque-origin iframe, so a same-origin fetch with `crossorigin`
+ *     became a CORS request the static-asset server does not answer.
+ *     ADR-0020 removed the first-party sandbox, so a Tool frame now
+ *     makes an ordinary same-origin request and the attribute is no
+ *     longer load-bearing. The stripping is retained (it is harmless
+ *     and keeps the emitted HTML stable); removing it is a separate
+ *     tightening, not part of this change.
  *
  * @param html - the original `index.html` content.
  * @param artifactPath - the manifest's `delivery.artifact_path`,
@@ -67,11 +66,10 @@ export function rewriteAssetPaths(html, artifactPath) {
 				return match;
 			}
 			// For `script` and `link` tags, drop the `crossorigin`
-			// attribute from the rewritten tag so the sandboxed
-			// iframe's opaque-origin fetch is treated as a normal
-			// same-origin module / stylesheet request (no CORS
-			// preflight, no Access-Control-Allow-Origin requirement).
-			// See the doc-block above for the full rationale.
+			// attribute from the rewritten tag. The pre-ADR-0020
+			// observer-origin / CORS requirement is gone (the frame is
+			// first-party and same-origin), but the emitted HTML keeps
+			// the same shape across pins; see the doc-block above.
 			const rewrittenAttrs =
 				tag === 'script' || tag === 'link'
 					? attrs.replace(/\s*crossorigin(\s*=("[^"]*"|'[^']*'|[\w-]+))?/gi, '')

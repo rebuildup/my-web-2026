@@ -107,14 +107,11 @@ describe('rewriteAssetPaths — attribute preservation', () => {
 describe('rewriteAssetPaths — crossorigin stripping', () => {
 	// Vite emits `crossorigin` on the entry `<script type="module">`
 	// and `<link rel="stylesheet">` so the browser uses
-	// `modulepreload`. In a sandboxed iframe (`allow-scripts` only)
-	// the document origin is opaque, which converts any
-	// same-origin-with-crossorigin fetch into a real CORS request.
-	// The static-asset server (Cloudflare Workers Static Assets,
-	// `vite preview`) does not respond with
-	// `Access-Control-Allow-Origin`, so the bundle would fail to
-	// load. Stripping `crossorigin` falls back to the default
-	// same-origin fetch path, which has no CORS requirement.
+	// `modulepreload`. The pre-ADR-0020 sandbox made the document
+	// origin opaque, which converted a same-origin-with-crossorigin
+	// fetch into a real CORS request the static-asset server does not
+	// answer. ADR-0020 removed the sandbox, so the attribute is no
+	// longer load-bearing; the stripping is retained for stable output.
 
 	it('strips crossorigin from a rewritten script tag', () => {
 		const input = `<script type="module" crossorigin src="/assets/index-XYZ.js"></script>`;

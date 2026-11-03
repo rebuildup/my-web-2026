@@ -62,7 +62,10 @@ const rows = manifest.tools.map((tool) => {
 		kind: tool.delivery.kind,
 		frameSrc: resolveToolFrameSrc(tool.delivery) || '—',
 		frameOrigin: subject.frame_origin,
-		sandbox: tool.delivery.iframe?.sandbox ?? '—',
+		sandbox:
+			tool.delivery.kind === 'same_origin_static'
+				? '— (first-party, no sandbox)'
+				: (tool.delivery.iframe?.sandbox ?? '—'),
 		referrer: tool.delivery.iframe?.referrer_policy ?? '—',
 		message: tool.delivery.host_message
 			? `${tool.delivery.host_message.expected_origin} / ${(tool.delivery.host_message.allowed_types ?? []).join(', ')}`
@@ -118,13 +121,12 @@ const hostileEvents = [
 		expect: 'rejected',
 	},
 	{
-		// NOT a hostile origin: a frame sandboxed WITHOUT
-		// `allow-same-origin` (which this policy always denies) runs in
-		// an opaque origin and reports "null" — so this is the origin a
-		// COMPLIANT same-origin Tool frame actually sends. It is refused
-		// precisely because an exact-origin contract cannot be satisfied
-		// that way; see `docs/tools/embed-policy.md` §5.
-		label: 'opaque origin ("null") — the origin a compliant same-origin Tool frame reports',
+		// ADR-0020: a first-party frame is NOT sandboxed, so it reports
+		// the host origin (the accepted row above). "null" is what an
+		// `external_exception` frame reports, because that frame is
+		// still sandboxed without `allow-same-origin`. For the fixture
+		// contract below (`'self'`) it is refused.
+		label: 'opaque origin ("null") — an external frame\'s origin, never a first-party one',
 		origin: 'null',
 		source: TOOL_WINDOW,
 		data: { type: 'tool:ready' },
@@ -211,7 +213,7 @@ const tokenRows = [...SANDBOX_TOKENS_FORBIDDEN, ...SANDBOX_TOKENS_CONDITIONAL, '
 			? ['bad', 'always rejected — the manifest cannot declare it']
 			: SANDBOX_TOKENS_CONDITIONAL.has(token)
 				? ['conditional', 'requires iframe.allow + iframe.sandbox_rationale']
-				: ['ok', 'declared by every served Tool'];
+				: ['ok', 'required for an external frame; a first-party Tool declares no sandbox'];
 		return `<tr>
 			<td><code>${esc(token)}</code></td>
 			<td>${
@@ -325,7 +327,7 @@ ${entryRows}
 	</tbody>
 </table>
 
-<h2>2 · Sandbox token classes</h2>
+<h2>2 · Sandbox token classes (external_exception only)</h2>
 <table>
 	<thead><tr><th>token</th><th>verdict</th><th>requirement</th></tr></thead>
 	<tbody>
@@ -344,13 +346,14 @@ ${tokenRows}
 	listener at all and every row here is refused a fortiori.
 </p>
 <p class="sub">
-	Note the <code>"null"</code> row: this policy always denies
-	<code>allow-same-origin</code>, so a same-origin Tool frame is
-	<em>opaque-origin</em> and reports <code>event.origin === "null"</code>. That
-	row is therefore the compliant frame's own origin, not a hostile one —
-	and it is why a <code>"self"</code> contract cannot be satisfied by a
-	<code>same_origin_static</code> Tool. Changing that needs an ADR decision
-	(<code>docs/tools/embed-policy.md</code> §5).
+	ADR-0020 splits the two kinds. A <code>same_origin_static</code> frame
+	carries no sandbox, runs on the host origin, and the first row is
+	accepted. An <code>external_exception</code> frame is still sandboxed
+	without <code>allow-same-origin</code>, so it is opaque and reports
+	<code>event.origin === "null"</code> — the row below, which the
+	<code>"self"</code> fixture refuses. Making a cross-origin
+	<code>host_message</code> channel work needs an ADR decision
+	(<code>docs/tools/embed-policy.md</code> §5a).
 </p>
 <table>
 	<thead><tr><th>injected event</th><th>event.origin</th><th>event.data</th><th>verdict</th><th>reason</th><th>host dispatch</th></tr></thead>

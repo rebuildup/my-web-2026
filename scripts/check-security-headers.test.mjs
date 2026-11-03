@@ -127,26 +127,18 @@ describe('inspect — repository state', () => {
 	it('accepts the shipped public/_headers and manifest', () => {
 		const result = inspect();
 		assert.deepEqual(result.violations, []);
-		// The shipped state has seven Tool grants (Issue #817's second
-		// wave added pi-game → fullscreen, fillgen / code-type-p5 →
-		// downloads beside mic-level → microphone; Issue #772 added
-		// history-quiz → modals, a sandbox-only capability with no header
-		// half; Issue #771 added business-mail-block → downloads and
-		// Issue #773 added ae-expression → downloads, both the same
-		// sandbox-only kind). If a Tool starts declaring one, this
-		// assertion is the reminder to update the expectation rather than
-		// to widen the gate silently.
+		// ADR-0020 removed the sandbox from every first-party Tool, so
+		// the sandbox-only grants (`downloads` on fillgen / code-type-p5
+		// / business-mail-block / ae-expression, `modals` on
+		// history-quiz) are no longer declared. Two grants remain:
+		// pi-game → fullscreen (a container capability) and
+		// mic-level → microphone (a Permissions-Policy feature with a
+		// header half). If a Tool starts declaring one, this assertion
+		// is the reminder to update the expectation rather than to widen
+		// the gate silently.
 		assert.deepEqual(
 			result.grantedTools.map((tool) => tool.slug),
-			[
-				'business-mail-block',
-				'code-type-p5',
-				'fillgen',
-				'history-quiz',
-				'pi-game',
-				'ae-expression',
-				'mic-level',
-			],
+			['pi-game', 'mic-level'],
 		);
 	});
 

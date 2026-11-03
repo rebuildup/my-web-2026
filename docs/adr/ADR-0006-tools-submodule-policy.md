@@ -251,3 +251,5 @@ Re-evaluate when:
   cross-origin `postMessage` for collaboration). That is a new
   architectural decision — revisit the iframe sandbox rules in
   `delivery.iframe.sandbox` and the `Permissions-Policy` header.
+  The sandbox half of this trigger was decided by ADR-0020 (Issue
+  #825): first-party Tool frames carry no sandbox.

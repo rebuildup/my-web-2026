@@ -12,7 +12,7 @@ Issue #455 で導入。対象は実際に存在する `/api/v1/*` の全ルー�
 | 問い | 答え |
 |------|------|
 | Obligation | 外部 HTTP 境界が「どの origin から、どのメソッド・ヘッダで、どの認証形態で到達できるか」を決める。CORS ヘッダの生成と、許可されない cross-origin リクエストの拒否が責務。 |
-| Change reason | `Access-Control-Allow-Origin: *` と credentials の組合せ、sandboxed iframe の opaque origin、攻撃者が指定した request header の echo — これらはブラウザの Fetch 仕様と Cloudflare Static Assets のヘッダ適用範囲で決まり、UI 側のフレームワーク都合では変わらない。 |
+| Change reason | `Access-Control-Allow-Origin: *` と credentials の組合せ、外部 frame の opaque origin、攻撃者が指定した request header の echo — これらはブラウザの Fetch 仕様と Cloudflare Static Assets のヘッダ適用範囲で決まり、UI 側のフレームワーク都合では変わらない。 |
 | Authority | `docs/security/api-cors.md`（本ファイル）＋ `src/http/cors/policy.ts` の `CORS_ROUTES`。allow-list に origin を追加する判断はリポジトリ owner（`BETTER_AUTH_URL` の値）だけが持つ。 |
 | Dependency direction | `src/http/**` のみ。後述の「触ってはいけないもの」を参照。 |
 | Lifecycle | 境界とともに生え、境界とともに消える。Tool Registry・Cloudflare バインディング・D1 スキーマのいずれにも依存しない。 |
@@ -70,7 +70,7 @@ origin リテラルはコードに持たない。実行時入力だけを使う�
 
 ### 拒否される origin（固定）
 
-- `null` — sandboxed Tool iframe の opaque origin。
+- `null` — sandboxed `external_exception` Tool iframe の opaque origin（first-party frame は ADR-0020 により sandbox を持たず、host origin を送る）。
 - `https://rebuildup.dev.evil.example` などの look-alike。
 - 許可 origin と scheme / host / port が 1 つでも違うもの。
 
@@ -278,15 +278,16 @@ text var で、`wrangler.jsonc` に書くと他の binding の型が狭まるた
 コメントが引用しているとおり）。したがって:
 
 - このワイルドカードは `/api/v1/*` に一切影響しない。
-- ただし sandboxed iframe（`allow-scripts` のみ）は opaque origin を持つ
-  ため、`/api/v1/*` への fetch は `Origin: null` になる。CORS 方針が
-  `credentialed` でこれを拒否するので、**ワイルドカードを持つ Tool
-  が認証付き API に到達する経路は開かない**（§5-2 / matrix の
-  `Origin: null` 行）。
-- 逆向きの注意: `allow-same-origin` 付きの Tool iframe は
-  同一オリジンになり、CORS は関係しない。同一オリジンの
-  XSS は CORS では防げない — Tool 実行の Permissions-Policy /
-  sandbox 側の話で、本 Issue の対象外。
+- ただし sandboxed `external_exception` iframe（`allow-scripts` のみ）は
+  opaque origin を持つため、`/api/v1/*` への fetch は `Origin: null` に
+  なる。CORS 方針が `credentialed` でこれを拒否するので、**ワイルド
+  カードを持つ external Tool が認証付き API に到達する経路は開かない**
+  （§5-2 / matrix の `Origin: null` 行）。
+- 逆向きの注意: first-party Tool（`same_origin_static`）は ADR-0020 に
+  より sandbox を持たず host origin で動くため、`/api/v1/*` への fetch
+  は同一オリジンになり、CORS は関係しない。同一オリジンの XSS は CORS
+  では防げない — Tool の build / review / release 境界の話で、本 Issue
+  の対象外。
 
 `vite.config.ts` の `toolCorsPreviewPlugin`（preview 用の同等ルール）も
 `scripts/build-tools.mjs` の namespace 制約も変更していない。

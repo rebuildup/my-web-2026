@@ -300,8 +300,9 @@ function applyExternalCachePolicy(response: Response): Response {
  *      property of the response being framed, decided per path.
  *   2. OUTBOUND (the Tool iframe shell, `src/routes/tools.$slug.tsx`
  *      + `src/tools/registry.ts`): "which Tools may this host embed,
- *      and under what sandbox / referrer policy". It is a property of
- *      the EMBEDDING document, decided per Tool from the manifest.
+ *      and under what referrer / origin / permission policy". It is a
+ *      property of the EMBEDDING document, decided per Tool from the
+ *      manifest.
  *
  * The confusion the separation prevents: because `/tools/<slug>`
  * renders an `<iframe>`, it looks like the Tool surface needs to be

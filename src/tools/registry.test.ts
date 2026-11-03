@@ -89,7 +89,7 @@ function manifestWithWaitingTool(): Manifest {
 				kind: 'same_origin_static',
 				artifact_path: '/tools/served-tool/app',
 				entry_html: '/tools/served-tool/app/index.html',
-				iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+				iframe: { referrer_policy: 'no-referrer' },
 			}),
 			syntheticTool('waiting-tool', {
 				kind: 'host_disabled',
@@ -108,7 +108,7 @@ function manifestWithoutWaitingTool(): Manifest {
 				kind: 'same_origin_static',
 				artifact_path: '/tools/served-tool/app',
 				entry_html: '/tools/served-tool/app/index.html',
-				iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+				iframe: { referrer_policy: 'no-referrer' },
 			}),
 		],
 	};
@@ -142,7 +142,7 @@ describe('Tool Registry — createToolRegistry (Issue #861)', () => {
 				syntheticTool('granted-tool', {
 					kind: 'host_disabled',
 					disabled_reason: 'まだ無い。',
-					iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer', allow: 'microphone' },
+					iframe: { referrer_policy: 'no-referrer', allow: 'microphone' },
 				}),
 			],
 		});
@@ -283,10 +283,10 @@ describe('Tool Registry — public surface', () => {
 		assert.deepEqual(summary?.privacy?.third_party_origins, []);
 	});
 
-	it('ProtoType summary flattens delivery.iframe', () => {
+	it('ProtoType summary flattens delivery.iframe without a sandbox (ADR-0020)', () => {
 		const summary = getPublicTool('prototype');
 		assert.ok(summary);
-		assert.equal(summary?.iframe.sandbox, 'allow-scripts');
+		assert.equal(summary?.iframe.sandbox, undefined);
 		assert.equal(summary?.iframe.referrer_policy, 'no-referrer');
 	});
 

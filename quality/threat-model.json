@@ -890,19 +890,19 @@
 					"id": "sandbox-origin-escape",
 					"stride": "elevation-of-privilege",
 					"asset": "host-page-capability",
-					"scenario": "A framed Tool artefact is granted `allow-same-origin`, so its document runs on the site's own origin and reads whatever the shell exposes.",
+					"scenario": "A first-party Tool build (or one of its dependencies) is compromised before release, so code served from the site's own origin reads whatever the shell exposes and calls same-origin APIs.",
 					"mitigations": [
 						{
 							"ref": "src/tools/embed-policy.ts",
 							"kind": "code",
 							"state": "implemented",
-							"note": "`allow-same-origin` is rejected for every framed Tool, and a capability grant needs an explicit allow-list plus a written rationale."
+							"note": "ADR-0020: a first-party (`same_origin_static`) frame is not sandboxed because the build / review / release boundary is the isolation control, so the manifest cannot declare a `sandbox` that would look like one. For an `external_exception` frame the policy still rejects `allow-same-origin`, and a capability grant needs an explicit allow-list plus a written rationale."
 						},
 						{
 							"ref": "src/tools/embed-policy.test.ts",
 							"kind": "test",
 							"state": "implemented",
-							"note": "The policy test asserts the rejected token set and the missing-rationale cases."
+							"note": "The policy test asserts that ANY sandbox on a first-party Tool is a violation and that the external rejected-token set and missing-rationale cases still fail closed."
 						}
 					]
 				},

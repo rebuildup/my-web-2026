@@ -341,7 +341,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pomodoro.git",
 				"submodule_path": "external/pomodoro",
-				"pinned_sha": "7ce10d78dc6efc1a71aebd2051e29b80216dfd2c",
+				"pinned_sha": "d4add8a1f19b4a4ffb3c77c745f140796120adc7",
 				"branch": "main"
 			},
 			"build": {
@@ -362,12 +362,12 @@
 						"ja": "画像ウィジェットや YouTube ウィジェットを設定すると、埋め込み中の Pomodoro は外部に通信します。画像ウィジェットは読み込みに失敗した画像の代替として via.placeholder.com から画像を取得し、YouTube ウィジェットは www.youtube.com の埋め込み文書（/embed/…）を読み込み、音声の埋め込み機能を使う場合は同オリジンの iframe API（/iframe_api）を読み込みます。",
 						"en": "Once an image widget or a YouTube widget is configured, the embedded Pomodoro contacts two third parties. The image widget fetches a replacement image from via.placeholder.com when the configured image fails to load, and the YouTube widget loads the www.youtube.com embed document (/embed/…) plus, for the audio embed, the iframe API of the same origin (/iframe_api)."
 					},
-					"basis": "measured at pinned pomodoro 7ce10d78: index.html has no external origin; the contacts come from src/components/widgets/WidgetImageContent.tsx:103 (an <img> whose onError handler swaps the src to https://via.placeholder.com/300?text=Image+Error — an image request, not a link), src/components/widgets/WidgetMusicContent.tsx:21 (an <iframe src=\"https://www.youtube.com/embed/…\">) and src/components/youtube/youtube-player-utils.ts:14 (a <script src=\"https://www.youtube.com/iframe_api\"> inserted into the document). The only other URL in src/** is the SVG namespace http://www.w3.org/2000/svg, which is a namespace identifier and never fetched. The default screen contacts nobody; the two origins are reachable once the visitor configures the matching widget. re-measure after a bump"
+					"basis": "measured at pinned pomodoro d4add8a: index.html has no external origin; the contacts come from src/components/widgets/WidgetImageContent.tsx:103 (an <img> whose onError handler swaps the src to https://via.placeholder.com/300?text=Image+Error — an image request, not a link), src/components/widgets/WidgetMusicContent.tsx:21 (an <iframe src=\"https://www.youtube.com/embed/…\">) and src/components/youtube/youtube-player-utils.ts:14 (a <script src=\"https://www.youtube.com/iframe_api\"> inserted into the document). The only other URL in src/** is the SVG namespace http://www.w3.org/2000/svg, which is a namespace identifier and never fetched. The default screen contacts nobody; the two origins are reachable once the visitor configures the matching widget. re-measure after a bump"
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = pinned submodule HEAD, verified with git ls-remote + submodule status). Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts; with the first-party frame (ADR-0020) it is available, and the hook still falls back to an in-memory value if storage throws. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
+			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = the previous pinned submodule HEAD). This pin is PR #10 (commit d4add8a1f19b4a4ffb3c77c745f140796120adc7), which bundles a Tailwind-generated stylesheet in the standalone artifact (Issue #9 / host #868); the earlier pin emitted no CSS at all, so the frame rendered unstyled. Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts; with the first-party frame (ADR-0020) it is available, and the hook still falls back to an in-memory value if storage throws. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
 		},
 		{
 			"slug": "history-quiz",

@@ -22,9 +22,11 @@
  * --------------------------
  *   - Offline. No network call, no font, no external image.
  *   - No hidden input. The mark colour is parsed out of
- *     `public/favicon.svg`; the canvas colour is `bg.canvas` from
- *     `src/editorial/semantic-tokens.ts` (light step = `neutral.0`),
- *     transcribed below with the token path in a comment.
+ *     `public/favicon.svg`; the canvas colour is the opaque white the
+ *     icon platforms require (the iOS black-compositing reason above),
+ *     transcribed below as `neutral.0`. It is NOT `surface.canvas`
+ *     (the page background, `neutral.50`): an app icon is composited by
+ *     the launcher, never by the page.
  *   - The output table is the published one: `scripts/check-app-icons.mjs`
  *     cross-checks every generated file against `public/site.webmanifest`
  *     and against the `<link>` tags in `src/routes/__root.tsx`, so a size
@@ -49,9 +51,10 @@ const OUT_DIR = join(repoRoot, 'public/icons');
 /**
  * Opaque canvas behind the mark.
  *
- * `bg.canvas` (light) === `colors.neutral.0` === `#ffffff` in
- * `src/editorial/tokens.ts`. It is NOT the transparent favicon canvas:
- * see the module docstring for the iOS black-compositing reason.
+ * `colors.neutral.0` === `#ffffff` in `src/editorial/tokens.ts`. This is
+ * the platform-mandated opaque white, not the page fill (`surface.canvas`
+ * is `neutral.50`). It is NOT the transparent favicon canvas: see the
+ * module docstring for the iOS black-compositing reason.
  */
 export const CANVAS_COLOR = '#ffffff';
 

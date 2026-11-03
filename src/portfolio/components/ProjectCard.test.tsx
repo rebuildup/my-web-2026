@@ -129,13 +129,13 @@ describe('ProjectCard category cue (Issue #411)', () => {
 	it('paints its own surface and no left category rule (Issue #794)', () => {
 		const html = renderToStaticMarkup(<ProjectCard project={project(['design'])} />);
 		// The face is the card's own fill — a luminance step, not a hue.
-		expect(articleClass(html)).toContain('bg-c_bg.surface');
+		expect(articleClass(html)).toContain('bg-c_surface.raised');
 		// The removed cue must stay removed: no absolutely positioned
 		// bar, no 4px rule, and no category colour on this surface, so
 		// the owner's "no left rule, no left border" holds against a
 		// future edit as well.
 		expect(html).not.toMatch(/pos_absolute|w_4px|bd-s|borderInlineStart/);
-		expect(html).not.toContain('accent.category');
+		expect(html).not.toContain('signal.content');
 	});
 
 	it('maps each facet to the documented category', () => {

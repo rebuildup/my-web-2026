@@ -134,8 +134,8 @@ const mediaFrameStyle = css({
 	placeItems: 'center',
 	width: '100%',
 	aspectRatio: '16 / 9',
-	backgroundColor: 'bg.subtle',
-	border: '1px solid {colors.border.subtle}',
+	backgroundColor: 'surface.sunken',
+	border: '1px solid {colors.border.divider}',
 	borderRadius: '6px',
 });
 
@@ -158,7 +158,7 @@ const imageStyle = css({
 	width: '100%',
 	height: 'auto',
 	borderRadius: '6px',
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 });
 
 const captionStyle = css({

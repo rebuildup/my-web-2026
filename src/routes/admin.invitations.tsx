@@ -134,7 +134,7 @@ function CreateInvitationForm() {
 						fontSize: 'md',
 						fontWeight: '600',
 						color: 'text.inverse',
-						background: 'bg.accent',
+						background: 'signal.action',
 						border: 'none',
 						borderRadius: '4',
 						paddingBlock: '3',
@@ -154,9 +154,9 @@ function CreateInvitationForm() {
 						gap: '2',
 						paddingBlock: '4',
 						paddingInline: '4',
-						border: '1px solid {colors.border.subtle}',
+						border: '1px solid {colors.border.divider}',
 						borderRadius: '4',
-						background: 'bg.surface',
+						background: 'surface.raised',
 					})}
 				>
 					<span
@@ -190,7 +190,7 @@ function CreateInvitationForm() {
 							fontSize: 'xs',
 							fontWeight: '600',
 							color: 'text.inverse',
-							background: 'bg.accent',
+							background: 'signal.action',
 							border: 'none',
 							borderRadius: 'full',
 							paddingInline: '3',

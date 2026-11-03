@@ -59,7 +59,7 @@ const sectionStyle = css({
 	// Issue #300: canonical body-section beat (layout-system.md §3.3).
 	// Was {12, 16} — a rhythm only /about used.
 	paddingBlock: { base: '16', lg: '24' },
-	borderTop: '1px solid {colors.border.subtle}',
+	borderTop: '1px solid {colors.border.divider}',
 });
 
 const skipLinkStyle = css({
@@ -67,7 +67,7 @@ const skipLinkStyle = css({
 	left: '0',
 	top: '0',
 	padding: '2',
-	backgroundColor: 'bg.canvas',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 	textDecoration: 'none',
 	transform: 'translateY(-200%)',
@@ -330,7 +330,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 									gap: '2',
 									borderBlockStartWidth: '1px',
 									borderBlockStartStyle: 'solid',
-									borderBlockStartColor: 'border.subtle',
+									borderBlockStartColor: 'border.divider',
 									paddingBlockStart: '4',
 								})}
 							>
@@ -483,7 +483,7 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 				flexDirection: 'column',
 				gap: '3',
 				paddingBlock: '6',
-				borderTop: '1px solid {colors.border.subtle}',
+				borderTop: '1px solid {colors.border.divider}',
 			})}
 		>
 			<header
@@ -615,7 +615,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 									alignItems: 'baseline',
 									borderBlockStartWidth: '1px',
 									borderBlockStartStyle: 'solid',
-									borderBlockStartColor: 'border.subtle',
+									borderBlockStartColor: 'border.divider',
 									paddingBlockStart: '3',
 								})}
 							>
@@ -724,7 +724,7 @@ function FutureColumn({
 							alignItems: 'baseline',
 							borderBlockStartWidth: '1px',
 							borderBlockStartStyle: 'solid',
-							borderBlockStartColor: 'border.subtle',
+							borderBlockStartColor: 'border.divider',
 							paddingBlockStart: '3',
 						})}
 					>
@@ -831,7 +831,7 @@ function ExternalHandlesFooter({
 										borderRadius: 'full',
 										borderWidth: '1px',
 										borderStyle: 'solid',
-										borderColor: 'border.subtle',
+										borderColor: 'border.divider',
 										color: 'text.accent',
 										fontFamily: 'sans',
 										fontSize: 'sm',
@@ -865,7 +865,7 @@ function ExternalHandlesFooter({
 								borderRadius: 'full',
 								borderWidth: '1px',
 								borderStyle: 'solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 								color: 'text.accent',
 								fontFamily: 'sans',
 								fontSize: 'sm',

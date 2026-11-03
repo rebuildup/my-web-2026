@@ -227,8 +227,8 @@ export function ExternalReadCard<T>({
 				borderRadius: 'md',
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: degraded?.breaker === 'open' ? 'accent.warning' : 'border.subtle',
-				bg: 'bg.surface',
+				borderColor: degraded?.breaker === 'open' ? 'signal.warning' : 'border.divider',
+				bg: 'surface.raised',
 			})}
 		>
 			<header
@@ -314,7 +314,7 @@ export function ExternalReadCard<T>({
 						display: 'block',
 						fontFamily: 'sans',
 						fontSize: 'sm',
-						color: degraded.breaker === 'open' ? 'accent.warning' : 'text.muted',
+						color: degraded.breaker === 'open' ? 'signal.warning' : 'text.muted',
 					})}
 				>
 					{degraded.value !== null ? `${FALLBACK_LABEL} — ` : ''}
@@ -366,7 +366,7 @@ export function ExternalReadCard<T>({
 									fontSize: 'sm',
 									fontWeight: '600',
 									color: retryDisabled || busy ? 'text.muted' : 'text.inverse',
-									bg: retryDisabled || busy ? 'bg.subtle' : 'bg.accent',
+									bg: retryDisabled || busy ? 'surface.sunken' : 'signal.action',
 									borderRadius: 'full',
 									paddingInline: '3',
 									paddingBlock: '1',

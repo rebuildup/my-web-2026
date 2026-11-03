@@ -84,7 +84,7 @@ export const Catalog: Story = {
 					paddingInline: '4',
 					borderRadius: 'md',
 					border: '1px solid',
-					borderColor: 'border.subtle',
+					borderColor: 'border.divider',
 				})}
 			>
 				<h2

@@ -49,7 +49,7 @@ import {
  *     (Issue #407: "未確定なページ配置には依存させない").
  *   - It does not restyle `bordered surfaces` policy. `pre` blocks
  *     keep the exception `src/editorial/layout-system.md` §1 already
- *     grants them (`bg.subtle` + radius); a table does not get a box,
+ *     grants them (`surface.sunken` + radius); a table does not get a box,
  *     it gets a caption and a hairline header rule.
  *
  * Hooks (read by the gate, the tests and the capture — never
@@ -204,7 +204,7 @@ const HEADER_CELL_STYLE = {
 	color: 'text.muted',
 	// A hairline rule, not a box: the header separates, it does not
 	// enclose (`layout-system.md` §1).
-	borderBottom: '1px solid {colors.border.subtle}',
+	borderBottom: '1px solid {colors.border.divider}',
 	padding: '3',
 	whiteSpace: 'nowrap',
 } as const;
@@ -222,7 +222,7 @@ const CELL_STYLE = {
 	textAlign: 'start',
 	verticalAlign: 'top',
 	padding: '3',
-	borderBottom: '1px solid {colors.border.subtle}',
+	borderBottom: '1px solid {colors.border.divider}',
 } as const;
 
 const MESSAGE_STYLE = {
@@ -396,7 +396,7 @@ const CODE_SCROLL_STYLE = {
 	margin: '0',
 	// The `pre` box is one of the surfaces `layout-system.md` §1 allows
 	// a box for: it says "this is code, not prose".
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 	borderRadius: '6px',
 	padding: '4',
 	fontFamily: 'mono',
@@ -485,7 +485,7 @@ const CASE_STYLE = {
 	flexDirection: 'column',
 	gap: '3',
 	paddingBlockEnd: '6',
-	borderBottom: '1px solid {colors.border.subtle}',
+	borderBottom: '1px solid {colors.border.divider}',
 } as const;
 
 const CASE_TITLE_STYLE = {

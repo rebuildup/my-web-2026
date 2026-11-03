@@ -1,4 +1,5 @@
 import { css } from '../../../../styled-system/css';
+import { contentSignalToken } from '../../../editorial/content-signal';
 import { Badge } from '../../../editorial/primitives/Badge';
 import { StateMark } from '../../../editorial/primitives/StateMark';
 
@@ -15,10 +16,10 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
  *
  * Tokens consumed:
  *
- *   - `accent.positive`              OK / live status mark.
- *   - `accent.negative`              error / unreachable mark.
- *   - `accent.warning`               degraded status mark.
- *   - `accent.category.{design,code,writing,tool}`
+ *   - `signal.positive`              OK / live status mark.
+ *   - `signal.negative`              error / unreachable mark.
+ *   - `signal.warning`               degraded status mark.
+ *   - `signal.content.{rose,cyan,amber,indigo}`
  *                                   content-category mark.
  */
 
@@ -40,7 +41,7 @@ export function StatusAccents() {
 function StatusRow() {
 	const entries: ReadonlyArray<StatusEntry> = [
 		{
-			token: 'accent.positive',
+			token: 'signal.positive',
 			role: 'OK / live',
 			label: 'Live',
 			note: 'Running, healthy, available — green.',
@@ -48,7 +49,7 @@ function StatusRow() {
 			mark: 'ok',
 		},
 		{
-			token: 'accent.negative',
+			token: 'signal.negative',
 			role: 'Error / unreachable',
 			label: 'Error',
 			note: 'Service down, build failed — red.',
@@ -56,7 +57,7 @@ function StatusRow() {
 			mark: 'unreachable',
 		},
 		{
-			token: 'accent.warning',
+			token: 'signal.warning',
 			role: 'Degraded',
 			label: 'Degraded',
 			note: 'Partially healthy, needs attention — amber.',
@@ -139,9 +140,9 @@ interface StatusEntry {
 }
 
 const STATUS_FG = {
-	positive: css({ color: 'accent.positive' }),
-	negative: css({ color: 'accent.negative' }),
-	warning: css({ color: 'accent.warning' }),
+	positive: css({ color: 'signal.positive' }),
+	negative: css({ color: 'signal.negative' }),
+	warning: css({ color: 'signal.warning' }),
 };
 
 function StatusTile({ entry }: { entry: StatusEntry }) {
@@ -217,7 +218,13 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 type CategoryFamily = 'design' | 'code' | 'writing' | 'tool';
 
 interface CategoryEntry {
-	token: `accent.category.${CategoryFamily}`;
+	/**
+	 * The token path read from `contentSignalToken`, displayed as the
+	 * caption under the mark. Kept as a plain string because the owner
+	 * returns a path; the mark itself is painted from the static
+	 * `CATEGORY_MARK` map.
+	 */
+	token: string;
 	label: string;
 	note: string;
 	family: CategoryFamily;
@@ -231,36 +238,42 @@ interface CategoryEntry {
  *
  * Issue #812: the family colour paints the 8px mark only. The word
  * beside it stays in `text.default`.
+ *
+ * Issue #764: which family a category receives is owned by
+ * `contentSignalToken`; the literals below are the same mapping, kept
+ * static because Panda resolves token paths at build time. The
+ * displayed `token` in each entry is read from the owner, so this
+ * table cannot silently disagree with it.
  */
 const CATEGORY_MARK = {
-	design: css({ color: 'accent.category.design' }),
-	code: css({ color: 'accent.category.code' }),
-	writing: css({ color: 'accent.category.writing' }),
-	tool: css({ color: 'accent.category.tool' }),
+	design: css({ color: 'signal.content.rose' }),
+	code: css({ color: 'signal.content.cyan' }),
+	writing: css({ color: 'signal.content.amber' }),
+	tool: css({ color: 'signal.content.indigo' }),
 } as const;
 
 function CategoryRow() {
 	const entries: ReadonlyArray<CategoryEntry> = [
 		{
-			token: 'accent.category.design',
+			token: contentSignalToken('design'),
 			label: 'Design',
 			note: '分類は diamond の形と語で示す。色は補助。',
 			family: 'design',
 		},
 		{
-			token: 'accent.category.code',
+			token: contentSignalToken('code'),
 			label: 'Code',
 			note: '分類は square の形と語で示す。色は補助。',
 			family: 'code',
 		},
 		{
-			token: 'accent.category.writing',
+			token: contentSignalToken('writing'),
 			label: 'Writing',
 			note: '分類は stacked bars の形と語で示す。色は補助。',
 			family: 'writing',
 		},
 		{
-			token: 'accent.category.tool',
+			token: contentSignalToken('tool'),
 			label: 'Tool',
 			note: '分類は chevron の形と語で示す。色は補助。',
 			family: 'tool',

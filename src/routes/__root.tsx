@@ -275,7 +275,7 @@ function RootComponent() {
 				    deepest route winning (see the head-merge note above):
 				    two `theme-color` entries in `head()` collapse into
 				    one, which is exactly the case the two media queries
-				    exist to avoid. The values are the two `bg.canvas`
+				    exist to avoid. The values are the two `surface.canvas`
 				    steps from `src/editorial/semantic-tokens.ts`:
 				    `neutral.25` (light, Issue #812) and `charcoal.950`
 				    (dark). The

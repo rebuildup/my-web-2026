@@ -106,9 +106,9 @@ function CreateEntryForm() {
 								fontSize: 'md',
 								paddingInline: '3',
 								paddingBlock: '2',
-								border: '1px solid {colors.border.subtle}',
+								border: '1px solid {colors.border.divider}',
 								borderRadius: '4',
-								background: 'bg.surface',
+								background: 'surface.raised',
 								color: 'text.default',
 							})}
 						/>
@@ -131,9 +131,9 @@ function CreateEntryForm() {
 								fontSize: 'lg',
 								paddingInline: '3',
 								paddingBlock: '2',
-								border: '1px solid {colors.border.subtle}',
+								border: '1px solid {colors.border.divider}',
 								borderRadius: '4',
-								background: 'bg.surface',
+								background: 'surface.raised',
 								color: 'text.default',
 							})}
 						/>
@@ -146,7 +146,7 @@ function CreateEntryForm() {
 							fontSize: 'md',
 							fontWeight: '600',
 							color: 'text.inverse',
-							background: 'bg.accent',
+							background: 'signal.action',
 							border: 'none',
 							borderRadius: '4',
 							paddingBlock: '3',

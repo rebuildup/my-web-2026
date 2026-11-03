@@ -26,7 +26,7 @@ export const rawTokens = {
 		//
 		// 950 (Issue #290) is the dark counterpart of the 50 tint: a
 		// near-black step carrying only a sky whisper, so
-		// `accent.surface` reads as "a barely blue featured region" in
+		// `surface.feature` reads as "a barely blue featured region" in
 		// both appearances. It is deliberately NOT Tailwind's
 		// sky-950 (`#082f49`) — that value is a saturated navy block,
 		// which on a neutral dark page reads as exactly the heavy
@@ -47,15 +47,21 @@ export const rawTokens = {
 		// blue-dominant at its dark end (`neutral.900` has B−R = 39),
 		// so painting dark surfaces with it produced a monotone navy
 		// page. The dark appearance uses `charcoal` instead.
+		//
+		// Issue #764 (direction B) reads the ramp as a surface ladder:
+		// 100 (sunken) → 50 (canvas) → 25 (raised), with pure white
+		// (`0`) reserved for ink. `200` is the structural divider —
+		// one step above the sunken fill so a rule stays visible on
+		// every surface tier.
 		neutral: {
 			0: { value: '#ffffff' },
-			// 25 (Issue #812) — the light canvas step. Pure white (`0`)
-			// is retired as a SURFACE value: the page ground uses this
-			// near-white instead of pure white. `0` remains the true-white
-			// foreground (`text.inverse`) and dark-plate knockout value.
+			// 25 (Issue #812) — the raised surface step. Pure white
+			// (`0`) is retired as a SURFACE value: the page ground uses
+			// `50` instead and `25` is the card / panel tier.
 			25: { value: '#fcfcfd' },
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
+			200: { value: '#e2e8f0' },
 			500: { value: '#64748b' },
 			// 600 (Issue #399) — the step the muted text needed in the
 			// light appearance. `neutral.500` measured 4.34:1 on
@@ -81,14 +87,17 @@ export const rawTokens = {
 		// These steps keep a cool whisper (B−R ≈ 3–4, versus slate
 		// 900's 39) so the dark appearance still belongs to the same
 		// cool-slate product, but rests on neutral near-black layers.
-		// Step spacing mirrors the light ladder: 950 → 900 → 800 is the
-		// same "one notch per tier" relationship as 0 → 50 → 100, read
-		// upward (depth = a brighter layer) instead of downward.
+		// Step spacing mirrors the light ladder: 1000 → 950 → 900 → 800 is
+		// the same "one notch per tier" relationship as 100 → 50 → 25,
+		// read upward (depth = a brighter layer) instead of downward.
+		// Issue #764 adds `1000` below the canvas so a recessed surface
+		// has somewhere to go; 950 → 900 → 800 remain the raised ladder.
 		charcoal: {
+			1000: { value: '#050609' }, // sunken — recessed page region
 			950: { value: '#0a0b0e' }, // canvas — page background
 			900: { value: '#111317' }, // raised surface
-			800: { value: '#191b21' }, // tinted separator + hairline divider
-			600: { value: '#6f747d' }, // emphasis rule (4.19 : 1 on canvas)
+			800: { value: '#191b21' }, // control fill + hairline divider
+			600: { value: '#6f747d' }, // emphasis rule / disabled text
 			400: { value: '#8b9099' }, // secondary text (6.14 : 1 on canvas)
 		},
 		// Status colors (Issue #172).
@@ -116,37 +125,55 @@ export const rawTokens = {
 			600: { value: '#d97706' },
 			700: { value: '#b45309' },
 		},
-		// Category identifiers (Issue #172).
-		// Used as left-border / pill-color cues on portfolio facets and
-		// tool surfaces. Each family is a distinct hue at comparable
-		// saturation so the four are visually separable at a glance.
-		design: {
+		// Content hues (Issue #764, direction B).
+		//
+		// These ramps are named for the HUE, not for a category. Which
+		// category receives which hue is decided by `content-signal.ts`
+		// from the category id, deterministically, so a category can be
+		// re-pointed at another family without touching the palette and
+		// the palette can gain a family without inventing a category.
+		// 700 is the light-appearance text step, 300 the dark one.
+		rose: {
 			50: { value: '#fdf2f8' },
 			300: { value: '#f9a8d4' },
 			500: { value: '#ec4899' },
 			600: { value: '#db2777' },
 			700: { value: '#be185d' },
 		},
-		code: {
+		cyan: {
 			50: { value: '#ecfeff' },
 			300: { value: '#67e8f9' },
 			500: { value: '#06b6d4' },
 			600: { value: '#0891b2' },
 			700: { value: '#0e7490' },
 		},
-		writing: {
+		amber: {
 			50: { value: '#fefce8' },
 			300: { value: '#fde047' },
 			500: { value: '#eab308' },
 			600: { value: '#ca8a04' },
 			700: { value: '#a16207' },
 		},
-		tool: {
+		indigo: {
 			50: { value: '#eef2ff' },
 			300: { value: '#a5b4fc' },
 			500: { value: '#6366f1' },
 			600: { value: '#4f46e5' },
 			700: { value: '#4338ca' },
+		},
+		violet: {
+			50: { value: '#f5f3ff' },
+			300: { value: '#c4b5fd' },
+			500: { value: '#8b5cf6' },
+			600: { value: '#7c3aed' },
+			700: { value: '#6d28d9' },
+		},
+		teal: {
+			50: { value: '#f0fdfa' },
+			300: { value: '#5eead4' },
+			500: { value: '#14b8a6' },
+			600: { value: '#0d9488' },
+			700: { value: '#0f766e' },
 		},
 	},
 	fonts: {

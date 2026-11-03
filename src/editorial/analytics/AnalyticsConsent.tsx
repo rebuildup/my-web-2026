@@ -274,7 +274,7 @@ export function AnalyticsConsentPanel({
 				insetInline: 0,
 				bottom: 0,
 				zIndex: '20',
-				backgroundColor: 'bg.surface',
+				backgroundColor: 'surface.raised',
 				color: 'text.default',
 			})}
 		>
@@ -339,7 +339,7 @@ export function AnalyticsConsentPanel({
 							fontFamily: 'sans',
 							fontSize: 'xs',
 							lineHeight: '1.6',
-							color: writeFailed ? 'accent.negative' : 'text.muted',
+							color: writeFailed ? 'signal.negative' : 'text.muted',
 						})}
 					>
 						{statusMessage}
@@ -365,8 +365,8 @@ export function AnalyticsConsentPanel({
 								borderRadius: 'md',
 								borderWidth: '1px',
 								borderStyle: 'solid',
-								borderColor: 'border.subtle',
-								backgroundColor: 'bg.accent',
+								borderColor: 'border.divider',
+								backgroundColor: 'signal.action',
 								color: 'text.inverse',
 								fontFamily: 'sans',
 								fontSize: 'sm',
@@ -391,8 +391,8 @@ export function AnalyticsConsentPanel({
 							borderRadius: 'md',
 							borderWidth: '1px',
 							borderStyle: 'solid',
-							borderColor: 'border.subtle',
-							backgroundColor: 'bg.canvas',
+							borderColor: 'border.divider',
+							backgroundColor: 'surface.canvas',
 							color: 'text.default',
 							fontFamily: 'sans',
 							fontSize: 'sm',
@@ -571,8 +571,8 @@ export function AnalyticsConsentControl() {
 				borderRadius: 'full',
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: 'border.subtle',
-				backgroundColor: 'bg.surface',
+				borderColor: 'border.divider',
+				backgroundColor: 'surface.raised',
 				color: 'text.default',
 				fontFamily: 'sans',
 				fontSize: 'xs',

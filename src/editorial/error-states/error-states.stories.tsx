@@ -33,7 +33,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const panelClassName = css({
-	borderTop: '1px solid {colors.border.subtle}',
+	borderTop: '1px solid {colors.border.divider}',
 	paddingBlock: { base: '10', lg: '16' },
 });
 

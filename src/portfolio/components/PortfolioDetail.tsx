@@ -304,7 +304,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								aria-labelledby={`portfolio-section-${section.id}`}
 								className={css({
 									paddingBlock: { base: '16', lg: '24' },
-									borderTop: '1px solid {colors.border.subtle}',
+									borderTop: '1px solid {colors.border.divider}',
 								})}
 							>
 								<Container>
@@ -323,7 +323,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							aria-labelledby="portfolio-section-links"
 							className={css({
 								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
+								borderTop: '1px solid {colors.border.divider}',
 							})}
 						>
 							<Container>
@@ -382,7 +382,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							aria-labelledby="portfolio-section-adjacent"
 							className={css({
 								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
+								borderTop: '1px solid {colors.border.divider}',
 							})}
 						>
 							<Container>
@@ -544,7 +544,7 @@ const skipLinkStyle = css({
 	left: '0',
 	top: '0',
 	padding: '2',
-	backgroundColor: 'bg.canvas',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 	textDecoration: 'none',
 	transform: 'translateY(-200%)',

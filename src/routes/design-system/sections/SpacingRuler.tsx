@@ -18,9 +18,9 @@ import { spacingTokens } from '../../../editorial/tokens';
  * fixed `10rem` at `md` and above, so all eight bars begin on the
  * same vertical line; below `md` the label stacks above the bar and
  * every bar starts at the container's left edge. The bar's 1px
- * `border.subtle` outline is gone — the fill alone carries the bar,
+ * `border.divider` outline is gone — the fill alone carries the bar,
  * as the owner's grid rule requires. The fill moved from
- * `accent.surface` (a near-canvas tint that only read as a bar
+ * `surface.feature` (a near-canvas tint that only read as a bar
  * *because* of its outline) to `border.strong`, the editorial
  * neutral measured for emphasis rules: with no outline the bar has to
  * carry its own contrast, and `border.strong` keeps it visible in

@@ -67,7 +67,7 @@ type Story = StoryObj<typeof meta>;
 
 const pageStyle = css({
 	paddingBlock: { base: '6', lg: '10' },
-	backgroundColor: 'bg.canvas',
+	backgroundColor: 'surface.canvas',
 	minHeight: '100%',
 });
 
@@ -93,8 +93,8 @@ const legendStyle = css({
 	padding: '4',
 	borderRadius: 'md',
 	border: '1px solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 	listStyle: 'none',
 	margin: '0',
 });
@@ -125,8 +125,8 @@ const entryStyle = css({
 	padding: '4',
 	borderRadius: 'md',
 	border: '1px solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 });
 
 const entryTitleStyle = css({
@@ -184,7 +184,7 @@ const codeStyle = css({
 	fontSize: 'xs',
 	paddingInline: '1',
 	borderRadius: 'sm',
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 	color: 'text.default',
 });
 
@@ -208,8 +208,8 @@ const panelStyle = css({
 	padding: '4',
 	borderRadius: 'md',
 	border: '1px solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 });
 
 const panelTitleStyle = css({
@@ -230,7 +230,7 @@ const heldStyle = css({
 
 const sectionStyle = css({
 	paddingBlock: '6',
-	borderTop: '1px solid {colors.border.subtle}',
+	borderTop: '1px solid {colors.border.divider}',
 });
 
 /** The badge tone a state is drawn with. Tone is never the only channel. */

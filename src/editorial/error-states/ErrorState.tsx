@@ -71,8 +71,8 @@ export interface ErrorStateProps {
 
 const TONE_STATUS_CLASS = {
 	neutral: css({ color: 'text.muted' }),
-	warning: css({ color: 'accent.warning' }),
-	negative: css({ color: 'accent.negative' }),
+	warning: css({ color: 'signal.warning' }),
+	negative: css({ color: 'signal.negative' }),
 } as const;
 
 const actionClassName = css({
@@ -83,13 +83,13 @@ const actionClassName = css({
 	borderRadius: 'md',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
+	borderColor: 'border.divider',
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '600',
 	color: 'text.default',
 	textDecoration: 'none',
-	backgroundColor: 'bg.canvas',
+	backgroundColor: 'surface.canvas',
 	_hover: { borderColor: 'border.strong', textDecoration: 'underline' },
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
@@ -171,7 +171,7 @@ export function ErrorState({
 					className={css({
 						marginBlockStart: '6',
 						paddingBlockStart: '4',
-						borderTop: '1px solid {colors.border.subtle}',
+						borderTop: '1px solid {colors.border.divider}',
 					})}
 				>
 					<p
@@ -313,7 +313,7 @@ function AlternativeList({ alternatives }: { alternatives: readonly ErrorStateAl
 								borderRadius: 'md',
 								borderWidth: '1px',
 								borderStyle: 'solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 								fontFamily: 'sans',
 								fontSize: 'sm',
 								color: 'text.accent',

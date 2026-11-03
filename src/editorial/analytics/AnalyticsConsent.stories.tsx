@@ -75,7 +75,7 @@ const galleryClassName = css({
 	gap: '10',
 	paddingBlock: '10',
 	paddingInline: { base: '4', lg: '6' },
-	backgroundColor: 'bg.canvas',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 });
 
@@ -116,7 +116,7 @@ const stageClassName = css({
 	transform: 'translateZ(0)',
 	borderWidth: '1px',
 	borderStyle: 'dashed',
-	borderColor: 'border.subtle',
+	borderColor: 'border.divider',
 	borderRadius: 'lg',
 });
 

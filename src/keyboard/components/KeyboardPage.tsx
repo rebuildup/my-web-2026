@@ -64,7 +64,7 @@ const heroStyle = css({
 	paddingBlock: { base: '12', md: '16' },
 	borderBlockEndWidth: '1px',
 	borderBlockEndStyle: 'solid',
-	borderBlockEndColor: 'border.subtle',
+	borderBlockEndColor: 'border.divider',
 });
 
 const heroInnerStyle = css({
@@ -112,7 +112,7 @@ const sectionStyle = css({
 	paddingBlock: { base: '10', md: '14' },
 	borderBlockEndWidth: '1px',
 	borderBlockEndStyle: 'solid',
-	borderBlockEndColor: 'border.subtle',
+	borderBlockEndColor: 'border.divider',
 });
 
 const bodyStyle = css({
@@ -131,8 +131,8 @@ const statusStripStyle = css({
 	borderRadius: 'md',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 });
 
 const statusTextStyle = css({
@@ -164,8 +164,8 @@ const flowCardStyle = css({
 	borderRadius: 'md',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 });
 
 const flowTitleStyle = css({
@@ -232,8 +232,8 @@ const platformTabStyle = css({
 	borderRadius: 'full',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.canvas',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 	fontFamily: 'sans',
 	fontSize: 'sm',
@@ -246,7 +246,7 @@ const platformTabStyle = css({
 	},
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
-		backgroundColor: 'accent.surface',
+		backgroundColor: 'surface.feature',
 	},
 });
 
@@ -279,8 +279,8 @@ const layerTabStyle = css({
 	borderRadius: 'sm',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.canvas',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 	fontFamily: 'sans',
 	fontSize: 'sm',
@@ -292,7 +292,7 @@ const layerTabStyle = css({
 	},
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
-		backgroundColor: 'accent.surface',
+		backgroundColor: 'surface.feature',
 	},
 });
 
@@ -324,13 +324,13 @@ const safePanelStyle = css({
 	borderWidth: '1px',
 	borderStyle: 'solid',
 	borderColor: 'border.strong',
-	backgroundColor: 'bg.surface',
+	backgroundColor: 'surface.raised',
 });
 
 const tableWrapStyle = css({
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
+	borderColor: 'border.divider',
 	borderRadius: 'md',
 });
 
@@ -354,8 +354,8 @@ const tableStyle = css({
 		color: 'text.muted',
 		borderBlockEndWidth: '1px',
 		borderBlockEndStyle: 'solid',
-		borderBlockEndColor: 'border.subtle',
-		backgroundColor: 'bg.subtle',
+		borderBlockEndColor: 'border.divider',
+		backgroundColor: 'surface.sunken',
 		whiteSpace: 'nowrap',
 	},
 	'& td': {
@@ -363,7 +363,7 @@ const tableStyle = css({
 		color: 'text.default',
 		borderBlockEndWidth: '1px',
 		borderBlockEndStyle: 'solid',
-		borderBlockEndColor: 'border.subtle',
+		borderBlockEndColor: 'border.divider',
 		verticalAlign: 'top',
 	},
 	'& td code': {
@@ -379,8 +379,8 @@ const calloutStyle = css({
 	borderRadius: 'md',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.subtle',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.sunken',
 	fontSize: 'sm',
 	lineHeight: '1.7',
 	color: 'text.default',

@@ -2992,14 +2992,17 @@
 				"#860",
 				"docs/verification/tools/business-mail-block-host-activation.md",
 				"docs/verification/tools/history-quiz-host-activation.md",
-				"docs/verification/tools/mic-level-host-activation.md"
+				"docs/verification/tools/mic-level-host-activation.md",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"docs/tools/inventory.md"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: (1) manifest の 15 Tool がすべて same_origin_static、host_disabled は 0 件（実測）。(2) 実画面と操作は docs/verification/tools/ の各 host-activation 記録。(3) 埋め込み境界は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が宣言トークン集合を固定。(4) 棚卸しの数値は completion-inventory.md と manifest が一致。Tool ごとの操作列は #770 / #771 / #772 / #773 が所有する。",
+			"note": "受け入れ条件の証跡: (1) manifest の 15 Tool がすべて same_origin_static、host_disabled は 0 件（実測）。(2) 実画面と操作は docs/verification/tools/ の各 host-activation 記録。(3) 埋め込み境界は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が宣言トークン集合を固定。(4) 棚卸しの数値は completion-inventory.md と manifest が一致。Tool ごとの操作列は #770 / #771 / #772 / #773 が所有する。この記録で再測定していないもの: (a) mic-level の getUserMedia は #825 以降に再測していない（#855 の記録は sandbox 時代の実測）。(b) docs/tools/inventory.md は 13 / 2 / 0 のまま drift していた（#879 で修正し、tools:check の rule 12 で検知する）。",
 			"missing": null
 		},
 		{
@@ -3298,6 +3301,8 @@
 			"closure": "supported",
 			"evidence": [
 				"#860",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
 				"docs/verification/tools/history-quiz-host-activation.md",
 				"docs/verification/tools/history-quiz-mobile.webp"
 			],
@@ -3306,7 +3311,7 @@
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm() が sandbox 内で動くこと（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。",
+			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm()（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。ただしこの実測は sandbox 時代のもので、#869（ADR-0020）が first-party frame から sandbox 属性ごと撤去したため、当時の allow-modals 宣言は現行の機構ではない。sandbox を外す方向は confirm() を妨げない（制約が減るだけ）ので判定は変えないが、#825 以降の再実測は行っていない。",
 			"missing": null
 		},
 		{

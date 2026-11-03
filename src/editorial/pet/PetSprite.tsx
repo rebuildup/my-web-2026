@@ -113,8 +113,8 @@ const REST_AFTER_MS = 12_000;
  * This is read from the token rather than written as a media query:
  * `scripts/check-a11y-reflow.mjs` judges every `min-width` declaration
  * in shipped source as a fixed box width, and a media-query string is
- * not one. Comparing `window.innerWidth` keeps the same threshold
- * without claiming a `min-width` on any box.
+ * not a box width. Comparing `window.innerWidth` keeps the same
+ * threshold without claiming a `min-width` on any box.
  */
 const WIDE_VIEWPORT_MIN_WIDTH_PX = Number.parseInt(rawTokens.breakpoints.xl, 10);
 

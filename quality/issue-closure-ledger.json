@@ -1103,19 +1103,26 @@
 			"title": "feat(tools): テキストカウンター をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
-			"decision": {
-				"kind": "recorded",
-				"reason": "保留理由（上流Tool側Needs standalone Vite build）はmanifestに記載され、上の理由で保留されている。ただしその上流作業を追うIssue/PRはこのリポジトリに存在しないため、追跡は切れている。"
-			},
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#849",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/text-counter-desktop.webp",
+				"docs/verification/tools/text-counter-mobile.webp",
+				"docs/verification/tools/text-counter-recheck-desktop.webp",
+				"docs/verification/tools/text-counter-recheck-mobile.webp"
+			],
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "保留理由（上流Tool側Needs standalone Vite build）はmanifestに記載され、上の理由で保留されている。ただしその上流作業を追うIssue/PRはこのリポジトリに存在しないため、追跡は切れている。",
-			"missing": "pinned SHA からの standalone ビルド取得、/tools/text-counter の実コンテンツ描画、字数/語数の実測表示、欠落artifactのCI検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: text-counter は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §1（23 文字 / 7 語 / 2 行 / 45 B を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 #849 で pin した standalone build を host が同一 origin で配信している。",
+			"missing": null
 		},
 		{
 			"issue": 354,
@@ -1162,39 +1169,50 @@
 			"title": "feat(tools): SVG to TSX をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#849",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/svg2tsx-desktop.webp",
+				"docs/verification/tools/svg2tsx-mobile.webp",
+				"docs/verification/tools/svg2tsx-clipboard-desktop.webp",
+				"docs/verification/tools/svg2tsx-clipboard-mobile.webp"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "manifest に載っているだけで host に取り込まれておらず、公開ツールとして到達できない。",
-			"missing": "pinned SHA の standalone build 取得、/tools/svg2tsx の実コンテンツ描画、SVG→TSX→copy の確認、欠落 build artifact の CI 検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: svg2tsx は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §4（変換完了 20 行の出力とコピーを実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。",
+			"missing": null
 		},
 		{
 			"issue": 357,
 			"title": "feat(tools): 連番PNGビューア をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#849",
 				"src/tools/manifest.json",
-				"disabled_reason: 'Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.'",
-				"Only prototype and readmark are same_origin_static in the same manifest"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/sequential-png-preview-desktop.webp",
+				"docs/verification/tools/sequential-png-preview-mobile.webp",
+				"docs/verification/tools/sequential-png-preview-frames-desktop.webp",
+				"docs/verification/tools/sequential-png-preview-frames-mobile.webp"
 			],
-			"decision": {
-				"kind": "recorded",
-				"reason": "保留理由はmanifestに記録されているが、上流作業の追跡Issueが無く、宿主側PRが立つ状態になっていない。"
-			},
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "保留理由はmanifestに記録されているが、上流作業の追跡Issueが無く、宿主側PRが立つ状態になっていない。",
-			"missing": "standalone ビルドの再現可能な取得、/tools/sequential-png-preview の描画、連番フレーム切替、artifact欠落のCI検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: sequential-png-preview は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §3（連番フレームの切り替えを実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。",
+			"missing": null
 		},
 		{
 			"issue": 358,
@@ -1217,21 +1235,25 @@
 			"title": "feat(tools): 穴埋めプリントジェネレーター をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#854",
 				"src/tools/manifest.json",
-				"no /tools/fillgen artifact or route adapter in src/routes/",
-				"fillgen-desktop.png",
-				"fillgen-mobile.png"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/fillgen-desktop.webp",
+				"docs/verification/tools/fillgen-mobile.webp",
+				"docs/verification/tools/fillgen-generated-desktop.webp",
+				"docs/verification/tools/fillgen-generated-mobile.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "fillgen remains host_disabled on release-0-8-0 and the issue has no cross-referenced PR; nothing of the requested host-side work is present.",
-			"missing": "the whole issue: upstream standalone build readiness, host-side enablement, real worksheet generation at /tools/fillgen, sandbox/permission/licence boundary checks and the required screenshots"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: fillgen は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §6（採点の `blank correct` / `blank incorrect` を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 #854 で host 配線した。",
+			"missing": null
 		},
 		{
 			"issue": 360,
@@ -1258,23 +1280,26 @@
 			"title": "feat(tools): CodeType / p5.js素材 をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#854",
 				"src/tools/manifest.json",
-				"disabled_reason: 'Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.'",
-				"No cross-referenced PR exists for this issue"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/code-type-p5-desktop.webp",
+				"docs/verification/tools/code-type-p5-mobile.webp",
+				"docs/verification/tools/code-type-p5-recheck-desktop.webp",
+				"docs/verification/tools/code-type-p5-recheck-mobile.webp"
 			],
-			"decision": {
-				"kind": "recorded",
-				"reason": "他2つの Tool issue と同じ保留理由がmanifestに記録されているが、上流の standalone build 準備を追う追跡はリポジトリ内に無い。"
-			},
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "他2つの Tool issue と同じ保留理由がmanifestに記録されているが、上流の standalone build 準備を追う追跡はリポジトリ内に無い。",
-			"missing": "standalone ビルド取得、/tools/code-type-p5 のサンプル描画と操作、iframe sandbox/asset URL 境界の検証。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: code-type-p5 は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §8（Play → Pause と p5 canvas 720×720 を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 iframe の宣言トークンによる境界は ADR-0020 / #869 で first-party 同一 origin 配信へ移行し、sandbox 属性そのものが無くなった。",
+			"missing": null
 		},
 		{
 			"issue": 362,
@@ -2967,14 +2992,17 @@
 				"#860",
 				"docs/verification/tools/business-mail-block-host-activation.md",
 				"docs/verification/tools/history-quiz-host-activation.md",
-				"docs/verification/tools/mic-level-host-activation.md"
+				"docs/verification/tools/mic-level-host-activation.md",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"docs/tools/inventory.md"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: (1) manifest の 15 Tool がすべて same_origin_static、host_disabled は 0 件（実測）。(2) 実画面と操作は docs/verification/tools/ の各 host-activation 記録。(3) 埋め込み境界は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が宣言トークン集合を固定。(4) 棚卸しの数値は completion-inventory.md と manifest が一致。Tool ごとの操作列は #770 / #771 / #772 / #773 が所有する。",
+			"note": "受け入れ条件の証跡: (1) manifest の 15 Tool がすべて same_origin_static、host_disabled は 0 件（実測）。(2) 実画面と操作は docs/verification/tools/ の各 host-activation 記録。(3) 埋め込み境界は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が宣言トークン集合を固定。(4) 棚卸しの数値は completion-inventory.md と manifest が一致。Tool ごとの操作列は #770 / #771 / #772 / #773 が所有する。この記録で再測定していないもの: (a) mic-level の getUserMedia は #825 以降に再測していない（#855 の記録は sandbox 時代の実測）。(b) docs/tools/inventory.md は 13 / 2 / 0 のまま drift していた（#879 で修正し、tools:check の rule 12 で検知する）。",
 			"missing": null
 		},
 		{
@@ -3252,7 +3280,6 @@
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
-				"#858",
 				"#859",
 				"docs/verification/tools/business-mail-block-host-activation.md",
 				"quality/tool-artifact-inventory.json"
@@ -3274,6 +3301,8 @@
 			"closure": "supported",
 			"evidence": [
 				"#860",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
 				"docs/verification/tools/history-quiz-host-activation.md",
 				"docs/verification/tools/history-quiz-mobile.webp"
 			],
@@ -3282,7 +3311,7 @@
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm() が sandbox 内で動くこと（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。",
+			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm()（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。ただしこの実測は sandbox 時代のもので、#869（ADR-0020）が first-party frame から sandbox 属性ごと撤去したため、当時の allow-modals 宣言は現行の機構ではない。sandbox を外す方向は confirm() を妨げない（制約が減るだけ）ので判定は変えないが、#825 以降の再実測は行っていない。",
 			"missing": null
 		},
 		{
@@ -3328,6 +3357,107 @@
 			"ownerReference": null,
 			"action": "kept-closed",
 			"note": "受け入れ条件の証跡: commit 5226f9a9 が 3 系統（list SC 1.3.1 / definition-list SC 1.3.1 / label-content-name-mismatch SC 2.5.3）を実装側で修正し、両台帳の records は実測で 0 件になった。台帳照合の gate は残り、対象 route / story の除外や基準の緩和はしていない。",
+			"missing": null
+		},
+		{
+			"issue": 870,
+			"title": "feat(portfolio): 旧サイトの YouTube 動画 44 件に再生導線を作る（click-to-load・第三者要求 0 から）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#873",
+				"3045f24f",
+				"src/portfolio/video-facade.ts",
+				"src/portfolio/components/PortfolioVideoFacade.tsx",
+				"src/portfolio/video-facade.test.ts",
+				"src/portfolio/components/PortfolioVideoFacade.client.test.tsx",
+				"docs/verification/portfolio/video-facade.md",
+				"docs/verification/portfolio/video-facade/measurement-summary.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #873（merge 3045f24f）が release-0-8-1 に着地。受入条件 2-7 はテスト・実測記録・WebP と CI で満たした。条件 1「初期表示の第三者要求 0 件」は、動画起因の要求が押下前 0 件であることを Playwright の request 観測で記録した（YouTube 系 origin 0 件、iframe 0 個）。ただし同一ページから変更前より存在する Google Fonts への 32〜34 件の要求が出るため、字義どおりの「第三者要求 0」ではない。この差は docs/verification/portfolio/video-facade.md §4.1 と Issue コメントに明記し、字義どおりの 0 件化は #876（フォント自己ホスト）で追跡する。",
+			"missing": null
+		},
+		{
+			"issue": 770,
+			"title": "feat(tools): カラーパレット をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#848",
+				"#863",
+				"#872",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/color-palette-host-activation.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/color-palette-desktop.webp",
+				"docs/verification/tools/color-palette-mobile.webp",
+				"docs/verification/tools/color-palette-reload-desktop.webp",
+				"docs/verification/tools/color-palette-reload-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #848 で same_origin_static として host 配線し、#863 で操作を実測、#872 で #825 後の再読込永続化を再実測した（docs/verification/tools/first-party-delivery-followup.md §1.4）。manifest の pinned_sha は gitlink と一致し、license / dependencies は verified。",
+			"missing": null
+		},
+		{
+			"issue": 773,
+			"title": "feat(tools): After Effects Expression Helper をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#858",
+				"#864",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/ae-expression-host-activation.md",
+				"docs/verification/tools/ae-expression-desktop.webp",
+				"docs/verification/tools/ae-expression-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #858 で same_origin_static として host 配線し、#864 で式の表示 / コピーを実測。manifest の pinned_sha は gitlink と一致し、license / dependencies は verified。",
+			"missing": null
+		},
+		{
+			"issue": 825,
+			"title": "refactor(tools): Tool を sandbox 付き iframe から first-party 同一 origin 配信へ変える",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#828",
+				"#869",
+				"#872",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"src/tools/embed-policy.ts",
+				"src/tools/embed-policy.test.ts",
+				"docs/verification/tools/first-party-delivery-followup.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #828 で ADR-0020 を採択し、#869 で shipped 15 Tool すべてを same_origin_static に移行して sandbox 属性を撤去、#872 で移行後の 10 Tool を再実測した。現在の manifest は 15/15 が same_origin_static で host_disabled が 0 件、tools:check は delivery 内訳 {\"same_origin_static\":15} を返す。宣言トークン集合は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が固定している。",
 			"missing": null
 		}
 	]

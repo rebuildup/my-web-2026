@@ -3,10 +3,12 @@ import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
+import { selectPortfolioVideo } from '../video-facade';
 import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
-import { PortfolioMediaFigure } from './PortfolioMedia';
 import { PortfolioEvidenceNotice } from './PortfolioEvidenceNotice';
+import { PortfolioMediaFigure } from './PortfolioMedia';
+import { PortfolioVideoFacade } from './PortfolioVideoFacade';
 
 /**
  * PortfolioDetail — `/portfolio/[slug]` route surface.
@@ -97,7 +99,15 @@ const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 
 export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
-	const primaryLink = project.links[0] ?? null;
+	// Issue #870: a `kind: 'video'` link whose URL this repository can
+	// validate gets a play affordance instead of being only a line in
+	// §07. The primary link is then the first NON-video link, so the
+	// first viewport does not say "Video" twice. A page whose only link
+	// is the video keeps the facade and drops the duplicate line.
+	const video = selectPortfolioVideo(project.links);
+	const primaryLink =
+		project.links.find((link) => link.kind !== 'video') ??
+		(video === null ? (project.links[0] ?? null) : null);
 	const showAdjacent = adjacent.prev !== null || adjacent.next !== null;
 	// The `Role` row exists only when a role is actually recorded
 	// (Issue #813). A kind of work does not belong in this column — the
@@ -260,6 +270,11 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								{cover ? (
 									<div className={css({ maxWidth: '720px' })}>
 										<PortfolioMediaFigure media={cover} loading="eager" />
+									</div>
+								) : null}
+								{video ? (
+									<div className={css({ maxWidth: '720px' })}>
+										<PortfolioVideoFacade video={video} />
 									</div>
 								) : null}
 								{primaryLink ? (

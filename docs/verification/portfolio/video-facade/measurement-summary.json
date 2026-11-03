@@ -1,0 +1,122 @@
+{
+	"fixture-video/desktop-light": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 34,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": true,
+		"after": {
+			"iframes": 1,
+			"src": "https://www.youtube-nocookie.com/embed/SewXH0Bbm-c",
+			"referrerpolicy": "strict-origin-when-cross-origin",
+			"allow": "accelerometer; encrypted-media; picture-in-picture",
+			"videoOriginRequests": 8
+		},
+		"documentWidth": 1440,
+		"viewportWidth": 1440
+	},
+	"fixture-video/desktop-dark": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 34,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": true,
+		"after": {
+			"iframes": 1,
+			"src": "https://www.youtube-nocookie.com/embed/SewXH0Bbm-c",
+			"referrerpolicy": "strict-origin-when-cross-origin",
+			"allow": "accelerometer; encrypted-media; picture-in-picture",
+			"videoOriginRequests": 8
+		},
+		"documentWidth": 1440,
+		"viewportWidth": 1440
+	},
+	"fixture-video/mobile-light": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 33,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": true,
+		"after": {
+			"iframes": 1,
+			"src": "https://www.youtube-nocookie.com/embed/SewXH0Bbm-c",
+			"referrerpolicy": "strict-origin-when-cross-origin",
+			"allow": "accelerometer; encrypted-media; picture-in-picture",
+			"videoOriginRequests": 8
+		},
+		"documentWidth": 390,
+		"viewportWidth": 390
+	},
+	"fixture-video/mobile-dark": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 33,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": true,
+		"after": {
+			"iframes": 1,
+			"src": "https://www.youtube-nocookie.com/embed/SewXH0Bbm-c",
+			"referrerpolicy": "strict-origin-when-cross-origin",
+			"allow": "accelerometer; encrypted-media; picture-in-picture",
+			"videoOriginRequests": 8
+		},
+		"documentWidth": 390,
+		"viewportWidth": 390
+	},
+	"fixture-bogus-video/desktop-light": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 33,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": false,
+		"after": null,
+		"documentWidth": 1440,
+		"viewportWidth": 1440
+	},
+	"fixture-bogus-video/desktop-dark": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 33,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": false,
+		"after": null,
+		"documentWidth": 1440,
+		"viewportWidth": 1440
+	},
+	"fixture-bogus-video/mobile-light": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 32,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": false,
+		"after": null,
+		"documentWidth": 390,
+		"viewportWidth": 390
+	},
+	"fixture-bogus-video/mobile-dark": {
+		"before": {
+			"iframes": 0,
+			"videoOriginRequests": 0,
+			"thirdPartyRequests": 32,
+			"thirdPartyHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+		},
+		"activateControl": false,
+		"after": null,
+		"documentWidth": 390,
+		"viewportWidth": 390
+	}
+}

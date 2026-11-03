@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 32 |
-| External hosts | 36 |
+| External hosts | 37 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | 3 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -98,17 +98,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/tools/business-mail-block`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (1)
 
-- (none)
+- `www.youtube-nocookie.com`
 
 ### Removed external hosts (0)
 
@@ -220,13 +220,17 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
+| `https://www.youtube-nocookie.com/embed` | `www.youtube-nocookie.com` | external | `src/portfolio/video-facade.ts` |
 | `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/embed/…` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/iframe_api` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/watch?v=` | `www.youtube.com` | external | `src/portfolio/video-facade.ts` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-- **WARN** `W004 public-url-added` Public URL added: /tools/business-mail-block
+- **ERROR** `E004 external-host-added` New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube-nocookie.com/embed
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=
 

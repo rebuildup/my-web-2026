@@ -148,23 +148,31 @@ bump した後に行った。詳細は §12。
 | 観測結果 | タイマー表示が `15:00.00` → `14:57.41` に減少（カウントダウン開始） |
 | 390px host 横スクロール | なし（390 = 390） |
 | 390px frame 横スクロール | なし（390 = 390） |
-| 1440 スクリーンショット | [pomodoro-desktop.webp](./pomodoro-desktop.webp)（2880×2000） |
-| 390 スクリーンショット | [pomodoro-mobile.webp](./pomodoro-mobile.webp)（780×1688） |
+| 1440 スクリーンショット | [pomodoro-desktop.webp](./pomodoro-desktop.webp)（2880×1800、Issue #868 再取得） |
+| 390 スクリーンショット | [pomodoro-mobile.webp](./pomodoro-mobile.webp)（780×1688、Issue #868 再取得） |
+
+再測定は 2026-11-03、Tool pin を `d4add8a`（rebuildup/tool-pomodoro PR #10）へ
+bump した後に行った。詳細は §12。
 
 実測した注意点:
 
-- artifact の `index.html` は CSS を読み込まず、frame 内は**スタイル未適用**で
-  描画される（巨大な円弧 + 素のテキスト。desktop の capture がその実測である）。
+- 初回測定では artifact の `index.html` が CSS を読み込まず、frame 内は
+  **スタイル未適用**で描画されていた（巨大な円弧 + 素のテキスト）。
+  Issue #868 の pin bump 後は `dist/index.html` が
+  `./assets/index-*.css` を参照し、円形タイマー・Dock・ラベルが
+  設計どおりに描画される。
 - sandbox の opaque origin のため `localStorage` / `sessionStorage` の読み取りが
   `SecurityError` になる（console に `pomodoro-settings` / `pomodoro-stats` /
   `pomodoro-sessions` / `pomodoro-current-step` / `pomodoro-time-left`）。
-  タイマーのカウントダウン自体は継続する。
+  タイマーのカウントダウン自体は継続する（Issue #825 / ADR-0020 の範囲）。
 
 未確認:
 
 - タイマーの完走・セッション切替・通知。
 - `Note` / `YouTube` / `Theme` / `Settings` パネル。
 - storage 永続化（sandbox で拒否されるため未確認）。
+- 390px で左の workflow progress bar がタイマー円弧に重なる（CSS 読込とは
+  独立した responsive レイアウトの課題。本 Issue では変更していない）。
 
 ## 6. fillgen
 
@@ -302,6 +310,7 @@ bump した後に行った。詳細は §12。
 - PDF 本文の表示・ページ送り・読書状態の復元。
 - EPUB / Markdown / テキストの取り込み。
 
+
 ## 11. 横スクロールのまとめ（390px）
 
 | slug | host `scrollWidth` / `clientWidth` | frame `scrollWidth` / `clientWidth` | frame 横スクロール |
@@ -310,7 +319,7 @@ bump した後に行った。詳細は §12。
 | qr-generator | 390 / 390 | 初回 686 / 390 → **390 / 390** | なし（Issue #867 修正後） |
 | sequential-png-preview | 390 / 390 | 390 / 390 | なし |
 | svg2tsx | 390 / 390 | 390 / 390 | なし |
-| pomodoro | 390 / 390 | 390 / 390 | なし（CSS は Issue #868 で修正。幅は元から 390） |
+| pomodoro | 390 / 390 | 390 / 390 | なし（CSS 未読込は Issue #868 で修正。幅は初回から 390） |
 | fillgen | 390 / 390 | 390 / 390 | なし |
 | pi-game | 390 / 390 | 初回 422 / 390 → **390 / 390** | なし（Issue #867 修正後） |
 | code-type-p5 | 390 / 390 | 390 / 390 | なし |
@@ -320,7 +329,7 @@ bump した後に行った。詳細は §12。
 host ページ自体はいずれも 390px で横スクロールしない。初回測定で
 `qr-generator` と `pi-game` の **frame 内だけ**が横にはみ出していたが、
 Issue #867 の Tool pin bump 後に再測定し、いずれも 390 = 390 になった（§12）。
-
+`pomodoro` は幅ではなく stylesheet の未読込が Issue #868 の対象だった（§13）。
 
 ## 12. Issue #867 再測定（qr-generator / pi-game の 390px 横スクロール）
 
@@ -381,3 +390,55 @@ host 側は iframe を置くだけで、`overflow: hidden` などで差分を隠
 
 - 390px 未満（例: 360px）での挙動。
 - qr-generator の Bulk / Email / Phone / WiFi 入力型での横幅。
+
+## 13. Issue #868 再測定（pomodoro の standalone CSS）
+
+- 再測定日: **2026-11-03**
+- 対象ブランチ: `868`（base `origin/release-0-8-1`）
+- 測定環境: ローカル preview `http://127.0.0.1:5182`
+  （`pnpm run build` → `node scripts/sync-cf-build-output.mjs` →
+  `vite preview --port 5182 --strictPort`）、`@playwright/test` 同梱の
+  bundled Chromium（headless、DPR 2）
+- viewport: **390×844** と **1440×900**
+- GA4 同意バンドの「拒否する」を先に押下し、activation gate
+  （「読み込みを開始する / Load the tool」）を押してから iframe を測定した。
+- タイマー中央をクリックしてカウントダウンを開始した（`15:00.00` → `14:57.36`）。
+
+### Tool pin
+
+| slug | 修正前 pin | 修正後 pin | Tool repo PR |
+| --- | --- | --- | --- |
+| pomodoro | `7ce10d7` | `d4add8a` | rebuildup/tool-pomodoro #10 |
+
+### 実測値
+
+| 項目 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `dist/index.html` の stylesheet | 参照なし（CSS asset も未生成） | `./assets/index-D94KFgki.css`（24.0KB / gzip 5.3KB） |
+| frame の見た目 | スタイル未適用（巨大な円弧 + 素のテキスト） | 円形タイマー・workflow bar・Dock・ラベルが styled |
+| 390×844 frame `scrollWidth` / `clientWidth` | 390 / 390 | 390 / 390 |
+| 1440×900 frame `scrollWidth` / `clientWidth` | 1440 / 1440（初回は幅のみ記録） | 1440 / 1440 |
+| console error | CSS 未読込に伴うものなし（storage の `SecurityError` は別件） | なし |
+
+### 原因と修正（Tool 側）
+
+コンポーネントは Tailwind utility class で書かれているが、旧 host
+（my-web-2025）の stylesheet を前提にしていた。standalone build には
+stylesheet の import がなく、iframe は別 document のため host の CSS も
+届かない。rebuildup/tool-pomodoro PR #10 で `tailwindcss` /
+`@tailwindcss/vite` 4.3.3 を devDependency に追加し、`src/styles.css` を
+entrypoint から import して `vite build` 時に CSS を同梱するようにした。
+
+host 側は gitlink の pin bump と manifest / inventory の更新のみ。
+
+### 証跡
+
+- [pomodoro-desktop.webp](./pomodoro-desktop.webp)（2880×1800）
+- [pomodoro-mobile.webp](./pomodoro-mobile.webp)（780×1688）
+
+未確認:
+
+- 390px で左の workflow progress bar がタイマー円弧に重なる
+  （CSS 読込とは独立した responsive レイアウトの課題。本 Issue では未変更）。
+- 1440×900 で progress bar の先頭項目が上端で切れる（縦方向）。
+- `Settings` / `Note` / `YouTube` パネル内の見た目。

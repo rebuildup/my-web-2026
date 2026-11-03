@@ -378,6 +378,7 @@
 			"www.sitemaps.org",
 			"www.stat.go.jp",
 			"www.w3.org",
+			"www.youtube-nocookie.com",
 			"www.youtube.com",
 			"x.com",
 			"yusuke-kim.com"
@@ -1345,6 +1346,15 @@
 				]
 			},
 			{
+				"url": "https://www.youtube-nocookie.com/embed",
+				"host": "www.youtube-nocookie.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/video-facade.ts"
+				]
+			},
+			{
 				"url": "https://www.youtube.com",
 				"host": "www.youtube.com",
 				"kind": "external",
@@ -1372,6 +1382,15 @@
 				]
 			},
 			{
+				"url": "https://www.youtube.com/watch?v=",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/video-facade.ts"
+				]
+			},
+			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
@@ -1392,22 +1411,35 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/tools/business-mail-block"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://www.youtube-nocookie.com/embed",
+			"https://www.youtube.com/watch?v="
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"www.youtube-nocookie.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W004 public-url-added",
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /tools/business-mail-block"
+				"message": "External URL added: https://www.youtube-nocookie.com/embed"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v="
 			}
 		]
 	}

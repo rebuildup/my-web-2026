@@ -30,6 +30,17 @@
 
 export const PET_POSITION_STORAGE_KEY = 'pet-position.v1';
 
+/** Sprite layout box in CSS px — the 192 x 208 atlas cell at DPR 2. */
+export const PET_FRAME_WIDTH = 96;
+export const PET_FRAME_HEIGHT = 104;
+
+/**
+ * Resting scale — the character shrinks so it occupies less of the
+ * page. Exported because the page's reserved corridor (`./safe-area.ts`)
+ * and the sprite's rendered footprint must agree.
+ */
+export const PET_REST_SCALE = 0.62;
+
 /** Space kept between the sprite and the viewport edge, in CSS px. */
 export const PET_POSITION_MARGIN = 24;
 

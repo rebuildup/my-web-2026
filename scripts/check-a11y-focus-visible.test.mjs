@@ -122,7 +122,7 @@ test('a visible outline is not a violation', () => {
 
 test('a focus block that says nothing about the outline keeps the browser default', () => {
 	const { violations } = scan(
-		'export const A = () => <a className={css({ _focusVisible: { backgroundColor: "bg.surface" } })} />;\n',
+		'export const A = () => <a className={css({ _focusVisible: { backgroundColor: "surface.raised" } })} />;\n',
 	);
 
 	assert.deepEqual(violations, []);

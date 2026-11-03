@@ -79,7 +79,7 @@ const itemClassName = css({
 	flexDirection: 'column',
 	gap: '1',
 	paddingBlockStart: '3',
-	borderTop: '1px solid {colors.border.subtle}',
+	borderTop: '1px solid {colors.border.divider}',
 });
 
 const itemTitleClassName = css({
@@ -123,7 +123,7 @@ export function IncidentList({ incidents, headingId = 'status-incidents' }: Inci
 				gap: '2',
 				marginBlockStart: '8',
 				paddingBlockStart: '6',
-				borderTop: '1px solid {colors.border.subtle}',
+				borderTop: '1px solid {colors.border.divider}',
 			})}
 		>
 			<h3 id={headingId} className={headingClassName}>

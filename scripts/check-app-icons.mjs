@@ -296,8 +296,9 @@ export async function checkAppIcons({ root = repoRoot } = {}) {
 	//     blue to a design token is an owner decision that has not been
 	//     taken (decision §6), and a gate that demanded it would fail
 	//     the build until it is.
-	//   - `canvas` IS compared against `palette`, because it is a design
-	//     token (`bg.canvas` light = `colors.neutral.0`).
+	//   - `canvas` IS compared against `palette`, because the raster
+	//     generator transcribes it from the palette (`colors.neutral.0`,
+	//     the platform-mandated opaque white — not `surface.canvas`).
 	const mark = faviconSource ? markColorFromFavicon(faviconSource) : null;
 	if (faviconSource && mark === null) {
 		errors.push(

@@ -1,0 +1,258 @@
+[
+	{
+		"page": "home",
+		"path": "/",
+		"width": 390,
+		"scheme": "light",
+		"dpr": 2,
+		"fullHeight": 6183,
+		"file": "home-390-light.webp",
+		"parts": 1,
+		"full": {
+			"total": 9573301,
+			"raw": 416134,
+			"solid": 152352,
+			"rawRatio": 0.04346818302276299,
+			"solidRatio": 0.01591425987754903
+		},
+		"viewport": {
+			"total": 1356434,
+			"raw": 96689,
+			"solid": 40982,
+			"rawRatio": 0.07128175790344388,
+			"solidRatio": 0.03021304390777583
+		},
+		"withoutColourSection": {
+			"total": 9573301,
+			"raw": 416134,
+			"solid": 152352,
+			"rawRatio": 0.04346818302276299,
+			"solidRatio": 0.01591425987754903
+		},
+		"excludedRects": 7
+	},
+	{
+		"page": "home",
+		"path": "/",
+		"width": 390,
+		"scheme": "dark",
+		"dpr": 2,
+		"fullHeight": 6183,
+		"file": "home-390-dark.webp",
+		"parts": 1,
+		"full": {
+			"total": 9573301,
+			"raw": 111926,
+			"solid": 84150,
+			"rawRatio": 0.011691474027610747,
+			"solidRatio": 0.008790071470645287
+		},
+		"viewport": {
+			"total": 1356434,
+			"raw": 45651,
+			"solid": 37326,
+			"rawRatio": 0.03365515756756318,
+			"solidRatio": 0.027517741371861807
+		},
+		"withoutColourSection": {
+			"total": 9573301,
+			"raw": 111926,
+			"solid": 84150,
+			"rawRatio": 0.011691474027610747,
+			"solidRatio": 0.008790071470645287
+		},
+		"excludedRects": 7
+	},
+	{
+		"page": "home",
+		"path": "/",
+		"width": 1440,
+		"scheme": "light",
+		"dpr": 2,
+		"fullHeight": 4331,
+		"file": "home-1440-light.webp",
+		"parts": 1,
+		"full": {
+			"total": 24847096,
+			"raw": 420924,
+			"solid": 157412,
+			"rawRatio": 0.016940571244221055,
+			"solidRatio": 0.00633522726358042
+		},
+		"viewport": {
+			"total": 5101807,
+			"raw": 125948,
+			"solid": 50056,
+			"rawRatio": 0.024686939353056672,
+			"solidRatio": 0.009811425638014138
+		},
+		"withoutColourSection": {
+			"total": 24847096,
+			"raw": 420924,
+			"solid": 157412,
+			"rawRatio": 0.016940571244221055,
+			"solidRatio": 0.00633522726358042
+		},
+		"excludedRects": 7
+	},
+	{
+		"page": "home",
+		"path": "/",
+		"width": 1440,
+		"scheme": "dark",
+		"dpr": 2,
+		"fullHeight": 4331,
+		"file": "home-1440-dark.webp",
+		"parts": 1,
+		"full": {
+			"total": 24847096,
+			"raw": 111908,
+			"solid": 84129,
+			"rawRatio": 0.004503866367321155,
+			"solidRatio": 0.0033858685135679436
+		},
+		"viewport": {
+			"total": 5101807,
+			"raw": 45608,
+			"solid": 37296,
+			"rawRatio": 0.008939577682966054,
+			"solidRatio": 0.007310351018766488
+		},
+		"withoutColourSection": {
+			"total": 24847096,
+			"raw": 111908,
+			"solid": 84129,
+			"rawRatio": 0.004503866367321155,
+			"solidRatio": 0.0033858685135679436
+		},
+		"excludedRects": 7
+	},
+	{
+		"page": "design-system",
+		"path": "/design-system",
+		"width": 390,
+		"scheme": "light",
+		"dpr": 2,
+		"fullHeight": 23192,
+		"file": "design-system-390-light-part*.webp",
+		"parts": 3,
+		"full": {
+			"total": 35633948,
+			"raw": 1650921,
+			"solid": 496232,
+			"rawRatio": 0.04633000530842106,
+			"solidRatio": 0.013925821522779346
+		},
+		"viewport": {
+			"total": 1398844,
+			"raw": 76662,
+			"solid": 22017,
+			"rawRatio": 0.05480382372873601,
+			"solidRatio": 0.015739424839367362
+		},
+		"withoutColourSection": {
+			"total": 31071756,
+			"raw": 1474241,
+			"solid": 455331,
+			"rawRatio": 0.04744633679538421,
+			"solidRatio": 0.014654176609780278
+		},
+		"excludedRects": 12
+	},
+	{
+		"page": "design-system",
+		"path": "/design-system",
+		"width": 390,
+		"scheme": "dark",
+		"dpr": 2,
+		"fullHeight": 23192,
+		"file": "design-system-390-dark-part*.webp",
+		"parts": 3,
+		"full": {
+			"total": 35633948,
+			"raw": 207669,
+			"solid": 161360,
+			"rawRatio": 0.005827841472968417,
+			"solidRatio": 0.004528266135427935
+		},
+		"viewport": {
+			"total": 1398844,
+			"raw": 14039,
+			"solid": 10887,
+			"rawRatio": 0.010036144130439134,
+			"solidRatio": 0.007782854985974133
+		},
+		"withoutColourSection": {
+			"total": 31071756,
+			"raw": 174634,
+			"solid": 134821,
+			"rawRatio": 0.005620345370889241,
+			"solidRatio": 0.0043390209423632186
+		},
+		"excludedRects": 12
+	},
+	{
+		"page": "design-system",
+		"path": "/design-system",
+		"width": 1440,
+		"scheme": "light",
+		"dpr": 2,
+		"fullHeight": 17039,
+		"file": "design-system-1440-light-part*.webp",
+		"parts": 3,
+		"full": {
+			"total": 97193555,
+			"raw": 1711214,
+			"solid": 512037,
+			"rawRatio": 0.017606249714808765,
+			"solidRatio": 0.005268219688023552
+		},
+		"viewport": {
+			"total": 5174644,
+			"raw": 102899,
+			"solid": 37600,
+			"rawRatio": 0.019885232684605937,
+			"solidRatio": 0.007266200341511416
+		},
+		"withoutColourSection": {
+			"total": 86426957,
+			"raw": 1527239,
+			"solid": 471094,
+			"rawRatio": 0.01767086396435316,
+			"solidRatio": 0.005450776197060831
+		},
+		"excludedRects": 12
+	},
+	{
+		"page": "design-system",
+		"path": "/design-system",
+		"width": 1440,
+		"scheme": "dark",
+		"dpr": 2,
+		"fullHeight": 17039,
+		"file": "design-system-1440-dark-part*.webp",
+		"parts": 3,
+		"full": {
+			"total": 97193555,
+			"raw": 206879,
+			"solid": 160512,
+			"rawRatio": 0.0021285259089453,
+			"solidRatio": 0.0016514675278623155
+		},
+		"viewport": {
+			"total": 5174644,
+			"raw": 14018,
+			"solid": 10890,
+			"rawRatio": 0.0027089786273219955,
+			"solidRatio": 0.0021044925989111524
+		},
+		"withoutColourSection": {
+			"total": 86426957,
+			"raw": 173830,
+			"solid": 133977,
+			"rawRatio": 0.0020112937679849126,
+			"solidRatio": 0.0015501760637019768
+		},
+		"excludedRects": 12
+	}
+]

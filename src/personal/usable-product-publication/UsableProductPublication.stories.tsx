@@ -89,7 +89,7 @@ const EYEBROW: Record<SectionKind, string> = {
 
 const pageClassName = css({
 	fontFamily: 'sans',
-	background: 'bg.canvas',
+	background: 'surface.canvas',
 	color: 'text.default',
 	padding: { base: '6', md: '10' },
 });
@@ -106,7 +106,7 @@ const headerClassName = css({
 	gap: '3',
 	borderBottomWidth: '1px',
 	borderBottomStyle: 'solid',
-	borderBottomColor: 'border.subtle',
+	borderBottomColor: 'border.divider',
 	paddingBottom: '6',
 });
 
@@ -172,7 +172,7 @@ const cardClassName = css({
 	gap: '2',
 	padding: '4',
 	borderRadius: '3',
-	background: 'bg.subtle',
+	background: 'surface.sunken',
 });
 
 const cardTitleClassName = css({

@@ -11,41 +11,32 @@ import { css } from '../../../../styled-system/css';
  * element with the matching CSS override applied as inline style,
  * so the visitor sees the state without having to hover / focus /
  * press anything. The override resolves the same semantic tokens
- * (`accent.interactive`, `border.strong`, `bg.surface`,
+ * (`signal.actionActive`, `border.strong`, `surface.raised`,
  * `border.focus`) the live `:hover` / `:active` /
  * `:focus-visible` rule would have applied — the demo is honest
  * about which token is doing the work.
  *
  * Tokens consumed:
  *
- *   - `bg.accent`            primary CTA fill, idle.
- *   - `accent.interactive`   CTA fill on hover / pressed / focus.
+ *   - `signal.action`        primary CTA fill, idle.
+ *   - `signal.actionActive`  CTA fill on hover / pressed / focus.
  *   - `text.inverse`         CTA foreground.
- *   - `bg.subtle`            secondary CTA fill, idle.
- *   - `text.default` / `bg.canvas`  secondary CTA ink inversion on hover.
- *   - `accent.interactive`   secondary CTA fill on press.
+ *   - `surface.control`      secondary CTA fill, idle.
+ *   - `text.default` / `surface.canvas`  secondary CTA ink inversion on hover.
+ *   - `signal.actionActive`  secondary CTA fill on press.
  *   - `border.focus`         keyboard focus ring.
  *   - `text.accent`          inline link text.
  *
- * Issue #804 (owner feedback, 2026-11-01): the secondary CTA used to
- * be `bg.canvas` (the page fill) plus a `border.subtle` hairline. On
- * the light appearance that is a near-white fill with a near-white
- * outline — it read as text, not as a button, and it is the same
- * "white border" the owner rejected on the surface samples. The
- * outline is gone; the button is now identified by fill alone:
- * `bg.subtle` at rest, an ink inversion on hover (`text.default` fill,
- * `bg.canvas` label), and `accent.interactive` under the finger on
- * press. The neutral ramp only has one step below `bg.subtle`, so a
- * neutral hover would have finished on `bg.surface` — a 1.05:1 fill
- * difference, i.e. no visible state at all — and a neutral press on
- * `bg.canvas` would have erased the button exactly when the visitor
- * pressed it. The hover and press steps therefore leave the neutral
- * ramp: hover uses the ink token, press uses the accent the primary
- * already uses for its own hover. A dedicated `bg.control` /
- * `bg.pressed` role is the follow-up that would keep both states
- * neutral, not this PR. The border tokens are no longer part of the
- * secondary contract; `border.focus` stays, because a keyboard focus
- * ring is a focus indicator, not a surface divider.
+ * Issue #764 (direction B): the secondary CTA now rests on
+ * `surface.control`, the role that means "a pressable fill" — a fill
+ * that gains contrast against the ground without a border. The
+ * previous fill (`surface.sunken`) still worked, but it named a
+ * recessed region, not a control; the two roles share a neighbourhood
+ * on the ladder and should not share a name. The outline is still
+ * gone: the button is identified by fill alone, the hover inverts to
+ * ink, and the press uses the operation hue. `border.focus` stays,
+ * because a keyboard focus ring is a focus indicator, not a surface
+ * divider.
  *
  * IMPORTANT: the inline `style` override does NOT bypass the
  * token layer. Each override still resolves to the same hex
@@ -65,7 +56,7 @@ export function InteractiveStates() {
 		>
 			<Row
 				label="Primary CTA — anchor"
-				caption="<a> filled with bg.accent (idle) → accent.interactive (hover / pressed) → outline 2px border.focus (focus)"
+				caption="<a> filled with signal.action (idle) → signal.actionActive (hover / pressed) → outline 2px border.focus (focus)"
 				overrides={primaryOverrides}
 				render={(state) => (
 					<a
@@ -81,7 +72,7 @@ export function InteractiveStates() {
 			/>
 			<Row
 				label="Secondary — anchor"
-				caption="<a> filled with bg.subtle, text.text.default → ink inversion on hover → accent.interactive on press. No border."
+				caption="<a> filled with surface.control, color text.default → ink inversion on hover → signal.actionActive on press. No border."
 				overrides={secondaryOverrides}
 				render={(state) => (
 					<a
@@ -142,8 +133,8 @@ type OverrideMap = Record<State, CSSProperties>;
  */
 const primaryOverrides: OverrideMap = {
 	default: {},
-	hover: { backgroundColor: 'var(--colors-accent-interactive)' },
-	pressed: { backgroundColor: 'var(--colors-accent-interactive)' },
+	hover: { backgroundColor: 'var(--colors-signal-action-active)' },
+	pressed: { backgroundColor: 'var(--colors-signal-action-active)' },
 	focus: {
 		outline: '2px solid var(--colors-border-focus)',
 		outlineOffset: '2px',
@@ -154,10 +145,10 @@ const secondaryOverrides: OverrideMap = {
 	default: {},
 	hover: {
 		backgroundColor: 'var(--colors-text-default)',
-		color: 'var(--colors-bg-canvas)',
+		color: 'var(--colors-surface-canvas)',
 	},
 	pressed: {
-		backgroundColor: 'var(--colors-accent-interactive)',
+		backgroundColor: 'var(--colors-signal-action-active)',
 		color: 'var(--colors-text-inverse)',
 	},
 	focus: {
@@ -282,7 +273,7 @@ function ctaPrimaryClass() {
 		borderRadius: 'md',
 		borderWidth: '0',
 		borderStyle: 'solid',
-		backgroundColor: 'bg.accent',
+		backgroundColor: 'signal.action',
 		color: 'text.inverse',
 		fontFamily: 'sans',
 		fontSize: 'sm',
@@ -290,10 +281,10 @@ function ctaPrimaryClass() {
 		textDecoration: 'none',
 		cursor: 'pointer',
 		_hover: {
-			backgroundColor: 'accent.interactive',
+			backgroundColor: 'signal.actionActive',
 		},
 		_active: {
-			backgroundColor: 'accent.interactive',
+			backgroundColor: 'signal.actionActive',
 		},
 		_focusVisible: {
 			outline: '2px solid {colors.border.focus}',
@@ -311,12 +302,13 @@ function ctaSecondaryClass() {
 		paddingBlock: '2',
 		paddingInline: '4',
 		borderRadius: 'md',
-		// Issue #804: fill, not outline. `bg.subtle` is one step off
-		// `bg.canvas`, so the button is identifiable at rest without a
-		// border; hover and press each move one step closer to the page.
+		// Issue #764: fill, not outline, and the fill names the role.
+		// `surface.control` gains contrast against the ground in both
+		// appearances, so the button is identifiable at rest without a
+		// border; hover and press each move one step further from it.
 		borderWidth: '0',
 		borderStyle: 'solid',
-		backgroundColor: 'bg.subtle',
+		backgroundColor: 'surface.control',
 		color: 'text.default',
 		fontFamily: 'sans',
 		fontSize: 'sm',
@@ -325,10 +317,10 @@ function ctaSecondaryClass() {
 		cursor: 'pointer',
 		_hover: {
 			backgroundColor: 'text.default',
-			color: 'bg.canvas',
+			color: 'surface.canvas',
 		},
 		_active: {
-			backgroundColor: 'accent.interactive',
+			backgroundColor: 'signal.actionActive',
 			color: 'text.inverse',
 		},
 		_focusVisible: {

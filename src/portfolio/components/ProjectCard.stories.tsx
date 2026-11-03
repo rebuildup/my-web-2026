@@ -13,8 +13,8 @@ import { ProjectCard } from './ProjectCard';
  * 2026-11-01 — no left rule, no left border), so what these fixtures
  * compare is now three separate things:
  *
- *   1. the PLANE — the card's own `bg.surface` against the page's
- *      `bg.canvas`, a luminance step rather than a hue, which is why it
+ *   1. the PLANE — the card's own `surface.raised` against the page's
+ *      `surface.canvas`, a luminance step rather than a hue, which is why it
  *      survives the greyscale frame below;
  *   2. the SHAPE — the `StateMark` silhouette, one per category
  *      (diamond / square / chevron / stacked bars);
@@ -79,12 +79,12 @@ const FACETS: readonly PortfolioFacet[] = ['design', 'develop', 'video', 'other'
 function Row({ facets }: { facets: readonly PortfolioFacet[] }) {
 	return (
 		<div
-			// The page canvas, so the card's `bg.surface` plane is visible
+			// The page canvas, so the card's `surface.raised` plane is visible
 			// against the same background it ships on.
 			className={css({
 				display: 'flex',
 				flexDirection: 'column',
-				backgroundColor: 'bg.canvas',
+				backgroundColor: 'surface.canvas',
 				padding: '6',
 			})}
 		>

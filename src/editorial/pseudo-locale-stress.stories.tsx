@@ -85,9 +85,9 @@ function Frame({
 				gap: '2',
 				padding: '4',
 				border: '1px solid',
-				borderColor: 'border.subtle',
+				borderColor: 'border.divider',
 				borderRadius: 'lg',
-				bg: 'bg.canvas',
+				bg: 'surface.canvas',
 				// An RTL box also gets `text-align: start`, the
 				// logical-direction behaviour a real RTL surface would
 				// rely on. That is a preview of the *container*, not an
@@ -114,7 +114,7 @@ function Frame({
 					h: '6',
 					px: '2',
 					borderRadius: 'full',
-					bg: 'bg.subtle',
+					bg: 'surface.sunken',
 					color: 'text.muted',
 					fontFamily: 'sans',
 					fontSize: 'xs',
@@ -158,7 +158,7 @@ function Frame({
 					h: '10',
 					px: '4',
 					borderRadius: 'md',
-					bg: 'bg.accent',
+					bg: 'signal.action',
 					color: 'text.inverse',
 					fontFamily: 'sans',
 					fontSize: 'sm',
@@ -183,7 +183,7 @@ function SurfaceRow({ sample }: { sample: PseudoSample }) {
 				gap: '2',
 				paddingBottom: '6',
 				borderBottom: '1px solid',
-				borderColor: 'border.subtle',
+				borderColor: 'border.divider',
 			})}
 		>
 			<span
@@ -292,7 +292,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.id}
@@ -301,7 +301,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.sourceCodePoints}
@@ -310,7 +310,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.expandedCodePoints}
@@ -319,7 +319,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.ratio.toFixed(3)}
@@ -328,7 +328,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.protectedCodePoints}
@@ -337,7 +337,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.expandedLongestWord}
@@ -346,7 +346,7 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
+								borderColor: 'border.divider',
 							})}
 						>
 							{row.bidi.isolates.lri} / {row.bidi.isolates.pdi}
@@ -355,8 +355,8 @@ function AuditTable() {
 							className={css({
 								padding: '2',
 								borderBottom: '1px solid',
-								borderColor: 'border.subtle',
-								color: row.ok ? 'text.default' : 'accent.negative',
+								borderColor: 'border.divider',
+								color: row.ok ? 'text.default' : 'signal.negative',
 							})}
 						>
 							{row.ok ? 'ok' : row.findings.join('; ')}

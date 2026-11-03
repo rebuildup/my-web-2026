@@ -30,7 +30,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * `accent.category.<facet>` to hint the category, and the owner's
  * decision is that a decorative left rule is not how a face is
  * distinguished; a left border is an equally forbidden replacement.
- * The card is now its own plane: `bg.surface` separates it from the
+ * The card is now its own plane: `surface.raised` separates it from the
  * page canvas, and the category is carried by the `StateMark`
  * silhouette plus the upper-case category word. **No category hue is
  * painted on this surface at all**, so removing colour removes
@@ -59,8 +59,8 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *
  * Issue #411 — the category cue is never colour alone. Before that
  * ticket the 4px rule was four hues of one identical bar: a visitor
- * who cannot separate `accent.category.writing` from
- * `accent.category.code` had nothing left to read the category from,
+ * who cannot separate `signal.content.amber` from
+ * `signal.content.cyan` had nothing left to read the category from,
  * because the coloured rule was the only element that carried it
  * (the facet pills name the FACET, which is a different word for the
  * same fact). The card pairs the category with a `StateMark` whose
@@ -113,10 +113,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
 			data-category={category ?? undefined}
 			className={css({
 				// Issue #794: the card is distinguished from the page by its
-				// own fill, not by a rule on its left edge. `bg.surface` is
+				// own fill, not by a rule on its left edge. `surface.raised` is
 				// the raised-plane role; the hairline `borderTop` below only
 				// separates one card from the next and is unchanged.
-				backgroundColor: 'bg.surface',
+				backgroundColor: 'surface.raised',
 				display: 'grid',
 				// Issue #767 — the two-column composition is the
 				// cover + copy layout. With no cover the copy is the only
@@ -128,7 +128,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				columnGap: { base: '0', md: '8' },
 				rowGap: { base: '4', md: '0' },
 				paddingBlock: '8',
-				borderTop: '1px solid {colors.border.subtle}',
+				borderTop: '1px solid {colors.border.divider}',
 			})}
 		>
 			{cover ? (

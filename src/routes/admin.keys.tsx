@@ -189,9 +189,9 @@ function CreateKeyForm({
 							fontSize: 'md',
 							paddingInline: '3',
 							paddingBlock: '2',
-							border: '1px solid {colors.border.subtle}',
+							border: '1px solid {colors.border.divider}',
 							borderRadius: '4',
-							background: 'bg.surface',
+							background: 'surface.raised',
 							color: 'text.default',
 						})}
 					/>
@@ -228,7 +228,7 @@ function CreateKeyForm({
 								gap: '4',
 								paddingBlock: '2',
 								paddingInline: '3',
-								border: '1px solid {colors.border.subtle}',
+								border: '1px solid {colors.border.divider}',
 								borderRadius: '4',
 							})}
 						>
@@ -257,7 +257,7 @@ function CreateKeyForm({
 						fontSize: 'md',
 						fontWeight: '600',
 						color: 'text.inverse',
-						background: 'bg.accent',
+						background: 'signal.action',
 						border: 'none',
 						borderRadius: '4',
 						paddingBlock: '3',
@@ -291,9 +291,9 @@ function CreateKeyForm({
 						gap: '2',
 						paddingBlock: '4',
 						paddingInline: '4',
-						border: '1px solid {colors.border.subtle}',
+						border: '1px solid {colors.border.divider}',
 						borderRadius: '4',
-						background: 'bg.surface',
+						background: 'surface.raised',
 					})}
 				>
 					<span
@@ -327,7 +327,7 @@ function CreateKeyForm({
 							fontSize: 'xs',
 							fontWeight: '600',
 							color: 'text.inverse',
-							background: 'bg.accent',
+							background: 'signal.action',
 							border: 'none',
 							borderRadius: 'full',
 							paddingInline: '3',

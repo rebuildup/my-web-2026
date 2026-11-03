@@ -103,6 +103,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run ogp:card:check',
 	'pnpm run index:boundary:check',
 	'pnpm run tools:check',
+	// Issue #764: the raw-colour literal gate lives beside the Tool
+	// Registry manifest gate in `quality/profile.yaml`, so the palette
+	// owner stays the only place a colour value is authored.
+	'pnpm run raw-color:check',
 	'pnpm run install:scripts:check',
 	'pnpm run wrangler:independence:check',
 	'pnpm run cloudflare:contract:check',

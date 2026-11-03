@@ -260,7 +260,7 @@
 	}
 
 	body {
-		background-color: var(--colors-bg-canvas);
+		background-color: var(--colors-surface-canvas);
 		/*
 		 * The room the fixed surfaces need at the end of the document.
 		 * The band is the canvas colour — the footer has no background of

@@ -109,7 +109,7 @@ const sectionClassName = css({
 	paddingBlockStart: '8',
 	borderTopWidth: '1',
 	borderTopStyle: 'solid',
-	borderTopColor: 'border.subtle',
+	borderTopColor: 'border.divider',
 });
 
 const caseFrameClassName = css({
@@ -117,8 +117,8 @@ const caseFrameClassName = css({
 	borderRadius: 'md',
 	borderWidth: '1',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.subtle',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.sunken',
 });
 
 const blockBadgeClassName = css({

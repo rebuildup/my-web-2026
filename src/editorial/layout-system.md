@@ -19,7 +19,7 @@ section          →  paddingBlock (responsive vertical rhythm)
       body        →  grid / flex + gap (no border / no background)
 ```
 
-A bordered "box" (1px `border.subtle` + padding + `borderRadius`)
+A bordered "box" (1px `border.divider` + padding + `borderRadius`)
 drawn around ordinary prose / list items is **forbidden** on public
 surfaces. It narrows the readable body, it duplicates the visual frame
 the surrounding section already provides (the §3.3 padding rhythm,
@@ -43,7 +43,7 @@ The exceptions that are allowed (state-specific UI):
   renderer, where the box communicates "this is code, not prose".
 - **Form fields** — `<input>` / `<textarea>` / `<select>` (only when
   ever introduced).
-- **Image placeholder / broken-image frame** — `bg.subtle` + a thin
+- **Image placeholder / broken-image frame** — `surface.sunken` + a thin
   border around the placeholder, so the layout does not collapse
   while the real image is missing.
 
@@ -67,7 +67,7 @@ to be readable.
 | --- | --- | --- |
 | `Container` | `src/editorial/primitives/Container.tsx` | Page-width wrapper (`max-width: 1024px` + responsive `paddingInline`). |
 | `SectionHeading` | `src/editorial/primitives/SectionHeading.tsx` | Section header (eyebrow / h2 / description) — `default` (single-column) or `spread` (4/12 + 8/12 grid). |
-| `Badge` | `src/editorial/primitives/Badge.tsx` | Inline status pill (`bg.subtle` / `bg.accent`). Status only — never a primary interactive element. |
+| `Badge` | `src/editorial/primitives/Badge.tsx` | Inline status pill (`surface.sunken` / `signal.action` fills). Status only — never a primary interactive element. |
 | `PublicNav` | `src/editorial/nav/PublicNav.tsx` | Chrome for the opt-in public pages (Issue #199): each page renders it explicitly — `/` and `/admin/*` carry no nav, so "site-wide" is the opt-in roster (`PUBLIC_NAV_ITEMS`), not a root mount. |
 
 ## 3. Canonical grid — the one grid every public page sits on
@@ -201,7 +201,7 @@ around the same surface, and never instead of the padding beat.
 Within a `spread` SectionHeading, the body column carries content
 that has internal `gap` tokens. Within `Container`-centric edges
 (`PortfolioList` and `PortfolioDetail`), the section-to-section
-separation is the **shared `borderTop: 1px solid {colors.border.subtle}`**
+separation is the **shared `borderTop: 1px solid {colors.border.divider}`**
 plus a `paddingBlock` (16 / 24). Do not invent per-card borders on
 top.
 
@@ -220,9 +220,9 @@ The reserved space for interaction visual feedback is the
 `_hover` / `_focusVisible` / `_active` states of the actual
 control:
 
-- Buttons: `border.subtle → border.strong` on hover; `outline` on
+- Buttons: `border.divider → border.strong` on hover; `outline` on
   focus-visible.
-- Toggles (chips / facet filters): `bg.surface → bg.accent` and
+- Toggles (chips / facet filters): `surface.raised → signal.action` and
   `text.default → text.inverse` plus `aria-pressed` for AT users.
 - Inline links: `text.muted → text.default` plus underline on hover;
   outline on focus-visible.
@@ -236,8 +236,8 @@ Before a public surface PR merges, the author must verify:
 
 1. No `borderWidth` / `borderStyle` / `borderColor` is used on a
    list item, column, or prose block (exceptions: §1, §4 controls).
-2. No `backgroundColor: 'bg.surface'` / `'bg.subtle'` / `'bg.muted'`
-   is used on a non-state surface (exceptions: §1).
+2. No `backgroundColor: 'surface.raised'` / `'surface.sunken'` /
+   `'surface.control'` is used on a non-state surface (exceptions: §1).
 3. New surfaces participate in the spread / default
    `SectionHeading` grid documented in §3 — not a competing grid:
    same Container edges, same 4/8 split, same left key lines.

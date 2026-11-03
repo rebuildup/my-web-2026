@@ -61,15 +61,15 @@ const keyStyle = css({
 	borderRadius: 'sm',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.canvas',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.canvas',
 	color: 'text.default',
 	cursor: 'pointer',
 	textAlign: 'left',
 	fontFamily: 'sans',
 	_hover: {
 		borderColor: 'border.strong',
-		backgroundColor: 'bg.surface',
+		backgroundColor: 'surface.raised',
 	},
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
@@ -77,7 +77,7 @@ const keyStyle = css({
 	},
 	'&[aria-pressed="true"]': {
 		borderColor: 'border.strong',
-		backgroundColor: 'accent.surface',
+		backgroundColor: 'surface.feature',
 	},
 });
 
@@ -101,7 +101,7 @@ const mutedActionStyle = css({
 });
 
 const blockedActionStyle = css({
-	color: 'accent.negative',
+	color: 'signal.negative',
 });
 
 function actionTone(action: KeyboardAction): string | undefined {
@@ -199,8 +199,8 @@ const detailShellStyle = css({
 	borderRadius: 'md',
 	borderWidth: '1px',
 	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	backgroundColor: 'bg.surface',
+	borderColor: 'border.divider',
+	backgroundColor: 'surface.raised',
 	minHeight: '40',
 });
 
@@ -225,7 +225,7 @@ const detailValueStyle = css({
 const codeStyle = css({
 	fontFamily: 'mono',
 	fontSize: 'xs',
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 	paddingInline: '1.5',
 	paddingBlock: '0.5',
 	borderRadius: 'sm',

@@ -23,7 +23,7 @@ function TokenSwatch({ name, value }: { name: string; value: string }) {
 					h: '12',
 					borderRadius: 'md',
 					border: '1px solid',
-					borderColor: 'border.subtle',
+					borderColor: 'border.divider',
 					backgroundColor: value,
 				})}
 			/>
@@ -61,17 +61,28 @@ function PaletteGrid() {
 
 function SemanticGrid() {
 	const semantic = {
-		'bg.canvas': 'var(--colors-bg-canvas)',
-		'bg.surface': 'var(--colors-bg-surface)',
-		'bg.subtle': 'var(--colors-bg-subtle)',
-		'bg.accent': 'var(--colors-bg-accent)',
-		'bg.inverse': 'var(--colors-bg-inverse)',
+		'surface.canvas': 'var(--colors-surface-canvas)',
+		'surface.sunken': 'var(--colors-surface-sunken)',
+		'surface.raised': 'var(--colors-surface-raised)',
+		'surface.control': 'var(--colors-surface-control)',
+		'surface.inverse': 'var(--colors-surface-inverse)',
+		'surface.feature': 'var(--colors-surface-feature)',
 		'text.default': 'var(--colors-text-default)',
 		'text.muted': 'var(--colors-text-muted)',
+		'text.disabled': 'var(--colors-text-disabled)',
+		'text.inverse': 'var(--colors-text-inverse)',
 		'text.accent': 'var(--colors-text-accent)',
-		'border.subtle': 'var(--colors-border-subtle)',
+		'border.divider': 'var(--colors-border-divider)',
 		'border.strong': 'var(--colors-border-strong)',
 		'border.focus': 'var(--colors-border-focus)',
+		'signal.action': 'var(--colors-signal-action)',
+		'signal.actionActive': 'var(--colors-signal-action-active)',
+		'signal.positive': 'var(--colors-signal-positive)',
+		'signal.negative': 'var(--colors-signal-negative)',
+		'signal.warning': 'var(--colors-signal-warning)',
+		'signal.content.rose': 'var(--colors-signal-content-rose)',
+		'signal.content.cyan': 'var(--colors-signal-content-cyan)',
+		'signal.content.amber': 'var(--colors-signal-content-amber)',
 	};
 	return (
 		<div className={css({ display: 'flex', flexWrap: 'wrap', gap: '4' })}>

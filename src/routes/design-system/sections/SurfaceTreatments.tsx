@@ -2,29 +2,28 @@ import { css } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
 
 /**
- * SurfaceTreatments — the three page-level surface tokens shown as
+ * SurfaceTreatments — the three PAGE-LEVEL surface tokens shown as
  * stacked bands, each painted in the token's own fill:
  *
- *   - `bg.canvas`    → the page background itself.
- *   - `bg.surface`   → the default card / panel tier.
- *   - `accent.surface` → the tinted feature surface (Hero / feature
- *                      card) per `colors.md` §"accent.* token roles".
+ *   - `surface.canvas`    → the page background itself.
+ *   - `surface.raised`    → the default card / panel tier.
+ *   - `surface.feature`   → the barely-tinted feature surface
+ *                          (Hero / feature card).
  *
- * Issue #804 (owner feedback, 2026-11-01): the three samples were
- * cards outlined with `border.subtle`. On the light appearance that
- * outline is a near-white hairline on a near-white page — the "white
- * border" the owner read as decoration rather than structure. The
- * samples are now full-width bands laid on one `bg.subtle` substrate,
- * with no border and no divider: the only difference between a band
- * and the substrate, and between one band and the next, is the fill.
- * A band whose fill cannot separate itself from the substrate is
- * therefore visible as exactly that, instead of being propped up by
- * an outline.
+ * Direction B (Issue #764) separates surfaces by fill alone. The
+ * bands are laid on one `surface.sunken` substrate, with no border and
+ * no divider: the only difference between a band and the substrate,
+ * and between one band and the next, is the fill. A band whose fill
+ * cannot separate itself from the substrate is therefore visible as
+ * exactly that, instead of being propped up by an outline.
  *
- * The substrate is `bg.subtle` rather than `bg.canvas` on purpose:
- * `bg.canvas` is the page fill, so a `bg.canvas` band would have no
- * edge at all against a `bg.canvas` substrate. On `bg.subtle` all
- * three tokens sit one step apart and can be compared honestly.
+ * The substrate is `surface.sunken` rather than `surface.canvas` on
+ * purpose: `surface.canvas` is the page fill, so a `surface.canvas`
+ * band would have no edge at all against a `surface.canvas` substrate.
+ * On `surface.sunken` the three page-level tokens sit one step apart
+ * and can be compared honestly. The remaining ladder steps
+ * (`surface.control`, `surface.inverse`) are listed with every other
+ * role in the colour section.
  */
 export function SurfaceTreatments() {
 	return (
@@ -36,37 +35,37 @@ export function SurfaceTreatments() {
 				display: 'grid',
 				gridTemplateColumns: '1fr',
 				rowGap: '3',
-				backgroundColor: 'bg.subtle',
+				backgroundColor: 'surface.sunken',
 			})}
 		>
 			<li>
 				<SurfaceBand
-					token="bg.canvas"
+					token="surface.canvas"
 					title="Canvas"
-					description="Page background. The lightest step in the light appearance; the deepest step in the dark one."
-					eyebrow="neutral.0"
+					description="Page background. The ground every other surface is measured against."
+					eyebrow="neutral.50"
 					badges={<Badge tone="neutral">Default</Badge>}
 					variant="canvas"
 				/>
 			</li>
 			<li>
 				<SurfaceBand
-					token="bg.surface"
-					title="Surface"
-					description="Card / panel background. The default tier feature code falls back to when no specific surface is called for."
-					eyebrow="neutral.50"
+					token="surface.raised"
+					title="Raised"
+					description="Card / panel background. One step above the ground; the default tier feature code falls back to."
+					eyebrow="neutral.25"
 					badges={<Badge tone="neutral">Default</Badge>}
-					variant="surface"
+					variant="raised"
 				/>
 			</li>
 			<li>
 				<SurfaceBand
-					token="accent.surface"
-					title="Accent surface"
-					description="Tinted feature surface — Hero / feature card background. Says 'this is the featured region' without competing with the primary CTA."
+					token="surface.feature"
+					title="Feature"
+					description="Barely-tinted featured region — Hero / feature card background. Not a signal, and never a large saturated fill."
 					eyebrow="brand.50"
 					badges={<Badge tone="accent">Featured</Badge>}
-					variant="accent"
+					variant="feature"
 				/>
 			</li>
 		</ul>
@@ -79,13 +78,13 @@ interface SurfaceBandProps {
 	description: string;
 	eyebrow: string;
 	badges: React.ReactNode;
-	variant: 'canvas' | 'surface' | 'accent';
+	variant: 'canvas' | 'raised' | 'feature';
 }
 
 const BAND_FILL = {
-	canvas: css({ backgroundColor: 'bg.canvas' }),
-	surface: css({ backgroundColor: 'bg.surface' }),
-	accent: css({ backgroundColor: 'accent.surface' }),
+	canvas: css({ backgroundColor: 'surface.canvas' }),
+	raised: css({ backgroundColor: 'surface.raised' }),
+	feature: css({ backgroundColor: 'surface.feature' }),
 };
 
 /**

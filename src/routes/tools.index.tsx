@@ -489,7 +489,7 @@ const cardLinkTextOnly = css({ ...cardLinkStyles, justifyContent: 'center' });
 /**
  * Screenshot box. `width` / `height` attributes reserve the aspect ratio
  * before the bytes arrive (the same CLS rule `PortfolioMedia` documents
- * for Issue #486), the fill is `bg.subtle` rather than a border, and
+ * for Issue #486), the fill is `surface.sunken` rather than a border, and
  * `borderRadius` matches the media primitive. No `srcset`: this
  * repository has no image-variant pipeline, so inventing one here would
  * promise renditions the delivery surface cannot produce.
@@ -499,7 +499,7 @@ const previewImage = css({
 	width: '100%',
 	height: 'auto',
 	borderRadius: '6px',
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 });
 
 const titleRow = css({
@@ -555,7 +555,7 @@ const badge = css({
 	color: 'text.muted',
 	paddingBlock: '1',
 	paddingInline: '2',
-	backgroundColor: 'bg.subtle',
+	backgroundColor: 'surface.sunken',
 	borderRadius: 'full',
 });
 

@@ -160,7 +160,7 @@ export function WaitingSurface({ retryHref }: WaitingSurfaceProps) {
 							borderRadius: 'md',
 							borderWidth: '1px',
 							borderStyle: 'solid',
-							borderColor: 'border.subtle',
+							borderColor: 'border.divider',
 							fontFamily: 'sans',
 							fontSize: 'sm',
 							fontWeight: '600',

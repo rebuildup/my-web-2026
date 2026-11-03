@@ -534,7 +534,11 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `seo:status:check` (Issue #419 — every shipped route must own a
   status row (200 / 404 / 500 / redirect / noindex) whose proof file
   cites it, so an unreviewed request class cannot pass silently) +
-  `tools:check` + `security:headers:check` + `install:scripts:check` +
+  `tools:check` + `raw-color:check` (Issue #764 — a raw colour
+  literal may appear only in the palette owner
+  `src/editorial/tokens.ts` or in a per-file, per-literal
+  `ALLOWED_RAW_COLORS` entry with a reason; a second occurrence or a
+  new literal in the same file still fails) + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `cf:config:drift:check` (Issue #480 — the production Worker
   surface, the development surface, the Workers Builds build / deploy

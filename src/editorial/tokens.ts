@@ -154,27 +154,6 @@ export const rawTokens = {
 			600: { value: '#ca8a04' },
 			700: { value: '#a16207' },
 		},
-		indigo: {
-			50: { value: '#eef2ff' },
-			300: { value: '#a5b4fc' },
-			500: { value: '#6366f1' },
-			600: { value: '#4f46e5' },
-			700: { value: '#4338ca' },
-		},
-		violet: {
-			50: { value: '#f5f3ff' },
-			300: { value: '#c4b5fd' },
-			500: { value: '#8b5cf6' },
-			600: { value: '#7c3aed' },
-			700: { value: '#6d28d9' },
-		},
-		teal: {
-			50: { value: '#f0fdfa' },
-			300: { value: '#5eead4' },
-			500: { value: '#14b8a6' },
-			600: { value: '#0d9488' },
-			700: { value: '#0f766e' },
-		},
 	},
 	fonts: {
 		// Body / UI default. Noto Sans JP is loaded via Google Fonts
@@ -259,3 +238,23 @@ export type RawTokens = typeof rawTokens;
  * The values are the same objects; this is a projection, not a copy.
  */
 export const spacingTokens = rawTokens.spacing;
+
+/**
+ * The two `theme-color` steps (Issue #764).
+ *
+ * `src/routes/__root.tsx` carries two `<meta name="theme-color">`
+ * entries — one per appearance — because the browser paints its own
+ * chrome before any CSS runs. A meta content value cannot be a
+ * `var(--colors-…)` reference, so the two steps must reach the
+ * document as literal hex. Reading them from here rather than
+ * re-typing them keeps the browser chrome on the same `surface.canvas`
+ * steps the semantic layer uses (`neutral.25` / `charcoal.950`); a
+ * palette change moves both together.
+ *
+ * This is the same projection shape as `spacingTokens`: importing it
+ * keeps the rest of the palette out of the client bundle.
+ */
+export const themeColorTokens = {
+	light: rawTokens.colors.neutral[25].value,
+	dark: rawTokens.colors.charcoal[950].value,
+} as const;

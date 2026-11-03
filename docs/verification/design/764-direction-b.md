@@ -1,5 +1,15 @@
 この記録は実測値であり owner 承認ではない。
 
+> **追記（2026-11-04、Issue #812 / colour system III）**
+> 本記録の計測は 2026-11-03 時点の 6 content family に対する実測であり、
+> その数値は当時の事実として残す。現在の層は content family を
+> `rose` / `cyan` / `amber` の **3** に絞り、`indigo` / `violet` / `teal`
+> を削除し、Tool を色面なし（`text.default`）とした。したがって
+> §1 の content role 一覧、§旧→新対応の末尾 2 行、および
+> `signal.content.{indigo,violet,teal}` のコントラスト行は
+> **現行の層には存在しない**。現行のマトリクスは 23 ペア ×
+> 2 appearance で、削除した 3 role 以外のペアは弱めていない。
+
 # Issue #764 Phase 1 — direction B 実装と計測
 
 - 日付: 2026-11-03

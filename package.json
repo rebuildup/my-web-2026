@@ -75,6 +75,7 @@
 		"phase-3-plus:flip:production": "node scripts/phase-3-plus-prod-flip.mjs",
 		"prepare": "panda codegen",
 		"preview": "vite preview",
+		"raw-color:check": "node scripts/check-raw-color.mjs",
 		"release:assets:check": "node scripts/check-release-assets.mjs",
 		"rotate:better-auth-secret": "node scripts/rotate-better-auth-secret.mjs",
 		"rotate:dev-better-auth-secret": "node scripts/rotate-dev-better-auth-secret.mjs",

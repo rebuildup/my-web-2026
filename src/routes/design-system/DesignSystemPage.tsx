@@ -25,7 +25,8 @@ import type { DesignSystemTokenData } from './tokens';
  *   - Hero          (page title + intro)
  *   - 01 Color roles      the monochrome role table (surface / text /
  *                          border), the operation + status signals,
- *                          and the six content-hue families with the
+ *                          and the three content-hue families (plus
+ *                          the Tool face, which has no hue) with the
  *                          deterministic assignment rule. Colour is
  *                          the subject here; the word, the shape
  *                          (StateMark) and the position carry the

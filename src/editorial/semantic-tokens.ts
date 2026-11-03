@@ -184,7 +184,9 @@ export const semanticTokens = {
 			},
 			// Content-derived hues. Which seed (category, slug) receives
 			// which family is decided by `content-signal.ts`, not here;
-			// the order is the stable assignment order.
+			// the order is the stable assignment order. Exactly three
+			// families (Issue #812, colour system III): a Tool has no
+			// colour face, so there is no fourth role to fall back to.
 			content: {
 				rose: {
 					value: { base: '{colors.rose.700}', _dark: '{colors.rose.300}' },
@@ -194,15 +196,6 @@ export const semanticTokens = {
 				},
 				amber: {
 					value: { base: '{colors.amber.700}', _dark: '{colors.amber.300}' },
-				},
-				indigo: {
-					value: { base: '{colors.indigo.700}', _dark: '{colors.indigo.300}' },
-				},
-				violet: {
-					value: { base: '{colors.violet.700}', _dark: '{colors.violet.300}' },
-				},
-				teal: {
-					value: { base: '{colors.teal.700}', _dark: '{colors.teal.300}' },
 				},
 			},
 		},

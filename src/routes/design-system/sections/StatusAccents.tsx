@@ -5,7 +5,7 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
 
 /**
  * StatusAccents — `positive / negative / warning` status marks
- * paired with the four content-category marks.
+ * paired with the three content-category marks and the Tool face.
  *
  * Issue #812: the state and the classification are carried by the
  * WORD and by the SHAPE (`StateMark`), never by colour alone. The
@@ -19,8 +19,10 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
  *   - `signal.positive`              OK / live status mark.
  *   - `signal.negative`              error / unreachable mark.
  *   - `signal.warning`               degraded status mark.
- *   - `signal.content.{rose,cyan,amber,indigo}`
- *                                   content-category mark.
+ *   - `signal.content.{rose,cyan,amber}`
+ *                                    content-category mark.
+ *   - `text.default`                 the Tool mark — a Tool is not a
+ *                                    content class and has no hue.
  */
 
 export function StatusAccents() {
@@ -249,7 +251,10 @@ const CATEGORY_MARK = {
 	design: css({ color: 'signal.content.rose' }),
 	code: css({ color: 'signal.content.cyan' }),
 	writing: css({ color: 'signal.content.amber' }),
-	tool: css({ color: 'signal.content.indigo' }),
+	// Colour system III (Issue #812): a Tool is not a content class, so
+	// it has no content hue. The silhouette still distinguishes it; the
+	// mark is painted with the operation ink.
+	tool: css({ color: 'text.default' }),
 } as const;
 
 function CategoryRow() {
@@ -273,9 +278,12 @@ function CategoryRow() {
 			family: 'writing',
 		},
 		{
-			token: contentSignalToken('tool'),
+			// Issue #812 / colour system III: a Tool is not a content
+			// class. It keeps its chevron silhouette but is painted with
+			// the operation ink, so there is no fourth content token.
+			token: 'text.default',
 			label: 'Tool',
-			note: '分類は chevron の形と語で示す。色は補助。',
+			note: '分類は chevron の形と語で示す。Tool はコンテンツ分類ではないため色面を持たず、操作の墨で描く。',
 			family: 'tool',
 		},
 	];
@@ -315,8 +323,8 @@ function CategoryRow() {
 						color: 'text.muted',
 					})}
 				>
-					Content category の 4
-					系統。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
+					Content category の 3 系統と、色面を持たない
+					Tool。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
 					色だけを変える表現は使いません。
 				</p>
 			</header>

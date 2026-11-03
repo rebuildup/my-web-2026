@@ -3,6 +3,7 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
+import { themeColorTokens } from '../editorial/tokens';
 import '../styles.css';
 
 /**
@@ -282,8 +283,16 @@ function RootComponent() {
 				    manifest's single `theme_color` cannot be
 				    appearance-conditional, so it carries the static
 				    accent step (`brand.700`) instead. */}
-				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcfd" />
-				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
+				<meta
+					name="theme-color"
+					media="(prefers-color-scheme: light)"
+					content={themeColorTokens.light}
+				/>
+				<meta
+					name="theme-color"
+					media="(prefers-color-scheme: dark)"
+					content={themeColorTokens.dark}
+				/>
 				{/* Measurement (Issue #171) behind the consent gate
 				    (Issue #495). `AnalyticsGate` renders nothing — no
 				    loader script, no route tracker, no identifier read —

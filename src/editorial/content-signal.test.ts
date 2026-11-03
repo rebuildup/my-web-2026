@@ -16,11 +16,19 @@ import {
  * and a seed-to-family mapping that does not move.
  */
 describe('content-signal assignment', () => {
-	it('keeps the four shipped categories on their existing hue', () => {
+	it('keeps the three content categories on their existing hue', () => {
 		expect(contentSignalFamily('design')).toBe('rose');
 		expect(contentSignalFamily('code')).toBe('cyan');
 		expect(contentSignalFamily('writing')).toBe('amber');
-		expect(contentSignalFamily('tool')).toBe('indigo');
+	});
+
+	it('gives a Tool no content hue of its own (colour system III)', () => {
+		// Issue #812 adopted three content families and made the Tool
+		// face ink. `tool` is therefore hashed like any unknown seed: the
+		// point is that it is not a CATEGORY with a fixed fourth hue.
+		expect(CONTENT_SIGNAL_FAMILIES).toHaveLength(3);
+		expect(CONTENT_SIGNAL_FAMILIES).toEqual(['rose', 'cyan', 'amber']);
+		expect(contentSignalToken('tool')).toMatch(/^signal\.content\.(rose|cyan|amber)$/);
 	});
 
 	it('assigns the same family for the same seed every time', () => {
@@ -49,9 +57,7 @@ describe('content-signal assignment', () => {
 
 	it('publishes the token path the semantic layer declares', () => {
 		expect(contentSignalToken('design')).toBe('signal.content.rose');
-		expect(contentSignalToken('unknown-seed')).toMatch(
-			/^signal\.content\.(rose|cyan|amber|indigo|violet|teal)$/,
-		);
+		expect(contentSignalToken('unknown-seed')).toMatch(/^signal\.content\.(rose|cyan|amber)$/);
 	});
 
 	it('hashes without depending on the platform', () => {

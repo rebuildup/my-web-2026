@@ -62,7 +62,7 @@
  *   node --experimental-strip-types scripts/check-a11y-contrast.mjs [--quiet] [--json=FILE]
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -280,27 +280,6 @@ export const CONTRAST_PAIRS = [
 		note: 'the writing content-family identifier',
 	},
 	{
-		fg: 'signal.content.indigo',
-		bg: 'surface.canvas',
-		kind: 'non-text',
-		threshold: 3,
-		note: 'the tool content-family identifier',
-	},
-	{
-		fg: 'signal.content.violet',
-		bg: 'surface.canvas',
-		kind: 'non-text',
-		threshold: 3,
-		note: 'a content-family identifier assigned by seed',
-	},
-	{
-		fg: 'signal.content.teal',
-		bg: 'surface.canvas',
-		kind: 'non-text',
-		threshold: 3,
-		note: 'a content-family identifier assigned by seed',
-	},
-	{
 		fg: 'signal.action',
 		bg: 'surface.canvas',
 		kind: 'non-text',
@@ -354,7 +333,7 @@ export const EXCLUDED_TOKENS = [
  */
 export const HUMAN_EVALUATION = [
 	'whether a status colour is semantically adequate (does "green" read as "ok" to a reader)',
-	'whether the four category hues stay distinguishable after a palette change',
+	'whether the three category hues stay distinguishable after a palette change',
 	'contrast of text over photography, gradients or images (not token pairs)',
 	'how the palette reads on an uncalibrated or low-quality display',
 ];

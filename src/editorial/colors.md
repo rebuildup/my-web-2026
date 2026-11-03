@@ -18,8 +18,9 @@ pretending they are one.
   neutral ladder. Depth is the fill of a surface, never a decorative
   rule.
 - **What is being signalled?** `signal.*` — the single operation hue,
-  three status hues, and six content hues assigned deterministically
-  from the content itself.
+  three status hues, and three content hues assigned deterministically
+  from the content itself. A Tool is not a content class: it has no
+  colour face and is painted with the operation ink (`text.default`).
 
 Colour is a marker, not a surface. A screen spends colour on **one
 line / one word / one pill**, never a large saturated fill, and its
@@ -35,14 +36,14 @@ for the measured colour area of the shipped surfaces.
 tokens.ts (raw)
   brand.* / neutral.* / charcoal.*
   positive.* / negative.* / warning.*
-  rose.* / cyan.* / amber.* / indigo.* / violet.* / teal.*
+  rose.* / cyan.* / amber.*
 
 semantic-tokens.ts (semantic) — every token is `{ value: { base, _dark } }`
   surface.{canvas,sunken,raised,control,inverse,feature}
   text.{default,muted,disabled,inverse,accent}
   border.{divider,strong,focus}
   signal.{action,actionActive,positive,negative,warning}
-  signal.content.{rose,cyan,amber,indigo,violet,teal}
+  signal.content.{rose,cyan,amber}
 
 components (consumers)
   bg="surface.raised"   color="signal.positive"   ...
@@ -92,14 +93,15 @@ a role is recorded, not hidden.
 | `signal.content.rose` | `rose.700` `#be185d` | `rose.300` `#f9a8d4` | Content hue — design, and any seed the assignment rule maps here. |
 | `signal.content.cyan` | `cyan.700` `#0e7490` | `cyan.300` `#67e8f9` | Content hue — code. |
 | `signal.content.amber` | `amber.700` `#a16207` | `amber.300` `#fde047` | Content hue — writing. |
-| `signal.content.indigo` | `indigo.700` `#4338ca` | `indigo.300` `#a5b4fc` | Content hue — tool. |
-| `signal.content.violet` | `violet.700` `#6d28d9` | `violet.300` `#c4b5fd` | Content hue — assigned by seed. |
-| `signal.content.teal` | `teal.700` `#0f766e` | `teal.300` `#5eead4` | Content hue — assigned by seed. |
 
-The six content hues are deliberately separable at a glance: pink ≈
-330°, cyan ≈ 190°, amber ≈ 50°, indigo ≈ 240°, violet ≈ 270°, teal ≈
-175°. They are identifiers, never a text-bearing background — a
-700/300 solid cannot carry normal-size text at 4.5 : 1.
+(A Tool is not a content class — colour system III, Issue #812. Its
+`StateMark` is painted with `text.default`, so there is no fourth
+content role.)
+
+The three content hues are deliberately separable at a glance: pink ≈
+330°, cyan ≈ 190°, amber ≈ 50°. They are identifiers, never a
+text-bearing background — a 700/300 solid cannot carry normal-size text
+at 4.5 : 1.
 
 ### These signals are reinforcement, never the message (Issue #411)
 
@@ -136,10 +138,11 @@ is visible rather than implied.
 `src/editorial/content-signal.ts` owns the rule:
 
 - a known category keeps its mapping (`design → rose`, `code → cyan`,
-  `writing → amber`, `tool → indigo`);
+  `writing → amber`); a Tool has no mapping because it is not a
+  content class;
 - any other seed is hashed with FNV-1a and reduced modulo the declared
   family list, so the same slug always gets the same family;
-- the assigned value is always one of the six declared roles, so a new
+- the assigned value is always one of the three declared roles, so a new
   category can never invent a colour.
 
 This is the correction the owner asked for: colour is not collapsed to
@@ -159,14 +162,14 @@ one fixed hue, and it is not re-assigned by hand per surface.
 | `accent.positive` | `signal.positive` |
 | `accent.negative` | `signal.negative` |
 | `accent.warning` | `signal.warning` |
-| `accent.category.{design,code,writing,tool}` | `signal.content.{rose,cyan,amber,indigo}` |
+| `accent.category.{design,code,writing}` | `signal.content.{rose,cyan,amber}` |
+| `accent.category.tool` | `text.default` (a Tool has no colour face) |
 | `border.subtle` | `border.divider` (structural use only) |
 | `border.strong` | `border.strong` |
 | `border.focus` | `border.focus` |
 | `text.{default,muted,inverse,accent}` | unchanged |
 | — | `surface.control` (new role: a pressable fill) |
 | — | `text.disabled` (new role: inactive text) |
-| — | `signal.content.{violet,teal}` (new content families) |
 
 `border.divider` is **not** a rename of a decorative hairline. The
 old `border.subtle` was used as a section separator in places; those
@@ -315,9 +318,6 @@ transcription.
 | `signal.content.rose` (non-text) | 5.77 : 1 | 10.85 : 1 |
 | `signal.content.cyan` (non-text) | 5.12 : 1 | 13.57 : 1 |
 | `signal.content.amber` (non-text) | 4.70 : 1 | 14.92 : 1 |
-| `signal.content.indigo` (non-text) | 7.55 : 1 | 9.87 : 1 |
-| `signal.content.violet` (non-text) | 6.79 : 1 | 10.65 : 1 |
-| `signal.content.teal` (non-text) | 5.23 : 1 | 13.30 : 1 |
 | `signal.action` vs `surface.canvas` (non-text) | 5.67 : 1 | 3.31 : 1 |
 | `border.divider` vs `surface.canvas` (excluded) | 1.18 : 1 | 1.14 : 1 |
 
@@ -394,6 +394,15 @@ threshold, excluding `svg` / `img` / `canvas` rectangles. A screen over
 > Entries before 2026-11-03 use the pre-#764 role names. They are kept
 > verbatim because they record what was true at the time; use the
 > old → new mapping above to read them against the current layer.
+
+- **2026-11-04** (Issue #812, colour system III) — The content layer
+  narrowed to **exactly three families** (`rose` / `cyan` / `amber`).
+  `indigo`, `violet` and `teal` were removed from `tokens.ts`,
+  `semantic-tokens.ts` and `CONTENT_SIGNAL_FAMILIES`, and a Tool lost
+  its colour face: its `StateMark` is painted with `text.default`, so
+  there is no fourth content role. The contrast matrix follows the
+  layer (23 pairs × 2 appearances, down from 26 by the three removed
+  roles — no remaining pair was weakened or dropped).
 
 - **2026-11-03** (Issue #764) — Direction B implemented. The semantic
   layer split into monochrome `surface.*` / `text.*` / `border.*` and

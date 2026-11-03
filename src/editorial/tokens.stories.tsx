@@ -83,9 +83,6 @@ function SemanticGrid() {
 		'signal.content.rose': 'var(--colors-signal-content-rose)',
 		'signal.content.cyan': 'var(--colors-signal-content-cyan)',
 		'signal.content.amber': 'var(--colors-signal-content-amber)',
-		'signal.content.indigo': 'var(--colors-signal-content-indigo)',
-		'signal.content.violet': 'var(--colors-signal-content-violet)',
-		'signal.content.teal': 'var(--colors-signal-content-teal)',
 	};
 	return (
 		<div className={css({ display: 'flex', flexWrap: 'wrap', gap: '4' })}>

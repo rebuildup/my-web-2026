@@ -1,5 +1,5 @@
 /**
- * Content-signal assignment (Issue #764, direction B).
+ * Content-signal assignment (Issue #764, direction B / colour system III).
  *
  * Direction B keeps the page monochrome and treats saturated colour as
  * a signal. A CONTENT signal — "this project is a design project",
@@ -13,9 +13,11 @@
  *   - a seed (a category id or a slug) maps to one of the families in
  *     `signal.content.*` deterministically — the same seed always
  *     produces the same family, in every session, on every machine;
- *   - the four shipped category ids keep the hue they already had
- *     (`design` rose, `code` cyan, `writing` amber, `tool` indigo), so
- *     this change renames the path without re-colouring the content;
+ *   - the THREE shipped content categories keep the hue they already
+ *     had (`design` rose, `code` cyan, `writing` amber). Issue #812
+ *     adopted colour system III, which fixes the content classes at
+ *     exactly three: a Tool is not a content class and therefore has
+ *     no colour face at all — the operation hue (ink) carries it;
  *   - an unknown seed is hashed (FNV-1a, 32 bit) and indexed into the
  *     family list. The hash is an assignment function, not a security
  *     function: collisions are expected and harmless, and there is no
@@ -38,28 +40,27 @@
 /**
  * The stable assignment order. This order is part of the contract:
  * reordering it re-colours every unknown seed, so it is append-only.
+ *
+ * Exactly three families is also a contract (Issue #812): the owner
+ * adopted colour system III, in which a single screen carries at most
+ * three content hues. Adding a fourth family here would re-introduce
+ * the reviewed-and-rejected variation.
  */
-export const CONTENT_SIGNAL_FAMILIES = [
-	'rose',
-	'cyan',
-	'amber',
-	'indigo',
-	'violet',
-	'teal',
-] as const;
+export const CONTENT_SIGNAL_FAMILIES = ['rose', 'cyan', 'amber'] as const;
 
 export type ContentSignalFamily = (typeof CONTENT_SIGNAL_FAMILIES)[number];
 
 /**
- * The four shipped category ids, kept on their existing hue. A new
- * category may be added here when its hue is a deliberate decision;
- * otherwise it is hashed like any other seed.
+ * The three shipped content categories, kept on their existing hue. A
+ * Tool is deliberately absent: under colour system III the Tool face
+ * is ink, not a content hue, so a `tool` seed falls through the hash
+ * path like any other unknown seed rather than being granted a fourth
+ * colour.
  */
 const CATEGORY_FAMILY: Readonly<Record<string, ContentSignalFamily>> = {
 	design: 'rose',
 	code: 'cyan',
 	writing: 'amber',
-	tool: 'indigo',
 };
 
 /**

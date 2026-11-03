@@ -143,6 +143,20 @@ export const ALLOWED_RAW_COLORS = [
 		reason:
 			'the drag lift on the pet sprite: an alpha shadow used while a pointer holds the sprite, in both appearances. The shadow ramp is a box-shadow scale and cannot express a `drop-shadow()` colour, so it stays a literal at the one place that lifts.',
 	},
+	{
+		file: 'src/routes/__root.tsx',
+		literal: '#fcfcfd',
+		max: 1,
+		reason:
+			'the light `theme-color` meta value: the browser paints its own chrome before CSS runs, and `content` cannot take a `var()`. The membership check lives in `scripts/check-app-icons.mjs`, which fails when this literal stops existing in the palette.',
+	},
+	{
+		file: 'src/routes/__root.tsx',
+		literal: '#0a0b0e',
+		max: 1,
+		reason:
+			'the dark `theme-color` meta value: the dark counterpart of the #fcfcfd entry, admitted for the same reason and verified against the palette by `scripts/check-app-icons.mjs`.',
+	},
 ];
 
 /* ------------------------------------------------------------------ *

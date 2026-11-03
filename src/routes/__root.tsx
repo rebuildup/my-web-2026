@@ -3,7 +3,6 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
-import { themeColorTokens } from '../editorial/tokens';
 import '../styles.css';
 
 /**
@@ -282,17 +281,21 @@ function RootComponent() {
 				    (dark). The
 				    manifest's single `theme_color` cannot be
 				    appearance-conditional, so it carries the static
-				    accent step (`brand.700`) instead. */}
-				<meta
-					name="theme-color"
-					media="(prefers-color-scheme: light)"
-					content={themeColorTokens.light}
-				/>
-				<meta
-					name="theme-color"
-					media="(prefers-color-scheme: dark)"
-					content={themeColorTokens.dark}
-				/>
+				    accent step (`brand.700`) instead.
+
+				    The two values are written as literals ON PURPOSE.
+				    `content` cannot take `var()`, and importing the
+				    palette here would put the whole token module in the
+				    client bundle for two constants. The duplication is
+				    gate-checked instead: `scripts/check-app-icons.mjs`
+				    fails when either literal stops existing in
+				    `src/editorial/tokens.ts`, and
+				    `scripts/check-raw-color.mjs` carries the two
+				    allowlist entries that admit exactly these values in
+				    exactly this file. Do not "fix" this into an import
+				    without moving that membership check with it. */}
+				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcfd" />
+				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
 				{/* Measurement (Issue #171) behind the consent gate
 				    (Issue #495). `AnalyticsGate` renders nothing — no
 				    loader script, no route tracker, no identifier read —

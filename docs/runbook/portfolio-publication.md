@@ -25,7 +25,7 @@ production 以外の環境。
 | credential 名 | 用途 | 備考 |
 | --- | --- | --- |
 | `CLOUDFLARE_D1_API_TOKEN` | production D1 への read / write | D1 専用。Worker deploy token とは別 |
-| `CLOUDFLARE_API_TOKEN` | R2 object の put / list | R2 書き込み用 |
+| `CLOUDFLARE_R2_API_TOKEN` | R2 object の put / list | R2 専用。`scripts/_r2.mjs` が production の mutation 前に必須検査する（無ければ書き込み前に throw）。`cf` の子プロセスへはこの値を `CLOUDFLARE_API_TOKEN` として渡す |
 | `CLOUDFLARE_ACCOUNT_ID` | 対象 account の固定 | `scripts/_cloudflare-identity.mjs` が正とする値と一致すること |
 
 - 値の入手元は **Infisical**（ADR-0015 §1）。本 runbook は**値を一切書かない**。

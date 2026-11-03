@@ -1,7 +1,7 @@
 # 旧サイト メディア移行の検証記録 (Issue #850)
 
 > `scripts/migrate-legacy-media.mjs` が旧 SQLite の `media` BLOB を R2 へ
-> 移し `portfolio_media` 行を生成する行为的、実測値に基づく検証記録。
+> 移し `portfolio_media` 行を生成する行為の、実測値に基づく検証記録。
 > 検証画像: `docs/verification/portfolio/legacy-media-migration.webp`。
 > 手順そのもの: [`docs/runbook/legacy-media-migration.md`](../../runbook/legacy-media-migration.md)。
 
@@ -35,7 +35,7 @@
 skip 166 行は**すべて**旧 automatic test fixture である。`portfolio_project`
 行が 1 件も作られないので、`portfolio_media` の外部キー制約（local D1 の
 `PRAGMA foreign_keys` = 1、欠けた参照は `FOREIGN KEY constraint failed` で
-拒否される），元数据的にも成立しない。
+拒否される），データ上も成立しない。
 
 さらに 1 行が **配信不能 MIME**（`image/svg+xml` 1 件）で skip された。
 `src/http/media/router.ts` が配信する MIME は png / jpeg / webp / gif / avif /
@@ -141,3 +141,35 @@ production の apply は `--execute` が無ければ**書き込み前に**拒否
   そのまま使い、`portfolio/` が公開 prefix でなくなった時に書かなくなること
 - SQL の escape と、cover リセット → upsert の順序
 - レポートがバイト・row 本文・key を含まないこと
+
+## 8. production の現状（2026-11-04 時点・未適用）
+
+この節は **local 検証とは別の事実**を記録する。production は移行済みではない。
+
+| 項目 | production の実測 | local（本記録） |
+| --- | --- | --- |
+| `portfolio_project` 行 | 3 | 60 |
+| `portfolio_media` 行 | 3 | 130 |
+| `portfolio_link` 行 | 8 | （本文移行分） |
+| R2 `portfolio/` object | 未移行 | 116 |
+| 本文移行（`migrate-portfolio-from-2025.mjs --apply --target=remote`） | 未適用 | 適用済み |
+| メディア移行（`--apply --target=production --execute`） | 未実行 | 適用済み |
+
+読み取りは `cf` の current credential で行った（status-only、書き込み 0 件）。
+**production の書き込みは 1 件も行っていない。**
+
+未実行の理由は 3 つあり、どれも agent の権限では解消できない。
+
+1. `CLOUDFLARE_R2_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` が Infisical の
+   `dev` / `prod` のどちらにも無い。`scripts/_r2.mjs` は production の
+   mutation にこの 2 つを必須とし、無ければ書き込み前に throw する。
+2. 本文移行が production に適用されていない（project 行 3 件）。メディア移行は
+   project 行を FK で要求するため、本文移行が先に必要（runbook §4.2）。
+3. R2 custom domain が有効な間、`portfolio/` への upload は**匿名取得可能な
+   公開と同じ結果**になる（runbook §11.1）。実行は owner の判断と
+   `--execute` の明示が前提。
+
+したがって Issue #850 の受け入れ条件は **local について満たし、production に
+ついては未達**である。実行手順は
+[`docs/runbook/portfolio-publication.md`](../../runbook/portfolio-publication.md)
+に、必要な credential と順序を含めて記載した。

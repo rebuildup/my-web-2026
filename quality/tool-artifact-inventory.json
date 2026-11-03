@@ -259,7 +259,7 @@
 			}
 		},
 		"pomodoro": {
-			"pinned_sha": "7ce10d78dc6efc1a71aebd2051e29b80216dfd2c",
+			"pinned_sha": "d4add8a1f19b4a4ffb3c77c745f140796120adc7",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -269,7 +269,7 @@
 			"dependencies": {
 				"status": "verified",
 				"lockfile": "pnpm-lock.yaml",
-				"lockfile_sha256": "e725004c619289985936cad8efce2491752e577cea255e27ec32023651048220",
+				"lockfile_sha256": "3ad951d176fc988ef671ad1354a20d4f8e9d6c7ff3c59ec0835bf5fef34570b3",
 				"runtime": ["lucide-react", "react", "react-dom"]
 			},
 			"outbound": {

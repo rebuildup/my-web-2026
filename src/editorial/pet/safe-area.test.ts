@@ -21,12 +21,13 @@ describe('pet safe area (Issue #767)', () => {
 		['base', 16],
 		['md', 24],
 		['lg', 32],
-	] as const)('subtracts the %s page padding the Container already applies', (breakpoint, padding) => {
-		expect(PET_PAGE_PADDING_PX[breakpoint]).toBe(padding);
-		expect(PET_SAFE_AREA_INLINE_END[breakpoint]).toBe(
-			`${PET_RESERVED_FOOTPRINT_PX - padding}px`,
-		);
-	});
+	] as const)(
+		'subtracts the %s page padding the Container already applies',
+		(breakpoint, padding) => {
+			expect(PET_PAGE_PADDING_PX[breakpoint]).toBe(padding);
+			expect(PET_SAFE_AREA_INLINE_END[breakpoint]).toBe(`${PET_RESERVED_FOOTPRINT_PX - padding}px`);
+		},
+	);
 
 	it('needs no extra corridor once the centred column clears the box', () => {
 		expect(PET_SAFE_AREA_INLINE_END.xl).toBe('0px');

@@ -124,9 +124,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				// narrow column and leave the rest of the row empty. One
 				// column lets the copy — and its title — use the card's
 				// full width.
-				gridTemplateColumns: cover
-					? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' }
-					: '1fr',
+				gridTemplateColumns: cover ? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
 				columnGap: { base: '0', md: '8' },
 				rowGap: { base: '4', md: '0' },
 				paddingBlock: '8',

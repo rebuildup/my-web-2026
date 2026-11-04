@@ -270,34 +270,60 @@ function cardSnapshot(observations: Awaited<ReturnType<typeof observeAll>>) {
 	);
 }
 
-describe('Open Graph / Twitter card (Issue #421)', () => {
-	it('publishes a card the contract can evaluate on every declared surface', async () => {
-		const observations = await observeAll();
-		const result = evaluateSocialCards({ surfaces: SURFACES, observations, policy: POLICY });
+/**
+ * Wall-clock budget for the two `observeAll()` sweeps below, which
+ * render EVERY declared surface sequentially inside one test.
+ *
+ * Triage (Issue #900, measured 2026-11-04 on this box):
+ *   - Alone: the whole file's 13 tests finish in 3 170 ms — the
+ *     sweeps are NOT genuinely slow.
+ *   - In one invocation with nine other cold-start files at load ~12:
+ *     the first sweep hit `Test timed out in 5000ms.` at 5 007 ms
+ *     (the wall, no failing assertion) while the sibling sweep in the
+ *     same file passed — contention, not work.
+ * So the verdict is LOAD-INDUCED, and the budget is raised FOR THESE
+ * TWO TESTS ONLY (20 000 ms = 4× the default and ~4× the observed
+ * worst). `testTimeout` stays at the 5 000 ms default everywhere else
+ * — no global raise, no skip, no retry, identical assertions.
+ */
+const SURFACE_SWEEP_TIMEOUT_MS = 20_000;
 
-		expect(
-			findingsOf(result.findings),
-			`social card findings:\n${findingsOf(result.findings)
-				.map((item) => `  [${item.rule}] ${item.path}: ${item.message}`)
-				.join('\n')}`,
-		).toEqual([]);
-		expect(result.rows.length).toBe(SURFACES.length);
-	});
+describe('Open Graph / Twitter card (Issue #421)', () => {
+	it(
+		'publishes a card the contract can evaluate on every declared surface',
+		{ timeout: SURFACE_SWEEP_TIMEOUT_MS },
+		async () => {
+			const observations = await observeAll();
+			const result = evaluateSocialCards({ surfaces: SURFACES, observations, policy: POLICY });
+
+			expect(
+				findingsOf(result.findings),
+				`social card findings:\n${findingsOf(result.findings)
+					.map((item) => `  [${item.rule}] ${item.path}: ${item.message}`)
+					.join('\n')}`,
+			).toEqual([]);
+			expect(result.rows.length).toBe(SURFACES.length);
+		},
+	);
 
 	// The Issue in one row: a project with no composable media still has
 	// to unfurl with an image, and the report has to be able to say the
 	// card came from the fallback rather than from the project.
-	it('matches the committed snapshot the verification report renders', async () => {
-		const observations = await observeAll();
-		// Regenerating the fixture: workerd cannot write the repo's
-		// filesystem, so the bootstrap is done by hand — replace this
-		// assertion with
-		//   expect(JSON.stringify(cardSnapshot(observations), null, '\t')).toBe('BOOTSTRAP')
-		// run the case, and copy the printed `+ Received` block over
-		// `fixtures/ogp-card-snapshot.json`. Read that diff in the PR
-		// body: it is the document the report screenshot claims.
-		expect(cardSnapshot(observations)).toEqual(SNAPSHOT);
-	});
+	it(
+		'matches the committed snapshot the verification report renders',
+		{ timeout: SURFACE_SWEEP_TIMEOUT_MS },
+		async () => {
+			const observations = await observeAll();
+			// Regenerating the fixture: workerd cannot write the repo's
+			// filesystem, so the bootstrap is done by hand — replace this
+			// assertion with
+			//   expect(JSON.stringify(cardSnapshot(observations), null, '\t')).toBe('BOOTSTRAP')
+			// run the case, and copy the printed `+ Received` block over
+			// `fixtures/ogp-card-snapshot.json`. Read that diff in the PR
+			// body: it is the document the report screenshot claims.
+			expect(cardSnapshot(observations)).toEqual(SNAPSHOT);
+		},
+	);
 
 	it('falls back to the site card for a project with no composable media', async () => {
 		const surface = surfaceFor('/portfolio/$slug');

@@ -163,10 +163,13 @@ const linkStyle = css({
 	fontSize: 'sm',
 	color: 'text.accent',
 	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '2px',
 	},
+	_hover: { textDecorationThickness: '2px' },
 });
 
 const frameStyle = css({

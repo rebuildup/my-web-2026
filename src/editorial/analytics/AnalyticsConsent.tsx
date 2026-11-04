@@ -67,6 +67,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import { Container } from '../primitives/Container';
+import { StateMark } from '../primitives/StateMark';
 import {
 	GoogleAnalytics,
 	GoogleAnalyticsRouteTracker,
@@ -329,19 +330,28 @@ export function AnalyticsConsentPanel({
 					</p>
 					{/* Status region: the decision and any storage failure are
 					    announced politely, and neither moves focus — a visitor who
-					    activated a button should keep their place in the page. */}
+					    activated a button should keep their place in the page.
+					    A storage failure is a FAILURE, and under the monochrome
+					    ground (Issue #887) a failure reads as ink: the region
+					    therefore carries the `unreachable` silhouette, the word
+					    already in the copy, and strong ink against the muted
+					    status text of a healthy panel. */}
 					<p
 						aria-live="polite"
 						data-testid="analytics-consent-status"
 						className={css({
 							margin: '0',
 							marginBlockStart: '2',
+							display: statusMessage ? 'flex' : 'block',
+							alignItems: 'center',
+							gap: '2',
 							fontFamily: 'sans',
 							fontSize: 'xs',
 							lineHeight: '1.6',
-							color: writeFailed ? 'accent.negative' : 'text.muted',
+							color: statusMessage ? 'text.default' : 'text.muted',
 						})}
 					>
+						{statusMessage ? <StateMark kind="unreachable" size="sm" /> : null}
 						{statusMessage}
 					</p>
 				</div>

@@ -196,27 +196,47 @@ export function renderSsrFailureDocument(options: SsrFailureDocumentOptions = {}
 <style>
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background: #f7f5f0; color: #1d1c1a; font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif; }
+/*
+ * The monochrome ground (Issue #887). Every value below is the
+ * SHIPPED mono.* role from src/editorial/tokens.ts — the same
+ * roles the hydrated surface reads through bg.canvas /
+ * text.default / text.muted / border.subtle / border.strong —
+ * written as literals because this document is emitted outside React
+ * and outside Panda, and it must not fetch the stylesheet that failed
+ * in the first place. Keep the two lists in step: a token edit in
+ * tokens.ts is an edit here too.
+ */
+body { margin: 0; background: #edede8; color: #101012; font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 720px; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
-.eyebrow { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #6b675f; }
+.eyebrow { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #5f5f68; }
 h1 { margin: 0.5rem 0 0; font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.15; letter-spacing: -0.025em; }
-.description { margin: 1rem 0 0; line-height: 1.6; color: #4b4740; }
-.meta { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d8d3c8; }
-.status-line { margin: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.875rem; color: #4b4740; }
-.status { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #8a5a00; }
+.description { margin: 1rem 0 0; line-height: 1.6; color: #5f5f68; }
+.meta { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #c9c9c2; }
+.status-line { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.875rem; color: #5f5f68; }
+.status { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #101012; }
+/* The status hue is gone (Issue #887): severity is carried by the
+   silhouette beside the label, by the words, and by strong ink. The
+   polygon is StateMark#degraded, copied rather than shared because
+   this document cannot import the primitive (no React, no Panda). */
+.status-mark { display: inline-block; flex-shrink: 0; width: 8px; height: 8px; color: #101012; background: currentColor; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
 nav ul, .alternatives { margin: 0.5rem 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; }
-a { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0 0.75rem; border: 1px solid #c9c3b6; border-radius: 0.375rem; color: #1d1c1a; text-decoration: none; font-size: 0.875rem; font-weight: 600; background: #fffdf8; }
-a:hover { border-color: #8a8478; text-decoration: underline; }
-a:focus-visible { outline: 2px solid #2b6cb0; outline-offset: 2px; }
-.alternatives a { font-weight: 400; }
-h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: #6b675f; }
-.note { margin: 1.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: #6b675f; }
+a { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0 0.75rem; border: 1px solid #c9c9c2; border-radius: 0.375rem; color: #101012; text-decoration: none; font-size: 0.875rem; font-weight: 600; background: #ffffff; }
+a:hover { border-color: #74747d; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 2px; }
+a:focus-visible { outline: 2px solid #101012; outline-offset: 2px; }
+.alternatives a { font-weight: 400; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+.alternatives a:hover { text-decoration-thickness: 2px; }
+h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: #5f5f68; }
+.note { margin: 1.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: #5f5f68; }
 @media (prefers-color-scheme: dark) {
-  body { background: #171614; color: #f4f1ea; }
-  .description, .status-line { color: #c9c4b9; }
-  .eyebrow, h2, .note { color: #a39d90; }
-  .meta { border-top-color: #3a3733; }
-  a { background: #23211e; color: #f4f1ea; border-color: #4a463f; }
+  body { background: #0a0a0c; color: #f2f2ef; }
+  .description, .status-line { color: #8d8d96; }
+  .eyebrow, h2, .note { color: #8d8d96; }
+  .status { color: #f2f2ef; }
+  .status-mark { color: #f2f2ef; }
+  .meta { border-top-color: #33333a; }
+  a { background: #1a1a1e; color: #f2f2ef; border-color: #33333a; }
+  a:hover { border-color: #62626c; }
+  a:focus-visible { outline-color: #f2f2ef; }
 }
 </style>
 </head>
@@ -227,7 +247,7 @@ h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transf
 <h1 id="${headingId}">${escapeHtml(definition.headline)}</h1>
 <p id="${descriptionId}" class="description" data-error-state-description>${escapeHtml(definition.description)}</p>
 <div class="meta">
-<p class="status-line" data-error-state-status><span class="status">${escapeHtml(definition.statusLabel)}</span><span>${escapeHtml(definition.condition)}</span></p>
+<p class="status-line" data-error-state-status><span class="status-mark" aria-hidden="true"></span><span class="status">${escapeHtml(definition.statusLabel)}</span><span>${escapeHtml(definition.condition)}</span></p>
 <nav aria-label="復旧 / Recovery" data-error-state-recovery>
 <ul>
 <li><a href="${escapeHtml(retryHref)}" data-error-action="retry">再試行する / Try again</a></li>

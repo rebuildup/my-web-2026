@@ -142,11 +142,16 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 											<a
 												href={cap.href}
 												className={css({
+													// Issue #887: `text.accent` is INK now, so the
+													// link can no longer be told apart by hue. The
+													// underline is permanent; hover only fattens it.
 													color: 'text.accent',
-													textDecoration: 'none',
+													textDecoration: 'underline',
+													textUnderlineOffset: '0.18em',
+													textDecorationThickness: '1px',
 													fontFamily: 'sans',
 													fontSize: 'md',
-													_hover: { textDecoration: 'underline' },
+													_hover: { textDecorationThickness: '2px' },
 												})}
 											>
 												{cap.labelJa} · {cap.label}
@@ -193,11 +198,15 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 								rel="noopener noreferrer"
 								target="_blank"
 								className={css({
+									// Issue #887: ink + permanent underline, for the
+									// same reason as the capability links above.
 									color: 'text.accent',
 									fontFamily: 'sans',
 									fontSize: 'md',
-									textDecoration: 'none',
-									_hover: { textDecoration: 'underline' },
+									textDecoration: 'underline',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
+									_hover: { textDecorationThickness: '2px' },
 								})}
 							>
 								/api/v1/health

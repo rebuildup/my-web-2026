@@ -90,10 +90,10 @@
 			"grant": "public_integration_oauth_token",
 			"grant_note": "Notion's public-integration OAuth flow returns no scope string. Authority is expressed as per-workspace page/database capabilities the user ticks in the Notion UI, so this ledger reviews the capability list with the same vocabulary it reviews OAuth scopes.",
 			"least_privilege": {
-				"required_scopes": ["read_content"],
+				"required_scopes": ["read_content", "insert_content"],
 				"optional_scopes": ["read_user_information"],
-				"denied_scopes": ["insert_content"],
-				"justification": "A read-only capability needs exactly `read_content`; `read_user_information` only matters for attributing content to a person, which no current obligation does. `insert_content` is the write capability, and no Notion obligation in `docs/domain/integrations.md` owns a write, so accepting a token that carries it would grant authority nobody reviewed."
+				"denied_scopes": ["update_content"],
+				"justification": "The one-off authoring write (Issue #814, ADR-0018 §2.11) appends article bodies and media blocks to pages the owner wrote. Resolving the page needs `read_content`; adding a block needs `insert_content`. It must not need `update_content`: the writer appends and never rewrites an author's existing content, so denying it keeps a re-run from being able to \"repair\" anything by overwriting. The Worker holds no Notion token at any time (§2.9). **Known drift:** the token currently issued to the operator also carries update authority; it must be re-issued with the two capabilities above before its next use."
 			},
 			"token_retention": {
 				"storage": "Infisical (ADR-0015 §1 is the source of truth). Never `wrangler.jsonc`, never D1, never a repo file.",
@@ -253,18 +253,18 @@
 			"expected": { "verdict": "reauth_required", "code": "token_age_exceeds_retention" }
 		},
 		{
-			"id": "notion-read-content-approved",
+			"id": "notion-authoring-capabilities-approved",
 			"integration": "notion",
-			"scenario": "a read-only Notion connection",
-			"granted_scopes": ["read_content"],
+			"scenario": "a connection granted exactly the reviewed authoring capabilities",
+			"granted_scopes": ["read_content", "insert_content"],
 			"issued_at": "2026-09-25T00:00:00.000Z",
 			"expected": { "verdict": "approved", "code": "approved" }
 		},
 		{
-			"id": "notion-write-capability",
+			"id": "notion-update-capability",
 			"integration": "notion",
-			"scenario": "the workspace ticked the write capability as well",
-			"granted_scopes": ["read_content", "insert_content"],
+			"scenario": "the workspace ticked update_content as well",
+			"granted_scopes": ["read_content", "insert_content", "update_content"],
 			"issued_at": "2026-09-25T00:00:00.000Z",
 			"expected": { "verdict": "unapproved_scope", "code": "denied_scope_granted" }
 		},

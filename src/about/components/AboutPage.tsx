@@ -459,10 +459,13 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 							className={css({
 								color: 'text.accent',
 								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',
 								},
+								_hover: { textDecorationThickness: '2px' },
 							})}
 						>
 							/portfolio
@@ -537,14 +540,22 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 					href={`/portfolio/${project.slug}`}
 					className={css({
 						color: 'inherit',
-						textDecoration: 'none',
+						textDecoration: 'underline',
+						textUnderlineOffset: '0.18em',
+						textDecorationThickness: '1px',
+						// The heading itself is the link, so a full-ink rule under
+						// every line would shout. The underline stays (it is now
+						// the only affordance) but is drawn in the identifying-
+						// rule tone instead of the body ink.
+						textDecorationColor: 'border.strong',
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
 							outlineOffset: '4px',
 							borderRadius: '2px',
 						},
 						_hover: {
-							textDecoration: 'underline',
+							textDecorationThickness: '2px',
+							textDecorationColor: 'currentColor',
 						},
 					})}
 				>
@@ -839,10 +850,12 @@ function ExternalHandlesFooter({
 										fontFamily: 'sans',
 										fontSize: 'sm',
 										fontWeight: '600',
-										textDecoration: 'none',
+										textDecoration: 'underline',
+										textUnderlineOffset: '0.18em',
+										textDecorationThickness: '1px',
 										_hover: {
 											borderColor: 'border.strong',
-											textDecoration: 'underline',
+											textDecorationThickness: '2px',
 										},
 										_focusVisible: {
 											outline: '2px solid {colors.border.focus}',
@@ -873,10 +886,12 @@ function ExternalHandlesFooter({
 								fontFamily: 'sans',
 								fontSize: 'sm',
 								fontWeight: '600',
-								textDecoration: 'none',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
 								_hover: {
 									borderColor: 'border.strong',
-									textDecoration: 'underline',
+									textDecorationThickness: '2px',
 								},
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',

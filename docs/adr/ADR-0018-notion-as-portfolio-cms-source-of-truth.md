@@ -132,7 +132,10 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 
 - 未知の level-2 見出し（`unknown_section_heading`）— 節は 6 つに固定
 - 最初の見出しより前の本文（`content_before_first_section`）
-- `image` block（`image_block_unsupported`）— Issue #766 の範囲
+- `image` block（`image_block_unsupported`）と `bookmark` block
+  （`unsupported_block`）— **読み込み側は未対応のまま**。書き込み
+  （作者がページに画像とリンクを持つこと）は §2.11 で認めた。読み込みは
+  Issue #889 で閉じる
 - その他の未対応 block（`unsupported_block`）
 - mention / equation など Markdown に落ちない rich text（`unsupported_rich_text`）
 
@@ -281,6 +284,59 @@ token を使うため、refresh 経路は不要であり、ledger に refresh �
 - `src/http/**` は inbound 境界のまま。取り込みは `scripts/**` に置く。
 - D1 / R2 の binding と公開 prefix は変えない。
 - 旧サイト全件移行（#766）はこの ADR の範囲外。代表 2〜3 件で経路を証明する。
+
+### 2.11 本文とメディアは authoring の一部である（2026-11-04 owner 決定）
+
+owner 発言（この決定を記録したセッション内）:
+
+> my-web-2025 での SQLite データベースに含まれる全バイナリを抽出して
+> Notion にアップロードする必要がある。
+>
+> 記事ファイルも同じだ。構造を全て抜き出し、同じ内容でNotionページに
+> 同期させる。NotionをCMSとして使うというのはExcelのようにテーブルに
+> することではない。それぞれを記事として独立して使えるようにすることである。
+
+決定:
+
+1. **メディアと本文は作者が Notion で持つ。** 旧サイトのポートフォリオ
+   画像は `my-web-2025` の SQLite `media` テーブルの BLOB にしか存在せず、
+   記事本文は同じ DB の `markdown_pages.body` にしか存在しなかった。
+   そのため Notion の 68 ページには画像が 1 枚も無く、本文は要約 1 段落だけ
+   だった。作者が本文を書く面と、作者が作品の絵を持つ面を分けない。
+2. **Notion は表ではなく記事の面である。** 各ページは
+   `Motivation`（要約）/ `Implementation`（旧記事の見出し・段落・画像を
+   元の順序で）/ `Evidence`（リンク・未参照画像）という本文を持ち、
+   1 ページで読み切れる記事として成立する。プロパティの行に畳まない。
+3. **書き込みは単発**（§2.2 と同じ）。operator が 1 回実行する。
+   cron / schedule / workflow_dispatch を作らない。
+4. **投入した範囲（実測、2026-11-04）**:
+   - 記事: 69 ページ / 916 ブロック（既存 68 + 新規 1）
+   - 画像: 137 ファイル / 114,950,713 B（全て投入。本文中の位置に 115、
+     本文に参照の無い 22 は `Evidence > Media`）
+   - 外部URL画像 8（旧ページの hotlink）、旧データで失われた参照 2
+   - 旧テストフィクスチャ `media-list-*` / `media-rt-*` の 160 ファイル /
+     2,840 B は対応する Notion ページが無いので投入しない（`no_notion_page`）
+   - 検算: 137 + 160 = 297、114,950,713 + 2,840 = 114,953,553（旧 DB の総数）
+5. **帰属はファイル位置ではない。** 画像は DB が持つ唯一の `contents.id`、
+   本文は `frontmatter.slug`。旧エクスポートは 2 記事を別 DB へ重複して
+   書き出しており（`prototype` → `content-ProtoType-brochure.db`、
+   `aulymo-v02` → `content-aulymo_v03.db`）、ファイル名と `contents.id` の
+   一致は同一性の証明にならない。この規則の結果、`aulymo-v03` と
+   `prototype-brochure` は**本文が存在しない**（ページは作り、要約のみを置く）。
+   本文を捏造しない。
+6. **capability は `read_content` + `insert_content`。** writer は追記だけを
+   行い、既存 block を書き換えない。`update_content` は §2.9 の ledger で
+   拒否のままにする。例外は既存スキャフォールドの削除だが、これは
+   `DELETE /v1/blocks/{id}`（`insert_content` の範囲）であり、削除対象は
+   書き込み前にバックアップし、本文の追記が成功した後にのみ実行する。
+7. **読み込み側はこの節の範囲外。** `scripts/_notion-mapper.mjs` は
+   `image` を `image_block_unsupported`、`bookmark` を `unsupported_block`
+   として返し、`mapNotionPage()` は `media: []` を固定で返す。投入済みの
+   ページを ingest すると fail-closed する。これは**未実装を未実装として
+   残す**選択であり、読み込み対応は Issue #889 で閉じる。黙って画像や
+   リンクを落とす変更は入れない（§2.3 の「沈黙して落とさない」）。
+
+実行記録: `docs/verification/portfolio/notion-media-write-2026-11-04.md`。
 
 ## 3. Comparison — 取得境界の候補
 

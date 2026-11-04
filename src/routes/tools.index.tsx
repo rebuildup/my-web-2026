@@ -448,10 +448,11 @@ const cardItem = css({
  * track, so the two cards in a row share one height even when only one
  * of them carries a screenshot.
  *
- * No background, border or shadow: the affordance is the 「開く」 label,
- * the title underline on hover, and the focus ring — `layout-system.md`
- * §5 forbids communicating state by tinting something that then looks
- * like a card.
+ * No background, border or shadow: the affordance is the 「開く」 label
+ * underlined at rest (Issue #887 — `text.accent` is ink, so colour can
+ * no longer say "this is a link"), the title underline on hover, and
+ * the focus ring — `layout-system.md` §5 forbids communicating state
+ * by tinting something that then looks like a card.
  */
 const cardLinkStyles = {
 	display: 'flex',
@@ -476,7 +477,10 @@ const cardLinkStyles = {
 			textDecoration: 'underline',
 		},
 		'& [data-tool-cta]': {
-			color: 'text.default',
+			// Issue #887: the CTA carries a PERMANENT underline (see
+			// `cta` below), so hover only fattens it instead of
+			// repainting an ink that no longer differs from the body.
+			textDecorationThickness: '2px',
 		},
 	},
 } as const;
@@ -544,7 +548,13 @@ const cta = css({
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '500',
+	// Issue #887: `text.accent` is INK, so the CTA earns its link
+	// affordance from a permanent underline (offset so it clears the
+	// Japanese glyphs) rather than from a hue. Hover fattens it.
 	color: 'text.accent',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
 });
 
 const badge = css({

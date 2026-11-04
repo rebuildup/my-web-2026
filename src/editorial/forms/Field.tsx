@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { type RecipeVariantProps, css, cva } from '../../../styled-system/css';
 import { MaterialSymbol } from '../primitives/MaterialSymbol';
+import { StateMark } from '../primitives/StateMark';
 import { CLOSE_PATH } from '../primitives/material-symbol-paths';
 import {
 	describeByTarget,
@@ -37,12 +38,16 @@ import {
  * described to a sighted reviewer and read as silence to everyone
  * else.
  *
- * Styling note: the error state is carried by an icon marker, a heavier
- * border, the sentence itself and `aria-invalid` — never by colour
- * alone (WCAG 2.2 1.4.1). The border colour uses `accent.negative`,
- * the audited status foreground token. The marker is a Material Symbols
- * glyph (Issue #823), not a typed `×`: a sign that carries meaning is
- * drawn, never a character in the text layer.
+ * Styling note: the error state is carried by a drawn marker, a heavier
+ * boundary rule, the sentence itself, a StateMark on the label and
+ * `aria-invalid` — never by colour alone (WCAG 2.2 1.4.1). Under the
+ * monochrome ground (Issue #887) there is no status hue at all, so
+ * the colour cannot do that job: the refused control is told apart
+ * by `border.strong` at 2px instead of `border.subtle` at 1px, and the
+ * label carries the `unreachable` silhouette next to the field name.
+ * The marker on the sentence is a Material Symbols glyph (Issue #823),
+ * not a typed `×`: a sign that carries meaning is drawn, never a
+ * character in the text layer.
  */
 
 /** Props the contract owns: a caller must not be able to break them. */
@@ -115,6 +120,7 @@ export function FieldFrame({
 	return (
 		<div className={fieldClassName}>
 			<label htmlFor={ids.controlId} className={labelClassName}>
+				{hasError(error) ? <StateMark kind="unreachable" size="sm" /> : null}
 				<span>{label}</span>
 				{required ? (
 					<span className={requiredClassName} aria-hidden="true">
@@ -267,10 +273,10 @@ const errorClassName = css({
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	lineHeight: '1.6',
-	color: 'accent.negative',
-	// The one place the shipped colour layer carries meaning, so it
-	// also carries weight: colour alone is not a signal
-	// (WCAG 2.2 1.4.1).
+	// Strong ink, not a status hue: the sentence, the drawn marker and
+	// the label's StateMark carry the state (Issue #887), and the weight
+	// keeps it above the description it follows.
+	color: 'text.default',
 	fontWeight: '600',
 });
 
@@ -297,9 +303,11 @@ const inputRecipe = cva({
 	variants: {
 		invalid: {
 			true: {
-				// A heavier border so the state is legible next to the
-				// sentence below the control, not only as a hue shift.
-				borderColor: 'accent.negative',
+				// The identifying boundary rule (Issue #887): a refused
+				// control is told apart by a stronger rule at 2px where a
+				// healthy one has the hairline at 1px, not by a hue that no
+				// longer differs from ink.
+				borderColor: 'border.strong',
 				borderWidth: '2px',
 			},
 			false: {},

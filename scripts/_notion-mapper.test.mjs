@@ -258,6 +258,65 @@ describe('refusals that stay', () => {
 	});
 });
 
+describe('draft pages are skipped, not refused (Issue #889 follow-up)', () => {
+	/** The base page as an unfinished Draft row: three required fields empty. */
+	function draftPage() {
+		const page = basePage();
+		page.properties.Status = { type: 'select', select: { name: 'Draft' } };
+		page.properties.Role = { type: 'rich_text', rich_text: [] };
+		page.properties.PeriodStart = { type: 'number', number: null };
+		page.properties.Facets = { type: 'multi_select', multi_select: [] };
+		return page;
+	}
+
+	it('skips a Draft page before reading its body or its required fields', () => {
+		const result = mapNotionPage(draftPage(), [
+			// Every one of these would be a finding if the body were read.
+			heading('Appendix'),
+			{ object: 'block', id: 'c-9', type: 'callout', callout: { rich_text: text('notice') } },
+			fileImage(),
+		]);
+		assert.equal(result.ok, false);
+		assert.equal(result.skipped, true);
+		assert.equal(result.reason, 'draft');
+		assert.equal(result.pageId, 'page-1');
+		assert.equal(result.slug, 'sample-project');
+		assert.equal(result.errors, undefined);
+	});
+
+	it('counts the skip with no record, no finding and no media descriptor', () => {
+		const { records, media, skipped, errors } = mapDocuments([
+			{ page: draftPage(), blocks: [heading('Motivation'), paragraph('Why.'), fileImage()] },
+		]);
+		assert.deepEqual(records, []);
+		assert.deepEqual(errors, []);
+		assert.deepEqual(media, []);
+		assert.deepEqual(skipped, [{ pageId: 'page-1', slug: 'sample-project', reason: 'draft' }]);
+	});
+
+	it('still refuses a PUBLISHED page with an empty Role', () => {
+		const page = basePage();
+		page.properties.Role = { type: 'rich_text', rich_text: [] };
+		const result = mapNotionPage(page, [heading('Motivation'), paragraph('Why.')]);
+		assert.equal(result.ok, false);
+		assert.equal(result.skipped, undefined);
+		const finding = result.errors.find((error) => error.at === 'property Role');
+		assert.equal(finding?.code, 'empty_property');
+	});
+
+	it('still refuses an unknown or missing Status', () => {
+		for (const status of [{ name: 'Review' }, null]) {
+			const page = basePage();
+			if (status === null) page.properties.Status = undefined;
+			else page.properties.Status = { type: 'select', select: status };
+			const result = mapNotionPage(page, [heading('Motivation'), paragraph('Why.')]);
+			assert.equal(result.ok, false, String(status));
+			assert.equal(result.skipped, undefined, String(status));
+			assert.equal(result.errors[0]?.code, 'unknown_status', String(status));
+		}
+	});
+});
+
 describe('mapDocuments', () => {
 	it('returns the page descriptors beside the records, not inside them', () => {
 		const { records, media, errors } = mapDocuments([

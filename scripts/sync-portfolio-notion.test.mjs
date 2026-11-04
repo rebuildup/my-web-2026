@@ -100,13 +100,17 @@ async function runFixture(fixture = FIXTURE, extra = {}) {
 }
 
 describe('mapDocuments', () => {
-	it('maps every page and leaves publication to the projection', () => {
-		const { records, errors } = mapDocuments(fixtureDocument().pages);
+	it('maps every published page and counts the Draft one as skipped', () => {
+		const { records, skipped, errors } = mapDocuments(fixtureDocument().pages);
 		assert.deepEqual(errors, []);
-		assert.equal(records.length, 3);
-		const bySlug = new Map(records.map((record) => [record.slug, record]));
-		assert.equal(bySlug.get('sample-work-in-progress')?.status, 'draft');
-		assert.equal(bySlug.get('sample-work-in-progress')?.visibility, 'unlisted');
+		// The Draft fixture page is unfinished authoring: it is skipped, not
+		// mapped and not a finding (Issue #889 follow-up). Publication of a
+		// mapped record is still `publish.ts`'s decision.
+		assert.equal(records.length, 2);
+		assert.deepEqual(
+			skipped.map((page) => [page.slug, page.reason]),
+			[['sample-work-in-progress', 'draft']],
+		);
 	});
 
 	it('keeps the author’s ordering fields as inputs', () => {
@@ -297,11 +301,13 @@ describe('syncNotion exit codes', () => {
 	it('writes the snapshot from a fixture', async () => {
 		const { exitCode, outPath, stdout } = await runFixture();
 		assert.equal(exitCode, 0);
-		assert.match(stdout, /^synced records=3/u);
+		assert.match(stdout, /^synced records=2 findings=0 skipped_draft=1/u);
 		const written = JSON.parse(readFileSync(outPath, 'utf8'));
 		assert.equal(written.schema, 'portfolio-notion-snapshot.v1');
 		assert.equal(written.availability, 'public');
-		assert.equal(written.records.length, 3);
+		// 2 published records + 1 skipped Draft page (no entry at all).
+		assert.equal(written.records.length, 2);
+		assert.ok(!written.records.some((record) => record.slug === 'sample-work-in-progress'));
 	});
 
 	it('reports unchanged and does not rewrite when the digest matches', async () => {
@@ -317,7 +323,7 @@ describe('syncNotion exit codes', () => {
 			stderr: silent(),
 		});
 		assert.equal(exitCode, 0);
-		assert.match(capture.text(), /^unchanged records=3/u);
+		assert.match(capture.text(), /^unchanged records=2 findings=0 skipped_draft=1/u);
 		assert.deepEqual(readFileSync(outPath), before);
 	});
 
@@ -599,10 +605,11 @@ function imageFetch({ bytes = IMAGE_BYTES, contentType = 'image/png', status = 2
 }
 
 function fakeR2({ existing = [], objects = {}, failPut = false, failList = false } = {}) {
-	const state = { puts: [] };
+	const state = { puts: [], lists: 0 };
 	return {
 		state,
 		async listKeys() {
+			state.lists += 1;
 			if (failList) throw new Error('listing_failed');
 			return [...existing];
 		},
@@ -640,7 +647,7 @@ describe('media ingest', () => {
 		assert.equal(exitCode, 0);
 		assert.match(
 			stdout,
-			/^synced records=1 findings=0 media=1 media_bytes=8 would_upload=1 upload_bytes=8 reused=0/u,
+			/^synced records=1 findings=0 skipped_draft=0 media=1 media_bytes=8 media_skipped=0 would_upload=1 upload_bytes=8 reused=0/u,
 		);
 		assert.equal(r2.state.puts.length, 1);
 		assert.equal(r2.state.puts[0].contentType, 'image/png');
@@ -691,7 +698,7 @@ describe('media ingest', () => {
 		assert.equal(existsSync(outPath), false);
 		assert.equal(r2.state.puts.length, 0);
 		// media_bytes proves the bytes were actually fetched and hashed.
-		assert.match(stdout, /media=1 media_bytes=8 would_upload=1/u);
+		assert.match(stdout, /media=1 media_bytes=8 media_skipped=0 would_upload=1/u);
 		assert.match(stdout, /written=false/u);
 	});
 
@@ -720,7 +727,10 @@ describe('media ingest', () => {
 			{ duplicate: true },
 		);
 		assert.equal(exitCode, 0);
-		assert.match(stdout, /media=2 media_bytes=16 would_upload=1 upload_bytes=8 reused=1/u);
+		assert.match(
+			stdout,
+			/media=2 media_bytes=16 media_skipped=0 would_upload=1 upload_bytes=8 reused=1/u,
+		);
 		assert.equal(r2.state.puts.length, 1);
 		const written = JSON.parse(readFileSync(outPath, 'utf8'));
 		const [first, second] = written.records[0].media;
@@ -764,15 +774,49 @@ describe('media ingest', () => {
 		assert.equal(r2.state.puts.length, 0);
 	});
 
-	it('refuses a content type the delivery route would not serve', async () => {
+	it('skips an image the delivery allowlist refuses, and counts it', async () => {
 		const r2 = fakeR2();
-		const { exitCode, stderr } = await runMediaFixture({
-			fetchImpl: imageFetch({ contentType: 'text/html' }),
+		const { exitCode, outPath, stdout, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch({ contentType: 'image/svg+xml' }),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		// A policy refusal is a decision, not a failure: one asset the
+		// delivery layer will never serve must not withhold the portfolio.
+		assert.equal(exitCode, 0);
+		// The per-block line goes to stderr so stdout stays one status line.
+		assert.match(
+			stderr,
+			/media_skipped page=11111111-1111-4111-8111-111111111111 block=img-1 code=media_content_type_refused detail=declared/u,
+		);
+		assert.match(
+			stdout,
+			/records=1 findings=0 skipped_draft=0 media=0 media_bytes=0 media_skipped=1/u,
+		);
+		assert.equal(stdout.trim().split('\n').length, 1);
+		assert.match(stdout, /written=true/u);
+		assert.equal(r2.state.puts.length, 0);
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		// The skipped block never becomes an entry the page could 404 on.
+		assert.deepEqual(written.records[0].media, []);
+		// The rest of the page still publishes: the bookmark reaches the body.
+		assert.match(written.records[0].sections.motivation, /example\.com\/reference/u);
+	});
+
+	it('still aborts when the content type cannot be identified', async () => {
+		// `application/octet-stream` with bytes no signature recognises is an
+		// UNKNOWN state, not a policy decision: refusing it by policy would
+		// be guessing.
+		const r2 = fakeR2();
+		const { exitCode, outPath, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch({ contentType: 'application/octet-stream', bytes: Buffer.from('??') }),
 			r2,
 			inventory: readRightsInventory(),
 		});
 		assert.equal(exitCode, 1);
-		assert.match(stderr, /code=media_content_type_refused/u);
+		assert.match(stderr, /code=media_content_type_refused detail=sniffed/u);
+		assert.match(stderr, /nothing was written/u);
+		assert.equal(existsSync(outPath), false);
 		assert.equal(r2.state.puts.length, 0);
 	});
 
@@ -831,5 +875,105 @@ describe('media ingest', () => {
 			() => readRightsInventory('/nonexistent/asset-license-inventory.json'),
 			(error) => error instanceof MediaIngestError && error.code === 'rights_inventory_unreadable',
 		);
+	});
+});
+
+/* -------------------------------------------------------------------------
+ * Draft pages are skipped, not refused (Issue #889 follow-up, 2026-11-04)
+ * -------------------------------------------------------------------------
+ */
+
+describe('draft pages are skipped, not refused', () => {
+	/** The fixture's Draft page, stripped of every required field. */
+	function brokenDraftDocument() {
+		const document = fixtureDocument();
+		const draft = document.pages[2];
+		draft.page.properties.Role = { type: 'rich_text', rich_text: [] };
+		draft.page.properties.PeriodStart = { type: 'number', number: null };
+		draft.page.properties.Facets = { type: 'multi_select', multi_select: [] };
+		// A body that would produce two findings if it were ever read.
+		draft.blocks = [
+			{
+				object: 'block',
+				id: 'h-9',
+				type: 'heading_2',
+				heading_2: { rich_text: text('Appendix') },
+			},
+			{
+				object: 'block',
+				id: 'img-9',
+				type: 'image',
+				image: { type: 'file', file: { url: SIGNED_URL, expiry_time: 'x' }, caption: [] },
+			},
+		];
+		return document;
+	}
+
+	it('skips an unfinished Draft page with no findings, no media and one status line', async () => {
+		const r2 = fakeR2();
+		let fetched = false;
+		const { exitCode, outPath, stdout, stderr } = await runFixture(
+			writeFixture(brokenDraftDocument()),
+			{
+				fetchImpl: () => {
+					fetched = true;
+					return Promise.reject(new Error('no network expected'));
+				},
+				r2,
+				inventory: readRightsInventory(),
+			},
+		);
+		assert.equal(exitCode, 0);
+		// One status-only line per skipped page, on stderr: id, slug,
+		// reason — never a property value, and never a second stdout line.
+		assert.match(
+			stderr,
+			/skipped page=33333333-3333-4333-8333-333333333333 slug=sample-work-in-progress reason=draft/u,
+		);
+		assert.equal(stderr.trim().split('\n').length, 1);
+		assert.equal(stdout.trim().split('\n').length, 1);
+		assert.match(stdout, /^synced records=2 findings=0 skipped_draft=1/u);
+		assert.match(stdout, /media=0 media_bytes=0 media_skipped=0/u);
+		// No descriptor means no byte fetch and no bucket read for it.
+		assert.equal(fetched, false);
+		assert.equal(r2.state.lists, 0);
+		assert.equal(r2.state.puts.length, 0);
+
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		assert.equal(written.records.length, 2);
+		assert.ok(!written.records.some((record) => record.slug === 'sample-work-in-progress'));
+	});
+
+	it('still aborts when a PUBLISHED page has an empty Role', async () => {
+		const document = fixtureDocument();
+		document.pages[0].page.properties.Role = { type: 'rich_text', rich_text: [] };
+		const { exitCode, outPath, stderr } = await runFixture(writeFixture(document), {
+			fetchImpl: () => Promise.reject(new Error('no network expected')),
+			r2: fakeR2(),
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /empty_property at=property Role/u);
+		assert.match(
+			stderr,
+			/sync aborted: 1 page\(s\) could not be mapped \(1 finding\(s\)\); nothing was written/u,
+		);
+		assert.equal(existsSync(outPath), false);
+	});
+
+	it('still aborts when the Status is unknown or missing', async () => {
+		for (const status of [{ name: 'Review' }, null]) {
+			const document = fixtureDocument();
+			if (status === null) document.pages[0].page.properties.Status = undefined;
+			else document.pages[0].page.properties.Status = { type: 'select', select: status };
+			const { exitCode, outPath, stderr } = await runFixture(writeFixture(document), {
+				fetchImpl: () => Promise.reject(new Error('no network expected')),
+				r2: fakeR2(),
+				inventory: readRightsInventory(),
+			});
+			assert.equal(exitCode, 1, String(status));
+			assert.match(stderr, /unknown_status/u, String(status));
+			assert.equal(existsSync(outPath), false, String(status));
+		}
 	});
 });

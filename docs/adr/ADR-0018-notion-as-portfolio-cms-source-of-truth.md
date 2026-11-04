@@ -146,6 +146,15 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 **沈黙して落とさない**ことが要点である。落とした段落は「作者が書かなかった
 段落」と区別がつかない。
 
+**`Draft` のページはこの変換に入らない（Issue #889 follow-up、2026-11-04）。**
+`Status` を最初に読み、`Draft` なら required property・本文・image を一切
+検証せず **skip** する（status-only の1行と `skipped_draft=N` の計数）。
+理由: 公開の権限は repository にあり（§2.6）、`published` にしか投影されない
+下書きが公開の前提を満たさないことを「欠陥」として取り込み全体を止めることは
+できない。`Published`（Public / Unlisted）と `Archived` は従来どおり全件検証し、
+欠落があれば error のまま中断する。`Status` が無い / 未知の値も error
+（`unknown_status`）のまま。skip は findings ではなく、報告される状態である。
+
 ### 2.4 変更が公開面に届くまで
 
 **この手順は自動で走らない。** 下の 1〜5 のどこかで人が止めれば、公開面は

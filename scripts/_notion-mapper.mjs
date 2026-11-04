@@ -575,12 +575,18 @@ export function parseLinks(raw) {
  * (Issue #889). The ingest resolves each descriptor to bytes and an R2
  * key, then projects it back with `toContractMedia`.
  *
+ * `skipped` lists the `Draft` pages that were deliberately not validated
+ * (Issue #889 follow-up). They are neither records nor findings — the
+ * caller reports them so an unfinished page stays visible without being
+ * able to block the publish.
+ *
  * @param {readonly any[]} pages
- * @returns {{ records: any[], media: Array<object>, errors: Array<{code:string,at:string,expected:string,pageId:string}> }}
+ * @returns {{ records: any[], media: Array<object>, skipped: Array<{pageId:string,slug:string,reason:string}>, errors: Array<{code:string,at:string,expected:string,pageId:string}> }}
  */
 export function mapDocuments(pages) {
 	const records = [];
 	const media = [];
+	const skipped = [];
 	const errors = [];
 	for (const entry of pages) {
 		const result = mapNotionPage(entry?.page, Array.isArray(entry?.blocks) ? entry.blocks : []);
@@ -589,12 +595,16 @@ export function mapDocuments(pages) {
 			for (const descriptor of result.media) {
 				media.push({ pageId: result.record.pageId, ...descriptor });
 			}
-		} else {
-			const pageId = typeof entry?.page?.id === 'string' ? entry.page.id : 'unknown';
-			for (const error of result.errors) errors.push({ pageId, ...error });
+			continue;
 		}
+		if (result.skipped === true) {
+			skipped.push({ pageId: result.pageId, slug: result.slug, reason: result.reason });
+			continue;
+		}
+		const pageId = typeof entry?.page?.id === 'string' ? entry.page.id : 'unknown';
+		for (const error of result.errors) errors.push({ pageId, ...error });
 	}
-	return { records, media, errors };
+	return { records, media, skipped, errors };
 }
 
 /**
@@ -631,9 +641,18 @@ export function toContractMedia(descriptor, { r2Key, contentType, rights }) {
 
 /**
  * Map one Notion page and its child blocks.
+ *
+ * Three outcomes, and the caller must be able to tell them apart:
+ *
+ *   * `ok: true` — a record plus this page's media descriptors;
+ *   * `ok: false, skipped: true` — a `Draft` page, deliberately not
+ *     validated (see the note at the Status read). It is a counted skip,
+ *     never a silent drop and never a finding;
+ *   * `ok: false, errors` — a refusal. The run must stop.
+ *
  * @param {unknown} page
  * @param {readonly unknown[]} blocks
- * @returns {{ ok: true, record: object } | { ok: false, errors: Array<{code:string,at:string,expected:string}> }}
+ * @returns {{ ok: true, record: object, media: object[] } | { ok: false, skipped: true, reason: string, pageId: string, slug: string } | { ok: false, errors: Array<{code:string,at:string,expected:string}> }}
  */
 export function mapNotionPage(page, blocks) {
 	const errors = [];
@@ -645,6 +664,33 @@ export function mapNotionPage(page, blocks) {
 		};
 	}
 	const pageId = object.id;
+
+	// Status decides the validation path before anything else (Issue #889,
+	// follow-up decision 2026-11-04): the authoring database is allowed to
+	// hold unfinished ideas, and ADR-0018 makes the repository — not the
+	// shape of a Draft row — the publication authority (`toProject` returns
+	// null unless the status is `published`, so a Draft page can never
+	// reach a public surface). Requiring a Draft row to satisfy the public
+	// record schema would let every unfinished idea abort the whole
+	// portfolio publish.
+	//
+	// A `Draft` page is therefore SKIPPED: no required-field findings, no
+	// body mapping, no media descriptor, no snapshot entry — one
+	// status-only line and a counted skip. `Published` (public or
+	// unlisted) and `Archived` still take the full validation below and
+	// still fail closed, and an unreadable / unknown Status still refuses:
+	// the gate that protects a published page must not open by omission.
+	const statusName = (selectName(object, 'Status') ?? '').toLowerCase();
+	if (statusName === 'draft') {
+		const slugResult = safePlainText(property(object, 'Slug')?.rich_text);
+		return {
+			ok: false,
+			skipped: true,
+			reason: 'draft',
+			pageId,
+			slug: slugResult.ok ? slugResult.text.trim() : '',
+		};
+	}
 
 	const slug = requireRichText(object, 'Slug', errors, 128);
 	if (slug.length > 0 && !SLUG_REGEX.test(slug)) {
@@ -688,7 +734,6 @@ export function mapNotionPage(page, blocks) {
 		});
 	}
 
-	const statusName = (selectName(object, 'Status') ?? '').toLowerCase();
 	const status = ['draft', 'published', 'archived'].includes(statusName) ? statusName : null;
 	if (status === null) {
 		errors.push({

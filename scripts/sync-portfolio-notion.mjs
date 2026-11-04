@@ -112,6 +112,30 @@ export const MEDIA_EXTENSIONS = Object.freeze({
 });
 
 /**
+ * Is this media refusal a **delivery policy decision** rather than an
+ * unknown state? (Issue #889 follow-up.)
+ *
+ * `media_content_type_refused detail=declared` means the server stated a
+ * concrete type the delivery allowlist (`src/http/media/router.ts`) will
+ * never serve — an SVG can carry script, so it is deliberately excluded.
+ * One asset the policy refuses must not withhold the whole portfolio: the
+ * block is skipped and reported, and it never becomes a URL the page
+ * would 404 on.
+ *
+ * Everything else stays fatal: a transport error, a non-200, a timeout,
+ * an oversized body, an unreadable body, a type we could not identify
+ * (`media_content_type_missing`, or a refusal reached by SNIFFING rather
+ * than by a stated header) are all UNKNOWN states, and an ingest that
+ * cannot tell "refused by policy" from "never arrived" must not write.
+ *
+ * @param {{code: string, detail: string|null}} finding
+ * @returns {boolean}
+ */
+export function isPolicyMediaSkip(finding) {
+	return finding.code === 'media_content_type_refused' && finding.detail === 'declared';
+}
+
+/**
  * Per-object ceiling. One image over this is a bug or an attack, not a photo.
  */
 export const MAX_MEDIA_BYTES = 64 * 1024 * 1024;
@@ -735,29 +759,43 @@ async function resolveMedia({ descriptors, fetchImpl, r2Target, env, r2 }) {
 		}
 	});
 
-	const failures = outcomes
-		.filter((outcome) => !outcome.ok)
-		.map((outcome) => ({
+	const failures = [];
+	const skipped = [];
+	for (const outcome of outcomes) {
+		if (outcome.ok) continue;
+		const finding = {
 			pageId: outcome.descriptor.pageId,
 			blockId: outcome.descriptor.blockId,
 			code: outcome.code,
 			detail: outcome.detail,
-		}));
-	if (failures.length > 0) return { failures, items: [] };
+		};
+		// A policy refusal is a DECISION, not a failure: the delivery layer
+		// will never serve this type (an SVG can carry script), so
+		// withholding one asset must not withhold the portfolio. Every other
+		// state is UNKNOWN — transport error, non-200, timeout, oversized,
+		// unreadable body, an unidentified type — and stays fatal, because
+		// an ingest that cannot tell "refused by policy" from "never
+		// arrived" must not write.
+		if (isPolicyMediaSkip(finding)) skipped.push(finding);
+		else failures.push(finding);
+	}
+	if (failures.length > 0) return { failures, skipped, items: [] };
 
-	const items = outcomes.map((outcome) => ({
-		pageId: outcome.descriptor.pageId,
-		blockId: outcome.descriptor.blockId,
-		alt: outcome.descriptor.alt,
-		caption: outcome.descriptor.caption,
-		isCover: outcome.descriptor.isCover,
-		displayOrder: outcome.descriptor.displayOrder,
-		bytes: outcome.bytes,
-		contentType: outcome.contentType,
-		ext: outcome.ext,
-		sha256: createHash('sha256').update(outcome.bytes).digest('hex'),
-		r2Key: '',
-	}));
+	const items = outcomes
+		.filter((outcome) => outcome.ok)
+		.map((outcome) => ({
+			pageId: outcome.descriptor.pageId,
+			blockId: outcome.descriptor.blockId,
+			alt: outcome.descriptor.alt,
+			caption: outcome.descriptor.caption,
+			isCover: outcome.descriptor.isCover,
+			displayOrder: outcome.descriptor.displayOrder,
+			bytes: outcome.bytes,
+			contentType: outcome.contentType,
+			ext: outcome.ext,
+			sha256: createHash('sha256').update(outcome.bytes).digest('hex'),
+			r2Key: '',
+		}));
 	for (const item of items) item.r2Key = `${MEDIA_PREFIX}${item.sha256}.${item.ext}`;
 
 	let keys;
@@ -770,7 +808,7 @@ async function resolveMedia({ descriptors, fetchImpl, r2Target, env, r2 }) {
 
 	const reuse = await buildReuseMap({ r2, target: r2Target, env, keys });
 	planMedia(items, keys, reuse);
-	return { failures: [], items, keys };
+	return { failures: [], skipped, items, keys };
 }
 
 /** Upload the planned objects. Serial by design: the R2 adapter is a CLI child. */
@@ -820,8 +858,10 @@ function readPrevious(path) {
 function report(status, fields, stdout) {
 	const parts = [`${status} records=${fields.records ?? 0}`];
 	if (fields.findings !== undefined) parts.push(`findings=${fields.findings}`);
+	if (fields.skippedDraft !== undefined) parts.push(`skipped_draft=${fields.skippedDraft}`);
 	if (fields.media !== undefined) parts.push(`media=${fields.media}`);
 	if (fields.mediaBytes !== undefined) parts.push(`media_bytes=${fields.mediaBytes}`);
+	if (fields.mediaSkipped !== undefined) parts.push(`media_skipped=${fields.mediaSkipped}`);
 	if (fields.wouldUpload !== undefined) parts.push(`would_upload=${fields.wouldUpload}`);
 	if (fields.uploadBytes !== undefined) parts.push(`upload_bytes=${fields.uploadBytes}`);
 	if (fields.reused !== undefined) parts.push(`reused=${fields.reused}`);
@@ -900,7 +940,7 @@ export async function syncNotion({
 		return 3;
 	}
 
-	const { records, media: descriptors, errors } = mapDocuments(source.pages);
+	const { records, media: descriptors, errors, skipped } = mapDocuments(source.pages);
 	if (errors.length > 0) {
 		for (const error of errors) {
 			stderr.write(
@@ -916,6 +956,15 @@ export async function syncNotion({
 		return 1;
 	}
 
+	// A skipped `Draft` page is a reported state, not a finding: one
+	// status-only line per page (id, slug, reason — never a property
+	// value) so an unfinished idea stays visible without being able to
+	// block the publish (Issue #889 follow-up). It goes to stderr so
+	// stdout stays exactly one status line an operator can grep.
+	for (const page of skipped) {
+		stderr.write(`skipped page=${page.pageId} slug=${page.slug || '-'} reason=${page.reason}\n`);
+	}
+
 	// ---- media ingest (Issue #889) -------------------------------------
 	// Every image is downloaded, hashed and planned BEFORE anything is
 	// written: a byte failure must leave both the snapshot and the bucket
@@ -926,6 +975,7 @@ export async function syncNotion({
 		wouldUpload: 0,
 		uploadBytes: 0,
 		reused: 0,
+		mediaSkipped: 0,
 	};
 	let pendingUploads = [];
 	if (descriptors.length > 0) {
@@ -961,6 +1011,19 @@ export async function syncNotion({
 			}
 			throw error;
 		}
+
+		// A policy-refused block is reported and counted, then left out of
+		// the record entirely: an asset the delivery layer will never serve
+		// must not become a URL the page then 404s on. stderr again, so the
+		// final status line stays the only thing stdout prints.
+		for (const skip of resolved.skipped) {
+			stderr.write(
+				`media_skipped page=${skip.pageId} block=${skip.blockId} code=${skip.code}${
+					skip.detail ? ` detail=${skip.detail}` : ''
+				}\n`,
+			);
+		}
+		mediaStats.mediaSkipped = resolved.skipped.length;
 
 		if (resolved.failures.length > 0) {
 			for (const failure of resolved.failures) {
@@ -1056,6 +1119,7 @@ export async function syncNotion({
 		{
 			records: records.length,
 			findings: 0,
+			skippedDraft: skipped.length,
 			...mediaStats,
 			digest: snapshot.contentDigest,
 			written: write,

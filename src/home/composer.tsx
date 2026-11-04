@@ -69,13 +69,16 @@ export interface HomePageProps {
 	timeZone?: string;
 }
 
+// Load-bearing annotation: a module-level css() in an entry-reachable module
+// gives it top-level side effects, so Rollup pulls the whole Home graph into the
+// shared entry (+41.7 KiB across every route, Issue #884). Do not remove it.
 /**
  * Sub-section heading inside the merged status section (Issue #884).
  * Three `h3`s sit under the section's single `h2`, so each block keeps
  * its own name in the screen-reader outline without re-opening a
  * top-level judgement.
  */
-const subsectionTitleClassName = css({
+const subsectionTitleClassName = /*#__PURE__*/ css({
 	margin: '0',
 	marginBlockEnd: '4',
 	fontFamily: 'sans',
@@ -87,7 +90,7 @@ const subsectionTitleClassName = css({
 	textWrap: 'balance',
 });
 
-const subsectionDescriptionClassName = css({
+const subsectionDescriptionClassName = /*#__PURE__*/ css({
 	margin: '0',
 	marginBlockEnd: '6',
 	fontFamily: 'sans',

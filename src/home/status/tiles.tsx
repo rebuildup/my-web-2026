@@ -65,7 +65,7 @@ export interface StatusTilesProps {
 const STATUS_DESCRIPTION =
 	'各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。';
 
-const statusDescriptionClassName = css({
+const statusDescriptionClassName = /*#__PURE__*/ css({
 	margin: '0',
 	marginBlockEnd: '8',
 	fontFamily: 'sans',

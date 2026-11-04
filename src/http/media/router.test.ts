@@ -71,13 +71,17 @@ function request(
 	path: string,
 	env: { DB: D1Database; MEDIA: MediaObjectSource },
 	method = 'GET',
+	options: { isNotionApproved?: (key: string) => boolean } = {},
 ): Promise<Response> {
-	const app = createMediaRouter();
+	const app = createMediaRouter(options);
 	return Promise.resolve(app.request(path, { method }, { ...ENV_BASE, ...env } as unknown as Env));
 }
 
 const APPROVED_KEY = 'portfolio/published/cover.webp';
 const REACTION_KEY = `reactions/${'a'.repeat(64)}.webp`;
+/** Content-addressed CMS image: no D1 row exists for it (Issue #889). */
+const NOTION_KEY = `portfolio/notion/${'e'.repeat(64)}.png`;
+const OTHER_NOTION_KEY = `portfolio/notion/${'f'.repeat(64)}.png`;
 
 function standardSource(): MediaObjectSource {
 	return fakeSource({
@@ -207,6 +211,66 @@ describe('approval composition', () => {
 		const db = fakeDb([]) as D1Database & { seenSql: string[] };
 		expect(await isApprovedMediaKey(db, 'other/thing.webp')).toBe(false);
 		expect(db.seenSql).toHaveLength(0);
+	});
+
+	// A content-addressed CMS image has no D1 `portfolio_media` row, so the
+	// D1 query is not what approves it — the bundled snapshot is (Issue
+	// #889). Both halves matter: the branch must be taken (no SQL), and the
+	// shipped snapshot approves nothing until an ingest fills it.
+	it('asks the snapshot for a content-addressed notion key, without a D1 query', async () => {
+		const db = fakeDb([]) as D1Database & { seenSql: string[] };
+		expect(await isApprovedMediaKey(db, NOTION_KEY)).toBe(false);
+		expect(db.seenSql).toHaveLength(0);
+	});
+
+	it('takes the snapshot answer it is given, without a D1 query', async () => {
+		const db = fakeDb([]) as D1Database & { seenSql: string[] };
+		expect(await isApprovedMediaKey(db, NOTION_KEY, (key) => key === NOTION_KEY)).toBe(true);
+		expect(await isApprovedMediaKey(db, OTHER_NOTION_KEY, (key) => key === NOTION_KEY)).toBe(false);
+		expect(db.seenSql).toHaveLength(0);
+	});
+});
+
+describe('CMS image delivery (Issue #889)', () => {
+	function notionSource(): MediaObjectSource {
+		return fakeSource({
+			[NOTION_KEY]: { bytes: 'notion-bytes' },
+			[OTHER_NOTION_KEY]: { bytes: 'other-bytes' },
+		});
+	}
+
+	it('serves a notion key the snapshot approves', async () => {
+		const response = await request(
+			`/media/${NOTION_KEY}`,
+			{ DB: fakeDb([]), MEDIA: notionSource() },
+			'GET',
+			{ isNotionApproved: (key) => key === NOTION_KEY },
+		);
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe('notion-bytes');
+		expect(response.headers.get('cache-control')).toBe(PORTFOLIO_MEDIA_CACHE_CONTROL);
+	});
+
+	it('answers the shared 404 for a notion key the snapshot does not approve', async () => {
+		const response = await request(
+			`/media/${OTHER_NOTION_KEY}`,
+			{ DB: fakeDb([]), MEDIA: notionSource() },
+			'GET',
+			{ isNotionApproved: (key) => key === NOTION_KEY },
+		);
+		expect(response.status).toBe(404);
+		expect(response.headers.get('cache-control')).toBe('no-store');
+		expect(await response.text()).toBe('');
+	});
+
+	it('refuses every notion key while the shipped snapshot is empty', async () => {
+		for (const key of [NOTION_KEY, OTHER_NOTION_KEY]) {
+			const response = await request(`/media/${key}`, {
+				DB: fakeDb([key]),
+				MEDIA: notionSource(),
+			});
+			expect(response.status).toBe(404);
+		}
 	});
 });
 

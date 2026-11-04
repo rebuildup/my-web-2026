@@ -1,7 +1,7 @@
 import type { PortfolioProject } from '../schema';
 import { type ReadSnapshot, parseSnapshot } from './contract';
 import snapshotDocument from './generated/snapshot.json';
-import { publicProjects } from './publish';
+import { hasPublishedMediaKey, publicProjects } from './publish';
 
 /**
  * The snapshot the Worker bundles (Issue #765).
@@ -41,4 +41,19 @@ const PARSED: ReadSnapshot | null = parseSnapshot(snapshotDocument);
  */
 export function notionProjects(): readonly PortfolioProject[] {
 	return publicProjects(PARSED);
+}
+
+/**
+ * May this `portfolio/notion/…` object be served right now?
+ *
+ * The CMS half of the `/media/<key>` approval (Issue #889): a
+ * content-addressed image has no D1 `portfolio_media` row, so the D1
+ * query cannot be what approves it. The bundled snapshot is the only
+ * input, and the decision is `hasPublishedMediaKey` — the publication
+ * rule the page already uses. There is still no fetch, no token and no
+ * provider host here (see `runtime-boundary.test.ts`): the snapshot is a
+ * committed file Vite inlines.
+ */
+export function isPublishedNotionMediaKey(key: string): boolean {
+	return hasPublishedMediaKey(PARSED, key);
 }

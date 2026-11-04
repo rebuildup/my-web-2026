@@ -147,6 +147,27 @@ export function publicProjects(snapshot: ReadSnapshot | null): readonly Portfoli
 		.filter((project): project is PortfolioProject => project !== null);
 }
 
+/**
+ * Is this object key listed as media of a record the CMS makes public?
+ *
+ * The second half of the `/media/<key>` approval for `portfolio/notion/`
+ * keys (Issue #889). The namespace gate answers "may this class of key
+ * ever be public"; this answers "is THIS object published right now",
+ * with **the same publication rule the page itself uses**
+ * (`publicProjects` → `isPublicRecord` → `toProject`), so an image can
+ * never be servable while the page that shows it is not.
+ *
+ * `null` (no snapshot, or one that does not validate) answers `false`:
+ * a Worker that cannot read its own publication record publishes nothing,
+ * which is the same fail-closed rule `notionProjects` applies.
+ */
+export function hasPublishedMediaKey(snapshot: ReadSnapshot | null, key: string): boolean {
+	if (snapshot === null) return false;
+	return publicProjects(snapshot).some((project) =>
+		project.media.some((media) => media.r2Key === key),
+	);
+}
+
 /** The four columns the canonical order is defined over. */
 export interface Orderable {
 	readonly pinned: boolean;

@@ -133,14 +133,30 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 - 未知の level-2 見出し（`unknown_section_heading`）— 節は 6 つに固定
 - 最初の見出しより前の本文（`content_before_first_section`）
 - `image` block（`image_block_unsupported`）と `bookmark` block
-  （`unsupported_block`）— **読み込み側は未対応のまま**。書き込み
-  （作者がページに画像とリンクを持つこと）は §2.11 で認めた。読み込みは
-  Issue #889 で閉じる
+  （`unsupported_block`）— **読み込み側は未対応のまま**だった（書き込み、
+  作者がページに画像とリンクを持つこと自体は §2.11 で認めた）。**読み込みは
+  Issue #889 で閉じ、`file` / `external` の image と http/https の bookmark
+  を読む。** 残る拒否は次だけ:
+  - `image` block のうち `file` / `external` 以外の source
+    （`image_source_unsupported`）と、http/https 以外の image URL
+    （`image_url_invalid`）— URL は media descriptor に載せて ingest が
+    バイトを R2 へ移し、本文・リンク・snapshot には一切書かない
+  - `bookmark` block のうち http/https 以外の target（`invalid_bookmark_url`）
+    — 本文の Markdown リンク 1 行（文書順）になる
 - その他の未対応 block（`unsupported_block`）
 - mention / equation など Markdown に落ちない rich text（`unsupported_rich_text`）
 
 **沈黙して落とさない**ことが要点である。落とした段落は「作者が書かなかった
 段落」と区別がつかない。
+
+**`Draft` のページはこの変換に入らない（Issue #889 follow-up、2026-11-04）。**
+`Status` を最初に読み、`Draft` なら required property・本文・image を一切
+検証せず **skip** する（status-only の1行と `skipped_draft=N` の計数）。
+理由: 公開の権限は repository にあり（§2.6）、`published` にしか投影されない
+下書きが公開の前提を満たさないことを「欠陥」として取り込み全体を止めることは
+できない。`Published`（Public / Unlisted）と `Archived` は従来どおり全件検証し、
+欠落があれば error のまま中断する。`Status` が無い / 未知の値も error
+（`unknown_status`）のまま。skip は findings ではなく、報告される状態である。
 
 ### 2.4 変更が公開面に届くまで
 

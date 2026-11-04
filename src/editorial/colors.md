@@ -133,11 +133,25 @@ stated rather than hidden:
   carries no information of its own. The strong rule is the boundary
   that identifies a component, and it is measured.
 
-`mono.*` and `accent.field.*` are declared, resolved on the server,
-and measured; they are **not yet bound to the site-wide `bg.*` /
-`text.*` / `border.*` tokens**. Re-anchoring those would change every
-surface on the platform, which is the "全面適用" step and is a
-separate decision from approving the accent colours.
+`mono.*` and `accent.field.*` are declared, resolved on the server, and
+measured. **The site-wide `bg.*` / `text.*` / `border.*` tokens are
+projections of this layer** (Issue #887, `13f60653`): `bg.canvas` is
+`mono.surface.ground`, `bg.surface` is `mono.surface.raised`,
+`bg.subtle` is `mono.surface.sunken`, `text.default` is
+`mono.ink.text`, `text.muted` is `mono.ink.muted`, `border.subtle` is
+`mono.line.hairline`, `border.strong` is `mono.line.rule`. A component
+that consumes the semantic layer therefore sits on the monochrome
+ground without naming it.
+
+Two consequences are rules, not defaults:
+
+- **The operation is ink.** `bg.accent` and `bg.inverse` both resolve to
+  the inverse ground, and their label is `text.inverse`. There is no
+  coloured call to action.
+- **`text.accent` is ink.** A link earns its affordance from an
+  underline at rest (`textDecoration: 'underline'`, offset `0.18em`,
+  1px), not from a hue. Painting body or link text in a family colour is
+  the one thing direction B forbids outright.
 
 ### These hues are reinforcement, never the message (Issue #411)
 
@@ -146,9 +160,19 @@ by colour alone, and that is now a rule of this layer rather than a
 property of individual components: **no consumer may ship a status or
 a category whose only cue is a hue.** A status / category surface
 composes [`StateMark`](primitives/StateMark.tsx) — a silhouette unique
-per state — next to a text label, and the `accent.*` token above paints
-the reinforcement. The mark paints in `currentColor`, so it inherits the
-label's contrast instead of adding an obligation of its own (SC 1.4.11).
+per state — next to a text label. The mark paints in `currentColor`, so
+it inherits the label's contrast instead of adding an obligation of its
+own (SC 1.4.11).
+
+Direction B goes one step further than 1.4.1 requires: **a status does
+not get a hue of its own.** Green / red / amber are not part of the
+system. A status that belongs to classified content borrows that
+classification's colour (`accent.category.*`) for its mark; a status
+with nothing to borrow (a field error, a failed write) is carried by
+shape, word and the monochrome hierarchy alone. `accent.positive`,
+`accent.negative` and `accent.warning` are therefore a **transitional
+alias** resolved to `mono.ink.text` while their consumers are converted
+(Issue #887), and the tokens are deleted with the last consumer.
 
 The proof (greyscale captures in both appearances, the machine checks
 and the human review that are explicitly separated) lives in

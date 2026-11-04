@@ -202,6 +202,16 @@ push より少ない成果物を作ることはありません**（それが逃�
 2 ステップ）は `github.head_ref` / `github.base_ref` を必要とする
 pull_request 専用のままです — dispatch には diff がありません。
 
+**プラットフォーム上の制約（重要）**: GitHub は `workflow_dispatch` を
+**デフォルトブランチ（`main`）に存在する workflow ファイルにしか提供・発火
+しません**。本変更は `release-0-8-1` に載るため、**release PR が `main` に
+マージされるまでこのファイルの「Run workflow」は現れません**（「逃げ道は
+現時点で利用可能」とは書けない、が事実）。それまでの代替手段:
+
+1. チケットブランチを push する（push 固有義務だけが走るが、cf-typegen と
+   attested bytes の義務は必ず満たされる）。
+2. ローカルで `pnpm run validate:integration` を実行する。
+
 ## 5. 変更しなかったこと（deliberately NOT changed）
 
 - **ゲート内部の重複は 0 件**（Issue 実測 §4）:
@@ -275,9 +285,53 @@ project-init の ADR-0033（適応的スケジューリング）が扱うのは
 | 単純な並列化（ジョブ分割） | ランナー分は減らない。install / build が複製される |
 | `scripts/*.test.mjs` の並列実行 | 118 s の一部しか減らず（推定 −60 s / run）、パイプライン重複の効果（−1,211 分 / 2.8 日）の 1/20。別 Issue の候補として記録するだけにする |
 
-## 8. 適用後の実測
+## 8. 適用後の実測（2026-11-04、いずれも `gh api repos/rebuildup/my-web-2026/actions/runs/<id>` と同 `.../runs/<id>/jobs` で自分で確認した値）
 
-（push 後の CI run から記録する — 最終コミット時に追記。）
+### 8.1 チケット push レッグ（変更後・初回）: run [41827891265](https://github.com/rebuildup/my-web-2026/actions/runs/41827891265)
+
+- event `push`、branch `897`、head `adb4fadb`。conclusion **success**。
+- workflow 全体: 12:16:47Z → 12:19:19Z = **152 s**。
+- `validate` job: 12:16:50Z → 12:19:18Z = **148 s（2m28s）**（step 基準では
+  Set up job 12:16:51Z → Complete job 12:19:16Z = 145 s）。
+- step 内訳: `pnpm install` 11 s → **`Build production artifact (ticket-push leg)`
+  98 s** → `Generate artifact attestation manifest` 0 s → manifest upload 2 s →
+  `cf-typegen check` 1 s → bytes upload 4 s（両 upload 計 6 s）。
+- `validate:integration` / `Dependency advisory audit` / `Issue closure audit` /
+  `Build SBOM` + `Upload SBOM` / Playwright（install・E2E）はすべて **skipped**
+  — 意図どおりのレッグ分割が step 単位で確認できた。
+- `storybook axe` job は並行して 137 s（本変更の対象外・据え置き）。
+- 変更前の平均 8.07 分（484 s）に対し 148 s — 設計値 150–180 s の範囲内。
+
+### 8.2 PR レッグ（完全検証は 1 回、merge ref）: run [41827977968](https://github.com/rebuildup/my-web-2026/actions/runs/41827977968)
+
+- event `pull_request`、head `adb4fadb`（同一 SHA）。conclusion **success**。
+- `validate` job: 12:17:26Z → 12:26:52Z = **9m26s**（うち
+  `pnpm run validate:integration` step 12:18:23Z → 12:26:32Z = 8m09s、success）。
+- 同日同時刻の browser compat run [41827978151](https://github.com/rebuildup/my-web-2026/actions/runs/41827978151) と viewport regression run [41827977870](https://github.com/rebuildup/my-web-2026/actions/runs/41827977870) も success。
+
+### 8.3 同一リポジトリ・同一 1 時間内の before / after（validate job 時間）
+
+| コミット | レッグ | 変更前 | 変更後 |
+| --- | --- | ---: | ---: |
+| PR #895（head `74e312ad`、branch 889） | push | **11m02s**（run 41826882171、`event=push`） | — |
+| PR #895 同上 | pull_request | **11m15s**（run 41826889383、`event=pull_request`） | — |
+| **PR #895 の 1 コミット計** | | **22m17s** | |
+| PR #898（head `adb4fadb`、branch 897） | push | （上記 run 41827891265） | **2m28s** |
+| PR #898 同上 | pull_request | （上記 run 41827977968） | **9m26s** |
+| **PR #898 の 1 コミット計** | | | **11m54s** |
+| PR #899（branch 896） | push | 11m04s（run 41828043241） | — |
+| PR #899 同上 | pull_request | 10m55s（run 41828229710） | — |
+| **PR #899 の 1 コミット計** | | **21m59s** | |
+
+### 8.4 同時に走った本数と wall time（キューイングではない）
+
+測定窓中に ticket PR が **3 本**開いていた（#895 head 889 / #898 head 897 /
+#899 head 896）。3 PR × push/PR 2 レッグ = **6 本の CI validate run が 12:19Z
+頃に同時に実行されていた**（このうち 5 本が完全検証、残る 1 本は本変更後の
+軽量 push レッグ）。per-run wall time は **~11 分のまま変化していない**
+（#899: push 11m04s + PR 10m55s = 21m59s）。したがって重複のコストは
+キューイングやスローダウンではなく **runner-minutes の総量**（#895 の 1
+コミットで 22m17s、#898 で 11m54s）として現れます。
 
 ## 9. この記録がどう偽証されるか
 
@@ -304,4 +358,17 @@ project-init の ADR-0033（適応的スケジューリング）が扱うのは
 | `pnpm run ci:pins:check` | exit 0 — `findings: 0`、`status: PASS (workflows 6, jobs 7, pins 40, waivers 0)` |
 | `pnpm run release:gate:check`（`check-release-gate-coverage.mjs` の script 名はこれ） | exit 0 — `release gate ledger OK: 36 pass, 2 not run, 5 N/A` |
 | `pnpm run asvs:check`（`asvs:coverage:check` は存在しない。実体は `check-asvs-coverage.mjs`） | exit 0 — `45 selected, 29 pass, 0 fail, 6 not run (unverified), 10 N/A` |
-| `pnpm run validate:integration` | §10 末尾に記録 |
+| `pnpm run validate:integration` | 最終コミット（clean ツリー）に対して実行。結果は PR #898 本文の gates 表に記録する |
+
+補足（ローカル実行の経緯・自分で確認した事実）:
+
+- 初回のローカル `validate:integration` は step 39/80 で
+  `test/integration/session-logout.test.ts` の warm-up hook timeout
+  （10 s、`test/setup/warm-up.ts:60`）により失敗。同一ファイルの単体実行
+  （`npx vitest run test/integration/session-logout.test.ts`）は green
+  （9 passed / 1 expected fail）、同一 SHA の GitHub CI（run 41827977968）も
+  green であり、共有マシンの並行負荷起因の一過性と確認した。
+- 2 回目の実行は 80/80 中 79 まで通り、最後の `artifact:attestation:check` が
+  「tracked files are modified」で落ちた（記録前の未 commit 編集がツリーに
+  あったため。CI は checkout 済み commit を検検査するため発生しない）。
+  clean ツリーの最終コミットに対して再実行した結果を PR に記録する。

@@ -91,6 +91,13 @@ name: CI
 # (full_validation + push_obligations + attested_bytes) on any branch
 # on demand, so a ticket-branch tip can be completely validated, with
 # the same artefacts a push would leave, without pushing anything.
+# PLATFORM CAVEAT: GitHub only offers and fires `workflow_dispatch`
+# for a workflow file that exists on the repository's DEFAULT branch
+# (`main`). This change lands on `release-0-8-1`, so until the release
+# PR merges into `main` the "Run workflow" entry point does not exist
+# for this file — the escape hatch is NOT available today. In the
+# meantime: push the ticket branch (it now runs exactly these
+# obligations) or run `pnpm run validate:integration` locally.
 #
 # Ticket branches are digit-only identifiers per AGENTS.md §6, so
 # `'[0-9]+'` matches the legitimate ticket PRs while excluding arbitrary

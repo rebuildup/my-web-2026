@@ -4,7 +4,7 @@
 	"note": "Reviewed record for Issue #466. Evidence is per commit: regenerate with `pnpm run tools:artifact:update` and review the diff in the PR that changed the pin, the license file or the lockfile. Regenerate after `scripts/build-tools.mjs` has collected an artefact so `outbound.hosts` reflects the shipped bytes.",
 	"tools": {
 		"prototype": {
-			"pinned_sha": "335e0e861009049336e581dc266dc4e2f019e5c7",
+			"pinned_sha": "4e1359771768724c0993a6ae4c7b83367a3438e6",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -52,7 +52,7 @@
 			}
 		},
 		"readmark": {
-			"pinned_sha": "889595910ae62ebfb3f6b8000d635283196f9b0e",
+			"pinned_sha": "67254a9ef7e2bfb71e85d6aebd982dda1c1956f3",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",

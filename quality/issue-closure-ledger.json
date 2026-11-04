@@ -3459,6 +3459,73 @@
 			"action": "kept-closed",
 			"note": "受け入れ条件の証跡: #828 で ADR-0020 を採択し、#869 で shipped 15 Tool すべてを same_origin_static に移行して sandbox 属性を撤去、#872 で移行後の 10 Tool を再実測した。現在の manifest は 15/15 が same_origin_static で host_disabled が 0 件、tools:check は delivery 内訳 {\"same_origin_static\":15} を返す。宣言トークン集合は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が固定している。",
 			"missing": null
+		},
+		{
+			"issue": 871,
+			"title": "Portfolio 詳細の §07 Links が 390px で横スクロールする（長い URL が折り返さない）",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#875",
+				"docs/verification/portfolio/links-wrapping.md",
+				"docs/verification/portfolio/links-wrapping/",
+				"src/portfolio/components/PortfolioDetail.tsx"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: 折り返し機会の無い長い URL を持つ project で 390 / 1440 とも横スクロールしないことを Playwright で実測し、docs/verification/portfolio/links-wrapping.md と同ディレクトリの WebP に記録した。条件 2: 折り返し後も選択・コピーできることを同じ記録で確認した。条件 3: #875 は validate（validate:integration と同一 entry point）green で release-0-8-1 に merge 済み。",
+			"missing": null
+		},
+		{
+			"issue": 879,
+			"title": "docs(tools): inventory の classification / pinned SHA を manifest と一致させる",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#881",
+				"docs/tools/inventory.md",
+				"src/tools/manifest.json",
+				"scripts/check-tools-manifest.mjs"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1・2: docs/tools/inventory.md の 15 行を manifest の classification / source.pinned_sha に一致させ、Counts を 15 / 0 / 0（manifest 導出値）にした。条件 3: scripts/check-tools-manifest.mjs に rule 12 を追加し、文書の表・SHA・Counts を manifest と双方向に比較して drift を CI で落とす。条件 4: #881 は validate green で release-0-8-1 に merge 済み。",
+			"missing": null
+		},
+		{
+			"issue": 868,
+			"title": "fix(tools): pomodoro の standalone artifact が CSS を読み込まずスタイル未適用になる",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#882",
+				"rebuildup/tool-pomodoro#10",
+				"d4add8a1f19b4a4ffb3c77c745f140796120adc7",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/pomodoro-desktop.webp",
+				"docs/verification/tools/pomodoro-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: dist/index.html が ./assets/index-*.css（24.0KB / gzip 5.3KB）を参照し、frame 内が styled に描画されることを実測した。条件 2: 修正は rebuildup/tool-pomodoro PR #10（merge d4add8a1）で行い、external/pomodoro の gitlink と manifest の pinned_sha、tool-artifact-inventory の sha256 を pin bump で取り込んだ。条件 3: docs/verification/tools/host-interaction-batch-0-8-1.md §5 / §11 を更新し §12 を追加、1440 / 390 の WebP を再取得した。#882 は validate green で release-0-8-1 に merge 済み。",
+			"missing": null
 		}
 	]
 }

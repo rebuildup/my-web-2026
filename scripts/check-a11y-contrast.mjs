@@ -62,7 +62,7 @@
  *   node --experimental-strip-types scripts/check-a11y-contrast.mjs [--quiet] [--json=FILE]
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -279,6 +279,107 @@ export const CONTRAST_PAIRS = [
 		threshold: 3,
 		note: 'the emphasis boundary rule',
 	},
+	// Issue #764 — the monochrome layer (direction B) and the colour
+	// layer placed on it. These are the claims the new tokens make, so
+	// the gate measures them rather than trusting the harness.
+	{
+		fg: 'mono.ink.text',
+		bg: 'mono.surface.ground',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'body copy on the monochrome page ground',
+	},
+	{
+		fg: 'mono.ink.text',
+		bg: 'mono.surface.raised',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'body copy on a raised monochrome surface',
+	},
+	{
+		fg: 'mono.ink.text',
+		bg: 'mono.surface.sunken',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'body copy on a sunken monochrome surface',
+	},
+	{
+		fg: 'mono.ink.text',
+		bg: 'mono.surface.control',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'the label on a pressable monochrome surface',
+	},
+	{
+		fg: 'mono.ink.secondary',
+		bg: 'mono.surface.ground',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'secondary ink on the monochrome page ground',
+	},
+	{
+		fg: 'mono.ink.muted',
+		bg: 'mono.surface.ground',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'auxiliary ink on the monochrome page ground',
+	},
+	{
+		fg: 'mono.ink.muted',
+		bg: 'mono.surface.raised',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'auxiliary ink on a raised monochrome surface',
+	},
+	{
+		fg: 'mono.ink.muted',
+		bg: 'mono.surface.sunken',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'auxiliary ink on a sunken monochrome surface',
+	},
+	{
+		fg: 'mono.ink.muted',
+		bg: 'mono.surface.control',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'auxiliary ink on a pressable monochrome surface',
+	},
+	{
+		fg: 'mono.ink.inverse',
+		bg: 'mono.surface.inverse',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'the inverse panel label in the monochrome layer',
+	},
+	{
+		fg: 'mono.line.rule',
+		bg: 'mono.surface.ground',
+		kind: 'non-text',
+		threshold: 3,
+		note: 'the strong monochrome rule',
+	},
+	{
+		fg: 'mono.ink.onColour',
+		bg: 'accent.field.design',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'the monochrome ink placed on the design colour field',
+	},
+	{
+		fg: 'mono.ink.onColour',
+		bg: 'accent.field.code',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'the monochrome ink placed on the code colour field',
+	},
+	{
+		fg: 'mono.ink.onColour',
+		bg: 'accent.field.writing',
+		kind: 'normal',
+		threshold: 4.5,
+		note: 'the monochrome ink placed on the writing colour field',
+	},
 ];
 
 /**
@@ -295,6 +396,11 @@ export const EXCLUDED_TOKENS = [
 		token: 'border.subtle',
 		reason:
 			'decorative separator — it carries no information of its own, so the 3:1 non-text minimum does not apply (SC 1.4.3 requires it only for a boundary that identifies a component)',
+	},
+	{
+		token: 'mono.line.hairline',
+		reason:
+			"the monochrome layer's decorative separator — same role and same reason as `border.subtle` above; the strong rule (`mono.line.rule`) is the one that identifies a boundary and IS measured",
 	},
 ];
 

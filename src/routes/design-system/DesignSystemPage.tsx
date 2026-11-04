@@ -218,22 +218,17 @@ function Hero() {
 
 function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
-		<section
-			aria-labelledby="design-system-color"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				backgroundColor: 'bg.subtle',
-			})}
-			data-colour-section
-		>
+		<section aria-labelledby="design-system-color" className={sectionStyle} data-colour-section>
 			<Container>
 				<SectionHeading
 					id="design-system-color"
 					eyebrow="01 — Color"
 					title="色 / Colour as surface"
-					description="色そのものが面です。分類は語・形・位置が担い、色は従属します。状態は分類色を借り、操作は墨です。"
-				/>
-				<ColorSwatches tokenData={tokenData} />
+					description="色はモノクロの地の上にだけ載ります。分類は語・形・位置が担い、色面の文字は色ではなく地の墨（mono.ink）です。状態は分類色を借り、操作は墨です。"
+					variant="spread"
+				>
+					<ColorSwatches tokenData={tokenData} />
+				</SectionHeading>
 			</Container>
 		</section>
 	);

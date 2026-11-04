@@ -104,6 +104,88 @@ export const semanticTokens = {
 				value: { base: '{colors.brand.600}', _dark: '{colors.brand.300}' },
 			},
 		},
+		// Monochrome layer (Issue #764, direction B).
+		//
+		// The owner's decision (2026-11-02) is that the design system is
+		// a monochrome ground with a colour layer placed ON it. This is
+		// the ground: the 11 roles the comparison harness established
+		// (page / sunken / raised / control surface, hairline / rule,
+		// auxiliary / secondary / body / disabled ink, inverse ground).
+		//
+		// `ink.onColour` is the role that makes the colour layer
+		// possible: a coloured field is read through a monochrome ink
+		// token instead of an ink chosen per render. `onColour` is for
+		// a vivid field (the 500 step), `onColourInverse` for a deep one
+		// (700–800). The contrast gate measures both against
+		// `accent.field.*` (`scripts/check-a11y-contrast.mjs`).
+		mono: {
+			surface: {
+				ground: {
+					value: { base: '{colors.mono.light.ground}', _dark: '{colors.mono.dark.ground}' },
+				},
+				sunken: {
+					value: { base: '{colors.mono.light.sunken}', _dark: '{colors.mono.dark.sunken}' },
+				},
+				raised: {
+					value: { base: '{colors.mono.light.raised}', _dark: '{colors.mono.dark.raised}' },
+				},
+				control: {
+					value: { base: '{colors.mono.light.control}', _dark: '{colors.mono.dark.control}' },
+				},
+				inverse: {
+					value: {
+						base: '{colors.mono.light.inverseGround}',
+						_dark: '{colors.mono.dark.inverseGround}',
+					},
+				},
+				disabled: {
+					value: {
+						base: '{colors.mono.light.disabledSurface}',
+						_dark: '{colors.mono.dark.disabledSurface}',
+					},
+				},
+			},
+			line: {
+				hairline: {
+					value: { base: '{colors.mono.light.hairline}', _dark: '{colors.mono.dark.hairline}' },
+				},
+				rule: {
+					value: { base: '{colors.mono.light.rule}', _dark: '{colors.mono.dark.rule}' },
+				},
+			},
+			ink: {
+				text: {
+					value: { base: '{colors.mono.light.text}', _dark: '{colors.mono.dark.text}' },
+				},
+				secondary: {
+					value: { base: '{colors.mono.light.secondary}', _dark: '{colors.mono.dark.secondary}' },
+				},
+				muted: {
+					value: { base: '{colors.mono.light.muted}', _dark: '{colors.mono.dark.muted}' },
+				},
+				disabled: {
+					value: {
+						base: '{colors.mono.light.disabledText}',
+						_dark: '{colors.mono.dark.disabledText}',
+					},
+				},
+				inverse: {
+					value: {
+						base: '{colors.mono.light.inverseText}',
+						_dark: '{colors.mono.dark.inverseText}',
+					},
+				},
+				onColour: {
+					value: { base: '{colors.mono.light.onColour}', _dark: '{colors.mono.dark.onColour}' },
+				},
+				onColourInverse: {
+					value: {
+						base: '{colors.mono.light.onColourInverse}',
+						_dark: '{colors.mono.dark.onColourInverse}',
+					},
+				},
+			},
+		},
 		// Accent tokens (Issue #172, audited in Issue #290). `surface`
 		// and `interactive` are the two page-level accents; `positive` /
 		// `negative` / `warning` carry status semantics; `category.{design,
@@ -147,6 +229,27 @@ export const semanticTokens = {
 				},
 				tool: {
 					value: { base: '{colors.tool.700}', _dark: '{colors.tool.300}' },
+				},
+			},
+			// The approved colour layer (Issue #764, 2026-11-04).
+			//
+			// `category.*` is the STEP a small non-text mark is read at
+			// (700 in light, because a mark on the ground must clear
+			// 3 : 1). `field.*` is the STEP a classification colour is
+			// read at when it spans a surface: the 500 step, which is
+			// the value the owner approved on `/design-system`. Both
+			// appearances bind the same step — a colour field does not
+			// change value with the reader's appearance; the monochrome
+			// ink placed on it does (`mono.ink.onColour`).
+			field: {
+				design: {
+					value: { base: '{colors.design.500}', _dark: '{colors.design.500}' },
+				},
+				code: {
+					value: { base: '{colors.code.500}', _dark: '{colors.code.500}' },
+				},
+				writing: {
+					value: { base: '{colors.writing.500}', _dark: '{colors.writing.500}' },
 				},
 			},
 		},

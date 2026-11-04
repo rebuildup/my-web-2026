@@ -14,13 +14,18 @@ tokens.ts (raw)
   brand.* / neutral.* / positive.* / negative.* / warning.*
   design.* / code.* / writing.* / tool.*
   charcoal.*   — near-neutral dark ladder (dark appearance only)
+  mono.light.* / mono.dark.*  — the monochrome role scale
 
 semantic-tokens.ts (semantic) — every token is `{ value: { base, _dark } }`
   bg.{canvas,surface,subtle,accent,inverse}
   text.{default,muted,inverse,accent}
   border.{subtle,strong,focus}
+  mono.surface.{ground,sunken,raised,control,inverse,disabled}
+  mono.line.{hairline,rule}
+  mono.ink.{text,secondary,muted,disabled,inverse,onColour,onColourInverse}
   accent.{surface,interactive,positive,negative,warning}
-  accent.category.{design,code,writing,tool}
+  accent.category.{design,code,writing,tool}   — the MARK step
+  accent.field.{design,code,writing}           — the FIELD step
 
 components (consumers)
   bg="accent.surface"   color="accent.positive"   ...
@@ -54,8 +59,85 @@ replacement: the card is separated from the page by its own fill
 (`bg.surface`) and the category is carried by the `StateMark`
 silhouette plus the upper-case category word. The hues remain a
 non-text identifier role for surfaces that pair them with a mark (the
-`/design-system` identifier tiles do), never a background for text —
-a 700/300-step solid cannot carry a text-bearing face at 4.5:1.
+`/design-system` colour plate does), never a background for text — a
+700/300-step solid cannot carry a text-bearing face at 4.5:1.
+
+**Mark step vs field step.** Those two roles use different steps of
+the same family, and the difference is area, not taste. A small mark
+on the light canvas must clear the 3:1 non-text minimum, so
+`accent.category.*` binds the **700** step (`design` 5.89 : 1,
+`code` 5.23 : 1, `writing` 4.80 : 1 on `#fcfcfd`); the 500 step of
+the cyan and yellow families measures 2.37 : 1 and 1.88 : 1 there and
+cannot serve that role. A field large enough to be its own surface
+has the opposite constraint: the 700 step is dark and reads as mud
+across a wide area (`writing` 700 is `#a16207`, an ochre that turns
+to brown).
+
+A field is therefore painted at the family's **500** step, and that
+step is now its own semantic token — `accent.field.{design,code,writing}`
+(Issue #764, approved by the owner on 2026-11-04). Both appearances
+bind the same step: a colour field does not change value with the
+reader's appearance. What changes is the ink placed on it, which is
+also a token rather than a per-render measurement:
+`mono.ink.onColour` for a vivid field (`#101012` light / `#0a0a0c`
+dark) and `mono.ink.onColourInverse` for a deep one. The contrast gate
+measures the pairing (`scripts/check-a11y-contrast.mjs`) at
+5.38 / 7.82 / 9.91 : 1 for `design` / `code` / `writing` in light and
+5.60 / 8.14 / 10.31 : 1 in dark; the `/design-system` plate prints the
+same ratio on the DOM (`data-contrast`) as verification, not as the
+decision. The plate shows both steps side by side so the rule is
+stated rather than implied.
+
+## Monochrome layer — the ground the colour sits on (Issue #764)
+
+The owner's decision (2026-11-02) is the direction the name carries:
+the design system is a **monochrome ground with a colour layer placed
+on it**. The monochrome layer answers every structural question —
+page ground, sunken / raised / control surface, decorative hairline,
+identifying rule, body / secondary / auxiliary / disabled ink, inverse
+ground — so a colour never has to carry a surface's meaning on its
+own.
+
+Light and dark are **designed independently**, not inverted: each is
+read from its own ground outward, which is why `tokens.ts` carries
+`mono.light.*` and `mono.dark.*` as two objects rather than one ramp
+with a `_dark` tail.
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| `mono.surface.ground` | `#edede8` | `#0a0a0c` |
+| `mono.surface.sunken` | `#e0e0da` | `#050506` |
+| `mono.surface.raised` | `#ffffff` | `#1a1a1e` |
+| `mono.surface.control` | `#dfdfd8` | `#26262c` |
+| `mono.surface.inverse` | `#101012` | `#f2f2ef` |
+| `mono.surface.disabled` | `#e9e9e4` | `#17171b` |
+| `mono.line.hairline` | `#c9c9c2` | `#33333a` |
+| `mono.line.rule` | `#74747d` | `#62626c` |
+| `mono.ink.text` | `#101012` | `#f2f2ef` |
+| `mono.ink.secondary` | `#404047` | `#b9b9c0` |
+| `mono.ink.muted` | `#5f5f68` | `#8d8d96` |
+| `mono.ink.disabled` | `#a7a7ad` | `#5c5c64` |
+| `mono.ink.inverse` | `#f6f6f2` | `#0a0a0c` |
+| `mono.ink.onColour` | `#101012` | `#0a0a0c` |
+| `mono.ink.onColourInverse` | `#f6f6f2` | `#f2f2ef` |
+
+Two values depart from the harness the owner judged on, and both are
+stated rather than hidden:
+
+- `mono.line.rule` dark moved from `#5c5c66` to `#62626c`: the
+  harness value measured 2.99 : 1 against `#0a0a0c`, just under the
+  3 : 1 non-text minimum, so it moved to the nearest step that clears
+  it (3.28 : 1). The hue and the role are unchanged.
+- `mono.line.hairline` is **excluded** from the non-text matrix for
+  the same reason `border.subtle` is: it is a decorative separator that
+  carries no information of its own. The strong rule is the boundary
+  that identifies a component, and it is measured.
+
+`mono.*` and `accent.field.*` are declared, resolved on the server,
+and measured; they are **not yet bound to the site-wide `bg.*` /
+`text.*` / `border.*` tokens**. Re-anchoring those would change every
+surface on the platform, which is the "全面適用" step and is a
+separate decision from approving the accent colours.
 
 ### These hues are reinforcement, never the message (Issue #411)
 

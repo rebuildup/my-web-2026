@@ -112,3 +112,37 @@ direction の token と primitive の変更だけで、`src/preview/**` は持�
    その Issue に書く。
 3. モノクロ階層の値と色の体系は、実装 PR で `src/editorial/tokens.ts` /
    `semantic-tokens.ts` に落とす。ハーネスの inline style は引き継がない。
+
+## 8. 2026-11-04 の所有者判断と着地
+
+所有者の発言（この記録を書いたセッション内）:
+
+> OK アクセントカラートークンのみ承認する。モノクロのトークンがないため、
+> このまま全面適用はできない。モノクロのトークンをカラーに載せる必要がある
+
+決定として読める内容は 3 点:
+
+1. **アクセント色（分類の 3 系統）だけを承認する。** ほかの色は承認されていない。
+2. **モノクロの token 階層が無いので、このまま全面適用はできない。** 全面適用は
+   未承認であり、この PR の範囲外。
+3. **モノクロの token を色に載せる。** 色面の文字色は色ではなく、モノクロ階層の
+   墨（`mono.ink.onColour`）で決まる。
+
+着地したもの（この PR、`release-0-8-1` 上の未 merge 差分）:
+
+- `src/editorial/tokens.ts#colors.mono` — 明 / 暗を独立に設計した 15 値。
+- `src/editorial/semantic-tokens.ts#colors.mono.*` — surface 6 / line 2 / ink 7。
+  `mono.ink.onColour` / `onColourInverse` は「色面に載る墨」の役割。
+- `src/editorial/semantic-tokens.ts#colors.accent.field.{design,code,writing}` —
+  承認された accessor。両 appearance とも 500 段。
+- `scripts/check-a11y-contrast.mjs` — モノクロ階層 14 対と色面 6 対を追加。
+  `mono.line.hairline` は `border.subtle` と同じ理由で matrix から除外し、除外理由を
+  出力に明記する。
+- `/design-system` の `01 — Color` — 色面の標本、モノクロ階層の梯子、色面に墨を
+  載せた状態、全 token 台帳。
+
+着地していないもの: `bg.*` / `text.*` / `border.*` の全面張り替え。これは
+「全面適用」であり、所有者の承認が無いため、明示的に範囲外として残す。
+
+**この記録は所有者の発言を転記したもので、所有者確認の代行ではない。**
+

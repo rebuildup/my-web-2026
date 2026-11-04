@@ -241,14 +241,23 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						fontWeight: '700',
 						letterSpacing: '-0.02em',
 						color: 'text.default',
-						textDecoration: 'none',
+						// The wordmark is a link, and `text.accent` is ink now
+						// (Issue #887): an underline is the affordance. It uses the
+						// heading carve-out — the decoration is held back to the
+						// rule ink (border.strong = mono.line.rule) so a brand mark
+						// does not read as body copy, and it thickens on hover.
+						textDecoration: 'underline',
+						textUnderlineOffset: '0.18em',
+						textDecorationThickness: '1px',
+						textDecorationColor: 'border.strong',
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
 							outlineOffset: '2px',
 							borderRadius: '2px',
 						},
 						_hover: {
-							color: 'text.accent',
+							textDecorationThickness: '2px',
+							textDecorationColor: 'currentColor',
 						},
 					})}
 				>
@@ -415,9 +424,16 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 				gap: '2',
 				fontFamily: 'sans',
 				fontSize: isMobile ? 'md' : 'sm',
-				fontWeight: '600',
+				fontWeight: isActive ? '700' : '600',
 				color: isActive ? 'text.default' : 'text.muted',
-				textDecoration: 'none',
+				// Direction B (Issue #887): a nav link is ink on an achromatic
+				// ground, so the underline is what says "interactive", and the
+				// current page is marked by TWO further channels at once — a
+				// heavier rule and a heavier weight — never by colour alone
+				// (WCAG 2.2 1.4.1).
+				textDecoration: 'underline',
+				textUnderlineOffset: '0.18em',
+				textDecorationThickness: isActive ? '2px' : '1px',
 				// Issue #300: a nav label is a unit — it may move to
 				// the next row as a whole, but never break inside a
 				// Japanese word.
@@ -427,10 +443,10 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 				borderRadius: isMobile ? 'md' : '0',
 				transition: 'color 120ms ease',
 				...(!isMobile && {
-					_hover: { color: 'text.default' },
+					_hover: { color: 'text.default', textDecorationThickness: '2px' },
 				}),
 				...(isMobile && {
-					_hover: { backgroundColor: 'bg.surface' },
+					_hover: { backgroundColor: 'bg.surface', textDecorationThickness: '2px' },
 					borderWidth: '1px',
 					borderStyle: 'solid',
 					borderColor: isActive ? 'border.strong' : 'border.subtle',

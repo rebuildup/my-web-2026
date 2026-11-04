@@ -25,7 +25,13 @@ import { css } from '../../../../styled-system/css';
  *   - `text.default` / `bg.canvas`  secondary CTA ink inversion on hover.
  *   - `accent.interactive`   secondary CTA fill on press.
  *   - `border.focus`         keyboard focus ring.
- *   - `text.accent`          inline link text.
+ *   - `text.accent`          inline link INK + its permanent underline.
+ *
+ * Issue #887 (direction B): `text.accent` is INK, not a hue, so the
+ * inline link is identified by a PERMANENT underline — 1 px at rest,
+ * fattened to 2 px on hover / press, with the offset that keeps it
+ * clear of the glyphs. The state cells below therefore override the
+ * underline's WEIGHT, not a colour.
  *
  * Issue #804 (owner feedback, 2026-11-01): the secondary CTA used to
  * be `bg.canvas` (the page fill) plus a `border.subtle` hairline. On
@@ -113,7 +119,7 @@ export function InteractiveStates() {
 			/>
 			<Row
 				label="Inline link"
-				caption="<a> rendered as text.accent with underline-on-hover. No fill, no border — minimal chrome."
+				caption="<a> rendered as text.accent (ink) with a permanent underline — 1px at rest, 2px on hover / press. No fill, no border: the underline is the affordance (Issue #887)."
 				overrides={inlineLinkOverrides}
 				render={(state) => (
 					<a
@@ -168,8 +174,10 @@ const secondaryOverrides: OverrideMap = {
 
 const inlineLinkOverrides: OverrideMap = {
 	default: {},
-	hover: { textDecoration: 'underline' },
-	pressed: { textDecoration: 'underline' },
+	// Issue #887: the underline is permanent, so the hover and press
+	// cells show the WEIGHT change the live rule applies.
+	hover: { textDecorationThickness: '2px' },
+	pressed: { textDecorationThickness: '2px' },
 	focus: {
 		outline: '2px solid var(--colors-border-focus)',
 		outlineOffset: '2px',
@@ -343,12 +351,16 @@ function inlineLinkClass() {
 		display: 'inline-flex',
 		alignItems: 'baseline',
 		gap: '1',
+		// Issue #887: ink + permanent underline. The colour no longer
+		// says "link", so the underline does — at rest, not on hover.
 		color: 'text.accent',
 		fontFamily: 'sans',
 		fontSize: 'md',
-		textDecoration: 'none',
+		textDecoration: 'underline',
+		textUnderlineOffset: '0.18em',
+		textDecorationThickness: '1px',
 		_hover: {
-			textDecoration: 'underline',
+			textDecorationThickness: '2px',
 		},
 		_focusVisible: {
 			outline: '2px solid {colors.border.focus}',

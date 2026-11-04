@@ -236,7 +236,9 @@ function Cell({
 						fontSize: 'xs',
 						letterSpacing: '0.04em',
 						textTransform: 'uppercase',
-						color: 'text.accent',
+						// Issue #887: a caption, not a link — `text.accent` is
+						// the link ink now, so this label wears plain ink.
+						color: 'text.default',
 					})}
 				>
 					{label}

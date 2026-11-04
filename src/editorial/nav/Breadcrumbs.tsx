@@ -73,7 +73,7 @@ import {
  *     color: 'text.muted',
  *     '& ol': { listStyle: 'none', padding: 0, margin: 0, display: 'flex', gap: '1', flexWrap: 'wrap' },
  *     '& li': { display: 'inline-flex', alignItems: 'center', gap: '1' },
- *     '& a': { color: 'text.muted', textDecoration: 'none' },
+ *     '& a': { color: 'text.muted', textDecoration: 'underline', textUnderlineOffset: '0.18em' },
  *     '& [aria-current="page"]': { color: 'text.default', fontWeight: '500' },
  *     '& [aria-hidden="true"]': { userSelect: 'none' },
  *   })}

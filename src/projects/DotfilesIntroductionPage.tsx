@@ -61,7 +61,7 @@ const FRESHNESS_MARK: Readonly<Record<FreshnessState, 'ok' | 'degraded' | 'unrea
 const linkClassName = css({
 	color: 'text.accent',
 	textDecoration: 'underline',
-	textUnderlineOffset: '2px',
+	textUnderlineOffset: '0.18em',
 	textDecorationThickness: '1px',
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
@@ -382,11 +382,13 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 												fontWeight: '600',
 												color: 'text.accent',
 												textDecoration: 'underline',
-												textUnderlineOffset: '2px',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '2px',
 												},
+												_hover: { textDecorationThickness: '2px' },
 											})}
 										>
 											{repo.label}
@@ -435,10 +437,12 @@ function BoundarySection({
 				>
 					<article
 						className={css({
+							// Issue #887: the panel separates itself from the page
+							// by FILL, not by a hairline enclosure. `border.subtle`
+							// is the system's decorative separator; the two
+							// boundary panels are raised planes instead.
+							backgroundColor: 'bg.surface',
 							padding: '6',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>
@@ -465,10 +469,8 @@ function BoundarySection({
 					</article>
 					<article
 						className={css({
+							backgroundColor: 'bg.surface',
 							padding: '6',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>
@@ -804,7 +806,9 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 									fontFamily: 'mono',
 									color: 'text.accent',
 									textDecoration: 'underline',
-									textUnderlineOffset: '2px',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
+									_hover: { textDecorationThickness: '2px' },
 								})}
 							>
 								{snapshot.source.commitSha}

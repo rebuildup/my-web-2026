@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
+import { StateMark } from '../editorial/primitives/StateMark';
 import {
 	EXTERNAL_FAILURE_LABEL,
 	type ExternalBreakerState,
@@ -50,6 +51,10 @@ import {
  * status line or exception message has a path into this component, so
  * the only thing a visitor can read about a failure is its reason
  * code, mapped by `EXTERNAL_FAILURE_LABEL`.
+ *
+ * Issue #887: the card carries no status hue. An open breaker is shown
+ * by the StateMark silhouette, the published reason word, full-ink
+ * text and the identifying rule on the card — never by a colour.
  *
  * A `null` value always means "nothing to show", never "the number
  * zero" — an adapter maps absence to `null` precisely so the card
@@ -227,7 +232,7 @@ export function ExternalReadCard<T>({
 				borderRadius: 'md',
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: degraded?.breaker === 'open' ? 'accent.warning' : 'border.subtle',
+				borderColor: degraded?.breaker === 'open' ? 'border.strong' : 'border.subtle',
 				bg: 'bg.surface',
 			})}
 		>
@@ -311,14 +316,25 @@ export function ExternalReadCard<T>({
 				<output
 					data-testid="external-read-failure"
 					className={css({
-						display: 'block',
+						// Issue #887: there is no status hue. The breaker
+						// state is the SHAPE (StateMark) plus the published
+						// reason word; an open breaker reads in full ink
+						// against the muted line of an ordinary degraded
+						// read, and its card is outlined with the
+						// identifying rule instead of a warning colour.
+						display: 'flex',
+						alignItems: 'center',
+						gap: '2',
 						fontFamily: 'sans',
 						fontSize: 'sm',
-						color: degraded.breaker === 'open' ? 'accent.warning' : 'text.muted',
+						color: degraded.breaker === 'open' ? 'text.default' : 'text.muted',
 					})}
 				>
-					{degraded.value !== null ? `${FALLBACK_LABEL} — ` : ''}
-					{EXTERNAL_FAILURE_LABEL[degraded.reason]}
+					<StateMark kind={degraded.breaker === 'open' ? 'unreachable' : 'degraded'} size="sm" />
+					<span>
+						{degraded.value !== null ? `${FALLBACK_LABEL} — ` : ''}
+						{EXTERNAL_FAILURE_LABEL[degraded.reason]}
+					</span>
 				</output>
 			) : null}
 

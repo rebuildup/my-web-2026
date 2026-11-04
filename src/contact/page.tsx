@@ -269,9 +269,14 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						fontSize: 'md',
 						fontWeight: '600',
 						color: 'text.accent',
-						textDecoration: 'none',
+						// Issue #887: `text.accent` is ink, so the underline carries
+						// the affordance at rest; the `→` still marks it as leaving
+						// this site.
+						textDecoration: 'underline',
+						textUnderlineOffset: '0.18em',
+						textDecorationThickness: '1px',
 						overflowWrap: 'break-word',
-						_hover: { textDecoration: 'underline' },
+						_hover: { textDecorationThickness: '2px' },
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
 							outlineOffset: '2px',

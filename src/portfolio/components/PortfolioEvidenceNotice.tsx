@@ -39,11 +39,15 @@ const noticeClassName = css({
 	display: 'flex',
 	flexDirection: 'column',
 	gap: '1',
-	borderWidth: '1px',
-	borderStyle: 'solid',
-	borderColor: 'border.subtle',
+	// Issue #887: the panel separates itself by FILL, not by a
+	// hairline enclosure. `border.subtle` is the system's decorative
+	// separator (it carries no information of its own), and this box
+	// was painted with the page colour behind it, so the border was
+	// doing all of the work. `bg.subtle` is the documented "inset
+	// block" role; the disclosure keeps its own boundary without an
+	// outline the monochrome hierarchy does not need.
+	backgroundColor: 'bg.subtle',
 	borderRadius: '4',
-	background: 'bg.canvas',
 	padding: '3',
 	marginBlockStart: '4',
 	fontFamily: 'sans',

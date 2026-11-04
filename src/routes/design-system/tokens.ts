@@ -216,6 +216,13 @@ const LEDGER_PATHS = [
 	// Accent features (accent.*)
 	'accent.surface',
 	'accent.interactive',
+	// Status aliases — Issue #887. These three are TRANSITIONAL:
+	// direction B has no status hue, so each resolves to
+	// `mono.ink.text` (ink) and tells a reader nothing a shape and a
+	// word do not already say. They stay in the ledger while the
+	// tokens exist — listed as what they are, an alias with no colour
+	// of its own — and they leave this list when the coordinator
+	// deletes them from `semantic-tokens.ts`.
 	'accent.positive',
 	'accent.negative',
 	'accent.warning',

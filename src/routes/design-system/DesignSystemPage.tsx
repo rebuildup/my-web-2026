@@ -39,8 +39,9 @@ import type { DesignSystemTokenData } from './tokens';
  *                            dialog, so its focus trap and its Escape
  *                            hand-back can be measured in a deployment
  *                            without a home consumer API key.
- *   - 06 Status / category  positive / negative / warning badges + four
- *                            content-category left-border treatments.
+ *   - 06 Status / category  status as shape + word with NO hue (Issue
+ *                            #887) and the four content-category marks,
+ *                            the only colour this section carries.
  *   - 07 Image / CLS         Issue #486 measurement fixture: the real
  *                            `PortfolioMediaFigure` rendered with
  *                            fixture rows (eager / lazy / placeholder /
@@ -196,9 +197,15 @@ function Hero() {
 							<a
 								href="https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md"
 								className={css({
+									// Issue #887: `text.accent` is ink now, so the
+									// permanent underline is what marks this as a
+									// link; hover only fattens it.
 									color: 'text.accent',
 									textDecoration: 'underline',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
 									marginInlineStart: '1',
+									_hover: { textDecorationThickness: '2px' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',
@@ -315,7 +322,7 @@ function StatusSection() {
 					id="design-system-status"
 					eyebrow="06 — Status"
 					title="識別子 / Status & category accents"
-					description="positive / negative / warning の status badge、 と design / code / writing / tool の content category を left-border で識別。"
+					description="状態は形（StateMark）と語で示し、色では示しません（accent.positive / negative / warning は墨に解決される暫定エイリアス、Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
 					variant="spread"
 				>
 					<StatusAccents />

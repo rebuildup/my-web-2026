@@ -100,8 +100,16 @@ const mutedActionStyle = css({
 	color: 'text.muted',
 });
 
+// Issue #887: `accent.negative` was re-anchored to ink, so a hue can no
+// longer say "this key emits nothing". The state is carried by the ✕
+// GLYPH the cap renders and by the sentence the key-detail panel shows
+// (`format.ts#actionDescription` → 「この位置では入力を出力しません」),
+// which now also carries a StateMark. The label itself stays in full
+// ink, one weight heavier than a normal action, so the block reads as
+// deliberate rather than as a faded key.
 const blockedActionStyle = css({
-	color: 'accent.negative',
+	color: 'text.default',
+	fontWeight: '700',
 });
 
 function actionTone(action: KeyboardAction): string | undefined {
@@ -305,7 +313,16 @@ export function KeyDetail({ platform, layer, selectedIndex }: KeyDetailProps) {
 				{platform.capSource === 'physical' ? '物理キー位置' : 'Kanata 入力順'}）
 			</DetailRow>
 
-			<DetailRow label="アクション">{actionDescription(action, platform.id)}</DetailRow>
+			<DetailRow label="アクション">
+				{action.kind === 'blocked' ? (
+					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+						<StateMark kind="unreachable" size="sm" />
+						{actionDescription(action, platform.id)}
+					</span>
+				) : (
+					actionDescription(action, platform.id)
+				)}
+			</DetailRow>
 
 			{action.reference !== undefined ? (
 				<DetailRow label="alias">

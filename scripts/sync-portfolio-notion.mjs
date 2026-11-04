@@ -210,7 +210,13 @@ export function parseArgs(argv) {
 		r2Target: 'local',
 	};
 	for (let index = 0; index < argv.length; index += 1) {
-		const arg = argv[index];
+		const raw = argv[index];
+		// Both `--flag value` and `--flag=value` are accepted: an operator
+		// who copies the form from a runbook must not hit a usage error
+		// for a spelling that means the same thing (Issue #889, ingest).
+		const separator = raw.indexOf('=');
+		const arg = separator === -1 ? raw : raw.slice(0, separator);
+		const inline = separator === -1 ? null : raw.slice(separator + 1);
 		if (arg === '--help' || arg === '-h') return { ...options, help: true };
 		if (arg === '--dry-run') {
 			options.dryRun = true;
@@ -226,8 +232,10 @@ export function parseArgs(argv) {
 			arg === '--out' ||
 			arg === '--r2-target'
 		) {
-			const value = argv[index + 1];
-			if (value === undefined || value.startsWith('--')) throw new Error(`${arg} needs a value`);
+			const value = inline ?? argv[index + 1];
+			if (value === undefined || value.length === 0 || value.startsWith('--')) {
+				throw new Error(`${arg} needs a value`);
+			}
 			if (arg === '--fixture') options.fixture = value;
 			if (arg === '--database-id') options.databaseId = value;
 			if (arg === '--out') options.out = value;
@@ -240,10 +248,10 @@ export function parseArgs(argv) {
 				}
 				options.r2Target = value;
 			}
-			index += 1;
+			if (inline === null) index += 1;
 			continue;
 		}
-		throw new Error(`unknown argument: ${arg}`);
+		throw new Error(`unknown argument: ${raw}`);
 	}
 	return options;
 }

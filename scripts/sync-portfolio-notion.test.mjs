@@ -518,7 +518,13 @@ describe('parseArgs', () => {
 	it('defaults the R2 target to local and only accepts a named target', () => {
 		assert.equal(parseArgs([]).r2Target, 'local');
 		assert.equal(parseArgs(['--r2-target', 'production']).r2Target, 'production');
+		// The runbook form: `--r2-target=local` means the same thing and
+		// must not become a usage error for an operator mid-ingest.
+		assert.equal(parseArgs(['--r2-target=local']).r2Target, 'local');
+		assert.equal(parseArgs(['--r2-target=production']).r2Target, 'production');
+		assert.equal(parseArgs(['--out=/tmp/x.json']).out, '/tmp/x.json');
 		assert.throws(() => parseArgs(['--r2-target', 'remote']), /must be local or production/u);
+		assert.throws(() => parseArgs(['--r2-target=']), /needs a value/u);
 	});
 });
 

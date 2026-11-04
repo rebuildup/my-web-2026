@@ -141,8 +141,31 @@ direction の token と primitive の変更だけで、`src/preview/**` は持�
 - `/design-system` の `01 — Color` — 色面の標本、モノクロ階層の梯子、色面に墨を
   載せた状態、全 token 台帳。
 
-着地していないもの: `bg.*` / `text.*` / `border.*` の全面張り替え。これは
-「全面適用」であり、所有者の承認が無いため、明示的に範囲外として残す。
+着地していないもの（この PR の時点では）: `bg.*` / `text.*` / `border.*` の
+全面張り替え。所有者の承認が無かったため、`223eec39` では明示的に範囲外として残した。
+
+## 9. 2026-11-04 の全面適用（Issue #887）
+
+所有者の追加判断:
+
+> OK デザインシステムはこれで確定し、並列ワーカーを駆動してサイト全体のデザインに適合させる
+
+これを受けて、`223eec39` が範囲外としていた全面適用を Issue #887 で行う。
+固定した順序は次のとおり。
+
+1. `13f60653` — `bg.*` / `text.*` / `border.*` を `mono.*` の射影にする。
+   操作（`bg.accent` / `bg.inverse`）は墨、`text.accent` も墨とし、リンクは
+   常時の下線で示す。`accent.positive|negative|warning` は色ではなく
+   `mono.ink.text` への**暫定エイリアス**に落とし、状態の hue を一度に閉じる。
+2. 4 つの並列ワーカー（`887-a` Home / `887-b` Portfolio・About・Projects /
+   `887-c` 共通 chrome・Contact / `887-d` Admin・Tools・Keyboard・Legal・
+   External API・Design system）が obligation ごとに適合させる。
+3. 状態エイリアスの削除、`src/editorial/colors.md` と本記録の更新、公開 route の
+   実測。
+
+判断の変わらない点: 色は分類だけが持つ（`accent.category.*` / `accent.field.*`）、
+操作は墨、状態は形と語、彩色面積は 1 画面 5% 前後。
+
 
 **この記録は所有者の発言を転記したもので、所有者確認の代行ではない。**
 

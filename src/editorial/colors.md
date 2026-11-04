@@ -1,7 +1,7 @@
 # Editorial Color System
 
 > Visual language for `src/editorial/`. Components consume the
-> **semantic** layer (`bg.canvas`, `accent.positive`, …). Raw
+> **semantic** layer (`bg.canvas`, `text.default`, …). Raw
 > palette lives in `tokens.ts` and is reachable only through the
 > semantic layer. A browsable mirror of every token described here
 > lives at [`/design-system`](../../routes/design-system.tsx)
@@ -23,12 +23,12 @@ semantic-tokens.ts (semantic) — every token is `{ value: { base, _dark } }`
   mono.surface.{ground,sunken,raised,control,inverse,disabled}
   mono.line.{hairline,rule}
   mono.ink.{text,secondary,muted,disabled,inverse,onColour,onColourInverse}
-  accent.{surface,interactive,positive,negative,warning}
+  accent.{surface,interactive}
   accent.category.{design,code,writing,tool}   — the MARK step
   accent.field.{design,code,writing}           — the FIELD step
 
 components (consumers)
-  bg="accent.surface"   color="accent.positive"   ...
+  bg="accent.surface"   color="text.default"   ...
 ```
 
 Components **never** reference raw tokens directly. The semantic
@@ -40,13 +40,16 @@ layer is the contract; the raw layer is implementation.
 | --- | --- | --- |
 | `accent.surface` | Hero / feature card background | Subtle tinted container that says "this is the featured region" without competing with the primary CTA. |
 | `accent.interactive` | CTA hover / pressed / focus fill | The "this button is being acted on" color. Distinct from `bg.accent` (idle CTA) so the interaction reads. |
-| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#fcfcfd` light — Issue #812 / `#0a0b0e` dark, `charcoal.950`). |
-| `accent.negative` | Error / unreachable status | Red status indicator. Same contrast guarantee as `accent.positive`. |
-| `accent.warning` | Degraded status | Amber status indicator. Same contrast guarantee. |
 | `accent.category.design` | Design content identifier | Pink. Non-text identifier hue paired with the `design` `StateMark` silhouette. |
 | `accent.category.code` | Code content identifier | Cyan. Same role for `develop`. |
 | `accent.category.writing` | Writing / long-form content identifier | Yellow-brown. Same role for `other`. |
 | `accent.category.tool` | Tool / utility content identifier | Indigo. Same role for `video` (and the tool surfaces' category tag). |
+
+There is **no status token** (Issue #887). A status is a silhouette,
+a word and the ink the surrounding text already uses: its label
+paints in `text.default` (or `text.muted` where the mark is meant to
+sit quietly) and `StateMark` paints in `currentColor`, so the mark
+inherits that contrast instead of adding an obligation of its own.
 
 The four category hues are deliberately separable at a glance —
 they sit at comparable saturation and distinct hue angles
@@ -169,18 +172,19 @@ not get a hue of its own.** Green / red / amber are not part of the
 system. A status that belongs to classified content borrows that
 classification's colour (`accent.category.*`) for its mark; a status
 with nothing to borrow (a field error, a failed write) is carried by
-shape, word and the monochrome hierarchy alone. `accent.positive`,
-`accent.negative` and `accent.warning` are therefore a **transitional
-alias** resolved to `mono.ink.text` while their consumers are converted
-(Issue #887), and the tokens are deleted with the last consumer.
+shape, word and the monochrome hierarchy alone. Issue #887 deleted
+the last status alias, so there is no status token to look up: the
+label paints in `text.default` (or `text.muted` where the mark is
+meant to sit quietly) and the silhouette paints in `currentColor`.
 
 The proof (greyscale captures in both appearances, the machine checks
 and the human review that are explicitly separated) lives in
 [`docs/verification/a11y/status-monochrome.md`](../../../docs/verification/a11y/status-monochrome.md).
 
 **Scope of the rule, and the one surface that does not satisfy it yet.**
-The rule binds any consumer that paints an `accent.*` status or
-`accent.category.*` hue as a state cue. Issue #411 wired two of them:
+The rule binds any consumer that paints a hue as a state cue — status
+included, since Issue #887 deleted the last status alias. Issue #411
+wired two of them:
 the home status badges and the portfolio card category rules; Issue
 #794 then removed the rule from the portfolio card entirely (the
 category is shape + word there, with no hue at all). One
@@ -207,7 +211,7 @@ The `value: { … }` wrapper is **required**. A bare `{ base, _dark }`
 object is parsed as an extra layer of *token path* rather than as
 conditions: Panda still emits the per-condition custom properties, but
 the utility resolves to the literal token path
-(`color: accent.positive`), which the browser discards as invalid CSS.
+(`color: accent.category.design`), which the browser discards as invalid CSS.
 That is the shape Issue #172 shipped, and it is why status badges,
 category borders and the CTA hover fill never rendered their colour.
 
@@ -252,7 +256,7 @@ rather than gray-washing the accent itself.
 | Text ladder | `text.default` / `text.muted` / `text.accent` | near-white instead of white, near-neutral gray instead of slate, and the link **brightens** to `brand.500` on dark where it darkens to `brand.700` on light |
 | Borders | `border.subtle` / `border.strong` / `border.focus` | hairline `charcoal.800` (1.14 : 1), emphasis `charcoal.600` (4.19 : 1), focus `brand.300` (11.80 : 1) |
 | Tinted feature surface | `accent.surface` | `brand.50` in light, `brand.950` `#151b26` in dark — a sky whisper 1.14 : 1 above the canvas, the same "barely a tint" relationship as light's 1.07 : 1 |
-| Status / category | `accent.positive` / `negative` / `warning` / `category.*` | unchanged from Issue #172 — the 300 steps match the reference's light label colors and clear AA on the near-black canvas |
+| Category | `accent.category.*` | unchanged from Issue #172 — the 300 steps match the reference's light label colors and clear AA on the near-black canvas |
 | **Static by decision** | `bg.accent`, `bg.inverse`, `text.inverse`, `accent.interactive` | `base` and `_dark` are deliberately identical |
 
 The static group is a decision, not an omission:
@@ -280,9 +284,7 @@ The static group is a decision, not an omission:
 | Primary CTA fill, idle | `bg.accent` (brand.700) |
 | Primary CTA fill, hover / pressed / focus | `accent.interactive` |
 | Subtle tinted card surface | `accent.surface` |
-| "live" / "ok" status pill or indicator | `accent.positive` |
-| "unreachable" / "error" status indicator | `accent.negative` |
-| "degraded" / "warning" status indicator | `accent.warning` |
+| "live" / "unreachable" / "degraded" status | no token — `StateMark` silhouette + word in `text.default` |
 | Content category indicator (portfolio / tools) | `accent.category.<design\|code\|writing\|tool>` |
 | Page background | `bg.canvas` |
 | Card surface (default) | `bg.surface` |
@@ -323,9 +325,6 @@ canvas is `neutral.25` (`#fcfcfd`) instead.
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
 | `text.inverse` on `bg.inverse` | `#ffffff` | `#0f172a` | 17.85 : 1 |
-| `accent.positive` | `#6ee7b7` | `#0a0b0e` canvas | 12.91 : 1 |
-| `accent.negative` | `#fda4af` | `#0a0b0e` canvas | 10.41 : 1 |
-| `accent.warning` | `#fcd34d` | `#0a0b0e` canvas | 13.65 : 1 |
 | `accent.category.design` | `#f9a8d4` | `#0a0b0e` canvas | 10.85 : 1 |
 | `accent.category.code` | `#67e8f9` | `#0a0b0e` canvas | 13.58 : 1 |
 | `accent.category.writing` | `#fde047` | `#0a0b0e` canvas | 14.93 : 1 |
@@ -353,9 +352,6 @@ rows below are the measured pairs on that canvas.
 | `text.accent` | `#0369a1` (brand.700) | `#fcfcfd` canvas (Issue #812) | 5.79 : 1 |
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
-| `accent.positive` | `#047857` | `#fcfcfd` canvas (Issue #812) | 5.35 : 1 |
-| `accent.negative` | `#be123c` | `#fcfcfd` canvas (Issue #812) | 6.13 : 1 |
-| `accent.warning` | `#b45309` | `#fcfcfd` canvas (Issue #812) | 4.90 : 1 |
 | `accent.category.design` | `#be185d` | `#fcfcfd` canvas (Issue #812) | 5.89 : 1 |
 | `accent.category.code` | `#0e7490` | `#fcfcfd` canvas (Issue #812) | 5.23 : 1 |
 | `accent.category.writing` | `#a16207` | `#fcfcfd` canvas (Issue #812) | 4.80 : 1 |
@@ -476,15 +472,24 @@ and what a person decides (whether a colour is semantically adequate).
   token without a verified pair is a contract violation.
 - Do **not** stack two accent backgrounds on the same element —
   the layer model assumes one surface per region.
-- Do **not** use `accent.category.*` for status feedback or
-  `accent.{positive,negative,warning}` for content identity. The
-  five tokens carry distinct semantics and crossing them reads
-  as noise.
+- Do **not** use `accent.category.*` for status feedback, and do not
+  reintroduce a status hue: state is a silhouette, a word and ink. The
+  four category tokens carry a content classification, and crossing
+  them into a state reads as noise.
 - Do **not** read `_dark` values directly. Panda binds the
   condition; consumers should ask for the unconditional token
   name and trust Panda to pick the right variant.
 
 ## Change history
+
+- **2026-11-04** (Issue #887) — Deleted the three transitional status
+  aliases that had bound a status to `mono.ink.text`. They were already
+  ink in both appearances, so the deletion changed no rendered value:
+  a status label still paints in `text.default`, the silhouette still
+  paints in `currentColor`, and the token column on `/design-system`,
+  the three status pairs in the contrast matrix and this document's
+  status rows were removed with them. Colour now survives only as a
+  content classification.
 
 - **2026-10-23** (Issue #399) — The token layer became a **measured**
   contract. `scripts/check-a11y-contrast.mjs` imports `tokens.ts` and

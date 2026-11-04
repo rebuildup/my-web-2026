@@ -332,7 +332,7 @@ export function AnalyticsConsentPanel({
 					    announced politely, and neither moves focus — a visitor who
 					    activated a button should keep their place in the page.
 					    A storage failure is a FAILURE, and under the monochrome
-					    ground (Issue #887) `accent.negative` is ink: the region
+					    ground (Issue #887) a failure reads as ink: the region
 					    therefore carries the `unreachable` silhouette, the word
 					    already in the copy, and strong ink against the muted
 					    status text of a healthy panel. */}

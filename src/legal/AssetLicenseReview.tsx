@@ -230,14 +230,14 @@ const sectionLabelClassName = css({
 /**
  * The rule that marks one finding.
  *
- * Issue #887: severity used to be read off a hue (`accent.negative` /
- * `accent.warning`), and both were re-anchored to ink, so the rule
+ * Issue #887: severity used to be read off a hue, and the status
+ * aliases were re-anchored to ink and then deleted, so the rule
  * could no longer tell an error from a warning anyway. The severity a
  * reader acts on is carried by the WORD each finding already prints
  * (`SEVERITY_LABEL` — エラー / 警告 / 情報); the rule only says "this
  * is a finding". The two severities that need attention get the
  * identifying rule, plain information gets the hairline. No hue, and
- * no transitional alias left for the token layer to delete.
+ * no alias left for the token layer to delete.
  */
 const FINDING_BORDER: Readonly<Record<AssetReviewSeverity, string>> = {
 	error: 'border.strong',

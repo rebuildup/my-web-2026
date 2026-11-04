@@ -24,10 +24,9 @@
  *     UNDERLINE, not by a hue; painting body text in a family colour is
  *     the one thing direction B forbids outright.
  *   - Colour survives only in the classification layer
- *     (`accent.category.*` for a mark, `accent.field.*` for a field)
- *     and in the status data model (`accent.positive|negative|
- *     warning`), which is being replaced by "borrow the classification
- *     colour" in Issue #887.
+ *     (`accent.category.*` for a mark, `accent.field.*` for a field).
+ *     A status carries no hue at all (Issue #887): it is read from a
+ *     silhouette, a word and the ink the surrounding text already uses.
  *
  * Light + dark variants (Issue #290). Every token carries a
  * `{ value: { base, _dark } }` value so Panda emits one CSS custom
@@ -218,24 +217,14 @@ export const semanticTokens = {
 		// Accent tokens. Under direction B the only colours on the page
 		// are the content classifications: `category.*` is the step a
 		// MARK is read at, `field.*` the step a FIELD is read at. Both
-		// are measured by the contrast gate.
+		// are measured by the contrast gate. A status carries no hue of
+		// its own (Issue #887): it is a silhouette, a word and the ink
+		// the surrounding text already uses, so there is no status token.
 		//
 		// `surface` and `interactive` survive as neutral roles so a
 		// featured region or a pressed fill does not have to reach for a
 		// raw palette value: `surface` is the sunken well (a neutral
 		// featured region), `interactive` is the ink fill's hover step.
-		//
-		// `positive` / `negative` / `warning` are a TRANSITIONAL
-		// re-anchoring, not a status hue. Direction B says a status
-		// borrows the colour of the classification it belongs to — never
-		// green / red / amber. A field error has no classification to
-		// borrow from, so its fallback is ink plus a shape plus a word.
-		// Binding these three to `mono.ink.text` removes the last hue
-		// from the platform in one edit instead of one component at a
-		// time, and keeps every existing call site legible while Issue
-		// #887 converts it. The tokens are then deleted, consumer by
-		// consumer, in the same PR: an alias that outlives its last
-		// consumer is dead weight, not a contract.
 		accent: {
 			surface: {
 				value: { base: '{colors.mono.light.sunken}', _dark: '{colors.mono.dark.raised}' },
@@ -245,15 +234,6 @@ export const semanticTokens = {
 					base: '{colors.mono.light.secondary}',
 					_dark: '{colors.mono.dark.secondary}',
 				},
-			},
-			positive: {
-				value: { base: '{colors.mono.light.text}', _dark: '{colors.mono.dark.text}' },
-			},
-			negative: {
-				value: { base: '{colors.mono.light.text}', _dark: '{colors.mono.dark.text}' },
-			},
-			warning: {
-				value: { base: '{colors.mono.light.text}', _dark: '{colors.mono.dark.text}' },
 			},
 			category: {
 				design: {

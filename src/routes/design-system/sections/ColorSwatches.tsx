@@ -644,7 +644,6 @@ function FamilyBand({
 						marginBlockStart: '2',
 						fontFamily: 'mono',
 						fontSize: 'xs',
-						opacity: 0.72,
 					})}
 				>
 					{family.fieldToken}
@@ -698,7 +697,9 @@ function FamilyBand({
  * The specimen paints the role as it is used rather than as a flat
  * swatch: a surface carries a label in that appearance's text ink, a
  * line is drawn as a rule on that appearance's ground, and an ink is
- * printed on the ground in its own value. Light and dark are shown
+ * drawn as a mark in its own value beside a label the ground can
+ * actually read — no ink prints as text, because `mono.ink.disabled`
+ * cannot carry readable text by design. Light and dark are shown
  * because they are two designs, not two ends of one ramp.
  */
 function MonoRolePair({
@@ -812,13 +813,31 @@ function MonoSwatch({
 	mutedHex: string;
 }) {
 	if (role.group === 'ink') {
+		// The ink never paints the label: `mono.ink.disabled` is
+		// unreadable on the ground BY DESIGN (2.04 : 1 light, 2.99 : 1
+		// dark), so printing `色 Aa` in the role's own value is the
+		// violation. The colour is shown the way the line group shows a
+		// rule — an aria-hidden mark painted with the token — and the
+		// label is read through the ink that belongs to THIS ground.
+		const labelInk =
+			role.path === 'mono.ink.inverse'
+				? inverseHex
+				: role.path === 'mono.ink.onColour'
+					? hex
+					: textHex;
+
 		return (
 			<div
 				data-mono-appearance={appearance}
 				data-mono-group={role.group}
-				className={monoSwatchClassName}
-				style={{ backgroundColor: groundHex, color: hex }}
+				className={cx(monoSwatchClassName, css({ gap: '2' }))}
+				style={{ backgroundColor: groundHex, color: labelInk }}
 			>
+				<span
+					aria-hidden="true"
+					className={css({ display: 'block', width: '4', height: '4' })}
+					style={{ backgroundColor: hex }}
+				/>
 				<span>色 Aa</span>
 			</div>
 		);

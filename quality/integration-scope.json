@@ -253,18 +253,18 @@
 			"expected": { "verdict": "reauth_required", "code": "token_age_exceeds_retention" }
 		},
 		{
-			"id": "notion-read-content-approved",
+			"id": "notion-authoring-capabilities-approved",
 			"integration": "notion",
-			"scenario": "a read-only Notion connection",
-			"granted_scopes": ["read_content"],
+			"scenario": "a connection granted exactly the reviewed authoring capabilities",
+			"granted_scopes": ["read_content", "insert_content"],
 			"issued_at": "2026-09-25T00:00:00.000Z",
 			"expected": { "verdict": "approved", "code": "approved" }
 		},
 		{
-			"id": "notion-write-capability",
+			"id": "notion-update-capability",
 			"integration": "notion",
-			"scenario": "the workspace ticked the write capability as well",
-			"granted_scopes": ["read_content", "insert_content"],
+			"scenario": "the workspace ticked update_content as well",
+			"granted_scopes": ["read_content", "insert_content", "update_content"],
 			"issued_at": "2026-09-25T00:00:00.000Z",
 			"expected": { "verdict": "unapproved_scope", "code": "denied_scope_granted" }
 		},

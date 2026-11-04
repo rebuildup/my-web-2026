@@ -5,7 +5,7 @@ import type { RichTextNode } from './types';
 const linkClassName = css({
 	color: 'text.accent',
 	textDecoration: 'underline',
-	textUnderlineOffset: '2px',
+	textUnderlineOffset: '0.18em',
 	textDecorationThickness: '1px',
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',

@@ -78,6 +78,12 @@
   `pnpm-workspace.yaml` は**無変更**。**my-web-2026 の script / workflow に Bun は追加していない**
   （`bun` は readmark の Tool リポジトリ内の commit / 既存 workflow のみ。host の
   `oven-sh/setup-bun` step は本変更以前から存在する）。
+- **最終 pin への再 bump（commit `51681e37`、詳細は §10）**: readmark PR #87 を
+  **merge commit で merge** したため、readmark pin をその `origin/main` head
+  **`71f296d9ab68f0b2a8a9b78049409d3d329812f5`** へ再 bump
+  （manifest / inventory / artifact record の `pinned_sha` 1 行 / gitlink。
+  LICENSE・lockfile の evidence hash は不変 = 依存・ライセンス不変）。
+  prototype の pin は `4e13597717` のまま。
 
 ## 3. 再現手順（実行したコマンド）
 
@@ -174,16 +180,24 @@ root 側は無要求）。
 `functional-verification-2026-11-04.md` の修正前判定（PASS13 / PARTIAL1 / FAIL1）に対し、
 **修正後は15 Tool すべて PASS**。PARTIAL（prototype）と FAIL（readmark）が解消した。
 
+**最終 pin（`51681e37`、readmark 再 bump 後）でも全30 run を再実行し、
+root404 = 0 / console error = 0 / 主要操作 ok を再確認**した（§10.4、証跡 `final-*`）。
+
 ## 7. 証跡（WebP、quality82、PNG なし）
 
-`docs/verification/tools/root-absolute-404-2026-11-04/` に **54 枚**
+`docs/verification/tools/root-absolute-404-2026-11-04/` に **100 枚**
 （Before14 =対象2 Tool の最終画面4 + prototype stage10、
-After40 =15 Tool ×2 viewport の最終画面30 + prototype stage10）。
+After40 =15 Tool ×2 viewport の最終画面30 + prototype stage10、
+Final40 =最終 pin での再実行（同構成）、readmark6 =§10 の Library / Reader / reload 証跡）。
 
 - Before: `before-{readmark,prototype}-{desktop,mobile}.webp`、
   `before-prototype-{menu,modeselect,register,game,play}-{desktop,mobile}.webp`
 - After: `after-<slug>-{desktop,mobile}.webp`（15 Tool 分）、
   `after-prototype-{menu,modeselect,register,game,play}-{desktop,mobile}.webp`
+- Final（最終 pin `51681e37`）: `final-<slug>-{desktop,mobile}.webp`（15 Tool 分）、
+  `final-prototype-{menu,modeselect,register,game,play}-{desktop,mobile}.webp`
+- readmark 追加検証（§10、desktop1280 / mobile390）:
+  `readmark-{library,reader,after-reload}-{desktop,mobile}.webp`
 
 主な対応:
 
@@ -196,23 +210,109 @@ After40 =15 Tool ×2 viewport の最終画面30 + prototype stage10）。
 
 （Before / After とも同じ操作手順・同じ viewport で撮影。）
 
-## 8. 品質ゲート
+## 8. 品質ゲート（実測）
 
-本記録を含む最終 commit に対して次を実行し、終了コードは PR 本文と最終報告に記録する:
+4 gate は**最終コード commit `51681e37`** で実行した（この節の記録自体はその後の
+`.md` commit = documentation-only で、コード・設定・依存への変更は無い）。
 
-- `pnpm run tools:check`
-- `pnpm run tools:artifact:check`
-- `pnpm run tools:provenance:check`
-- `pnpm run validate:integration`
+| コマンド | exit | 実測出力（末尾） |
+| --- | --- | --- |
+| `pnpm run tools:check` | **0** | `15 tools, ok. Delivery breakdown: {"same_origin_static":15}` |
+| `pnpm run tools:artifact:check` | **0** | `15 tool(s) inspected: 15 pass, 0 warn, 0 fail … Result: PASS` |
+| `pnpm run tools:provenance:check` | **0** | `15 submodule(s) inspected: 15 pass, 0 warn, 0 fail … Result: PASS` |
+| `pnpm run validate:integration` | **0** | `validate:integration OK — 80 declared step(s)` / `Test Files  198 passed (198)` |
+
+### 8.1 validate:integration の実行履歴（すべて実測、推測・期待値なし）
+
+- **run1〜run4: exit 1** — いずれも step 39/80（`pnpm run test`）のみ失敗。
+  失敗形態は `test/setup/warm-up.ts:60` の `beforeAll` が
+  `Error: Hook timed out in10000ms`（Issue #261 が busy machine の既知 flake として
+  記録した warm-up）。失敗 suite の集合は実行ごとに **5 → 9 → 22 → 9 件**と変動し、
+  実行中の load average は **9〜16**（共有マシンの他ジョブが起源。当方のプロセスは CPU 0%）。
+- 失敗した suite / test は**単独実行で green**:5件 run → exit 0、9件 run → exit 0、
+  run4 の9件 →7 pass + 2件が同じ hook timeout（load 10.8 のとき）。
+- **run5（load 1min 3.7 の窓で実行）: exit 0、`Test Files 198 passed (198)`、
+  80 steps 全通過。**
+- 帰属: 本ブランチの差分は tool pins + docs のみ。失敗 suite（auth / seo / csp /
+  redirect-guard 等）は Tool に非依存で、Tool 関連の `embed-privacy` /
+  `lazy-media-contract` も単独 run で pass。**flake による免除はしていない** —
+  失敗 component・test 名・単独実行結果を記録し、緑の run が得られるまで再実行した。
 
 ## 9. この記録で確認していないこと
 
 - production（`https://rebuildup.dev`）での配信。すべてローカル preview の実測。
-- **2つの Tool リポジトリの PR（readmark#87 / ProtoType#6）は未 merge。**
-  host の pin は**そのブランチ先頭 SHA を指す**。main へは **merge commit で** merge すれば
-  SHA は到達可能なままだが、**squash / rebase では SHA が孤立**し次回ビルドが壊れる
-  （その場合は pin の再 bump が必要）。この制約は両 PR 本文にも記載した。
-- Tool リポジトリの CI（GitHub Actions）の成否。ローカルで検証したコマンドのみを記録した。
+- **readmark PR #87 は merge commit で merge 済み**（pin `71f296d9` = `origin/main` head、§10.1）。
+  **ProtoType PR #6 は未 merge**で、host の pin `4e13597717` はその branch 先頭を指す —
+  **merge commit で merge すれば到達可能なまま**（**squash / rebase は禁止**、
+  その場合は pin の再 bump が必要）。この制約は PR 本文に記載した。
+- Tool リポジトリの CI: readmark は head `745841c` で **validate-fast ×2 success**
+  （GitHub Actions の partial outage 中は queued だったが解除後に green、
+  PR コメントに実測を記載）。ProtoType の CI 成否は未確認。
 - Playwright E2E スイート（host の `e2e/**`）と `validate:fast` / `pnpm run test` の CI 判定。
 - prototype の favicon `./src/icon/icon.*`（相対参照）は修正前後とも名前空間外を指すが、
   frame内ではリクエストされない既存の Tool HTML の癖で、本 Issue の対象外。
+
+## 10. readmark の追加検証 — router basename と Reader 到達（最終 pin、2026-11-05）
+
+CodeRabbit が readmark PR #87 で挙げた3件を Tool 側で修正し、readmark を最終 pin へ
+再 bump したうえで、ホスト frame 内の実測を行った（Issue #896 の完了条件1を満たすため）。
+
+### 10.1 Tool 側の追加修正と pin
+
+- PR [rebuildup/readmark#87](https://github.com/rebuildup/readmark/pull/87) —
+  **merge commit で merge**（**CI validate-fast ×2 success（head `745841c`）**、
+  CodeRabbit の single thread には修正内容と実測を返信して resolve）:
+  - `2f99252` **router**: `<BrowserRouter basename={import.meta.env.BASE_URL}>`
+    （修正前は `goto /tools/readmark/app/` で URL が host root `http://127.0.0.1:4173/` に
+    脱出し、reload 後も root に留まった — `.tmp/probe-readmark-router.mjs` で実測）
+  - `19b7693` **container**: `build:container`（`tsc -b --noCheck && vite build --base=/`）を追加し
+    Containerfile がそれを呼ぶ。`scripts/nginx.conf` の root 配信は不変。
+    （実測: `build:container` → `src="/assets/…"`、default `build` →
+    `src="/tools/readmark/app/assets/…"`）
+  - `745841c` **smoke**: `smoke-pdf-assets` / `smoke-support-tables` の要求 URL を base 追随
+    （実測: root `GET /assets/pdfjs/cmaps/uni2utf.bcmap → 404` / base 配下 `→ 200`）+
+    `input[type=file]` の strict mode violation 解消（`.first()`。library screen が
+    `DocumentImport` を2箇所描画する既存 UI）
+- Tool 側の検証（すべて実測 exit code）: `bun run typecheck` **0** / `bun run lint` **0** /
+  `bun run test` **0（383 passed）** / `bun run build` **0** / `bun run build:container` **0** /
+  `bun scripts/smoke-pdf-assets.mjs` **0**（5テーブルすべて200 → import →「読む」→ reader canvas）/
+  `bun scripts/smoke-support-tables.mjs` **0**（negative0 px ink → tables3.55% ink、dev サーバも base で200）。
+  ローカル `bun run validate` は共有マシンの load 11〜16 で5秒 timeout により exit 1（2回、
+  失敗 test は単独実行 green、同一 tree で383/383 green も記録）— readmark PR コメントに実測どおり記載。
+- **最終 pin**: merge commit = `origin/main` head =
+  **`71f296d9ab68f0b2a8a9b78049409d3d329812f5`**（host commit `51681e37`）。
+  prototype の pin `4e13597717` は変更なし（§9 参照）。
+
+### 10.2 ホスト frame 内での実測（desktop 1280×900 / mobile 390×844）
+
+`.tmp/verify-readmark-final.mjs`（git 管理外）で `/tools/readmark` を開き、
+Library 表示 → 実 PDF（`.tmp/sample/readmark-sample.pdf`）import →「読む」→ Reader →
+child frame の reload までを操作した:
+
+| 検査 | desktop | mobile |
+| --- | --- | --- |
+| Library が frame 内に描画 | **true** | **true** |
+| 読み込み後の child document URL | `/tools/readmark/app/`（名前空間内 ✓） | 同 |
+| PDF import | **成功**（失敗通知なし・ライブラリに文書1件） | **成功** |
+| Reader 到達後の URL | `/tools/readmark/app/read/<uuid>`（名前空間内 ✓） | 同 |
+| Reader の canvas 描画（ink 検出） | **true**（pdf.js が実際にページを描画） | **true** |
+| Library 状態で child reload 後の URL | `/tools/readmark/app/`（名前空間内 ✓） | 同 |
+| reload 後の描画 | Library 再描画 ✓ | ✓ |
+| host root `/assets/*` 404 | **0** | **0** |
+| console error | **0** | **0** |
+
+証跡: `readmark-{library,reader,after-reload}-{desktop,mobile}.webp`（6枚、quality 82）。
+
+### 10.3 既存 gap として観測した事項（本 Issue の対象外・修正なし）
+
+Reader ルート（`/tools/readmark/app/read/<uuid>`）への**文書単位の再読込**は
+static ホストに SPA fallback が無く **404** になる（実測:
+`GET /tools/readmark/app/read/abc → 404`。**host root の `GET /read/abc → 404` も同じ**で、
+base / basename の有無に依らない既存の gap。修正前の reader reload も root 側で 404 だった）。
+本 Issue（root 絶対 404 と import 成否）の範囲外として記録のみ。
+
+### 10.4 最終 pin での 15 Tool 再実行
+
+`51681e37`（最終 pin）で build → `PHASE=final` の全30 run:
+**root404 = 0 / console error = 0 / HTTP 4xx-5xx = 0 / 主要操作すべて ok**
+（`.tmp/fix-896-final.json`、証跡 `final-*` 40枚）。§6 の判定を最終 pin でも再確認した。

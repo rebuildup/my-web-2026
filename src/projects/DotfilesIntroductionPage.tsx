@@ -437,10 +437,12 @@ function BoundarySection({
 				>
 					<article
 						className={css({
+							// Issue #887: the panel separates itself from the page
+							// by FILL, not by a hairline enclosure. `border.subtle`
+							// is the system's decorative separator; the two
+							// boundary panels are raised planes instead.
+							backgroundColor: 'bg.surface',
 							padding: '6',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>
@@ -467,10 +469,8 @@ function BoundarySection({
 					</article>
 					<article
 						className={css({
+							backgroundColor: 'bg.surface',
 							padding: '6',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.subtle',
 							borderRadius: 'lg',
 						})}
 					>

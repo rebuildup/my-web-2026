@@ -3,21 +3,28 @@ import { Badge } from '../../../editorial/primitives/Badge';
 import { StateMark } from '../../../editorial/primitives/StateMark';
 
 /**
- * StatusAccents — `positive / negative / warning` status marks
- * paired with the four content-category marks.
+ * StatusAccents — status shown by SHAPE and WORD, paired with the four
+ * content-category marks.
  *
  * Issue #812: the state and the classification are carried by the
- * WORD and by the SHAPE (`StateMark`), never by colour alone. The
- * colour is a secondary mark beside them — an 8px silhouette — so
- * the heading word itself is never painted in a status or category
- * hue, and the cards carry no chrome (no frame, no radius, no
- * canvas fill) that would put a white surface back on the page.
+ * WORD and by the SHAPE (`StateMark`), never by colour alone, and the
+ * cards carry no chrome (no frame, no radius, no canvas fill) that
+ * would put a white surface back on the page.
+ *
+ * Issue #887 (direction B): the status hue is gone. `accent.positive`
+ * / `accent.negative` / `accent.warning` are TRANSITIONAL aliases
+ * that resolve to `mono.ink.text`, so the status row below
+ * demonstrates the rule itself — silhouette + word on monochrome ink
+ * — rather than a colour it no longer has. The only colour that
+ * survives in this section is the CLASSIFICATION colour on the
+ * category marks, because a content classification is a fact about
+ * the work, not a state.
  *
  * Tokens consumed:
  *
- *   - `accent.positive`              OK / live status mark.
- *   - `accent.negative`              error / unreachable mark.
- *   - `accent.warning`               degraded status mark.
+ *   - `accent.positive` / `accent.negative` / `accent.warning`
+ *     transitional aliases → `mono.ink.text` (ink); named here and in
+ *     the ledger so the tile says which alias it stands for.
  *   - `accent.category.{design,code,writing,tool}`
  *                                   content-category mark.
  */
@@ -43,30 +50,27 @@ function StatusRow() {
 			token: 'accent.positive',
 			role: 'OK / live',
 			label: 'Live',
-			note: 'Running, healthy, available — green.',
-			tone: 'positive',
+			note: '状態は丸（disc）の印と Live の語で示す。色はない。',
 			mark: 'ok',
 		},
 		{
 			token: 'accent.negative',
 			role: 'Error / unreachable',
 			label: 'Error',
-			note: 'Service down, build failed — red.',
-			tone: 'negative',
+			note: '状態は十字（cross）の印と Error の語で示す。色はない。',
 			mark: 'unreachable',
 		},
 		{
 			token: 'accent.warning',
 			role: 'Degraded',
 			label: 'Degraded',
-			note: 'Partially healthy, needs attention — amber.',
-			tone: 'warning',
+			note: '状態は三角（triangle）の印と Degraded の語で示す。色はない。',
 			mark: 'degraded',
 		},
 	];
 	return (
 		<section
-			aria-label="Status badges"
+			aria-label="Status — shape and word"
 			className={css({
 				display: 'flex',
 				flexDirection: 'column',
@@ -100,8 +104,9 @@ function StatusRow() {
 						color: 'text.muted',
 					})}
 				>
-					Three status accents — positive / negative / warning. The state is carried by the mark and
-					the word; the colour is a secondary mark beside them, never the identifier.
+					状態は色では示しません。印（StateMark）の形と語が状態を担います。 accent.positive /
+					negative / warning は mono.ink.text（墨）に解決される暫定エイリアスで、
+					色としての区別は持ちません（Issue #887）。
 				</p>
 			</header>
 			<ul
@@ -129,20 +134,14 @@ interface StatusEntry {
 	role: string;
 	label: string;
 	note: string;
-	tone: 'positive' | 'negative' | 'warning';
 	/**
-	 * The silhouette that carries the state (Issue #812). The tone
-	 * colour paints the 8px mark only — the heading word stays in
-	 * `text.default`.
+	 * The silhouette that carries the state (Issue #812). The mark is
+	 * painted in the heading's own ink — Issue #887 removed the status
+	 * hue it used to borrow — so silhouette and word are the whole
+	 * signal.
 	 */
 	mark: 'ok' | 'unreachable' | 'degraded';
 }
-
-const STATUS_FG = {
-	positive: css({ color: 'accent.positive' }),
-	negative: css({ color: 'accent.negative' }),
-	warning: css({ color: 'accent.warning' }),
-};
 
 function StatusTile({ entry }: { entry: StatusEntry }) {
 	return (
@@ -178,9 +177,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 					letterSpacing: '-0.01em',
 				})}
 			>
-				<span className={STATUS_FG[entry.tone]}>
-					<StateMark kind={entry.mark} size="sm" />
-				</span>
+				<StateMark kind={entry.mark} size="sm" />
 				{entry.label}
 			</h3>
 			<p
@@ -207,7 +204,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 						color: 'text.muted',
 					})}
 				>
-					{entry.token}
+					{entry.token} → mono.ink.text（墨）
 				</code>
 			</footer>
 		</article>

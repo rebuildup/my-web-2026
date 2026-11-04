@@ -1,0 +1,272 @@
+{
+	"home-1440-light": {
+		"sections": [
+			{
+				"labelledby": "hero-title",
+				"top": 0,
+				"height": 435
+			},
+			{
+				"labelledby": "current-projects-heading",
+				"top": 435,
+				"height": 801
+			},
+			{
+				"labelledby": "capabilities-heading",
+				"top": 1286,
+				"height": 613
+			},
+			{
+				"labelledby": "site-status-heading",
+				"top": 1899,
+				"height": 1349
+			},
+			{
+				"labelledby": "contact-cta-heading",
+				"top": 3248,
+				"height": 387
+			}
+		],
+		"h3s": [
+			{
+				"id": "status-heading",
+				"width": 613
+			},
+			{
+				"id": "status-heading-incidents",
+				"width": 613
+			},
+			{
+				"id": "reactions-heading",
+				"width": 613
+			},
+			{
+				"id": "access-counter-heading",
+				"width": 613
+			}
+		],
+		"animated": 7,
+		"overflowing": 0,
+		"scrollWidth": 1440,
+		"clientWidth": 1440,
+		"bodyScrollHeight": 4331,
+		"dataSourceBadge": "Development data sourceMock dataThe external boundary answers /api/v1/* from canned fixtures. No database is read or written.Writes: allowed",
+		"h1Count": 1
+	},
+	"home-1440-dark": {
+		"sections": [
+			{
+				"labelledby": "hero-title",
+				"top": 0,
+				"height": 435
+			},
+			{
+				"labelledby": "current-projects-heading",
+				"top": 435,
+				"height": 801
+			},
+			{
+				"labelledby": "capabilities-heading",
+				"top": 1286,
+				"height": 613
+			},
+			{
+				"labelledby": "site-status-heading",
+				"top": 1899,
+				"height": 1349
+			},
+			{
+				"labelledby": "contact-cta-heading",
+				"top": 3248,
+				"height": 387
+			}
+		],
+		"h3s": [
+			{
+				"id": "status-heading",
+				"width": 613
+			},
+			{
+				"id": "status-heading-incidents",
+				"width": 613
+			},
+			{
+				"id": "reactions-heading",
+				"width": 613
+			},
+			{
+				"id": "access-counter-heading",
+				"width": 613
+			}
+		],
+		"animated": 7,
+		"overflowing": 0,
+		"scrollWidth": 1440,
+		"clientWidth": 1440,
+		"bodyScrollHeight": 4331,
+		"dataSourceBadge": "Development data sourceMock dataThe external boundary answers /api/v1/* from canned fixtures. No database is read or written.Writes: allowed",
+		"h1Count": 1
+	},
+	"home-1440-dark-reduced-motion": {
+		"sections": [
+			{
+				"labelledby": "hero-title",
+				"top": 0,
+				"height": 435
+			},
+			{
+				"labelledby": "current-projects-heading",
+				"top": 435,
+				"height": 801
+			},
+			{
+				"labelledby": "capabilities-heading",
+				"top": 1286,
+				"height": 613
+			},
+			{
+				"labelledby": "site-status-heading",
+				"top": 1899,
+				"height": 1349
+			},
+			{
+				"labelledby": "contact-cta-heading",
+				"top": 3248,
+				"height": 387
+			}
+		],
+		"h3s": [
+			{
+				"id": "status-heading",
+				"width": 613
+			},
+			{
+				"id": "status-heading-incidents",
+				"width": 613
+			},
+			{
+				"id": "reactions-heading",
+				"width": 613
+			},
+			{
+				"id": "access-counter-heading",
+				"width": 613
+			}
+		],
+		"animated": 0,
+		"overflowing": 0,
+		"scrollWidth": 1440,
+		"clientWidth": 1440,
+		"bodyScrollHeight": 4331,
+		"dataSourceBadge": "Development data sourceMock dataThe external boundary answers /api/v1/* from canned fixtures. No database is read or written.Writes: allowed",
+		"h1Count": 1
+	},
+	"home-390-light": {
+		"sections": [
+			{
+				"labelledby": "hero-title",
+				"top": 0,
+				"height": 642
+			},
+			{
+				"labelledby": "current-projects-heading",
+				"top": 642,
+				"height": 1252
+			},
+			{
+				"labelledby": "capabilities-heading",
+				"top": 2040,
+				"height": 1245
+			},
+			{
+				"labelledby": "site-status-heading",
+				"top": 3285,
+				"height": 2005
+			},
+			{
+				"labelledby": "contact-cta-heading",
+				"top": 5290,
+				"height": 429
+			}
+		],
+		"h3s": [
+			{
+				"id": "status-heading",
+				"width": 282
+			},
+			{
+				"id": "status-heading-incidents",
+				"width": 282
+			},
+			{
+				"id": "reactions-heading",
+				"width": 282
+			},
+			{
+				"id": "access-counter-heading",
+				"width": 282
+			}
+		],
+		"animated": 7,
+		"overflowing": 0,
+		"scrollWidth": 390,
+		"clientWidth": 390,
+		"bodyScrollHeight": 6752,
+		"dataSourceBadge": "Development data sourceMock dataThe external boundary answers /api/v1/* from canned fixtures. No database is read or written.Writes: allowed",
+		"h1Count": 1
+	},
+	"home-390-dark": {
+		"sections": [
+			{
+				"labelledby": "hero-title",
+				"top": 0,
+				"height": 642
+			},
+			{
+				"labelledby": "current-projects-heading",
+				"top": 642,
+				"height": 1252
+			},
+			{
+				"labelledby": "capabilities-heading",
+				"top": 2040,
+				"height": 1245
+			},
+			{
+				"labelledby": "site-status-heading",
+				"top": 3285,
+				"height": 2005
+			},
+			{
+				"labelledby": "contact-cta-heading",
+				"top": 5290,
+				"height": 429
+			}
+		],
+		"h3s": [
+			{
+				"id": "status-heading",
+				"width": 282
+			},
+			{
+				"id": "status-heading-incidents",
+				"width": 282
+			},
+			{
+				"id": "reactions-heading",
+				"width": 282
+			},
+			{
+				"id": "access-counter-heading",
+				"width": 282
+			}
+		],
+		"animated": 7,
+		"overflowing": 0,
+		"scrollWidth": 390,
+		"clientWidth": 390,
+		"bodyScrollHeight": 6752,
+		"dataSourceBadge": "Development data sourceMock dataThe external boundary answers /api/v1/* from canned fixtures. No database is read or written.Writes: allowed",
+		"h1Count": 1
+	}
+}

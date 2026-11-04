@@ -1,11 +1,18 @@
 /**
  * Notion API reads for the portfolio sync (Issue #765).
  *
- * This is the only module in the repository that talks to Notion, and it
- * runs at **build time only** — the Worker never imports it and never holds
- * the token. The shape mirrors `scripts/_project-introduction.mjs`, which
+ * This module owns the reads the portfolio snapshot needs and runs at
+ * **build time only** — the Worker never imports it and never holds the
+ * token. The shape mirrors `scripts/_project-introduction.mjs`, which
  * established the same split for the GitHub README sync: one module owns the
  * outbound request, the CLI owns the decision.
+ *
+ * It is not the only module in the repository that talks to Notion. The
+ * one-shot write CLI (`scripts/write-portfolio-to-notion.mjs`, Issue #814)
+ * reuses the API constants and the credential readers exported here and
+ * owns its own write requests: a single deliberate write is a different
+ * obligation from a build-time read, so the two do not share a request
+ * path. That CLI also runs outside the Worker and never ships.
  *
  * Three rules that are not negotiable here:
  *

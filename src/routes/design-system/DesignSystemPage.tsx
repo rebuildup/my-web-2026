@@ -39,8 +39,9 @@ import type { DesignSystemTokenData } from './tokens';
  *                            dialog, so its focus trap and its Escape
  *                            hand-back can be measured in a deployment
  *                            without a home consumer API key.
- *   - 06 Status / category  positive / negative / warning badges + four
- *                            content-category left-border treatments.
+ *   - 06 Status / category  status as shape + word with NO hue (Issue
+ *                            #887) and the four content-category marks,
+ *                            the only colour this section carries.
  *   - 07 Image / CLS         Issue #486 measurement fixture: the real
  *                            `PortfolioMediaFigure` rendered with
  *                            fixture rows (eager / lazy / placeholder /
@@ -196,9 +197,15 @@ function Hero() {
 							<a
 								href="https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md"
 								className={css({
+									// Issue #887: `text.accent` is ink now, so the
+									// permanent underline is what marks this as a
+									// link; hover only fattens it.
 									color: 'text.accent',
 									textDecoration: 'underline',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
 									marginInlineStart: '1',
+									_hover: { textDecorationThickness: '2px' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',
@@ -218,22 +225,17 @@ function Hero() {
 
 function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
-		<section
-			aria-labelledby="design-system-color"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				backgroundColor: 'bg.subtle',
-			})}
-			data-colour-section
-		>
+		<section aria-labelledby="design-system-color" className={sectionStyle} data-colour-section>
 			<Container>
 				<SectionHeading
 					id="design-system-color"
 					eyebrow="01 — Color"
 					title="色 / Colour as surface"
-					description="色そのものが面です。分類は語・形・位置が担い、色は従属します。状態は分類色を借り、操作は墨です。"
-				/>
-				<ColorSwatches tokenData={tokenData} />
+					description="色はモノクロの地の上にだけ載ります。分類は語・形・位置が担い、色面の文字は色ではなく地の墨（mono.ink）です。状態は分類色を借り、操作は墨です。"
+					variant="spread"
+				>
+					<ColorSwatches tokenData={tokenData} />
+				</SectionHeading>
 			</Container>
 		</section>
 	);
@@ -319,8 +321,8 @@ function StatusSection() {
 				<SectionHeading
 					id="design-system-status"
 					eyebrow="06 — Status"
-					title="識別子 / Status & category accents"
-					description="positive / negative / warning の status badge、 と design / code / writing / tool の content category を left-border で識別。"
+					title="識別子 / Status & category marks"
+					description="状態は形（StateMark）と語で示し、色では示しません。状態を示す色トークンはなく、印は見出しの墨（text.default）を継承します（Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
 					variant="spread"
 				>
 					<StatusAccents />

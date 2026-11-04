@@ -158,8 +158,10 @@ export function Footer() {
 									target="_blank"
 									className={css({
 										color: 'text.accent',
-										textDecoration: 'none',
-										_hover: { textDecoration: 'underline' },
+										textDecoration: 'underline',
+										textUnderlineOffset: '0.18em',
+										textDecorationThickness: '1px',
+										_hover: { textDecorationThickness: '2px' },
 										_focusVisible: {
 											outline: '2px solid {colors.border.focus}',
 											outlineOffset: '2px',
@@ -174,8 +176,10 @@ export function Footer() {
 									href="/portfolio"
 									className={css({
 										color: 'text.accent',
-										textDecoration: 'none',
-										_hover: { textDecoration: 'underline' },
+										textDecoration: 'underline',
+										textUnderlineOffset: '0.18em',
+										textDecorationThickness: '1px',
+										_hover: { textDecorationThickness: '2px' },
 										_focusVisible: {
 											outline: '2px solid {colors.border.focus}',
 											outlineOffset: '2px',

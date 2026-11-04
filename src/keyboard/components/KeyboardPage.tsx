@@ -81,7 +81,10 @@ const eyebrowStyle = css({
 	fontSize: 'xs',
 	letterSpacing: '0.08em',
 	textTransform: 'uppercase',
-	color: 'text.accent',
+	// Issue #887: `text.accent` is the LINK ink now, and this eyebrow is
+	// not a link. It keeps plain ink and no underline — an underline
+	// here would advertise an anchor that does not exist.
+	color: 'text.default',
 });
 
 const titleStyle = css({
@@ -200,7 +203,9 @@ const flowStepStyle = css({
 const flowIndexStyle = css({
 	fontFamily: 'mono',
 	fontSize: 'xs',
-	color: 'text.accent',
+	// Issue #887: a step index, not a link — same rule as the hero
+	// eyebrow above: `text.accent` is reserved for real anchors.
+	color: 'text.default',
 	minWidth: '1.5rem',
 });
 
@@ -799,9 +804,20 @@ function KeyboardPageReady({
 												</span>
 											</td>
 											<td>
+												{/* Issue #887: this anchor used to be recognised by
+												    the browser's link colour. The platform ink is
+												    achromatic now, so the underline is what says
+												    "this cell links to the source file". */}
 												<a
 													href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
 													rel="noreferrer"
+													className={css({
+														color: 'text.accent',
+														textDecoration: 'underline',
+														textUnderlineOffset: '0.18em',
+														textDecorationThickness: '1px',
+														_hover: { textDecorationThickness: '2px' },
+													})}
 												>
 													{source.repository}
 												</a>

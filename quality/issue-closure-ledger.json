@@ -3139,42 +3139,44 @@
 			"title": "feat(portfolio): Notion を CMS の SoT として採用し同期基盤を実装する",
 			"closedAt": "2026-11-03",
 			"window": "tracked",
-			"state": "implemented-and-verified",
-			"closure": "supported",
+			"state": "partial",
+			"closure": "unsupported",
 			"evidence": [
 				"#775",
 				"docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md",
 				"docs/runbook/notion-portfolio-sync.md",
-				"92b416ec"
+				"92b416ec",
+				"src/portfolio/notion/generated/snapshot.json は 457 B で \"availability\": \"unavailable\" / \"databaseId\": \"unconfigured\" のプレースホルダ（2026-11-04 実測）。同期 → snapshot → 公開判定 → 表示の経路は一度も実データで通っていない"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: 採用決定は ADR-0018（Accepted）、運用手順は docs/runbook/notion-portfolio-sync.md、owner の Notion id 形状の採用は 92b416ec。PR #775 で land。",
-			"missing": null
+			"action": "reopened",
+			"note": "2026-11-04 のリリースゲートレビューで、完了条件が全項目未チェックのまま COMPLETED で閉じられていたことが判明したため訂正した。ADR-0018（Accepted）、運用手順、#775 は実在するが、それは「採用決定と実装の土台」であって完了条件の『同期 → committed snapshot → 公開判定 → 表示の再現可能な経路』『rendered verification（desktop / mobile、WebP）』ではない。",
+			"missing": "完了条件のうち未達: committed snapshot が実データで生成されていない（availability=unavailable のプレースホルダ）、したがって同期 → snapshot → 公開判定 → 表示の再現可能な経路が実データで一度も通っていない、rendered verification（desktop / mobile、WebP）が無い、validate:integration green が最終 SHA で未確認。ADR と手順書の存在は満たしている。"
 		},
 		{
 			"issue": 766,
 			"title": "feat(portfolio): 旧サイト my-web-2025 の制作物を全件棚卸しして Notion CMS へ移行する",
 			"closedAt": "2026-11-03",
 			"window": "tracked",
-			"state": "implemented-and-verified",
-			"closure": "supported",
+			"state": "partial",
+			"closure": "unsupported",
 			"evidence": [
 				"#790",
 				"docs/migration/portfolio-2025-inventory.json",
 				"docs/migration/portfolio-2025-owner-review.md",
-				"scripts/audit-legacy-portfolio.mjs"
+				"scripts/audit-legacy-portfolio.mjs",
+				"docs/verification/portfolio/legacy-media-migration.md（local 60 project / 130 media 行、production 3 / 3 で R2 object 116 件は未移行）"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "kept-closed",
-			"note": "受け入れ条件の証跡: 全件棚卸しの台帳と owner レビュー記録、read-only の棚卸しスクリプトとテストが存在し、分類件数は docs/migration/portfolio-2025-to-2026-publication.json#counts と一致する。移行そのものは #811 が所有する。",
-			"missing": null
+			"action": "reopened",
+			"note": "2026-11-04 のリリースゲートレビューで、完了条件が全項目未チェックのまま COMPLETED で閉じられていたことが判明したため訂正した。棚卸し（inventory と owner レビュー記録）は実在し件数も台帳と一致するが、Issue の目的は『棚卸しして Notion CMS へ移行する』であり、移行の実測は local ですら公開面の表示まで到達していない。移行そのものを #811（公開判断）と #850（R2 メディア移行）へ委ねたのは事実だが、委譲先を evidence に記録しないまま完了扱いにしていた点も本訂正で直した。",
+			"missing": "完了条件のうち未達: 全公開項目が新サイトで表示できること（desktop / mobile の WebP）が未実施、非公開 / 権利未記録 / 取得不能の項目が公開されていないことの実測が無い、旧サイト URL からの主要導線の解決が未確認、validate:integration green が最終 SHA で未確認、owner の公開範囲確認が無い。満たしているのは移行台帳が全項目を追跡し欠落 0 件をコマンドで確認できる点のみ。"
 		},
 		{
 			"issue": 816,

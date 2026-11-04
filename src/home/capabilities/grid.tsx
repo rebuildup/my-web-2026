@@ -163,14 +163,16 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 												fontSize: 'sm',
 												fontWeight: '600',
 												color: 'text.accent',
-												textDecoration: 'none',
+												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '4px',
 													borderRadius: '2px',
 												},
 												_hover: {
-													textDecoration: 'underline',
+													textDecorationThickness: '2px',
 												},
 											})}
 										>

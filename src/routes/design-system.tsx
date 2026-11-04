@@ -47,14 +47,14 @@ export const Route = createFileRoute('/design-system')({
 			{
 				name: 'description',
 				content:
-					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status / category accents.',
+					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status marks and category accents.',
 			},
 			{ property: 'og:type', content: 'website' },
 			{ property: 'og:title', content: 'Design System — rebuildup.dev' },
 			{
 				property: 'og:description',
 				content:
-					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status / category accents.',
+					'Editorial visual language showcase — semantic tokens, typography scale, spacing scale, surface treatments, interactive states, status marks and category accents.',
 			},
 			{ property: 'og:url', content: 'https://rebuildup.dev/design-system' },
 		],

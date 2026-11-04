@@ -99,14 +99,16 @@ const linkClassName = /* @__PURE__ */ css({
 	fontSize: 'sm',
 	fontWeight: '600',
 	color: 'text.accent',
-	textDecoration: 'none',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '4px',
 		borderRadius: '2px',
 	},
 	_hover: {
-		textDecoration: 'underline',
+		textDecorationThickness: '2px',
 	},
 });
 
@@ -299,6 +301,16 @@ function ChangeMarker({ reducedMotion }: { reducedMotion: boolean }) {
 				fontFamily: 'sans',
 				fontSize: 'xs',
 				fontWeight: '600',
+				// Issue #887 — this marker is NOT a link, so an underline
+				// would promise navigation it cannot deliver. `text.accent`
+				// is ink now, so the "this row changed" cue is carried by
+				// SHAPE (a raised chip) plus the word, per direction B §4.
+				display: 'inline-flex',
+				alignItems: 'center',
+				paddingInline: '2',
+				paddingBlock: '1',
+				borderRadius: 'full',
+				backgroundColor: 'bg.surface',
 				color: 'text.accent',
 				...(reducedMotion
 					? {}

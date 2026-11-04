@@ -300,10 +300,13 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											className={css({
 												color: 'text.accent',
 												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '2px',
 												},
+												_hover: { textDecorationThickness: '2px' },
 											})}
 										>
 											{LINK_LABEL[primaryLink.kind]}
@@ -390,10 +393,13 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													fontSize: 'md',
 													color: 'text.accent',
 													textDecoration: 'underline',
+													textUnderlineOffset: '0.18em',
+													textDecorationThickness: '1px',
 													_focusVisible: {
 														outline: '2px solid {colors.border.focus}',
 														outlineOffset: '2px',
 													},
+													_hover: { textDecorationThickness: '2px' },
 												})}
 											>
 												<span

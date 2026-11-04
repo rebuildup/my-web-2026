@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from 'react';
 import { css } from '../../../styled-system/css';
+import { StateMark } from '../primitives/StateMark';
 
 /**
  * Form-level error summary (Issue #404).
@@ -106,7 +107,8 @@ export function ErrorSummary({
 			className={summaryClassName}
 		>
 			<Heading id={resolvedHeadingId} className={headingClassName}>
-				{heading}
+				<StateMark kind="unreachable" size="sm" />
+				<span>{heading}</span>
 			</Heading>
 			<ul className={listClassName}>
 				{errors.map((entry) => (
@@ -131,18 +133,24 @@ const summaryClassName = css({
 	paddingBlock: '3',
 	paddingInline: '4',
 	border: '2px solid {colors.border.subtle}',
-	borderLeftColor: 'accent.negative',
 	borderRadius: '4',
-	background: 'bg.surface',
+	// The refusal is a SUNKEN panel, not a red-edged one (Issue #887):
+	// there is no status hue left to edge it with, so the fill is what
+	// separates this region from the form around it and the strong ink
+	// is what separates the heading from the body copy.
+	background: 'bg.subtle',
 	maxWidth: '640px',
 });
 
 const headingClassName = css({
 	margin: '0',
+	display: 'flex',
+	alignItems: 'center',
+	gap: '2',
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '700',
-	color: 'accent.negative',
+	color: 'text.default',
 });
 
 const listClassName = css({
@@ -160,7 +168,11 @@ const linkClassName = css({
 	color: 'text.default',
 	fontWeight: '600',
 	textDecoration: 'underline',
-	_hover: { color: 'accent.negative' },
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	// The link is already ink on a sunken panel, so hover adds weight to
+	// the underline instead of reaching for a hue that is ink too.
+	_hover: { textDecorationThickness: '2px' },
 });
 
 const labelClassName = css({

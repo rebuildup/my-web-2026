@@ -315,3 +315,46 @@ Notion で本文を編集
    （OAuth は `refresh_token` を返す）。ledger は owner 専管のため agent は編集
    していない。→ `docs/migration/notion-cms-integration-scope-draft.md` §5。
 3. integration token の実体（database id、発行日）。値は Issue に書かない。
+
+## 10. 書き込み（単発）— レガシーのメディアと本文の投入
+
+`scripts/write-portfolio-to-notion.mjs` は、旧サイトの SQLite に入っている
+ポートフォリオ画像を Notion のページへ入れる **単発** の operator 操作である。
+ADR-0018 §2.11。
+
+```sh
+# 計画だけ（外部へ書かない）
+pnpm exec infisical run --env dev -- node scripts/write-portfolio-to-notion.mjs --dry-run
+
+# 実行（state が無い初回は --state を明示する）
+pnpm exec infisical run --env dev -- \
+  node scripts/write-portfolio-to-notion.mjs --apply --state .tmp/notion-write-state.json
+```
+
+- 出力は status-only（件数・バイト数・理由コード）。トークンもレスポンス本文も出さない。
+- `--state` は再実行の冪等性の唯一の根拠である。失うと再実行は
+  `--allow-duplicates` 無しでは拒否される（fail-closed）。
+- 帰属は `media.content_id` ではなく **DB が持つ唯一の `contents.id`** で決める。
+  25 行は `content_id` が NULL だが、その DB が作品を所有している。
+- 1 件の失敗で全体を捨てない。失敗は件数として報告され、終了コード 1 になる。
+- 実行したら `docs/verification/portfolio/notion-write-log.md` に 1 行追記する。
+
+### 記事本文の投入（2026-11-04、単発・使い捨て）
+
+本文の投入は、リポジトリに残さない**使い捨ての operator スクリプト**で 1 回だけ
+実行した（ADR-0018 §2.11）。手順の要点だけを残す:
+
+1. SQLite から記事構造を抽出する。`markdown_pages.body` の
+   `<Image>` / `<Bookmark>` / `<Spacer>` / `<Html>` を順序どおりに解釈し、
+   見出し・段落・画像・リンク・区切りの列にする。
+2. 帰属は `frontmatter.slug`。DB のファイル名ではない（§2.11 決定 5）。
+3. ページ本文は `Motivation` / `Implementation` / `Evidence` の 3 区画。
+   旧記事の見出しは `heading_3` に落として原文のまま残す。
+4. 画像は `<Image>` が現れた位置に `image` ブロックとして挿入する。
+   本文に参照の無い画像は `Evidence > Media` にまとめる。
+5. 追記が成功した後にだけ、既存のスキャフォールド（2 ブロック）を削除する。
+6. 実行後は `notion-write-log.md` に 1 行追記する。
+
+本文 writer を**恒久化していない**理由: 1 回の移行でしか使わず、契約
+（本文の構造）がまだ固まっていない。2 回目が必要になったら Issue を立てて
+`scripts/write-portfolio-to-notion.mjs` に統合する。

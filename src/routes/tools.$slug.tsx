@@ -360,9 +360,14 @@ function ToolNotFound() {
 						<a
 							href="/tools"
 							className={css({
+								// Issue #887: `text.accent` is ink now, so the
+								// underline carries the affordance and hover
+								// fattens it instead of repainting the ink.
 								color: 'text.accent',
 								textDecoration: 'underline',
-								_hover: { color: 'text.default' },
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								_hover: { textDecorationThickness: '2px' },
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',
@@ -702,9 +707,14 @@ function BlockedPlaceholder({
 						<Link
 							to="/tools"
 							className={css({
+								// Issue #887: `text.accent` is ink now, so the
+								// underline carries the affordance and hover
+								// fattens it instead of repainting the ink.
 								color: 'text.accent',
 								textDecoration: 'underline',
-								_hover: { color: 'text.default' },
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								_hover: { textDecorationThickness: '2px' },
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',
@@ -764,9 +774,14 @@ function DisabledPlaceholder({ tool }: { tool: DisabledToolView }) {
 						<Link
 							to="/tools"
 							className={css({
+								// Issue #887: `text.accent` is ink now, so the
+								// underline carries the affordance and hover
+								// fattens it instead of repainting the ink.
 								color: 'text.accent',
 								textDecoration: 'underline',
-								_hover: { color: 'text.default' },
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								_hover: { textDecorationThickness: '2px' },
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',

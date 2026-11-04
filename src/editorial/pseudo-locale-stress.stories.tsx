@@ -357,7 +357,7 @@ function AuditTable() {
 								borderBottom: '1px solid',
 								borderColor: 'border.subtle',
 								color: row.ok ? 'text.muted' : 'text.default',
-								// Issue #887: `accent.negative` resolves to ink, so the
+								// Issue #887: there is no status hue, so the
 								// finding row earns its difference from weight and ink
 								// — the cell text is the word that names the state.
 								fontWeight: row.ok ? '400' : '700',

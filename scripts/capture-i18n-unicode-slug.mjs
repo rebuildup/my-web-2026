@@ -332,14 +332,14 @@ export function buildReportHtml(evidence) {
 	td.cp code { color: var(--text-muted); word-break: break-all; }
 	td.form, td.verdict { white-space: nowrap; }
 	td.naive { white-space: nowrap; }
-	.ok { color: var(--accent-positive); font-weight: 600; }
-	.no { color: var(--accent-negative); font-weight: 600; }
-	.warn { color: var(--accent-warning); }
+	.ok { color: var(--text-default); font-weight: 600; }
+	.no { color: var(--text-default); font-weight: 600; }
+	.warn { color: var(--text-default); }
 	.fold { color: var(--text-muted); font-size: 11.5px; white-space: normal; max-width: 24ch; }
 	.bad {
-		color: var(--accent-negative);
+		color: var(--text-default);
 		font-weight: 700;
-		border: 1px solid var(--accent-negative);
+		border: 1px solid var(--text-default);
 		border-radius: 4px;
 		padding: 0 4px;
 	}

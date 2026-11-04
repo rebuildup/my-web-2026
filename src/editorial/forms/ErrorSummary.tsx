@@ -135,9 +135,9 @@ const summaryClassName = css({
 	border: '2px solid {colors.border.subtle}',
 	borderRadius: '4',
 	// The refusal is a SUNKEN panel, not a red-edged one (Issue #887):
-	// `accent.negative` resolves to ink, so the fill is what separates
-	// this region from the form around it and the strong ink is what
-	// separates the heading from the body copy.
+	// there is no status hue left to edge it with, so the fill is what
+	// separates this region from the form around it and the strong ink
+	// is what separates the heading from the body copy.
 	background: 'bg.subtle',
 	maxWidth: '640px',
 });

@@ -216,27 +216,10 @@ export const CONTRAST_PAIRS = [
 		threshold: 3,
 		note: 'a large link / heading on the tinted feature region',
 	},
-	{
-		fg: 'accent.positive',
-		bg: 'bg.canvas',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'the status label "ok"',
-	},
-	{
-		fg: 'accent.negative',
-		bg: 'bg.canvas',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'the status label "error"',
-	},
-	{
-		fg: 'accent.warning',
-		bg: 'bg.canvas',
-		kind: 'normal',
-		threshold: 4.5,
-		note: 'the status label "degraded"',
-	},
+	// Issue #887: the three status aliases were deleted with their last
+	// consumer. A status label now paints in `text.default`, which the
+	// matrix already measures as its first pair, so there is no status
+	// token left to declare here — the shape of the mark is not a ratio.
 	{
 		fg: 'accent.category.design',
 		bg: 'bg.canvas',
@@ -409,7 +392,7 @@ export const EXCLUDED_TOKENS = [
  * a reader never mistakes a green run for "accessible".
  */
 export const HUMAN_EVALUATION = [
-	'whether a status colour is semantically adequate (does "green" read as "ok" to a reader)',
+	'whether a status silhouette reads as "ok" to a reader (a shape and a word, not a ratio)',
 	'whether the four category hues stay distinguishable after a palette change',
 	'contrast of text over photography, gradients or images (not token pairs)',
 	'how the palette reads on an uncalibrated or low-quality display',

@@ -78,12 +78,12 @@ export interface ErrorStateProps {
 /*
  * Severity without a status hue (Issue #887).
  *
- * `accent.warning` / `accent.negative` resolve to ink under the
- * monochrome ground, so the colour of the status label cannot say
- * "warning" any more — and the fix is not a new hue but the second
- * and third channels the surface already has: the SILHOUETTE next to
- * the label (`degraded` triangle / `unreachable` cross) and the words
- * already rendered beside it (the status label and the condition).
+ * A status has no hue of its own under the monochrome ground, so the
+ * colour of the status label cannot say "warning" any more — and the
+ * fix is not a new hue but the second and third channels the surface
+ * already has: the SILHOUETTE next to the label (`degraded` triangle /
+ * `unreachable` cross) and the words already rendered beside it (the
+ * status label and the condition).
  * The ink still separates the severity from the neutral case: a
  * failure is strong ink, a 404 is the muted auxiliary ink.
  */

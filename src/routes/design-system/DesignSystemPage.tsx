@@ -321,8 +321,8 @@ function StatusSection() {
 				<SectionHeading
 					id="design-system-status"
 					eyebrow="06 — Status"
-					title="識別子 / Status & category accents"
-					description="状態は形（StateMark）と語で示し、色では示しません（accent.positive / negative / warning は墨に解決される暫定エイリアス、Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
+					title="識別子 / Status & category marks"
+					description="状態は形（StateMark）と語で示し、色では示しません。状態を示す色トークンはなく、印は見出しの墨（text.default）を継承します（Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
 					variant="spread"
 				>
 					<StatusAccents />

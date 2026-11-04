@@ -11,20 +11,20 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
  * cards carry no chrome (no frame, no radius, no canvas fill) that
  * would put a white surface back on the page.
  *
- * Issue #887 (direction B): the status hue is gone. `accent.positive`
- * / `accent.negative` / `accent.warning` are TRANSITIONAL aliases
- * that resolve to `mono.ink.text`, so the status row below
- * demonstrates the rule itself — silhouette + word on monochrome ink
- * — rather than a colour it no longer has. The only colour that
- * survives in this section is the CLASSIFICATION colour on the
- * category marks, because a content classification is a fact about
- * the work, not a state.
+ * Issue #887 (direction B): colour is not a status signal at all. The
+ * status hue and the transitional alias that kept it alive were both
+ * deleted, so the status row below documents the rule itself —
+ * silhouette + word on monochrome ink — instead of a token column
+ * that would name a colour the platform does not have. The only
+ * colour that survives in this section is the CLASSIFICATION colour
+ * on the category marks, because a content classification is a fact
+ * about the work, not a state.
  *
  * Tokens consumed:
  *
- *   - `accent.positive` / `accent.negative` / `accent.warning`
- *     transitional aliases → `mono.ink.text` (ink); named here and in
- *     the ledger so the tile says which alias it stands for.
+ *   - `text.default` / `text.muted` — the status label's own ink and
+ *     the quiet ink around it; the silhouette paints in
+ *     `currentColor`, so there is no status token to name here.
  *   - `accent.category.{design,code,writing,tool}`
  *                                   content-category mark.
  */
@@ -47,21 +47,18 @@ export function StatusAccents() {
 function StatusRow() {
 	const entries: ReadonlyArray<StatusEntry> = [
 		{
-			token: 'accent.positive',
 			role: 'OK / live',
 			label: 'Live',
 			note: '状態は丸（disc）の印と Live の語で示す。色はない。',
 			mark: 'ok',
 		},
 		{
-			token: 'accent.negative',
 			role: 'Error / unreachable',
 			label: 'Error',
 			note: '状態は十字（cross）の印と Error の語で示す。色はない。',
 			mark: 'unreachable',
 		},
 		{
-			token: 'accent.warning',
 			role: 'Degraded',
 			label: 'Degraded',
 			note: '状態は三角（triangle）の印と Degraded の語で示す。色はない。',
@@ -104,9 +101,8 @@ function StatusRow() {
 						color: 'text.muted',
 					})}
 				>
-					状態は色では示しません。印（StateMark）の形と語が状態を担います。 accent.positive /
-					negative / warning は mono.ink.text（墨）に解決される暫定エイリアスで、
-					色としての区別は持ちません（Issue #887）。
+					状態は色では示しません。印（StateMark）の形と語が状態を担います。印は見出しの墨（text.default）を継承し、状態を示す色トークンはありません（Issue
+					#887）。
 				</p>
 			</header>
 			<ul
@@ -120,7 +116,7 @@ function StatusRow() {
 				})}
 			>
 				{entries.map((entry) => (
-					<li key={entry.token}>
+					<li key={entry.mark}>
 						<StatusTile entry={entry} />
 					</li>
 				))}
@@ -130,7 +126,6 @@ function StatusRow() {
 }
 
 interface StatusEntry {
-	token: string;
 	role: string;
 	label: string;
 	note: string;
@@ -153,7 +148,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 				paddingBlock: '2',
 				paddingInline: '6',
 			})}
-			data-status-token={entry.token}
+			data-status-mark={entry.mark}
 		>
 			<header
 				className={css({
@@ -191,22 +186,6 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 			>
 				{entry.note}
 			</p>
-			<footer
-				className={css({
-					marginBlockStart: 'auto',
-					paddingBlockStart: '2',
-				})}
-			>
-				<code
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.muted',
-					})}
-				>
-					{entry.token} → mono.ink.text（墨）
-				</code>
-			</footer>
 		</article>
 	);
 }

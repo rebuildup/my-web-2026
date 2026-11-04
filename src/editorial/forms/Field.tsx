@@ -41,8 +41,8 @@ import {
  * Styling note: the error state is carried by a drawn marker, a heavier
  * boundary rule, the sentence itself, a StateMark on the label and
  * `aria-invalid` — never by colour alone (WCAG 2.2 1.4.1). Under the
- * monochrome ground (Issue #887) `accent.negative` resolves to ink, so
- * the hue cannot do that job at all: the refused control is told apart
+ * monochrome ground (Issue #887) there is no status hue at all, so
+ * the colour cannot do that job: the refused control is told apart
  * by `border.strong` at 2px instead of `border.subtle` at 1px, and the
  * label carries the `unreachable` silhouette next to the field name.
  * The marker on the sentence is a Material Symbols glyph (Issue #823),

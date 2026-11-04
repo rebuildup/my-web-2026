@@ -100,8 +100,8 @@ const mutedActionStyle = css({
 	color: 'text.muted',
 });
 
-// Issue #887: `accent.negative` was re-anchored to ink, so a hue can no
-// longer say "this key emits nothing". The state is carried by the ✕
+// Issue #887: a failure reads as ink, so a hue can no longer say
+// "this key emits nothing". The state is carried by the ✕
 // GLYPH the cap renders and by the sentence the key-detail panel shows
 // (`format.ts#actionDescription` → 「この位置では入力を出力しません」),
 // which now also carries a StateMark. The label itself stays in full

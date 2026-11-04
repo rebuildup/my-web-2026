@@ -222,6 +222,12 @@ Final40 =最終 pin での再実行（同構成）、readmark6 =§10 の Library
 | `pnpm run tools:provenance:check` | **0** | `15 submodule(s) inspected: 15 pass, 0 warn, 0 fail … Result: PASS` |
 | `pnpm run validate:integration` | **0** | `validate:integration OK — 80 declared step(s)` / `Test Files  198 passed (198)` |
 
+**追記（最終 SHA `ac0f31ea` での再実行、すべて実測）**: documentation-only の記録 commit
+を含む最終 SHA `ac0f31ea` でも、`tools:check` / `tools:artifact:check` /
+`tools:provenance:check` / `content:links:check` が **exit 0**、
+`pnpm run validate:integration` も再び **exit 0**（`Test Files198 passed (198)`、
+80 steps 全通過）。この §8 の追記自体は .md のみの documentation-only 変更。
+
 ### 8.1 validate:integration の実行履歴（すべて実測、推測・期待値なし）
 
 - **run1〜run4: exit 1** — いずれも step 39/80（`pnpm run test`）のみ失敗。

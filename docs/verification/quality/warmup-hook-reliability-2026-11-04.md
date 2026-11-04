@@ -2,7 +2,7 @@
 
 > `test/setup/warm-up.ts` の `beforeAll` が **`Error: Hook timed out in 10000ms.`**
 > で suite を落とす問題の**検証記録**です。gate の仕様書でも threshold 宣言でもありません。
-> 対象 SHA: 本記録の commit（branch `900` / base `origin/release-0-8-1` @ `56a05942`）。
+> 対象 SHA: 本記録の commit（branch `900` / base `origin/release-0-8-1` @ `31178375`。当初の `56a05942` から進んだ先を merge 済み）。
 
 ## 何をしないか（線引き）
 
@@ -142,3 +142,20 @@ pnpm exec vitest run test/integration/cors.test.ts test/integration/session-logo
   そのとき line は over-budget 記録を残し、失敗すれば本物の failure として出ます。
 - `ogp-card` の20s は個別予定。sweep がそれでも超える日が来れば、それは
   「sweep が遅すぎる」という本物の signal です。
+
+## 隣接して見つかった欠陥（本 PR では修正しない）
+
+計測中に発見した、本 Issue とは別の既存欠陥です。`scripts/run-script-tests.mjs` は
+**93–94 行目**で `--list` の N 行を `process.stdout.write` で書き、**99 行目**の
+`script tests OK` の1行も同様に write したのち、**104 行目**が `process.exit()` を
+すぐ呼ぶ。stdout が pipe のとき `process.exit()` は flush を待たないので、pending
+write の tail が欠落する（負荷時に171/212行で観測、idle では60/60回すべて212行）。
+
+影響は **diagnostic 出力の truncation のみ**です。`--list` を入力に判断を変える gate
+は存在しない — `package.json#scripts.test` は `vitest run && node
+scripts/run-script-tests.mjs` で suite を実行するだけで、このリストを grep する
+consumer はどこにもありません（観測時の赤は `check-test-wiring.test.mjs` の pin
+＝「runner の出力 == discovery」が truncation を検知しただけで、リストを gate が
+使っている事例ではありません）。
+
+**この欠陥は本 PR では修正しません**（warm-up / Issue #900 の範囲外）。

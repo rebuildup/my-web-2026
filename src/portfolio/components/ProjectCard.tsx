@@ -191,14 +191,22 @@ export function ProjectCard({ project }: ProjectCardProps) {
 							href={`/portfolio/${project.slug}`}
 							className={css({
 								color: 'inherit',
-								textDecoration: 'none',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								// The heading is the whole link, so a full-ink rule
+								// under every line would shout. The underline stays
+								// — with no hue left it is the only affordance — but
+								// is drawn in the identifying-rule tone.
+								textDecorationColor: 'border.strong',
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '4px',
 									borderRadius: '2px',
 								},
 								_hover: {
-									textDecoration: 'underline',
+									textDecorationThickness: '2px',
+									textDecorationColor: 'currentColor',
 								},
 							})}
 						>

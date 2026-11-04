@@ -25,6 +25,27 @@
  *     six sections, so a level-2 heading must name one of them. Guessing
  *     which section an author meant is how narrative lands under the wrong
  *     label.
+ *
+ * Media and links (Issue #889)
+ * ----------------------------
+ * `image` and `bookmark` blocks became part of every page body when the
+ * legacy articles were written into Notion (ADR-0018 §2.11), so neither
+ * can stay a refusal without refusing the whole database.
+ *
+ *   * **An image is a descriptor, never Markdown.** The read shape under
+ *     `Notion-Version: 2025-09-03` is `image.type === "file"` carrying
+ *     `file: { url, expiry_time }` — a **signed URL that expires in about
+ *     an hour** — or `image.type === "external"` carrying
+ *     `external.url`. (`file_upload` is the *creation* parameter; the API
+ *     never returns it on read. Do not write a reader for it.) The URL
+ *     lives only on the descriptor, where the ingest downloads the bytes
+ *     from; it never reaches the Markdown, the link list or the snapshot.
+ *   * **A bookmark is one Markdown link line**, in document order, with
+ *     `http:` / `https:` targets only. Anything else is an error, not a
+ *     dropped link.
+ *   * Everything else — an unknown image source, an unparseable target —
+ *     stays an error. The refusal vocabulary is stable so a test and an
+ *     operator can both name the problem.
  */
 
 /** Heading text → section. Both spellings are accepted; nothing is inferred. */
@@ -59,6 +80,28 @@ export const PORTFOLIO_LINK_KINDS = [
 
 /** Mirrors `SLUG_REGEX` in `src/portfolio/schema.ts`. */
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,127}$/;
+
+/** Mirrors `NotionMediaSchema.media` (`z.array(...).max(32)`). */
+const MAX_MEDIA_PER_RECORD = 32;
+
+/**
+ * An absolute `http:` / `https:` URL, or `null`.
+ *
+ * Bookmarks and image targets are the two places a page body can carry a
+ * scheme the renderer must never see (`javascript:`, `data:`), so both
+ * ask this one question rather than each inventing a parse.
+ */
+function absoluteHttpUrl(value) {
+	if (typeof value !== 'string') return null;
+	let parsed;
+	try {
+		parsed = new URL(value);
+	} catch {
+		return null;
+	}
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+	return parsed;
+}
 
 function asObject(value) {
 	return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null;
@@ -179,11 +222,18 @@ class SectionWriter {
 }
 
 /**
- * Convert the page body to section Markdown, or report why it cannot.
- * @returns {{ ok: true, sections: Record<string, string|null> } | { ok: false, errors: Array<{code:string,at:string,expected:string}> }}
+ * Convert the page body to section Markdown and its image descriptors, or
+ * report why it cannot.
+ *
+ * The media list is in **document order** — `displayOrder` and `isCover`
+ * are decided here, where the order is visible, rather than re-derived
+ * later from a list that has already been sorted.
+ *
+ * @returns {{ ok: true, sections: Record<string, string|null>, media: object[] } | { ok: false, errors: Array<{code:string,at:string,expected:string}> }}
  */
 export function blocksToSections(blocks) {
 	const errors = [];
+	const media = [];
 	const writer = new SectionWriter();
 
 	for (const raw of blocks) {
@@ -229,7 +279,7 @@ export function blocksToSections(blocks) {
 		// Markdown text here. Refusing the block keeps the author's intent
 		// visible; dropping the run would publish a sentence with a hole.
 		try {
-			appendBlock(writer, type, block, at, errors);
+			appendBlock(writer, type, block, at, errors, media);
 		} catch (error) {
 			errors.push({
 				code: 'unsupported_rich_text',
@@ -240,10 +290,111 @@ export function blocksToSections(blocks) {
 	}
 
 	if (errors.length > 0) return { ok: false, errors };
-	return { ok: true, sections: writer.finish() };
+	return { ok: true, sections: writer.finish(), media };
 }
 
-function appendBlock(writer, type, block, at, errors) {
+/**
+ * Render one bookmark block as a single Markdown link line.
+ *
+ * @param {object} block
+ * @param {string} at
+ * @param {Array<{code:string,at:string,expected:string}>} errors
+ * @returns {string|null} `null` when the target was refused (already recorded)
+ */
+function bookmarkToMarkdown(block, at, errors) {
+	const payload = asObject(block.bookmark);
+	const url = absoluteHttpUrl(payload?.url);
+	if (url === null) {
+		errors.push({
+			code: 'invalid_bookmark_url',
+			at,
+			expected: 'an absolute http or https URL',
+		});
+		return null;
+	}
+	const caption = plainText(payload?.caption).trim();
+	const destination = url
+		.toString()
+		.replace(/[()]/gu, (character) => (character === '(' ? '%28' : '%29'));
+	// With no caption the URL is its own label: the author stored a bare
+	// link, and inventing a title for it would be copy the author never
+	// wrote. Parentheses are percent-encoded so an unbalanced `)` cannot
+	// close the destination early; the decoded target is identical.
+	const label = (caption.length > 0 ? caption : url.toString()).replace(/([\\[\]])/gu, '\\$1');
+	return `[${label}](${destination})`;
+}
+
+/**
+ * Read one image block into a media descriptor, or report why it cannot.
+ *
+ * The descriptor carries the ephemeral URL so the ingest can download the
+ * bytes; nothing else in the pipeline ever sees it. See the module note
+ * for the read shape (`file` / `external`) and why `file_upload` is not
+ * part of it.
+ *
+ * @param {object} block
+ * @param {string} at
+ * @param {number} displayOrder position among this page's images
+ * @returns {{descriptor?: object, error?: {code:string,at:string,expected:string}}}
+ */
+function readImageBlock(block, at, displayOrder) {
+	const payload = asObject(block.image);
+	const source = String(payload?.type ?? '');
+	let raw;
+	if (source === 'file') raw = asObject(payload.file)?.url;
+	else if (source === 'external') raw = asObject(payload.external)?.url;
+	else {
+		return {
+			error: {
+				code: 'image_source_unsupported',
+				at,
+				expected: 'an image source of type "file" or "external"',
+			},
+		};
+	}
+	const url = absoluteHttpUrl(raw);
+	if (url === null) {
+		return {
+			error: { code: 'image_url_invalid', at, expected: 'an absolute http or https URL' },
+		};
+	}
+	// A mention or an equation in a caption throws here and becomes
+	// `unsupported_rich_text` at the caller — the same refusal a paragraph
+	// carrying the same run gets.
+	const captionText = plainText(payload?.caption).trim();
+	if (captionText.length > 500) {
+		return {
+			error: {
+				code: 'caption_too_long',
+				at,
+				expected: 'a caption of at most 500 characters',
+			},
+		};
+	}
+	const caption = captionText.length > 0 ? captionText : null;
+	return {
+		descriptor: {
+			blockId: typeof block.id === 'string' ? block.id : at,
+			source,
+			// Signed and expiring (about an hour). The ingest consumes it
+			// and it is discarded; it is never serialised.
+			url: url.toString(),
+			// Notion carries no content type on read; the byte fetch
+			// supplies the authoritative one.
+			contentType: null,
+			caption,
+			// Notion has no alt-text field on an image block. The caption is
+			// the only text the author attached to the picture, so it is the
+			// alt text too; with no caption the image renders as decorative
+			// (empty alt) rather than with a title the author never wrote.
+			alt: caption ?? '',
+			isCover: displayOrder === 0,
+			displayOrder,
+		},
+	};
+}
+
+function appendBlock(writer, type, block, at, errors, media) {
 	switch (type) {
 		case 'paragraph':
 			writer.block(richTextToMarkdown(asObject(block.paragraph)?.rich_text).trim());
@@ -279,17 +430,23 @@ function appendBlock(writer, type, block, at, errors) {
 		case 'divider':
 			writer.block('---');
 			break;
-		case 'image':
-			// Deliberate refusal: an image needs a byte migration into R2
-			// and a rights record before it can be served, and neither
-			// exists yet (Issue #766). Publishing the text around a missing
-			// image would be a silent degradation.
-			errors.push({
-				code: 'image_block_unsupported',
-				at,
-				expected: 'text-only page (media migration is Issue #766)',
-			});
+		case 'image': {
+			// An image needs its bytes in R2 before a page can render it,
+			// so the block becomes a descriptor for the ingest rather than
+			// Markdown. Refusing it here would put the whole database back
+			// into the fail-closed state this Issue exists to leave.
+			const outcome = readImageBlock(block, at, media.length);
+			if (outcome.error) errors.push(outcome.error);
+			else media.push(outcome.descriptor);
 			break;
+		}
+		case 'bookmark': {
+			// One line, in document order, exactly where the author put
+			// it. A refused target is recorded, never skipped.
+			const markdown = bookmarkToMarkdown(block, at, errors);
+			if (markdown !== null) writer.block(markdown);
+			break;
+		}
 		default:
 			errors.push({ code: 'unsupported_block', at, expected: `a supported block, got "${type}"` });
 	}
@@ -411,21 +568,65 @@ export function parseLinks(raw) {
  * exact function the sync runs, without pulling `node:fs` into the Worker
  * test pool.
  *
+ * `media` is the flattened descriptor list, each entry carrying the
+ * `pageId` it belongs to. The descriptors are NOT part of a record: a
+ * record carries the ephemeral Notion URL only by accident if a caller
+ * forgets the ingest step, and the snapshot must never hold one
+ * (Issue #889). The ingest resolves each descriptor to bytes and an R2
+ * key, then projects it back with `toContractMedia`.
+ *
  * @param {readonly any[]} pages
- * @returns {{ records: any[], errors: Array<{code:string,at:string,expected:string,pageId:string}> }}
+ * @returns {{ records: any[], media: Array<object>, errors: Array<{code:string,at:string,expected:string,pageId:string}> }}
  */
 export function mapDocuments(pages) {
 	const records = [];
+	const media = [];
 	const errors = [];
 	for (const entry of pages) {
 		const result = mapNotionPage(entry?.page, Array.isArray(entry?.blocks) ? entry.blocks : []);
-		if (result.ok) records.push(result.record);
-		else {
+		if (result.ok) {
+			records.push(result.record);
+			for (const descriptor of result.media) {
+				media.push({ pageId: result.record.pageId, ...descriptor });
+			}
+		} else {
 			const pageId = typeof entry?.page?.id === 'string' ? entry.page.id : 'unknown';
 			for (const error of result.errors) errors.push({ pageId, ...error });
 		}
 	}
-	return { records, errors };
+	return { records, media, errors };
+}
+
+/**
+ * Project a **resolved** descriptor into `NotionMediaSchema`'s shape.
+ *
+ * The split is the point: this module decides every field that comes from
+ * the page (alt, caption, order, cover), and the ingest decides every
+ * field that comes from bytes (`r2Key`, `contentType`) or from the offline
+ * rights record (`rights`). Neither side can fill in the other's fields,
+ * so a snapshot URL can only arrive by a caller passing a URL as an
+ * `r2Key` — which `checkSnapshotShape` and the contract both refuse.
+ *
+ * `width` / `height` are `null` by decision, not by omission: the
+ * contract makes them nullable, the D1 migration carries no dimensions
+ * either, and guessing a size a browser will reserve is how layout shift
+ * gets manufactured.
+ *
+ * @param {{alt: string, caption: string|null, isCover: boolean, displayOrder: number}} descriptor
+ * @param {{r2Key: string, contentType: string, rights: 'recorded'|'unrecorded'}} resolution
+ */
+export function toContractMedia(descriptor, { r2Key, contentType, rights }) {
+	return {
+		r2Key,
+		contentType,
+		width: null,
+		height: null,
+		alt: descriptor.alt,
+		caption: descriptor.caption,
+		isCover: descriptor.isCover,
+		displayOrder: descriptor.displayOrder,
+		rights,
+	};
 }
 
 /**
@@ -519,17 +720,29 @@ export function mapNotionPage(page, blocks) {
 
 	const sectionResult = blocksToSections(blocks);
 	if (!sectionResult.ok) errors.push(...sectionResult.errors);
-	else if ((sectionResult.sections.motivation ?? '').trim().length === 0) {
-		// The public page's opening paragraph comes from this section. An
-		// empty one is not a valid page that happens to be short — it is a
-		// page whose body was written under a heading the mapper does not
-		// recognise, and publishing it would render a project with no
-		// explanation at all.
-		errors.push({
-			code: 'missing_motivation',
-			at: 'page body',
-			expected: 'a "Motivation" (or "動機") section with text',
-		});
+	else {
+		if (sectionResult.media.length > MAX_MEDIA_PER_RECORD) {
+			// Caught here rather than left for the runtime contract to
+			// reject the whole snapshot: a refusal an operator can act on
+			// beats a file that silently publishes nothing.
+			errors.push({
+				code: 'too_many_media',
+				at: 'page body',
+				expected: `at most ${MAX_MEDIA_PER_RECORD} image blocks`,
+			});
+		}
+		if ((sectionResult.sections.motivation ?? '').trim().length === 0) {
+			// The public page's opening paragraph comes from this section. An
+			// empty one is not a valid page that happens to be short — it is a
+			// page whose body was written under a heading the mapper does not
+			// recognise, and publishing it would render a project with no
+			// explanation at all.
+			errors.push({
+				code: 'missing_motivation',
+				at: 'page body',
+				expected: 'a "Motivation" (or "動機") section with text',
+			});
+		}
 	}
 
 	const editedAtRaw = object.last_edited_time;
@@ -570,10 +783,15 @@ export function mapNotionPage(page, blocks) {
 				retrospective: sectionResult.sections.retrospective,
 			},
 			links,
-			// Media arrives with the byte migration (Issue #766); the mapper
-			// never invents a key it has not seen an upload for.
+			// Filled by the ingest (`sync-portfolio-notion.mjs`) after every
+			// descriptor has been downloaded, hashed and given an R2 key.
+			// The mapper cannot know a key it has never seen an upload for,
+			// so it never invents one and never carries a Notion URL here.
 			media: [],
 			editedAt,
 		},
+		// The page's image descriptors, in document order. Not part of the
+		// record: they still hold the ephemeral Notion URL.
+		media: sectionResult.media,
 	};
 }

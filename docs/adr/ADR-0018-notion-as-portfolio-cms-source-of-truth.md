@@ -132,7 +132,14 @@ Notion database ──(node scripts/sync-portfolio-notion.mjs)──▶
 
 - 未知の level-2 見出し（`unknown_section_heading`）— 節は 6 つに固定
 - 最初の見出しより前の本文（`content_before_first_section`）
-- `image` block（`image_block_unsupported`）— Issue #766 の範囲
+- `image` block のうち `file` / `external` 以外の source
+  （`image_source_unsupported`）と、http/https 以外の image URL
+  （`image_url_invalid`）— **Issue #889 で `file` / `external` の image は
+  読み取り対象に変わった**。URL は media descriptor に載せて ingest が
+  バイトを R2 へ移し、本文・リンク・snapshot には一切書かない
+- `bookmark` block のうち http/https 以外の target（`invalid_bookmark_url`）
+  — **Issue #889 で bookmark は読み取り対象に変わった**。本文の Markdown
+  リンク 1 行（文書順）になる
 - その他の未対応 block（`unsupported_block`）
 - mention / equation など Markdown に落ちない rich text（`unsupported_rich_text`）
 

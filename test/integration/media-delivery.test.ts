@@ -26,6 +26,13 @@ const UNLISTED_KEY = 'unlisted/thing.webp';
 const HTML_KEY = 'portfolio/published/page.html';
 const REACTION_KEY = `reactions/${'b'.repeat(64)}.webp`;
 const REACTION_ORPHAN_KEY = `reactions/${'c'.repeat(64)}.webp`;
+/**
+ * A content-addressed CMS image (Issue #889). The object exists, the
+ * namespace admits it, and the shipped snapshot lists no media — so the
+ * Worker must still refuse it. This is the refusal half; the approval half
+ * lives in `src/http/media/router.test.ts` and `publish.test.ts`.
+ */
+const NOTION_KEY = `portfolio/notion/${'a'.repeat(64)}.png`;
 
 const REACTION_IMAGES_DDL = `CREATE TABLE IF NOT EXISTS reaction_images (
 	id TEXT PRIMARY KEY,
@@ -87,6 +94,7 @@ beforeAll(async () => {
 	await put(HTML_KEY, '<html>not media</html>', 'text/html');
 	await put(REACTION_KEY, 'reaction-bytes');
 	await put(REACTION_ORPHAN_KEY, 'orphan-bytes');
+	await put(NOTION_KEY, 'notion-bytes');
 });
 
 function fetchKey(key: string, method = 'GET'): Promise<Response> {
@@ -118,6 +126,7 @@ describe('the Worker serves only approved media keys', () => {
 		['undeclared namespace', UNLISTED_KEY],
 		['reaction object with no row', REACTION_ORPHAN_KEY],
 		['approved row with a non-media content type', HTML_KEY],
+		['CMS image absent from the bundled snapshot', NOTION_KEY],
 	])(
 		'%s is the same empty 404',
 		async (_label, key) => {

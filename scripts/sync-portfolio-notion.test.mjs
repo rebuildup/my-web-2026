@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { mapDocuments, mapNotionPage, parseLinks } from './_notion-mapper.mjs';
 import {
+	MediaIngestError,
 	buildSnapshot,
 	checkSnapshotShape,
 	contentDigest,
 	findCredentialLeak,
 	parseArgs,
+	readRightsInventory,
+	rightsForR2Key,
 	syncNotion,
 } from './sync-portfolio-notion.mjs';
 
@@ -124,16 +128,16 @@ describe('mapDocuments', () => {
 			},
 			{
 				object: 'block',
-				id: 'img-1',
-				type: 'image',
-				image: { type: 'external', external: { url: 'https://example.com/a.png' } },
+				id: 'callout-1',
+				type: 'callout',
+				callout: { rich_text: [{ type: 'text', text: { content: 'notice' } }] },
 			},
 		];
 		const { records, errors } = mapDocuments([document.pages[0], broken]);
 		assert.equal(records.length, 1);
 		assert.deepEqual(
 			errors.map((error) => error.code),
-			['image_block_unsupported'],
+			['unsupported_block'],
 		);
 	});
 });
@@ -201,7 +205,7 @@ describe('section mapping', () => {
 		assert.equal(result.errors[0]?.code, 'missing_motivation');
 	});
 
-	it('refuses an image block rather than dropping it', () => {
+	it('reads an image block into a descriptor instead of refusing the page', () => {
 		const result = mapNotionPage(basePage().page, [
 			{
 				object: 'block',
@@ -211,13 +215,26 @@ describe('section mapping', () => {
 			},
 			{
 				object: 'block',
+				id: 'p-1',
+				type: 'paragraph',
+				paragraph: { rich_text: [{ type: 'text', text: { content: 'Why.' } }] },
+			},
+			{
+				object: 'block',
 				id: 'img-1',
 				type: 'image',
-				image: { type: 'external', external: { url: 'https://example.com/a.png' } },
+				image: {
+					type: 'external',
+					external: { url: 'https://example.com/a.png' },
+					caption: [],
+				},
 			},
 		]);
-		assert.equal(result.ok, false);
-		assert.equal(result.errors[0]?.code, 'image_block_unsupported');
+		assert.equal(result.ok, true, JSON.stringify(result.errors));
+		assert.equal(result.media.length, 1);
+		assert.equal(result.media[0].blockId, 'img-1');
+		// The record itself carries nothing until the ingest has the bytes.
+		assert.deepEqual(result.record.media, []);
 	});
 });
 
@@ -490,5 +507,329 @@ describe('parseArgs', () => {
 		const options = parseArgs(['--out', '/tmp/x.json', '--dry-run']);
 		assert.equal(options.out, '/tmp/x.json');
 		assert.equal(options.dryRun, true);
+	});
+
+	it('defaults the R2 target to local and only accepts a named target', () => {
+		assert.equal(parseArgs([]).r2Target, 'local');
+		assert.equal(parseArgs(['--r2-target', 'production']).r2Target, 'production');
+		assert.throws(() => parseArgs(['--r2-target', 'remote']), /must be local or production/u);
+	});
+});
+
+/* -------------------------------------------------------------------------
+ * Media ingest (Issue #889)
+ * -------------------------------------------------------------------------
+ */
+
+const SIGNED_URL =
+	'https://secure.notion-static.com/obj?X-Amz-Signature=cafebabe&X-Amz-Expires=3600';
+const SIGNED_TOKEN = 'cafebabe';
+const IMAGE_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const REFERENCE_URL = 'https://example.com/reference';
+
+function text(content) {
+	return [{ type: 'text', text: { content } }];
+}
+
+function mediaFixture({ duplicate = false } = {}) {
+	const blocks = [
+		{
+			object: 'block',
+			id: 'h-1',
+			type: 'heading_2',
+			heading_2: { rich_text: text('Motivation') },
+		},
+		{ object: 'block', id: 'p-1', type: 'paragraph', paragraph: { rich_text: text('Why.') } },
+		{
+			object: 'block',
+			id: 'img-1',
+			type: 'image',
+			image: {
+				type: 'file',
+				file: { url: SIGNED_URL, expiry_time: '2026-11-04T14:00:00.000Z' },
+				caption: text('A cat'),
+			},
+		},
+		...(duplicate
+			? [
+					{
+						object: 'block',
+						id: 'img-2',
+						type: 'image',
+						image: {
+							type: 'external',
+							external: { url: 'https://example.com/same-cat.png' },
+							caption: [],
+						},
+					},
+				]
+			: []),
+		{
+			object: 'block',
+			id: 'bm-1',
+			type: 'bookmark',
+			bookmark: { url: REFERENCE_URL, caption: [] },
+		},
+	];
+	return {
+		databaseId: 'db-1',
+		sourceUrl: null,
+		pages: [{ page: basePage().page, blocks }],
+	};
+}
+
+function writeFixture(document) {
+	const path = join(mkdtempSync(join(tmpdir(), 'notion-media-')), 'fixture.json');
+	writeFileSync(path, JSON.stringify(document));
+	return path;
+}
+
+function imageFetch({ bytes = IMAGE_BYTES, contentType = 'image/png', status = 200 } = {}) {
+	return (url) => {
+		if (url !== SIGNED_URL && url !== 'https://example.com/same-cat.png') {
+			return Promise.reject(new Error('unexpected media url'));
+		}
+		return Promise.resolve(
+			new Response(bytes, {
+				status,
+				headers: contentType === null ? {} : { 'content-type': contentType },
+			}),
+		);
+	};
+}
+
+function fakeR2({ existing = [], objects = {}, failPut = false, failList = false } = {}) {
+	const state = { puts: [] };
+	return {
+		state,
+		async listKeys() {
+			if (failList) throw new Error('listing_failed');
+			return [...existing];
+		},
+		async getObject(key) {
+			const bytes = objects[key];
+			if (bytes === undefined) throw new Error('missing object');
+			return bytes;
+		},
+		async putObject(key, filePath, options) {
+			if (failPut) throw new Error('put failed');
+			state.puts.push({
+				key,
+				contentType: options.contentType,
+				target: options.target,
+				execute: options.execute,
+				bytes: readFileSync(filePath),
+			});
+			return { applied: true, key };
+		},
+	};
+}
+
+function runMediaFixture(options = {}, fixtureOptions = {}) {
+	return runFixture(writeFixture(mediaFixture(fixtureOptions)), options);
+}
+
+describe('media ingest', () => {
+	it('stores the bytes under a content-addressed key and never a Notion URL', async () => {
+		const r2 = fakeR2();
+		const { exitCode, outPath, stdout } = await runMediaFixture({
+			fetchImpl: imageFetch(),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 0);
+		assert.match(
+			stdout,
+			/^synced records=1 findings=0 media=1 media_bytes=8 would_upload=1 upload_bytes=8 reused=0/u,
+		);
+		assert.equal(r2.state.puts.length, 1);
+		assert.equal(r2.state.puts[0].contentType, 'image/png');
+		assert.equal(r2.state.puts[0].target, 'local');
+		assert.equal(r2.state.puts[0].execute, false);
+		assert.deepEqual(r2.state.puts[0].bytes, IMAGE_BYTES);
+
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		assert.equal(checkSnapshotShape(written), null);
+		const [media] = written.records[0].media;
+		const sha256 = createHash('sha256').update(IMAGE_BYTES).digest('hex');
+		assert.equal(media.r2Key, `portfolio/notion/${sha256}.png`);
+		assert.equal(media.contentType, 'image/png');
+		assert.equal(media.width, null);
+		assert.equal(media.height, null);
+		assert.equal(media.alt, 'A cat');
+		assert.equal(media.caption, 'A cat');
+		assert.equal(media.isCover, true);
+		assert.equal(media.displayOrder, 0);
+		// The shipped inventory records no portfolio asset, so the honest
+		// verdict is `unrecorded` (ADR-0019 / Issue #811: published, and
+		// shown as unreviewed — never upgraded to `recorded`).
+		assert.equal(media.rights, 'unrecorded');
+
+		// The containment rule: no expiring address, no signature, no URL
+		// field anywhere near the committed file.
+		const mediaJson = JSON.stringify(written.records[0].media);
+		assert.equal(mediaJson.includes('http'), false);
+		assert.equal(mediaJson.includes('notion-static'), false);
+		assert.equal(mediaJson.includes(SIGNED_TOKEN), false);
+		const serialized = readFileSync(outPath, 'utf8');
+		assert.equal(serialized.includes(SIGNED_URL), false);
+		assert.equal(serialized.includes('X-Amz'), false);
+		// The bookmark, by contrast, IS content: it reaches the body as a
+		// Markdown link, in document order.
+		assert.match(written.records[0].sections.motivation, /example\.com\/reference/u);
+	});
+
+	it('downloads and hashes on --dry-run but writes no snapshot and no object', async () => {
+		const r2 = fakeR2();
+		const { exitCode, outPath, stdout } = await runMediaFixture({
+			dryRun: true,
+			fetchImpl: imageFetch(),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 0);
+		assert.equal(existsSync(outPath), false);
+		assert.equal(r2.state.puts.length, 0);
+		// media_bytes proves the bytes were actually fetched and hashed.
+		assert.match(stdout, /media=1 media_bytes=8 would_upload=1/u);
+		assert.match(stdout, /written=false/u);
+	});
+
+	it('reuses an existing object with identical bytes instead of storing it twice', async () => {
+		const legacyKey = 'portfolio/legacy/cat.png';
+		const r2 = fakeR2({ existing: [legacyKey], objects: { [legacyKey]: IMAGE_BYTES } });
+		const { exitCode, outPath, stdout } = await runMediaFixture({
+			fetchImpl: imageFetch(),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 0);
+		assert.equal(r2.state.puts.length, 0);
+		assert.match(stdout, /would_upload=0/u);
+		assert.match(stdout, /reused=1/u);
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		// The Issue #850 overlap: the record points at the object that is
+		// already there. Nothing existing is deleted or rewritten.
+		assert.equal(written.records[0].media[0].r2Key, legacyKey);
+	});
+
+	it('uploads identical bytes once even when two blocks reference them', async () => {
+		const r2 = fakeR2();
+		const { exitCode, outPath, stdout } = await runMediaFixture(
+			{ fetchImpl: imageFetch(), r2, inventory: readRightsInventory() },
+			{ duplicate: true },
+		);
+		assert.equal(exitCode, 0);
+		assert.match(stdout, /media=2 media_bytes=16 would_upload=1 upload_bytes=8 reused=1/u);
+		assert.equal(r2.state.puts.length, 1);
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		const [first, second] = written.records[0].media;
+		assert.equal(first.r2Key, second.r2Key);
+		assert.equal(first.displayOrder, 0);
+		assert.equal(second.displayOrder, 1);
+		assert.equal(second.isCover, false);
+	});
+
+	it('fails closed with a stable code when a byte fetch fails', async () => {
+		const r2 = fakeR2();
+		const { exitCode, outPath, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch({ status: 404 }),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /code=media_download_failed detail=http_404/u);
+		assert.match(stderr, /nothing was written/u);
+		assert.equal(existsSync(outPath), false);
+		assert.equal(r2.state.puts.length, 0);
+	});
+
+	it('maps a mid-body transport failure to the stable code', async () => {
+		const failing = new Response(
+			new ReadableStream({
+				pull() {
+					throw new Error('terminated');
+				},
+			}),
+			{ status: 200, headers: { 'content-type': 'image/png' } },
+		);
+		const r2 = fakeR2();
+		const { exitCode, stderr } = await runMediaFixture({
+			fetchImpl: () => Promise.resolve(failing),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /code=media_download_failed detail=stream/u);
+		assert.equal(r2.state.puts.length, 0);
+	});
+
+	it('refuses a content type the delivery route would not serve', async () => {
+		const r2 = fakeR2();
+		const { exitCode, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch({ contentType: 'text/html' }),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /code=media_content_type_refused/u);
+		assert.equal(r2.state.puts.length, 0);
+	});
+
+	it('types a response with no header from its own bytes', async () => {
+		const r2 = fakeR2();
+		const { exitCode, outPath } = await runMediaFixture({
+			fetchImpl: imageFetch({ contentType: null }),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 0);
+		const written = JSON.parse(readFileSync(outPath, 'utf8'));
+		assert.equal(written.records[0].media[0].contentType, 'image/png');
+	});
+
+	it('fails closed when an upload fails, without writing the snapshot', async () => {
+		const r2 = fakeR2({ failPut: true });
+		const { exitCode, outPath, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch(),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /media upload failed code=media_upload_failed/u);
+		assert.equal(existsSync(outPath), false);
+	});
+
+	it('fails closed when the bucket cannot be listed', async () => {
+		const r2 = fakeR2({ failList: true });
+		const { exitCode, outPath, stderr } = await runMediaFixture({
+			fetchImpl: imageFetch(),
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 1);
+		assert.match(stderr, /media ingest failed code=r2_list_failed/u);
+		assert.equal(existsSync(outPath), false);
+		assert.equal(r2.state.puts.length, 0);
+	});
+
+	it('reads the shipped rights inventory and never fabricates a record', () => {
+		const inventory = readRightsInventory();
+		assert.equal(rightsForR2Key('portfolio/notion/aa11.png', inventory), 'unrecorded');
+		// The lookup is a real rule, not a constant: a covered, verified
+		// asset reads as recorded, and one verified with `none` does not.
+		const covered = {
+			assets: [{ covers: ['portfolio/**'], verification: { method: 'repository-evidence' } }],
+		};
+		assert.equal(rightsForR2Key('portfolio/x.png', covered), 'recorded');
+		const unverified = { assets: [{ covers: ['portfolio/**'], verification: { method: 'none' } }] };
+		assert.equal(rightsForR2Key('portfolio/x.png', unverified), 'unrecorded');
+	});
+
+	it('refuses to invent a rights inventory it cannot read', () => {
+		assert.throws(
+			() => readRightsInventory('/nonexistent/asset-license-inventory.json'),
+			(error) => error instanceof MediaIngestError && error.code === 'rights_inventory_unreadable',
+		);
 	});
 });

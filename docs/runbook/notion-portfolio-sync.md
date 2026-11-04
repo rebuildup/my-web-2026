@@ -88,8 +88,17 @@ multi_select / select / checkbox。**名前は完全一致**で読まれる。
 | `Retrospective` / `振り返り` | retrospective |
 
 使える block: paragraph / heading_3 / bulleted list / numbered list / quote /
-code / divider。**それ以外と `image` は error**（黙って落とさない）。
+code / divider / image（source は `file` または `external`）/ bookmark
+（http/https のみ）。**それ以外は error**（黙って落とさない）。
 理由と交換形式の判断は ADR-0018 §2.3。
+
+`image` と `bookmark` は Issue #889 で読み取り対象になった。image は
+ingest 時にバイトを取得して SHA-256 で `portfolio/notion/<sha256>.<ext>` に
+入れる（既存オブジェクトと同一バイトならその key を再利用）。**Notion の
+署名付き URL（約 1 時間で失効）は本文にも snapshot にも書かない**。
+bookmark は本文の Markdown リンク 1 行になる。権利は
+`quality/asset-license-inventory.json` の offline 判定で、現状の投入画像は
+すべて `unrecorded`（ADR-0019 / Issue #811: 公開され、未レビューと表示される）。
 
 ## 4. secret の置き場所
 
@@ -262,6 +271,9 @@ Notion で本文を編集
 | `refused page=… <code> at=… expected=…` | 本文の形。ADR-0018 §2.3 の語彙に直す |
 | `refused … missing_property at=property <Name>` | data source に §3 の property が無い。**property 名が違う**のが典型（下記） |
 | `sync aborted: N page(s) could not be mapped (M finding(s))` | 1 ページが複数の property で落ちうるので、ページ数と指摘数を分けて出す |
+| `media refused page=… block=… code=…` | 画像バイトの取得に失敗（`media_download_failed` / `media_too_large` / `media_content_type_refused` など）。exit 1、**何も書いていない** |
+| `sync aborted: media ingest failed code=…` | R2 の list / dedupe scan が失敗（`r2_list_failed` / `r2_scan_failed` / `r2_scan_budget_exceeded`）。同一バイトを保証できないため書かない |
+| `sync aborted: media upload failed code=…` | R2 への put に失敗（`media_upload_failed`）。**snapshot は書いていない**（オブジェクトが無いファイルを正本にしない） |
 | `unavailable records=N reason=source_error` | 429 / 5xx。**最後の既知内容を保持したまま** `availability: unavailable` を記録した |
 | `refusing to write the snapshot: it contains a token value` | 防御機構。**commit しないで**、何が起きたか報告する |
 

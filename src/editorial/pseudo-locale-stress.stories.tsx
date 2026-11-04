@@ -356,7 +356,11 @@ function AuditTable() {
 								padding: '2',
 								borderBottom: '1px solid',
 								borderColor: 'border.subtle',
-								color: row.ok ? 'text.default' : 'accent.negative',
+								color: row.ok ? 'text.muted' : 'text.default',
+								// Issue #887: `accent.negative` resolves to ink, so the
+								// finding row earns its difference from weight and ink
+								// — the cell text is the word that names the state.
+								fontWeight: row.ok ? '400' : '700',
 							})}
 						>
 							{row.ok ? 'ok' : row.findings.join('; ')}

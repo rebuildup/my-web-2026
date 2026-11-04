@@ -75,12 +75,22 @@ export const breadcrumbsChrome = css({
 	},
 	'& a': {
 		color: 'text.muted',
-		textDecoration: 'none',
+		// Direction B (Issue #887): `text.accent` is ink and a crumb is
+		// muted ink, so the underline is the only rest-state clue that
+		// this word goes somewhere. The current page is a plain `<span>`
+		// (not a link), so it keeps no decoration — its weight and ink
+		// already separate it from the links.
+		textDecoration: 'underline',
+		textUnderlineOffset: '0.18em',
+		textDecorationThickness: '1px',
 		borderRadius: 'sm',
 		paddingInline: '1',
 		paddingBlock: '1',
 		transition: 'color 120ms ease',
-		_hover: { color: 'text.default', textDecoration: 'underline' },
+		_hover: {
+			color: 'text.default',
+			textDecorationThickness: '2px',
+		},
 		_focusVisible: {
 			outline: '2px solid {colors.border.focus}',
 			outlineOffset: '2px',

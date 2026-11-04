@@ -1,6 +1,12 @@
 import { css, cx } from '../../../styled-system/css';
 import { Container } from '../primitives/Container';
-import type { ErrorStateAlternative, ErrorStateKind, ErrorStateRecoveryAction } from './contract';
+import { StateMark, type StateMarkKind } from '../primitives/StateMark';
+import type {
+	ErrorStateAlternative,
+	ErrorStateDefinition,
+	ErrorStateKind,
+	ErrorStateRecoveryAction,
+} from './contract';
 import { alternativesFor, errorStateDefinition } from './contract';
 
 /**
@@ -69,11 +75,30 @@ export interface ErrorStateProps {
 	alternatives?: readonly ErrorStateAlternative[];
 }
 
+/*
+ * Severity without a status hue (Issue #887).
+ *
+ * `accent.warning` / `accent.negative` resolve to ink under the
+ * monochrome ground, so the colour of the status label cannot say
+ * "warning" any more — and the fix is not a new hue but the second
+ * and third channels the surface already has: the SILHOUETTE next to
+ * the label (`degraded` triangle / `unreachable` cross) and the words
+ * already rendered beside it (the status label and the condition).
+ * The ink still separates the severity from the neutral case: a
+ * failure is strong ink, a 404 is the muted auxiliary ink.
+ */
 const TONE_STATUS_CLASS = {
 	neutral: css({ color: 'text.muted' }),
-	warning: css({ color: 'accent.warning' }),
-	negative: css({ color: 'accent.negative' }),
+	warning: css({ color: 'text.default' }),
+	negative: css({ color: 'text.default' }),
 } as const;
+
+/** The silhouette each severity draws beside its status label. */
+const TONE_STATUS_MARK = {
+	neutral: null,
+	warning: 'degraded',
+	negative: 'unreachable',
+} as const satisfies Record<ErrorStateDefinition['tone'], StateMarkKind | null>;
 
 const actionClassName = css({
 	display: 'inline-flex',
@@ -104,6 +129,7 @@ export function ErrorState({
 	alternatives,
 }: ErrorStateProps) {
 	const definition = errorStateDefinition(kind);
+	const statusMark = TONE_STATUS_MARK[definition.tone];
 	const alternativeLinks = alternatives ?? alternativesFor(kind);
 	const headingId = `error-state-${kind}-heading`;
 	const descriptionId = `error-state-${kind}-description`;
@@ -189,10 +215,17 @@ export function ErrorState({
 					>
 						<span
 							className={cx(
-								css({ fontFamily: 'mono', fontWeight: '600' }),
+								css({
+									display: 'inline-flex',
+									alignItems: 'baseline',
+									gap: '2',
+									fontFamily: 'mono',
+									fontWeight: '600',
+								}),
 								TONE_STATUS_CLASS[definition.tone],
 							)}
 						>
+							{statusMark ? <StateMark kind={statusMark} size="sm" /> : null}
 							{definition.statusLabel}
 						</span>
 						<span>{definition.condition}</span>
@@ -318,7 +351,12 @@ function AlternativeList({ alternatives }: { alternatives: readonly ErrorStateAl
 								fontSize: 'sm',
 								color: 'text.accent',
 								textDecoration: 'underline',
-								_hover: { borderColor: 'border.strong', color: 'text.default' },
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								_hover: {
+									borderColor: 'border.strong',
+									textDecorationThickness: '2px',
+								},
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',

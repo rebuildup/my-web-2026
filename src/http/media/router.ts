@@ -4,6 +4,7 @@ import {
 	createPublicMediaDelivery,
 } from '../../cloudflare/media-visibility';
 import { isPublishedPortfolioMediaKey } from '../../portfolio/media-approval';
+import { isPublishedNotionMediaKey } from '../../portfolio/notion/reader';
 import { REACTION_IMAGE_CACHE_CONTROL, isPublicReactionImageKey } from '../reactions/images';
 
 /**
@@ -18,7 +19,8 @@ import { REACTION_IMAGE_CACHE_CONTROL, isPublicReactionImageKey } from '../react
  *   1. namespace — only a well-formed key under a declared public
  *      prefix is a candidate;
  *   2. approval — the owning obligation must say this particular
- *      object is published right now (a D1 row).
+ *      object is published right now (a D1 row, or for a CMS image the
+ *      bundled snapshot — see `isApprovedMediaKey`).
  *
  * Every refusal is the same 404 with no body and `no-store`. It is
  * never a 403 and never a reason code: a distinguishable answer would
@@ -91,14 +93,35 @@ export function mediaCacheControlFor(key: string, stored: string | null): string
 }
 
 /**
+ * How the CMS half of the approval is answered.
+ *
+ * A parameter rather than a hard call so a test can state one publication
+ * rule at a time; the default is the real rule (`reader.ts` reading the
+ * committed snapshot), which is what production always runs.
+ */
+export type NotionApprovalCheck = (key: string) => boolean;
+
+/**
  * Compose the owner approvals for one key.
  *
  * The namespace gate has already run by the time this is called, so
- * the only branches reachable with a public key are `portfolio/` and
- * `reactions/`. An unknown namespace answers false rather than
- * defaulting either way.
+ * the only branches reachable with a public key are `portfolio/`,
+ * `portfolio/notion/` and `reactions/`. An unknown namespace answers
+ * false rather than defaulting either way.
+ *
+ * `portfolio/notion/` is split off deliberately (Issue #889): those
+ * objects are content-addressed images the ingest uploaded with no D1
+ * `portfolio_media` row, so the D1 query would refuse every one of them
+ * and the page would render broken images. The bundled snapshot is the
+ * publication record for them, and it is asked with the same rule the
+ * page uses. A key that is in neither record is refused by both.
  */
-export async function isApprovedMediaKey(db: D1Database, key: string): Promise<boolean> {
+export async function isApprovedMediaKey(
+	db: D1Database,
+	key: string,
+	isNotionApproved: NotionApprovalCheck = isPublishedNotionMediaKey,
+): Promise<boolean> {
+	if (key.startsWith('portfolio/notion/')) return isNotionApproved(key);
 	if (key.startsWith('portfolio/')) return isPublishedPortfolioMediaKey(db, key);
 	if (key.startsWith('reactions/')) return isPublicReactionImageKey(db, key);
 	return false;
@@ -112,7 +135,10 @@ function notFound(): Response {
 	});
 }
 
-export function createMediaRouter(): Hono<{ Bindings: Env }> {
+export function createMediaRouter(
+	options: { isNotionApproved?: NotionApprovalCheck } = {},
+): Hono<{ Bindings: Env }> {
+	const isNotionApproved = options.isNotionApproved ?? isPublishedNotionMediaKey;
 	const router = new Hono<{ Bindings: Env }>();
 
 	// Mounted with `.route('/', mediaRouter)`, so the sub-app declares
@@ -122,7 +148,7 @@ export function createMediaRouter(): Hono<{ Bindings: Env }> {
 		const key = c.req.param('key');
 		const method = c.req.method === 'HEAD' ? 'HEAD' : 'GET';
 		const delivery = createPublicMediaDelivery(c.env.MEDIA as MediaObjectSource, {
-			isApproved: (candidate) => isApprovedMediaKey(c.env.DB, candidate),
+			isApproved: (candidate) => isApprovedMediaKey(c.env.DB, candidate, isNotionApproved),
 			method,
 		});
 		const result = await delivery.fetch(key);

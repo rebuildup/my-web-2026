@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { NotionRecord, ReadSnapshot } from './contract';
 import {
 	compareProjects,
+	hasPublishedMediaKey,
 	isPublicRecord,
 	publicProjects,
 	publishedMedia,
@@ -160,6 +161,36 @@ describe('publicProjects', () => {
 		);
 		expect(project?.media).toHaveLength(1);
 		expect(project?.evidenceStatus).toBe('unreviewed');
+	});
+});
+
+describe('hasPublishedMediaKey', () => {
+	const KEY = `portfolio/notion/${'c'.repeat(64)}.png`;
+
+	it('answers yes for a key a published public record lists', () => {
+		const snapshotWithMedia = snapshot([record({ media: [media({ r2Key: KEY })] })]);
+		expect(hasPublishedMediaKey(snapshotWithMedia, KEY)).toBe(true);
+	});
+
+	it('answers no for a key only a non-published record lists', () => {
+		const draft = snapshot([record({ status: 'draft', media: [media({ r2Key: KEY })] })]);
+		expect(hasPublishedMediaKey(draft, KEY)).toBe(false);
+
+		const unlisted = snapshot([record({ visibility: 'unlisted', media: [media({ r2Key: KEY })] })]);
+		expect(hasPublishedMediaKey(unlisted, KEY)).toBe(false);
+
+		const archived = snapshot([record({ status: 'archived', media: [media({ r2Key: KEY })] })]);
+		expect(hasPublishedMediaKey(archived, KEY)).toBe(false);
+	});
+
+	it('answers no for a key no record lists', () => {
+		const other = `portfolio/notion/${'d'.repeat(64)}.png`;
+		const snapshotWithMedia = snapshot([record({ media: [media({ r2Key: KEY })] })]);
+		expect(hasPublishedMediaKey(snapshotWithMedia, other)).toBe(false);
+	});
+
+	it('answers no when there is no snapshot to read', () => {
+		expect(hasPublishedMediaKey(null, KEY)).toBe(false);
 	});
 });
 

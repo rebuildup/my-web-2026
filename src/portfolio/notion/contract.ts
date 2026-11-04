@@ -67,7 +67,18 @@ export const NotionLinkSchema = z.object({
  * hint to try.
  */
 export const NotionMediaSchema = z.object({
-	r2Key: z.string().min(1).max(512),
+	// A key is an object name, never a URL (Issue #889): `://`, `?`, `#`
+	// and whitespace are exactly how an expiring Notion address would
+	// disguise itself as one. The ingest checks the same rule before it
+	// writes (`checkSnapshotShape`); the reader checks it again because
+	// the reader is the gate, not the writer.
+	r2Key: z
+		.string()
+		.min(1)
+		.max(512)
+		.refine((key) => key.startsWith('portfolio/') && !/[:?#\s]/u.test(key), {
+			message: 'a plain portfolio object key, never a URL',
+		}),
 	contentType: z.string().min(3).max(128),
 	width: z.number().int().positive().nullable(),
 	height: z.number().int().positive().nullable(),

@@ -77,6 +77,30 @@ const BLOCKED_LINK_NOTE_STYLE = {
 	color: 'text.muted',
 } as const;
 
+/**
+ * Body-link styling (Issue #887).
+ *
+ * The Panda reset neutralises every anchor (`a { color: inherit;
+ * text-decoration: inherit }`), so a rendered link that carries no
+ * class of its own reads exactly like the sentence around it — the
+ * cursor is its only cue. `text.accent` is INK under the monochrome
+ * system, so the affordance has to be structural: a permanent
+ * underline set off the baseline, thicker on hover, and the standard
+ * focus ring. This is the same recipe the platform's other accent
+ * links use (`src/projects/RichText.tsx`).
+ */
+const LINK_CLASS_NAME = css({
+	color: 'text.accent',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	_hover: { textDecorationThickness: '2px' },
+	_focusVisible: {
+		outline: '2px solid {colors.border.focus}',
+		outlineOffset: '2px',
+	},
+});
+
 export function PortfolioMarkdown({
 	source,
 	siteOrigin = DEFAULT_SITE_ORIGIN,
@@ -141,7 +165,13 @@ function renderInlineNode(node: MarkdownInline, ctx: MarkdownLinkContext, key: s
 				);
 			}
 			return (
-				<a key={key} href={verdict.href} target={verdict.target} rel={verdict.rel}>
+				<a
+					key={key}
+					href={verdict.href}
+					target={verdict.target}
+					rel={verdict.rel}
+					className={LINK_CLASS_NAME}
+				>
 					{renderInline(node.children, ctx, key)}
 				</a>
 			);

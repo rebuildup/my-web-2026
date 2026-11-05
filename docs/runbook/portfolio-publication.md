@@ -1,5 +1,12 @@
 # 本番公開手順 — 旧サイト移植作品 60 件（Issue #811）
 
+> **状態（2026-11-05）**: 本手順は 2026-11-05 14:10 JST に一度適用され、
+> `portfolio_project` 60 / `portfolio_link` +103 / `portfolio_media` +130 /
+> R2 `portfolio/` +116 object が本番に入っている。適用後の実測は
+> [`docs/verification/portfolio/production-publication-2026-11-05.md`](../verification/portfolio/production-publication-2026-11-05.md)
+> にある。実行主体は `ownerConfirmation: "unconfirmed"` である（AGENTS.md §6）。
+> 再適用は冪等だが、§2 の operator 認可条件はそのまま適用される。
+>
 > **この runbook が扱うのは production への公開だけである。** 移行そのもの
 > （D1 行の生成・メディアの R2 投入）は local で検証済みであり、その記録は
 > [`docs/verification/portfolio/portfolio-publication.md`](../verification/portfolio/portfolio-publication.md)

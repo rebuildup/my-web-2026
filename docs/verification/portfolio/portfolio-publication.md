@@ -2,6 +2,9 @@
 
 > local 環境で実測した値だけを書いた記録である。**production の D1 / R2 /
 > Notion への書き込みは 1 件も行っていない**（§7）。
+> **本番への適用は 2026-11-05 に別途実施された。** 適用後の実測は
+> [`production-publication-2026-11-05.md`](production-publication-2026-11-05.md)
+> にある（本書は local 検証の記録であり、本番適用の記録ではない）。
 > 決定の根拠: [`docs/domain/portfolio-migration-decisions.md`](../../domain/portfolio-migration-decisions.md)
 > 本番手順: [`docs/runbook/portfolio-publication.md`](../../runbook/portfolio-publication.md)
 > 検証画像: `portfolio-publication-811.webp`（詳細ページ）/

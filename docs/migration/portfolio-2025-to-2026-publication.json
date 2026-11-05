@@ -1,7 +1,7 @@
 {
 	"schema": "portfolio-2025-to-2026-publication.v1",
 	"issue": "#811",
-	"generatedAt": "2026-11-02T16:19:29.393Z",
+	"generatedAt": "2026-11-05T05:10:18.507Z",
 	"decision": "docs/domain/portfolio-migration-decisions.md",
 	"source": ".reference/my-web-2025/data/contents",
 	"visibilityMode": "public",
@@ -15,26 +15,7 @@
 		"newCandidates": 8,
 		"errors": 0
 	},
-	"retiredRows": [
-		{
-			"id": "seed_conflict_aulymo-v01",
-			"slug": "aulymo-v01-retired",
-			"alreadyRetired": true,
-			"reason": "already retired by an earlier run of this migration"
-		},
-		{
-			"id": "seed_conflict_aulymo-v02",
-			"slug": "aulymo-v02-retired",
-			"alreadyRetired": true,
-			"reason": "already retired by an earlier run of this migration"
-		},
-		{
-			"id": "seed_conflict_multislicer",
-			"slug": "multislicer-retired",
-			"alreadyRetired": true,
-			"reason": "already retired by an earlier run of this migration"
-		}
-	],
+	"retiredRows": [],
 	"rows": [
 		{
 			"legacyId": "Border",

@@ -82,6 +82,22 @@ const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 't
 	other: 'writing',
 };
 
+/**
+ * Issue #912 — the list card renders every cover in one fixed frame.
+ *
+ * `16 / 9` is the frame `mediaFrameStyle` already uses for the
+ * placeholder, so the loaded bitmap, the error placeholder and the
+ * no-url placeholder all paint the same box. Before this, the box
+ * followed the cover bitmap's natural ratio (measured on the shipped
+ * catalogue: 1.0 / 1.415 / 1.778 …), so thumbnail heights — and with
+ * them the card heights — varied row by row while the column axes
+ * stayed put. The frame is server-rendered as an inline
+ * `aspect-ratio`, so the box is reserved from the first paint and the
+ * Issue #486 CLS contract holds (the `width` / `height` attributes
+ * still travel from the row's intrinsic size).
+ */
+const COVER_FRAME_RATIO = '16 / 9';
+
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	const type = project.facets[0] ? FACET_LABEL[project.facets[0]] : 'Project';
@@ -118,22 +134,36 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				// separates one card from the next and is unchanged.
 				backgroundColor: 'bg.surface',
 				display: 'grid',
-				// Issue #767 — the two-column composition is the
-				// cover + copy layout. With no cover the copy is the only
-				// child, so a fixed 4fr/8fr grid would strand it in the
-				// narrow column and leave the rest of the row empty. One
-				// column lets the copy — and its title — use the card's
-				// full width.
-				gridTemplateColumns: cover ? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
-				columnGap: { base: '0', md: '8' },
-				rowGap: { base: '4', md: '0' },
+				// Issue #912 — the card's two-column composition IS the
+				// site grid rule (`src/editorial/layout-system.md` §3.1:
+				// `{ base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' }`,
+				// `columnGap { base: '0', lg: '10' }`). The previous
+				// `md` / gap `8` declaration split at 768px with a 32px
+				// gutter, so between 768–1023px the card split where
+				// every other surface stacks, and above it the copy
+				// column sat 5.34px off the site's content-column axis.
+				// With the verbatim rule the cover occupies the title
+				// span (left edge = Container content edge) and the copy
+				// occupies the content span (left edge = content edge +
+				// 4/12 + gutter), matching the hero and every section
+				// content column. The base `rowGap` stays card-local
+				// (`4`): vertical rhythm inside one card is not a grid
+				// coordinate — contact's channel rows make the same
+				// choice (`rowGap { base: '2', lg: '0' }`).
+				// Issue #767 — with no cover the copy is the only child,
+				// so a fixed 4fr/8fr grid would strand it in the narrow
+				// column; one column lets the copy use the card's full
+				// width.
+				gridTemplateColumns: cover ? { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
+				columnGap: { base: '0', lg: '10' },
+				rowGap: { base: '4', lg: '0' },
 				paddingBlock: '8',
 				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
 			{cover ? (
 				<div className={css({ minWidth: '0' })}>
-					<PortfolioMediaFigure media={cover} loading="lazy" />
+					<PortfolioMediaFigure media={cover} loading="lazy" frameAspectRatio={COVER_FRAME_RATIO} />
 				</div>
 			) : null}
 			<div

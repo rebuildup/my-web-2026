@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { PortfolioFacet, PortfolioProject } from '../schema';
+import type {
+	PortfolioFacet,
+	PortfolioMedia as PortfolioMediaData,
+	PortfolioProject,
+} from '../schema';
 import { ProjectCard } from './ProjectCard';
 
 /**
@@ -203,5 +207,82 @@ describe('ProjectCard — the role row (Issue #813)', () => {
 			expect(html).toContain('>Period</dt>');
 			expect(html).toContain('2020 — 2021');
 		}
+	});
+});
+
+/**
+ * Grid fit (Issue #912).
+ *
+ * The card's cover/copy split must be the SITE grid rule verbatim
+ * (`src/editorial/layout-system.md` §3.1): split at `lg` with a 40px
+ * gutter, so the cover lands on the title-span axis and the copy on
+ * the content-span axis every other surface uses. The regression this
+ * pins is the one the issue measured — a card that splits at `md`
+ * with a 32px gutter, which puts the copy column 5.34px off the
+ * site's content axis above 1024px and splits it where the rest of
+ * the site stacks between 768–1023px.
+ *
+ * The cover box is pinned as markup too: inline `aspect-ratio: 16 / 9`
+ * (server-rendered, so the box is reserved from first paint — Issue
+ * #486's `width` / `height` attributes stay emitted) and the
+ * `object-fit: cover` class, which is what crops a non-16/9 bitmap
+ * into the frame instead of stretching it. The measured geometry
+ * (left edge / column width / gutter at 1440 and 390) lives in
+ * `docs/verification/design/912-portfolio-grid/` — this file cannot
+ * see a layout engine, so it pins the contract that produces it.
+ */
+const coverMedia: PortfolioMediaData = {
+	id: 'm-cover',
+	r2Key: 'portfolio/a-project/cover.png',
+	contentType: 'image/png',
+	width: 1280,
+	height: 720,
+	alt: 'Cover',
+	caption: null,
+	isCover: true,
+	displayOrder: 0,
+	url: 'https://media.example.com/cover.png',
+};
+
+describe('ProjectCard grid fit (Issue #912)', () => {
+	it('applies the site section grid rule to the cover split', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
+		);
+		const cls = articleClass(html);
+		// §3.1 verbatim: `{ base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' }`.
+		expect(cls).toContain('grid-tc_1fr lg:grid-tc_minmax(0,_4fr)_minmax(0,_8fr)');
+		// …and its gutter: `columnGap { base: '0', lg: '10' }` (40px).
+		expect(cls).toContain('cg_0 lg:cg_10');
+		// The measured defect must stay fixed: no split at `md`, no
+		// 32px `md` gutter anywhere on this surface.
+		expect(cls).not.toContain('md:grid-tc');
+		expect(cls).not.toContain('md:cg_');
+	});
+
+	it('keeps a coverless card on one full-width column', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['develop'])} />);
+		const cls = articleClass(html);
+		// One child → one column; the copy (and its title) must not be
+		// stranded in a narrow span (#767).
+		expect(cls).toContain('grid-tc_1fr');
+		expect(cls).not.toContain('lg:grid-tc_');
+	});
+
+	it('reserves the cover in the fixed 16/9 frame, cropped not stretched', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
+		);
+		const img = html.match(/<img[^>]*>/)?.[0] ?? '';
+		// The frame is server-rendered → the box is reserved from the
+		// first paint regardless of the bitmap's own ratio.
+		expect(img).toContain('style="aspect-ratio:16 / 9"');
+		// Issue #486 attributes still travel from the row's intrinsic
+		// size; the frame never drops them.
+		expect(img).toContain('width="1280"');
+		expect(img).toContain('height="720"');
+		// `object-fit: cover` is what makes a square or portrait cover
+		// fill the frame without distortion.
+		expect(img).toContain('obj-f_cover');
 	});
 });

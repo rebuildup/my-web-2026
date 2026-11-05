@@ -196,8 +196,10 @@ test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', ()
 		// Issue #785 abolishes Issue #288: the 404 surface carries the
 		// public nav, so a visitor who mistyped a slug can leave without
 		// using the browser's back button. (Reversed assertion — it used
-		// to require count 0.)
+		// to require count 0.) Issue #911 (2026-11-05) keeps that: the
+		// chrome removal applies only to states that SHOW a Tool.
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		await expect(page.locator('[data-testid="tools-not-found"] a[href="/tools"]')).toBeVisible();
 		// No breadcrumb here: the only labeled match for this URL is the
 		// `$slug` leaf, which `route-labels.ts` drops when the loader
 		// threw, so the chain resolves to nothing. Pinned so a future

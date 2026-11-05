@@ -221,7 +221,7 @@ export const PAGE_UNITS = [
 		id: 'tools-detail',
 		kind: 'component',
 		files: ['src/routes/tools.$slug.tsx'],
-		note: 'the Tool embed host shell — an iframe host that carries the site chrome (nav + breadcrumbs, Issue #785) but no page-level landmark; its document title is the route head, not a page outline',
+		note: 'the Tool embed host shell — an iframe host with NO site chrome on the states that show a Tool (owner decision 2026-11-05, Issue #911: the frame owns the whole viewport) and no page-level landmark; the 404 / 準備中 / blocked placeholders still carry nav + breadcrumbs, and no state owns a page outline — the document title is the route head',
 	},
 	{
 		id: 'contact',

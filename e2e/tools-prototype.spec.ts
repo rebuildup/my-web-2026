@@ -47,8 +47,8 @@ import type { Page } from '@playwright/test';
  *   6. Keyboard reachability: Tab from the host route reaches the
  *      iframe (the iframe has `tabindex=0` semantics via being
  *      focusable).
- *   7. Responsive: the iframe fills its container at a typical
- *      desktop viewport.
+ *   7. Responsive: the frame IS the viewport at desktop and mobile
+ *      widths (Issue #911 — no host chrome above or beside it).
  *   8. Refresh: reloading the host route still loads the iframe.
  *   9. CSP console: no CSP violations logged by the host page
  *      during the iframe load.
@@ -323,16 +323,32 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		await expect(frame.locator('script[src*="index-"]')).toHaveCount(1, { timeout: 15_000 });
 	});
 
-	test('responsive: iframe fills container at desktop viewport', async ({ page }) => {
-		await page.setViewportSize({ width: 1280, height: 800 });
-		await openWithFrame(page);
-		const box = await page.locator('iframe[title="ProtoType Tool"]').boundingBox();
-		expect(box).not.toBeNull();
-		// Width fills the viewport (within a small tolerance for any
-		// border / padding).
-		expect(box?.width).toBeGreaterThan(1200);
-		// Height fills at least the viewport minus the host header.
-		expect(box?.height).toBeGreaterThan(600);
+	test('responsive: the frame IS the viewport, desktop and mobile (Issue #911)', async ({
+		page,
+	}) => {
+		// 1440 / 390 are the widths the Issue #911 evidence is captured
+		// at; 1280×800 stays the desktop case this spec has always used.
+		const viewports = [
+			{ width: 1280, height: 800 },
+			{ width: 1440, height: 900 },
+			{ width: 390, height: 844 },
+		];
+		for (const viewport of viewports) {
+			await page.setViewportSize(viewport);
+			await openWithFrame(page);
+			const box = await page.locator('iframe[title="ProtoType Tool"]').boundingBox();
+			const at = `${viewport.width}×${viewport.height}`;
+			expect(box, `the frame has no box at ${at}`).not.toBeNull();
+			// No chrome above or beside the frame: it starts at the
+			// document origin and covers the viewport (`100dvh`). Before
+			// #911 the frame was `viewport - chrome`, so both the origin
+			// and the height assertion are what a chrome regression
+			// coming back trips.
+			expect(box?.x ?? Number.NaN, `frame x at ${at}`).toBeLessThan(2);
+			expect(box?.y ?? Number.NaN, `frame y at ${at}`).toBeLessThan(2);
+			expect(box?.width ?? 0, `frame width at ${at}`).toBeGreaterThanOrEqual(viewport.width - 2);
+			expect(box?.height ?? 0, `frame height at ${at}`).toBeGreaterThanOrEqual(viewport.height - 2);
+		}
 	});
 
 	test('refresh re-loads the iframe document', async ({ page }) => {

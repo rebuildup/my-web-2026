@@ -1,444 +1,882 @@
-import { css } from '../../../../styled-system/css';
-import { semanticTokens } from '../../../editorial/semantic-tokens';
-import { rawTokens } from '../../../editorial/tokens';
+import { css, cx } from '../../../../styled-system/css';
+import { StateMark } from '../../../editorial/primitives/StateMark';
+import type { DesignSystemMonoRole, DesignSystemTokenData } from '../tokens';
 
 /**
- * ColorSwatches — every editorial semantic token rendered in a 4-column
- * grid as a side-by-side light / dark pair.
+ * ColorSwatches — the colour section of `/design-system`.
  *
- * The pair is the educational point of the section:
+ * The composition this file owns (Issue #764, direction B):
  *
- *   - Every semantic token carries `{ value: { base, _dark } }` per
- *     `src/editorial/semantic-tokens.ts`, and `panda.config.ts` binds
- *     `_dark` to `@media (prefers-color-scheme: dark)`. The left pane
- *     paints the `base` value on the light canvas; the right pane
- *     paints the `_dark` value on the dark canvas. That is exactly
- *     what a visitor sees in each appearance, side by side, whatever
- *     OS setting the page itself is currently being browsed with.
- *   - A token that declares no `_dark` binding throws here, so this
- *     section doubles as the regression guard for the Issue #290
- *     token audit.
+ *   1. A SPECIMEN PLATE — three horizontal bands, one per
+ *      classification family (`design` / `code` / `writing`), each
+ *      painted with the family's approved FIELD token
+ *      (`accent.field.<id>`, the 500 step) and read through the
+ *      monochrome ink placed on it (`mono.ink.onColour`).
+ *   2. THE MONOCHROME GROUND — the 14 roles of the monochrome layer in
+ *      both appearances, so the surface a colour field sits on is
+ *      visible instead of implied.
+ *   3. THE COLOUR ON THAT GROUND — the three field tokens printed as
+ *      chips that carry the monochrome ink, which is the whole point:
+ *      the colour does not own its text colour.
+ *   4. A RAMP ROW — the five raw steps of every family, so the colour
+ *      is read as a ladder rather than as one swatch.
+ *   5. A STATUS row that BORROWS a classification colour.
+ *   6. An OPERATION row that stays INK (`bg.inverse` / `text.inverse`).
+ *   7. A TOKEN LEDGER — every semantic token, by path and by light /
+ *      dark hex, as text.
  *
- * The panes are painted from the resolved hex values instead of from
- * `bg.inverse` / `text.inverse`. Those two tokens are a
- * self-contained inverse pair that does NOT follow the appearance, so
- * building the "dark" pane out of them only ever *simulated* a dark
- * surface (the fake removed by Issue #290). Reading the hexes also
- * keeps the comparison stable when the page itself flips: under
- * `prefers-color-scheme: dark` the surrounding chrome switches
- * through the real tokens while both panes keep showing both
- * appearances.
+ * Why the field is painted at the 500 step, not the semantic 700
+ * ------------------------------------------------------------------
+ * `accent.category.*` binds the 700 step in the light appearance
+ * because it has to work as an 8px non-text mark on the ground, and the
+ * 500 step of the cyan and yellow families measures 2.37 : 1 and
+ * 1.88 : 1 there — below the 3 : 1 non-text minimum. That constraint
+ * is about AREA: a mark is small, so it needs a dark step.
  *
- * The token path is resolved through `semantic-tokens.ts` first and
- * only then dereferenced into `tokens.ts`. The viewer therefore has
- * no second hand-written raw-token mapping that can drift from the
- * actual semantic contract.
+ * A field is the opposite case. Painting the 700 step across a large
+ * surface is what made the previous build read as muddy — the writing
+ * family's 700 is `#a16207`, an ochre that turns to brown at scale.
+ * The owner approved the 500 step as `accent.field.*` (2026-11-04), so
+ * the field paints the semantic token itself rather than a step this
+ * file picked.
+ *
+ * Why the ink is a TOKEN now
+ * --------------------------
+ * The previous build measured the field against two candidate inks and
+ * used whichever won. That made every field's text colour a rendering
+ * decision, which is exactly what the owner's instruction rules out:
+ * 「モノクロのトークンをカラーに載せる」. The ink is now
+ * `mono.ink.onColour` (and `mono.ink.onColourInverse` for a deep field),
+ * resolved on the server. The measurement stays, as VERIFICATION: the
+ * band prints the ratio next to the token it painted, so a token that
+ * drifted away from its field shows a failing number instead of
+ * quietly looking fine.
+ *
+ * The rules this file keeps:
+ *
+ *   - The only colour surfaces on the page are the three
+ *     classification families. `tool` stays a token (the ledger lists
+ *     it) but it is not a colour field.
+ *   - Classification is identified by WORD first, SHAPE second
+ *     (`StateMark`), POSITION third (01 / 02 / 03). Colour is the
+ *     fourth channel.
+ *   - Text is never painted in a classification colour. Colour appears
+ *     only as a surface, as the 2px borrowed rule, or as an 8px mark.
+ *   - No pure-white surface. `bg.canvas` is not used as a fill here.
+ *
+ * Where the hex values come from
+ * ------------------------------
+ * The token paths are resolved on the SERVER (`../tokens.ts`, a server
+ * function): the section renders resolved hex pairs, and resolving
+ * them in the browser meant shipping the whole raw palette plus the
+ * whole semantic layer in the route chunk. The route loader passes the
+ * resolved pairs in as props; the rendered result is identical either
+ * way. The CONTRAST arithmetic stays here only to print the measured
+ * ratio next to the token.
  */
-
-interface TokenEntry {
-	/** Semantic path, e.g. `accent.positive`. */
-	path: string;
-	/** Human-readable label, e.g. `Positive` / `Border subtle`. */
-	label: string;
-	/** Plain-English role description from `colors.md`. */
-	role: string;
-}
 
 /**
- * Canonical catalog. Order is editorial, not alphabetic — surface
- * tokens first, then status, then category. The order mirrors the
- * table in `src/editorial/colors.md` so a reader cross-referencing
- * the guide finds the same row.
+ * The sentence each classification carries. The classification id is
+ * the word (channel 1), so the copy is keyed by it.
  */
-const TOKENS: ReadonlyArray<TokenEntry> = [
-	// Page surfaces (bg.*)
-	{
-		path: 'bg.canvas',
-		label: 'Canvas',
-		role: 'Page background',
-	},
-	{
-		path: 'bg.surface',
-		label: 'Surface',
-		role: 'Card surface (default)',
-	},
-	{
-		path: 'bg.subtle',
-		label: 'Subtle',
-		role: 'Tinted separator',
-	},
-	{
-		path: 'bg.accent',
-		label: 'Accent fill',
-		role: 'Primary CTA idle',
-	},
-	{
-		path: 'bg.inverse',
-		label: 'Inverse',
-		role: 'Inverse panel (static pair)',
-	},
-	// Text (text.*)
-	{
-		path: 'text.default',
-		label: 'Default',
-		role: 'Body text',
-	},
-	{
-		path: 'text.muted',
-		label: 'Muted',
-		role: 'Secondary text',
-	},
-	{
-		path: 'text.accent',
-		label: 'Accent text',
-		role: 'Inline link',
-	},
-	{
-		path: 'text.inverse',
-		label: 'Inverse',
-		role: 'Text on accent fill',
-	},
-	// Borders (border.*)
-	{
-		path: 'border.subtle',
-		label: 'Subtle',
-		role: 'Default divider',
-	},
-	{
-		path: 'border.strong',
-		label: 'Strong',
-		role: 'Emphasis divider',
-	},
-	{
-		path: 'border.focus',
-		label: 'Focus ring',
-		role: 'Focus outline',
-	},
-	// Accent features (accent.*)
-	{
-		path: 'accent.surface',
-		label: 'Surface',
-		role: 'Tinted feature surface',
-	},
-	{
-		path: 'accent.interactive',
-		label: 'Interactive',
-		role: 'CTA hover / pressed',
-	},
-	{
-		path: 'accent.positive',
-		label: 'Positive',
-		role: 'OK / live status',
-	},
-	{
-		path: 'accent.negative',
-		label: 'Negative',
-		role: 'Error / unreachable',
-	},
-	{
-		path: 'accent.warning',
-		label: 'Warning',
-		role: 'Degraded status',
-	},
-	// Category accents (accent.category.*)
-	{
-		path: 'accent.category.design',
-		label: 'Design',
-		role: 'Content category — design',
-	},
-	{
-		path: 'accent.category.code',
-		label: 'Code',
-		role: 'Content category — code',
-	},
-	{
-		path: 'accent.category.writing',
-		label: 'Writing',
-		role: 'Content category — writing',
-	},
-	{
-		path: 'accent.category.tool',
-		label: 'Tool',
-		role: 'Content category — tool',
-	},
-];
-
-type SemanticLeaf = {
-	value?: string | { base?: string; _dark?: string };
+const FAMILY_NOTES: Record<string, string> = {
+	design: '作品の分類は slug から決定的に導く。同じ作品は常に同じ面。',
+	code: '分類は語と形が担う。色は補助で、単独では意味を持たせない。',
+	writing: '長文の面には色を敷かない。色は 1 語・1 行・1 印まで。',
 };
 
-function rawRefFromSemanticValue(value: string): string {
-	const match = /^\{colors\.([^}]+)\}$/.exec(value);
-	if (!match) {
-		throw new Error(`Unsupported semantic color reference: ${value}`);
-	}
-	return match[1];
-}
-
 /**
- * Resolve a semantic path to its raw palette reference in each
- * appearance. Both bindings are mandatory: Issue #290's audit rule is
- * that every semantic token carries a meaningful `_dark` value, and
- * this function is where that rule is enforced for the showcase.
+ * Status specimens. The state is carried by the word and by the mark
+ * (`ok` / `degraded` / `unreachable`); the colour is BORROWED from the
+ * classification of the work the state belongs to. No status hue
+ * (green / red / amber) is introduced in this section.
  */
-function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string } {
-	let node: unknown = semanticTokens.colors;
-	for (const segment of path.split('.')) {
-		if (!node || typeof node !== 'object' || !(segment in node)) {
-			throw new Error(`Unknown semantic color token: ${path}`);
-		}
-		node = (node as Record<string, unknown>)[segment];
-	}
+const STATUS_SPECIMENS = [
+	{
+		family: 'design',
+		mark: 'ok',
+		label: 'Done',
+		note: '分類 design の作品。完了は形と語で示す。',
+	},
+	{
+		family: 'code',
+		mark: 'degraded',
+		label: 'In progress',
+		note: '分類 code の作品。進行中も hue を足さない。',
+	},
+	{
+		family: 'writing',
+		mark: 'unreachable',
+		label: 'Failed',
+		note: '分類 writing の作品。失敗は形が担う。',
+	},
+] as const;
 
-	const value = (node as SemanticLeaf).value;
-	if (!value || typeof value === 'string') {
-		throw new Error(`Semantic color token must declare { base, _dark }: ${path}`);
-	}
-	if (!value.base || !value._dark) {
-		throw new Error(`Semantic color token has no _dark binding: ${path}`);
-	}
+/* ------------------------------------------------------------------ *
+ * Contrast arithmetic
+ *
+ * The ink is a token, not a choice. The measurement runs anyway so the
+ * section can print the ratio beside the token it painted: a token that
+ * stopped clearing its field would show a failing number instead of a
+ * comfortable-looking swatch.
+ * ------------------------------------------------------------------ */
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+	const value = hex.replace('#', '');
 	return {
-		lightRef: rawRefFromSemanticValue(value.base),
-		darkRef: rawRefFromSemanticValue(value._dark),
+		r: Number.parseInt(value.slice(0, 2), 16),
+		g: Number.parseInt(value.slice(2, 4), 16),
+		b: Number.parseInt(value.slice(4, 6), 16),
 	};
 }
 
-function resolveHex(ref: string): string {
-	const [family, step] = ref.split('.');
-	const palette = rawTokens.colors[family as keyof typeof rawTokens.colors] as
-		| Record<string, { value: string }>
-		| undefined;
-	return palette?.[step as string]?.value ?? '';
+function relativeLuminance(hex: string): number {
+	const { r, g, b } = hexToRgb(hex);
+	const channel = (raw: number): number => {
+		const s = raw / 255;
+		return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+	};
+	return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function contrastRatio(a: string, b: string): number {
+	const la = relativeLuminance(a);
+	const lb = relativeLuminance(b);
+	const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+	return (hi + 0.05) / (lo + 0.05);
 }
 
 /**
- * Pane chrome for each appearance, sourced through the same
- * semantic → raw resolution every swatch uses: the surface the pane
- * sits on (`bg.canvas`), the text painted on it (`text.default`) and
- * the swatch hairline (`border.subtle`). Resolved once so the light
- * pane and the dark pane are guaranteed to be a faithful rendering of
- * the two appearances rather than a hand-picked "dark-ish" colour.
+ * The ratio the section prints: two decimals, always rounded DOWN.
+ *
+ * The gate (`scripts/check-a11y-contrast.mjs`) reports its ratios the
+ * same way, so the number a reader sees on the page is the number the
+ * gate would publish. Rounding to nearest would print 5.39 : 1 where
+ * the gate says 5.38 : 1, and a showcase that disagrees with its own
+ * contract invites the reader to doubt both.
  */
-const PANE = {
-	light: {
-		surface: resolveHex(resolveSemanticRefs('bg.canvas').lightRef),
-		label: resolveHex(resolveSemanticRefs('text.default').lightRef),
-		border: resolveHex(resolveSemanticRefs('border.subtle').lightRef),
-	},
-	dark: {
-		surface: resolveHex(resolveSemanticRefs('bg.canvas').darkRef),
-		label: resolveHex(resolveSemanticRefs('text.default').darkRef),
-		border: resolveHex(resolveSemanticRefs('border.subtle').darkRef),
-	},
-} as const;
+function reportedRatio(foreground: string, background: string): number {
+	return Math.floor(contrastRatio(foreground, background) * 100) / 100;
+}
 
-export function ColorSwatches() {
+/* ------------------------------------------------------------------ *
+ * Style constants
+ *
+ * Panda's `css()` takes a plain object, so every call site pays for
+ * its own property names in the bundle. The utilities the section
+ * repeats are declared once here and composed with `cx`.
+ * ------------------------------------------------------------------ */
+
+const listResetClassName = css({ margin: '0', padding: '0', listStyle: 'none' });
+
+const gridThreeClassName = css({
+	gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+});
+
+const flexBetweenClassName = css({
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'space-between',
+	gap: '2',
+});
+
+const monoLabelClassName = css({
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	letterSpacing: '0.08em',
+	textTransform: 'uppercase',
+});
+
+const monoCodeClassName = css({ fontFamily: 'mono', fontSize: 'xs' });
+
+const subSectionClassName = css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '3',
+	marginBlockStart: '10',
+});
+
+const subHeadingClassName = css({
+	margin: '0',
+	fontFamily: 'heading',
+	fontSize: 'xl',
+	fontWeight: '700',
+	lineHeight: '1.2',
+	letterSpacing: '-0.01em',
+	color: 'text.default',
+});
+
+const subBodyClassName = css({
+	margin: '0',
+	marginBlockStart: '2',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	lineHeight: '1.6',
+	color: 'text.muted',
+});
+
+/** A monochrome specimen: one role, painted in one appearance. */
+const monoSwatchClassName = css({
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	minHeight: '16',
+	paddingInline: '4',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+});
+
+const monoCaptionClassName = css({
+	display: 'block',
+	marginBlockStart: '2',
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	color: 'text.muted',
+	overflowWrap: 'anywhere',
+});
+
+export function ColorSwatches({ tokenData }: { tokenData: DesignSystemTokenData }) {
+	const mono = (path: string, appearance: 'lightHex' | 'darkHex'): string =>
+		tokenData.monoRoles.find((role) => role.path === path)?.[appearance] ?? '';
+	const ground = {
+		lightHex: mono('mono.surface.ground', 'lightHex'),
+		darkHex: mono('mono.surface.ground', 'darkHex'),
+	};
+	const text = {
+		lightHex: mono('mono.ink.text', 'lightHex'),
+		darkHex: mono('mono.ink.text', 'darkHex'),
+	};
+
 	return (
-		<ul
-			className={css({
-				margin: '0',
-				padding: '0',
-				listStyle: 'none',
-				display: 'grid',
-				gridTemplateColumns: {
-					base: '1fr',
-					sm: 'repeat(2, minmax(0, 1fr))',
-					lg: 'repeat(4, minmax(0, 1fr))',
-				},
-				gap: '4',
-			})}
-		>
-			{TOKENS.map((entry) => {
-				const { lightRef, darkRef } = resolveSemanticRefs(entry.path);
-				return (
-					<SwatchTile
-						key={entry.path}
-						path={entry.path}
-						label={entry.label}
-						role={entry.role}
-						lightHex={resolveHex(lightRef)}
-						darkHex={resolveHex(darkRef)}
-					/>
-				);
-			})}
-		</ul>
+		<>
+			{/* 1. The specimen plate. Three stacked bands, each painted
+			    with its family's approved field token. The gap between
+			    bands is the page canvas, so the plate reads as three
+			    specimens on the page rather than as one poster. */}
+			<ul
+				data-colour-plate
+				className={cx(listResetClassName, css({ display: 'grid', rowGap: '2' }))}
+			>
+				{tokenData.families.map((family, index) => (
+					<li key={family.id} className={css({ minWidth: '0' })}>
+						<FamilyBand
+							family={family}
+							note={FAMILY_NOTES[family.id] ?? ''}
+							ordinal={index + 1}
+							inkHex={tokenData.onColourHex}
+						/>
+					</li>
+				))}
+			</ul>
+
+			{/* 2. The monochrome ground. The role ladder the colour sits
+			    on: surfaces, lines and ink, each shown in both
+			    appearances because light and dark are designed
+			    independently rather than inverted. */}
+			<section aria-labelledby="design-system-colour-mono" className={subSectionClassName}>
+				<h3 id="design-system-colour-mono" className={subHeadingClassName}>
+					モノクロ — 色が載る地
+				</h3>
+				<p className={subBodyClassName}>
+					ページ・面・罫線・文字はすべてモノクロの役割で決まります。明るい面と暗い面は反転ではなく別々に設計され、
+					色はこの地の上にだけ載ります。色面は自分の文字色を持たず、地の墨（mono.ink.onColour）で読みます。反転地の墨は反転地に、色面の墨は色面に置いて示します。
+				</p>
+				<ul
+					className={cx(
+						listResetClassName,
+						css({
+							display: 'grid',
+							gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+							gap: '6',
+						}),
+					)}
+				>
+					{tokenData.monoRoles.map((role) => (
+						<li key={role.path} data-mono-role={role.path} className={css({ minWidth: '0' })}>
+							<MonoRolePair
+								role={role}
+								groundLight={ground.lightHex}
+								groundDark={ground.darkHex}
+								textLight={text.lightHex}
+								textDark={text.darkHex}
+								inverseGround={{
+									lightHex: mono('mono.surface.inverse', 'lightHex'),
+									darkHex: mono('mono.surface.inverse', 'darkHex'),
+								}}
+								inverseInk={{
+									lightHex: mono('mono.ink.inverse', 'lightHex'),
+									darkHex: mono('mono.ink.inverse', 'darkHex'),
+								}}
+								mutedInk={{
+									lightHex: mono('mono.ink.muted', 'lightHex'),
+									darkHex: mono('mono.ink.muted', 'darkHex'),
+								}}
+								onColourGround={
+									tokenData.families.find((family) => family.id === 'design')?.fieldHex
+								}
+							/>
+						</li>
+					))}
+				</ul>
+			</section>
+
+			{/* 3. The colour ON that ground. Each approved field token
+			    printed as a chip whose text is the monochrome ink, so
+			    the composition the owner asked for is the specimen. */}
+			<section aria-labelledby="design-system-colour-on-ground" className={subSectionClassName}>
+				<h3 id="design-system-colour-on-ground" className={subHeadingClassName}>
+					色をモノクロに載せる
+				</h3>
+				<p className={subBodyClassName}>
+					承認されたアクセント色は、面として広がるとき 500 の段で使います。その上の文字は色ではなく
+					mono.ink.onColour です。深い段（700〜800）の面には mono.ink.onColourInverse を使います。
+				</p>
+				<ul
+					className={cx(listResetClassName, gridThreeClassName, css({ display: 'grid', gap: '4' }))}
+				>
+					{tokenData.families.map((family) => {
+						const ratio = reportedRatio(family.fieldHex, tokenData.onColourHex);
+						return (
+							<li key={family.id} className={css({ minWidth: '0' })}>
+								<div
+									data-colour-on-ground={family.id}
+									data-coloured
+									data-hue={family.id}
+									data-contrast={ratio}
+									className={css({
+										display: 'flex',
+										flexDirection: 'column',
+										gap: '1',
+										paddingBlock: '5',
+										paddingInline: '5',
+									})}
+									style={{ backgroundColor: family.fieldHex, color: tokenData.onColourHex }}
+								>
+									<span
+										className={css({
+											fontFamily: 'heading',
+											fontSize: 'xl',
+											fontWeight: '700',
+											lineHeight: '1.1',
+											letterSpacing: '-0.01em',
+										})}
+									>
+										{family.id}
+									</span>
+									<code className={monoCodeClassName}>{family.fieldToken}</code>
+								</div>
+								<code className={monoCaptionClassName}>mono.ink.onColour · {ratio} : 1</code>
+							</li>
+						);
+					})}
+				</ul>
+			</section>
+
+			{/* 4. The ramp. The five raw steps of every family, so the
+			    colour is read as a ladder and the 700 mark step is
+			    visible next to the field step it sits beside. */}
+			<section aria-labelledby="design-system-colour-ramp" className={subSectionClassName}>
+				<h3 id="design-system-colour-ramp" className={subHeadingClassName}>
+					階調 — 系統ごとの 5 段
+				</h3>
+				<p className={subBodyClassName}>
+					分類の色は 1 色ではなく階調です。面積の小さい印は 700（明るい面で 3:1
+					を満たす段）、面として広がるときは 500
+					で読みます。両方を並べて、どちらが何のための段かを隠しません。
+				</p>
+				<ul
+					className={cx(
+						listResetClassName,
+						css({
+							display: 'grid',
+							gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+							gap: '6',
+						}),
+					)}
+				>
+					{tokenData.families.map((family) => (
+						<li key={family.id} className={css({ minWidth: '0' })}>
+							<span
+								className={cx(
+									monoLabelClassName,
+									css({ display: 'block', marginBlockEnd: '2', color: 'text.muted' }),
+								)}
+							>
+								{family.id}
+							</span>
+							<ul
+								className={cx(
+									listResetClassName,
+									css({ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }),
+								)}
+							>
+								{family.ramp.map((step) => (
+									<li key={step.step} data-ramp-step={step.step}>
+										<span
+											aria-hidden="true"
+											className={css({ display: 'block', height: '10' })}
+											style={{ backgroundColor: step.hex }}
+										/>
+										<code
+											className={css({
+												display: 'block',
+												marginBlockStart: '1',
+												fontFamily: 'mono',
+												fontSize: 'xs',
+												color: step.step === '500' ? 'text.default' : 'text.muted',
+												fontWeight: step.step === '500' ? '700' : '400',
+											})}
+										>
+											{step.step}
+										</code>
+									</li>
+								))}
+							</ul>
+						</li>
+					))}
+				</ul>
+			</section>
+
+			<section aria-labelledby="design-system-colour-status" className={subSectionClassName}>
+				<h3 id="design-system-colour-status" className={subHeadingClassName}>
+					状態 — 分類の色を借りる
+				</h3>
+				<p className={subBodyClassName}>
+					状態は形（StateMark）と語で示し、新しい hue を足しません。色はその作品の分類から借ります。
+				</p>
+				<ul
+					className={cx(listResetClassName, gridThreeClassName, css({ display: 'grid', gap: '6' }))}
+				>
+					{STATUS_SPECIMENS.map((specimen) => {
+						const family = tokenData.families.find((entry) => entry.id === specimen.family);
+						return (
+							<li key={specimen.label}>
+								<div
+									data-borrowed-family={specimen.family}
+									data-hue={specimen.family}
+									data-coloured
+									className={css({ marginBlockEnd: '3' })}
+									style={{ backgroundColor: family?.fieldHex, height: '2px' }}
+								/>
+								<span
+									className={css({
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: '2',
+										fontFamily: 'sans',
+										fontSize: 'sm',
+										fontWeight: '600',
+										color: 'text.default',
+									})}
+								>
+									<StateMark kind={specimen.mark} size="sm" />
+									{specimen.label}
+								</span>
+								<p className={subBodyClassName}>{specimen.note}</p>
+								<code
+									className={css({
+										display: 'block',
+										marginBlockStart: '2',
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										color: 'text.muted',
+									})}
+								>
+									借用: {family?.token}
+								</code>
+							</li>
+						);
+					})}
+				</ul>
+			</section>
+
+			<section aria-labelledby="design-system-colour-operation" className={subSectionClassName}>
+				<h3 id="design-system-colour-operation" className={subHeadingClassName}>
+					操作 — 墨
+				</h3>
+				<p className={subBodyClassName}>
+					操作は墨のまま、画面ごとに操作の hue を増やしません。色が動くのはコンテンツ側だけです。
+				</p>
+				<span
+					data-element="cta-ink"
+					className={css({
+						display: 'inline-flex',
+						alignItems: 'center',
+						alignSelf: 'flex-start',
+						height: '10',
+						paddingInline: '5',
+						borderRadius: 'md',
+						backgroundColor: 'bg.inverse',
+						color: 'text.inverse',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						fontWeight: '600',
+					})}
+				>
+					Continue
+				</span>
+			</section>
+
+			<section aria-labelledby="design-system-colour-ledger" className={subSectionClassName}>
+				<h3 id="design-system-colour-ledger" className={subHeadingClassName}>
+					Token 台帳
+				</h3>
+				<p className={subBodyClassName}>
+					色面として提示するのは分類の 3 系統だけです。全 semantic token の値はここで path と light
+					/ dark の hex で参照できます。
+				</p>
+				<ul
+					className={cx(
+						listResetClassName,
+						css({
+							display: 'grid',
+							gridTemplateColumns: {
+								base: '1fr',
+								sm: 'repeat(2, minmax(0, 1fr))',
+							},
+							columnGap: '6',
+							rowGap: '2',
+						}),
+					)}
+				>
+					{tokenData.ledger.map((entry) => (
+						<li
+							key={entry.path}
+							data-token-path={entry.path}
+							className={css({
+								display: 'grid',
+								gridTemplateColumns: 'minmax(0, 1fr) auto',
+								columnGap: '2',
+								minWidth: '0',
+							})}
+						>
+							<code
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.default',
+									overflowWrap: 'anywhere',
+								})}
+							>
+								{entry.path}
+							</code>
+							<code
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.muted',
+									whiteSpace: 'nowrap',
+								})}
+							>
+								{entry.lightHex} / {entry.darkHex}
+							</code>
+						</li>
+					))}
+				</ul>
+			</section>
+		</>
 	);
 }
 
-interface TileProps {
-	path: string;
-	label: string;
-	role: string;
-	lightHex: string;
-	darkHex: string;
-}
+/**
+ * One classification band.
+ *
+ * The band is painted with the family's approved FIELD token (500) and
+ * its text is the monochrome ink token — not a measured choice. The
+ * ratio in the footer is the verification of that pairing.
+ */
+function FamilyBand({
+	family,
+	note,
+	ordinal,
+	inkHex,
+}: {
+	family: DesignSystemTokenData['families'][number];
+	note: string;
+	ordinal: number;
+	inkHex: string;
+}) {
+	const ratio = reportedRatio(family.fieldHex, inkHex);
+	const ordinalLabel = String(ordinal).padStart(2, '0');
 
-function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 	return (
-		<li
+		<article
+			data-colour-family={family.id}
+			data-colour-field="light"
+			data-coloured
+			data-hue={family.id}
+			data-contrast={ratio}
 			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
-				overflow: 'hidden',
+				display: 'grid',
+				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 5fr) minmax(0, 7fr)' },
+				columnGap: { base: '0', md: '6' },
+				rowGap: '3',
+				alignItems: 'center',
+				paddingBlock: { base: '6', md: '7' },
+				paddingInline: { base: '6', md: '8' },
 			})}
+			style={{ backgroundColor: family.fieldHex, color: inkHex }}
 		>
-			{/* Header — sits on the page surface and follows the current
-			    appearance through the real tokens: this is the part of the
-			    tile that flips when the visitor's OS goes dark. */}
+			{/* Channel 3 (position) + channel 1 (word) + the semantic
+			    path. The word is the identifier; the colour is fourth. */}
 			<div
 				className={css({
-					padding: '3',
 					display: 'flex',
 					flexDirection: 'column',
 					gap: '1',
-					backgroundColor: 'bg.canvas',
+					minWidth: '0',
 				})}
 			>
+				<span className={monoLabelClassName}>{ordinalLabel} · CONTENT CLASSIFICATION</span>
 				<span
 					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.04em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
+						fontFamily: 'heading',
+						fontSize: { base: '2xl', md: '3xl' },
+						fontWeight: '700',
+						lineHeight: '1.05',
+						letterSpacing: '-0.02em',
 					})}
 				>
-					{label}
+					{family.id}
 				</span>
 				<code
 					className={css({
+						marginBlockStart: '2',
 						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.default',
-						wordBreak: 'break-all',
-					})}
-				>
-					{path}
-				</code>
-				<span
-					className={css({
-						fontFamily: 'sans',
 						fontSize: 'xs',
-						color: 'text.muted',
-						lineHeight: '1.4',
 					})}
 				>
-					{role}
-				</span>
+					{family.fieldToken}
+				</code>
 			</div>
-			{/* Swatch pane pair — the left half paints the token's `base`
-			    value onto the light canvas, the right half paints its
-			    `_dark` value onto the dark canvas. Both pane surfaces come
-			    from `bg.canvas`, so this is the real appearance pair and not
-			    an `bg.inverse` simulation of one. */}
+
+			{/* The sentence that says what the colour is NOT, the shape
+			    (channel 2), and the measured field / ink values. */}
 			<div
 				className={css({
-					display: 'grid',
-					gridTemplateColumns: '1fr 1fr',
-					minHeight: '24',
-				})}
-			>
-				<SwatchPane variant="light" hex={lightHex} />
-				<SwatchPane variant="dark" hex={darkHex} />
-			</div>
-			{/* Token hex readout — sits below the swatch panes on the page surface. */}
-			<div
-				className={css({
-					padding: '2',
-					paddingInline: '3',
 					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'baseline',
-					gap: '2',
-					backgroundColor: 'bg.canvas',
-					borderTop: '1px solid {colors.border.subtle}',
+					flexDirection: 'column',
+					gap: '3',
+					minWidth: '0',
 				})}
 			>
-				<code
+				<p
 					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.default',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						lineHeight: '1.6',
+						opacity: 0.9,
 					})}
 				>
-					{lightHex}
-				</code>
-				<code
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.muted',
-					})}
-				>
-					→ {darkHex}
-				</code>
+					{note}
+				</p>
+				<div className={cx(flexBetweenClassName, css({ minWidth: '0', flexWrap: 'wrap' }))}>
+					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+						<StateMark kind={family.id} size="sm" />
+						<code className={monoCodeClassName}>field {family.fieldHex}</code>
+						<code className={monoCodeClassName}>· {ratio} : 1</code>
+					</span>
+					<span className={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
+						<span
+							aria-hidden="true"
+							className={css({ display: 'block', width: '3', height: '3' })}
+							style={{ backgroundColor: family.darkHex }}
+						/>
+						<code className={monoCodeClassName}>mark dark {family.darkHex}</code>
+					</span>
+				</div>
 			</div>
-		</li>
+		</article>
 	);
 }
 
 /**
- * One half of the comparison. `variant` selects the appearance being
- * staged; `PANE` supplies that appearance's canvas, label colour and
- * hairline. Those colours are inlined as hex on purpose: they must
- * describe one *fixed* appearance, and a semantic token would follow
- * the page's own theme instead — which is exactly the fake this
- * section used to depend on.
+ * One monochrome role, shown in both appearances.
+ *
+ * The specimen paints the role as it is used rather than as a flat
+ * swatch: a surface carries a label in that appearance's text ink, a
+ * line is drawn as a rule on that appearance's ground, and an ink is
+ * drawn as a mark in its own value beside a label the ground can
+ * actually read — no ink prints as text, because `mono.ink.disabled`
+ * cannot carry readable text by design. Light and dark are shown
+ * because they are two designs, not two ends of one ramp.
  */
-function SwatchPane({ variant, hex }: { variant: 'light' | 'dark'; hex: string }) {
-	const pane = PANE[variant];
+function MonoRolePair({
+	role,
+	groundLight,
+	groundDark,
+	textLight,
+	textDark,
+	inverseGround,
+	inverseInk,
+	mutedInk,
+	onColourGround,
+}: {
+	role: DesignSystemMonoRole;
+	groundLight: string;
+	groundDark: string;
+	textLight: string;
+	textDark: string;
+	inverseGround: { lightHex: string; darkHex: string };
+	inverseInk: { lightHex: string; darkHex: string };
+	mutedInk: { lightHex: string; darkHex: string };
+	onColourGround: string | undefined;
+}) {
+	/**
+	 * The ground a role is shown ON. Most roles sit on the page ground,
+	 * but two inks exist only for another surface: the inverse ink is
+	 * for the inverse ground, and the on-colour ink is for a colour
+	 * field. Showing them on the page ground would make them look
+	 * broken, so the specimen moves them to the ground they serve —
+	 * which is the composition the owner asked to see.
+	 */
+	const groundFor = (appearance: 'light' | 'dark'): string => {
+		if (role.path === 'mono.ink.inverse') {
+			return appearance === 'light' ? inverseGround.lightHex : inverseGround.darkHex;
+		}
+		if (role.path === 'mono.ink.onColour') {
+			return onColourGround ?? groundLight;
+		}
+		return appearance === 'light' ? groundLight : groundDark;
+	};
+
+	return (
+		<>
+			<span
+				className={css({
+					display: 'flex',
+					alignItems: 'baseline',
+					justifyContent: 'space-between',
+					gap: '2',
+					marginBlockEnd: '2',
+				})}
+			>
+				<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.default' })}>
+					{role.label}
+				</span>
+				<code className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'text.muted' })}>
+					{role.path}
+				</code>
+			</span>
+			<div
+				className={css({
+					display: 'grid',
+					gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+					columnGap: '2',
+					rowGap: '1',
+				})}
+			>
+				<MonoSwatch
+					role={role}
+					appearance="light"
+					hex={role.lightHex}
+					groundHex={groundFor('light')}
+					textHex={textLight}
+					inverseHex={inverseInk.lightHex}
+					mutedHex={mutedInk.lightHex}
+				/>
+				<MonoSwatch
+					role={role}
+					appearance="dark"
+					hex={role.darkHex}
+					groundHex={groundFor('dark')}
+					textHex={textDark}
+					inverseHex={inverseInk.darkHex}
+					mutedHex={mutedInk.darkHex}
+				/>
+				<code className={monoCaptionClassName}>light {role.lightHex}</code>
+				<code className={cx(monoCaptionClassName, css({ marginBlockStart: '0' }))}>
+					dark {role.darkHex}
+				</code>
+			</div>
+		</>
+	);
+}
+
+/** The specimen for one role in one appearance. */
+function MonoSwatch({
+	role,
+	appearance,
+	hex,
+	groundHex,
+	textHex,
+	inverseHex,
+	mutedHex,
+}: {
+	role: DesignSystemMonoRole;
+	appearance: 'light' | 'dark';
+	hex: string;
+	groundHex: string;
+	textHex: string;
+	inverseHex: string;
+	mutedHex: string;
+}) {
+	if (role.group === 'ink') {
+		// The ink never paints the label: `mono.ink.disabled` is
+		// unreadable on the ground BY DESIGN (2.04 : 1 light, 2.99 : 1
+		// dark), so printing `色 Aa` in the role's own value is the
+		// violation. The colour is shown the way the line group shows a
+		// rule — an aria-hidden mark painted with the token — and the
+		// label is read through the ink that belongs to THIS ground.
+		const labelInk =
+			role.path === 'mono.ink.inverse'
+				? inverseHex
+				: role.path === 'mono.ink.onColour'
+					? hex
+					: textHex;
+
+		return (
+			<div
+				data-mono-appearance={appearance}
+				data-mono-group={role.group}
+				className={cx(monoSwatchClassName, css({ gap: '2' }))}
+				style={{ backgroundColor: groundHex, color: labelInk }}
+			>
+				<span
+					aria-hidden="true"
+					className={css({ display: 'block', width: '4', height: '4' })}
+					style={{ backgroundColor: hex }}
+				/>
+				<span>色 Aa</span>
+			</div>
+		);
+	}
+
+	if (role.group === 'line') {
+		return (
+			<div
+				data-mono-appearance={appearance}
+				data-mono-group={role.group}
+				className={cx(monoSwatchClassName, css({ flexDirection: 'column', gap: '2' }))}
+				style={{ backgroundColor: groundHex, color: textHex }}
+			>
+				<span
+					aria-hidden="true"
+					className={css({ display: 'block', width: 'full', height: '1' })}
+					style={{ backgroundColor: hex }}
+				/>
+				<span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>罫線</span>
+			</div>
+		);
+	}
+
+	// A surface: the label is read through the ink that belongs ON that
+	// surface, which is the role the surface exists to pair with.
+	const onSurfaceInk = role.path.endsWith('.inverse')
+		? inverseHex
+		: role.path.endsWith('.disabled')
+			? mutedHex
+			: textHex;
+
 	return (
 		<div
-			className={css({
-				position: 'relative',
-				padding: '3',
-				display: 'flex',
-				flexDirection: 'column',
-				justifyContent: 'flex-end',
-				gap: '1',
-			})}
-			style={{ backgroundColor: pane.surface }}
+			data-mono-appearance={appearance}
+			data-mono-group={role.group}
+			className={monoSwatchClassName}
+			style={{ backgroundColor: hex, color: onSurfaceInk }}
 		>
-			<div
-				aria-hidden="true"
-				className={css({
-					position: 'absolute',
-					insetBlockStart: '2',
-					insetInlineStart: '2',
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					letterSpacing: '0.06em',
-					textTransform: 'uppercase',
-				})}
-				style={{ color: pane.label }}
-			>
-				{variant}
-			</div>
-			{/* Token swatch — the semantic token's own resolved value for this
-			    appearance. The hex is inlined (a deliberate showcase decision,
-			    not a component-level raw colour) so the pane reports exactly
-			    what the token resolves to in that mode. */}
-			<div
-				aria-hidden="true"
-				className={css({
-					height: '8',
-					borderRadius: 'sm',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-				})}
-				data-token-swatch
-				data-variant={variant}
-				data-hex={hex}
-				style={{ backgroundColor: hex, borderColor: pane.border }}
-			/>
-			<code className={css({ fontFamily: 'mono', fontSize: 'xs' })} style={{ color: pane.label }}>
-				{hex}
-			</code>
+			<span>面</span>
 		</div>
 	);
 }

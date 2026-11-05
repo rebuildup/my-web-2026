@@ -447,7 +447,7 @@ function listFilesRecursively(dir) {
  * Aggregate the Tool iframe bundles separately from the host routes.
  *
  * Each Tool is its own Vite build with its own `index.html`, loaded inside a
- * sandboxed iframe. Charging its bytes to `/tools` would both overstate the
+ * Tool iframe. Charging its bytes to `/tools` would both overstate the
  * host route and let a heavy Tool hide behind the host's cap, so the two are
  * measured and capped independently.
  */
@@ -482,21 +482,38 @@ export function measureToolBundles(toolsDir) {
 	return bundles.sort((a, b) => (a.slug < b.slug ? -1 : 1));
 }
 
+/**
+ * Which ceiling applies to this Tool?
+ *
+ * `tool_iframe.per_tool[<slug>]` overrides the shared `max_*_per_tool` for
+ * exactly one Tool. The shared number is calibrated on the lightest Tool and
+ * stays the default guard for everyone; a Tool whose build is a structurally
+ * different program cannot be held to it without either weakening the guard
+ * for every other Tool (raise the shared number) or shipping a smaller
+ * program than its job needs. A per-Tool cap keeps one ceiling per Tool and
+ * requires a written reason in the budget file.
+ */
+export function toolLimitFor(cap, slug, metric) {
+	const key = metric === 'js_bytes' ? 'max_js_bytes' : 'max_css_bytes';
+	const perTool = cap?.per_tool?.[slug]?.[key];
+	if (typeof perTool === 'number') return perTool;
+	return cap?.[metric === 'js_bytes' ? 'max_js_bytes_per_tool' : 'max_css_bytes_per_tool'];
+}
+
 export function evaluateToolBudgets(bundles, budget) {
 	const cap = budget.tool_iframe;
 	const violations = [];
 	if (!cap) return violations;
 	for (const bundle of bundles) {
-		for (const [metric, limitKey] of [
-			['js_bytes', 'max_js_bytes_per_tool'],
-			['css_bytes', 'max_css_bytes_per_tool'],
-		]) {
-			const limit = cap[limitKey];
+		for (const metric of ['js_bytes', 'css_bytes']) {
+			const sharedKey = metric === 'js_bytes' ? 'max_js_bytes_per_tool' : 'max_css_bytes_per_tool';
+			const limit = toolLimitFor(cap, bundle.slug, metric);
+			const perTool = limit !== cap[sharedKey];
 			if (typeof limit !== 'number') {
 				violations.push({
 					kind: 'missing-cap',
 					route: `tool:${bundle.slug}`,
-					message: `tool_iframe budget is missing "${limitKey}"`,
+					message: `tool_iframe budget is missing "${sharedKey}"`,
 				});
 				continue;
 			}
@@ -508,7 +525,7 @@ export function evaluateToolBudgets(bundles, budget) {
 					measured: bundle[metric],
 					limit,
 					overage: bundle[metric] - limit,
-					message: `tool "${bundle.slug}" ${metric}=${bundle[metric]} (${formatBytes(bundle[metric])}) exceeds the separate Tool budget ${limit} (${formatBytes(limit)})`,
+					message: `tool "${bundle.slug}" ${metric}=${bundle[metric]} (${formatBytes(bundle[metric])}) exceeds the separate Tool budget ${limit} (${formatBytes(limit)})${perTool ? ' — this Tool has its own cap in tool_iframe.per_tool' : ''}`,
 				});
 			}
 		}
@@ -575,8 +592,58 @@ function validateBudget(budget, routePaths) {
 				`tool_iframe.reason: required, at least ${MIN_EXCEPTION_REASON_LENGTH} characters — a Tool bundle size is not self-evident`,
 			);
 		}
+		errors.push(...validatePerToolCaps(budget.tool_iframe.per_tool));
 	}
 	return { errors, warnings };
+}
+
+/**
+ * Static checks on `tool_iframe.per_tool`.
+ *
+ * A per-Tool cap is the one place a ceiling can be set without a route to
+ * carry an `exception`, so it is the easiest way to quietly disable a guard
+ * for one Tool. The reason requirement is the guard against that, and an
+ * entry with no numeric cap is rejected outright because it would change
+ * nothing while looking like a decision.
+ */
+function validatePerToolCaps(perTool) {
+	if (perTool === undefined) return [];
+	if (perTool === null || typeof perTool !== 'object' || Array.isArray(perTool)) {
+		return ['tool_iframe.per_tool: must be an object keyed by Tool slug'];
+	}
+	const errors = [];
+	for (const [slug, entry] of Object.entries(perTool)) {
+		const where = `tool_iframe.per_tool["${slug}"]`;
+		if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+			errors.push(`${where}: key must be a Tool slug (lowercase, digits, hyphen)`);
+		}
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+			errors.push(`${where}: must be an object with max_js_bytes / max_css_bytes and a reason`);
+			continue;
+		}
+		let hasCap = false;
+		for (const key of ['max_js_bytes', 'max_css_bytes']) {
+			if (entry[key] === undefined) continue;
+			hasCap = true;
+			if (typeof entry[key] !== 'number' || !Number.isFinite(entry[key]) || entry[key] <= 0) {
+				errors.push(`${where}.${key}: must be a positive number of bytes`);
+			}
+		}
+		if (!hasCap) {
+			errors.push(
+				`${where}: at least one of max_js_bytes / max_css_bytes is required — an entry with no cap changes nothing`,
+			);
+		}
+		if (
+			typeof entry.reason !== 'string' ||
+			entry.reason.trim().length < MIN_EXCEPTION_REASON_LENGTH
+		) {
+			errors.push(
+				`${where}.reason: required, at least ${MIN_EXCEPTION_REASON_LENGTH} characters — a per-Tool cap has to say why this Tool is not held to the shared one`,
+			);
+		}
+	}
+	return errors;
 }
 
 /**
@@ -749,20 +816,19 @@ export function renderHtml(report) {
 		.join('\n');
 
 	const toolRows = report.tool_iframe
-		.map(
-			(tool) => `<tr>
+		.map((tool) => {
+			const limit = toolLimitFor(budget?.tool_iframe, tool.slug, 'js_bytes') ?? 0;
+			return `<tr>
   <td class="route"><code>/tools/${escapeHtml(tool.slug)}/app/</code></td>
   <td class="num">${tool.js_bytes.toLocaleString('en-US')}</td>
   <td class="num muted">—</td>
   <td class="num">0</td>
   <td class="num">${tool.css_bytes.toLocaleString('en-US')}</td>
-  <td class="num">${(budget?.tool_iframe?.max_js_bytes_per_tool ?? 0).toLocaleString('en-US')}</td>
-  <td class="bar"><span style="width:${(
-		Math.min(1, tool.js_bytes / (budget?.tool_iframe?.max_js_bytes_per_tool || 1)) * 100
-	).toFixed(1)}%"></span></td>
+  <td class="num">${limit.toLocaleString('en-US')}</td>
+  <td class="bar"><span style="width:${(Math.min(1, tool.js_bytes / (limit || 1)) * 100).toFixed(1)}%"></span></td>
   <td class="verdict">separate</td>
-</tr>`,
-		)
+</tr>`;
+		})
 		.join('\n');
 
 	const conditions = Object.entries(report.measurement ?? {})
@@ -921,8 +987,15 @@ export function buildReport({ graph, routesByPath, ancestorsByPath, toolsDir, bu
 
 	// A missing Tool build output measures nothing while the Tool cap still
 	// looks satisfied, so it is named instead of silently skipped.
+	const perToolSlugs = Object.keys(budget.tool_iframe?.per_tool ?? {});
 	const toolWarnings = existsSync(toolsDir)
-		? []
+		? perToolSlugs
+				.filter((slug) => !toolBundles.some((bundle) => bundle.slug === slug))
+				.map((slug) => ({
+					kind: 'stale-tool-cap',
+					route: `tool:${slug}`,
+					message: `tool_iframe.per_tool["${slug}"] has no matching Tool build output — the entry caps nothing; remove it or restore the Tool build`,
+				}))
 		: [
 				{
 					kind: 'tool-bundles-absent',

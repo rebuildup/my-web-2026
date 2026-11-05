@@ -41,9 +41,11 @@ export interface CompatRoute {
 	/** Canonical `<h1>` text contract. Regex on purpose: copy may be revised. */
 	readonly h1: RegExp;
 	/**
-	 * `PublicNav` is opt-in per page (Issue #199 / #288): `/` and the
-	 * Tools surfaces deliberately render none. Pinning presence or
-	 * absence here keeps a regression in either direction visible.
+	 * `PublicNav` is opt-in per page (Issue #199): `/` deliberately
+	 * renders none, and Issue #785 abolished the Issue #288 exclusion
+	 * that also covered the Tools surfaces — they render it again.
+	 * Pinning presence or absence here keeps a regression in either
+	 * direction visible.
 	 */
 	readonly nav: 'present' | 'absent';
 	/**
@@ -52,8 +54,10 @@ export interface CompatRoute {
 	 *
 	 * The ids are per-surface on purpose (`about-main`,
 	 * `design-system-main`) and `'none'` is a real, documented state:
-	 * `/tools` is a full-viewport iframe shell and renders no `<main>`
-	 * (Issue #288). Encoding the expectation instead of assuming one
+	 * `/tools` renders no `<main>` landmark. That is a LANDMARK decision,
+	 * not the chrome one — Issue #785 restored `PublicNav` and the
+	 * breadcrumbs there, and the page still owns no content landmark.
+	 * Encoding the expectation instead of assuming one
 	 * shape means a page that gains or loses its landmark turns this
 	 * matrix red in the direction it actually moved.
 	 */
@@ -94,8 +98,11 @@ export const COMPAT_ROUTES: ReadonlyArray<CompatRoute> = [
 		path: '/tools',
 		slug: 'tools',
 		label: 'ツール',
-		h1: /Tools/,
-		nav: 'absent',
+		// Issue #785 rebuilt the index around a two-section card grid;
+		// the <h1> is the Japanese surface title again (the old hero
+		// read "my-web-2026 / Tools").
+		h1: /^ツール$/,
+		nav: 'present',
 		main: 'none',
 		skipLink: false,
 	},
@@ -273,9 +280,8 @@ export function assertRouteContract(route: CompatRoute, observation: RouteObserv
 	expect(observation.h1Text, `${where} <h1> text must match ${String(route.h1)}`).toMatch(route.h1);
 
 	// 3. The content landmark, in the shape this route actually
-	//    documents. `/tools` deliberately has none (full-viewport iframe
-	//    shell, Issue #288); the rest expose exactly one `<main>` with a
-	//    known id.
+	//    documents. `/tools` deliberately has none; the rest expose
+	//    exactly one `<main>` with a known id.
 	if (route.main === 'none') {
 		expect(observation.mainCount, `${where} must not grow a <main> landmark`).toBe(0);
 	} else {
@@ -298,7 +304,8 @@ export function assertRouteContract(route: CompatRoute, observation: RouteObserv
 	}
 
 	// 4. `PublicNav` presence follows the per-page opt-in contract
-	//    (Issue #199 / #288) in both directions.
+	//    (Issue #199; the Tools exclusion Issue #288 added was abolished
+	//    by #785) in both directions.
 	if (route.nav === 'present') {
 		expect(observation.navCount, `${where} must mount <nav aria-label="Public">`).toBe(1);
 	} else {

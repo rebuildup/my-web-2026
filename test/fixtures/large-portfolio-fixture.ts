@@ -95,6 +95,7 @@ export function buildFixtureProject(index: number): PortfolioProject {
 		technologies: [TECHNOLOGY_CYCLE[index % TECHNOLOGY_CYCLE.length] as string],
 		visibility: 'public',
 		status: 'published',
+		evidenceStatus: 'reviewed',
 		pinned,
 		displayOrder: index,
 		createdAt: FIXTURE_EPOCH_MS - index,

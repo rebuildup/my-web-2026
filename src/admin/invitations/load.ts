@@ -69,6 +69,11 @@ export const createInvitation = createServerFn({ method: 'POST' })
 	.validator(CreateInvitationInput)
 	.handler(async ({ data }): Promise<CreateInvitationResult> => {
 		const session = await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (the invitation row would be written into
+		// the production database).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:invitations:create');
 		const email = data.email.toLowerCase();
 
 		// Refuse if a user with this email already exists. Better Auth's
@@ -108,6 +113,11 @@ export const revokeInvitation = createServerFn({ method: 'POST' })
 	.validator(RevokeInvitationInput)
 	.handler(async ({ data }): Promise<{ revoked: boolean }> => {
 		await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (the row would be deleted from the
+		// production database).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:invitations:revoke');
 		// Revocation deletes the row outright. If a token has already
 		// been accepted, it cannot be revoked — the user is already
 		// provisioned.

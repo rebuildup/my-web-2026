@@ -384,8 +384,9 @@ registered:
 
 Each route is also checked for its **short navigation path**: `/` offers a
 one-click in-site entry to `/about`, `/portfolio`, and `/tools`, and the
-two `PublicNav` pages among the representative set (`/about`,
-`/portfolio`) link to every sibling representative route.
+three `PublicNav` pages among the representative set (`/about`,
+`/portfolio`, `/tools` — Issue #785 restored the Tools chrome) link to
+every sibling representative route.
 
 Every route must answer **for itself, from the origin the run was pointed
 at**. `auditRoute()` compares the final (post-redirect) origin AND
@@ -478,10 +479,13 @@ What it deliberately does not check
   phase asymmetry.
 - Load or latency budgets. This is a correctness smoke, not a performance
   gate.
-- Page composition work. `/tools` currently has no in-site link back to
-  `/` because Issues #199 / #288 keep site chrome off the home and Tools
-  surfaces. That is an information-architecture fact owned by the routes,
-  recorded rather than silently "fixed" here.
+- Page composition work. `/` intentionally renders no site chrome
+  (Issue #199), so the home surface is not the surface that proves
+  cross-page navigation. The `/tools` surfaces used to be chrome-free
+  (Issue #288); Issue #785 abolished that and restored `/tools` /
+  `/tools/<slug>` to the nav, so they are no longer an example of this.
+  Which page mounts which chrome is an information-architecture fact
+  owned by the routes, recorded rather than silently "fixed" here.
 
 ## Diagnosing a failed build (Issue #247)
 

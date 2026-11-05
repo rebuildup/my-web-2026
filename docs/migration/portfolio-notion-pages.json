@@ -1,0 +1,488 @@
+{
+	"schema": "portfolio-notion-pages.v1",
+	"comment": "Which legacy items have a Notion page (Issue #766). Records a STATE, never a page id: the id stays in Notion. `state: recorded` means a page exists and was written Draft/Draft, so nothing is public. `state: unmigrated` means the item was seen and deliberately left behind; `reason` is one of the closed codes the audit accepts (`no_facet` = the Issue #78 classification maps none of its tags onto the facet vocabulary, so the required `Facets` property cannot be filled). `role_source` mirrors the inventory so the derived/owner distinction survives into the write record. The audit reads this file and stamps `notion_page` in portfolio-2025-inventory.json; it decides nothing about publication.",
+	"recorded_at": "2026-11-01",
+	"pages": [
+		{
+			"legacy_id": "Border",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "FlashBeat",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "FlashBeat-BGM",
+			"state": "unmigrated",
+			"reason": "no_facet"
+		},
+		{
+			"legacy_id": "FlashBeat-OP",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "FoldLayers",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "LiteGlow",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "MultiSlicer",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "owner-recorded"
+		},
+		{
+			"legacy_id": "NullOto",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "ProtoType",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "ProtoType-brochure",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "RGBDelay",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "alice",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "aulymo-v01",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "owner-recorded"
+		},
+		{
+			"legacy_id": "aulymo_v02",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "owner-recorded"
+		},
+		{
+			"legacy_id": "aulymo_v03",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "owner-recorded"
+		},
+		{
+			"legacy_id": "bansankai",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "baramoji",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "blue-white-design",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "cclub-brochure-2024",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "cclub-brochure-2025",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "ch4nge",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "code-type",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "design-001",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "dounika",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "homura",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "hurahu",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "icon-tegaki-anime",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "isogasii-demo",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "isogasii-editor",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "kaben",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "kakumei",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "kosen-fes-2025",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "kosen-fes2025-ending",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "kosen-procon-pv",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "lhaplus",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "m5_clock",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "mawaru",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "meikai",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "moumoku",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "my-first-blender",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "my-sns-icon",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "my-web-2025",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "netu",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "oneself",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "ooame",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "pomodoroom",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "propose",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "red-black-design",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "reel-2024",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "reel-2025",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "seishun",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "sep_color",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "shinkansen",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "stretch-v01",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "stretch_v02",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "tegaki-anime",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-1-3q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-2-2q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-2-3q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-2-4q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-3-1q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-3-2q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-3-3q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-4-1q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "test-otu-4-2q",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "tokimeki",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "ugoita",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "usoto",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		},
+		{
+			"legacy_id": "yukikate",
+			"state": "recorded",
+			"status": "draft",
+			"visibility": "draft",
+			"role_source": "facet-derived"
+		}
+	]
+}

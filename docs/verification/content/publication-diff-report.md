@@ -12,11 +12,11 @@
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 19 |
-| External hosts | 33 |
+| Publicly reachable URLs (surface + Static Assets) | 32 |
+| External hosts | 37 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 3 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -56,8 +56,21 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
+- `/tools/ae-expression`
+- `/tools/business-mail-block`
+- `/tools/code-type-p5`
+- `/tools/color-palette`
+- `/tools/fillgen`
+- `/tools/history-quiz`
+- `/tools/mic-level`
+- `/tools/pi-game`
+- `/tools/pomodoro`
 - `/tools/prototype`
+- `/tools/qr-generator`
 - `/tools/readmark`
+- `/tools/sequential-png-preview`
+- `/tools/svg2tsx`
+- `/tools/text-counter`
 
 ## Declared surfaces
 
@@ -93,9 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (1)
 
-- (none)
+- `www.youtube-nocookie.com`
 
 ### Removed external hosts (0)
 
@@ -123,17 +136,21 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
+| `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
 | `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
+| `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
@@ -191,6 +208,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
+| `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
+| `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com` | `www.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
@@ -201,10 +220,17 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
+| `https://www.youtube-nocookie.com/embed` | `www.youtube-nocookie.com` | external | `src/portfolio/video-facade.ts` |
+| `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/embed/…` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/iframe_api` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/watch?v=` | `www.youtube.com` | external | `src/portfolio/video-facade.ts` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-_No findings._
+- **ERROR** `E004 external-host-added` New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube-nocookie.com/embed
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=
 

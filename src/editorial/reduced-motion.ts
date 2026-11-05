@@ -88,6 +88,31 @@ export const REDUCED_MOTION_PROP = 'reducedMotion';
 export const COUNTER_ROLL_MOTION = 'counter-roll';
 
 /**
+ * The `data-motion` value the current-projects change marker uses
+ * (Issue #316).
+ *
+ * The marker itself is information — "this row changed since you last
+ * looked" — and is present under both preferences. Only its one-time fade is
+ * decoration, so only the fade is what this hook lets the stylesheet and the
+ * render-time branch switch off.
+ */
+export const CURRENT_LOCATION_CHANGE_MOTION = 'current-location-change';
+
+/**
+ * The `data-motion` value the companion character's greeting uses
+ * (Issue #274).
+ *
+ * Unlike `COUNTER_ROLL_MOTION`, this one is never automatic: the frame
+ * strip is still until a visitor presses the trigger, plays once, and
+ * returns to the still frame. Under reduced motion the component emits
+ * neither the strip nor the trigger, so this hook has no element to
+ * name — the stylesheet selector is the backstop for markup produced
+ * without a client preference read (an SSR document replayed from
+ * cache, a Storybook build that pinned nothing).
+ */
+export const PET_REACTION_MOTION = 'pet-reaction';
+
+/**
  * Read the preference once, outside React.
  *
  * Returns `false` wherever the query cannot be asked — the Worker

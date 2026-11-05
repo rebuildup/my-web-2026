@@ -209,6 +209,7 @@ axe-core 4.14.0 の **70 個の rule** を有効にする。rule id と達成基
 | --- | --- | --- |
 | 2026-10-23 | `axe-baseline.json` を version 1 → 2。`color-contrast` の 7 レコード（要素数 39）を削除 | Issue #399（PR #681）が muted 文字 token を `neutral.500`（`bg.subtle` 上で 4.34:1）から `neutral.600` へ変え、SC 1.4.3 の `color-contrast` 違反が **すべて解消** した。実測に対応しなくなったレコードを残すと、gate の陳腐化検出（「直った違反のレコードは削除せよ」）が赤くなる。これは **設計どおりの挙動** で、Issue #692 でレコードを削除して解消した |
 | 2026-11-01 | `list` 7 件 / `definition-list` 1 件 / `label-content-name-mismatch` 6 件の計 **10 レコード（要素数 14）を削除**。manifest の 8 route の `expect` を `baseline` → `pass` に | Issue #718 が **実装側で違反を直した**（`editorial` の nav markup、`home` の status リストと capability link、`portfolio` の facet chip）。視覚は pixel 比較で不変であることを確認した（§「負の対照」と `axe-known-violations.md` §5）。**空の台帳が恒久 green にはなっていない**ことは、nav の markup を意図的に戻した再ビルドで gate が red になることを確認した |
+| 2026-11-02 | 台帳の変更 **0 件**（レコード追加も削除もなし） | Issue #785 が `/tools` をグリッド化したとき、カード全体をリンクにしつつ `aria-labelledby` でアクセシブル名をツール名だけに固定したため、axe が `label-content-name-mismatch`（SC 2.5.3）を 2 要素（`prototype` / `readmark`）で検出した。台帳に記録せず **markup を直した**: `aria-labelledby` を外し、可視テキスト全体（名前 + 説明 + 「開く」）を名前にする。`e2e/a11y/axe-public-routes.spec.ts` の `/tools` ケースはローカルで pass |
 
 2026-10-23 の 7 レコード削除も、2026-11-01 の 10 レコード削除も、どちらも
 「違反を直した」ことによるもので、台帳を空にして恒久 green にする回避ではない。

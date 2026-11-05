@@ -14,7 +14,16 @@
 			"type": "array",
 			"items": {
 				"type": "object",
-				"required": ["slug", "source", "build", "delivery", "classification", "license"],
+				"required": [
+					"slug",
+					"display_name",
+					"description_ja",
+					"source",
+					"build",
+					"delivery",
+					"classification",
+					"license"
+				],
 				"properties": {
 					"slug": {
 						"description": "URL-safe slug. Lowercase letters, digits, dashes. Unique across all tools. Path segment under /tools/<slug>/ and the same-origin artifact location.",
@@ -24,6 +33,11 @@
 					"display_name": {
 						"description": "Human-readable name for the Tool Registry UI. Optional.",
 						"type": "string"
+					},
+					"description_ja": {
+						"description": "Japanese description shown on the /tools index (Issue #785). One or two sentences stating what the Tool does. Required: the index renders Japanese first, so a missing value would leave a row unexplained. The English `description` field remains for maintainers.",
+						"type": "string",
+						"minLength": 1
 					},
 					"source": {
 						"type": "object",
@@ -94,11 +108,11 @@
 							},
 							"iframe": {
 								"type": "object",
-								"description": "iframe sandbox + referrer policy + message contract for this Tool (Issue #465). REQUIRED for every embeddable Tool: the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates the policy enforced by scripts/check-tools-manifest.mjs via src/tools/embed-policy.ts.",
-								"required": ["sandbox", "referrer_policy"],
+								"description": "iframe referrer policy + message contract for this Tool (Issue #465), plus the sandbox that ONLY an external_exception frame declares (ADR-0020). REQUIRED for every embeddable Tool: the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates the policy enforced by scripts/check-tools-manifest.mjs via src/tools/embed-policy.ts. A same_origin_static Tool is first-party: the iframe is a layout / URL / CSS-DOM container, not a security boundary, so it MUST NOT declare `sandbox`.",
+								"required": ["referrer_policy"],
 								"properties": {
 									"sandbox": {
-										"description": "sandbox attribute value, space separated. 'allow-scripts' alone is the only value that needs no justification. Forbidden, always (src/tools/embed-policy.ts): allow-same-origin (on a same-origin artefact it hands the Tool the host origin), allow-popups-to-escape-sandbox, allow-storage-access-by-user-activation, allow-top-navigation, allow-top-navigation-by-user-activation, allow-top-navigation-to-custom-protocols. Conditional (require 'allow' + 'sandbox_rationale'): allow-downloads, allow-forms, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-popups, allow-presentation. NOTE: this pattern is an ADVISORY subset — it requires 'allow-scripts' first and single-space separators. src/tools/embed-policy.ts is the authority and additionally accepts any token order and any whitespace; if ajv validation is wired up later, keep the two in sync.",
+										"description": "EXTERNAL_EXCEPTION ONLY (ADR-0020). sandbox attribute value, space separated. A same_origin_static entry that declares this is a violation (embed.sandbox.not-allowed-for-first-party): the first-party frame is not a security boundary. For an external frame, 'allow-scripts' alone is the only value that needs no justification. Forbidden, always (src/tools/embed-policy.ts): allow-same-origin (it removes the external frame's origin isolation), allow-popups-to-escape-sandbox, allow-storage-access-by-user-activation, allow-top-navigation, allow-top-navigation-by-user-activation, allow-top-navigation-to-custom-protocols. Conditional (require 'allow' + 'sandbox_rationale'): allow-downloads, allow-forms, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-popups, allow-presentation. NOTE: this pattern is an ADVISORY subset — it requires 'allow-scripts' first and single-space separators. src/tools/embed-policy.ts is the authority and additionally accepts any token order and any whitespace; if ajv validation is wired up later, keep the two in sync.",
 										"type": "string",
 										"pattern": "^allow-scripts( allow-(downloads|forms|modals|orientation-lock|pointer-lock|popups|presentation))*$"
 									},
@@ -108,11 +122,11 @@
 										"enum": ["no-referrer", "same-origin", "strict-origin"]
 									},
 									"allow": {
-										"description": "Permissions-Policy features this Tool needs from the host. FEATURE NAMES ONLY (e.g. 'microphone'), space separated — the host owns the origin allowlist and derives it from the serving origin (Issue #449). Required (non-empty) when the sandbox uses any conditional token (Issue #465). Rendered verbatim as the <iframe allow=...> attribute by src/routes/tools.$slug.tsx, and mirrored into the host-side 'Permissions-Policy' response header and public/_headers grant.",
+										"description": "Permissions-Policy features this Tool needs from the host. FEATURE NAMES ONLY (e.g. 'microphone'), space separated — the host owns the origin allowlist and derives it from the serving origin (Issue #449). Required (non-empty) when an external frame's sandbox uses any conditional token (Issue #465); it also remains meaningful for a first-party frame as the <iframe allow=...> delegation (e.g. 'fullscreen', 'microphone'). Rendered verbatim as the <iframe allow=...> attribute by src/routes/tools.$slug.tsx, and mirrored into the host-side 'Permissions-Policy' response header and public/_headers grant.",
 										"type": "string"
 									},
 									"sandbox_rationale": {
-										"description": "Written reason for any conditional sandbox token. Required (non-empty) alongside them — Issue #465 requires a written reason before weakening the iframe sandbox (ADR-0006 does not state this rule).",
+										"description": "EXTERNAL_EXCEPTION ONLY. Written reason for any conditional sandbox token. Required (non-empty) alongside them — Issue #465 requires a written reason before weakening an external frame's sandbox (ADR-0006 does not state this rule). A first-party frame declares no sandbox, so it has no conditional token to justify.",
 										"type": "string"
 									}
 								},
@@ -124,7 +138,7 @@
 								"required": ["expected_origin", "allowed_types"],
 								"properties": {
 									"expected_origin": {
-										"description": "The ONE origin a Tool message may come from: 'self' (resolved to the host's own origin at runtime) or an explicit https origin literal. '*' is never valid. CAVEAT (docs/tools/embed-policy.md section 5a): the host always frames a Tool WITHOUT 'allow-same-origin', so every framed Tool runs in an opaque origin and reports event.origin === 'null' — whatever the src URL says. A declaration therefore passes this schema and the build-time gate but can never match at runtime, on either delivery kind; making one match needs an ADR decision (the two candidate contracts are in section 5a), not a manifest edit.",
+										"description": "The ONE origin a Tool message may come from: 'self' (resolved to the host's own origin at runtime) or an explicit https origin literal. '*' is never valid. CAVEAT by delivery kind (ADR-0020 §4.1, docs/tools/embed-policy.md section 5a): a same_origin_static frame is NOT sandboxed, runs on the host origin, and a 'self' declaration MATCHES its messages at runtime. An external_exception frame is sandboxed without 'allow-same-origin', runs in an opaque origin and reports event.origin === 'null', so a declaration passes this schema and the build-time gate but can never match inbound messages; making one match needs an ADR decision (the candidate contracts are in section 5a), not a manifest edit.",
 										"type": "string",
 										"pattern": "^(self|https://[^/?#]+)$"
 									},

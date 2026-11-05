@@ -37,10 +37,12 @@ import type {
  *     regardless. The channel is still rebuilt whenever `slug`,
  *     `declaration`, `getToolWindow`, `onMessage` or `target` changes.
  *   - `resolveExpectedToolOrigin`'s optional `frameOrigin` argument is
- *     NOT supplied here, because a sandboxed `contentWindow` does not
- *     expose its origin. The runtime defence is therefore
- *     `event.origin` + `event.source` equality, not a pre-checked frame
- *     origin — see the function's docstring.
+ *     NOT supplied here. The runtime defence is `event.origin` +
+ *     `event.source` equality, not a pre-checked frame origin: an
+ *     external frame is opaque (its `contentWindow.location` is not
+ *     readable), and a first-party frame already runs on the host
+ *     origin, so the extra argument buys nothing at runtime — see the
+ *     function's docstring.
  */
 
 export interface ToolHostMessageChannelOptions {

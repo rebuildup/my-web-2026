@@ -277,8 +277,21 @@
 					"src/routes/tools.$slug.tsx"
 				],
 				"urls": [
+					"/tools/ae-expression",
+					"/tools/business-mail-block",
+					"/tools/code-type-p5",
+					"/tools/color-palette",
+					"/tools/fillgen",
+					"/tools/history-quiz",
+					"/tools/mic-level",
+					"/tools/pi-game",
+					"/tools/pomodoro",
 					"/tools/prototype",
-					"/tools/readmark"
+					"/tools/qr-generator",
+					"/tools/readmark",
+					"/tools/sequential-png-preview",
+					"/tools/svg2tsx",
+					"/tools/text-counter"
 				],
 				"reason": "Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind, but the shell declares `robots: noindex` in its own head, so it is not a sitemap target."
 			}
@@ -315,8 +328,21 @@
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
+			"/tools/ae-expression",
+			"/tools/business-mail-block",
+			"/tools/code-type-p5",
+			"/tools/color-palette",
+			"/tools/fillgen",
+			"/tools/history-quiz",
+			"/tools/mic-level",
+			"/tools/pi-game",
+			"/tools/pomodoro",
 			"/tools/prototype",
-			"/tools/readmark"
+			"/tools/qr-generator",
+			"/tools/readmark",
+			"/tools/sequential-png-preview",
+			"/tools/svg2tsx",
+			"/tools/text-counter"
 		],
 		"externalHosts": [
 			"*.analytics.google.com",
@@ -324,6 +350,7 @@
 			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
+			"cdn.jsdelivr.net",
 			"design.google",
 			"developers.google.com",
 			"example.com",
@@ -339,6 +366,7 @@
 			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
+			"via.placeholder.com",
 			"www.apache.org",
 			"www.facebook.com",
 			"www.googletagmanager.com",
@@ -350,6 +378,8 @@
 			"www.sitemaps.org",
 			"www.stat.go.jp",
 			"www.w3.org",
+			"www.youtube-nocookie.com",
+			"www.youtube.com",
 			"x.com",
 			"yusuke-kim.com"
 		],
@@ -429,7 +459,9 @@
 					"external/prototype/public/vite.svg",
 					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
-					"src/home/mark.tsx"
+					"src/editorial/primitives/MaterialSymbol.tsx",
+					"src/home/mark.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -478,6 +510,33 @@
 				]
 			},
 			{
+				"url": "https://cdn.jsdelivr.net",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://cdn.jsdelivr.net/npm/p5@",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json",
+				"host": "cdn.jsdelivr.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://design.google/library/expressive-material-design-google-research",
 				"host": "design.google",
 				"kind": "external",
@@ -520,6 +579,15 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/fixtures/markdown/hostile.md"
+				]
+			},
+			{
+				"url": "https://example.com/image.svg",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -1008,6 +1076,7 @@
 					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
+					"src/http/security-headers.json",
 					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
@@ -1169,6 +1238,24 @@
 				]
 			},
 			{
+				"url": "https://via.placeholder.com",
+				"host": "via.placeholder.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://via.placeholder.com/300?text=Image+Error",
+				"host": "via.placeholder.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://www.facebook.com/KosenProcon",
 				"host": "www.facebook.com",
 				"kind": "external",
@@ -1259,6 +1346,51 @@
 				]
 			},
 			{
+				"url": "https://www.youtube-nocookie.com/embed",
+				"host": "www.youtube-nocookie.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/video-facade.ts"
+				]
+			},
+			{
+				"url": "https://www.youtube.com",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/embed/…",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/iframe_api",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/video-facade.ts"
+				]
+			},
+			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
@@ -1281,13 +1413,34 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://www.youtube-nocookie.com/embed",
+			"https://www.youtube.com/watch?v="
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"www.youtube-nocookie.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube-nocookie.com/embed"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v="
+			}
+		]
 	}
 }

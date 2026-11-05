@@ -124,6 +124,32 @@ pnpm storybook
 # -> http://127.0.0.1:6006
 ```
 
+### Development data source (Issue #377)
+
+The dev server ALWAYS states which data it reads. The home page shows
+it as an indicator above the fold, and the console states it at
+startup. `pnpm dev` is the default and never touches production.
+
+| Command | Data source | Writes |
+| --- | --- | --- |
+| `pnpm dev` | local (miniflare copy of the schema) | allowed |
+| `pnpm dev:mock` | canned fixtures (`LOCAL_API_MODE=mock`) | allowed (in-memory) |
+| `pnpm dev:production-data` | **production** D1 / R2 (remote bindings) | **refused** |
+| `pnpm dev:read-only-guard` | local, under the production-readonly write policy | **refused** |
+
+`pnpm dev:production-data` turns on `@cloudflare/vite-plugin`'s
+`remoteBindings`, so the D1 / R2 bindings point at the real Cloudflare
+resources. It needs a Cloudflare **remote session**, which the
+development API token can only create with the right permission — see
+the runbook.
+
+`pnpm dev:read-only-guard` is the SAFE way to exercise the refusal:
+the write policy is the production one, the bindings stay local, and no
+write can reach production.
+
+Full contract, failure modes and the verification artefacts:
+[`docs/runbook/development-data-source.md`](runbook/development-data-source.md).
+
 ### Fallback: `pnpm run generate:dev-vars`
 
 Use the fallback when the Infisical CLI (`infisical` binary) is
@@ -391,7 +417,7 @@ Three things this gate is **not**:
 - It is not a rendering-speed measurement of any kind. It counts shipped bytes.
 
 Tool bundles under `/tools/<slug>/app/**` are independent Vite builds loaded in
-a sandboxed iframe, so they are aggregated and capped separately — a heavy Tool
+a Tool iframe, so they are aggregated and capped separately — a heavy Tool
 cannot hide behind a host route's budget.
 
 Accepting an overage needs a reason:
@@ -412,6 +438,16 @@ error and fails the gate. So is a new route with no budget entry: routes come
 from the generated tree, so forgetting the budget fails loudly instead of
 silently shipping an uncapped page. `tool_iframe` is required for the same
 reason — deleting the section would turn the Tool cap off without a word.
+
+Each Tool is held to the shared `max_js_bytes_per_tool` unless
+`tool_iframe.per_tool[<slug>]` names a cap for it. A per-Tool cap exists for
+a Tool whose build is a structurally different program — readmark ships the
+pdf.js worker, its lazy route chunks and the decoder fallbacks pdf.js loads
+when WebAssembly is unavailable — so holding it to a ceiling calibrated on
+the lightest Tool would mean either raising the ceiling for every Tool or
+shipping a smaller program than the Tool's job needs. A per-Tool entry
+requires a `reason`, exactly like a route exception, because it is the one
+place a cap can be set without a route to carry the exception.
 
 Raising a cap is **not** machine-checked. The gate compares numbers; it does
 not compare a cap against the previous cap, so a PR that multiplies
@@ -667,7 +703,9 @@ node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を�
 
 訪問者が読む日本語の文言を PR で書き換えたとき、その変更に **owner の判断** が
 記録されていることを要求する gate。対象は「公開日本語 copy の surface」
-（`quality/copy-editorial-surfaces.json` の opt-in glob 宣言）と、判断記録
+（`quality/copy-editorial-surfaces.json` の opt-in 宣言。ディレクトリ粒度の
+`publicCopyGlobs` と、表示用ファイルが data / schema と混在する surface の
+ためのファイル粒度の `publicCopyFiles`）と、判断記録
 （`quality/copy-editorial-approvals.json`）の 2 ファイル。gate 自体は
 `src/**` を import せず、差分と 2 つの JSON だけを読む。
 

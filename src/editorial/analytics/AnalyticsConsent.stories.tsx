@@ -104,10 +104,15 @@ const noteClassName = css({
 /**
  * The containing block for one fixed panel, so the gallery can show
  * every state at once instead of stacking them on the viewport bottom.
+ *
+ * The stage is tall enough for the tallest state as a full-width band
+ * (Issue #783): the band spans the stage instead of being a centred
+ * 560px card, so its own height follows the stage width and the
+ * longest description needs the room.
  */
 const stageClassName = css({
 	position: 'relative',
-	height: '240px',
+	height: '280px',
 	transform: 'translateZ(0)',
 	borderWidth: '1px',
 	borderStyle: 'dashed',

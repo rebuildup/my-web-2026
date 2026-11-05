@@ -39,12 +39,32 @@ import { listAllTools } from './registry';
  * edit (or a compromised Tool build artefact) would look like.
  */
 
-/** A minimal valid `same_origin_static` delivery block. */
+/**
+ * A minimal valid `same_origin_static` delivery block (ADR-0020).
+ *
+ * A first-party Tool carries NO sandbox: the iframe is a layout / URL /
+ * CSS-DOM container, not a security boundary.
+ */
 function okDelivery(overrides: Record<string, unknown> = {}) {
 	return {
 		kind: 'same_origin_static',
 		artifact_path: '/tools/fixture/app',
 		entry_html: '/tools/fixture/app/index.html',
+		iframe: { referrer_policy: 'no-referrer' },
+		...overrides,
+	};
+}
+
+/**
+ * A minimal valid `external_exception` delivery block.
+ *
+ * An external frame still declares a sandbox: the host does not review
+ * that build, so the sandbox is the boundary.
+ */
+function externalDelivery(overrides: Record<string, unknown> = {}) {
+	return {
+		kind: 'external_exception',
+		external_url: 'https://tool.example/app/',
 		iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
 		...overrides,
 	};
@@ -66,22 +86,38 @@ describe('Tool embed policy — the live manifest', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('both served Tools declare allow-scripts + no-referrer', () => {
+	it('every served Tool is first-party: no sandbox, and the referrer policy is declared', () => {
 		const served = listAllTools().filter(
-			(
-				t,
-			): t is typeof t & {
-				delivery: {
-					kind: 'same_origin_static';
-					iframe?: { sandbox: string; referrer_policy: string };
-				};
-			} => t.delivery.kind === 'same_origin_static',
+			(t): t is typeof t & { delivery: { kind: 'same_origin_static' } } =>
+				t.delivery.kind === 'same_origin_static',
 		);
 		expect(served.length).toBeGreaterThan(0);
 		for (const tool of served) {
-			expect(tool.delivery.iframe?.sandbox).toBe('allow-scripts');
-			expect(tool.delivery.iframe?.referrer_policy).toBe('no-referrer');
+			const iframe = tool.delivery.iframe;
+			// ADR-0020: the rendered attribute is absent. The policy rejects
+			// any declaration, so the two cannot drift.
+			expect(iframe && 'sandbox' in iframe, `${tool.slug} declares a sandbox`).toBe(false);
+			expect(iframe?.referrer_policy).toBe('no-referrer');
 		}
+	});
+
+	it('a sandbox on a first-party Tool is a violation, not a weaker declaration', () => {
+		expect(
+			codes(
+				okDelivery({
+					iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+				}),
+			),
+		).toEqual(['embed.sandbox.not-allowed-for-first-party']);
+		// An empty attribute still applies every sandbox restriction, so
+		// it is a declaration too — absence is the only valid state.
+		expect(
+			codes(
+				okDelivery({
+					iframe: { sandbox: '', referrer_policy: 'no-referrer' },
+				}),
+			),
+		).toEqual(['embed.sandbox.not-allowed-for-first-party']);
 	});
 
 	it('no manifest Tool declares a host_message contract (no listener is attached)', () => {
@@ -100,9 +136,9 @@ describe('Tool embed policy — the live manifest', () => {
 	});
 });
 
-describe('Tool embed policy — sandbox tokens', () => {
+describe('Tool embed policy — sandbox tokens (external_exception only)', () => {
 	it('accepts allow-scripts with an accepted referrer policy', () => {
-		expect(codes(okDelivery())).toEqual([]);
+		expect(codes(externalDelivery())).toEqual([]);
 	});
 
 	it('rejects a missing delivery.iframe block (no implicit default)', () => {
@@ -111,19 +147,18 @@ describe('Tool embed policy — sandbox tokens', () => {
 		expect(codes(delivery)).toEqual(['embed.iframe.missing']);
 	});
 
-	it('rejects an empty sandbox value', () => {
-		expect(codes(okDelivery({ iframe: { sandbox: '', referrer_policy: 'no-referrer' } }))).toEqual([
-			'embed.sandbox.missing',
-		]);
+	it('rejects an empty sandbox value on an external frame', () => {
+		expect(
+			codes(externalDelivery({ iframe: { sandbox: '', referrer_policy: 'no-referrer' } })),
+		).toEqual(['embed.sandbox.missing']);
 	});
 
-	it('rejects allow-scripts + allow-same-origin (same-origin sandbox escape)', () => {
-		// The artefact is served from the HOST origin, so
-		// allow-same-origin gives the Tool the host origin: cookies,
-		// localStorage, and same-origin fetch to /api/v1/*.
+	it('rejects allow-scripts + allow-same-origin (external sandbox escape)', () => {
+		// allow-same-origin removes the origin isolation the external
+		// frame's sandbox exists to provide.
 		expect(
 			codes(
-				okDelivery({
+				externalDelivery({
 					iframe: { sandbox: 'allow-scripts allow-same-origin', referrer_policy: 'no-referrer' },
 				}),
 			),
@@ -133,7 +168,7 @@ describe('Tool embed policy — sandbox tokens', () => {
 	it('rejects the pair regardless of token order', () => {
 		expect(
 			codes(
-				okDelivery({
+				externalDelivery({
 					iframe: { sandbox: 'allow-same-origin allow-scripts', referrer_policy: 'no-referrer' },
 				}),
 			),
@@ -143,7 +178,9 @@ describe('Tool embed policy — sandbox tokens', () => {
 	it('rejects allow-same-origin on its own', () => {
 		expect(
 			codes(
-				okDelivery({ iframe: { sandbox: 'allow-same-origin', referrer_policy: 'no-referrer' } }),
+				externalDelivery({
+					iframe: { sandbox: 'allow-same-origin', referrer_policy: 'no-referrer' },
+				}),
 			),
 		).toEqual(['embed.sandbox.forbidden-token']);
 	});
@@ -158,7 +195,7 @@ describe('Tool embed policy — sandbox tokens', () => {
 		]) {
 			expect(
 				codes(
-					okDelivery({
+					externalDelivery({
 						iframe: { sandbox: `allow-scripts ${token}`, referrer_policy: 'no-referrer' },
 					}),
 				),
@@ -172,14 +209,18 @@ describe('Tool embed policy — sandbox tokens', () => {
 		// NO script permission at all — a functional bug that reads like
 		// a working sandbox in review.
 		expect(
-			codes(okDelivery({ iframe: { sandbox: 'allow-script', referrer_policy: 'no-referrer' } })),
+			codes(
+				externalDelivery({
+					iframe: { sandbox: 'allow-script', referrer_policy: 'no-referrer' },
+				}),
+			),
 		).toEqual(['embed.sandbox.unknown-token']);
 	});
 
 	it('rejects a repeated token', () => {
 		expect(
 			codes(
-				okDelivery({
+				externalDelivery({
 					iframe: { sandbox: 'allow-scripts allow-scripts', referrer_policy: 'no-referrer' },
 				}),
 			),
@@ -187,7 +228,7 @@ describe('Tool embed policy — sandbox tokens', () => {
 	});
 
 	it('accepts a conditional token only with BOTH a grant and a written reason', () => {
-		const withBoth = okDelivery({
+		const withBoth = externalDelivery({
 			iframe: {
 				sandbox: 'allow-scripts allow-downloads',
 				referrer_policy: 'no-referrer',
@@ -197,7 +238,7 @@ describe('Tool embed policy — sandbox tokens', () => {
 		});
 		expect(codes(withBoth)).toEqual([]);
 
-		const grantOnly = okDelivery({
+		const grantOnly = externalDelivery({
 			iframe: {
 				sandbox: 'allow-scripts allow-downloads',
 				referrer_policy: 'no-referrer',
@@ -206,7 +247,7 @@ describe('Tool embed policy — sandbox tokens', () => {
 		});
 		expect(codes(grantOnly)).toEqual(['embed.sandbox.conditional-without-rationale']);
 
-		const reasonOnly = okDelivery({
+		const reasonOnly = externalDelivery({
 			iframe: {
 				sandbox: 'allow-scripts allow-downloads',
 				referrer_policy: 'no-referrer',
@@ -242,15 +283,14 @@ describe('Tool embed policy — sandbox tokens', () => {
 
 describe('Tool embed policy — referrer policy', () => {
 	it('rejects a missing referrer policy', () => {
-		expect(codes(okDelivery({ iframe: { sandbox: 'allow-scripts' } }))).toEqual([
-			'embed.referrer-policy.missing',
-		]);
+		expect(codes(okDelivery({ iframe: {} }))).toEqual(['embed.referrer-policy.missing']);
 	});
 
 	it('accepts only no-referrer / same-origin / strict-origin', () => {
 		for (const policy of ['no-referrer', 'same-origin', 'strict-origin']) {
+			expect(codes(okDelivery({ iframe: { referrer_policy: policy } })), policy).toEqual([]);
 			expect(
-				codes(okDelivery({ iframe: { sandbox: 'allow-scripts', referrer_policy: policy } })),
+				codes(externalDelivery({ iframe: { sandbox: 'allow-scripts', referrer_policy: policy } })),
 				policy,
 			).toEqual([]);
 		}
@@ -264,10 +304,9 @@ describe('Tool embed policy — referrer policy', () => {
 			'strict-origin-when-cross-origin',
 			'no-referrer-when-downgrade',
 		]) {
-			expect(
-				codes(okDelivery({ iframe: { sandbox: 'allow-scripts', referrer_policy: policy } })),
-				policy,
-			).toEqual(['embed.referrer-policy.not-allowed']);
+			expect(codes(okDelivery({ iframe: { referrer_policy: policy } })), policy).toEqual([
+				'embed.referrer-policy.not-allowed',
+			]);
 		}
 	});
 });
@@ -461,43 +500,22 @@ describe('Tool embed policy — host message contract', () => {
 	});
 });
 
-describe('Tool embed policy — the opaque-origin constraint on a framed Tool', () => {
-	// Issue #465 reviews (P1). The policy ALWAYS denies
-	// `allow-same-origin`, on both delivery kinds, so EVERY framed Tool
-	// runs in an opaque origin: every message it posts carries
-	// `event.origin === "null"`, whatever the frame's `src` URL says.
-	// No `host_message` declaration can therefore be satisfied at
-	// runtime — neither `'self'` on a same-origin artefact, nor a
-	// literal `https://…` on an `external_exception` one.
-	//
-	// This suite documents that fact on purpose instead of hiding it:
-	// the fix (an opaque-origin marker, or a host-issued nonce
-	// handshake) changes the security contract and belongs to an
-	// ADR-0006 re-evaluation decision, which is out of scope for this
-	// Issue. The behaviour below is fail-closed.
+describe('Tool embed policy — message origin by delivery kind (ADR-0020)', () => {
+	// ADR-0020 §4.1: a first-party `same_origin_static` frame is not
+	// sandboxed, so it runs on the host origin and `'self'` matches at
+	// runtime. An `external_exception` frame is still sandboxed
+	// without `allow-same-origin`, so it is opaque and reports
+	// `event.origin === "null"`; a literal declaration attaches the
+	// guard but every inbound event is refused.
 
 	const HOST_ORIGIN = 'https://host.example';
-	const delivery = okDelivery({
-		host_message: { expected_origin: 'self', allowed_types: ['tool:ready'] },
-	});
 
-	it('passes the manifest gate (the declaration is syntactically valid)', () => {
+	it('first-party: the declaration passes the gate and the host origin is accepted', () => {
+		const delivery = okDelivery({
+			host_message: { expected_origin: 'self', allowed_types: ['tool:ready'] },
+		});
 		expect(codes(delivery)).toEqual([]);
-	});
 
-	it('builds a guard, so the listener is attached rather than silently skipped', () => {
-		expect(
-			createToolMessageGuard({
-				slug: 'fixture',
-				declaration: { expected_origin: 'self', allowed_types: ['tool:ready'] },
-				hostOrigin: HOST_ORIGIN,
-				toolWindow: { name: 'tool-frame' },
-				dispatch: () => {},
-			}),
-		).not.toBeNull();
-	});
-
-	it('refuses the compliant Tool frame, because its own origin is "null"', () => {
 		const toolWindow = { name: 'tool-frame' };
 		const seen: unknown[] = [];
 		const guard = createToolMessageGuard({
@@ -507,35 +525,33 @@ describe('Tool embed policy — the opaque-origin constraint on a framed Tool', 
 			toolWindow,
 			dispatch: (m) => seen.push(m),
 		});
-		const verdict = guard?.({
-			origin: 'null',
-			source: toolWindow,
-			data: { type: 'tool:ready' },
-		});
-		expect(verdict).toEqual({ accepted: false, reason: 'origin-mismatch' });
-		expect(seen).toEqual([]);
+		expect(
+			guard?.({
+				origin: HOST_ORIGIN,
+				source: toolWindow,
+				data: { type: 'tool:ready', payload: { version: 1 } },
+			}),
+		).toEqual({ accepted: true, message: { type: 'tool:ready', payload: { version: 1 } } });
+		expect(seen).toHaveLength(1);
 	});
 
-	it('refuses a cross-origin Tool frame too — it reports "null", not its URL origin', () => {
-		// The gate-accepted `external_exception` form: the declared
-		// origin matches the frame src's URL. The browser still reports
-		// the frame as opaque, so the runtime refusal is identical.
-		const crossOrigin = {
-			kind: 'external_exception',
-			external_url: 'https://tool.example/app/',
-			iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+	it('external: the declaration passes the gate, but the opaque frame reports "null"', () => {
+		const crossOrigin = externalDelivery({
 			host_message: {
 				expected_origin: 'https://tool.example',
 				allowed_types: ['tool:ready'],
 			},
-		};
+		});
 		expect(codes(crossOrigin)).toEqual([]);
 
 		const toolWindow = { name: 'tool-frame' };
 		const seen: unknown[] = [];
 		const guard = createToolMessageGuard({
 			slug: 'fixture',
-			declaration: crossOrigin.host_message,
+			declaration: {
+				expected_origin: 'https://tool.example',
+				allowed_types: ['tool:ready'],
+			},
 			hostOrigin: HOST_ORIGIN,
 			toolWindow,
 			dispatch: (m) => seen.push(m),
@@ -547,15 +563,11 @@ describe('Tool embed policy — the opaque-origin constraint on a framed Tool', 
 		expect(seen).toEqual([]);
 	});
 
-	it('closes on the sandbox, not on the guard: a matching origin would be accepted', () => {
-		// `MessageEvent.origin` is written by the browser, never by the
-		// sender, so the guard's equality check is trustworthy — but it
-		// can only be satisfied by the origin the frame actually runs
-		// on, and this policy makes that `"null"` for every framed Tool.
-		// So the accept branch is unreachable under this sandbox policy
-		// NOT because the guard would refuse it, but because no document
-		// in the frame can report that origin. The channel is therefore
-		// closed by the sandbox rules, not by the manifest.
+	it('external: the guard would accept the declared origin — the sandbox is what makes it unreachable', () => {
+		// The accept branch is unreachable for an opaque frame NOT
+		// because the guard refuses the declared origin, but because no
+		// document in the frame can report it. The channel is closed by
+		// the sandbox rule, not by the declaration.
 		const toolWindow = { name: 'tool-frame' };
 		const seen: unknown[] = [];
 		const guard = createToolMessageGuard({

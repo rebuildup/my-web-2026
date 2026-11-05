@@ -4,3 +4,42 @@
 [submodule "external/readmark"]
 	path = external/readmark
 	url = https://github.com/rebuildup/readmark.git
+[submodule "external/color-palette"]
+	path = external/color-palette
+	url = https://github.com/rebuildup/tool-color-palette.git
+[submodule "external/qr-generator"]
+	path = external/qr-generator
+	url = https://github.com/rebuildup/tool-qr-generator.git
+[submodule "external/text-counter"]
+	path = external/text-counter
+	url = https://github.com/rebuildup/tool-text-counter.git
+[submodule "external/sequential-png-preview"]
+	path = external/sequential-png-preview
+	url = https://github.com/rebuildup/tool-sequential-png-preview.git
+[submodule "external/svg2tsx"]
+	path = external/svg2tsx
+	url = https://github.com/rebuildup/tool-svg2tsx.git
+[submodule "external/business-mail-block"]
+	path = external/business-mail-block
+	url = https://github.com/rebuildup/tool-business-mail-block.git
+[submodule "external/ae-expression"]
+	path = external/ae-expression
+	url = https://github.com/rebuildup/tool-ae-expression.git
+[submodule "external/pomodoro"]
+	path = external/pomodoro
+	url = https://github.com/rebuildup/tool-pomodoro.git
+[submodule "external/pi-game"]
+	path = external/pi-game
+	url = https://github.com/rebuildup/tool-pi-game.git
+[submodule "external/fillgen"]
+	path = external/fillgen
+	url = https://github.com/rebuildup/tool-fillgen.git
+[submodule "external/code-type-p5"]
+	path = external/code-type-p5
+	url = https://github.com/rebuildup/tool-code-type-p5.git
+[submodule "external/history-quiz"]
+	path = external/history-quiz
+	url = https://github.com/rebuildup/tool-history-quiz.git
+[submodule "external/mic-level"]
+	path = external/mic-level
+	url = https://github.com/rebuildup/tool-mic-level.git

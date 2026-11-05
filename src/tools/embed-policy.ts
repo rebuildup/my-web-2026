@@ -41,19 +41,23 @@
  * 1. **Fail closed on the manifest.** `evaluateToolEmbedPolicy()` is a
  *    pure function over one manifest entry. Any violation means the
  *    host renders a "blocked" placeholder instead of an iframe. There
- *    is no implicit default sandbox: `delivery.iframe` is REQUIRED for
+ *    is no implicit default policy: `delivery.iframe` is REQUIRED for
  *    every embeddable Tool.
- * 2. **Same-origin artefact, sandboxed away from the host origin.**
- *    `allow-same-origin` is always rejected, together with every token
- *    that can navigate / escape / unlock storage
+ * 2. **First-party Tools are NOT sandboxed (ADR-0020).** A
+ *    `same_origin_static` artefact is served from the host's own
+ *    origin, and the iframe is a layout / URL / CSS-DOM container, not
+ *    a security boundary. The boundary for first-party code is the
+ *    build / review / release boundary, so a `sandbox` declaration is
+ *    itself a violation (`embed.sandbox.not-allowed-for-first-party`)
+ *    rather than a weaker one. An `external_exception` frame is a
+ *    foreign origin the host does not review, so it still declares a
+ *    sandbox: `allow-same-origin` is always rejected there together
+ *    with every token that can navigate / escape / unlock storage
  *    (`allow-top-navigation*`, `allow-popups-to-escape-sandbox`,
- *    `allow-storage-access-by-user-activation`). Capability tokens
- *    (`allow-forms`, `allow-popups`, `allow-modals`, …) are allowed
- *    only together with an explicit capability grant (`iframe.allow`,
- *    which the route renders as the `<iframe allow=…>` attribute) and a
- *    written reason (`iframe.sandbox_rationale`). Both are required by
- *    this Issue's manifest schema — ADR-0006 does NOT contain the
- *    `allow-same-origin` rule nor a written-reason requirement.
+ *    `allow-storage-access-by-user-activation`), and capability tokens
+ *    (`allow-forms`, `allow-popups`, …) require both an explicit
+ *    capability grant (`iframe.allow`, rendered as `<iframe allow=…>`)
+ *    and a written reason (`iframe.sandbox_rationale`).
  * 3. **Referrer policy is declared, not defaulted.** Only
  *    `no-referrer`, `same-origin`, and `strict-origin` are accepted;
  *    anything that can leak the full host URL cross-origin
@@ -83,21 +87,19 @@
  *    `targetOrigin: '*'` and any target origin that is not the resolved
  *    one.
  *
- * Known limitation (owner decision, deliberately NOT decided here):
- * rule 2 denies `allow-same-origin`, so EVERY framed Tool runs in an
- * OPAQUE origin — on both delivery kinds, whatever its `src` URL says —
- * and every message it posts reports `event.origin === "null"`, never
- * a concrete origin. A `'self'` declaration therefore cannot be
- * satisfied at runtime, and neither can a literal `https://…` one: the
- * guard attaches (the declaration is syntactically valid) and then
- * refuses every event as `origin-mismatch`. That is fail-closed, and it
- * is also why no Tool declares `host_message` today. Making such a
- * channel work needs a sandbox-compatible identity (an opaque-origin
- * marker, frame `contentWindow` plus a nonce handshake) — an
- * architectural change that is ADR-0006's re-evaluation trigger and
- * belongs to the first Tool that actually needs it, not to this Issue.
- * Both candidate contracts are written out in
- * `docs/tools/embed-policy.md` §5a.
+ * Message origin, by delivery kind (ADR-0020 §4.1):
+ *
+ *   - `same_origin_static`: the frame runs on the host origin, so a
+ *     message it posts carries that concrete origin. A `'self'`
+ *     declaration resolves to the host origin and MATCHES at runtime.
+ *   - `external_exception`: the frame is sandboxed without
+ *     `allow-same-origin`, so it runs in an OPAQUE origin and reports
+ *     `event.origin === "null"`. A declaration still resolves for the
+ *     host → Tool direction, but the inbound guard refuses every event
+ *     as `origin-mismatch`; that stays fail-closed. Making a
+ *     cross-origin channel work needs a new architectural decision,
+ *     not a manifest edit. Both contracts are written out in
+ *     `docs/tools/embed-policy.md` §5a.
  *
  * This module is the single source of truth for those rules. It is
  * consumed by three surfaces, and all three MUST agree:
@@ -144,13 +146,16 @@ export const SANDBOX_TOKENS = [
 export type SandboxToken = (typeof SANDBOX_TOKENS)[number];
 
 /**
- * Tokens that are always rejected. Each one either defeats the point
- * of the sandbox or lets the frame act on the HOST:
+ * Tokens that are always rejected on an `external_exception` frame.
+ * Each one either defeats the point of the sandbox or lets the frame
+ * act on the HOST:
  *
- *   - `allow-same-origin` — the artefact is served from the host
- *     origin, so this grants the Tool the host's origin (cookies,
- *     storage, same-origin fetch to `/api/v1/*`). Combined with
- *     `allow-scripts` it is a full sandbox escape.
+ *   - `allow-same-origin` — combined with `allow-scripts` it is a full
+ *     sandbox escape: the framed document keeps its own origin instead
+ *     of an opaque one, so its storage / cookies / same-origin
+ *     requests become reachable. (A first-party `same_origin_static`
+ *     Tool is not sandboxed at all — ADR-0020 — so this table is only
+ *     consulted for the external kind.)
  *   - `allow-top-navigation*` — lets the Tool replace the host page.
  *   - `allow-popups-to-escape-sandbox` — a popup that is not sandboxed.
  *   - `allow-storage-access-by-user-activation` — asks the browser to
@@ -168,13 +173,15 @@ export const SANDBOX_TOKENS_FORBIDDEN: ReadonlySet<string> = new Set([
 
 /**
  * Tokens that grant a capability beyond "run scripts in an opaque
- * origin". They are allowed, but only when the manifest declares BOTH
- * the capability grant (`iframe.allow`, rendered as the
- * `<iframe allow=…>` attribute) and a written reason
+ * origin". They are allowed on an `external_exception` frame, but only
+ * when the manifest declares BOTH the capability grant (`iframe.allow`,
+ * rendered as the `<iframe allow=…>` attribute) and a written reason
  * (`iframe.sandbox_rationale`). Issue #465 introduces both
  * requirements (ADR-0006 does not state an `allow-same-origin` rule);
  * this extends the always-denied family to the whole conditional set
- * so the answer is uniform instead of per-token folklore.
+ * so the answer is uniform instead of per-token folklore. A
+ * first-party Tool declares no sandbox, so this set does not apply to
+ * it.
  */
 export const SANDBOX_TOKENS_CONDITIONAL: ReadonlySet<string> = new Set([
 	'allow-downloads',
@@ -223,7 +230,11 @@ export interface ToolIframeDeclaration {
 	readonly referrer_policy?: string;
 	/** Capability grant list (Permissions-Policy style tokens). */
 	readonly allow?: string;
-	/** Written reason, required alongside any conditional token. */
+	/**
+	 * Written reason, required alongside any conditional sandbox token
+	 * on an `external_exception` frame. A first-party Tool declares no
+	 * sandbox, so it has no conditional tokens to justify.
+	 */
 	readonly sandbox_rationale?: string;
 }
 
@@ -269,6 +280,7 @@ export type EmbedViolationCode =
 	| 'embed.frame-src.cross-origin'
 	| 'embed.frame-src.not-https'
 	| 'embed.iframe.missing'
+	| 'embed.sandbox.not-allowed-for-first-party'
 	| 'embed.sandbox.missing'
 	| 'embed.sandbox.unknown-token'
 	| 'embed.sandbox.duplicate-token'
@@ -501,20 +513,40 @@ export function evaluateIframeDeclaration(
 			violation(
 				slug,
 				'embed.iframe.missing',
-				`${slug}: delivery.iframe is required for ${subject.kind}; the host has no implicit sandbox default (fail closed)`,
+				`${slug}: delivery.iframe is required for ${subject.kind}; the host has no implicit policy default (fail closed)`,
 			),
 		);
 		return violations;
 	}
 
 	// --- sandbox -----------------------------------------------------
+	// ADR-0020: a `same_origin_static` Tool is first-party. The iframe
+	// is a layout / URL / CSS-DOM container, not a security boundary,
+	// so declaring a sandbox for it is itself the violation. The build
+	// / review / release boundary is what constrains first-party code.
 	const tokens = parseTokenList(iframe.sandbox);
-	if (tokens.length === 0) {
+	if (subject.kind === 'same_origin_static') {
+		// ANY declaration counts, including `""` — an empty `sandbox`
+		// attribute applies every restriction, so "no tokens" is not
+		// "no sandbox". Absence is the only valid first-party state.
+		if (typeof iframe.sandbox === 'string') {
+			violations.push(
+				violation(
+					slug,
+					'embed.sandbox.not-allowed-for-first-party',
+					`${slug}: delivery.iframe.sandbox must not be declared for same_origin_static; a first-party Tool is served without a sandbox (ADR-0020)`,
+				),
+			);
+		}
+	} else if (tokens.length === 0) {
+		// Only `external_exception` reaches this branch. A foreign frame
+		// still needs an explicit sandbox: the host does not review its
+		// build, so an absent sandbox is a fail-closed violation.
 		violations.push(
 			violation(
 				slug,
 				'embed.sandbox.missing',
-				`${slug}: delivery.iframe.sandbox is required and must contain at least one token`,
+				`${slug}: delivery.iframe.sandbox is required for ${subject.kind} and must contain at least one token`,
 			),
 		);
 	} else {
@@ -542,15 +574,15 @@ export function evaluateIframeDeclaration(
 			typeof iframe.sandbox_rationale === 'string' && iframe.sandbox_rationale.trim().length > 0;
 
 		// The escape case is order-independent, so it is checked against
-		// the whole token set instead of inside the loop: on a
-		// SAME-ORIGIN artefact, `allow-same-origin` hands the Tool the
-		// host's own origin.
+		// the whole token set instead of inside the loop:
+		// `allow-scripts allow-same-origin` removes the isolation the
+		// external sandbox exists to provide.
 		if (seen.has(SANDBOX_TOKEN_FREE) && seen.has('allow-same-origin')) {
 			violations.push(
 				violation(
 					slug,
 					'embed.sandbox.same-origin-escape',
-					`${slug}: "allow-scripts allow-same-origin" hands the Tool the host origin (cookies, storage, same-origin /api/v1/*); it is always rejected, not merely documented`,
+					`${slug}: "allow-scripts allow-same-origin" removes the sandbox's origin isolation; it is always rejected for an external frame, not merely documented`,
 				),
 			);
 		}
@@ -572,7 +604,7 @@ export function evaluateIframeDeclaration(
 					violation(
 						slug,
 						'embed.sandbox.forbidden-token',
-						`${slug}: sandbox token "${token}" is never allowed for an embedded Tool`,
+						`${slug}: sandbox token "${token}" is never allowed for an embedded external Tool`,
 					),
 				);
 				continue;
@@ -663,9 +695,9 @@ export function evaluateHostMessageDeclaration(
 		} else if (subject.frame_origin !== 'unresolved') {
 			// Cross-origin frame: the declared origin must match the
 			// origin the frame's URL implies, so a manifest cannot name
-			// an origin the frame does not even point at. (It is NOT the
-			// origin the frame runs on — under this policy the sandbox
-			// makes every frame opaque; see the NOTE below.)
+			// an origin the frame does not even point at. (For an
+			// `external_exception` frame it is NOT the origin the frame
+			// runs on — the sandbox makes it opaque; see the NOTE below.)
 			let frameOrigin: string | null = null;
 			try {
 				frameOrigin = new URL(subject.frame_src).origin;
@@ -692,21 +724,25 @@ export function evaluateHostMessageDeclaration(
 			),
 		);
 	}
-	// NOTE (Issue #465, reviews): under this policy NO `host_message`
-	// declaration can be satisfied at runtime, on either embeddable
-	// kind. `allow-same-origin` is always denied, so every framed Tool
-	// runs in an opaque origin and every event it posts carries
-	// `event.origin === "null"` — a `'self'` declaration on a
-	// `same_origin_static` entry, and a literal `https://…` declaration
-	// on an `external_exception` entry alike. The guard attaches (the
-	// declaration is syntactically valid) and then refuses every event
-	// as `origin-mismatch`. That stays a runtime refusal rather than a
-	// build-time violation on purpose: the gate would be pre-deciding
-	// the architecture question (opaque-origin identity via frame
-	// `contentWindow` or a host-issued nonce handshake) that ADR-0006's
-	// re-evaluation trigger owns. Both constraints, and the two
-	// candidate contracts, are written out in `docs/tools/embed-policy.md`
-	// §5a; the behaviour is pinned by `src/tools/embed-policy.test.ts`.
+	// NOTE (ADR-0020 §4.1): the runtime outcome differs by delivery kind.
+	//
+	//   - `same_origin_static` — the frame is NOT sandboxed, so it runs
+	//     on the host origin and a `'self'` declaration resolves to
+	//     exactly the `event.origin` the frame reports. The guard
+	//     accepts a matching message; this is the contract first-party
+	//     Tools use.
+	//   - `external_exception` — the frame is sandboxed without
+	//     `allow-same-origin`, so it runs in an opaque origin and every
+	//     event it posts carries `event.origin === "null"`. A literal
+	//     `https://…` declaration attaches the guard and then refuses
+	//     every event as `origin-mismatch`. That stays a runtime
+	//     refusal rather than a build-time violation on purpose: the
+	//     gate would be pre-deciding the architecture question
+	//     (opaque-origin identity via frame `contentWindow` or a
+	//     host-issued nonce handshake) that ADR-0006's re-evaluation
+	//     trigger owns. Both constraints, and the candidate contracts,
+	//     are written out in `docs/tools/embed-policy.md` §5a; the
+	//     behaviour is pinned by `src/tools/embed-policy.test.ts`.
 
 	const types = declaration.allowed_types;
 	if (!Array.isArray(types) || types.length === 0) {
@@ -798,14 +834,13 @@ export interface ToolMessageGuardOptions {
  * attach rather than guessing.
  *
  * `frameOrigin` is the origin the Tool frame actually runs on. It is
- * optional here because the runtime guard cannot know it: the host
- * holds an opaque `iframe.contentWindow` and only `event.origin` is
- * readable. So this branch is a defence-in-depth helper for callers
- * that DO know the frame origin (the build-time gate derives it from
- * the declared `external_url`; `src/tools/use-tool-host-message.ts`
- * passes nothing, which is why the runtime defence is `event.origin` +
- * `event.source` equality). Today no production caller supplies it and
- * only the unit test exercises the mismatch branch — it is not a
+ * optional here because the runtime guard need not know it: only
+ * `event.origin` is consulted. So this branch is a defence-in-depth
+ * helper for callers that DO know the frame origin (the build-time
+ * gate derives it from the declared `external_url`;
+ * `src/tools/use-tool-host-message.ts` passes nothing, which is why
+ * the runtime defence is `event.origin` + `event.source` equality).
+ * Only the unit test exercises the mismatch branch — it is not a
  * runtime guarantee, and the runtime does not claim one.
  *
  * This function is also what makes `'self'` usable in BOTH directions:

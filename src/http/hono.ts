@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import packageJson from '../../package.json';
+import { productionWriteRefusal, resolveDataSource } from '../cloudflare/data-source';
+import { createAuditLogger } from '../logging/logger';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
@@ -58,6 +60,18 @@ export const externalBoundary = new Hono<{
 	Variables: { requestId?: string };
 }>();
 
+/**
+ * Boundary diagnostics (Issue #377). Every argument is redacted
+ * before it reaches the log stream (Issue #467).
+ */
+const boundaryLogger = createAuditLogger('http.boundary');
+
+/**
+ * Methods that may change durable state. The production-readonly
+ * guard refuses exactly these.
+ */
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 // Shared-cache isolation (Issue #460) is registered FIRST so it wraps
 // every other `/api/v1/*` layer, the CORS policy below, and the local
 // mock gate included. Every response on this boundary is a function of
@@ -88,19 +102,23 @@ externalBoundary.use('/api/v1/*', sharedCacheIsolation);
 // all. See `src/http/cors/README.md` and `docs/security/api-cors.md`.
 externalBoundary.use('*', corsMiddleware);
 
-// Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
-// (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
-// `src/cloudflare/auth/env.d.ts` for the type augmentation), forward
-// `/api/v1/*` requests to the canned-data mock sub-app. If the mock
-// has no handler for the path (404), fall through to the real handlers
-// below — designers can still hit portfolio / keys endpoints against
-// the real boundary in mock mode.
+// Local API mock gate (Issue #166): when the runtime reports the mock
+// data source (`LOCAL_API_MODE=mock` in `.dev.vars`, NOT in
+// `wrangler.jsonc#vars` — see `src/cloudflare/auth/env.d.ts` for the
+// type augmentation), forward `/api/v1/*` requests to the canned-data
+// mock sub-app. If the mock has no handler for the path (404), fall
+// through to the real handlers below — designers can still hit
+// portfolio / keys endpoints against the real boundary in mock mode.
+//
+// The gate asks the data-source descriptor (Issue #377) rather than
+// the raw variable, so the explicit production opt-in wins over a
+// stale `LOCAL_API_MODE=mock` in a developer's `.dev.vars`.
 //
 // Production code path (env unset) is unchanged: the gate's `next()`
 // runs, request-id middleware applies, and the real routers execute.
 const mockApp = createMockApp();
 externalBoundary.use('/api/v1/*', async (c, next) => {
-	if (c.env.LOCAL_API_MODE === 'mock') {
+	if (resolveDataSource(c.env).api_mode === 'mock') {
 		const mockResponse = await mockApp.fetch(c.req.raw, c.env);
 		if (mockResponse.status !== 404) return mockResponse;
 	}
@@ -112,6 +130,40 @@ externalBoundary.use('/api/v1/*', async (c, next) => {
 // New routers compose under the existing `/api/v1/*` prefixes; no
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
+// Production-readonly write guard (Issue #377): while the runtime's
+// bindings point at the PRODUCTION D1 / R2 (the explicit
+// `pnpm dev:production-data` opt-in), every write against this
+// boundary is refused with a stable reason instead of reaching the
+// production database.
+//
+// The guard is registered after the request-id middleware (so a
+// refusal carries the correlation header) and before every router, so
+// no path can reach a write handler while the runtime is
+// production-bound. Reads are untouched — the whole point of the mode
+// is to let a developer SEE production data.
+//
+// Fail-closed: the decision comes from `src/cloudflare/data-source.ts`,
+// which treats an unrecognised data-source value as production-bound.
+// The deployed Worker has no data-source binding at all, so the guard
+// never fires in production.
+externalBoundary.use('/api/v1/*', async (c, next) => {
+	if (!UNSAFE_METHODS.has(c.req.method)) {
+		await next();
+		return;
+	}
+	const refusal = productionWriteRefusal(c.env, `api:${c.req.method}`);
+	if (!refusal) {
+		await next();
+		return;
+	}
+	boundaryLogger.warn('write refused — runtime is bound to production data', {
+		method: c.req.method,
+	});
+	return c.json(
+		{ error: refusal.code, operation: refusal.operation, message: refusal.message },
+		403,
+	);
+});
 // Cross-site request forgery guard (Issue #440). TanStack Start's
 // default CSRF middleware only ever sees requests the Worker entry
 // hands to the Start handler; everything answered here never reaches

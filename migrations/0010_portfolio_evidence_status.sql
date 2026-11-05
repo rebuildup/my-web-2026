@@ -1,0 +1,50 @@
+-- Migration 0010 — Portfolio evidence status (Issue #811).
+--
+-- Purpose
+-- -------
+-- The owner's 2026-11-02 decision (ADR-0019,
+-- `docs/domain/portfolio-migration-decisions.md`) publishes the legacy
+-- corpus, which has no rights record in this repository. The public
+-- surface has to be able to say so, and the row is where that fact
+-- lives:
+--
+--   evidence_status  what this repository KNOWS about the project's
+--                    rights. `reviewed` = the rights evidence is here and
+--                    the gate confirmed it. `unreviewed` = it is not —
+--                    the legacy corpus has no rights record at all.
+--
+-- It is an INPUT, not a verdict. The repository states what it knows;
+-- the owner decides what is published; the surface renders the state.
+--
+-- The migrated rows carry `unreviewed` (the migration script writes it);
+-- every row that exists today was authored in this repository and keeps
+-- `reviewed`.
+--
+-- Why this migration does NOT rebuild the table
+-- ----------------------------------------------
+-- Making `role` nullable would need a table rebuild, and SQLite's
+-- `ALTER TABLE ... RENAME TO` REWRITES the foreign-key clauses of the
+-- child tables: `portfolio_link.project_id` and
+-- `portfolio_media.project_id` would end up referencing the temporary
+-- table name, and every later insert into them would fail with
+-- "no such table" (measured on the local D1 while building this
+-- migration — the runner ignores `PRAGMA legacy_alter_table`, so the
+-- rewrite cannot be turned off).
+--
+-- A rebuild of three tables in the production database is a bigger blast
+-- radius than one added column, so the column is added and the OTHER
+-- half of the same question is answered in the layer that owns the
+-- meaning:
+--
+--   `role` stays `NOT NULL`, and "no role is recorded" is the EMPTY
+--   STRING in the column. `src/portfolio/schema.ts#rowToProject` maps
+--   the empty string to `null`, which is the value the public contract
+--   carries (Issue #813: the role is either recorded or not recorded).
+--   A placeholder STRING would be text this repository invented about
+--   the work, which the owner's decision forbids.
+--
+-- One column, one statement: the migration is additive, and applying it
+-- to a populated database changes no existing row.
+ALTER TABLE portfolio_project
+    ADD COLUMN evidence_status TEXT NOT NULL DEFAULT 'reviewed'
+        CHECK (evidence_status IN ('reviewed', 'unreviewed'));

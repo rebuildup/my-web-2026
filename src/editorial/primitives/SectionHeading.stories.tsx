@@ -31,6 +31,20 @@ export const TitleOnly: Story = {
 	},
 };
 
+/**
+ * Issue #792 — a bilingual title is two blocks. The JA half and its EN
+ * rendering never share a line, at any width.
+ */
+export const Bilingual: Story = {
+	args: {
+		eyebrow: 'Capabilities',
+		title: 'できごと',
+		titleEn: "What's here",
+		description:
+			'個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。',
+	},
+};
+
 export const WithIdForAria: Story = {
 	args: {
 		id: 'demo-section',

@@ -38,7 +38,42 @@ export interface StatusTilesProps {
 	 * server HTML and the hydrated HTML disagree.
 	 */
 	timeZone?: string;
+	/**
+	 * Whether the component renders its own `<section>` chrome
+	 * (heading, eyebrow, description column, page rhythm) or only the
+	 * body.
+	 *
+	 * Issue #884 merges the three "is this site up right now" blocks —
+	 * platform health, page views, reactions — into ONE Home section.
+	 * The composition that groups them belongs to
+	 * `src/home/composer.tsx` (it owns the Home reading order), so the
+	 * composer renders the section heading and this component renders
+	 * `'body'`: the description it owns, the rows, the observed-at
+	 * line and the known incidents. The default `'section'` is the
+	 * pre-#884 output, so every other caller (Storybook, the
+	 * verification gallery) is unchanged.
+	 */
+	chrome?: 'section' | 'body';
 }
+
+/**
+ * The section description. It states what the rows measure and why an
+ * unobserved row is not a fault (Issue #502), so it stays with the
+ * obligation that owns the rows rather than being re-typed by the
+ * composer that now renders the enclosing section.
+ */
+const STATUS_DESCRIPTION =
+	'各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。';
+
+const statusDescriptionClassName = /*#__PURE__*/ css({
+	margin: '0',
+	marginBlockEnd: '8',
+	fontFamily: 'sans',
+	fontSize: 'md',
+	lineHeight: '1.6',
+	color: 'text.muted',
+	textWrap: 'pretty',
+});
 
 const HEALTH_TONE: Record<SystemServiceHealth, 'accent' | 'neutral'> = {
 	ok: 'accent',
@@ -112,8 +147,158 @@ export function StatusTiles({
 	headingId = 'status-heading',
 	locale,
 	timeZone,
+	chrome = 'section',
 }: StatusTilesProps) {
 	const format = createHomeFormat({ locale, timeZone });
+	const body = (
+		<>
+			{chrome === 'body' ? (
+				<p className={statusDescriptionClassName}>{STATUS_DESCRIPTION}</p>
+			) : null}
+			<dl
+				className={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '10',
+					margin: '0',
+					padding: '0',
+				})}
+			>
+				{services.map((service) => {
+					const status = statusFor(service.id, statuses);
+					// Issue #502: no entry means "not observed",
+					// not "unreachable". The absence of a reading
+					// is its own fact and must not wear the
+					// failure state.
+					const health: SystemServiceHealth = status?.health ?? 'unobserved';
+					return (
+						<div
+							key={service.id}
+							className={css({
+								display: 'grid',
+								// Issue #300: measured at the Container
+								// width — label + binding needs 202px,
+								// the longest detail 300px, the badge
+								// 82px. `3fr/5fr` gave the label only
+								// 181px (「External boundary」 wrapped)
+								// and `4fr/5fr` starved the detail to
+								// 269px (longest line wrapped). Content-
+								// sized label + 1fr detail + auto badge
+								// with a 12px gutter fits all three on
+								// one line (608px of 613px).
+								gridTemplateColumns: {
+									base: '1fr',
+									md: 'minmax(0, auto) minmax(0, 1fr) auto',
+								},
+								alignItems: 'baseline',
+								gap: { base: '2', md: '3' },
+							})}
+						>
+							<dt
+								className={css({
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'lg',
+									fontWeight: '700',
+									color: 'text.default',
+									lineHeight: '1.4',
+									letterSpacing: '-0.01em',
+								})}
+							>
+								{service.label}
+								<span
+									className={css({
+										marginInlineStart: '3',
+										fontFamily: 'mono',
+										fontSize: 'sm',
+										fontWeight: '400',
+										color: 'text.muted',
+										letterSpacing: '0.02em',
+									})}
+								>
+									{service.binding}
+								</span>
+							</dt>
+							<dd
+								className={css({
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									color: 'text.muted',
+									lineHeight: '1.6',
+								})}
+							>
+								{status?.detail ?? service.description}
+								{health === 'unobserved' ? (
+									<span
+										className={css({
+											marginInlineStart: '2',
+											fontFamily: 'mono',
+											fontSize: 'sm',
+											letterSpacing: '0.02em',
+										})}
+									>
+										— {UNOBSERVED_DETAIL}
+									</span>
+								) : null}
+							</dd>
+							{/* Issue #718: the health badge is a second
+									    description of the same term, so it is a
+									    `<dd>` — not a bare `<div>`. A `<dl>` group
+									    may only contain `<dt>` / `<dd>` (WCAG 2.2
+									    SC 1.3.1); the badge keeps its own grid
+									    column and its own box, so the row looks
+									    exactly as it did. */}
+							<dd
+								className={css({
+									display: 'flex',
+									justifyContent: { base: 'flex-start', md: 'flex-end' },
+									margin: '0',
+								})}
+							>
+								<Badge tone={HEALTH_TONE[health]}>
+									<span
+										className={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: '1',
+										})}
+									>
+										<StateMark kind={health} size="sm" />
+										{HEALTH_LABEL[health]}
+									</span>
+								</Badge>
+							</dd>
+						</div>
+					);
+				})}
+			</dl>
+			<p
+				className={css({
+					marginBlockStart: '10',
+					margin: '0',
+					fontFamily: 'mono',
+					fontSize: 'sm',
+					color: 'text.muted',
+				})}
+			>
+				observed at {format.formatInstant(observedAt)}
+			</p>
+			<IncidentList incidents={incidents} headingId={`${headingId}-incidents`} />
+		</>
+	);
+	if (chrome === 'body') {
+		return (
+			<div
+				className={css({
+					display: 'flex',
+					flexDirection: 'column',
+				})}
+			>
+				{body}
+			</div>
+		);
+	}
 	return (
 		<section
 			aria-labelledby={headingId}
@@ -124,141 +309,12 @@ export function StatusTiles({
 			<Container>
 				<SectionHeading
 					id={headingId}
-					eyebrow="02 — System status"
+					eyebrow="System status"
 					title="プラットフォームの状態 / Platform health"
-					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。"
+					description={STATUS_DESCRIPTION}
 					variant="spread"
 				>
-					<dl
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-							margin: '0',
-							padding: '0',
-						})}
-					>
-						{services.map((service) => {
-							const status = statusFor(service.id, statuses);
-							// Issue #502: no entry means "not observed",
-							// not "unreachable". The absence of a reading
-							// is its own fact and must not wear the
-							// failure state.
-							const health: SystemServiceHealth = status?.health ?? 'unobserved';
-							return (
-								<div
-									key={service.id}
-									className={css({
-										display: 'grid',
-										// Issue #300: measured at the Container
-										// width — label + binding needs 202px,
-										// the longest detail 300px, the badge
-										// 82px. `3fr/5fr` gave the label only
-										// 181px (「External boundary」 wrapped)
-										// and `4fr/5fr` starved the detail to
-										// 269px (longest line wrapped). Content-
-										// sized label + 1fr detail + auto badge
-										// with a 12px gutter fits all three on
-										// one line (608px of 613px).
-										gridTemplateColumns: {
-											base: '1fr',
-											md: 'minmax(0, auto) minmax(0, 1fr) auto',
-										},
-										alignItems: 'baseline',
-										gap: { base: '2', md: '3' },
-									})}
-								>
-									<dt
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'lg',
-											fontWeight: '700',
-											color: 'text.default',
-											lineHeight: '1.4',
-											letterSpacing: '-0.01em',
-										})}
-									>
-										{service.label}
-										<span
-											className={css({
-												marginInlineStart: '3',
-												fontFamily: 'mono',
-												fontSize: 'sm',
-												fontWeight: '400',
-												color: 'text.muted',
-												letterSpacing: '0.02em',
-											})}
-										>
-											{service.binding}
-										</span>
-									</dt>
-									<dd
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'md',
-											color: 'text.muted',
-											lineHeight: '1.6',
-										})}
-									>
-										{status?.detail ?? service.description}
-										{health === 'unobserved' ? (
-											<span
-												className={css({
-													marginInlineStart: '2',
-													fontFamily: 'mono',
-													fontSize: 'sm',
-													letterSpacing: '0.02em',
-												})}
-											>
-												— {UNOBSERVED_DETAIL}
-											</span>
-										) : null}
-									</dd>
-									{/* Issue #718: the health badge is a second
-									    description of the same term, so it is a
-									    `<dd>` — not a bare `<div>`. A `<dl>` group
-									    may only contain `<dt>` / `<dd>` (WCAG 2.2
-									    SC 1.3.1); the badge keeps its own grid
-									    column and its own box, so the row looks
-									    exactly as it did. */}
-									<dd
-										className={css({
-											display: 'flex',
-											justifyContent: { base: 'flex-start', md: 'flex-end' },
-											margin: '0',
-										})}
-									>
-										<Badge tone={HEALTH_TONE[health]}>
-											<span
-												className={css({
-													display: 'inline-flex',
-													alignItems: 'center',
-													gap: '1',
-												})}
-											>
-												<StateMark kind={health} size="sm" />
-												{HEALTH_LABEL[health]}
-											</span>
-										</Badge>
-									</dd>
-								</div>
-							);
-						})}
-					</dl>
-					<p
-						className={css({
-							marginBlockStart: '10',
-							margin: '0',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						observed at {format.formatInstant(observedAt)}
-					</p>
-					<IncidentList incidents={incidents} headingId={`${headingId}-incidents`} />
+					{body}
 				</SectionHeading>
 			</Container>
 		</section>

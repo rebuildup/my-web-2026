@@ -149,7 +149,13 @@ function PickerSkeleton() {
 				borderWidth: '1px',
 				borderStyle: 'solid',
 				borderColor: 'border.strong',
-				backgroundColor: 'bg.muted',
+				// Issue #887 — `bg.muted` was never a registered token, so
+				// Panda emitted the literal `background-color: bg.muted`
+				// (invalid CSS) and the skeleton rendered on the dialog
+				// canvas with only its hairline. The placeholder now sits
+				// in the sunken well the 4-step surface ladder reserves
+				// for exactly this "not yet filled in" state.
+				backgroundColor: 'bg.subtle',
 			})}
 		/>
 	);

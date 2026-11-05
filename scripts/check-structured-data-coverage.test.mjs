@@ -81,8 +81,15 @@ test('an entry without a note is rejected — an unexplained entry is an oversig
 });
 
 test('not-implemented may not claim emitted types', () => {
+	// The fixture route is taken from the contract rather than named:
+	// Issue #785 turned `/tools` into `implemented` (it now emits a
+	// BreadcrumbList), and a hard-coded path turns that decision into a
+	// silent failure of this test. Picking the first entry that is still
+	// `not-implemented` keeps the fixture about the RULE.
+	const target = CONTRACT.routes.find((route) => route.status === 'not-implemented');
+	assert.ok(target, 'the contract must keep at least one not-implemented route as a fixture');
 	const registry = CONTRACT.routes.map((route) =>
-		route.path === '/tools' ? { ...route, expectedTypes: ['Person'] } : route,
+		route.path === target.path ? { ...route, expectedTypes: ['Person'] } : route,
 	);
 	const result = check(ROUTE_PATHS, registry);
 	assert.ok(result.errors.some((error) => /is not-implemented but claims Person/.test(error)));

@@ -198,7 +198,7 @@ export function makeToolArtifactFixture(targetDir, { quiet = false } = {}) {
 						kind: 'same_origin_static',
 						artifact_path: `/tools/${spec.slug}/app`,
 						entry_html: `/tools/${spec.slug}/app/index.html`,
-						iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+						iframe: { referrer_policy: 'no-referrer' },
 					},
 			classification: spec.inventoryOnly ? 'needs_tool_side_fix' : 'same_origin_static',
 			license: 'MIT',

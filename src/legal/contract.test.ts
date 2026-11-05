@@ -136,25 +136,25 @@ describe('vocabulary guards', () => {
 });
 
 describe('evaluateAssetLicense', () => {
-	it('clears a record whose evidence is in the repository', () => {
+	it('reads a record whose evidence is in the repository as reviewed', () => {
 		const review = evaluateAssetLicense(record(), everythingExists);
-		expect(review.decision).toBe('publishable');
+		expect(review.evidenceStatus).toBe('reviewed');
 		expect(review.findings).toEqual([]);
 	});
 
-	it('holds a record whose evidence file does not exist', () => {
+	it('reads a record whose evidence file does not exist as inconsistent', () => {
 		const review = evaluateAssetLicense(record(), NO_FILES);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('inconsistent');
 		expect(codes(review)).toContain('L004');
 		expect(review.findings.find((item) => item.code === 'L004')?.severity).toBe('error');
 	});
 
-	it('holds a record whose pinned evidence changed after the review', () => {
+	it('reads a record whose pinned evidence changed after the review as inconsistent', () => {
 		const pinned = record({
 			evidence: [{ kind: 'repository-file', path: 'LICENSE', sha256: 'a'.repeat(64) }],
 		});
 		const review = evaluateAssetLicense(pinned, everythingExists);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('inconsistent');
 		expect(codes(review)).toContain('L005');
 	});
 
@@ -167,7 +167,7 @@ describe('evaluateAssetLicense', () => {
 			evidenceExists: () => true,
 			sha256Of: () => digest,
 		});
-		expect(review.decision).toBe('publishable');
+		expect(review.evidenceStatus).toBe('reviewed');
 	});
 
 	it('refuses a licence identifier this repository cannot mean', () => {
@@ -175,20 +175,21 @@ describe('evaluateAssetLicense', () => {
 			record({ license: { ...record().license, spdx: 'free' as 'MIT' } }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('inconsistent');
 		expect(codes(review)).toContain('L003');
 	});
 
-	it('requires an unmanaged asset to point at something that was read', () => {
+	it('reads an unmanaged asset with no evidence at all as unreviewed', () => {
 		const review = evaluateAssetLicense(
 			record({ origin: 'third-party-bundled', evidence: [] }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('unreviewed');
 		expect(codes(review)).toContain('L006');
+		expect(review.findings.find((item) => item.code === 'L006')?.severity).toBe('info');
 	});
 
-	it('records "not verified" as a hold rather than as a failure to parse', () => {
+	it('records "not verified" as unreviewed rather than as a failure to parse', () => {
 		const review = evaluateAssetLicense(
 			record({
 				origin: 'unknown-provenance',
@@ -197,7 +198,7 @@ describe('evaluateAssetLicense', () => {
 			}),
 			everythingExists,
 		);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('unreviewed');
 		expect(review.findings.filter((item) => item.severity === 'error')).toEqual([]);
 		expect(codes(review)).toContain('L017');
 		expect(codes(review)).toContain('L018');
@@ -208,17 +209,17 @@ describe('evaluateAssetLicense', () => {
 			record({ verification: { method: 'repository-evidence', checkedOn: null, note: 'when?' } }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('publishable');
+		expect(review.evidenceStatus).toBe('reviewed');
 		expect(codes(review)).toContain('L013');
 	});
 
-	it('holds an attribution duty with no attribution text', () => {
+	it('reads an attribution duty with no attribution text as inconsistent', () => {
 		const base = record().license;
 		const review = evaluateAssetLicense(
 			record({ license: { ...base, attributionRequired: true, attributionText: null } }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('inconsistent');
 		expect(codes(review)).toContain('L007');
 	});
 
@@ -235,7 +236,7 @@ describe('evaluateAssetLicense', () => {
 			}),
 			everythingExists,
 		);
-		expect(review.decision).toBe('publishable');
+		expect(review.evidenceStatus).toBe('reviewed');
 		expect(codes(review)).toContain('L008');
 	});
 
@@ -252,7 +253,7 @@ describe('evaluateAssetLicense', () => {
 			}),
 			everythingExists,
 		);
-		expect(review.decision).toBe('publishable');
+		expect(review.evidenceStatus).toBe('reviewed');
 		expect(review.findings).toEqual([]);
 	});
 
@@ -261,7 +262,7 @@ describe('evaluateAssetLicense', () => {
 			record({ origin: 'third-party-referenced', externalHosts: [] }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('provider-terms');
+		expect(review.evidenceStatus).toBe('provider-terms');
 		expect(codes(review)).toContain('L012');
 	});
 
@@ -270,11 +271,32 @@ describe('evaluateAssetLicense', () => {
 			record({ origin: 'third-party-referenced', externalHosts: ['fonts.example'] }),
 			everythingExists,
 		);
-		expect(review.decision).toBe('provider-terms');
+		expect(review.evidenceStatus).toBe('provider-terms');
 		expect(review.findings.some((item) => item.severity === 'error')).toBe(false);
 	});
 
-	it('reports a held asset that is declared published', () => {
+	it('warns about a record that contradicts the repository and is published', () => {
+		const review = evaluateAssetLicense(
+			record({
+				evidence: [{ kind: 'repository-file', path: 'MISSING.md' }],
+				publication: 'published',
+			}),
+			NO_FILES,
+		);
+		expect(review.evidenceStatus).toBe('inconsistent');
+		const contradiction = review.findings.find((item) => item.code === 'L010');
+		expect(contradiction?.severity).toBe('warn');
+	});
+
+	it('does not warn about a contradictory record that is not published', () => {
+		const review = evaluateAssetLicense(
+			record({ evidence: [{ kind: 'repository-file', path: 'MISSING.md' }], publication: 'hold' }),
+			NO_FILES,
+		);
+		expect(codes(review)).not.toContain('L010');
+	});
+
+	it('does not warn about an unreviewed asset that is published (ADR-0019)', () => {
 		const review = evaluateAssetLicense(
 			record({
 				origin: 'unknown-provenance',
@@ -284,20 +306,7 @@ describe('evaluateAssetLicense', () => {
 			}),
 			everythingExists,
 		);
-		const held = review.findings.find((item) => item.code === 'L010');
-		expect(held?.severity).toBe('warn');
-	});
-
-	it('does not warn about a held asset that is not published', () => {
-		const review = evaluateAssetLicense(
-			record({
-				origin: 'unknown-provenance',
-				license: { ...record().license, spdx: 'NOASSERTION' },
-				verification: { method: 'none', checkedOn: null, note: 'unrecorded' },
-				publication: 'hold',
-			}),
-			everythingExists,
-		);
+		expect(review.evidenceStatus).toBe('unreviewed');
 		expect(codes(review)).not.toContain('L010');
 	});
 
@@ -310,7 +319,7 @@ describe('evaluateAssetLicense', () => {
 			}),
 			everythingExists,
 		);
-		expect(review.decision).toBe('hold');
+		expect(review.evidenceStatus).toBe('inconsistent');
 		expect(codes(review)).toContain('L016');
 	});
 });
@@ -320,6 +329,7 @@ function inventory(overrides: Partial<AssetInventoryInput> = {}): AssetInventory
 		records: [record()],
 		auditedFiles: ['public/fixture/one.png'],
 		observations: everythingExists,
+		authority: { publishesUnreviewed: false, source: null, scope: [] },
 		...overrides,
 	};
 }
@@ -425,6 +435,52 @@ describe('evaluateAssetInventory', () => {
 	});
 });
 
+describe('the owner publication decision (ADR-0019 §2.1)', () => {
+	const unreviewedPublished = () =>
+		record({
+			id: 'legacy-corpus',
+			origin: 'unknown-provenance',
+			license: { ...record().license, spdx: 'NOASSERTION' },
+			verification: { method: 'none', checkedOn: null, note: 'unrecorded' },
+			publication: 'published',
+		});
+
+	it('warns about an unreviewed publication the decision does not cover', () => {
+		const result = evaluateAssetInventory(inventory({ records: [unreviewedPublished()] }));
+		const finding = result.findings.find((item) => item.code === 'L019');
+		expect(finding?.severity).toBe('warn');
+		expect(result.verdict).toBe('WARN');
+	});
+
+	it('fails when the decision covers the asset but no decision is recorded', () => {
+		const result = evaluateAssetInventory(
+			inventory({
+				records: [unreviewedPublished()],
+				authority: { publishesUnreviewed: false, source: null, scope: ['legacy-corpus'] },
+			}),
+		);
+		const finding = result.findings.find((item) => item.code === 'L020');
+		expect(finding?.severity).toBe('error');
+		expect(result.verdict).toBe('FAIL');
+	});
+
+	it('accepts an unreviewed publication the owner decided to publish', () => {
+		const result = evaluateAssetInventory(
+			inventory({
+				records: [unreviewedPublished()],
+				authority: {
+					publishesUnreviewed: true,
+					source: 'docs/domain/portfolio-migration-decisions.md',
+					scope: ['legacy-corpus'],
+				},
+			}),
+		);
+		const finding = result.findings.find((item) => item.code === 'L021');
+		expect(finding?.severity).toBe('info');
+		expect(result.verdict).toBe('INFO');
+	});
+});
+
 describe('summaries', () => {
 	it('takes the verdict from the worst severity present', () => {
 		expect(verdictFor([])).toBe('PASS');
@@ -445,7 +501,7 @@ describe('summaries', () => {
 		).toBe('FAIL');
 	});
 
-	it('counts each decision and each severity', () => {
+	it('counts each evidence status and each severity', () => {
 		const evaluated = evaluateAssetInventory(
 			inventory({
 				records: [
@@ -477,8 +533,8 @@ describe('summaries', () => {
 			uncoveredFiles: 1,
 		});
 		expect(summary.records).toBe(3);
-		expect(summary.publishable).toBe(1);
-		expect(summary.hold).toBe(1);
+		expect(summary.reviewed).toBe(1);
+		expect(summary.unreviewed).toBe(1);
 		expect(summary.providerTerms).toBe(1);
 		expect(summary.errors).toBe(1);
 		expect(summary.warnings).toBe(1);

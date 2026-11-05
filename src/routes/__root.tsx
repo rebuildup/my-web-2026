@@ -277,11 +277,12 @@ function RootComponent() {
 				    one, which is exactly the case the two media queries
 				    exist to avoid. The values are the two `bg.canvas`
 				    steps from `src/editorial/semantic-tokens.ts`:
-				    `neutral.0` (light) and `charcoal.950` (dark). The
+				    `neutral.25` (light, Issue #812) and `charcoal.950`
+				    (dark). The
 				    manifest's single `theme_color` cannot be
 				    appearance-conditional, so it carries the static
 				    accent step (`brand.700`) instead. */}
-				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcfd" />
 				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
 				{/* Measurement (Issue #171) behind the consent gate
 				    (Issue #495). `AnalyticsGate` renders nothing — no

@@ -49,6 +49,7 @@ const PROJECT: PortfolioProject = {
 	technologies: ['After Effects'],
 	visibility: 'public',
 	status: 'published',
+	evidenceStatus: 'reviewed',
 	pinned: false,
 	displayOrder: 10,
 	createdAt: Date.UTC(2026, 0, 2),

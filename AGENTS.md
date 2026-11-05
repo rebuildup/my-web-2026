@@ -113,6 +113,12 @@ home/access -> http/access-counter (schema types only)
 home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
 admin -> logging (Issue #467 — admin image diagnostics)
+admin -> cloudflare (Issue #377 — the development data-source contract
+                      `src/cloudflare/data-source.ts`; the admin write
+                      paths ask it whether the runtime may write, and
+                      refuse with a stable reason when it may not. The
+                      module is binding-free: it reads the env value,
+                      never a binding)
 reactions -> cloudflare (env.DB at SSR time)
 http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
@@ -231,7 +237,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
-- `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
+- `src/cloudflare/**` owns Cloudflare-specific runtime behavior. It
+  also owns the **development data-source contract** (Issue #377):
+  `src/cloudflare/data-source.ts` decides which data the runtime is
+  reading (the local copy / the canned mock / the production D1 and
+  R2 reached through `remoteBindings`) and whether the runtime may
+  write. The rule is a property of the Cloudflare runtime, so the
+  module is binding-free and the three consumers — the external HTTP
+  boundary (`http`), the admin write paths (`admin`) and the home's
+  development indicator (`home/status`) — ask ONE module instead of
+  restating it. The mode is carried by one development-only binding,
+  `MY_WEB_2026_DATA_SOURCE`, whose ABSENCE identifies the deployed
+  production Worker; an unrecognised value fails closed (writes are
+  refused and the development screen says so). See
+  `docs/runbook/development-data-source.md`.
 - `src/http/**` owns the external HTTP boundary. It also owns the
   request anomaly contract (Issue #481):
   `src/http/middleware/anomaly-monitor.ts` decides whether the
@@ -307,7 +326,7 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   (`contract.ts`), the fail-closed reader of the reviewed record
   (`inventory.ts`), and the surface that shows one asset's rights,
   provenance, licence, conditions and evidence to a reader
-  (`AssetLicenseReview.tsx`). The publication decision is **derived**
+  (`AssetLicenseReview.tsx`). The **evidence status** is **derived**
   from evidence, never declared by a record, so an asset whose rights
   are unrecorded cannot present itself as cleared. It reads
   `quality/asset-license-inventory.json`, composes `editorial`
@@ -317,6 +336,16 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   `docs/verification/legal/asset-license-review.md` and its
   machine-generated run record is
   `docs/verification/legal/asset-license-review-report.md`.
+  **The review is NOT a precondition for publication** (ADR-0019 /
+  Issue #811): the owner decides what is published, and the repository
+  states what it knows on two axes — `evidenceStatus` (`reviewed` /
+  `unreviewed` / `provider-terms` / `inconsistent`) and `publication`.
+  An `unreviewed` asset is published when the owner says so, and the
+  public surface MUST show that it is unreviewed. The gate is
+  fail-visible, not fail-open: the state itself is not an error, but
+  HIDING it is (`L022`, checked against the disclosure declared in
+  `quality/asset-license-publication-decision.json`). Rights records
+  are never fabricated to make a gate quiet.
   Byte-level licence evidence for a Tool's own checkout belongs to
   Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
   never claim the same files.
@@ -720,9 +749,11 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   `pnpm run issue:closure:check` (offline, part of `validate:fast`) and
   `pnpm run issue:closure:audit` (network, CI step). The canonical
   procedure is [`docs/runbook/issue-lifecycle.md`](docs/runbook/issue-lifecycle.md).
-- Background for the rule: the 2026-10-31 sweep closed 132 Issues with
+- Background for the rule: the 2026-10-31 sweep closed 133 Issues with
   one templated comment; the per-Issue audit is
-  `docs/verification/backlog/closure-audit-2026-10-31.md`.
+  `docs/verification/backlog/closure-audit-2026-10-31.md` (the population
+  was corrected from 132 to 133 on 2026-11-02 — see
+  `docs/verification/backlog/closure-population-correction-2026-11-02.md`).
 
 ## 7. Recovery
 

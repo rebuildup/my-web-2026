@@ -2,46 +2,55 @@ import { css } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
 
 /**
- * SurfaceTreatments — three card-style tiles assembled from the
- * existing editorial primitives, each demonstrating one of the
- * three page-level surface tokens:
+ * SurfaceTreatments — the three page-level surface tokens shown as
+ * stacked bands, each painted in the token's own fill:
  *
- *   - `bg.canvas`  → the page background itself, lifted slightly
- *                    via a `border.subtle` outline.
- *   - `bg.surface` → the default card surface (the
- *                    `neutral.50` tier).
- *   - `accent.surface` → the tinted feature surface, used for
- *                    Hero / feature card backgrounds per
- *                    `colors.md` §"accent.* token roles".
+ *   - `bg.canvas`    → the page background itself.
+ *   - `bg.surface`   → the default card / panel tier.
+ *   - `accent.surface` → the tinted feature surface (Hero / feature
+ *                      card) per `colors.md` §"accent.* token roles".
  *
- * Each tile is composed with the same primitives the rest of the
- * site uses (`Container`-less card, badge pair, monochrome label
- * cluster) so the showcase matches real feature code.
+ * Issue #804 (owner feedback, 2026-11-01): the three samples were
+ * cards outlined with `border.subtle`. On the light appearance that
+ * outline is a near-white hairline on a near-white page — the "white
+ * border" the owner read as decoration rather than structure. The
+ * samples are now full-width bands laid on one `bg.subtle` substrate,
+ * with no border and no divider: the only difference between a band
+ * and the substrate, and between one band and the next, is the fill.
+ * A band whose fill cannot separate itself from the substrate is
+ * therefore visible as exactly that, instead of being propped up by
+ * an outline.
+ *
+ * The substrate is `bg.subtle` rather than `bg.canvas` on purpose:
+ * `bg.canvas` is the page fill, so a `bg.canvas` band would have no
+ * edge at all against a `bg.canvas` substrate. On `bg.subtle` all
+ * three tokens sit one step apart and can be compared honestly.
  */
 export function SurfaceTreatments() {
 	return (
 		<ul
 			className={css({
 				margin: '0',
-				padding: '0',
+				padding: '4',
 				listStyle: 'none',
 				display: 'grid',
-				gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
-				gap: '4',
+				gridTemplateColumns: '1fr',
+				rowGap: '3',
+				backgroundColor: 'bg.subtle',
 			})}
 		>
 			<li>
-				<SurfaceTile
+				<SurfaceBand
 					token="bg.canvas"
 					title="Canvas"
-					description="Page background. Outlined so the card reads as a region without leaving the page surface."
+					description="Page background. The lightest step in the light appearance; the deepest step in the dark one."
 					eyebrow="neutral.0"
 					badges={<Badge tone="neutral">Default</Badge>}
 					variant="canvas"
 				/>
 			</li>
 			<li>
-				<SurfaceTile
+				<SurfaceBand
 					token="bg.surface"
 					title="Surface"
 					description="Card / panel background. The default tier feature code falls back to when no specific surface is called for."
@@ -51,7 +60,7 @@ export function SurfaceTreatments() {
 				/>
 			</li>
 			<li>
-				<SurfaceTile
+				<SurfaceBand
 					token="accent.surface"
 					title="Accent surface"
 					description="Tinted feature surface — Hero / feature card background. Says 'this is the featured region' without competing with the primary CTA."
@@ -64,7 +73,7 @@ export function SurfaceTreatments() {
 	);
 }
 
-interface SurfaceTileProps {
+interface SurfaceBandProps {
 	token: string;
 	title: string;
 	description: string;
@@ -73,78 +82,47 @@ interface SurfaceTileProps {
 	variant: 'canvas' | 'surface' | 'accent';
 }
 
-const SURFACE_CLASS = {
-	canvas: css({
-		backgroundColor: 'bg.canvas',
-		borderColor: 'border.subtle',
-	}),
-	surface: css({
-		backgroundColor: 'bg.surface',
-		borderColor: 'border.subtle',
-	}),
-	accent: css({
-		backgroundColor: 'accent.surface',
-		borderColor: 'border.subtle',
-	}),
+const BAND_FILL = {
+	canvas: css({ backgroundColor: 'bg.canvas' }),
+	surface: css({ backgroundColor: 'bg.surface' }),
+	accent: css({ backgroundColor: 'accent.surface' }),
 };
 
-function SurfaceTile({ token, title, description, eyebrow, badges, variant }: SurfaceTileProps) {
+/**
+ * One band. The fill is painted by the band element itself — there is
+ * no inner "fill span" and no outer outlined card, so the measured
+ * area and the painted area are the same rectangle.
+ */
+function SurfaceBand({ token, title, description, eyebrow, badges, variant }: SurfaceBandProps) {
 	return (
 		<article
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
+			className={`${BAND_FILL[variant]} ${css({
+				display: 'grid',
+				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 1fr) auto' },
+				columnGap: '6',
+				rowGap: '2',
+				alignItems: 'start',
 				paddingBlock: '6',
 				paddingInline: '6',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				height: '100%',
-			})}
+			})}`}
 			data-surface-token={token}
 			data-surface-variant={variant}
 		>
-			{/* Surface fill is applied to an inner span so the
-			    `bg.canvas` / `bg.surface` / `accent.surface` semantic
-			    token — and ONLY that token — paints the tile body.
-			    The outer card keeps its border + padding as
-			    primitives-only chrome. */}
-			<span
-				aria-hidden="true"
-				className={css({
-					position: 'absolute',
-					display: 'none',
-				})}
-			/>
-			<div className={SURFACE_CLASS[variant]}>
-				<header
+			<div className={css({ display: 'flex', flexDirection: 'column', gap: '2', minWidth: '0' })}>
+				<span
 					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '3',
-						paddingBlock: '4',
-						paddingInline: '4',
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						letterSpacing: '0.06em',
+						textTransform: 'uppercase',
+						color: 'text.muted',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.06em',
-							textTransform: 'uppercase',
-							color: 'text.muted',
-						})}
-					>
-						{eyebrow}
-					</span>
-					{badges}
-				</header>
+					{eyebrow}
+				</span>
 				<h3
 					className={css({
 						margin: '0',
-						paddingInline: '4',
 						fontFamily: 'heading',
 						fontSize: 'xl',
 						fontWeight: '700',
@@ -157,8 +135,6 @@ function SurfaceTile({ token, title, description, eyebrow, badges, variant }: Su
 				<p
 					className={css({
 						margin: '0',
-						paddingInline: '4',
-						paddingBlock: '3',
 						fontFamily: 'sans',
 						fontSize: 'sm',
 						lineHeight: '1.6',
@@ -167,23 +143,29 @@ function SurfaceTile({ token, title, description, eyebrow, badges, variant }: Su
 				>
 					{description}
 				</p>
-				<footer
+			</div>
+			{/* Token reference and badge sit in the trailing column on
+			    `md` and above, and under the copy on narrow widths. No
+			    divider above or below — the gap does the separating. */}
+			<div
+				className={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: { base: 'flex-start', md: 'flex-end' },
+					flexWrap: 'wrap',
+					gap: '3',
+				})}
+			>
+				<code
 					className={css({
-						paddingBlock: '4',
-						paddingInline: '4',
-						borderTop: '1px solid {colors.border.subtle}',
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						color: 'text.muted',
 					})}
 				>
-					<code
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							color: 'text.muted',
-						})}
-					>
-						{token}
-					</code>
-				</footer>
+					{token}
+				</code>
+				{badges}
 			</div>
 		</article>
 	);

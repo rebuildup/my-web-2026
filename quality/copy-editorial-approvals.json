@@ -1,14 +1,14 @@
 {
-	"$comment": "Owner editorial approval ledger (Issue #506). One record per approved change set of public Japanese copy. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision. Since Issue #720 it must also carry a provenance that names a traceable owner artefact — a record that only says \"approved\" is reported as awaiting owner confirmation.",
+	"$comment": "Owner editorial approval ledger (Issue #506). One record per change set of public Japanese copy that a review was prepared for. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision. Since Issue #720 it must also carry a provenance that names a traceable owner artefact — a record that only says \"approved\" is reported as awaiting owner confirmation. Since Issue #754 a record whose owner has not decided yet carries `decision: \"pending\"` and `reviewer: null`: \"approved\" with the owner's name on it would claim a decision nobody took.",
 	"version": 1,
-	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. Since Issue #720 a record also names its provenance: an approval counts as an owner approval only when a traceable owner artefact backs it. The procedure is in docs/runbook/copy-editorial-approval.md and the audit of the shipped records is in docs/verification/governance/approval-provenance.md.",
+	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. Since Issue #720 a record also names its provenance: an approval counts as an owner approval only when a traceable owner artefact backs it. Since Issue #754 the ledger may also carry a record whose owner decision has not been taken yet: such a record says `decision: \"pending\"` and `reviewer: null` — the reviewer field names the owner's identifier ONLY when the owner actually decided, and an automated side never writes the owner's name there. The procedure is in docs/runbook/copy-editorial-approval.md and the audit of the shipped records is in docs/verification/governance/approval-provenance.md.",
 	"record_shape": {
 		"id": "stable identifier of the record (e.g. `pr-512`)",
 		"pr": "the pull request number the record belongs to",
 		"base": "the base ref the change set was diffed against",
-		"reviewer": "who decided",
+		"reviewer": "who decided — the owner's identifier, written ONLY when the owner actually decided. A record an automated side wrote (or a record whose owner decision is still `pending`) carries `reviewer: null`: the owner has not decided, so no owner may be named.",
 		"reviewedAt": "YYYY-MM-DD, when the decision was taken",
-		"decision": "approved | rejected",
+		"decision": "approved | rejected | pending — `pending` means the owner has not decided yet (the record was written by an automated side); it is never approval",
 		"fingerprint": "sha256:… — the change set fingerprint printed by `pnpm run copy:approval:check -- --print-fingerprint`",
 		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`). `ran` records that the tool was run, not how many suggestions it produced: a change with no suggestions is still `ran: true`.",
 		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)",
@@ -19,9 +19,9 @@
 			"id": "pr-661",
 			"pr": 661,
 			"base": "release-0-7-0",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:a49b4127b30490eb50cc3fdc983abc18e7de0b04b3ab5cf5c4afcf5865686420",
 			"proposal": {
 				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
@@ -94,9 +94,9 @@
 			"id": "pr-655",
 			"pr": 655,
 			"base": "release-0-7-0",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:d7ca70aaa2b1afca6874fa9e4bc6e9322b136f1695160c246145b3acef9d102d",
 			"proposal": {
 				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
@@ -596,9 +596,9 @@
 			"id": "pr-644",
 			"pr": 644,
 			"base": "release-0-7-0",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:53f8ac6f17f6284ed97eda21a7ff8fb3c75dc43e02ba89ec58ba1e82b8d01c17",
 			"proposal": {
 				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass",
@@ -776,9 +776,9 @@
 			"id": "pr-663",
 			"pr": 663,
 			"base": "release-0-7-0",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:3b010f869e61e1f2a090a5189447ddb505491d2af6c0559d4ccfb2d678d265d3",
 			"proposal": {
 				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
@@ -858,9 +858,9 @@
 			"id": "pr-667",
 			"pr": 667,
 			"base": "release-0-7-0",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:72d6a55bd3aac21e1c81a7a60db9ff203c4103581074327d1ee14b4817c388c6",
 			"proposal": {
 				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
@@ -914,9 +914,9 @@
 			"id": "pr-619",
 			"pr": 619,
 			"base": "main",
-			"reviewer": "rebuildup",
+			"reviewer": null,
 			"reviewedAt": "2026-10-22",
-			"decision": "approved",
+			"decision": "pending",
 			"fingerprint": "sha256:088bc69c16fb7eefeb29bb19afdde5395dc6b3064ed2be6ab66f5ed43e657d03",
 			"proposal": {
 				"tool": "pi (openrouter/thinkingmachines/inkling:free) editorial pass — 4 parallel agents",
@@ -1788,6 +1788,101 @@
 						"type": "owner-comment",
 						"reference": "https://github.com/rebuildup/my-web-2026/issues/662#issuecomment-6336047929",
 						"note": "the owner-account comment states that the approval records were written by an agent on the basis of the owner merge permission (承認レコードは owner のマージ許可を根拠に agent が代理で書いています)."
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-819",
+			"pr": 819,
+			"base": "release-0-8-1",
+			"reviewer": null,
+			"reviewedAt": "2026-11-02",
+			"decision": "pending",
+			"fingerprint": "sha256:c74954d61791b3ffa0752806de467bbdf9ee4315dc6a2bfeb8ac1d5f0080a92d",
+			"proposal": {
+				"tool": "none — the editing aid was not run for this change set",
+				"ran": false,
+				"summary": "編集補助は実行していない。この変更集合は日本語の新規執筆を含まない: 4 つの日本語 facet 語 (開発 / 映像 / デザイン / その他) は src/portfolio/components/FacetFilter.tsx のローカル定数から src/portfolio/vocabulary.ts の FACET_LABEL_JA へ移動しただけで、文字列は移動前と移動後で byte-identical である。",
+				"disposition": "提案 0 件 (未実行)。編集補助を実行しなかった理由: 審査対象が「移動した同一文字列」であり、新規に書かれた日本語が存在しないため、語調・否定・許可の判断が発生しない。この変更集合について traceable な owner 判断の artefact は記録していないため、decision は pending とする (Issue #754 の語彙)。8 セグメントはいずれも移動元と移動先で同一文字列であり、意味の変化がないため verdict は equivalent。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "開発",
+					"after": null,
+					"text": "開発",
+					"verdict": "equivalent",
+					"note": "facet `develop` の日本語表示語。FacetFilter.tsx のローカル定数 FACET_LABELS.develop.ja から src/portfolio/vocabulary.ts の FACET_LABEL_JA.develop へ移った。文字列は同一で、意味・語・並び順は変わらない。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "映像",
+					"after": null,
+					"text": "映像",
+					"verdict": "equivalent",
+					"note": "facet `video` の日本語表示語。同じ移動で FACET_LABEL_JA.video へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "デザイン",
+					"after": null,
+					"text": "デザイン",
+					"verdict": "equivalent",
+					"note": "facet `design` の日本語表示語。同じ移動で FACET_LABEL_JA.design へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/components/FacetFilter.tsx",
+					"before": "その他",
+					"after": null,
+					"text": "その他",
+					"verdict": "equivalent",
+					"note": "facet `other` の日本語表示語。同じ移動で FACET_LABEL_JA.other へ。文字列は同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "開発",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `develop`)。FACET_LABEL_JA は `Record<PortfolioFacet, string>` で全域性を型とテストで固定しており、移行前の対応表と同じ 4 語が同じ順で並ぶ。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "映像",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `video`)。文字列は移動元の FacetFilter.tsx:42 と同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "デザイン",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `design`)。文字列は移動元の FacetFilter.tsx:43 と同一。"
+				},
+				{
+					"path": "src/portfolio/vocabulary.ts",
+					"before": null,
+					"after": "その他",
+					"verdict": "equivalent",
+					"note": "移動先 (facet `other`)。文字列は移動元の FacetFilter.tsx:44 と同一。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-statement",
+						"reference": null,
+						"note": "2026-11-02 の監督セッションで owner が公開日本語 copy を一括承認した。原文: 「まあぱっと見ヤバそうなのはないので全て承認でいいだろう。後から実際のサイトとして見たときに違和感があればその時に調整する。」。この発言はチャット上にあり URL を持つ artefact ではないため reference は null。"
+					},
+					{
+						"type": "issue-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "同じ owner 発言を agent が転記した Issue #672 のコメント。転記であって owner 自身の artefact ではないため、この record の ownerConfirmation は unconfirmed のままにする。"
 					}
 				]
 			}

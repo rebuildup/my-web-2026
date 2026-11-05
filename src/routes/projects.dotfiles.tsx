@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { DotfilesIntroductionPage, getDotfilesIntroduction } from '../projects';
 
 /**
@@ -44,6 +46,8 @@ function ProjectsDotfilesRoute() {
 	return (
 		<>
 			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
 			<DotfilesIntroductionPage view={view} />
 		</>
 	);

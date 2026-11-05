@@ -1,6 +1,8 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { Capability } from './capability';
 
@@ -44,7 +46,8 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 				<SectionHeading
 					id="capabilities-heading"
 					eyebrow="01 — Capabilities"
-					title="できごと / What's here"
+					title="できごと"
+					titleEn="What's here"
 					description="個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。"
 					variant="spread"
 				>
@@ -64,30 +67,21 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					>
 						{capabilities.map((capability, index) => {
 							const ordinal = String(index + 1).padStart(2, '0');
-							const isLive = capability.status === 'live';
+							// Issue #782 — every row in the grid starts at the same
+							// x. The live/planned difference is carried by the badge
+							// alone; the former 24px start offset and the 2px
+							// absolute left bar existed only for live rows, which
+							// pushed those rows off the column start the planned
+							// rows (and the heading above) establish. No replacement
+							// decoration is added.
 							return (
 								<li
 									key={capability.id}
 									className={css({
 										display: 'flex',
 										flexDirection: 'column',
-										position: 'relative',
-										paddingInlineStart: { base: '0', md: isLive ? '6' : '0' },
 									})}
 								>
-									{isLive ? (
-										<span
-											aria-hidden="true"
-											className={css({
-												position: 'absolute',
-												left: '0',
-												top: '0',
-												bottom: '0',
-												width: '2px',
-												backgroundColor: 'accent.positive',
-											})}
-										/>
-									) : null}
 									<header
 										className={css({
 											display: 'flex',
@@ -169,18 +163,20 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 												fontSize: 'sm',
 												fontWeight: '600',
 												color: 'text.accent',
-												textDecoration: 'none',
+												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '4px',
 													borderRadius: '2px',
 												},
 												_hover: {
-													textDecoration: 'underline',
+													textDecorationThickness: '2px',
 												},
 											})}
 										>
-											<span aria-hidden="true">→</span>
+											<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 											<span>{capability.label}を開く</span>
 										</a>
 									) : null}

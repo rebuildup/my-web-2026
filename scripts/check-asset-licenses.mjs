@@ -32,7 +32,7 @@
  *
  * The rules themselves live in `src/legal/contract.ts`, so this script,
  * the review screen (`src/legal/AssetLicenseReview.tsx`) and the tests
- * cannot disagree about what "publishable" means.
+ * cannot disagree about what "evidence status" means.
  *
  * Severity contract
  * -----------------
@@ -40,12 +40,25 @@
  *           records claiming one file, evidence that is missing or has
  *           drifted, a licence id that cannot mean anything here) and a
  *           record whose shape is unusable.
- *   warn  → review, do not block. Chiefly `L010`: an asset the contract
- *           holds is still declared published. Whether to unpublish it
- *           is an owner publication decision, so the gate keeps it
- *           visible every run instead of resolving it here.
- *   info  → the state itself (`hold`, `provider-terms`), recorded so a
- *           reader of the report sees why a decision is what it is.
+ *   warn  → review, do not block. Chiefly `L010` (a record that
+ *           contradicts the repository's own facts is still declared
+ *           published) and `L019` (an unreviewed asset is published
+ *           outside the owner's publication decision). Both are owner
+ *           questions, so the gate keeps them visible every run
+ *           instead of resolving them here.
+ *   info  → the state itself (`unreviewed`, `provider-terms`), recorded
+ *           so a reader of the report sees why a status is what it is.
+ *
+ * Fail-visible (ADR-0019 §2.1 / §2.3)
+ * -----------------------------------
+ * An unreviewed asset does NOT fail this gate: the owner decides what
+ * is published, and the repository records that decision in
+ * `quality/asset-license-publication-decision.json`. What DOES fail is
+ * hiding the state: every publication the decision covers must declare
+ * where its "unreviewed" status is shown (`L022`), and the gate checks
+ * that the named source file really carries that marker. The gate is
+ * therefore fail-visible, not fail-open: silence about the state is an
+ * error, the state itself is not.
  *
  * Properties that make the output safe to paste into a PR
  * ---------------------------------------------------------
@@ -56,16 +69,35 @@
  * a port or a credential cannot reach the report, and licence evidence
  * is verified by digest rather than printed.
  *
+ * Scope (Issue #780)
+ * ------------------
+ * `public/**` is not the only byte a visitor receives: Vite also emits
+ * every static asset imported from `src/**` as `/assets/<hash>`. The
+ * audited set is therefore `public/**` UNION the assets the source tree
+ * imports, and the second half is DERIVED from the import graph rather
+ * than declared in a list — a list would be the same convention-over-
+ * evidence the gate exists to replace. See `collectServedSourceAssets`.
+ *
+ * A derived scope makes the gate red for bytes whose rights nobody has
+ * recorded yet, and those bytes cannot be cleared by a script: clearing
+ * them is a rights decision. `quality/asset-license-pending.json` is the
+ * one place to DECLARE an asset as known-unreviewed instead — it records
+ * the absence of a decision, never a licence. A declared file is still
+ * uncovered (it shows as `S002` on every run); anything not declared is
+ * `L001` and fails. The ledger cannot silently absorb a new byte, and a
+ * ledger entry that has been covered by a real record is `S003`, so the
+ * deferral cannot outlive its reason.
+ *
  * Exit codes: 0 = no error-severity finding, 1 = at least one error,
- * 2 = unusable input (unreadable record / root).
+ * 2 = unusable input (unreadable record / root / ledger).
  */
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, extname, join, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { evaluateAssetInventory } from '../src/legal/contract.ts';
+import { evaluateAssetInventory, summarizeAssetReview } from '../src/legal/contract.ts';
 import { parseAssetInventory } from '../src/legal/inventory.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +107,171 @@ const repoRoot = resolve(here, '..');
 export const RECORD_RELATIVE_PATH = 'quality/asset-license-inventory.json';
 
 /**
- * The audited scope, declared here rather than inferred.
+ * The owner's publication decision (ADR-0019 §2.1).
+ *
+ * It lives in the repository, not in an environment variable, because a
+ * flag that can be flipped at run time is not a decision — it is a
+ * switch. The file records WHO decided, WHEN, in WHICH words, and
+ * WHERE the "unreviewed" status is shown for every publication the
+ * decision covers.
+ */
+export const PUBLICATION_DECISION_RELATIVE_PATH = 'quality/asset-license-publication-decision.json';
+export const PUBLICATION_DECISION_SCHEMA = 'asset-license-publication-decision.v1';
+
+/**
+ * Read the owner's publication decision.
+ *
+ * A missing file is NOT an error: it means "no decision is recorded",
+ * and the contract then keeps the old question for anything the
+ * decision would have covered. A malformed file IS an error — a
+ * decision that cannot be read cannot authorise a publication.
+ */
+export function readPublicationDecision(root, relativePath = PUBLICATION_DECISION_RELATIVE_PATH) {
+	const full = join(root, relativePath);
+	if (!existsSync(full)) {
+		return {
+			present: false,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: [],
+		};
+	}
+	let value;
+	try {
+		value = JSON.parse(readFileSync(full, 'utf8'));
+	} catch {
+		return {
+			present: true,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: ['decision file is not valid JSON'],
+		};
+	}
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		return {
+			present: true,
+			publishesUnreviewed: false,
+			source: null,
+			publications: [],
+			problems: ['decision file is not an object'],
+		};
+	}
+	const problems = [];
+	if (value.schema !== PUBLICATION_DECISION_SCHEMA) {
+		problems.push(`decision schema must be "${PUBLICATION_DECISION_SCHEMA}"`);
+	}
+	if (value.ownerConfirmation !== 'confirmed') {
+		problems.push('decision ownerConfirmation must be "confirmed"');
+	}
+	if (typeof value.decidedOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.decidedOn)) {
+		problems.push('decision decidedOn must be YYYY-MM-DD');
+	}
+	if (typeof value.quote !== 'string' || value.quote.trim().length === 0) {
+		problems.push("decision quote must carry the owner's own words");
+	}
+	if (typeof value.source !== 'string' || value.source.trim().length === 0) {
+		problems.push('decision source must name the document that records the decision');
+	}
+	if (!Array.isArray(value.publications)) {
+		problems.push('decision publications must be an array');
+	}
+	const publications = [];
+	const seen = new Set();
+	for (const [index, entry] of (value.publications ?? []).entries()) {
+		const at = `publications[${index}]`;
+		if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+			problems.push(`${at} is not an object`);
+			continue;
+		}
+		if (typeof entry.id !== 'string' || entry.id.trim().length === 0) {
+			problems.push(`${at}.id must be a non-empty string`);
+			continue;
+		}
+		if (seen.has(entry.id)) problems.push(`${at}.id is listed twice`);
+		seen.add(entry.id);
+		const disclosure = entry.disclosure;
+		if (typeof disclosure !== 'object' || disclosure === null) {
+			problems.push(`${at}.disclosure must be an object`);
+			continue;
+		}
+		if (
+			typeof disclosure.source !== 'string' ||
+			disclosure.source.trim().length === 0 ||
+			disclosure.source.startsWith('/') ||
+			disclosure.source.includes('..')
+		) {
+			problems.push(`${at}.disclosure.source must be a repository-relative path`);
+			continue;
+		}
+		if (typeof disclosure.marker !== 'string' || disclosure.marker.trim().length === 0) {
+			problems.push(`${at}.disclosure.marker must name the marker the surface renders`);
+			continue;
+		}
+		publications.push({
+			id: entry.id,
+			title: typeof entry.title === 'string' ? entry.title : entry.id,
+			publication: entry.publication === 'published' ? 'published' : 'unpublished',
+			disclosure: { source: disclosure.source, marker: disclosure.marker },
+		});
+	}
+	return {
+		present: true,
+		publishesUnreviewed: value.decision === 'publish-unreviewed-with-disclosure',
+		source: typeof value.source === 'string' ? value.source : null,
+		publications,
+		problems,
+	};
+}
+
+/**
+ * The fail-visible check (ADR-0019 §2.5).
+ *
+ * Every publication the owner's decision covers must say, in the shipped
+ * source, that its assets are unreviewed. The gate reads the named file
+ * and looks for the named marker: a decision that points at a file which
+ * no longer carries the marker is a HIDDEN state, and hiding it is the
+ * error — not the absence of a rights record.
+ */
+export function checkPublicationDisclosures(root, decision) {
+	const findings = [];
+	for (const publication of decision.publications) {
+		if (publication.publication !== 'published') continue;
+		const full = join(root, publication.disclosure.source);
+		if (!existsSync(full)) {
+			findings.push({
+				code: 'L022',
+				severity: 'error',
+				subject: publication.id,
+				message: `未レビュー資産の表示場所 "${publication.disclosure.source}" がリポジトリに存在しません。`,
+				remedy:
+					'表示を実装するか、決定記録の表示場所を正しいファイルに直す（未レビューであることは隠せない）。',
+			});
+			continue;
+		}
+		let text;
+		try {
+			text = readFileSync(full, 'utf8');
+		} catch {
+			text = '';
+		}
+		if (!text.includes(publication.disclosure.marker)) {
+			findings.push({
+				code: 'L022',
+				severity: 'error',
+				subject: publication.id,
+				message: `未レビュー資産の表示場所 "${publication.disclosure.source}" に印 "${publication.disclosure.marker}" がありません。`,
+				remedy:
+					'公開面に未レビューである旨を表示する（ADR-0019 §2.5）。表示しないまま公開することは不可。',
+			});
+		}
+	}
+	return findings;
+}
+
+/**
+ * The verbatim half of the audited scope.
  *
  * `public/**` is the set of bytes a visitor can fetch verbatim from the
  * Static Assets binding. Tool build output is NOT in it: those bytes are
@@ -83,8 +279,312 @@ export const RECORD_RELATIVE_PATH = 'quality/asset-license-inventory.json';
  * which already records each Tool's licence file, lockfile and outbound
  * hosts. Two owners for one byte set is how a record stops meaning
  * anything.
+ *
+ * The other half — assets Vite emits from `src/**` — is derived, not
+ * listed: see `collectServedSourceAssets` (Issue #780).
  */
 export const AUDITED_ROOTS = ['public'];
+
+/**
+ * Where served source assets are looked for. The scan starts at `src`
+ * because that is the tree Vite's client build reads; a file outside it
+ * never reaches `dist/client`.
+ */
+export const SOURCE_ROOTS = ['src'];
+
+/**
+ * Extensions Vite emits as an `/assets/<hash>` file when imported.
+ *
+ * The list is the gate's definition of "a byte a browser downloads", so
+ * it is deliberately an allowlist: a new extension has to be added here
+ * once, visibly, instead of being picked up by a rule that guesses.
+ */
+export const SERVED_SOURCE_ASSET_EXTENSIONS = new Set([
+	'.webp',
+	'.png',
+	'.jpg',
+	'.jpeg',
+	'.avif',
+	'.gif',
+	'.svg',
+	'.ico',
+	'.woff',
+	'.woff2',
+	'.ttf',
+	'.otf',
+	'.mp4',
+	'.webm',
+	'.mp3',
+	'.wav',
+	'.pdf',
+]);
+
+/** Files a client build never includes, so their imports ship nothing. */
+const NON_SHIPPED_SOURCE_FILE = /\.(?:test|spec|stories)\.[^/]+$/;
+
+/** Source files whose text can name an asset. */
+const SOURCE_MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css']);
+
+/** `vite.config.ts` maps `~` onto `src`; keep the two in step. */
+const SOURCE_PATH_ALIAS = { prefix: '~/', target: 'src/' };
+
+/** Every way a module names another file that we care about. */
+const SPECIFIER_PATTERNS = [
+	/\bfrom\s*['"]([^'"]+)['"]/g,
+	/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+	/\bimport\s+['"]([^'"]+)['"]/g,
+	/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+];
+
+/** `url(...)` in a stylesheet. */
+const CSS_URL_PATTERN = /\burl\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+
+/** Drop `?url` / `?inline` / `?raw` and any fragment. */
+function withoutQuery(specifier) {
+	const end = specifier.search(/[?#]/);
+	return end === -1 ? specifier : specifier.slice(0, end);
+}
+
+/**
+ * Resolve a specifier to a repository-relative path, or `null` when it
+ * does not name a file in this repository (a package, an absolute URL,
+ * a virtual `~` import that is not an asset).
+ */
+function resolveSpecifier(importerRelativePath, specifier) {
+	if (specifier.startsWith(SOURCE_PATH_ALIAS.prefix)) {
+		return posix.normalize(
+			`${SOURCE_PATH_ALIAS.target}${specifier.slice(SOURCE_PATH_ALIAS.prefix.length)}`,
+		);
+	}
+	if (!specifier.startsWith('.')) return null;
+	return posix.normalize(posix.join(posix.dirname(importerRelativePath), specifier));
+}
+
+/** Every specifier one source file names. */
+function specifiersIn(text, extension) {
+	const found = [];
+	for (const pattern of SPECIFIER_PATTERNS) {
+		for (const match of text.matchAll(pattern)) found.push(match[1]);
+	}
+	if (extension === '.css') {
+		for (const match of text.matchAll(CSS_URL_PATTERN)) found.push(match[2]);
+	}
+	return found;
+}
+
+/**
+ * The second half of the audited scope: assets `src/**` imports and Vite
+ * therefore emits to `/assets/<hash>`.
+ *
+ * Derived from the import graph rather than declared, because a declared
+ * list is the convention this gate exists to replace: the question is
+ * "what does the build actually ship?", and the answer is the set of
+ * asset imports, not a list somebody remembered to update.
+ *
+ * `missing` is not swallowed: an import that names an asset extension
+ * but resolves to no file is a scope hole (the gate would otherwise
+ * quietly audit one file fewer), so it comes back as a finding.
+ */
+export function collectServedSourceAssets(root, sourceRoots = SOURCE_ROOTS) {
+	const files = new Set();
+	const missing = [];
+
+	const readSource = (relativePath) => {
+		const full = join(root, relativePath);
+		let text;
+		try {
+			text = readFileSync(full, 'utf8');
+		} catch {
+			return;
+		}
+		const extension = extname(relativePath).toLowerCase();
+		for (const raw of specifiersIn(text, extension)) {
+			const specifier = withoutQuery(raw);
+			const resolved = resolveSpecifier(relativePath, specifier);
+			if (resolved === null) continue;
+			if (resolved.startsWith('../') || posix.isAbsolute(resolved)) continue;
+			if (!SERVED_SOURCE_ASSET_EXTENSIONS.has(extname(resolved).toLowerCase())) continue;
+			if (existsSync(join(root, resolved))) files.add(resolved);
+			else missing.push({ importer: relativePath, target: resolved });
+		}
+	};
+
+	const walk = (directory) => {
+		if (!existsSync(directory)) return;
+		for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
+			a.name < b.name ? -1 : 1,
+		)) {
+			const full = join(directory, entry.name);
+			if (entry.isDirectory()) {
+				if (entry.name.startsWith('.')) continue;
+				walk(full);
+				continue;
+			}
+			if (!entry.isFile()) continue;
+			const relativePath = relative(root, full).split('\\').join('/');
+			if (NON_SHIPPED_SOURCE_FILE.test(relativePath)) continue;
+			if (!SOURCE_MODULE_EXTENSIONS.has(extname(relativePath).toLowerCase())) continue;
+			readSource(relativePath);
+		}
+	};
+	for (const sourceRoot of sourceRoots) walk(join(root, sourceRoot));
+
+	return { files: [...files].sort(), missing };
+}
+
+/** The reviewed-deferral ledger (Issue #780). */
+export const PENDING_LEDGER_RELATIVE_PATH = 'quality/asset-license-pending.json';
+export const PENDING_LEDGER_SCHEMA = 'asset-license-pending.v1';
+
+/** A reason is a sentence. A one-word reason is a disabled gate. */
+const MIN_PENDING_REASON_LENGTH = 20;
+
+/**
+ * Read the ledger that declares an asset as KNOWN-UNREVIEWED.
+ *
+ * This is deliberately not part of `quality/asset-license-inventory.json`:
+ * that file records rights, and a reader that mixed "we cleared this" with
+ * "we have not looked yet" would let the second read as the first. Here a
+ * path is only ever a statement of absence — it carries no licence, no
+ * rights holder and no evidence, so it cannot clear anything.
+ */
+export function readPendingLedger(root, relativePath = PENDING_LEDGER_RELATIVE_PATH) {
+	const full = join(root, relativePath);
+	if (!existsSync(full)) return { present: false, entries: [], problems: [] };
+	let value;
+	try {
+		value = JSON.parse(readFileSync(full, 'utf8'));
+	} catch {
+		return { present: true, entries: [], problems: ['ledger is not valid JSON'] };
+	}
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		return { present: true, entries: [], problems: ['ledger is not an object'] };
+	}
+	if (value.schema !== PENDING_LEDGER_SCHEMA) {
+		return {
+			present: true,
+			entries: [],
+			problems: [`ledger schema must be "${PENDING_LEDGER_SCHEMA}"`],
+		};
+	}
+	if (!Array.isArray(value.entries)) {
+		return { present: true, entries: [], problems: ['ledger entries must be an array'] };
+	}
+
+	const problems = [];
+	const entries = [];
+	const seen = new Set();
+	value.entries.forEach((entry, index) => {
+		const at = `entries[${index}]`;
+		const problemsBefore = problems.length;
+		if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+			problems.push(`${at} is not an object`);
+			return;
+		}
+		const path = entry.path;
+		if (
+			typeof path !== 'string' ||
+			path.trim().length === 0 ||
+			posix.isAbsolute(path) ||
+			path.startsWith('..') ||
+			path.includes('/../')
+		) {
+			problems.push(`${at}.path must be a repository-relative path`);
+			return;
+		}
+		if (seen.has(path)) problems.push(`${at}.path is listed twice`);
+		seen.add(path);
+		if (
+			typeof entry.reason !== 'string' ||
+			entry.reason.trim().length < MIN_PENDING_REASON_LENGTH
+		) {
+			problems.push(
+				`${at}.reason must explain the absence in at least ${MIN_PENDING_REASON_LENGTH} characters`,
+			);
+		}
+		// The only state this ledger can hold: a decision has NOT been made.
+		// "excluded" would be a publication decision, and that belongs in the
+		// inventory with evidence, not here.
+		if (entry.ownerDecision !== 'pending') {
+			problems.push(`${at}.ownerDecision must be "pending"`);
+		}
+		if (problems.length === problemsBefore) {
+			entries.push({ path, reason: entry.reason, ownerDecision: 'pending' });
+		}
+	});
+
+	return { present: true, entries, problems };
+}
+
+/**
+ * Re-label the findings for assets the ledger declares unreviewed.
+ *
+ * The contract still decides coverage: `L001` is produced exactly as
+ * before for every uncovered file. This function only answers the
+ * question the contract does not — "has the owner already said this one
+ * is known-unreviewed?" — by turning that one finding into a warning
+ * that names the deferral. Everything else stays an error:
+ *
+ *   - a ledger entry whose file is no longer audited is `S003` (stale),
+ *   - a ledger entry whose file a record now claims is `S003` (superseded),
+ *   - an uncovered file the ledger does not name is still `L001`.
+ */
+export function applyPendingLedger({ findings, reviews, auditedFiles, entries, uncoveredFiles }) {
+	const declared = new Map(entries.map((entry) => [entry.path, entry]));
+	const audited = new Set(auditedFiles);
+	const claimed = new Set(reviews.flatMap((review) => review.files));
+	const next = [];
+	const deferred = [];
+
+	for (const item of findings) {
+		if (item.code === 'L001' && declared.has(item.subject)) {
+			deferred.push(item.subject);
+			next.push({
+				code: 'S002',
+				severity: 'warn',
+				subject: item.subject,
+				message:
+					'監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。',
+				remedy: 'owner が判断したら、資産記録を追加して台帳の該当行を削除する。',
+			});
+			continue;
+		}
+		next.push(item);
+	}
+
+	for (const entry of entries) {
+		if (!audited.has(entry.path)) {
+			next.push({
+				code: 'S003',
+				severity: 'error',
+				subject: entry.path,
+				message:
+					'台帳の行に対応する監査対象ファイルがありません（台帳が資産より長生きしています）。',
+				remedy: 'ファイルが消えたなら行を削除し、パスが変わったなら台帳を直す。',
+			});
+			continue;
+		}
+		if (claimed.has(entry.path)) {
+			next.push({
+				code: 'S003',
+				severity: 'error',
+				subject: entry.path,
+				message:
+					'台帳の行に当たるファイルを資産記録が主張しています（台帳が記録より長生きしています）。',
+				remedy: '資産記録ができたので、台帳の行を削除する。',
+			});
+		}
+	}
+
+	const summary = summarizeAssetReview({
+		reviews,
+		findings: next,
+		auditedFiles: auditedFiles.length,
+		uncoveredFiles,
+	});
+
+	return { findings: next, summary, verdict: summary.verdict, deferred };
+}
 
 /** Collect the audited files, repository-relative and sorted. */
 export function collectAuditedFiles(root, auditedRoots = AUDITED_ROOTS) {
@@ -121,19 +621,29 @@ const SEVERITY_MARK = { error: 'ERROR', warn: 'WARN ', info: 'INFO ' };
 /**
  * Status-only report text.
  *
- * One line per record (id / kind / decision / files / licence / origin)
+ * One line per record (id / kind / evidence status / files / licence / origin)
  * and one line per finding. A licence evidence path is printed as a path;
  * a provider reference is printed as a hostname, because the path or the
  * query of someone else's URL is not this gate's business.
  */
-export function renderConsoleReport({ verdict, reviews, findings, auditedFileCount, recordPath }) {
+export function renderConsoleReport({
+	verdict,
+	reviews,
+	findings,
+	auditedFileCount,
+	recordPath,
+	pendingCount = 0,
+}) {
 	const lines = [];
 	lines.push(`asset license review — ${verdict}`);
 	lines.push(`record: ${recordPath}`);
 	lines.push(`audited files: ${auditedFileCount}`);
+	if (pendingCount > 0) {
+		lines.push(`pending, declared unreviewed: ${pendingCount}`);
+	}
 	for (const review of reviews) {
 		lines.push(
-			`  ${review.decision.padEnd(15)} ${review.id.padEnd(28)} ${review.kind.padEnd(9)} ${String(review.files.length).padStart(3)} files  ${review.spdx.padEnd(12)} ${review.origin}`,
+			`  ${review.evidenceStatus.padEnd(15)} ${review.id.padEnd(28)} ${review.kind.padEnd(9)} ${String(review.files.length).padStart(3)} files  ${review.spdx.padEnd(12)} ${review.origin}`,
 		);
 	}
 	for (const item of findings) {
@@ -159,7 +669,7 @@ export function renderMarkdownReport({
 		`- 判定: **${verdict}** / 記録: \`${recordPath}\` / 監査対象ファイル: ${auditedFileCount}`,
 	);
 	lines.push(
-		`- 資産記録 ${summary.records} 件（公開可 ${summary.publishable} / 保留 ${summary.hold} / 提供者条件 ${summary.providerTerms}）`,
+		`- 資産記録 ${summary.records} 件（根拠を確認済み ${summary.reviewed} / 未レビュー ${summary.unreviewed} / 提供者条件 ${summary.providerTerms} / 記録が矛盾 ${summary.inconsistent}）`,
 	);
 	lines.push(
 		`- 記録済みファイル ${summary.claimedFiles} / 未記録 ${summary.uncoveredFiles} / findings ${summary.findings}（error ${summary.errors} / warn ${summary.warnings} / info ${summary.infos}）`,
@@ -169,7 +679,7 @@ export function renderMarkdownReport({
 	lines.push('| --- | --- | --- | --- | --- | --- |');
 	for (const review of reviews) {
 		lines.push(
-			`| ${review.decision} | \`${review.id}\` | ${review.kind} | ${review.files.length} | ${review.origin} | ${review.publication} |`,
+			`| ${review.evidenceStatus} | \`${review.id}\` | ${review.kind} | ${review.files.length} | ${review.origin} | ${review.publication} |`,
 		);
 	}
 	lines.push('');
@@ -200,7 +710,7 @@ export function renderHtmlReport({
 	const rows = reviews
 		.map(
 			(review) => `<tr>
-				<td><code>${escapeHtml(review.decision)}</code></td>
+				<td><code>${escapeHtml(review.evidenceStatus)}</code></td>
 				<td><code>${escapeHtml(review.id)}</code></td>
 				<td>${escapeHtml(review.kind)}</td>
 				<td>${review.files.length}</td>
@@ -246,7 +756,7 @@ export function renderHtmlReport({
 		<p class="summary">
 			判定 <strong>${escapeHtml(verdict)}</strong> / 記録 <code>${escapeHtml(recordPath)}</code> /
 			監査対象ファイル ${auditedFileCount} / 資産記録 ${summary.records} 件
-			（公開可 ${summary.publishable} / 保留 ${summary.hold} / 提供者条件 ${summary.providerTerms}）
+			（根拠を確認済み ${summary.reviewed} / 未レビュー ${summary.unreviewed} / 提供者条件 ${summary.providerTerms} / 記録が矛盾 ${summary.inconsistent}）
 		</p>
 		<table>
 			<thead>
@@ -297,9 +807,31 @@ export function main(argv = process.argv.slice(2)) {
 		process.stderr.write(`unreadable record: ${options.record}\n`);
 		return 2;
 	}
-	const auditedFiles = collectAuditedFiles(options.root);
+	// Issue #780 — the audited set is the verbatim half (`public/**`) plus
+	// the half Vite emits from the source tree.
+	const servedSourceAssets = collectServedSourceAssets(options.root);
+	const auditedFiles = [...collectAuditedFiles(options.root), ...servedSourceAssets.files].sort();
 	if (auditedFiles.length === 0) {
-		process.stderr.write(`no audited files under ${AUDITED_ROOTS.join(', ')}\n`);
+		process.stderr.write(
+			`no audited files under ${AUDITED_ROOTS.join(', ')} or imported from ${SOURCE_ROOTS.join(', ')}\n`,
+		);
+		return 2;
+	}
+
+	const ledger = readPendingLedger(options.root);
+	if (ledger.problems.length > 0) {
+		process.stderr.write(`unusable ledger ${PENDING_LEDGER_RELATIVE_PATH}:\n`);
+		for (const problem of ledger.problems) process.stderr.write(`  ${problem}\n`);
+		return 2;
+	}
+
+	// ADR-0019 §2.1 — the owner's publication decision, read from the
+	// repository. A malformed decision is unusable input (exit 2), not a
+	// silent pass: a decision nobody can read authorises nothing.
+	const decision = readPublicationDecision(options.root);
+	if (decision.problems.length > 0) {
+		process.stderr.write(`unusable decision ${PUBLICATION_DECISION_RELATIVE_PATH}:\n`);
+		for (const problem of decision.problems) process.stderr.write(`  ${problem}\n`);
 		return 2;
 	}
 
@@ -317,7 +849,7 @@ export function main(argv = process.argv.slice(2)) {
 		return 1;
 	}
 
-	const result = evaluateAssetInventory({
+	const evaluation = evaluateAssetInventory({
 		records: read.records,
 		auditedFiles,
 		observations: {
@@ -327,7 +859,42 @@ export function main(argv = process.argv.slice(2)) {
 			},
 			sha256Of: (path) => sha256OfFile(options.root, path),
 		},
+		authority: {
+			publishesUnreviewed: decision.publishesUnreviewed,
+			source: decision.source,
+			scope: decision.publications.map((publication) => publication.id),
+		},
 	});
+
+	// A source import that names an asset but resolves to no file is a
+	// hole in the scope itself, so it is an error even though no byte is
+	// shipped from it: the gate must not audit a smaller set than the
+	// build does.
+	const scopeFindings = servedSourceAssets.missing.map(({ importer, target }) => ({
+		code: 'S001',
+		severity: 'error',
+		subject: target,
+		message: `${importer} が存在しないアセットを import しています。`,
+		remedy: 'import 先を直すか、ファイルを追加する（監査対象が実態より小さくなるため放置しない）。',
+	}));
+
+	const deferred = applyPendingLedger({
+		findings: [
+			...evaluation.findings,
+			...scopeFindings,
+			...checkPublicationDisclosures(options.root, decision),
+		],
+		reviews: evaluation.reviews,
+		auditedFiles,
+		entries: ledger.entries,
+		uncoveredFiles: evaluation.summary.uncoveredFiles,
+	});
+	const result = {
+		reviews: evaluation.reviews,
+		findings: deferred.findings,
+		summary: deferred.summary,
+		verdict: deferred.verdict,
+	};
 
 	process.stdout.write(
 		renderConsoleReport({
@@ -336,6 +903,7 @@ export function main(argv = process.argv.slice(2)) {
 			findings: result.findings,
 			auditedFileCount: auditedFiles.length,
 			recordPath: options.record,
+			pendingCount: deferred.deferred.length,
 		}),
 	);
 

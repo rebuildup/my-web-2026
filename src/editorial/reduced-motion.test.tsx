@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
 	COUNTER_ROLL_MOTION,
 	MOTION_HOOK_ATTRIBUTE,
+	PET_REACTION_MOTION,
 	REDUCED_MOTION_QUERY,
 	prefersReducedMotion,
 	resolveReducedMotion,
@@ -59,6 +60,11 @@ describe('reduced-motion contract', () => {
 	it('publishes the attribute and the counter hook the stylesheet pairs with', () => {
 		expect(MOTION_HOOK_ATTRIBUTE).toBe('data-motion');
 		expect(COUNTER_ROLL_MOTION).toBe('counter-roll');
+		// Issue #274 — the companion character's greeting. Pinned here
+		// for the same reason as the counter hook: the component writes
+		// this value into markup, `src/styles.css` selects it, and
+		// `scripts/check-reduced-motion.mjs` resolves the pair.
+		expect(PET_REACTION_MOTION).toBe('pet-reaction');
 	});
 
 	it('answers "motion allowed" where the query cannot be asked', () => {

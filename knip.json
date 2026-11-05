@@ -12,6 +12,11 @@
 		"test/fixtures/content/stale-review/src/fixture/page.tsx",
 		"src/cloudflare/workers-stub.ts"
 	],
-	"ignoreDependencies": ["cloudflare", "postcss", "@storybook/react"],
+	"ignoreDependencies": [
+		"cloudflare",
+		"postcss",
+		"@storybook/react",
+		"@notionhq/notion-mcp-server"
+	],
 	"ignoreExportsUsedInFile": true
 }

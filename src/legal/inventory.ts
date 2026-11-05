@@ -31,6 +31,7 @@ import type {
 	AssetLicenseId,
 	AssetLicenseRecord,
 	AssetOrigin,
+	AssetOwnerConfirmation,
 	AssetPublicationState,
 	AssetRedistribution,
 	AssetReviewFinding,
@@ -58,6 +59,12 @@ const VERIFICATION_METHODS: readonly AssetVerificationMethod[] = [
 	'none',
 ];
 const PUBLICATION_STATES: readonly AssetPublicationState[] = ['published', 'unpublished', 'hold'];
+/**
+ * Owner-confirmation states. `unconfirmed` is what a record carries
+ * when nobody with publishing authority has signed it off; the field
+ * may also be absent, which means the same thing.
+ */
+const OWNER_CONFIRMATIONS: readonly AssetOwnerConfirmation[] = ['confirmed', 'unconfirmed'];
 
 export interface AssetInventoryReadResult {
 	readonly schema: string | null;
@@ -186,6 +193,7 @@ function readRecord(
 		'evidence',
 		'publication',
 		'externalHosts',
+		'ownerConfirmation',
 		'delegatedTo',
 	])) {
 		problems.push(`unknown key ${key}`);
@@ -279,6 +287,12 @@ function readRecord(
 	if (value.delegatedTo !== undefined && !nonEmptyString(value.delegatedTo)) {
 		problems.push(`${at('delegatedTo')} must be a non-empty string`);
 	}
+	if (
+		value.ownerConfirmation !== undefined &&
+		!OWNER_CONFIRMATIONS.includes(value.ownerConfirmation as AssetOwnerConfirmation)
+	) {
+		problems.push(`${at('ownerConfirmation')} must be "confirmed" or "unconfirmed"`);
+	}
 
 	if (problems.length > 0 || !nonEmptyString(value.id)) return { record: null, problems };
 	const licenseObject = license as Record<string, unknown>;
@@ -315,6 +329,9 @@ function readRecord(
 			...(value.externalHosts === undefined
 				? {}
 				: { externalHosts: value.externalHosts as string[] }),
+			...(value.ownerConfirmation === undefined
+				? {}
+				: { ownerConfirmation: value.ownerConfirmation as AssetOwnerConfirmation }),
 			...(value.delegatedTo === undefined ? {} : { delegatedTo: value.delegatedTo as string }),
 		},
 	};

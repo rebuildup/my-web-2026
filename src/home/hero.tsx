@@ -1,5 +1,7 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import { SiteMark } from './mark';
 import { PACKAGE_VERSION } from './version';
 
@@ -162,7 +164,8 @@ export function Hero() {
 									},
 								})}
 							>
-								About me / 自己紹介 →
+								<span>About me / 自己紹介</span>
+								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
 							</a>
 							<a
 								href="/portfolio"
@@ -204,16 +207,21 @@ export function Hero() {
 									fontFamily: 'sans',
 									fontSize: 'md',
 									fontWeight: '600',
-									textDecoration: 'none',
-									transition: 'color 120ms ease',
-									_hover: { textDecoration: 'underline' },
+									textDecoration: 'underline',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
+									transition: 'text-decoration-thickness 120ms ease',
+									_hover: { textDecorationThickness: '2px' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',
 									},
 								})}
 							>
-								<span lang="en">GitHub</span> でソースを見る →
+								<span>
+									<span lang="en">GitHub</span> でソースを見る
+								</span>
+								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
 							</a>
 						</div>
 					</div>

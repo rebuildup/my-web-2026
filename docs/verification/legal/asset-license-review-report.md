@@ -1,8 +1,8 @@
 # 資産の権利 / 出典 / ライセンス検証 — 記録
 
-- 判定: **WARN** / 記録: `quality/asset-license-inventory.json` / 監査対象ファイル: 107
-- 資産記録 13 件（公開可 9 / 保留 2 / 提供者条件 2）
-- 記録済みファイル 107 / 未記録 0 / findings 8（error 0 / warn 2 / info 6）
+- 判定: **WARN** / 記録: `quality/asset-license-inventory.json` / 監査対象ファイル: 126
+- 資産記録 15 件（公開可 11 / 保留 2 / 提供者条件 2）
+- 記録済みファイル 116 / 未記録 10 / findings 18（error 0 / warn 12 / info 6）
 
 | 判定 | 記録 id | 種別 | 対象ファイル | 由来 | 公開状態 |
 | --- | --- | --- | --- | --- | --- |
@@ -17,8 +17,10 @@
 | publishable | `share-procon2026-fonts-material-symbols` | font | 1 | third-party-bundled | published |
 | hold | `share-procon2026-pdfs` | document | 6 | unknown-provenance | published |
 | hold | `share-procon2026-images` | image | 35 | unknown-provenance | published |
+| publishable | `pet-melty-sprites` | artwork | 8 | repository-authored | published |
 | provider-terms | `web-fonts-google` | font | 0 | third-party-referenced | published |
 | provider-terms | `tool-webfont-typekit` | font | 0 | third-party-referenced | published |
+| publishable | `tool-preview-screens` | image | 1 | repository-generated | published |
 
 ## findings
 
@@ -38,3 +40,23 @@
   - remedy: 提供側の条件変更時に、この記録をレビューし直す。
 - **L011** (info) `tool-webfont-typekit` — コピーを配布していないため、このリポジトリ側では公開を妨げる条件は確認されていません。
   - remedy: 提供側の条件変更時に、この記録をレビューし直す。
+- **S002** (warn) `src/home/digits/0.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/1.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/2.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/3.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/4.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/5.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/6.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/7.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/8.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。
+- **S002** (warn) `src/home/digits/9.webp` — 監査対象のファイルに資産記録がありません。未レビューであることは台帳に宣言されていますが、権利は記録されていません（owner 判断待ち）。
+  - remedy: owner が判断したら、資産記録を追加して台帳の該当行を削除する。

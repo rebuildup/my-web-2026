@@ -77,11 +77,106 @@ function localApiModeBinding(isProduction: boolean): {
 	LOCAL_API_MODE?: ReturnType<typeof bindings.text>;
 } {
 	if (isProduction) return {};
+	// The process environment wins over `.dev.vars` so an explicit
+	// command (`pnpm dev:mock`) states the mode the developer asked
+	// for, instead of a stale local file deciding it.
+	const fromEnv = process.env.LOCAL_API_MODE;
 	const devVars: Record<string, string> =
 		readDevVars(resolve(import.meta.dirname, '.dev.vars')) ?? {};
-	const value = devVars?.LOCAL_API_MODE;
+	const value = fromEnv ?? devVars?.LOCAL_API_MODE;
 	if (typeof value !== 'string' || value.length === 0) return {};
 	return { LOCAL_API_MODE: bindings.text(value) };
+}
+
+/**
+ * The development data-source vocabulary (Issue #377).
+ *
+ * WHY THIS IS RESTATED HERE
+ * -------------------------
+ * `cloudflare.config.ts` is loaded OUTSIDE the Worker module graph
+ * (the Cloudflare config-drift gate imports it with Node, and the Vite
+ * plugin loads it to resolve the bindings). Importing the runtime
+ * module `src/cloudflare/data-source.ts` from here breaks the dev
+ * server: the file would be loaded twice — once as a Node module by
+ * the config loader and once as a Worker module by the module runner
+ * — and the runner then cannot resolve it.
+ *
+ * The runtime contract therefore lives in `src/cloudflare/data-source.ts`
+ * (it owns what the values MEAN), and this file restates the three
+ * strings it needs. `test/integration/dev-data-source.test.ts` asserts
+ * that every value declared here is recognised by the runtime, so the
+ * two cannot drift apart silently.
+ */
+const DATA_SOURCE_ENV_VAR = 'MY_WEB_2026_DATA_SOURCE';
+/** The plugin's own switch that keeps the bindings local. */
+const FORCE_LOCAL_ENV_VAR = 'CLOUDFLARE_VITE_FORCE_LOCAL';
+const DATA_SOURCE_LOCAL = 'local';
+const DATA_SOURCE_PRODUCTION_READONLY = 'production-readonly';
+const DATA_SOURCE_PRODUCTION_READONLY_LOCAL = 'production-readonly-local';
+
+/**
+ * The data source the development surface DECLARES.
+ *
+ * The development surface always states its source: `local` by
+ * default, `production-readonly` when the operator opted in with
+ * `pnpm dev:production-data`, and `production-readonly-local` when the
+ * operator opted in but forced the bindings to stay local
+ * (`pnpm dev:read-only-guard` — the SAFE way to exercise the write
+ * refusal without a write ever reaching production).
+ *
+ * An unrecognised value is passed through unchanged so the runtime can
+ * fail closed on it (and say so on the development screen) instead of
+ * this function silently repairing it.
+ */
+export function resolveDevelopmentDataSource(env: Record<string, string | undefined>): string {
+	const raw = env[DATA_SOURCE_ENV_VAR];
+	if (!raw) return DATA_SOURCE_LOCAL;
+	if (raw === DATA_SOURCE_PRODUCTION_READONLY && env[FORCE_LOCAL_ENV_VAR] === 'true') {
+		return DATA_SOURCE_PRODUCTION_READONLY_LOCAL;
+	}
+	return raw;
+}
+
+/**
+ * Development-only data-source binding (Issue #377).
+ *
+ * The binding tells the running Worker WHICH data it is looking at.
+ * It is declared ONLY in development, so its ABSENCE identifies the
+ * deployed production Worker (`src/cloudflare/data-source.ts` reads
+ * that absence as "production").
+ *
+ * `LOCAL_API_MODE` (Issue #186) is a separate axis and stays where it
+ * is: it is read from `.dev.vars` because it selects the HTTP
+ * boundary's mock gate, not the binding target.
+ */
+function dataSourceBinding(isProduction: boolean): {
+	MY_WEB_2026_DATA_SOURCE?: ReturnType<typeof bindings.text>;
+} {
+	if (isProduction) return {};
+	// The development surface always states its source: the absence
+	// of this binding is what identifies production.
+	return { MY_WEB_2026_DATA_SOURCE: bindings.text(resolveDevelopmentDataSource(process.env)) };
+}
+
+/**
+ * Whether the dev server's D1 / R2 bindings point at the PRODUCTION
+ * resources (Issue #377).
+ *
+ * `@cloudflare/vite-plugin` resolves a binding to its remote resource
+ * only when BOTH hold: the plugin's `remoteBindings` switch is on AND
+ * the binding itself declares `dev.remote`. The switch lives in
+ * `vite.config.ts`; the per-binding flag lives here. Both read the
+ * SAME environment variables with the SAME rule, so the binding target
+ * and the runtime's write policy cannot drift apart.
+ *
+ * The default (`false`) keeps the dev server on the local miniflare
+ * copies, so `pnpm dev` never touches production by accident.
+ */
+function productionDataMode(): boolean {
+	return (
+		process.env[DATA_SOURCE_ENV_VAR] === DATA_SOURCE_PRODUCTION_READONLY &&
+		process.env[FORCE_LOCAL_ENV_VAR] !== 'true'
+	);
 }
 
 export default defineConfig({
@@ -131,8 +226,18 @@ export default defineConfig({
 				[WORKER_RUNTIME_SECRET.CONSUMER_API_KEY]: bindings.secret(),
 				[WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID]: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
-				DB: bindings.d1({ name: D1_DATABASE_NAME, id: D1_DATABASE_ID }),
-				MEDIA: bindings.r2({ name: R2_BUCKET_NAME }),
+				DB: bindings.d1({
+					name: D1_DATABASE_NAME,
+					id: D1_DATABASE_ID,
+					// Issue #377 — remote ONLY in the explicit
+					// production-readonly development mode.
+					dev: { remote: !isProduction && productionDataMode() },
+				}),
+				MEDIA: bindings.r2({
+					name: R2_BUCKET_NAME,
+					// Issue #377 — see the DB binding above.
+					dev: { remote: !isProduction && productionDataMode() },
+				}),
 				// Per-consumer-principal rate limits (ADR-0010). These are
 				// the runtime's only rate-limit layer; the Better Auth
 				// api-key plugin's per-key limit is disabled because two
@@ -147,6 +252,7 @@ export default defineConfig({
 				}),
 				ASSETS: bindings.assets(),
 				...localApiModeBinding(isProduction),
+				...dataSourceBinding(isProduction),
 			},
 		};
 	},

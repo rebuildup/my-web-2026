@@ -375,6 +375,53 @@
 			"externalHosts": []
 		},
 		{
+			"id": "pet-melty-sprites",
+			"kind": "artwork",
+			"title": "相棒キャラクター Melty のスプライト（Web 配信用ストリップ / 静止フレーム）",
+			"summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから静止フレーム、waving の 4 フレームストリップ、ドラッグ用 running の 8 フレームストリップ、look 方向の静止セル 4 種を導出する。",
+			"covers": ["public/pets/melty/**"],
+			"publicPaths": [
+				"/pets/melty/idle-rest.webp",
+				"/pets/melty/waving.webp",
+				"/pets/melty/running-right.webp",
+				"/pets/melty/running-left.webp",
+				"/pets/melty/look-up.webp",
+				"/pets/melty/look-right.webp",
+				"/pets/melty/look-down.webp",
+				"/pets/melty/look-left.webp"
+			],
+			"origin": "repository-authored",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "NOASSERTION",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"owner は 2026-11-01 に、Melty を自身のオリジナルキャラクターとして作成・所有していると申告した（owner attestation）。",
+					"資産単位のライセンス識別子は主張しない（NOASSERTION）。リポジトリ全体の LICENSE が適用される範囲はその文書の記述に従う。",
+					"生成モデル提供者の利用条件の本文はこのリポジトリでは取得していない（validate:fast はオフライン契約）。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-01",
+				"note": "根拠は docs/verification/legal/pet-melty-rights-review.md §1 の owner attestation。提供者条件の本文は未取得のままで、確認したことにはしない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "docs/verification/legal/pet-melty-rights-review.md",
+					"sha256": "c5a224f33d6fab2b6d1758d11ea0b77c47516649c80b07e977706afa76e03566"
+				},
+				{ "kind": "repository-file", "path": "docs/domain/pet-companion.md" },
+				{ "kind": "repository-file", "path": "scripts/build-pet-sprites.mjs" }
+			],
+			"publication": "published",
+			"externalHosts": []
+		},
+		{
 			"id": "web-fonts-google",
 			"kind": "font",
 			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New）",
@@ -441,6 +488,60 @@
 			"publication": "published",
 			"externalHosts": ["use.typekit.net"],
 			"delegatedTo": "tools:artifact:check (Issue #466)"
+		},
+		{
+			"id": "tool-preview-screens",
+			"kind": "image",
+			"title": "ツール一覧のプレビュー画像（WebP）",
+			"summary": "scripts/capture-tool-previews.mjs が /tools/<slug> の実画面を撮影して生成する（現在15 Tool: prototype / readmark / color-palette / qr-generator / text-counter / sequential-png-preview / svg2tsx / business-mail-block / ae-expression / pomodoro / pi-game / fillgen / code-type-p5 / history-quiz / mic-level）。写っているのは rebuildup 所有の Tool（MIT）の UI のみ。readmark の画像は、sandbox frame で storage が拒否されて画面が停止していた期間（Issue #786）に撮影対象から外されていたが、上流の storage 廃止リデザイン（readmark ADR-0008）が入って再び実画面を写す。Issue #817 の9件（第1陣・第2陣・第3陣の有効化）と Issue #769 の color-palette は standalone build merge 後の初公開のため、撮影＝実ブラウザでの描画確認（quality-gate §19）を兼ねる。Issue #771 の business-mail-block も同様に standalone build merge 後の初公開であり、撮影に加えて host frame 内で Tool 実画面の描画・クリップボードへのコピー・ファイルダウンロードの機能（sandbox allow-downloads）を実測した。Issue #773 の ae-expression も standalone build merge 後の初公開であり、同じ位置づけで撮影した。mic-level（第3陣）は upstream の standalone build が CSS パイプラインを持たないため、スタイル未適用（Tailwind 形式の class 名だけ）の実画面になる。これは Tool 側の状態であり、画像は偽造せずそのまま記録する。この記録は権利・出所の記録であり、owner 承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"covers": ["public/tool-previews/**"],
+			"publicPaths": [
+				"/tool-previews/prototype.webp",
+				"/tool-previews/readmark.webp",
+				"/tool-previews/color-palette.webp",
+				"/tool-previews/qr-generator.webp",
+				"/tool-previews/text-counter.webp",
+				"/tool-previews/sequential-png-preview.webp",
+				"/tool-previews/svg2tsx.webp",
+				"/tool-previews/business-mail-block.webp",
+				"/tool-previews/ae-expression.webp",
+				"/tool-previews/pomodoro.webp",
+				"/tool-previews/pi-game.webp",
+				"/tool-previews/fillgen.webp",
+				"/tool-previews/code-type-p5.webp",
+				"/tool-previews/history-quiz.webp",
+				"/tool-previews/mic-level.webp"
+			],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"撮影対象は Tool の実画面のみで、外部サイトの画像・フォントファイルは含まない。",
+					"写っている Tool の出所と commit は src/tools/manifest.json の canonical_repo / pinned_sha が固定する。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-03",
+				"note": "撮影スクリプトと manifest の pinned_sha が、写っている画面の出所を指す。prototype と readmark の既存2枚は再撮影せず据え置き、Issue #817 の9枚（qr-generator / text-counter / sequential-png-preview / svg2tsx / pomodoro / pi-game / fillgen / code-type-p5 / mic-level）と Issue #769 の color-palette の1枚は 2026-11-02 にローカル preview（vite preview）から取得した。pomodoro と code-type-p5 の2枚は、Tool 自身の初期状態（カウントダウン実行中 / サンプルプログラム描画中）まで待ってから撮り直した。Issue #771 の business-mail-block の1枚と Issue #773 の ae-expression の1枚は 2026-11-03 に同じローカル preview から取得した。owner 承認の記録ではない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{ "kind": "repository-file", "path": "scripts/capture-tool-previews.mjs" },
+				{ "kind": "repository-file", "path": "src/tools/manifest.json" }
+			],
+			"publication": "published",
+			"ownerConfirmation": "unconfirmed",
+			"externalHosts": []
 		}
 	]
 }

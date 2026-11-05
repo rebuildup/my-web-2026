@@ -51,6 +51,18 @@ export type PortfolioVisibility = (typeof PORTFOLIO_VISIBILITIES)[number];
 export const PORTFOLIO_STATUSES = ['published', 'archived'] as const;
 export type PortfolioStatus = (typeof PORTFOLIO_STATUSES)[number];
 
+/**
+ * What this repository KNOWS about a project's rights (ADR-0019 §2.2).
+ *
+ * `reviewed` means the rights evidence is in the repository and the
+ * gate confirmed it. `unreviewed` means it is not — the legacy corpus
+ * (Issue #811) has no rights record at all, and the public surface says
+ * so instead of implying clearance. It is an INPUT, not a verdict: the
+ * owner decides what is published.
+ */
+export const PORTFOLIO_EVIDENCE_STATUSES = ['reviewed', 'unreviewed'] as const;
+export type PortfolioEvidenceStatus = (typeof PORTFOLIO_EVIDENCE_STATUSES)[number];
+
 export const PORTFOLIO_LINK_KINDS = [
 	'repo',
 	'demo',
@@ -120,6 +132,7 @@ export const SlugSchema = z.string().superRefine((value, ctx) => {
 export const FacetSchema = z.enum(PORTFOLIO_FACETS);
 export const VisibilitySchema = z.enum(PORTFOLIO_VISIBILITIES);
 export const StatusSchema = z.enum(PORTFOLIO_STATUSES);
+export const EvidenceStatusSchema = z.enum(PORTFOLIO_EVIDENCE_STATUSES);
 export const LinkKindSchema = z.enum(PORTFOLIO_LINK_KINDS);
 
 /**
@@ -132,7 +145,22 @@ export interface PortfolioProjectRow {
 	slug: string;
 	title: string;
 	summary: string;
-	role: string;
+	/**
+	 * The recorded role of the person behind the project — `null`
+	 * when no role is recorded.
+	 *
+	 * The column still carries two claims (a person's role and a kind
+	 * of work derived from the facets). Issue #813 decides that only
+	 * the first one may be published, and that the absence of a role
+	 * is a state the type has to be able to express.
+	 *
+	 * The D1 column stays `NOT NULL`: "no role is recorded" is the
+	 * EMPTY STRING there, and `rowToProject` maps it to `null`. The
+	 * alternative — making the column nullable — needs a table rebuild,
+	 * and SQLite rewrites the child tables' foreign keys when a table is
+	 * renamed (measured; see `migrations/0010_portfolio_evidence_status.sql`).
+	 */
+	role: string | null;
 	period_start: number;
 	period_end: number | null;
 	period_label: string | null;
@@ -150,6 +178,13 @@ export interface PortfolioProjectRow {
 	display_order: number;
 	created_at: number;
 	updated_at: number;
+	/**
+	 * What this repository knows about the project's rights.
+	 *
+	 * `unreviewed` for the legacy corpus (Issue #811): the rights record
+	 * does not exist, and the public surface renders that fact.
+	 */
+	evidence_status: string;
 }
 
 export interface PortfolioLinkRow {
@@ -204,7 +239,18 @@ export interface PortfolioProject {
 	slug: string;
 	title: string;
 	summary: string;
-	role: string;
+	/**
+	 * The recorded role of the person behind the project, or `null`
+	 * when no role is recorded.
+	 *
+	 * The public contract is TWO states — recorded / not recorded —
+	 * because "the role was derived from the facet" is a fact about
+	 * the migration, not about the work (Issue #813,
+	 * `docs/domain/portfolio-vocabulary.md` §4). The value is passed
+	 * through byte-exact; the surfaces decide whether there is
+	 * anything to print.
+	 */
+	role: string | null;
 	periodStart: number;
 	periodEnd: number | null;
 	periodLabel: string | null;
@@ -218,6 +264,11 @@ export interface PortfolioProject {
 	technologies: readonly string[];
 	visibility: PortfolioVisibility;
 	status: PortfolioStatus;
+	/**
+	 * Axis A — what this repository knows about the project's rights.
+	 * Never a publication decision: the owner decides that.
+	 */
+	evidenceStatus: PortfolioEvidenceStatus;
 	pinned: boolean;
 	displayOrder: number;
 	createdAt: number;
@@ -438,6 +489,7 @@ export function rowToProject(
 ): PortfolioProject {
 	const visibilityParse = VisibilitySchema.safeParse(row.visibility);
 	const statusParse = StatusSchema.safeParse(row.status);
+	const evidenceParse = EvidenceStatusSchema.safeParse(row.evidence_status);
 	return {
 		id: row.id,
 		slug: row.slug,
@@ -458,7 +510,11 @@ export function rowToProject(
 		// TRANSFORMED value — never the same expression twice.
 		title: row.title,
 		summary: row.summary,
-		role: row.role,
+		// Identity, like `title` / `summary` (Issue #813): `null` stays
+		// `null` and a stored string is never trimmed, defaulted or
+		// emptied here. Whether there is a role to PRINT is a decision
+		// of the surface, not of this mapping.
+		role: row.role === null || row.role === '' ? null : row.role,
 		periodStart: row.period_start,
 		periodEnd: row.period_end,
 		periodLabel: row.period_label,
@@ -472,6 +528,10 @@ export function rowToProject(
 		technologies: parseTechnologyArray(row.technologies),
 		visibility: visibilityParse.success ? visibilityParse.data : 'draft',
 		status: statusParse.success ? statusParse.data : 'archived',
+		// A row that carries no evidence status is treated as
+		// `unreviewed`, not as `reviewed`: the safe direction for an
+		// unknown is "we do not know", and the surface then says so.
+		evidenceStatus: evidenceParse.success ? evidenceParse.data : 'unreviewed',
 		pinned: row.pinned === 1,
 		displayOrder: row.display_order,
 		createdAt: row.created_at,

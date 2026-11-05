@@ -1,7 +1,10 @@
 import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
+import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { AboutPageData } from '../types';
@@ -17,6 +20,10 @@ import type { AboutPageData } from '../types';
  *   - 04 — Current       (today)
  *   - 05 — Future        (active vs parked)
  *   - Footer             (finds-me-elsewhere external handles)
+ *
+ * The companion character (Issue #274) is not a section and owns no
+ * number: owner instruction 2026-11-01 moved Melty to a page-level
+ * floating overlay, drawn once after the footer.
  *
  * The Hero adopts the same 4/12 (rail) + 8/12 (lead) grid split
  * as the home hero. The body sections use the spread
@@ -74,7 +81,10 @@ const skipLinkStyle = css({
 export function AboutPage({ data }: AboutPageProps) {
 	const { identity, interests, experience, current, future, externalHandles } = data;
 	return (
-		<>
+		// Issue #767 — the fixed companion occupies the bottom-right
+		// corner; the page reserves that corridor so its text never
+		// scrolls underneath. See `src/editorial/pet/safe-area.ts`.
+		<div className={petSafeAreaStyle}>
 			<a href="#about-main" className={skipLinkStyle}>
 				本文へスキップ
 			</a>
@@ -87,13 +97,24 @@ export function AboutPage({ data }: AboutPageProps) {
 				<FutureSection active={future.active} parked={future.parked} />
 			</main>
 			<ExternalHandlesFooter handles={externalHandles} />
-		</>
+			<PetCompanion />
+		</div>
 	);
 }
 
 /* -------------------------------------------------------------------------- */
 /* Hero                                                                       */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * The narrative order the hero rail names (Issue #823).
+ *
+ * The separators between the steps are DRAWN, not typed: the `→`
+ * is a Material Symbols glyph, so the rail carries no `→`
+ * character in the text layer any more (the rail itself is
+ * `aria-hidden`, so the sequence stays a visual cue).
+ */
+const NARRATIVE_ORDER = ['identity', 'interests', 'experience', 'current', 'future'] as const;
 
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
@@ -127,7 +148,19 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 					>
 						<span lang="en">about</span>
 						<span lang="en">samuido · profile</span>
-						<span lang="en">identity → interests → experience → current → future</span>
+						<span lang="en">
+							{NARRATIVE_ORDER.map((step, index) => (
+								<Fragment key={step}>
+									{index > 0 ? (
+										<>
+											{' '}
+											<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
+										</>
+									) : null}
+									{step}
+								</Fragment>
+							))}
+						</span>
 					</aside>
 					<div
 						className={css({
@@ -426,10 +459,13 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 							className={css({
 								color: 'text.accent',
 								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '2px',
 								},
+								_hover: { textDecorationThickness: '2px' },
 							})}
 						>
 							/portfolio
@@ -504,14 +540,22 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 					href={`/portfolio/${project.slug}`}
 					className={css({
 						color: 'inherit',
-						textDecoration: 'none',
+						textDecoration: 'underline',
+						textUnderlineOffset: '0.18em',
+						textDecorationThickness: '1px',
+						// The heading itself is the link, so a full-ink rule under
+						// every line would shout. The underline stays (it is now
+						// the only affordance) but is drawn in the identifying-
+						// rule tone instead of the body ink.
+						textDecorationColor: 'border.strong',
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
 							outlineOffset: '4px',
 							borderRadius: '2px',
 						},
 						_hover: {
-							textDecoration: 'underline',
+							textDecorationThickness: '2px',
+							textDecorationColor: 'currentColor',
 						},
 					})}
 				>
@@ -589,18 +633,14 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 									paddingBlockStart: '3',
 								})}
 							>
-								<span
-									aria-hidden="true"
+								<MaterialSymbol
 									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										letterSpacing: '0.06em',
-										textTransform: 'uppercase',
+										flexShrink: '0',
 										color: 'text.muted',
 									})}
-								>
-									→
-								</span>
+									d={ARROW_FORWARD_PATH}
+									size={12}
+								/>
 								<span>{item}</span>
 							</li>
 						))}
@@ -810,10 +850,12 @@ function ExternalHandlesFooter({
 										fontFamily: 'sans',
 										fontSize: 'sm',
 										fontWeight: '600',
-										textDecoration: 'none',
+										textDecoration: 'underline',
+										textUnderlineOffset: '0.18em',
+										textDecorationThickness: '1px',
 										_hover: {
 											borderColor: 'border.strong',
-											textDecoration: 'underline',
+											textDecorationThickness: '2px',
 										},
 										_focusVisible: {
 											outline: '2px solid {colors.border.focus}',
@@ -844,10 +886,12 @@ function ExternalHandlesFooter({
 								fontFamily: 'sans',
 								fontSize: 'sm',
 								fontWeight: '600',
-								textDecoration: 'none',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
 								_hover: {
 									borderColor: 'border.strong',
-									textDecoration: 'underline',
+									textDecorationThickness: '2px',
 								},
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
@@ -856,7 +900,7 @@ function ExternalHandlesFooter({
 							})}
 						>
 							キーボード配列 / Keyboard
-							<span aria-hidden="true">→</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 						</a>
 					</nav>
 				</div>

@@ -1,0 +1,50 @@
+{
+	"$comment": "Fixture: the same public Japanese copy change, but the owner has not decided yet — the record was written by an automated side and names no owner decision (Issue #754). Expected verdict: not run (NEEDS REVIEW) — a record with `decision: \"pending\"` and no reviewer is the absence of a decision, not a decision, so it may never be read as approval.",
+	"name": "pending",
+	"expect": "not run",
+	"pr": 512,
+	"diff": [
+		"diff --git a/src/home/hero.tsx b/src/home/hero.tsx",
+		"index 1111111..2222222 100644",
+		"--- a/src/home/hero.tsx",
+		"+++ b/src/home/hero.tsx",
+		"@@ -12,1 +12,1 @@",
+		"-\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform を構築しています。\"",
+		"+\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform の移行を進めています。\""
+	],
+	"ledger": {
+		"version": 1,
+		"records": [
+			{
+				"id": "pr-512",
+				"pr": 512,
+				"base": "release-0-7-0",
+				"reviewer": null,
+				"reviewedAt": "2026-10-20",
+				"decision": "pending",
+				"provenance": {
+					"kind": "agent-recorded",
+					"reference": null,
+					"recordedBy": "agent",
+					"ownerConfirmation": "unconfirmed"
+				},
+				"fingerprint": "sha256:a94069ca55b31d2cd80e79d9c2aeba1dbca8244d2f739add7932952e0b08ae9e",
+				"proposal": {
+					"tool": "yomiyasu",
+					"ran": true,
+					"summary": "推敲案 1 件: 「構築しています」を「移行を進めています」へ。",
+					"disposition": "採用。移行中の状態.cacheという事実と一致するため。"
+				},
+				"comparisons": [
+					{
+						"path": "src/home/hero.tsx",
+						"before": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。",
+						"after": "開発・制作・活動をまとめる次の Personal Web Platform の移行を進めています。",
+						"verdict": "intentional",
+						"note": "構築中という主張を、移行中という実際の状態へ言い換え。否定・許可の意味は変わらない。"
+					}
+				]
+			}
+		]
+	}
+}

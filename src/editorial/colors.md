@@ -1,7 +1,7 @@
 # Editorial Color System
 
 > Visual language for `src/editorial/`. Components consume the
-> **semantic** layer (`bg.canvas`, `accent.positive`, …). Raw
+> **semantic** layer (`bg.canvas`, `text.default`, …). Raw
 > palette lives in `tokens.ts` and is reachable only through the
 > semantic layer. A browsable mirror of every token described here
 > lives at [`/design-system`](../../routes/design-system.tsx)
@@ -14,16 +14,21 @@ tokens.ts (raw)
   brand.* / neutral.* / positive.* / negative.* / warning.*
   design.* / code.* / writing.* / tool.*
   charcoal.*   — near-neutral dark ladder (dark appearance only)
+  mono.light.* / mono.dark.*  — the monochrome role scale
 
 semantic-tokens.ts (semantic) — every token is `{ value: { base, _dark } }`
   bg.{canvas,surface,subtle,accent,inverse}
   text.{default,muted,inverse,accent}
   border.{subtle,strong,focus}
-  accent.{surface,interactive,positive,negative,warning}
-  accent.category.{design,code,writing,tool}
+  mono.surface.{ground,sunken,raised,control,inverse,disabled}
+  mono.line.{hairline,rule}
+  mono.ink.{text,secondary,muted,disabled,inverse,onColour,onColourInverse}
+  accent.{surface,interactive}
+  accent.category.{design,code,writing,tool}   — the MARK step
+  accent.field.{design,code,writing}           — the FIELD step
 
 components (consumers)
-  bg="accent.surface"   color="accent.positive"   ...
+  bg="accent.surface"   color="text.default"   ...
 ```
 
 Components **never** reference raw tokens directly. The semantic
@@ -35,17 +40,121 @@ layer is the contract; the raw layer is implementation.
 | --- | --- | --- |
 | `accent.surface` | Hero / feature card background | Subtle tinted container that says "this is the featured region" without competing with the primary CTA. |
 | `accent.interactive` | CTA hover / pressed / focus fill | The "this button is being acted on" color. Distinct from `bg.accent` (idle CTA) so the interaction reads. |
-| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#ffffff` light / `#0a0b0e` dark, `charcoal.950`). |
-| `accent.negative` | Error / unreachable status | Red status indicator. Same contrast guarantee as `accent.positive`. |
-| `accent.warning` | Degraded status | Amber status indicator. Same contrast guarantee. |
-| `accent.category.design` | Design content identifier | Pink. Used as left-border on portfolio cards whose first facet is `design`. |
-| `accent.category.code` | Code content identifier | Cyan. Used as left-border on portfolio cards whose first facet is `develop`. |
-| `accent.category.writing` | Writing / long-form content identifier | Yellow-brown. Used as left-border on portfolio cards whose first facet is `other`. |
-| `accent.category.tool` | Tool / utility content identifier | Indigo. Used as left-border on portfolio cards whose first facet is `video` (and to category-tag tool surfaces). |
+| `accent.category.design` | Design content identifier | Pink. Non-text identifier hue paired with the `design` `StateMark` silhouette. |
+| `accent.category.code` | Code content identifier | Cyan. Same role for `develop`. |
+| `accent.category.writing` | Writing / long-form content identifier | Yellow-brown. Same role for `other`. |
+| `accent.category.tool` | Tool / utility content identifier | Indigo. Same role for `video` (and the tool surfaces' category tag). |
+
+There is **no status token** (Issue #887). A status is a silhouette,
+a word and the ink the surrounding text already uses: its label
+paints in `text.default` (or `text.muted` where the mark is meant to
+sit quietly) and `StateMark` paints in `currentColor`, so the mark
+inherits that contrast instead of adding an obligation of its own.
 
 The four category hues are deliberately separable at a glance —
 they sit at comparable saturation and distinct hue angles
 (pink ≈ 330°, cyan ≈ 190°, yellow ≈ 50°, indigo ≈ 240°).
+
+**Not painted on the portfolio card (Issue #794).** These four roles
+used to be the left-border of a portfolio card. The owner's decision
+(2026-11-01) removed that rule and forbids a left border as its
+replacement: the card is separated from the page by its own fill
+(`bg.surface`) and the category is carried by the `StateMark`
+silhouette plus the upper-case category word. The hues remain a
+non-text identifier role for surfaces that pair them with a mark (the
+`/design-system` colour plate does), never a background for text — a
+700/300-step solid cannot carry a text-bearing face at 4.5:1.
+
+**Mark step vs field step.** Those two roles use different steps of
+the same family, and the difference is area, not taste. A small mark
+on the light canvas must clear the 3:1 non-text minimum, so
+`accent.category.*` binds the **700** step (`design` 5.89 : 1,
+`code` 5.23 : 1, `writing` 4.80 : 1 on `#fcfcfd`); the 500 step of
+the cyan and yellow families measures 2.37 : 1 and 1.88 : 1 there and
+cannot serve that role. A field large enough to be its own surface
+has the opposite constraint: the 700 step is dark and reads as mud
+across a wide area (`writing` 700 is `#a16207`, an ochre that turns
+to brown).
+
+A field is therefore painted at the family's **500** step, and that
+step is now its own semantic token — `accent.field.{design,code,writing}`
+(Issue #764, approved by the owner on 2026-11-04). Both appearances
+bind the same step: a colour field does not change value with the
+reader's appearance. What changes is the ink placed on it, which is
+also a token rather than a per-render measurement:
+`mono.ink.onColour` for a vivid field (`#101012` light / `#0a0a0c`
+dark) and `mono.ink.onColourInverse` for a deep one. The contrast gate
+measures the pairing (`scripts/check-a11y-contrast.mjs`) at
+5.38 / 7.82 / 9.91 : 1 for `design` / `code` / `writing` in light and
+5.60 / 8.14 / 10.31 : 1 in dark; the `/design-system` plate prints the
+same ratio on the DOM (`data-contrast`) as verification, not as the
+decision. The plate shows both steps side by side so the rule is
+stated rather than implied.
+
+## Monochrome layer — the ground the colour sits on (Issue #764)
+
+The owner's decision (2026-11-02) is the direction the name carries:
+the design system is a **monochrome ground with a colour layer placed
+on it**. The monochrome layer answers every structural question —
+page ground, sunken / raised / control surface, decorative hairline,
+identifying rule, body / secondary / auxiliary / disabled ink, inverse
+ground — so a colour never has to carry a surface's meaning on its
+own.
+
+Light and dark are **designed independently**, not inverted: each is
+read from its own ground outward, which is why `tokens.ts` carries
+`mono.light.*` and `mono.dark.*` as two objects rather than one ramp
+with a `_dark` tail.
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| `mono.surface.ground` | `#edede8` | `#0a0a0c` |
+| `mono.surface.sunken` | `#e0e0da` | `#050506` |
+| `mono.surface.raised` | `#ffffff` | `#1a1a1e` |
+| `mono.surface.control` | `#dfdfd8` | `#26262c` |
+| `mono.surface.inverse` | `#101012` | `#f2f2ef` |
+| `mono.surface.disabled` | `#e9e9e4` | `#17171b` |
+| `mono.line.hairline` | `#c9c9c2` | `#33333a` |
+| `mono.line.rule` | `#74747d` | `#62626c` |
+| `mono.ink.text` | `#101012` | `#f2f2ef` |
+| `mono.ink.secondary` | `#404047` | `#b9b9c0` |
+| `mono.ink.muted` | `#5f5f68` | `#8d8d96` |
+| `mono.ink.disabled` | `#a7a7ad` | `#5c5c64` |
+| `mono.ink.inverse` | `#f6f6f2` | `#0a0a0c` |
+| `mono.ink.onColour` | `#101012` | `#0a0a0c` |
+| `mono.ink.onColourInverse` | `#f6f6f2` | `#f2f2ef` |
+
+Two values depart from the harness the owner judged on, and both are
+stated rather than hidden:
+
+- `mono.line.rule` dark moved from `#5c5c66` to `#62626c`: the
+  harness value measured 2.99 : 1 against `#0a0a0c`, just under the
+  3 : 1 non-text minimum, so it moved to the nearest step that clears
+  it (3.28 : 1). The hue and the role are unchanged.
+- `mono.line.hairline` is **excluded** from the non-text matrix for
+  the same reason `border.subtle` is: it is a decorative separator that
+  carries no information of its own. The strong rule is the boundary
+  that identifies a component, and it is measured.
+
+`mono.*` and `accent.field.*` are declared, resolved on the server, and
+measured. **The site-wide `bg.*` / `text.*` / `border.*` tokens are
+projections of this layer** (Issue #887, `13f60653`): `bg.canvas` is
+`mono.surface.ground`, `bg.surface` is `mono.surface.raised`,
+`bg.subtle` is `mono.surface.sunken`, `text.default` is
+`mono.ink.text`, `text.muted` is `mono.ink.muted`, `border.subtle` is
+`mono.line.hairline`, `border.strong` is `mono.line.rule`. A component
+that consumes the semantic layer therefore sits on the monochrome
+ground without naming it.
+
+Two consequences are rules, not defaults:
+
+- **The operation is ink.** `bg.accent` and `bg.inverse` both resolve to
+  the inverse ground, and their label is `text.inverse`. There is no
+  coloured call to action.
+- **`text.accent` is ink.** A link earns its affordance from an
+  underline at rest (`textDecoration: 'underline'`, offset `0.18em`,
+  1px), not from a hue. Painting body or link text in a family colour is
+  the one thing direction B forbids outright.
 
 ### These hues are reinforcement, never the message (Issue #411)
 
@@ -54,18 +163,31 @@ by colour alone, and that is now a rule of this layer rather than a
 property of individual components: **no consumer may ship a status or
 a category whose only cue is a hue.** A status / category surface
 composes [`StateMark`](primitives/StateMark.tsx) — a silhouette unique
-per state — next to a text label, and the `accent.*` token above paints
-the reinforcement. The mark paints in `currentColor`, so it inherits the
-label's contrast instead of adding an obligation of its own (SC 1.4.11).
+per state — next to a text label. The mark paints in `currentColor`, so
+it inherits the label's contrast instead of adding an obligation of its
+own (SC 1.4.11).
+
+Direction B goes one step further than 1.4.1 requires: **a status does
+not get a hue of its own.** Green / red / amber are not part of the
+system. A status that belongs to classified content borrows that
+classification's colour (`accent.category.*`) for its mark; a status
+with nothing to borrow (a field error, a failed write) is carried by
+shape, word and the monochrome hierarchy alone. Issue #887 deleted
+the last status alias, so there is no status token to look up: the
+label paints in `text.default` (or `text.muted` where the mark is
+meant to sit quietly) and the silhouette paints in `currentColor`.
 
 The proof (greyscale captures in both appearances, the machine checks
 and the human review that are explicitly separated) lives in
 [`docs/verification/a11y/status-monochrome.md`](../../../docs/verification/a11y/status-monochrome.md).
 
 **Scope of the rule, and the one surface that does not satisfy it yet.**
-The rule binds any consumer that paints an `accent.*` status or
-`accent.category.*` hue as a state cue. This ticket wired two of them:
-the home status badges and the portfolio card category rules. One
+The rule binds any consumer that paints a hue as a state cue — status
+included, since Issue #887 deleted the last status alias. Issue #411
+wired two of them:
+the home status badges and the portfolio card category rules; Issue
+#794 then removed the rule from the portfolio card entirely (the
+category is shape + word there, with no hue at all). One
 consumer is **not** wired: the external-read card badges
 (`src/external-api/ExternalReadCard.tsx` — fresh / stale / failed /
 blocked / loading) still render `Badge tone={accent | neutral}` with no
@@ -89,7 +211,7 @@ The `value: { … }` wrapper is **required**. A bare `{ base, _dark }`
 object is parsed as an extra layer of *token path* rather than as
 conditions: Panda still emits the per-condition custom properties, but
 the utility resolves to the literal token path
-(`color: accent.positive`), which the browser discards as invalid CSS.
+(`color: accent.category.design`), which the browser discards as invalid CSS.
 That is the shape Issue #172 shipped, and it is why status badges,
 category borders and the CTA hover fill never rendered their colour.
 
@@ -130,11 +252,11 @@ rather than gray-washing the accent itself.
 
 | Group | Tokens | Rule |
 | --- | --- | --- |
-| Surface ladder | `bg.canvas` / `bg.surface` / `bg.subtle` | light steps *down* (`0 → 50 → 100`), dark steps *up* through `charcoal` `950 → 900 → 800`, one notch per tier, so depth still reads as successive layers |
+| Surface ladder | `bg.canvas` / `bg.surface` / `bg.subtle` | light steps *down* (`25 → 50 → 100`, Issue #812), dark steps *up* through `charcoal` `950 → 900 → 800`, one notch per tier, so depth still reads as successive layers |
 | Text ladder | `text.default` / `text.muted` / `text.accent` | near-white instead of white, near-neutral gray instead of slate, and the link **brightens** to `brand.500` on dark where it darkens to `brand.700` on light |
 | Borders | `border.subtle` / `border.strong` / `border.focus` | hairline `charcoal.800` (1.14 : 1), emphasis `charcoal.600` (4.19 : 1), focus `brand.300` (11.80 : 1) |
 | Tinted feature surface | `accent.surface` | `brand.50` in light, `brand.950` `#151b26` in dark — a sky whisper 1.14 : 1 above the canvas, the same "barely a tint" relationship as light's 1.07 : 1 |
-| Status / category | `accent.positive` / `negative` / `warning` / `category.*` | unchanged from Issue #172 — the 300 steps match the reference's light label colors and clear AA on the near-black canvas |
+| Category | `accent.category.*` | unchanged from Issue #172 — the 300 steps match the reference's light label colors and clear AA on the near-black canvas |
 | **Static by decision** | `bg.accent`, `bg.inverse`, `text.inverse`, `accent.interactive` | `base` and `_dark` are deliberately identical |
 
 The static group is a decision, not an omission:
@@ -162,9 +284,7 @@ The static group is a decision, not an omission:
 | Primary CTA fill, idle | `bg.accent` (brand.700) |
 | Primary CTA fill, hover / pressed / focus | `accent.interactive` |
 | Subtle tinted card surface | `accent.surface` |
-| "live" / "ok" status pill or indicator | `accent.positive` |
-| "unreachable" / "error" status indicator | `accent.negative` |
-| "degraded" / "warning" status indicator | `accent.warning` |
+| "live" / "unreachable" / "degraded" status | no token — `StateMark` silhouette + word in `text.default` |
 | Content category indicator (portfolio / tools) | `accent.category.<design\|code\|writing\|tool>` |
 | Page background | `bg.canvas` |
 | Card surface (default) | `bg.surface` |
@@ -181,9 +301,14 @@ fill. `bg.accent` / `text.accent` resolve to `brand.700` in light and
 `brand.500` in dark, hover / pressed resolves to `brand.800`, and the
 focus ring resolves to `brand.600` in light and `brand.300` in dark.
 
-Foreground tokens are checked against `bg.canvas` — `neutral.0`
-(`#ffffff`) in light, `charcoal.950` (`#0a0b0e`) in dark. Normal text
+Foreground tokens are checked against `bg.canvas` — `neutral.25`
+(`#fcfcfd`) in light, `charcoal.950` (`#0a0b0e`) in dark. Normal text
 uses 4.5 : 1; non-text indicators and fills use 3 : 1.
+
+Since Issue #812 `neutral.0` (`#ffffff`) is no longer a surface: it is
+reserved for `text.inverse` — the true-white foreground on a dark
+plate — and for the icon knockout in `src/home/mark.tsx`. The light
+canvas is `neutral.25` (`#fcfcfd`) instead.
 
 ### Dark — all 24 pairs pass (Issue #290)
 
@@ -200,9 +325,6 @@ uses 4.5 : 1; non-text indicators and fills use 3 : 1.
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
 | `text.inverse` on `bg.inverse` | `#ffffff` | `#0f172a` | 17.85 : 1 |
-| `accent.positive` | `#6ee7b7` | `#0a0b0e` canvas | 12.91 : 1 |
-| `accent.negative` | `#fda4af` | `#0a0b0e` canvas | 10.41 : 1 |
-| `accent.warning` | `#fcd34d` | `#0a0b0e` canvas | 13.65 : 1 |
 | `accent.category.design` | `#f9a8d4` | `#0a0b0e` canvas | 10.85 : 1 |
 | `accent.category.code` | `#67e8f9` | `#0a0b0e` canvas | 13.58 : 1 |
 | `accent.category.writing` | `#fde047` | `#0a0b0e` canvas | 14.93 : 1 |
@@ -219,24 +341,24 @@ two tokens survives the appearance change.
 
 ### Light
 
+The light canvas is `neutral.25` (`#fcfcfd`) since Issue #812 — the
+rows below are the measured pairs on that canvas.
+
 | Token / pair | Light value | Background | Contrast |
 | --- | --- | --- | --- |
-| `text.default` | `#0f172a` (neutral.900) | `#ffffff` canvas | 17.85 : 1 |
-| `text.muted` | `#475569` (neutral.600) | `#ffffff` canvas | 7.57 : 1 |
+| `text.default` | `#0f172a` (neutral.900) | `#fcfcfd` canvas (Issue #812) | 17.41 : 1 |
+| `text.muted` | `#475569` (neutral.600) | `#fcfcfd` canvas (Issue #812) | 7.39 : 1 |
 | `text.muted` | `#475569` | `#f8fafc` surface | 7.24 : 1 |
-| `text.accent` | `#0369a1` (brand.700) | `#ffffff` canvas | 5.93 : 1 |
+| `text.accent` | `#0369a1` (brand.700) | `#fcfcfd` canvas (Issue #812) | 5.79 : 1 |
 | `text.inverse` / CTA label | `#ffffff` | `#0369a1` (brand.700) | 5.93 : 1 |
 | `text.inverse` / pressed label | `#ffffff` | `#075985` (brand.800) | 7.56 : 1 |
-| `accent.positive` | `#047857` | `#ffffff` canvas | 5.48 : 1 |
-| `accent.negative` | `#be123c` | `#ffffff` canvas | 6.29 : 1 |
-| `accent.warning` | `#b45309` | `#ffffff` canvas | 5.02 : 1 |
-| `accent.category.design` | `#be185d` | `#ffffff` canvas | 6.04 : 1 |
-| `accent.category.code` | `#0e7490` | `#ffffff` canvas | 5.36 : 1 |
-| `accent.category.writing` | `#a16207` | `#ffffff` canvas | 4.92 : 1 |
-| `accent.category.tool` | `#4338ca` | `#ffffff` canvas | 7.90 : 1 |
-| `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#ffffff` canvas | 5.93 : 1 |
-| `border.focus` (non-text, 3 : 1) | `#0284c7` | `#ffffff` canvas | 4.10 : 1 |
-| `border.strong` (non-text, 3 : 1) | `#64748b` | `#ffffff` canvas | 4.76 : 1 |
+| `accent.category.design` | `#be185d` | `#fcfcfd` canvas (Issue #812) | 5.89 : 1 |
+| `accent.category.code` | `#0e7490` | `#fcfcfd` canvas (Issue #812) | 5.23 : 1 |
+| `accent.category.writing` | `#a16207` | `#fcfcfd` canvas (Issue #812) | 4.80 : 1 |
+| `accent.category.tool` | `#4338ca` | `#fcfcfd` canvas (Issue #812) | 7.71 : 1 |
+| `bg.accent` fill (non-text, 3 : 1) | `#0369a1` | `#fcfcfd` canvas (Issue #812) | 5.79 : 1 |
+| `border.focus` (non-text, 3 : 1) | `#0284c7` | `#fcfcfd` canvas (Issue #812) | 4.01 : 1 |
+| `border.strong` (non-text, 3 : 1) | `#64748b` | `#fcfcfd` canvas (Issue #812) | 4.64 : 1 |
 | `text.muted` on `bg.subtle` | `#475569` | `#f1f5f9` | 6.91 : 1 |
 | `text.muted` on `accent.surface` | `#475569` | `#f0f9ff` | 7.10 : 1 |
 
@@ -350,15 +472,24 @@ and what a person decides (whether a colour is semantically adequate).
   token without a verified pair is a contract violation.
 - Do **not** stack two accent backgrounds on the same element —
   the layer model assumes one surface per region.
-- Do **not** use `accent.category.*` for status feedback or
-  `accent.{positive,negative,warning}` for content identity. The
-  five tokens carry distinct semantics and crossing them reads
-  as noise.
+- Do **not** use `accent.category.*` for status feedback, and do not
+  reintroduce a status hue: state is a silhouette, a word and ink. The
+  four category tokens carry a content classification, and crossing
+  them into a state reads as noise.
 - Do **not** read `_dark` values directly. Panda binds the
   condition; consumers should ask for the unconditional token
   name and trust Panda to pick the right variant.
 
 ## Change history
+
+- **2026-11-04** (Issue #887) — Deleted the three transitional status
+  aliases that had bound a status to `mono.ink.text`. They were already
+  ink in both appearances, so the deletion changed no rendered value:
+  a status label still paints in `text.default`, the silhouette still
+  paints in `currentColor`, and the token column on `/design-system`,
+  the three status pairs in the contrast matrix and this document's
+  status rows were removed with them. Colour now survives only as a
+  content classification.
 
 - **2026-10-23** (Issue #399) — The token layer became a **measured**
   contract. `scripts/check-a11y-contrast.mjs` imports `tokens.ts` and

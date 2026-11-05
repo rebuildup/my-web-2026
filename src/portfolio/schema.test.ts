@@ -186,6 +186,7 @@ describe('schema — row converters', () => {
 				display_order: 0,
 				created_at: 1,
 				updated_at: 2,
+				evidence_status: 'reviewed',
 			},
 			[],
 			[],
@@ -227,6 +228,7 @@ describe('schema — row converters', () => {
 				display_order: 0,
 				created_at: 0,
 				updated_at: 0,
+				evidence_status: 'not-a-status',
 			},
 			[],
 			[],
@@ -236,6 +238,9 @@ describe('schema — row converters', () => {
 		expect(out.visibility).toBe('draft');
 		expect(out.status).toBe('archived');
 		expect(out.pinned).toBe(false);
+		// An unknown evidence status falls back to the SAFE direction:
+		// "we do not know", never "reviewed".
+		expect(out.evidenceStatus).toBe('unreviewed');
 	});
 });
 
@@ -263,6 +268,7 @@ describe('schema — display text preservation (Issue #433)', () => {
 		display_order: 0,
 		created_at: 1,
 		updated_at: 2,
+		evidence_status: 'reviewed',
 		...overrides,
 	});
 

@@ -6,7 +6,7 @@ what the public surface shows.
 closure.
 
 This runbook exists because of an incident, not because a process needed
-tidying. On **2026-10-31** an automated backlog sweep closed **132 issues**
+tidying. On **2026-10-31** an automated backlog sweep closed **133 issues**
 with `state_reason: completed`. **124 of them** carried the identical
 comment:
 
@@ -83,6 +83,7 @@ One entry per closed issue the repository knows about:
   "issue": 274,
   "title": "feat: Codex ペットのキャラクターとアニメーションを Web でも再利用する",
   "closedAt": "2026-10-31",
+  "window": "sweep-2026-10-31",
   "state": "planned-unimplemented",
   "closure": "unsupported",
   "evidence": ["docs/personal/codex-pet.md"],
@@ -99,6 +100,31 @@ One entry per closed issue the repository knows about:
 - `action` is what happened to the issue afterwards: `kept-closed`,
   `reopened`, or `awaiting-owner`.
 - `decision` carries `kind` and `reason` for the states that need one.
+- `window` names the audit window that covers `closedAt`.
+
+The windows are declared once in `audit.windows` (Issue #815). A window
+is a date range plus the population it covers:
+
+| Window | Range | Population | Meaning |
+| --- | --- | --- | --- |
+| `sweep-2026-10-31` | 2026-10-31 〜 2026-10-31 | `133`（**frozen**） | 一括 close の履歴。この件数は動かさない。 |
+| `tracked` | 2026-11-01 〜 open | `null`（**derived**） | 以後の close をすべて記録する窓。母集団は要素数から導出する。 |
+
+`population` が整数の窓は **frozen**: その窓に属する entry の数が一致
+しなければ `R005`（error）になる。2026-10-31 の 133 件を黙って削ることも
+水増しすることもできない。`population` が `null` の窓は **derived**: 母集団は
+その窓に属する entry そのものなので、新しい close を足しても件数の
+更新は要らない。ただし窓には日付範囲があり、`closedAt` がその範囲外の
+entry は `R005` になる。
+
+**母集団の訂正は 1 回だけ起きている（2026-11-02）。** 当初 132 と数えたのは
+`closed:2026-10-31` の検索（`closedAt` 基準）で、**同じ日に close されて同じ
+日に reopen された #534** が `closedAt: null` のため検索母集団から外れていた
+ためだった。issue-events API で再列挙すると当日の `closed` イベントは 157 件
+（うち 24 件は PR）で **Issue は 133 件**。差分の根拠と実測は
+[`docs/verification/backlog/closure-population-correction-2026-11-02.md`](../verification/backlog/closure-population-correction-2026-11-02.md)。
+これは「entry 数に合わせて population を書き換えた」のではなく、**列挙から
+漏れていた 1 件を母集団に戻した**訂正であり、以後の frozen window は動かさない。
 
 ### 4.2 The offline gate — `pnpm run issue:closure:check`
 
@@ -118,7 +144,12 @@ ledger entry nor a trace** (rule `R001`), plus every mass closure that
 used the release-branch template (rule `R006`). It also checks that the
 ledger and GitHub agree about each tracked issue's current state
 (`R002` / `R003`), that every ledger entry is readable (`R004`), and
-that the ledger's declared population matches its entries (`R005`).
+that the ledger's windows and its entries agree (`R005`): every entry
+names a declared window, its `closedAt` falls inside that window, a
+frozen window carries exactly its declared population, and windows do
+not overlap. A derived window has no frozen count, so a new close can be
+recorded without turning the gate red — but it still cannot be parked
+outside the window's dates.
 
 A **trace** is a commit that referenced the issue, or a comment that
 names an artefact (a PR, a commit, a URL) or records an explicit
@@ -143,7 +174,28 @@ green through it.
    its state is `planned-unimplemented` / `partial` / `unassessed`, and
    the reason is written down.
 3. **Record the entry** in `quality/issue-closure-ledger.json`.
-4. **Run** `pnpm run issue:closure:check`.
+   - **Choose the window that covers `closedAt`.** Any close from
+     2026-11-01 on goes in `tracked`; a repair of the 2026-10-31 history
+     goes in `sweep-2026-10-31`. The `closedAt` you write must fall
+     inside that window's dates.
+   - **Never edit a frozen window's `population`** to match a changed
+     entry count, and never re-date an entry to fit a window. The frozen
+     number is the history the audit exists to preserve; a mismatch is
+     the finding, not the thing to silence.
+     - The one correction that has happened (2026-11-02: `132` → `133`,
+       #534 を追加) was **not** this: it repaired an incomplete
+       enumeration — an issue that was closed and reopened on the same
+       day has `closedAt: null` and therefore never appeared in the
+       `closed:2026-10-31` search. The measurement is recorded in
+       [`docs/verification/backlog/closure-population-correction-2026-11-02.md`](../verification/backlog/closure-population-correction-2026-11-02.md).
+       A correction of that kind carries its own measurement; a change
+       that only makes the numbers agree does not.
+   - **Leave `ownerConfirmation: "unconfirmed"`** unless a traceable
+     owner artefact (a review, an issue comment, a decision record)
+     points at the entry, and then set `ownerReference` to its URL.
+4. **Run** `pnpm run issue:closure:check`. With a token, also run
+   `pnpm run issue:closure:audit` to check the ledger against GitHub
+   before pushing.
 5. **Close the issue** with a comment that states the evidence and the
    state — not a template. The comment must name the artefact or the
    decision, because that is the trace the remote gate looks for; a
@@ -172,6 +224,8 @@ incident described above.
 
 - `docs/verification/backlog/closure-audit-2026-10-31.md` — the audit of
   the 2026-10-31 sweep, per issue.
+- `docs/verification/backlog/closure-window-2026-11-02.md` — why the audit
+  window was redefined (Issue #815), with before / after gate verdicts.
 - `scripts/check-issue-closure.mjs` / `scripts/check-issue-closure-remote.mjs`
   — the two gates.
 - `quality/issue-closure-ledger.json` — the record.

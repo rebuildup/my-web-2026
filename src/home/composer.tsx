@@ -1,15 +1,22 @@
 import { css } from '../../styled-system/css';
+import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Container } from '../editorial/primitives/Container';
+import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
+import { CurrentProjects } from './current/CurrentProjects';
+import type { CurrentProjectRecord } from './current/types';
+import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
+import type { DataSourceDescriptor } from './status/data-source';
 import type { SystemService, SystemServiceStatus } from './status/health';
 import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
@@ -28,6 +35,21 @@ export interface HomePageData {
 	incidents?: readonly KnownIncident[];
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
+	/**
+	 * The current-project records (Issue #316). Optional, and the
+	 * default is the EMPTY list: a route that forgets them publishes
+	 * the "nothing is published" sentence rather than a stale one.
+	 * Every record is composed from committed artefacts (the owner's
+	 * roster and the generated git snapshot) — there is no runtime
+	 * fetch for this section.
+	 */
+	projects?: readonly CurrentProjectRecord[];
+	/**
+	 * Issue #377 — which data source the runtime is reading. The
+	 * indicator renders only outside the deployed production Worker,
+	 * so the shipped page carries no development text.
+	 */
+	dataSource?: DataSourceDescriptor;
 }
 
 export interface HomePageProps {
@@ -47,29 +69,76 @@ export interface HomePageProps {
 	timeZone?: string;
 }
 
+// Load-bearing annotation: a module-level css() in an entry-reachable module
+// gives it top-level side effects, so Rollup pulls the whole Home graph into the
+// shared entry (+41.7 KiB across every route, Issue #884). Do not remove it.
+/**
+ * Sub-section heading inside the merged status section (Issue #884).
+ * Three `h3`s sit under the section's single `h2`, so each block keeps
+ * its own name in the screen-reader outline without re-opening a
+ * top-level judgement.
+ */
+const subsectionTitleClassName = /*#__PURE__*/ css({
+	margin: '0',
+	marginBlockEnd: '4',
+	fontFamily: 'sans',
+	fontSize: 'xl',
+	fontWeight: '700',
+	lineHeight: '1.25',
+	letterSpacing: '-0.015em',
+	color: 'text.default',
+	textWrap: 'balance',
+});
+
+const subsectionDescriptionClassName = /*#__PURE__*/ css({
+	margin: '0',
+	marginBlockEnd: '6',
+	fontFamily: 'sans',
+	fontSize: 'md',
+	lineHeight: '1.6',
+	color: 'text.muted',
+	textWrap: 'pretty',
+});
+
 /**
  * Canonical composition for GET /.
  *
  * The route owns routing; this component owns the home reading order.
  * Individual sections keep their own change reasons below src/home/.
  *
- * Reading order (Issue #31 spread):
+ * Reading order (Issue #31 spread; Issue #884 merged the three
+ * "is this site up right now" blocks into one section):
  *   - Hero             (page entry; own 4/8 grid)
+ *   - 00 — Now         (current projects; committed snapshot, Issue #316)
  *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
- *   - 02 — System status (binding probes; spread SectionHeading)
- *   - 03 — Reactions   (visitor emoji reactions against home-page)
- *   - 04 — Access counter (page-view counter; spread SectionHeading
- *                            + Dashboard KPI tile in 8/12 children slot)
+ *   - 02 — Status      (site status; spread SectionHeading with three
+ *                       `h3` blocks: platform health / reactions /
+ *                       page views). The three blocks answer ONE
+ *                       visitor question — "is this site working
+ *                       right now" — so they share one `<h2>` instead
+ *                       of consuming three of the page's judgements
+ *                       (Issue #764 IA proposal §5.2, Issue #884).
+ *   - 03 — Contact     (re-verified public channels only)
  *   - Footer            (edition / identity / index / privacy notice)
+ *
+ * The companion character (Issue #274) is NOT a section: owner
+ * instruction 2026-11-01 moved Melty to a page-level floating overlay
+ * (`src/editorial/pet/`), so it is drawn once at the end of the page
+ * and owns no eyebrow, heading or reading-order position.
  *
  * Branch 43 redesign: every body section now participates in the
  * shared editorial coordinate system (`<Container>` →
- * `<SectionHeading variant="spread">`). Reactions and counter no
- * longer roll their own inline eyebrow / heading / padding.
+ * `<SectionHeading variant="spread">`). Issue #884 goes one step
+ * further for the status blocks: reactions and the page-view counter
+ * keep their own content but no longer open their own top-level
+ * section — they are `h3` sub-blocks of "サイトの状態".
  */
 export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	return (
-		<>
+		// Issue #767 — the page reserves the bottom-right corridor the
+		// fixed companion occupies, so the reading column never scrolls
+		// under it. See `src/editorial/pet/safe-area.ts`.
+		<div className={petSafeAreaStyle}>
 			<a
 				href="#main"
 				className={css({
@@ -92,48 +161,69 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</a>
 			<Hero />
 			<main id="main">
-				<CapabilitiesGrid capabilities={data.capabilities} />
-				<StatusTiles
-					services={data.services}
-					statuses={data.statuses}
-					observedAt={data.observedAt}
-					incidents={data.incidents}
-					locale={locale}
-					timeZone={timeZone}
-				/>
-				<section
-					aria-labelledby="reactions-heading"
-					className={css({
-						paddingBlock: { base: '16', lg: '24' },
-					})}
-				>
+				<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
+				{data.dataSource ? (
 					<Container>
-						<SectionHeading
-							id="reactions-heading"
-							eyebrow="03 — Reactions"
-							title="みんなの反応 / Reactions"
-							description="リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。"
-							variant="spread"
-						>
-							<ReactionsWidget data={data.reactions} />
-						</SectionHeading>
+						<DataSourceBadge source={data.dataSource} />
 					</Container>
-				</section>
+				) : null}
+				<CapabilitiesGrid capabilities={data.capabilities} />
 				<section
-					aria-labelledby="access-counter-heading"
+					aria-labelledby="site-status-heading"
 					className={css({
 						paddingBlock: { base: '16', lg: '24' },
 					})}
 				>
 					<Container>
 						<SectionHeading
-							id="access-counter-heading"
-							eyebrow="04 — Access counter"
-							title="ページビュー / Page views"
-							description="各リクエストは短時間ウィンドウ内で重複加算されません。"
+							id="site-status-heading"
+							eyebrow="02 — Status"
+							title="サイトの状態"
+							titleEn="Site status"
+							description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
 							variant="spread"
 						>
-							<CounterTile data={data.counter} locale={locale} />
+							<div
+								className={css({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: { base: '14', lg: '16' },
+								})}
+							>
+								<div>
+									<h3 id="status-heading" className={subsectionTitleClassName}>
+										プラットフォームの状態 / Platform health
+									</h3>
+									<StatusTiles
+										chrome="body"
+										services={data.services}
+										statuses={data.statuses}
+										observedAt={data.observedAt}
+										incidents={data.incidents}
+										locale={locale}
+										timeZone={timeZone}
+									/>
+								</div>
+								<div>
+									<h3 id="reactions-heading" className={subsectionTitleClassName}>
+										みんなの反応 / Reactions
+									</h3>
+									<p className={subsectionDescriptionClassName}>
+										リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+										を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+									</p>
+									<ReactionsWidget data={data.reactions} />
+								</div>
+								<div>
+									<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+										ページビュー / Page views
+									</h3>
+									<p className={subsectionDescriptionClassName}>
+										各リクエストは短時間ウィンドウ内で重複加算されません。
+									</p>
+									<CounterTile data={data.counter} locale={locale} />
+								</div>
+							</div>
 						</SectionHeading>
 					</Container>
 				</section>
@@ -146,9 +236,9 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					<Container>
 						<SectionHeading
 							id="contact-cta-heading"
-							eyebrow="05 — Contact"
+							eyebrow="03 — Contact"
 							title="Contact / お問い合わせ"
-							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途 (採用 / 技術的な議論 / 配布) 別の説明が添えてあります。"
+							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
 							variant="spread"
 						>
 							<div
@@ -184,7 +274,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 									})}
 								>
 									<span lang="ja">Contact を見る</span>
-									<span aria-hidden="true">→</span>
+									<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
 								</a>
 							</div>
 						</SectionHeading>
@@ -192,6 +282,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				</section>
 			</main>
 			<Footer />
-		</>
+			<PetCompanion />
+		</div>
 	);
 }

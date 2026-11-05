@@ -17,6 +17,7 @@ import {
 	parseRouteAncestors,
 	parseRouteTree,
 	renderHtml,
+	toolLimitFor,
 } from './check-bundle-budget.mjs';
 
 /**
@@ -498,6 +499,67 @@ describe('Tool iframe bundles are aggregated separately (Issue #482)', () => {
 		assert.equal(violations[0].route, 'tool:prototype');
 		assert.match(violations[0].message, /separate Tool budget/);
 	});
+
+	it('holds a Tool to its own cap when tool_iframe.per_tool names one', () => {
+		const budget = budgetOf(GENEROUS);
+		budget.tool_iframe.per_tool = {
+			readmark: { max_js_bytes: 60_000, reason: 'x'.repeat(40) },
+		};
+		const bundles = [
+			{ slug: 'prototype', js_bytes: 5_000, css_bytes: 100, js_files: 1, css_files: 1 },
+			{ slug: 'readmark', js_bytes: 50_000, css_bytes: 100, js_files: 1, css_files: 1 },
+		];
+		// The shared 10,000 B cap would fail readmark; its own 60,000 B cap does not.
+		assert.deepEqual(evaluateToolBudgets(bundles, budget), []);
+		bundles[1].js_bytes = 60_001;
+		const violations = evaluateToolBudgets(bundles, budget);
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].route, 'tool:readmark');
+		assert.match(violations[0].message, /exceeds the separate Tool budget 60000/);
+		assert.match(violations[0].message, /own cap in tool_iframe\.per_tool/);
+	});
+
+	it('applies a per-Tool cap only to the metric it names', () => {
+		const cap = {
+			max_js_bytes_per_tool: 10,
+			max_css_bytes_per_tool: 2,
+			per_tool: { readmark: { max_js_bytes: 99 } },
+		};
+		assert.equal(toolLimitFor(cap, 'readmark', 'js_bytes'), 99);
+		// No per-Tool CSS value, so the shared CSS cap still applies.
+		assert.equal(toolLimitFor(cap, 'readmark', 'css_bytes'), 2);
+		assert.equal(toolLimitFor(cap, 'prototype', 'js_bytes'), 10);
+		assert.equal(toolLimitFor({}, 'prototype', 'js_bytes'), undefined);
+	});
+
+	it('warns when a per-Tool cap names a Tool that was not built', () => {
+		const dir = toolDir({
+			'prototype/app/index.html': 40,
+			'prototype/app/assets/app.js': 1_000,
+		});
+		try {
+			const budget = budgetOf(GENEROUS);
+			budget.tool_iframe.per_tool = {
+				readmark: { max_js_bytes: 3_000_000, reason: 'x'.repeat(40) },
+			};
+			const report = buildReport({
+				graph: graph(),
+				routesByPath: parseRouteTree(ROUTE_TREE),
+				ancestorsByPath: parseRouteAncestors(ROUTE_TREE),
+				toolsDir: dir,
+				budget,
+				sourceSha: 'a'.repeat(40),
+			});
+			assert.equal(report.tool_iframe.length, 1);
+			assert.ok(
+				report.warnings.some(
+					(warning) => warning.kind === 'stale-tool-cap' && warning.route === 'tool:readmark',
+				),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe('renderHtml (Issue #482)', () => {
@@ -758,6 +820,32 @@ describe('CLI (Issue #482)', () => {
 			const result = run(dir);
 			assert.equal(result.code, 2);
 			assert.match(result.stderr, /tool_iframe\.reason: required/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('exits 2 when a per-Tool cap has no reason', () => {
+		const budget = budgetOf(GENEROUS);
+		budget.tool_iframe.per_tool = { readmark: { max_js_bytes: 3_000_000 } };
+		const dir = fixture({ budget });
+		try {
+			const result = run(dir);
+			assert.equal(result.code, 2);
+			assert.match(result.stderr, /tool_iframe\.per_tool\["readmark"\]\.reason: required/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('exits 2 when a per-Tool cap entry sets no cap at all', () => {
+		const budget = budgetOf(GENEROUS);
+		budget.tool_iframe.per_tool = { readmark: { reason: 'x'.repeat(40) } };
+		const dir = fixture({ budget });
+		try {
+			const result = run(dir);
+			assert.equal(result.code, 2);
+			assert.match(result.stderr, /at least one of max_js_bytes \/ max_css_bytes is required/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

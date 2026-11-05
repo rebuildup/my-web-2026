@@ -1,10 +1,14 @@
-import type { PortfolioProject, PortfolioLink, PortfolioAdjacent } from '../schema';
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
+import { selectPortfolioVideo } from '../video-facade';
+import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
+import { PortfolioEvidenceNotice } from './PortfolioEvidenceNotice';
 import { PortfolioMediaFigure } from './PortfolioMedia';
+import { PortfolioVideoFacade } from './PortfolioVideoFacade';
 
 /**
  * PortfolioDetail — `/portfolio/[slug]` route surface.
@@ -12,7 +16,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * First viewport contract:
  *   - Project name (h1)
  *   - One-sentence summary
- *   - Role + period + facet pills
+ *   - Role (only when a role is recorded) + period + facet pills
  *   - Representative media (cover)
  *   - Primary link
  *
@@ -83,13 +87,6 @@ const SECTION_DEFINITIONS: ReadonlyArray<{
 	},
 ];
 
-const FACET_LABEL: Readonly<Record<string, string>> = {
-	develop: 'Develop',
-	video: 'Video',
-	design: 'Design',
-	other: 'Other',
-};
-
 const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 	repo: 'Repository',
 	demo: 'Demo',
@@ -102,8 +99,31 @@ const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 
 export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
-	const primaryLink = project.links[0] ?? null;
+	// Issue #870: a `kind: 'video'` link whose URL this repository can
+	// validate gets a play affordance instead of being only a line in
+	// §07. The primary link is then the first NON-video link, so the
+	// first viewport does not say "Video" twice. A page whose only link
+	// is the video keeps the facade and drops the duplicate line.
+	const video = selectPortfolioVideo(project.links);
+	const primaryLink =
+		project.links.find((link) => link.kind !== 'video') ??
+		(video === null ? (project.links[0] ?? null) : null);
 	const showAdjacent = adjacent.prev !== null || adjacent.next !== null;
+	// The `Role` row exists only when a role is actually recorded
+	// (Issue #813). A kind of work does not belong in this column — the
+	// eyebrow word and the facet pills already carry it — but this
+	// component cannot tell where a stored value came from, so it
+	// prints a non-null value as it is. Keeping the kind out of the
+	// column is the write path's job (Issue #811); until that lands, a
+	// facet-derived value already stored would still print here. An
+	// empty `<dd>` would be a row that claims something while saying
+	// nothing, so it is dropped. The printed string is the stored
+	// string, byte-exact.
+	const hasRole = project.role !== null && project.role.trim() !== '';
+	// Issue #767 — `periodLabel` is nullable; an empty `<dd>` beside a
+	// `Period` label claims a recorded period while showing nothing, so
+	// the pair is dropped exactly as `Role` is.
+	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<>
 			<a href="#portfolio-detail" className={skipLinkStyle}>
@@ -207,28 +227,36 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										color: 'text.muted',
 									})}
 								>
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Role
-									</dt>
-									<dd className={css({ margin: '0' })}>{project.role}</dd>
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Period
-									</dt>
-									<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+									{hasRole ? (
+										<>
+											<dt
+												className={css({
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.04em',
+													textTransform: 'uppercase',
+												})}
+											>
+												Role
+											</dt>
+											<dd className={css({ margin: '0' })}>{project.role}</dd>
+										</>
+									) : null}
+									{hasPeriod ? (
+										<>
+											<dt
+												className={css({
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.04em',
+													textTransform: 'uppercase',
+												})}
+											>
+												Period
+											</dt>
+											<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+										</>
+									) : null}
 								</dl>
 								<div
 									aria-label="facets"
@@ -252,6 +280,11 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										<PortfolioMediaFigure media={cover} loading="eager" />
 									</div>
 								) : null}
+								{video ? (
+									<div className={css({ maxWidth: '720px' })}>
+										<PortfolioVideoFacade video={video} />
+									</div>
+								) : null}
 								{primaryLink ? (
 									<p
 										className={css({
@@ -267,10 +300,13 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											className={css({
 												color: 'text.accent',
 												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '2px',
 												},
+												_hover: { textDecorationThickness: '2px' },
 											})}
 										>
 											{LINK_LABEL[primaryLink.kind]}
@@ -279,6 +315,10 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									</p>
 								) : null}
 							</div>
+							{/* ADR-0019 §2.5 — an asset published without a
+							    rights record says so, on the page that shows
+							    the asset. */}
+							<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
 						</Container>
 					</header>
 					{SECTION_DEFINITIONS.map((section) => {
@@ -334,14 +374,32 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													display: 'inline-flex',
 													gap: '3',
 													alignItems: 'baseline',
+													// Issue #871: a URL with no break opportunity
+													// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
+													// is one unbreakable run. Without these three
+													// properties the anchor's max-content width
+													// exceeds the viewport at 390px and the WHOLE
+													// document scrolls sideways (measured
+													// 410 / 390). `flexWrap` lets the label and the
+													// URL sit on separate lines; `minWidth: 0` lets
+													// the flex item shrink below its content size;
+													// `overflowWrap` supplies the break opportunity
+													// inside the URL itself.
+													flexWrap: 'wrap',
+													minWidth: '0',
+													maxWidth: '100%',
+													overflowWrap: 'anywhere',
 													fontFamily: 'sans',
 													fontSize: 'md',
 													color: 'text.accent',
 													textDecoration: 'underline',
+													textUnderlineOffset: '0.18em',
+													textDecorationThickness: '1px',
 													_focusVisible: {
 														outline: '2px solid {colors.border.focus}',
 														outlineOffset: '2px',
 													},
+													_hover: { textDecorationThickness: '2px' },
 												})}
 											>
 												<span
@@ -372,11 +430,24 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							})}
 						>
 							<Container>
+								{/*
+								 * Issue #767 — no eyebrow here. The numbered
+								 * eyebrows belong to the body sections, and those
+								 * are omitted when their markdown body is empty:
+								 * an adjacent-only page showed a bare `08` with no
+								 * `01`–`07` to belong to. The number is dropped
+								 * rather than renumbered, because the visible
+								 * numbering is a property of the rendered page and
+								 * not of this fixed slot.
+								 *
+								 * The description used to name the SQL columns
+								 * (`display_order`, `updated_at`); that is the
+								 * implementation's vocabulary, not the reader's.
+								 */}
 								<SectionHeading
 									id="portfolio-section-adjacent"
-									eyebrow="08"
 									title="隣接 project / Adjacent"
-									description="Canonical sort 順 (pinned → display_order → updated_at → id) で隣接する project。"
+									description="このプロジェクトの前後に並ぶ project。"
 								/>
 								<ul
 									className={css({

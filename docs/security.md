@@ -408,8 +408,10 @@ The external boundary splits its routes into three origin classes
   `/api/v1/reactions`. The response echoes **one** allow-listed origin
   plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
   method and request-header allow-list. Any other origin — including the
-  opaque `null` origin a sandboxed Tool iframe sends — gets `403` and no
-  CORS header for preflights and state-changing requests. A `GET`/`HEAD`
+  opaque `null` origin a sandboxed `external_exception` iframe sends —
+  gets `403` and no CORS header for preflights and state-changing
+  requests. (A first-party `same_origin_static` Tool frame is not
+  sandboxed under ADR-0020, so it sends the host origin.) A `GET`/`HEAD`
   from a foreign origin still reaches the handler (Issue #440's CSRF
   contract keeps safe reads unaffected) but carries no CORS echo, so the
   browser cannot read the body. On `/api/v1/auth/*` the actual-request
@@ -518,10 +520,13 @@ against the **ancestor's** origin — the host, which is the same
 origin in both cases — so `'self'` permits the embedding.
 
 The `sandbox="allow-scripts"` (no `allow-same-origin`) attribute
-makes the framed document's own origin opaque, but `frame-ancestors`
-is matched against the ancestor, not the framed document, so the
-sandbox changes nothing here. It still blocks the Tool from reading
-the host DOM.
+historically made the framed document's own origin opaque, but
+`frame-ancestors` is matched against the ancestor, not the framed
+document, so the sandbox changed nothing here. ADR-0020 removed that
+attribute for first-party Tools: the frame now runs on the host origin
+and can read the host DOM, which is why the Tool build / review /
+release boundary — not the iframe — is the isolation control. An
+`external_exception` frame keeps its sandbox.
 
 `frame-ancestors 'none'` on the artefact would break every integrated
 Tool (the shell renders, the iframe never mounts), which is why the
@@ -683,7 +688,7 @@ Detection is the browser's native report surface
   TanStack UI, its fonts, its analytics, and the Tool iframe element it
   embeds.
 - **Out of scope:** Static Assets. `/tools/<slug>/app/**` is a
-  Tool-owned document inside a sandboxed frame, and `/share/**` is a
+  Tool-owned document inside a Tool iframe, and `/share/**` is a
   self-contained static document. CSP is a per-document policy, and
   neither document is rendered by this Worker; a host-wide Report-Only
   rule in `public/_headers` would claim a policy this repository has not

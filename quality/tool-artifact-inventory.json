@@ -4,7 +4,7 @@
 	"note": "Reviewed record for Issue #466. Evidence is per commit: regenerate with `pnpm run tools:artifact:update` and review the diff in the PR that changed the pin, the license file or the lockfile. Regenerate after `scripts/build-tools.mjs` has collected an artefact so `outbound.hosts` reflects the shipped bytes.",
 	"tools": {
 		"prototype": {
-			"pinned_sha": "335e0e861009049336e581dc266dc4e2f019e5c7",
+			"pinned_sha": "263dd931446047c8b16de19bb1c440bb0be4ba5e",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -52,7 +52,7 @@
 			}
 		},
 		"readmark": {
-			"pinned_sha": "906c90e57e51f1d7b3fe739f085cf9978445c0fb",
+			"pinned_sha": "36ccd863956e63079e3c239a2bd901040b78084b",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",
@@ -62,266 +62,295 @@
 			"dependencies": {
 				"status": "verified",
 				"lockfile": "bun.lock",
-				"lockfile_sha256": "695c41bbf1f06c5b0452cbbd9939e44eb27f1716f9a2ea29fc6fae618bee2546",
-				"runtime": ["dexie", "pdfjs-dist", "react", "react-dom", "react-router-dom", "zustand"]
+				"lockfile_sha256": "cab03494fa87b0336686d5b7e5bd6ff0a3e3a4a5874d78b23aa069deaa6271c9",
+				"runtime": ["pdfjs-dist", "react", "react-dom", "react-router-dom", "zustand"]
 			},
 			"outbound": {
 				"observed": true,
 				"hosts": [
-					"bit.ly",
+					"${d}",
+					"${e}",
+					"${h}",
+					"a",
+					"b",
+					"creativecommons.org",
+					"example.com",
+					"foo.bar",
+					"github.com",
 					"localhost",
+					"ns.adobe.com",
 					"react.dev",
 					"reactrouter.com",
-					"tinyurl.com",
-					"www.w3.org"
+					"scripts.sil.org",
+					"www.apache.org",
+					"www.w3.org",
+					"www.xfa.org",
+					"x",
+					"xn--e1aybc"
 				]
 			}
 		},
 		"text-counter": {
-			"pinned_sha": "5371479f6b49e2139424ebb9388287cc5e1a6e03",
+			"pinned_sha": "b0c7ba203df7d822a87387d367fd1415d13382e6",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "15f4d17afe35f7d32f264db1ee30bc69b943669daa54d842a6c73fbd82c9a3cb",
+				"runtime": ["js-tiktoken", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"color-palette": {
-			"pinned_sha": "0eb51503ba39712827497281ca489a379c8c912b",
+			"pinned_sha": "b3fed92bac4a6d32b48be21c35ad8b8239d4d5e5",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "8ac1bced922e4179937d946c4011cd9720621ba03793bbee45680c977bc03fcb",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"sequential-png-preview": {
-			"pinned_sha": "2bcad8a121f0b058d3f17ac900c76bcc4d47a34e",
+			"pinned_sha": "ddec2729d8b244ebab3370d2eccb95be25e2a43a",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "c42dc586316869a6f388ecdde1cfb62ca649dcd2bf4639df32285bbdbab43206",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"svg2tsx": {
-			"pinned_sha": "4e85e922d87bfd75c62d4e0b6cfe595b8289368a",
+			"pinned_sha": "6289e2c89a484c3a31bd9b8cba368d6b38c414a0",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "c676fb2b9290d33d8c52f35af84504d474bee81f2b9c5e9584c3552035cfcbc5",
+				"runtime": ["dompurify", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["example.com", "react.dev", "www.w3.org"]
 			}
 		},
 		"business-mail-block": {
-			"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+			"pinned_sha": "1495b2e5feae6b4d38e1d985e1066b2913d39391",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "7edfc11b426e045e37ee9fe56259f1d86e27e083f004e64a304cdf347dfdccf7",
+				"runtime": ["@hello-pangea/dnd", "lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "redux.js.org", "www.w3.org"]
 			}
 		},
 		"code-type-p5": {
-			"pinned_sha": "509c2873a434673befeee08c3bf6d4b2c8473b94",
+			"pinned_sha": "2e1193111faa837d3653d72410aa0e3c97a176b3",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "e87b62349da91ef1dbe4cc03469d8dfc01399f7249fd799718adbf4d1927af07",
+				"runtime": ["jszip", "p5", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": [
+					"caniuse.com",
+					"cdn.jsdelivr.net",
+					"dev.to",
+					"developer.mozilla.org",
+					"extremelearning.com.au",
+					"github.com",
+					"i.test(i",
+					"json-schema.org",
+					"p5js.org",
+					"processing.org",
+					"react.dev",
+					"stuk.github.io",
+					"www.opengl.org",
+					"www.shadertoy.com",
+					"www.w3.org"
+				]
 			}
 		},
 		"fillgen": {
-			"pinned_sha": "01d53b84e9884352aa2bc44a6b917708de5f5199",
+			"pinned_sha": "962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "0169f85de6402d20f57cc8c43a58abc9dd90763d1f354f9b9232f6ae39b361b8",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"qr-generator": {
-			"pinned_sha": "19fd50bb32d4cc1fd1e6129de32a6771c2e6667f",
+			"pinned_sha": "2a7d64308e1286108c42bbe88b8d9f762e7e8fa3",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "75e58cc99b4f60b2d884b81a3174e5b71e5025f0703b68d5b6d34f3368a79980",
+				"runtime": ["qrcode", "qrcode.react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"pomodoro": {
-			"pinned_sha": "954cfd898dba6f46c8ef250d69b1b64245c0eecf",
+			"pinned_sha": "d4add8a1f19b4a4ffb3c77c745f140796120adc7",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "3ad951d176fc988ef671ad1354a20d4f8e9d6c7ff3c59ec0835bf5fef34570b3",
+				"runtime": ["lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "via.placeholder.com", "www.w3.org", "www.youtube.com"]
 			}
 		},
 		"history-quiz": {
-			"pinned_sha": "72328139de1ac5ceee84babbf76cd82899fde8c3",
+			"pinned_sha": "024676693fd3d91401ddcacb1294ea988801c6eb",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "bfa4bebc1bc9d7df256bcfe6d868cf92ddb50fbb15be7164425a62e3a4524ebc",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"pi-game": {
-			"pinned_sha": "9e19ec5d63c84fad9be625b33b0455e922ba3570",
+			"pinned_sha": "b234aa0569ade70a885c8ee8941861fccf7a3603",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "04d35a88056d0a2da4a21a101e8357708d9d97908029952dab4c03a845c59ffa",
+				"runtime": ["react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"ae-expression": {
-			"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+			"pinned_sha": "56bbbbd6174c1baee5b542565466f8154ad633ed",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "d05d76d0e06caa635a68f3be5152feca06cde38f60c2994d43ea6341390a261a",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "e725004c619289985936cad8efce2491752e577cea255e27ec32023651048220",
+				"runtime": ["lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["react.dev", "www.w3.org"]
 			}
 		},
 		"mic-level": {
-			"pinned_sha": "5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3",
+			"pinned_sha": "9506e4619541d8912346648ced1239607acea199",
 			"license": {
-				"status": "unverified",
-				"evidence_file": null,
-				"evidence_sha256": null,
-				"detected": []
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "1bbe22ed3a57f8ec95bc23d63bb0b850f4a30c459765486457fab95387cca80c",
+				"detected": ["MIT"]
 			},
 			"dependencies": {
-				"status": "unverified",
-				"lockfile": null,
-				"lockfile_sha256": null,
-				"runtime": []
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "f7afc877ebf6f9d15af28afcdcb4057349519b6899c4f70bd405c73747cf7eec",
+				"runtime": ["lucide-react", "react", "react-dom"]
 			},
 			"outbound": {
-				"observed": false,
-				"hosts": []
+				"observed": true,
+				"hosts": ["obsproject.com", "react.dev", "www.w3.org"]
 			}
 		}
 	}

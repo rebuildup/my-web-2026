@@ -8,9 +8,10 @@ import { ProjectCard } from './ProjectCard';
  *
  * WCAG 2.2 SC 1.4.1 Use of Color (Level A) says colour must not be
  * the only visual means of conveying information. The category rule
- * this card paints (`accent.category.<facet>`) was four hues of one
- * identical bar, so the tests below pin the two things that survive
- * when hue is removed:
+ * this card used to paint (`accent.category.<facet>`) was four hues of
+ * one identical bar; Issue #794 removed it (owner decision,
+ * 2026-11-01 — no left rule, no left border), so the tests below pin
+ * the two things that carry the category now that no hue remains:
  *
  *   1. **the mark** — every facet maps to its own `StateMark` kind
  *      (`data-state-mark`), so no two categories share one entry of
@@ -29,6 +30,12 @@ import { ProjectCard } from './ProjectCard';
  * one channel instead of two, which is the failure this file exists
  * to catch.
  *
+ * Issue #794 also pins the ABSENCE of the cue that was removed: no
+ * absolutely positioned bar, no left border, and no `accent.category.*`
+ * colour on this surface. A regression that re-added one of them would
+ * restore a hue-only channel beside the shape, which is exactly what
+ * the owner's decision forbids.
+ *
  * Static markup, no DOM: the same reason `list-scale.test.tsx` uses
  * it — this card needs no router and no bindings, and the workerd
  * pool has no DOM to query.
@@ -41,7 +48,10 @@ const FACET_CATEGORY: Readonly<Record<PortfolioFacet, string>> = {
 	other: 'writing',
 };
 
-function project(facets: readonly PortfolioFacet[]): PortfolioProject {
+function project(
+	facets: readonly PortfolioFacet[],
+	overrides: Partial<PortfolioProject> = {},
+): PortfolioProject {
 	return {
 		id: 'p-1',
 		slug: 'a-project',
@@ -61,18 +71,25 @@ function project(facets: readonly PortfolioFacet[]): PortfolioProject {
 		technologies: [],
 		visibility: 'public',
 		status: 'published',
+		evidenceStatus: 'reviewed',
 		pinned: false,
 		displayOrder: 1,
 		createdAt: 0,
 		updatedAt: 0,
 		links: [],
 		media: [],
+		...overrides,
 	};
 }
 
 /** Every `data-state-mark` value in the rendered markup, in order. */
 function marks(html: string): string[] {
 	return [...html.matchAll(/data-state-mark="([^"]+)"/g)].map((match) => match[1]);
+}
+
+/** The `<article>` element's class attribute (the card's own plane). */
+function articleClass(html: string): string {
+	return html.match(/<article[^>]*class="([^"]*)"/)?.[1] ?? '';
 }
 
 describe('ProjectCard category cue (Issue #411)', () => {
@@ -109,11 +126,82 @@ describe('ProjectCard category cue (Issue #411)', () => {
 		expect(html).not.toContain('data-category=');
 	});
 
+	it('paints its own surface and no left category rule (Issue #794)', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['design'])} />);
+		// The face is the card's own fill — a luminance step, not a hue.
+		expect(articleClass(html)).toContain('bg-c_bg.surface');
+		// The removed cue must stay removed: no absolutely positioned
+		// bar, no 4px rule, and no category colour on this surface, so
+		// the owner's "no left rule, no left border" holds against a
+		// future edit as well.
+		expect(html).not.toMatch(/pos_absolute|w_4px|bd-s|borderInlineStart/);
+		expect(html).not.toContain('accent.category');
+	});
+
 	it('maps each facet to the documented category', () => {
 		for (const [facet, category] of Object.entries(FACET_CATEGORY) as [PortfolioFacet, string][]) {
 			expect(renderToStaticMarkup(<ProjectCard project={project([facet])} />)).toContain(
 				`data-category="${category}"`,
 			);
+		}
+	});
+});
+
+/**
+ * The `role` row (Issue #813).
+ *
+ * The column mixes two claims — the role a person held ("Tool
+ * developer") and the kind of work ("Development", derived from the
+ * facets). The corrected decision keeps the first one and takes the
+ * second one out of the column: the eyebrow word and the facet pills
+ * already carry it, and 5 of the 64 derived values contradicted the
+ * eyebrow because the derivation order and the display order differ.
+ *
+ * The component only sees a stored string, so these cases pin the
+ * PUBLIC CONTRACT, not a live path: D1 declares `role` NOT NULL and
+ * the loader carries no `role_source`, so no row can be `null` today.
+ * The state below arrives with Issue #811's ingest, which makes the
+ * column nullable and writes no kind of work into it.
+ */
+
+/** How many times `needle` occurs in `haystack`. */
+function count(haystack: string, needle: string): number {
+	return haystack.split(needle).length - 1;
+}
+
+describe('ProjectCard — the role row (Issue #813)', () => {
+	it('prints a recorded role under the Role label', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { role: 'Tool developer' })} />,
+		);
+		expect(html).toContain('>Role</dt>');
+		expect(html).toContain('Tool developer');
+		// The label is `Role`: a person's role, not a kind of work.
+		expect(html).not.toContain('>Kind</dt>');
+	});
+
+	it('drops the role row for a derived value and keeps the facet wording', () => {
+		// `role: null` is the value Issue #811's ingest writes for a
+		// `facet-derived` row (the column is NOT NULL today, so no live
+		// row can be null yet). The kind of work stays where the facets
+		// are.
+		const html = renderToStaticMarkup(<ProjectCard project={project(['video'], { role: null })} />);
+		expect(html).not.toContain('>Role</dt>');
+		// The facet still names the work: the eyebrow word and the pill.
+		expect(count(html, '>Video<')).toBe(2);
+		// Neither the derived value nor a kind-of-work label appears.
+		expect(html).not.toContain('Video production');
+		expect(html).not.toContain('>Kind</dt>');
+	});
+
+	it('leaves no empty value cell behind when no role is recorded', () => {
+		for (const role of [null, '']) {
+			const html = renderToStaticMarkup(<ProjectCard project={project(['develop'], { role })} />);
+			expect(html).not.toContain('>Role</dt>');
+			expect(html).not.toMatch(/<dd[^>]*>\s*<\/dd>/);
+			// The period row is unconditional.
+			expect(html).toContain('>Period</dt>');
+			expect(html).toContain('2020 — 2021');
 		}
 	});
 });

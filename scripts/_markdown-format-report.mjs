@@ -238,8 +238,8 @@ const CHROME_CSS = `
 	table.checks th { color: var(--colors-text-muted); font-weight: 600; }
 	table.checks td.detail { color: var(--colors-text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 	td.verdict { white-space: nowrap; font-weight: 600; }
-	td.verdict.pass { color: var(--colors-accent-positive); }
-	td.verdict.fail { color: var(--colors-accent-negative); }
+	td.verdict.pass { color: var(--colors-text-default); }
+	td.verdict.fail { color: var(--colors-text-default); }
 	div.columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
 	div.pane { border: 1px solid var(--colors-border-subtle); border-radius: 0.5rem; padding: 0.85rem 1rem; overflow: hidden; }
 	div.pane > h3 { margin: 0 0 0.5rem; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--colors-text-muted); }

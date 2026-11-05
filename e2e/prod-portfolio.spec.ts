@@ -26,8 +26,13 @@ import { expect, test } from '@playwright/test';
 //     spec).
 //
 // Strictly READ-ONLY against the canonical production origin
-// https://rebuildup.dev and the R2 custom domain
-// https://media.rebuildup.dev:
+// https://rebuildup.dev. Media is read through the same origin, at
+// /media/<r2_key>: Issue #634 moved public media delivery behind the
+// Worker (`src/http/media`, an allowlisted `portfolio/` namespace), so
+// the R2 custom domain `https://media.rebuildup.dev` is a residual that
+// no page references any more. The og:image assertion below pinned that
+// residual and made the release-window smoke red for correct output
+// (Issue #816).
 //
 //   - No D1 writes, no R2 writes, no auth mutations.
 //   - No reset / clearCookies against any production storage.
@@ -73,7 +78,8 @@ interface Manifest {
 }
 
 const CANONICAL_ORIGIN = 'https://rebuildup.dev';
-const MEDIA_ORIGIN = 'https://media.rebuildup.dev';
+/** Issue #634: public media is served by the Worker at `/media/<r2_key>`. */
+const MEDIA_ORIGIN = `${CANONICAL_ORIGIN}/media`;
 
 function loadManifest(): Manifest {
 	const here = dirname(fileURLToPath(import.meta.url));
@@ -137,22 +143,21 @@ test.describe('production portfolio smoke (release-window post-publish contract)
 			expect(body, `og:type for ${asset.slug}`).toMatch(/property="og:type"\s+content="article"/);
 			expect(body, `og:title for ${asset.slug}`).toMatch(/property="og:title"\s+content="[^"]+"/);
 			expect(body, `og:image for ${asset.slug}`).toMatch(
-				/property="og:image"\s+content="https:\/\/media\.rebuildup\.dev\/portfolio\//,
+				/property="og:image"\s+content="https:\/\/rebuildup\.dev\/media\/portfolio\//,
 			);
 			expect(body, `twitter:card for ${asset.slug}`).toMatch(
 				/name="twitter:card"\s+content="[^"]+"/,
 			);
 
 			// Image URL matches the expected R2 key.
-			expect(
-				body,
-				`${asset.slug}: og:image references https://media.rebuildup.dev/${asset.r2_key}`,
-			).toContain(`https://media.rebuildup.dev/${asset.r2_key}`);
+			expect(body, `${asset.slug}: og:image references ${MEDIA_ORIGIN}/${asset.r2_key}`).toContain(
+				`${MEDIA_ORIGIN}/${asset.r2_key}`,
+			);
 		});
 	}
 
 	for (const asset of coverAssets) {
-		test(`GET https://media.rebuildup.dev/${asset.r2_key} returns 200 + ${asset.content_type}`, async ({
+		test(`GET ${MEDIA_ORIGIN}/${asset.r2_key} returns 200 + ${asset.content_type}`, async ({
 			request,
 		}) => {
 			const res = await request.get(`${MEDIA_ORIGIN}/${asset.r2_key}`);

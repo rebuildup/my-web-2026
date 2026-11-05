@@ -12,7 +12,8 @@ import manifestJson from './manifest.json' with { type: 'json' };
  *   - which Tools are integrated
  *   - which delivery mode each Tool uses (same_origin_static,
  *     external_exception, host_disabled)
- *   - the iframe sandbox / referrer policy for the iframe route
+ *   - the iframe referrer policy (and, for an external frame, its
+ *     sandbox) for the iframe route
  *   - the entry HTML URL for the iframe src
  *
  * Routes under `src/routes/tools.*` consume this module. The Tool
@@ -70,11 +71,22 @@ import manifestJson from './manifest.json' with { type: 'json' };
  *
  * Embed policy (Issue #465): this module does NOT decide whether a
  * Tool may be framed. `src/tools/embed-policy.ts` owns that decision
- * (sandbox tokens, referrer policy, frame origin, message origin) and
+ * (referrer policy, frame origin, message origin, and the sandbox that
+ * only an external frame declares — ADR-0020) and
  * both `scripts/check-tools-manifest.mjs` and the `/tools/<slug>`
  * route consume it. What this module contributes is the resolved
  * frame `src` (`resolveToolEntryHtml`), so the route never has to
  * re-derive it from raw manifest strings.
+ *
+ * Manifest injection (Issue #861): `createToolRegistry(manifest)`
+ * builds a registry over ANY manifest, and the module-level
+ * `listAllTools` / `listTools` / `getTool` / `listPublicTools` /
+ * `getPublicTool` / `toolRouteSecurityPolicy` are thin wrappers over
+ * the registry of the SHIPPED manifest. The public API and its
+ * behaviour are unchanged; what the factory adds is the ability to
+ * state the "準備中（host_disabled）契約" against a synthetic manifest
+ * instead of against the shipped Tool set, which is about to lose its
+ * last waiting Tool.
  */
 
 /** Manifest version. Bumped on breaking schema changes. */
@@ -84,6 +96,13 @@ export const MANIFEST_VERSION = 1 as const;
 export interface ManifestTool {
 	readonly slug: string;
 	readonly display_name: string;
+	/**
+	 * Japanese description rendered on the `/tools` index (Issue #785).
+	 * Required: the index leads with Japanese, so a Tool without one
+	 * would render an unexplained row. The English `description`
+	 * remains the maintainer-facing text.
+	 */
+	readonly description_ja: string;
 	readonly description?: string;
 	readonly source: {
 		readonly canonical_repo: string;
@@ -102,11 +121,14 @@ export interface ManifestTool {
 				readonly kind: 'same_origin_static';
 				readonly artifact_path: string;
 				readonly entry_html?: string;
+				// ADR-0020: a first-party Tool is served without a
+				// sandbox. The iframe is a layout / URL / CSS-DOM
+				// container; the build / review / release boundary is
+				// what constrains the code. `sandbox` is therefore
+				// absent by contract, not merely optional.
 				readonly iframe?: {
-					readonly sandbox: string;
 					readonly referrer_policy: string;
 					readonly allow?: string;
-					readonly sandbox_rationale?: string;
 				};
 				readonly host_message?: ToolHostMessageDeclaration;
 				readonly privacy?: ToolPrivacyDeclaration;
@@ -166,7 +188,13 @@ export interface PublicToolSummary {
 	readonly license: string | null;
 	readonly entry_html: string;
 	readonly iframe: {
-		readonly sandbox: string;
+		/**
+		 * ADR-0020: only an `external_exception` frame carries a
+		 * sandbox. A first-party (`same_origin_static`) summary leaves
+		 * this `undefined`, and the route consequently renders no
+		 * `sandbox` attribute at all.
+		 */
+		readonly sandbox?: string;
 		readonly referrer_policy: string;
 		// Issue #465: the declared capability grant. Rendered on the
 		// <iframe> as `allow` so the manifest declaration is not inert —
@@ -203,33 +231,6 @@ export interface ToolRouteSecurityPolicy {
 const manifest = manifestJson as Manifest;
 
 /**
- * All Tools known to the registry, including `host_disabled` ones.
- *
- * Issue #195 (2026-09-29) flipped the `/tools` index to show every
- * manifest entry, so this is now the canonical "show-all" surface
- * for index consumers. Routes that need the embeddable-only subset
- * must call `listPublicTools()` instead.
- */
-export function listAllTools(): readonly ManifestTool[] {
-	return manifest.tools;
-}
-
-/**
- * @deprecated Prefer `listAllTools()` for show-all consumers
- * (e.g. the `/tools` index after #195) and `listPublicTools()` for
- * embeddable-only consumers (e.g. the iframe shell route). This
- * alias is retained so existing callers keep compiling.
- */
-export function listTools(): readonly ManifestTool[] {
-	return listAllTools();
-}
-
-/** Look up a single Tool by slug. Returns `undefined` if absent. */
-export function getTool(slug: string): ManifestTool | undefined {
-	return manifest.tools.find((t) => t.slug === slug);
-}
-
-/**
  * Kinds that are reachable from a public URL on the host. `host_disabled`
  * and `not_integrable_yet` are intentionally excluded from the
  * embeddable surface — the iframe shell can only mount a Tool that
@@ -244,17 +245,102 @@ const PUBLIC_DELIVERY_KINDS = new Set<ManifestTool['delivery']['kind']>([
 ]);
 
 /**
+ * A registry bound to ONE manifest (Issue #861).
+ *
+ * The registry's behaviour never depended on WHICH manifest it reads —
+ * it read the shipped one by import. Issue #861 makes that explicit:
+ * the registry is a pure function of the manifest it is given, so the
+ * "準備中（`host_disabled`）契約" can be verified against a SYNTHETIC
+ * manifest (a Tool that is still waiting, a Tool that is not) instead
+ * of against whatever the shipped data happens to contain. The three
+ * remaining `host_disabled` Tools (business-mail-block / history-quiz
+ * / ae-expression) are all waiting to land, and the last one to land
+ * would otherwise turn the contract's own test red.
+ *
+ * The shipped registry below keeps every existing caller unchanged.
+ */
+export interface ToolRegistry {
+	/** The manifest this registry reads. */
+	readonly manifest: Manifest;
+	/** Every entry, including `host_disabled` ones (Issue #195). */
+	listAllTools(): readonly ManifestTool[];
+	/** Deprecated alias of {@link ToolRegistry.listAllTools}. */
+	listTools(): readonly ManifestTool[];
+	/** One entry by slug, or `undefined`. */
+	getTool(slug: string): ManifestTool | undefined;
+	/** Only the embeddable entries (the iframe shell mounts these). */
+	listPublicTools(): readonly PublicToolSummary[];
+	/** One embeddable entry by slug, or `undefined`. */
+	getPublicTool(slug: string): PublicToolSummary | undefined;
+	/** The per-path security policy this manifest asks for (Issue #449). */
+	toolRouteSecurityPolicy(pathname: string): ToolRouteSecurityPolicy | undefined;
+}
+
+/**
+ * Build a registry over the given manifest.
+ *
+ * Pure: the returned object reads only the manifest it was handed, so
+ * two registries over two manifests answer independently — which is what
+ * lets a test state the "準備中" contract without depending on the
+ * shipped Tool set.
+ */
+export function createToolRegistry(manifest: Manifest): ToolRegistry {
+	const registry: ToolRegistry = {
+		manifest,
+		listAllTools: () => manifest.tools,
+		listTools: () => manifest.tools,
+		getTool: (slug: string) => manifest.tools.find((t) => t.slug === slug),
+		listPublicTools: () =>
+			manifest.tools.filter((t) => PUBLIC_DELIVERY_KINDS.has(t.delivery.kind)).map(toSummary),
+		getPublicTool: (slug: string) => registry.listPublicTools().find((t) => t.slug === slug),
+		toolRouteSecurityPolicy: (pathname: string) =>
+			resolveToolRouteSecurityPolicy(manifest, pathname),
+	};
+	return registry;
+}
+
+/** The registry over the SHIPPED manifest. */
+const shippedRegistry = createToolRegistry(manifest);
+
+/**
+ * All Tools known to the registry, including `host_disabled` ones.
+ *
+ * Issue #195 (2026-09-29) flipped the `/tools` index to show every
+ * manifest entry, so this is now the canonical "show-all" surface
+ * for index consumers. Routes that need the embeddable-only subset
+ * must call `listPublicTools()` instead.
+ */
+export function listAllTools(): readonly ManifestTool[] {
+	return shippedRegistry.listAllTools();
+}
+
+/**
+ * @deprecated Prefer `listAllTools()` for show-all consumers
+ * (e.g. the `/tools` index after #195) and `listPublicTools()` for
+ * embeddable-only consumers (e.g. the iframe shell route). This
+ * alias is retained so existing callers keep compiling.
+ */
+export function listTools(): readonly ManifestTool[] {
+	return shippedRegistry.listTools();
+}
+
+/** Look up a single Tool by slug. Returns `undefined` if absent. */
+export function getTool(slug: string): ManifestTool | undefined {
+	return shippedRegistry.getTool(slug);
+}
+
+/**
  * Embeddable Tools (the iframe shell route renders exactly these).
  * The `/tools` index page lists more than this — see
  * `listAllTools()` and Issue #195.
  */
 export function listPublicTools(): readonly PublicToolSummary[] {
-	return manifest.tools.filter((t) => PUBLIC_DELIVERY_KINDS.has(t.delivery.kind)).map(toSummary);
+	return shippedRegistry.listPublicTools();
 }
 
 /** Look up a single public Tool by slug. */
 export function getPublicTool(slug: string): PublicToolSummary | undefined {
-	return listPublicTools().find((t) => t.slug === slug);
+	return shippedRegistry.getPublicTool(slug);
 }
 
 /**
@@ -279,10 +365,11 @@ export function resolveToolEntryHtml(tool: ManifestTool): string {
  * for the delivery kind — the root-relative artefact path for
  * `same_origin_static`, the declared external URL for
  * `external_exception`, `''` for anything else. The declared `iframe`
- * policy (sandbox / referrer policy) is carried for every embeddable
- * kind so the route never has to re-read the manifest; a Tool that
- * declares no `iframe` block surfaces as empty strings, and
- * `evaluateToolEmbedPolicy` refuses to frame it at all.
+ * policy (referrer policy, plus a sandbox for the external kind) is
+ * carried for every embeddable kind so the route never has to re-read
+ * the manifest; a Tool that declares no `iframe` block surfaces as an
+ * empty referrer policy, and `evaluateToolEmbedPolicy` refuses to frame
+ * it at all.
  */
 function toSummary(tool: ManifestTool): PublicToolSummary {
 	const declared = tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.iframe;
@@ -293,7 +380,7 @@ function toSummary(tool: ManifestTool): PublicToolSummary {
 		classification: tool.classification,
 		license: tool.license,
 		entry_html: resolveToolEntryHtml(tool),
-		iframe: declared ?? { sandbox: '', referrer_policy: '' },
+		iframe: declared ?? { referrer_policy: '' },
 		privacy: tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.privacy,
 	};
 }
@@ -341,6 +428,20 @@ export function parseGrantedPermissions(allow: string | undefined): readonly str
  * `undefined` and therefore gets the plain baseline.
  */
 export function toolRouteSecurityPolicy(pathname: string): ToolRouteSecurityPolicy | undefined {
+	return shippedRegistry.toolRouteSecurityPolicy(pathname);
+}
+
+/**
+ * The per-path security policy, resolved against ONE manifest.
+ *
+ * The manifest is a parameter (not a module-level import) so a
+ * `createToolRegistry()` over a synthetic manifest answers the same
+ * question the shipped registry answers — see {@link createToolRegistry}.
+ */
+function resolveToolRouteSecurityPolicy(
+	manifest: Manifest,
+	pathname: string,
+): ToolRouteSecurityPolicy | undefined {
 	const tool = manifest.tools.find((candidate) => matchesToolPath(candidate, pathname));
 	if (!tool) return undefined;
 

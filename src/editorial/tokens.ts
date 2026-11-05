@@ -49,6 +49,11 @@ export const rawTokens = {
 		// page. The dark appearance uses `charcoal` instead.
 		neutral: {
 			0: { value: '#ffffff' },
+			// 25 (Issue #812) — the light canvas step. Pure white (`0`)
+			// is retired as a SURFACE value: the page ground uses this
+			// near-white instead of pure white. `0` remains the true-white
+			// foreground (`text.inverse`) and dark-plate knockout value.
+			25: { value: '#fcfcfd' },
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
 			500: { value: '#64748b' },
@@ -85,6 +90,78 @@ export const rawTokens = {
 			800: { value: '#191b21' }, // tinted separator + hairline divider
 			600: { value: '#6f747d' }, // emphasis rule (4.19 : 1 on canvas)
 			400: { value: '#8b9099' }, // secondary text (6.14 : 1 on canvas)
+		},
+		// Monochrome role scale (Issue #764, direction B).
+		//
+		// The owner chose direction B (MONOCHROME / SIGNAL) on 2026-11-02
+		// and recorded the 11 roles the design system must be able to
+		// answer with (`docs/verification/design/direction-comparison-0-8-1.md`
+		// §3). The values below are the scale the owner judged on that
+		// harness; the harness itself was not carried over.
+		//
+		// Light and dark are designed independently from each
+		// appearance's own ground — they are NOT inversions of one
+		// another. That is why the two appearances are two objects
+		// rather than one ramp with a `_dark` tail.
+		//
+		// This is the layer the accent colour is placed ON. A coloured
+		// field never invents its own text colour: it names a
+		// `mono.ink.*` role (`onColour` for a vivid field, the
+		// `onColourInverse` for a deep one), and every page surface /
+		// rule / text role resolves from here. `accent.*` and
+		// `accent.field.*` only ever sit on top of it.
+		//
+		// `rule` dark is the one value adjusted from the harness: its
+		// `#5c5c66` measured 2.99 : 1 against the dark ground, just
+		// under the 3 : 1 non-text minimum the contrast gate enforces,
+		// so it moved to the nearest step that clears it (`#62626c`,
+		// 3.28 : 1). The hue and the role are unchanged.
+		mono: {
+			light: {
+				// Surfaces
+				ground: { value: '#edede8' },
+				sunken: { value: '#e0e0da' },
+				raised: { value: '#ffffff' },
+				control: { value: '#dfdfd8' },
+				inverseGround: { value: '#101012' },
+				disabledSurface: { value: '#e9e9e4' },
+				// Lines
+				hairline: { value: '#c9c9c2' },
+				rule: { value: '#74747d' },
+				// Ink
+				text: { value: '#101012' },
+				secondary: { value: '#404047' },
+				muted: { value: '#5f5f68' },
+				disabledText: { value: '#a7a7ad' },
+				inverseText: { value: '#f6f6f2' },
+				// The monochrome ink PLACED ON a colour field.
+				onColour: { value: '#101012' },
+				onColourInverse: { value: '#f6f6f2' },
+			},
+			dark: {
+				// Surfaces
+				ground: { value: '#0a0a0c' },
+				sunken: { value: '#050506' },
+				raised: { value: '#1a1a1e' },
+				control: { value: '#26262c' },
+				inverseGround: { value: '#f2f2ef' },
+				disabledSurface: { value: '#17171b' },
+				// Lines
+				hairline: { value: '#33333a' },
+				rule: { value: '#62626c' },
+				// Ink
+				text: { value: '#f2f2ef' },
+				secondary: { value: '#b9b9c0' },
+				muted: { value: '#8d8d96' },
+				disabledText: { value: '#5c5c64' },
+				inverseText: { value: '#0a0a0c' },
+				// The monochrome ink PLACED ON a colour field. A colour
+				// field keeps the same step in both appearances, so the
+				// ink does too: a vivid field is always read with a dark
+				// ink.
+				onColour: { value: '#0a0a0c' },
+				onColourInverse: { value: '#f2f2ef' },
+			},
 		},
 		// Status colors (Issue #172).
 		// 50 = light-tinted surface fill, 300 = dark-mode foreground,
@@ -211,3 +288,19 @@ export const rawTokens = {
 } as const;
 
 export type RawTokens = typeof rawTokens;
+
+/**
+ * The spacing ramp on its own (Issue #812).
+ *
+ * `rawTokens` is one object literal, so a consumer that imports it
+ * keeps the WHOLE palette — every colour ramp — in the client bundle:
+ * a bundler cannot split an exported object literal across its
+ * consumers. The `/design-system` spacing ruler needs the spacing
+ * steps and nothing else, so the ramp is published as its own export;
+ * a consumer that imports ONLY this keeps the colour ramps out of the
+ * browser bundle (the palette now reaches the browser nowhere — the
+ * colour section resolves its hex pairs on the server).
+ *
+ * The values are the same objects; this is a projection, not a copy.
+ */
+export const spacingTokens = rawTokens.spacing;

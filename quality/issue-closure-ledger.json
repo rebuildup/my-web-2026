@@ -1,18 +1,34 @@
 {
-	"schemaVersion": 1,
-	"purpose": "Per-issue record of the 2026-10-31 bulk closure and its repair (Issue #741). One entry per issue the sweep closed. The count of closed issues is NOT a metric; see docs/runbook/issue-lifecycle.md.",
+	"schemaVersion": 2,
+	"purpose": "Living per-issue record of closure decisions (Issue #741): the 2026-10-31 bulk closure and every closure recorded after it. One entry per issue, attributed to the audit window that covers its close date. The count of closed issues is NOT a metric; see docs/runbook/issue-lifecycle.md.",
 	"audit": {
-		"closedAt": "2026-10-31",
-		"population": 132,
-		"method": "GitHub search API, is:issue closed:2026-10-31, paginated (issueCount 132)",
-		"sweepComment": "回収完了。release-0-8-0統合完了（#679待機中）。",
-		"sweepCommentCount": 124
+		"windows": [
+			{
+				"id": "sweep-2026-10-31",
+				"label": "2026-10-31 bulk closure (the incident)",
+				"from": "2026-10-31",
+				"to": "2026-10-31",
+				"population": 133,
+				"method": "GitHub search API, is:issue closed:2026-10-31, paginated (issueCount 132), corrected on 2026-11-02 to 133 with the issue-events API (closed events on 2026-10-31 = 157 numbers, of which 24 are pull requests, so 133 issues): #534 was closed and reopened on the same day, so its closedAt is null and the closedAt-based search missed it (docs/verification/backlog/closure-population-correction-2026-11-02.md)",
+				"sweepComment": "回収完了。release-0-8-0統合完了（#679待機中）。",
+				"sweepCommentCount": 124
+			},
+			{
+				"id": "tracked",
+				"label": "every closure recorded after the sweep",
+				"from": "2026-11-01",
+				"to": null,
+				"population": null,
+				"method": "population = the entries attributed to this window (derived, not frozen); an entry must still fall inside the window date range"
+			}
+		]
 	},
 	"entries": [
 		{
 			"issue": 6,
 			"title": "chore: add .env.example stub for Cloudflare bindings",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -33,6 +49,7 @@
 			"issue": 18,
 			"title": "依存監視とツールチェーン互換性の保守計画を確定する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -54,6 +71,7 @@
 			"issue": 60,
 			"title": "feat(editorial): 361do-axis の precision-first token model を選択的に取り込む",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -74,6 +92,7 @@
 			"issue": 61,
 			"title": "feat(brand): 361do-axis の samuido brand assets を personal identity として再評価する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -95,6 +114,7 @@
 			"issue": 62,
 			"title": "project-init 0.3.0 を適用する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": ["#63", "AGENTS.md", "#647"],
@@ -110,6 +130,7 @@
 			"issue": 70,
 			"title": "infra: ADR-0015 Phase 4 — Cloudflare Workers Builds Infisical deploy path 切替",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -131,6 +152,7 @@
 			"issue": 202,
 			"title": "chore(deps): Panda CSS v2へアップグレード",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "deferred-with-reason",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -154,6 +176,7 @@
 			"issue": 247,
 			"title": "refactor(cloudflare): Wrangler を全面排除し cf CLI + cloudflare.config.ts へ移行する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -176,6 +199,7 @@
 			"issue": 254,
 			"title": "ローカルで vitest の workerd pool が起動しない（CI は green）",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
 			"evidence": ["issue #254 comments (2026-10-05, 2026-10-08)", "scripts/_d1.mjs"],
@@ -194,6 +218,7 @@
 			"issue": 258,
 			"title": "#253 の診断は stale — 実際の release-0-6-0 blocker は E2E の D1 migration timeout",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
 			"evidence": [
@@ -219,6 +244,7 @@
 			"issue": 265,
 			"title": "[SECURITY] infisical-bootstrap-cf が部分 bind 環境の再実行ごとに revoke されない client secret を蓄積する — operator 判断が必要",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -239,36 +265,42 @@
 			"issue": 274,
 			"title": "feat: Codex ペットのキャラクターとアニメーションを Web でも再利用する",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/home/composer.tsx",
-				"portfolio/seed.ts",
-				"projects/DotfilesIntroductionPage.tsx",
-				"personal/tech-interests/TechInterests.preview.ts",
-				"closing PR references: [] / Cross-referenced PRs: [] — 成果物を示す PR がない",
-				"#274"
+				"src/editorial/pet/PetCompanion.tsx",
+				"src/editorial/pet/PetSprite.tsx",
+				"src/home/composer.tsx:230",
+				"src/about/components/AboutPage.tsx:97",
+				"docs/domain/pet-companion.md",
+				"docs/verification/visual/pet-companion/overlay-verification.md",
+				"docs/verification/legal/pet-melty-rights-review.md",
+				"#768",
+				"4426ffba"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "「同じキャラクターを Web 上で表示でき、主要なアニメーションを再現できる」が達成されている証拠が一切ない。素材元の権利確認という未解決の前提を含むため、まず所有者判断として扱うのが妥当。",
-			"missing": "キャラクター素材・アニメーションの再利用、表示位置の決定、prefers-reduced-motion 対応、権利確認のいずれ も実装されていない。Issue 自身が「現段階ではアイデアの記録のみ」と述べるのみで、着手するリリースも未確定"
+			"note": "2026-10-31 の sweep close はその時点では正当化されていなかった（キャラクター素材・アニメーションの Web 再利用は未実装）。2026-11-01 の PR #768 でページ全体に対する浮遊レイヤーとして実装され、描画検証（docs/verification/visual/pet-companion/overlay-verification.md）と権利記録（docs/verification/legal/pet-melty-rights-review.md）が残ったため、受入条件は現在の出荷コードで満たされている。state を implemented-and-verified に訂正（2026-11-02 の原典照合）。Issue 自体は現在も open のままであり、本記録の変更では close / reopen しない。",
+			"missing": "アトラス本体は commit されず scripts/build-pet-sprites.mjs が sha256 で固定する（docs/domain/pet-companion.md §2.2）。Library 外へのバックアップ取得は owner の作業として未了。look 行の quality warning 4 件は既知（同 §3.2）。"
 		},
 		{
 			"issue": 315,
 			"title": "feat(home): 「現在地」を中心にしたトップの情報階層を実装",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
+			"window": "sweep-2026-10-31",
+			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
-				"src/home/composer.tsx",
-				"docs/domain/capabilities.md",
-				"docs/personal/domain.md",
-				"docs/verification/privacy/README.md",
-				"closing PR references: [] / Cross-referenced PRs: []",
+				"src/home/composer.tsx:124",
+				"src/home/current/CurrentProjects.tsx:405",
+				"src/home/current/roster.ts",
+				"docs/verification/home/current-projects.md",
+				"#776",
+				"1a021ee2",
 				"current-location-desktop.png"
 			],
 			"decision": null,
@@ -276,33 +308,38 @@
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "Issue の中心的な受け入れ条件（現在地エリアの存在）が Home の合成コンポーネントに存在しない。「統合完了」という一括コメントのみで実装の確認がない。",
-			"missing": "「現在地」見出しと「制作中・公開済み・次に見る」の区別、390px/1440px のグリッド順序、既存 Home 機能の非退行、Playwright/コンポーネントテスト、必須スクリーンショット2本のすべて"
+			"note": "「現在地」エリア自体は存在する（src/home/composer.tsx:124 が Hero 直後の最初の body section として CurrentProjects を描き、見出しは src/home/current/CurrentProjects.tsx:405 の「現在地 / Where I am now」）。390/1440 の実描画記録は docs/verification/home/current-projects.md（PR #776）。2026-10-31 の sweep close の根拠だった「現在地エリアが Home の合成コンポーネントに存在しない」は現状と矛盾するため訂正し、state を partial にした。受入条件のうち「制作中・公開済み・次に見る」の 3 区分は実装されておらず（実際は src/home/current/roster.ts の重み区分 主軸/並行/副次/休止）、必須スクリーンショット current-location-desktop.png / current-location-mobile.png も未作成。",
+			"missing": "「制作中・公開済み・次に見る」の 3 区分、必須スクリーンショット docs/verification/home/current-location-desktop.png と current-location-mobile.png（同じ区位の WebP は current-projects-*.webp として作成済み）。"
 		},
 		{
 			"issue": 316,
 			"title": "feat(home): 進行中プロジェクトの編集可能なスナップショット表示",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/home/composer.tsx",
-				"src/home/capabilities/registry.ts",
-				"closing PR references: [] / Cross-referenced PRs: []",
-				"docs/verification/home/ が存在しない（current-projects-*.png 未作成）"
+				"src/home/current/roster.ts",
+				"src/home/current/CurrentProjects.tsx",
+				"src/home/current/git-facts.json",
+				"docs/verification/home/current-projects.md",
+				"test/integration/home-about-current-consistency.test.ts",
+				"#776",
+				"1a021ee2"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "「編集可能な単一のrepo-controlled source」というデータ契約自体が存在しない。About 側の current 記述との重複解消という目的も達成されていない。",
-			"missing": "公開用 2〜4 件の選別と編集可能な単一ソース、各プロジェクトの名称/状況/リンク、0件・リンク失効時の空表示、About との整合、テストとスクリーンショット"
+			"note": "「編集可能な単一の repo-controlled source」（src/home/current/roster.ts）は 2026-11-01 の PR #776 で実装され、描画検証（docs/verification/home/current-projects.md、7 条件の実描画記録）と About との整合テスト（test/integration/home-about-current-consistency.test.ts）を伴う。2026-10-31 の sweep close はその時点では正当化されていなかった（データ契約自体が存在しなかった）ため、state を implemented-and-verified に訂正（2026-11-02 の原典照合）。Issue 自体は現在も open のままであり、本記録の変更では close / reopen しない。",
+			"missing": "roster の owner 記入値（手書きの日付・重み・リンク）は未記入で、src/home/current/roster.ts:43 が Owner confirmation: PENDING と明記している（機構は完成、値は owner の入力待ち）。"
 		},
 		{
 			"issue": 317,
 			"title": "feat(home): 公開予定のカレンダーを現在地エリアに表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -323,6 +360,7 @@
 			"issue": 318,
 			"title": "spike(home): 「看板×地図」の位置コンテキスト表示を検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -343,6 +381,7 @@
 			"issue": 319,
 			"title": "feat(home): GitHubの公開開発ステータスを表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -364,6 +403,7 @@
 			"issue": 320,
 			"title": "spike(home): Discordオンライン表示の許可済みデータ経路を実証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -384,6 +424,7 @@
 			"issue": 321,
 			"title": "feat(home): Xの公開投稿を選別して現在地に掲載",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -404,6 +445,7 @@
 			"issue": 322,
 			"title": "feat(home): Discordの公開告知を現在地に1件表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -424,6 +466,7 @@
 			"issue": 323,
 			"title": "feat(content): /content に記事一覧と公開状態の表示を実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -444,6 +487,7 @@
 			"issue": 324,
 			"title": "feat(content): Markdown記事詳細と画像パス解決を実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -464,6 +508,7 @@
 			"issue": 325,
 			"title": "feat(content): rebuildup/my-blog の公開記事をビルド時自動ミラー",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -483,6 +528,7 @@
 			"issue": 326,
 			"title": "feat(content): RSS 2.0フィードを公開",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -503,6 +549,7 @@
 			"issue": 327,
 			"title": "feat(content): JSON Feedを公開",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -522,6 +569,7 @@
 			"issue": 328,
 			"title": "feat(content): 公開記事にMarkdown原文の取得リンクを付ける",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -541,6 +589,7 @@
 			"issue": 329,
 			"title": "feat(content): 公開コンテンツのJSON API読み取りエンドポイント",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -560,46 +609,62 @@
 			"issue": 330,
 			"title": "feat(content): Notionの承認済み1記事をCMSソースとして表示",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
+			"window": "sweep-2026-10-31",
+			"state": "partial",
 			"closure": "awaiting-owner",
 			"evidence": [
+				"docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md",
+				"src/portfolio/notion/reader.ts",
+				"src/portfolio/notion/publish.ts",
+				"src/portfolio/notion/generated/snapshot.json",
+				"src/portfolio/load.ts:138",
+				"scripts/sync-portfolio-notion.mjs",
+				"docs/runbook/notion-portfolio-sync.md",
+				"#775",
+				"03d592c5",
 				"docs/domain/integrations.md",
-				"src/http/integrations/boundary.test.ts",
-				"src/routes/ に content 配下のルートが存在しない",
-				"closing PR references: [] / Cross-referenced PRs: []"
+				"notion-article.png",
+				"notion-disabled.png"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "Notion を CMS ソースとして採用するか否かは Issue 本文でも「採用自体を確定しない」と留保しており、所有者判断が先行する。コード上の根拠はない。",
-			"missing": "承認済み1ページの取り込みと整形表示、権限未設定・未発見・未公開での空表示、公開出典IDと最終同期時刻の内部検証、Infisical 経由のトークン経路、テストとスクリーンショット"
+			"note": "採用判断は owner が ADR-0018（Status: Accepted / 2026-11-01）で決めているため、2026-11-01 の記録「採用自体が未決」「コード上の根拠はない」は現状と矛盾するため訂正した。取り込み基盤（build-time の単発取り込み → committed snapshot → portfolio loader の結線 src/portfolio/load.ts:138）は 2026-11-01 の PR #775 で実装済み。ただし同梱 snapshot は availability: unavailable / records: [] で、公開されている Notion 記事は 0 件（未接続）。表示場所も Issue の /content ではなく /portfolio へ ADR-0018 が再定義した。よって partial。",
+			"missing": "公開済み Notion 記事 1 件の公開（Notion database の接続と capability 付与は owner 作業: docs/runbook/notion-portfolio-sync.md §2）、表示は /portfolio（/content ルートは無い）、必須スクリーンショット docs/verification/content/notion-article.png と notion-disabled.png。docs/domain/integrations.md:18 の Notion 行（uncommitted / current code evidence なし）は ADR-0018 と実装の現状に追随していない。"
 		},
 		{
 			"issue": 331,
 			"title": "feat(content): Notion記事の再同期・差分更新ステータスを表示",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
+			"window": "sweep-2026-10-31",
+			"state": "partial",
 			"closure": "awaiting-owner",
 			"evidence": [
-				"docs/domain/integrations.md",
-				"git grep -ln \"notion\" -- src/ — 連携・再同期コードなし",
-				"src/admin/ 配下に Notion 同期プレビュー pinta不存在（git grep \"notion\" -- src/ の該当は boundary テストのみ）",
-				"closing PR references: [] / Cross-referenced PRs: []"
+				"src/portfolio/notion/publish.ts",
+				"src/portfolio/notion/reader.ts:22",
+				"src/portfolio/load.ts:138",
+				"docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md",
+				"docs/runbook/notion-portfolio-sync.md:27",
+				"#820",
+				"c685ec1e",
+				"notion-sync-success.png",
+				"notion-sync-error.png"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "前提の #330 が未実装のままであるため差分更新の 대상自体が存在しない。Notion 連携の採用可否も未決。",
-			"missing": "再同期による差分反映、公開解除の扱い、最新同期・失敗・変化なしの表示、関連 unit/contract/E2E、スクリーンショット"
+			"note": "取り込みと公開判定（publish.ts の isPublicRecord = published かつ public、media は rights=recorded のみ publish）は 2026-11-01 の PR #775 で実装済みで、loader が結線されている（src/portfolio/load.ts:138）。2026-11-01 の記録「連携・再同期コードなし」「差分更新の対象自体が存在しない」は現状と矛盾するため訂正し、state を partial にした。一方「定期的な再同期」は owner 決定で責務から外された（ADR-0018 の 2026-11-02 更新 / Issue #814、docs/runbook/notion-portfolio-sync.md:27「定期実行は明示的に禁止」）。最新同期・失敗・変化なしの表示も未実装（src/portfolio/notion/reader.ts:22「no shipped surface renders it yet, because that is a public-copy change (ADR-0018 §2.5)」）。",
+			"missing": "snapshot の observedAt / availability を公開面に出す表示（公開文の変更 = ADR-0018 §2.5 の owner 判断）、必須スクリーンショット docs/verification/content/notion-sync-success.png と notion-sync-error.png。Issue の受入条件「定期的な再同期」は現行の ADR と両立しないため、達成可能な形への再定義が必要。"
 		},
 		{
 			"issue": 332,
 			"title": "feat(projects): pc-setup READMEの公開紹介ページを自動生成",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -620,6 +685,7 @@
 			"issue": 333,
 			"title": "feat(projects): project-init READMEの公開紹介ページを自動生成",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -640,6 +706,7 @@
 			"issue": 334,
 			"title": "feat(activity): 公開Issue/PRの動きを読み取り専用で可視化",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -660,6 +727,7 @@
 			"issue": 335,
 			"title": "feat(design-system): Storybookビルドの公開ショーケース導線",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -681,6 +749,7 @@
 			"issue": 336,
 			"title": "feat(activity): GitHub Releasesからサイト更新履歴を表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -700,6 +769,7 @@
 			"issue": 337,
 			"title": "feat(portfolio): 公開済み制作物の無料ダウンロード導線を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -722,6 +792,7 @@
 			"issue": 338,
 			"title": "feat(i18n): ja/en の言語別ルーティングとHTML langを導入",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -742,6 +813,7 @@
 			"issue": 339,
 			"title": "feat(i18n): 言語切替UIを追加し同等ページへの導線を維持",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -762,6 +834,7 @@
 			"issue": 340,
 			"title": "feat(i18n): Home/About の英語コンテンツを実体として追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -781,6 +854,7 @@
 			"issue": 341,
 			"title": "feat(i18n): 韓国語のHome/Aboutとロケール別フォントを追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -803,6 +877,7 @@
 			"issue": 342,
 			"title": "feat(i18n): 中国語（簡体字） zh-Hans のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -822,6 +897,7 @@
 			"issue": 343,
 			"title": "feat(i18n): 中国語（繁体字） zh-Hant のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -843,6 +919,7 @@
 			"issue": 344,
 			"title": "feat(i18n): ドイツ語 de のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -862,6 +939,7 @@
 			"issue": 345,
 			"title": "feat(i18n): フランス語 fr のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -881,6 +959,7 @@
 			"issue": 346,
 			"title": "feat(i18n): スペイン語 es のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -900,6 +979,7 @@
 			"issue": 347,
 			"title": "feat(i18n): ポルトガル語 pt のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -920,6 +1000,7 @@
 			"issue": 348,
 			"title": "feat(i18n): イタリア語 it のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -939,6 +1020,7 @@
 			"issue": 349,
 			"title": "feat(i18n): ロシア語 ru のHome/About翻訳を追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -958,6 +1040,7 @@
 			"issue": 350,
 			"title": "feat(i18n): hreflang・canonical・サイトマップを言語別に整合",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -977,6 +1060,7 @@
 			"issue": 351,
 			"title": "feat(i18n): 言語別フォント遅延ロードとFOIT/FOUT比較を実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -998,6 +1082,7 @@
 			"issue": 352,
 			"title": "feat(activity): release・記事・制作物を統合する活動タイムライン",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1017,24 +1102,33 @@
 			"issue": 353,
 			"title": "feat(tools): テキストカウンター をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
-			"decision": {
-				"kind": "recorded",
-				"reason": "保留理由（上流Tool側Needs standalone Vite build）はmanifestに記載され、上の理由で保留されている。ただしその上流作業を追うIssue/PRはこのリポジトリに存在しないため、追跡は切れている。"
-			},
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#849",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/text-counter-desktop.webp",
+				"docs/verification/tools/text-counter-mobile.webp",
+				"docs/verification/tools/text-counter-recheck-desktop.webp",
+				"docs/verification/tools/text-counter-recheck-mobile.webp"
+			],
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "保留理由（上流Tool側Needs standalone Vite build）はmanifestに記載され、上の理由で保留されている。ただしその上流作業を追うIssue/PRはこのリポジトリに存在しないため、追跡は切れている。",
-			"missing": "pinned SHA からの standalone ビルド取得、/tools/text-counter の実コンテンツ描画、字数/語数の実測表示、欠落artifactのCI検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: text-counter は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §1（23 文字 / 7 語 / 2 行 / 45 B を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 #849 で pin した standalone build を host が同一 origin で配信している。",
+			"missing": null
 		},
 		{
 			"issue": 354,
 			"title": "feat(tools): 円周率暗記ゲーム をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1053,6 +1147,7 @@
 			"issue": 355,
 			"title": "feat(tools): QR Code Generator をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1073,43 +1168,57 @@
 			"issue": 356,
 			"title": "feat(tools): SVG to TSX をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#849",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/svg2tsx-desktop.webp",
+				"docs/verification/tools/svg2tsx-mobile.webp",
+				"docs/verification/tools/svg2tsx-clipboard-desktop.webp",
+				"docs/verification/tools/svg2tsx-clipboard-mobile.webp"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "manifest に載っているだけで host に取り込まれておらず、公開ツールとして到達できない。",
-			"missing": "pinned SHA の standalone build 取得、/tools/svg2tsx の実コンテンツ描画、SVG→TSX→copy の確認、欠落 build artifact の CI 検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: svg2tsx は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §4（変換完了 20 行の出力とコピーを実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。",
+			"missing": null
 		},
 		{
 			"issue": 357,
 			"title": "feat(tools): 連番PNGビューア をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#849",
 				"src/tools/manifest.json",
-				"disabled_reason: 'Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.'",
-				"Only prototype and readmark are same_origin_static in the same manifest"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/sequential-png-preview-desktop.webp",
+				"docs/verification/tools/sequential-png-preview-mobile.webp",
+				"docs/verification/tools/sequential-png-preview-frames-desktop.webp",
+				"docs/verification/tools/sequential-png-preview-frames-mobile.webp"
 			],
-			"decision": {
-				"kind": "recorded",
-				"reason": "保留理由はmanifestに記録されているが、上流作業の追跡Issueが無く、宿主側PRが立つ状態になっていない。"
-			},
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "保留理由はmanifestに記録されているが、上流作業の追跡Issueが無く、宿主側PRが立つ状態になっていない。",
-			"missing": "standalone ビルドの再現可能な取得、/tools/sequential-png-preview の描画、連番フレーム切替、artifact欠落のCI検知。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: sequential-png-preview は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §3（連番フレームの切り替えを実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。",
+			"missing": null
 		},
 		{
 			"issue": 358,
 			"title": "feat(tools): Pomodoro Timer をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": ["src/tools/manifest.json", "docs/verification/tools/ ディレクトリが存在しない"],
@@ -1125,63 +1234,78 @@
 			"issue": 359,
 			"title": "feat(tools): 穴埋めプリントジェネレーター をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#854",
 				"src/tools/manifest.json",
-				"no /tools/fillgen artifact or route adapter in src/routes/",
-				"fillgen-desktop.png",
-				"fillgen-mobile.png"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/fillgen-desktop.webp",
+				"docs/verification/tools/fillgen-mobile.webp",
+				"docs/verification/tools/fillgen-generated-desktop.webp",
+				"docs/verification/tools/fillgen-generated-mobile.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "fillgen remains host_disabled on release-0-8-0 and the issue has no cross-referenced PR; nothing of the requested host-side work is present.",
-			"missing": "the whole issue: upstream standalone build readiness, host-side enablement, real worksheet generation at /tools/fillgen, sandbox/permission/licence boundary checks and the required screenshots"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: fillgen は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §6（採点の `blank correct` / `blank incorrect` を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 #854 で host 配線した。",
+			"missing": null
 		},
 		{
 			"issue": 360,
 			"title": "feat(tools): マイクレベルチェッカー をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json"],
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#855",
+				"docs/verification/tools/mic-level-host-activation.md",
+				"src/tools/manifest.json"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "svg2tsx と同型の未着工ツール。ブラウザ API 権限の扱いは owner 承認が必要な領域でもある。",
-			"missing": "standalone build の取得、/tools/mic-level の実描画、許可/拒否の mic permission 状態の UI、artifact 欠落の CI 検知。"
+			"action": "kept-closed",
+			"note": "履歴: 2026-10-31 の一括 close（closedAt はこの日付）を 2026-11-01 に reopened として記録し、2026-11-03 に証拠つきで再 close した。PR #855 で same_origin_static へ移して有効化し、実コンテンツの描画・入力操作・microphone 権限の宣言と拒否時の非破壊 fallback を docs/verification/tools/mic-level-host-activation.md に実測記録。artifact 欠落の CI 検知は tools:check / tools:artifact:check。",
+			"missing": null
 		},
 		{
 			"issue": 361,
 			"title": "feat(tools): CodeType / p5.js素材 をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"#854",
 				"src/tools/manifest.json",
-				"disabled_reason: 'Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path.'",
-				"No cross-referenced PR exists for this issue"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/code-type-p5-desktop.webp",
+				"docs/verification/tools/code-type-p5-mobile.webp",
+				"docs/verification/tools/code-type-p5-recheck-desktop.webp",
+				"docs/verification/tools/code-type-p5-recheck-mobile.webp"
 			],
-			"decision": {
-				"kind": "recorded",
-				"reason": "他2つの Tool issue と同じ保留理由がmanifestに記録されているが、上流の standalone build 準備を追う追跡はリポジトリ内に無い。"
-			},
+			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "他2つの Tool issue と同じ保留理由がmanifestに記録されているが、上流の standalone build 準備を追う追跡はリポジトリ内に無い。",
-			"missing": "standalone ビルド取得、/tools/code-type-p5 のサンプル描画と操作、iframe sandbox/asset URL 境界の検証。"
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: code-type-p5 は manifest 上 same_origin_static（host_disabled でない）で、gitlink は pinned_sha と一致し、quality/tool-artifact-inventory.json の license / dependencies は verified。実画面と操作は docs/verification/tools/host-interaction-batch-0-8-1.md §8（Play → Pause と p5 canvas 720×720 を実測） に実測記録があり、スクリーンショットは WebP。この Issue は 2026-10-31 の sweep で閉じられたのち reopen され、2026-11-03 に上記証跡を添えて再度閉じた。 iframe の宣言トークンによる境界は ADR-0020 / #869 で first-party 同一 origin 配信へ移行し、sandbox 属性そのものが無くなった。",
+			"missing": null
 		},
 		{
 			"issue": 362,
 			"title": "feat(about): 関心のつながりから関連作品へ移動できる導線",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1201,6 +1325,7 @@
 			"issue": 363,
 			"title": "feat(about): 好きな作家・技術者を分野別の参照集として表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1222,6 +1347,7 @@
 			"issue": 364,
 			"title": "feat(portfolio): 映像作品のYouTube型プレイヤー表示を実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1241,6 +1367,7 @@
 			"issue": 365,
 			"title": "feat(portfolio): 制作分野を横断する関連作品リンク",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1260,6 +1387,7 @@
 			"issue": 366,
 			"title": "feat(portfolio): デザイン制作のビジュアルケーススタディ表示",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1278,6 +1406,7 @@
 			"issue": 367,
 			"title": "feat(contact): 相互リンクの公開ディレクトリを追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1300,6 +1429,7 @@
 			"issue": 368,
 			"title": "spike(contact): 映像・デザイン・開発依頼の受付状態を明示するUI",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": ["src/contact/channels.json", "src/contact/page.tsx", "stories.tsx", "#380"],
@@ -1315,6 +1445,7 @@
 			"issue": 369,
 			"title": "spike(contact): 依頼料金シミュレーターを公開前プレビューで検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1337,6 +1468,7 @@
 			"issue": 370,
 			"title": "feat(privacy): 公開ページのCookie/プライバシー説明への導線を監査・実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -1359,6 +1491,7 @@
 			"issue": 371,
 			"title": "spike(graphics): WebGPU / Three.jsによる独立した作品表示を検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1379,6 +1512,7 @@
 			"issue": 372,
 			"title": "spike(graphics): p5.jsのインタラクティブ作品表示を検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1398,6 +1532,7 @@
 			"issue": 373,
 			"title": "feat(editorial): 意味のある操作状態だけを動かすモーション試作",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1419,6 +1554,7 @@
 			"issue": 374,
 			"title": "feat(media): PortfolioのWebP画像表示と最適化fallbackを実証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1440,6 +1576,7 @@
 			"issue": 375,
 			"title": "feat(media): 動画作品のWebM配信と互換fallbackを検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1461,6 +1598,7 @@
 			"issue": 376,
 			"title": "perf(home): Lighthouse 95目標に対し実画面の1件のボトルネックを修正",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1483,28 +1621,30 @@
 			"issue": 377,
 			"title": "feat(dev): ローカル開発の本番API・モック切替を見える化",
 			"closedAt": "2026-10-31",
-			"state": "partial",
-			"closure": "unsupported",
+			"window": "sweep-2026-10-31",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"index.ts",
-				"fixtures.ts",
-				"mock.test.ts",
-				"access.ts",
-				"reactions.ts",
-				"src/http/hono.ts"
+				"16905c28",
+				"src/cloudflare/data-source.ts",
+				"src/home/status",
+				"docs/runbook/development-data-source.md",
+				"docs/verification/development/mock-source.webp",
+				"docs/verification/development/production-readonly-source.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "切替の仕組み自体は Issue #186 で存在するが、この issue の目的である『見える化』（source 表示）が未実装。",
-			"missing": "現在のデータソース（モック / 公開本番 read-only）が開発画面上で判別できる表示、および未設定時に暗黙で本番へ抜かないことの明示。"
+			"action": "kept-closed",
+			"note": "履歴: 2026-10-31 の一括 close（closedAt はこの日付）を 2026-11-01 に reopened として記録し、2026-11-03 に証拠つきで再 close した。実装は commit 16905c28。契約は src/cloudflare/data-source.ts（binding-free、MY_WEB_2026_DATA_SOURCE の不在 = 本番 Worker、未知値は fail-closed）、開発画面の判別は home/status、未設定時に暗黙の本番利用をしないことを runbook と実装が明示。mock / production-readonly の 2 画面を WebP で記録。",
+			"missing": null
 		},
 		{
 			"issue": 378,
 			"title": "spike(editorial): SVG装飾記号とアイコンフォントの役割を比較",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1524,6 +1664,7 @@
 			"issue": 379,
 			"title": "spike(i18n): 特殊文字表現の画像化案とテキスト代替を比較",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1544,6 +1685,7 @@
 			"issue": 380,
 			"title": "feat(platform): 機能独立のUI Preview契約をStorybookに導入",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -1566,6 +1708,7 @@
 			"issue": 381,
 			"title": "feat(stack): Webサイトの開発スタックを説明する独立ページを追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1588,6 +1731,7 @@
 			"issue": 382,
 			"title": "feat(stack): Biome設定とフォーマット変換例を技術ページに掲載",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1607,6 +1751,7 @@
 			"issue": 383,
 			"title": "feat(stack): CI・テスト・デプロイ工程の可視化ページを追加",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1627,6 +1772,7 @@
 			"issue": 384,
 			"title": "ci(quality): 全release候補のLighthouse測定を再現可能なコマンドにする",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1649,6 +1795,7 @@
 			"issue": 385,
 			"title": "ci(release): Lighthouse PC/モバイル95目標の必須release gateを実装",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1670,6 +1817,7 @@
 			"issue": 386,
 			"title": "ci(release): Core Web Vitals/初期表示速度budgetをreleaseで検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -1692,6 +1840,7 @@
 			"issue": 387,
 			"title": "ci(verification): UI以外の1Issue/1PRにも画像付き検証を必須化",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1714,6 +1863,7 @@
 			"issue": 388,
 			"title": "feat(identity): 旧サイトの自己紹介を照合してAboutの編集可能な紹介コンテンツへ移す",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1736,6 +1886,7 @@
 			"issue": 389,
 			"title": "feat(identity): 旧サイトの経歴年表を根拠付きデータと表示コンポーネントへ移行",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1758,6 +1909,7 @@
 			"issue": 390,
 			"title": "feat(identity): 旧サイトの外部リンク一覧を確認して利用先別リンクコンポーネントへ移行",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1776,6 +1928,7 @@
 			"issue": 391,
 			"title": "feat(identity): 旧サイトのSkills表示を技術使用実績つきで再構成",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1797,6 +1950,7 @@
 			"issue": 392,
 			"title": "ci(a11y): Storybookの独立コンポーネントにaxe検査を導入",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -1819,6 +1973,7 @@
 			"issue": 401,
 			"title": "feat(a11y): タップ・クリックターゲットとドラッグ代替を整備",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -1840,6 +1995,7 @@
 			"issue": 402,
 			"title": "test(a11y): 音声読み上げの操作手順を公開UIで検証",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -1861,6 +2017,7 @@
 			"issue": 406,
 			"title": "feat(a11y): モーダル/メニューの焦点管理と復帰",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -1883,6 +2040,7 @@
 			"issue": 408,
 			"title": "feat(a11y): 動画の字幕・説明・静止画代替を整備",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -1905,6 +2063,7 @@
 			"issue": 424,
 			"title": "docs(copy): yomiyasu Agent Skillを文章レビュー手順へ導入",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "explicitly-rejected-with-reason",
 			"closure": "supported",
 			"evidence": [
@@ -1930,6 +2089,7 @@
 			"issue": 427,
 			"title": "feat(copy): 日本語レビュー結果をStack/Editorプレビューで可視化",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -1950,6 +2110,7 @@
 			"issue": 436,
 			"title": "feat(content): 記事プレビューと公開承認の状態を見える化",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1969,6 +2130,7 @@
 			"issue": 510,
 			"title": "feat(platform): 部品ごとの組込実例をStack説明ページに掲載",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -1988,6 +2150,7 @@
 			"issue": 512,
 			"title": "docs(vision): 「根本的にいいもの」を制作判断の基準として定義",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2008,6 +2171,7 @@
 			"issue": 513,
 			"title": "docs(vision): 制作と成長・自信の関係を事実に基づき記録",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2028,6 +2192,7 @@
 			"issue": 514,
 			"title": "docs(vision): 「作りたい」と「欲しい」を区別した制作動機の分類",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2048,6 +2213,7 @@
 			"issue": 515,
 			"title": "docs(vision): 「使えるもの」を配布・API・操作の公開条件に落とし込む",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2070,6 +2236,7 @@
 			"issue": 516,
 			"title": "docs(vision): 就活・差別化・需要・ネット集客の目的を分けて整理",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2092,6 +2259,7 @@
 			"issue": 517,
 			"title": "spike(experience): 「見てて楽しい」の2種類の体験を比較",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2110,6 +2278,7 @@
 			"issue": 518,
 			"title": "feat(portfolio): 作品ごとの制作史・変遷を示す履歴コンポーネント",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2130,6 +2299,7 @@
 			"issue": 519,
 			"title": "feat(portfolio): 設計判断と試行錯誤を記録する作品ケーススタディ要素",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2149,6 +2319,7 @@
 			"issue": 520,
 			"title": "docs(visual): シンプル・平面的になりがちな表現を観測ベースで分析",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2171,6 +2342,7 @@
 			"issue": 521,
 			"title": "docs(brand): 361doの名称解釈と採用可能なコピーを記録",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2193,6 +2365,7 @@
 			"issue": 522,
 			"title": "feat(brand): 「時間を溶かしています」モチーフの表示コンポーネント",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2214,6 +2387,7 @@
 			"issue": 523,
 			"title": "docs(brand): 361do_sleep・361do_designの使い分けを仕様化",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": ["docs/personal/domain.md", "361do-name-meanings.md", "#521"],
@@ -2229,6 +2403,7 @@
 			"issue": 524,
 			"title": "feat(identity): 名前・ハンドルの対応を説明する独立表示コンポーネント",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2251,6 +2426,7 @@
 			"issue": 525,
 			"title": "docs(influences): 音楽・ボカロ・DTMから映像制作への関心を整理",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2272,6 +2448,7 @@
 			"issue": 526,
 			"title": "docs(influences): After Effects・文字PV・映像文化を制作事例に紐付け",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
@@ -2293,6 +2470,7 @@
 			"issue": 527,
 			"title": "docs(influences): スイスデザイン・タイポグラフィ・グリッドの採否記録",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2315,6 +2493,7 @@
 			"issue": 528,
 			"title": "docs(influences): AI・OS・言語・フレームワークの関心を事実ベースで管理",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2337,6 +2516,7 @@
 			"issue": 529,
 			"title": "docs(content): 「好き・尊敬・影響・使用」の関係語彙を区別",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
 			"evidence": ["docs/influences/tech-interests.md", "#528", "docs/personal/knowledge-model.md"],
@@ -2352,6 +2532,7 @@
 			"issue": 533,
 			"title": "docs(perf): Miroの「ポップコーン」案の意味を確定し採否を記録",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2370,9 +2551,32 @@
 			"missing": "the whole issue: the interpretation (owner-confirmed vs hypothesis), the explicit 'unknown' statement if the intent cannot be confirmed, the adopt/hold/exclude verdict, and the rendered-Markdown image check"
 		},
 		{
+			"issue": 534,
+			"title": "docs(backlog): Miro付箋とGitHub Issueの対応表・未回収理由を整備",
+			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
+			"state": "planned-unimplemented",
+			"closure": "unsupported",
+			"evidence": [
+				"issue #534 comments (2026-10-31 sweep close, 2026-11-01 Miro access note)",
+				"docs/verification/backlog/closure-audit-2026-10-31.md",
+				"docs/verification/backlog/closure-population-correction-2026-11-02.md",
+				"#741",
+				"miro-issue-coverage.png"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "reopened",
+			"note": "この Issue は 2026-10-31 の sweep で close され（issue #534 の timeline: closed 2026-10-31T02:43:36Z）、同じ日の 19:54:35Z に reopen された。close 後に reopen されたため closedAt が null になり、closed:2026-10-31 を用いる検索母集団から漏れていた（母集団 132 → 133 の訂正は docs/verification/backlog/closure-population-correction-2026-11-02.md）。成果物は GitHub 側（132 件の母集団照合と Miro 未達の記録）のみで、要求されている Miro 付箋 571 件と GitHub Issue の対応表は作られていない。",
+			"missing": "Miro 付箋 571 件の 1 件ずつの追跡先（Issue 番号 / 未実装構想 / 判断待ち / 保留 / 公開しない）を並べた対応表と、その描画画像 docs/verification/backlog/miro-issue-coverage.png。原典ボードの読み取り経路が無いため、agent 側では埋められない（owner 作業）。"
+		},
+		{
 			"issue": 535,
 			"title": "docs(vision): 制作哲学を公開できる編集記事の一画面として試作",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
 			"evidence": [
@@ -2392,6 +2596,7 @@
 			"issue": 598,
 			"title": "判断待ち: mic-level を sandbox=\"allow-scripts allow-same-origin\" で卒業させるか (Issue #449 の残り)",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "deferred-with-reason",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -2414,6 +2619,7 @@
 			"issue": 669,
 			"title": "security(deps): braces 3.0.3 (GHSA-vfj7-8cjw-p6xm) の未修正 advisory 例外記録を期限管理する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2434,6 +2640,7 @@
 			"issue": 672,
 			"title": "判断待ち: 編集レビュー gate の対象外に残っている src/keyboard / src/legal / src/privacy の公開 copy",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "awaiting-owner",
 			"evidence": [
@@ -2454,6 +2661,7 @@
 			"issue": 700,
 			"title": "fix(privacy): GA4 の Admin 経路判定を Router と同じ percent-decoding 契約へ揃える",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2476,6 +2684,7 @@
 			"issue": 701,
 			"title": "fix(data-integrity): D1 backup が JavaScript 安全整数範囲外の SQLite INTEGER を黙って丸めない",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": ["src/cloudflare/d1-backup.ts", "src/cloudflare/d1-numeric.test.ts", "#705"],
@@ -2491,6 +2700,7 @@
 			"issue": 702,
 			"title": "fix(logging): Error.nameの未秘匿と audit fields による event/at 上書きを防止",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2512,6 +2722,7 @@
 			"issue": 704,
 			"title": "chore(deps): 依存 advisory ゲートを green に戻す（better-auth / happy-dom / undici / zod と braces 例外記録の retire）",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2532,6 +2743,7 @@
 			"issue": 709,
 			"title": "feat(platform): 個人文書 preview 用の owner「src/personal」を導入する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2554,6 +2766,7 @@
 			"issue": 724,
 			"title": "fix(bundle): サーバ専用スタックをブラウザ bundle から排除し、shell を約 1.69MB → 約 0.63MB に縮小する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2576,6 +2789,7 @@
 			"issue": 726,
 			"title": "fix(architecture): check-architecture の leaf ルールが到達不能コードで、AGENTS.md §3 の宣言と実装が食い違っていた",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2596,6 +2810,7 @@
 			"issue": 728,
 			"title": "fix(verification): 検証が黙って通る 2 つの穴（台帳の未来日 / e2e の silent skip）を塞ぐ",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2618,6 +2833,7 @@
 			"issue": 730,
 			"title": "docs(skills): herdr-runtime Skill を vendor する（upstream project-init PR #135 head の版）",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": ["#731", "skills/herdr-runtime/SKILL.md", "AGENTS.md"],
@@ -2633,6 +2849,7 @@
 			"issue": 734,
 			"title": "fix(seo): 公開面台帳と sitemap 生成器の矛盾を解消し、食い違いを gate にする",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2654,6 +2871,7 @@
 			"issue": 737,
 			"title": "fix(verification): status-monochrome の「Storybook dev preview が起動できない」という誤った制約記述を実測で訂正する",
 			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
 			"evidence": [
@@ -2668,6 +2886,648 @@
 			"action": "kept-closed",
 			"note": "本 Issue の修正範囲（記録の訂正だけ、capture script 追加は範囲外）はそのまま実装されている。",
 			"missing": "なし（実測日と観測項目が記載され、訂正の事実と第 2 項の意味が保存されている）"
+		},
+		{
+			"issue": 808,
+			"title": "fix(portfolio): 確認用サーバーで全カバーが placeholder になり画面上で確認できない",
+			"closedAt": "2026-11-02",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#809",
+				"#810",
+				"4d6be456",
+				"4778028c",
+				"docs/verification/portfolio/dev-media-delivery.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "PR #809（merge 4d6be456）が開発面の media URL を相対 /media にし、PR #810（merge 4778028c）が実ブラウザの検証記録を追加した。受け入れ条件 1-6 は Issue の close コメントで証拠と対応づけられている。owner への確認依頼は未実施なので ownerConfirmation は unconfirmed のまま。",
+			"missing": null
+		},
+		{
+			"issue": 753,
+			"title": "release: v0.7.0 の tag と GitHub Release が未公開（main は 0.7.0 / 最新公開は v0.6.3）",
+			"closedAt": "2026-11-02",
+			"window": "tracked",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
+			"evidence": [
+				"https://github.com/rebuildup/my-web-2026/releases/tag/v0.8.0",
+				"https://github.com/rebuildup/my-web-2026/pull/619",
+				"https://github.com/rebuildup/my-web-2026/issues/753#issuecomment-6567669679"
+			],
+			"decision": {
+				"kind": "owner",
+				"reason": "v0.7.0 を遡及公開せず v0.8.0 に吸収する（Issue #753 の選択肢 2）。v0.8.0 の Release notes に「v0.7.0 の GitHub Release は未公開・その内容はすべて本リリースに含まれる」と PR #619（main へ 2026-10-22T13:59:58Z にマージ）を付して記録した。2026-11-02 の実測で refs/tags/v0.7.0 が存在しないことを確認。"
+			},
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "Release notes の公開（gh release edit v0.8.0）と tag 不在の実測が証拠。選択肢 2 の採択そのものがこの Issue の成果物であり、release branch への統合だけを根拠にはしていない。",
+			"missing": null
+		},
+		{
+			"issue": 815,
+			"title": "chore(quality): Issue close 台帳の監査窓を広げ、新しい close を記録できるようにする",
+			"closedAt": "2026-11-02",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#818",
+				"0b9ff819",
+				"quality/issue-closure-ledger.json",
+				"scripts/check-issue-closure-remote.mjs",
+				"scripts/check-issue-closure-remote.test.mjs",
+				"docs/runbook/issue-lifecycle.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件 4 点の証跡: (1) derived window に新しい close（#808）を 1 件足しても issue:closure:check が exit 0 で通る。(2) 2026-10-31 の 132 件は population: 132 の frozen window として保持され、削減・水増しできない。(3) R005 の新しい意味は check-issue-closure-remote.test.mjs の「recording a new close in the derived window is not R005」ほかで固定。(4) runbook §4.1 の window 表と §5 step 3 が「新しい close をどの窓にどう記録するか」を記述。",
+			"missing": null
+		},
+		{
+			"issue": 769,
+			"title": "infra(tools): 全 Tool 完全化の棚卸しと有効化順序を確定する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"docs/verification/tools/completion-inventory.md",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"#774",
+				"#845",
+				"src/tools/manifest.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: (1) 13 件の pinned SHA 実測マトリクスが completion-inventory.md にある。(2) blocker は同ファイルで host 側 / Tool repo 側に分類され、Tool repo 側の変更が必要な 12 件は個別 Issue に紐づく。(3) end-to-end の最初の候補と選定理由は同ファイルの順序節。(4) 実行順は ADR-0020 §0「決定の出所」表で owner 提示なしに決定され根拠が記録されている。(5) mic-level の設計と e2e 条件は ADR-0020 §4.5。(6) 個別 Tool の実装 PR は本 Issue の PR に混ぜていない。(7) 追跡先 #770 / #771 / #772 / #773 が存在する。",
+			"missing": null
+		},
+		{
+			"issue": 817,
+			"title": "feat(tools): host_disabled の 13 件を有効化する（上流修正を含む）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/tools/manifest.json",
+				"#849",
+				"#854",
+				"#855",
+				"#860",
+				"docs/verification/tools/business-mail-block-host-activation.md",
+				"docs/verification/tools/history-quiz-host-activation.md",
+				"docs/verification/tools/mic-level-host-activation.md",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"docs/tools/inventory.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: (1) manifest の 15 Tool がすべて same_origin_static、host_disabled は 0 件（実測）。(2) 実画面と操作は docs/verification/tools/ の各 host-activation 記録。(3) 埋め込み境界は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が宣言トークン集合を固定。(4) 棚卸しの数値は completion-inventory.md と manifest が一致。Tool ごとの操作列は #770 / #771 / #772 / #773 が所有する。この記録で再測定していないもの: (a) mic-level の getUserMedia は #825 以降に再測していない（#855 の記録は sandbox 時代の実測）。(b) docs/tools/inventory.md は 13 / 2 / 0 のまま drift していた（#879 で修正し、tools:check の rule 12 で検知する）。",
+			"missing": null
+		},
+		{
+			"issue": 785,
+			"title": "feat(tools): /tools 一覧にナビ・パンくず・アイコン・日本語説明・スクリーンショットを追加する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#787",
+				"src/routes/tools.index.tsx",
+				"src/tools/manifest.json",
+				"src/editorial/primitives/MaterialSymbol.tsx",
+				"public/tool-previews"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: PublicNav / Breadcrumbs / BreadcrumbJsonLd のマウントと各行の Material Symbols アイコンは src/routes/tools.index.tsx、日本語説明は manifest の description_ja が 15/15、プレビューは public/tool-previews/*.webp（alt は日本語）。PR #787 の validate:fast が green。",
+			"missing": null
+		},
+		{
+			"issue": 836,
+			"title": "fix(tools): /tools/<slug> の準備中ページが内部 disabled_reason を公開する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#851",
+				"test/integration/tools-disabled-placeholder.test.ts",
+				"e2e/tools-index.spec.ts",
+				"src/routes/tools.$slug.tsx"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: 準備中ページに manifest の disabled_reason 文字列を描画しないことを integration test が assert し、一覧の区別と機能説明は e2e が固定する。placeholder 分岐は src/routes/tools.$slug.tsx。PR #851 の validate:fast が green。",
+			"missing": null
+		},
+		{
+			"issue": 861,
+			"title": "fix(tools): host_disabled が 0 件になっても準備中契約の検証を維持する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#862",
+				"src/tools/registry.ts",
+				"src/tools/registry.test.ts",
+				"e2e/tools-index.spec.ts"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: createToolRegistry が公開され既存テストは無変更で通る。合成 manifest での準備中契約（listAllTools に含む / listPublicTools に含まない / disabled_reason 非空）は registry.test.ts、coming-soon バッジ 0 件は e2e/tools-index.spec.ts が固定する。",
+			"missing": null
+		},
+		{
+			"issue": 823,
+			"title": "fix(editorial): 操作の手がかりに使っている文字記号（→ / ×）を Material Symbols に置き換える",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#827",
+				"src/editorial/primitives/MaterialSymbol.tsx",
+				"docs/verification/design/issue-823-material-symbol-arrows-0-8-1.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: 置換は inline SVG（MaterialSymbol）で DOM テキストから → が消えたことを実測記録が route ごとに記録し、aria-hidden とアクセシブル名の不変、1440 / 390 の横はみ出し 0、before / after WebP を同記録に含む。",
+			"missing": null
+		},
+		{
+			"issue": 812,
+			"title": "fix(design-system): 色セクションを「色が主体」の構成に組み直す（案III採用・純白禁止）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#821",
+				"530fba02",
+				"a8f39fb8",
+				"docs/verification/design/design-system-colour-surface-0-8-1.md",
+				"docs/verification/design/design-system-colour-surface-1440-after.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: 色見本の背景を色そのものにした変更（530fba02）と、route bundle budget への追随（a8f39fb8）。1440 / 390 の before / after WebP、色塗りの列挙、純白 grep、色相数と彩色面積の実測は docs/verification/design/design-system-colour-surface-0-8-1.md に記録。",
+			"missing": null
+		},
+		{
+			"issue": 811,
+			"title": "feat(portfolio): 旧サイト 151 件を全件移行する（権利レビューを公開の前提にしない）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#822",
+				"#857",
+				"docs/migration/portfolio-2025-to-2026-publication.json",
+				"docs/domain/portfolio-migration-decisions.md",
+				"scripts/check-portfolio-summary.mjs",
+				"scripts/migrate-portfolio-from-2025.mjs"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: (1) 決定記録が docs/domain/portfolio-migration-decisions.md に owner 発言の引用とともに存在。(2) 未記録資産は notAWork / pending として台帳に残し黙って消していない。(3) counts.legacyRows = 151 / rows.length = 151、移行 60 件は visibility=draft。(4) 本文の加筆は要約生成側（check-portfolio-summary.mjs）と台帳の要約列で機械的に確認できる。公開判断は owner の領分で、本 Issue は移行の完了を指す。",
+			"missing": null
+		},
+		{
+			"issue": 765,
+			"title": "feat(portfolio): Notion を CMS の SoT として採用し同期基盤を実装する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "partial",
+			"closure": "unsupported",
+			"evidence": [
+				"#775",
+				"docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md",
+				"docs/runbook/notion-portfolio-sync.md",
+				"92b416ec",
+				"src/portfolio/notion/generated/snapshot.json は 457 B で \"availability\": \"unavailable\" / \"databaseId\": \"unconfigured\" のプレースホルダ（2026-11-04 実測）。同期 → snapshot → 公開判定 → 表示の経路は一度も実データで通っていない"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "reopened",
+			"note": "2026-11-04 のリリースゲートレビューで、完了条件が全項目未チェックのまま COMPLETED で閉じられていたことが判明したため訂正した。ADR-0018（Accepted）、運用手順、#775 は実在するが、それは「採用決定と実装の土台」であって完了条件の『同期 → committed snapshot → 公開判定 → 表示の再現可能な経路』『rendered verification（desktop / mobile、WebP）』ではない。",
+			"missing": "完了条件のうち未達: committed snapshot が実データで生成されていない（availability=unavailable のプレースホルダ）、したがって同期 → snapshot → 公開判定 → 表示の再現可能な経路が実データで一度も通っていない、rendered verification（desktop / mobile、WebP）が無い、validate:integration green が最終 SHA で未確認。ADR と手順書の存在は満たしている。"
+		},
+		{
+			"issue": 766,
+			"title": "feat(portfolio): 旧サイト my-web-2025 の制作物を全件棚卸しして Notion CMS へ移行する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "partial",
+			"closure": "unsupported",
+			"evidence": [
+				"#790",
+				"docs/migration/portfolio-2025-inventory.json",
+				"docs/migration/portfolio-2025-owner-review.md",
+				"scripts/audit-legacy-portfolio.mjs",
+				"docs/verification/portfolio/legacy-media-migration.md（local 60 project / 130 media 行、production 3 / 3 で R2 object 116 件は未移行）"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "reopened",
+			"note": "2026-11-04 のリリースゲートレビューで、完了条件が全項目未チェックのまま COMPLETED で閉じられていたことが判明したため訂正した。棚卸し（inventory と owner レビュー記録）は実在し件数も台帳と一致するが、Issue の目的は『棚卸しして Notion CMS へ移行する』であり、移行の実測は local ですら公開面の表示まで到達していない。移行そのものを #811（公開判断）と #850（R2 メディア移行）へ委ねたのは事実だが、委譲先を evidence に記録しないまま完了扱いにしていた点も本訂正で直した。",
+			"missing": "完了条件のうち未達: 全公開項目が新サイトで表示できること（desktop / mobile の WebP）が未実施、非公開 / 権利未記録 / 取得不能の項目が公開されていないことの実測が無い、旧サイト URL からの主要導線の解決が未確認、validate:integration green が最終 SHA で未確認、owner の公開範囲確認が無い。満たしているのは移行台帳が全項目を追跡し欠落 0 件をコマンドで確認できる点のみ。"
+		},
+		{
+			"issue": 816,
+			"title": "chore(release): v0.8.0 の持ち越し（attestation byte 照合 not executed / prod smoke 期待値 5 件の陳腐化）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#824",
+				"scripts/check-artifact-attestation.mjs",
+				"scripts/check-attestation-manifest-integrity.mjs",
+				"docs/verification/supply-chain/attestation-byte-comparison-2026-11-02.md",
+				".github/workflows/prod-smoke.yml"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: (1) attestation 照合はローカル実行できるスクリプト群とテストになった。(2) smoke 期待値を再測定して prod-smoke の定義を修正した（59cb6894）。(3) 実行記録は docs/verification/supply-chain/。(4) v0.8.0 の「not executed」は書き換えず注記を足す形なので未検証状態は保持されている。",
+			"missing": null
+		},
+		{
+			"issue": 788,
+			"title": "chore(agent): Notion MCP サーバーをプロジェクトローカルに導入し、token を Infisical 経由で供給する",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": ["#789", ".mcp.json", "docs/runbook/notion-mcp.md"],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: .mcp.json の notionApi エントリがプロジェクトローカルの MCP サーバーを指し、token の供給経路は docs/runbook/notion-mcp.md（Infisical 経由、値はリポジトリに置かない）。",
+			"missing": null
+		},
+		{
+			"issue": 786,
+			"title": "bug(tools): readmark が sandbox 下で IndexedDB を拒否され「読み込み中…」のまま止まる",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": ["#846", "src/tools/manifest.json"],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "PR #846 で readmark を storage を必要としない設計へ pin（pinned_sha 889595910ae62ebfb3f6b8000d635283196f9b0e）。実測で「ライブラリは空です」まで到達することを確認。sandbox 自体の撤去は #825（ADR-0020 の実装）が扱う。",
+			"missing": null
+		},
+		{
+			"issue": 777,
+			"title": "fix(editorial): PublicNav の余白不足と装飾的重複を解消し、文字サイズ拡大時の折返しを止める",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"fa3e9c83",
+				"src/editorial/nav/PublicNav.tsx",
+				"src/editorial/nav/PublicNav.test.ts",
+				"e2e/nav.spec.ts"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: fa3e9c83 が JA/EN 二重描画を整理して 1 行を保ち、PublicNav.test.ts が折返し条件を、e2e/nav.spec.ts が navigation を固定する。",
+			"missing": null
+		},
+		{
+			"issue": 778,
+			"title": "fix(editorial): パンくずリストに root（ホーム）項目が無く、/ まで辿れない",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"e717f5de",
+				"src/editorial/nav/Breadcrumbs.tsx",
+				"src/editorial/nav/route-labels.ts",
+				"src/editorial/nav/Breadcrumbs.test.ts"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: e717f5de が __root__ から Home を合成し ROUTE_LABELS に root を登録、Breadcrumbs.test.ts が route ごとの chain を固定し、e2e/nav.spec.ts が実画面を確認する。",
+			"missing": null
+		},
+		{
+			"issue": 771,
+			"title": "feat(tools): ビジネスメールブロック をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#859",
+				"docs/verification/tools/business-mail-block-host-activation.md",
+				"quality/tool-artifact-inventory.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: submodule HEAD 1495b2e5 = manifest の pinned_sha、/tools/business-mail-block と /app/ が 200、4 ブロックのドラッグ&ドロップ合成とコピーを実測（上流 PR #7 の draggableProps.style 上書きを修正）、iframe の宣言トークンは allow-scripts allow-downloads / allow=downloads で据え置き、license / dependencies は verified。",
+			"missing": null
+		},
+		{
+			"issue": 772,
+			"title": "feat(tools): 歴史クイズ をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#860",
+				"#869",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"docs/verification/tools/history-quiz-host-activation.md",
+				"docs/verification/tools/history-quiz-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: 実コンテンツの描画、空欄入力 → 採点 → 正答表示、リセットの confirm()（allow-modals の A/B 実測と sandbox_rationale）、390px の表示を docs/verification/tools/history-quiz-host-activation.md と WebP に記録。ただしこの実測は sandbox 時代のもので、#869（ADR-0020）が first-party frame から sandbox 属性ごと撤去したため、当時の allow-modals 宣言は現行の機構ではない。sandbox を外す方向は confirm() を妨げない（制約が減るだけ）ので判定は変えないが、#825 以降の再実測は行っていない。",
+			"missing": null
+		},
+		{
+			"issue": 779,
+			"title": "audit(editorial): ホームだけ PublicNav が無く、ページ間で chrome が不一致",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
+			"evidence": [
+				"src/home/hero.tsx",
+				"src/home/footer.tsx",
+				"https://github.com/rebuildup/my-web-2026/issues/779#issuecomment-6568711245"
+			],
+			"decision": {
+				"kind": "owner",
+				"reason": "owner 判断 O-11（Issue #732 の委任判断 comment 6567589098、#779 への追記 comment 6568711245）:「Home に公開先への実用的なナビゲーションを置く。重複する navigation を増やさない」。後段から、Home のページ上部に PublicNav を重複させず hero の CTA（About me / Portfolio / GitHub）に集約する形が一意に決まる（AGENTS.md §8 の優先順位 1 → 2）。新しい公開面 UI は発明しない。"
+			},
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/779#issuecomment-6568711245",
+			"action": "kept-closed",
+			"note": "成果物は「測って、決めたこと」。実測は Issue 本文（/ だけ nav[aria-label=\"Public\"] が無い、masthead は 320–1920px で折返しなし、実際に折り返していたのは section heading）と、決定後の経路（hero CTA / footer リンク）。公開面のコード変更は行っていない。",
+			"missing": null
+		},
+		{
+			"issue": 718,
+			"title": "fix(a11y): 既知の公開axe違反を実装側で解消し baseline を減らす",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"5226f9a9",
+				"e2e/a11y/axe-baseline.json",
+				"e2e/a11y/axe-storybook-baseline.json",
+				"src/editorial/nav/PublicNav.tsx",
+				"src/home/status/tiles.tsx"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: commit 5226f9a9 が 3 系統（list SC 1.3.1 / definition-list SC 1.3.1 / label-content-name-mismatch SC 2.5.3）を実装側で修正し、両台帳の records は実測で 0 件になった。台帳照合の gate は残り、対象 route / story の除外や基準の緩和はしていない。",
+			"missing": null
+		},
+		{
+			"issue": 870,
+			"title": "feat(portfolio): 旧サイトの YouTube 動画 44 件に再生導線を作る（click-to-load・第三者要求 0 から）",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#873",
+				"3045f24f",
+				"src/portfolio/video-facade.ts",
+				"src/portfolio/components/PortfolioVideoFacade.tsx",
+				"src/portfolio/video-facade.test.ts",
+				"src/portfolio/components/PortfolioVideoFacade.client.test.tsx",
+				"docs/verification/portfolio/video-facade.md",
+				"docs/verification/portfolio/video-facade/measurement-summary.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #873（merge 3045f24f）が release-0-8-1 に着地。受入条件 2-7 はテスト・実測記録・WebP と CI で満たした。条件 1「初期表示の第三者要求 0 件」は、動画起因の要求が押下前 0 件であることを Playwright の request 観測で記録した（YouTube 系 origin 0 件、iframe 0 個）。ただし同一ページから変更前より存在する Google Fonts への 32〜34 件の要求が出るため、字義どおりの「第三者要求 0」ではない。この差は docs/verification/portfolio/video-facade.md §4.1 と Issue コメントに明記し、字義どおりの 0 件化は #876（フォント自己ホスト）で追跡する。",
+			"missing": null
+		},
+		{
+			"issue": 770,
+			"title": "feat(tools): カラーパレット をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#848",
+				"#863",
+				"#872",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/color-palette-host-activation.md",
+				"docs/verification/tools/first-party-delivery-followup.md",
+				"docs/verification/tools/color-palette-desktop.webp",
+				"docs/verification/tools/color-palette-mobile.webp",
+				"docs/verification/tools/color-palette-reload-desktop.webp",
+				"docs/verification/tools/color-palette-reload-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #848 で same_origin_static として host 配線し、#863 で操作を実測、#872 で #825 後の再読込永続化を再実測した（docs/verification/tools/first-party-delivery-followup.md §1.4）。manifest の pinned_sha は gitlink と一致し、license / dependencies は verified。",
+			"missing": null
+		},
+		{
+			"issue": 773,
+			"title": "feat(tools): After Effects Expression Helper をhost_disabledから利用可能なWeb Toolへ統合",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#858",
+				"#864",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/ae-expression-host-activation.md",
+				"docs/verification/tools/ae-expression-desktop.webp",
+				"docs/verification/tools/ae-expression-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #858 で same_origin_static として host 配線し、#864 で式の表示 / コピーを実測。manifest の pinned_sha は gitlink と一致し、license / dependencies は verified。",
+			"missing": null
+		},
+		{
+			"issue": 825,
+			"title": "refactor(tools): Tool を sandbox 付き iframe から first-party 同一 origin 配信へ変える",
+			"closedAt": "2026-11-03",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#828",
+				"#869",
+				"#872",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
+				"src/tools/embed-policy.ts",
+				"src/tools/embed-policy.test.ts",
+				"docs/verification/tools/first-party-delivery-followup.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "kept-closed",
+			"note": "受け入れ条件の証跡: #828 で ADR-0020 を採択し、#869 で shipped 15 Tool すべてを same_origin_static に移行して sandbox 属性を撤去、#872 で移行後の 10 Tool を再実測した。現在の manifest は 15/15 が same_origin_static で host_disabled が 0 件、tools:check は delivery 内訳 {\"same_origin_static\":15} を返す。宣言トークン集合は src/tools/embed-policy.test.ts と scripts/check-security-headers.test.mjs が固定している。",
+			"missing": null
+		},
+		{
+			"issue": 871,
+			"title": "Portfolio 詳細の §07 Links が 390px で横スクロールする（長い URL が折り返さない）",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#875",
+				"docs/verification/portfolio/links-wrapping.md",
+				"docs/verification/portfolio/links-wrapping/",
+				"src/portfolio/components/PortfolioDetail.tsx"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: 折り返し機会の無い長い URL を持つ project で 390 / 1440 とも横スクロールしないことを Playwright で実測し、docs/verification/portfolio/links-wrapping.md と同ディレクトリの WebP に記録した。条件 2: 折り返し後も選択・コピーできることを同じ記録で確認した。条件 3: #875 は validate（validate:integration と同一 entry point）green で release-0-8-1 に merge 済み。",
+			"missing": null
+		},
+		{
+			"issue": 879,
+			"title": "docs(tools): inventory の classification / pinned SHA を manifest と一致させる",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#881",
+				"docs/tools/inventory.md",
+				"src/tools/manifest.json",
+				"scripts/check-tools-manifest.mjs"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1・2: docs/tools/inventory.md の 15 行を manifest の classification / source.pinned_sha に一致させ、Counts を 15 / 0 / 0（manifest 導出値）にした。条件 3: scripts/check-tools-manifest.mjs に rule 12 を追加し、文書の表・SHA・Counts を manifest と双方向に比較して drift を CI で落とす。条件 4: #881 は validate green で release-0-8-1 に merge 済み。",
+			"missing": null
+		},
+		{
+			"issue": 868,
+			"title": "fix(tools): pomodoro の standalone artifact が CSS を読み込まずスタイル未適用になる",
+			"closedAt": "2026-11-04",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#882",
+				"rebuildup/tool-pomodoro#10",
+				"d4add8a1f19b4a4ffb3c77c745f140796120adc7",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/pomodoro-desktop.webp",
+				"docs/verification/tools/pomodoro-mobile.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: dist/index.html が ./assets/index-*.css（24.0KB / gzip 5.3KB）を参照し、frame 内が styled に描画されることを実測した。条件 2: 修正は rebuildup/tool-pomodoro PR #10（merge d4add8a1）で行い、external/pomodoro の gitlink と manifest の pinned_sha、tool-artifact-inventory の sha256 を pin bump で取り込んだ。条件 3: docs/verification/tools/host-interaction-batch-0-8-1.md §5 / §11 を更新し §12 を追加、1440 / 390 の WebP を再取得した。#882 は validate green で release-0-8-1 に merge 済み。",
+			"missing": null
 		}
 	]
 }

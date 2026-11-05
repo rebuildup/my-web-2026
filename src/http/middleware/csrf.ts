@@ -161,8 +161,9 @@ export function evaluateCsrf(
 
 	const origin = request.headers.get('Origin');
 	if (origin !== null) {
-		// `Origin: null` is what a sandboxed iframe / `file:` document
-		// sends; it is never same-origin.
+		// `Origin: null` is what an opaque-origin frame (a sandboxed
+		// `external_exception` Tool) / `file:` document sends; it is
+		// never same-origin.
 		return origin === requestOrigin
 			? { allowed: true, accepted_as: 'same_origin' }
 			: { allowed: false, reason: 'origin_mismatch' };

@@ -58,12 +58,15 @@ bridges (`bluetooth`, `hid`, `serial`, `usb`), capture devices
 platform-gated products (`payment`, `xr-spatial-tracking`).
 
 A feature that is **not** listed keeps the browser default allowlist
-(`self`). That is deliberate: it means a future Tool that needs a new
-capability can be granted it per Tool without amending the host
-baseline first, and it keeps the baseline honest — every entry has to
-justify itself. `/admin` copies invitation URLs with
-`navigator.clipboard`; that works precisely because `clipboard-write`
-is not on the list.
+(`self`). That is deliberate: it keeps the baseline honest — every
+entry has to justify itself — but it also means a grant may only name
+a feature on this list, because a grant for an unlisted feature would
+be a no-op (`scripts/check-security-headers.mjs` rejects it) — UNLESS
+the capability is a **sandbox-only** one (see §3), which the header
+cannot express at all. So a new header-expressible capability requires
+this baseline to be amended first, and then granted per Tool.
+`/admin` copies invitation URLs with `navigator.clipboard`; that works
+precisely because `clipboard-write` is not on the list.
 
 The baseline applies to every **host** response: all Worker-generated
 responses, and the host-owned static documents under `/share/**`. It
@@ -78,8 +81,8 @@ declared once, in the Tool manifest, and read by three consumers:
 ```jsonc
 // src/tools/manifest.json — mic-level
 "delivery": {
-  "kind": "host_disabled",
-  "iframe": { "sandbox": "allow-scripts", "referrer_policy": "no-referrer", "allow": "microphone" }
+  "kind": "same_origin_static",
+  "iframe": { "referrer_policy": "no-referrer", "allow": "microphone" }
 }
 ```
 
@@ -94,9 +97,13 @@ declared once, in the Tool manifest, and read by three consumers:
    `microphone=(self "https://rebuildup.dev")` in production.
 3. **Container** — the shell route renders
    `<iframe allow="microphone">` (`src/routes/tools.$slug.tsx`) once the
-   Tool graduates. Today `mic-level` is `host_disabled`, so the route
-   renders `DisabledPlaceholder` and no iframe exists yet; the grant is
-   declared and resolved ahead of that graduation.
+   Tool graduates. `mic-level` graduated in Issue #855 (2026-11-03), so
+   the route renders the iframe with the grant. ADR-0020 (Issue #825)
+   removes the first-party sandbox: the frame now runs on the host
+   origin, which is the origin `microphone=(self "…")` names, so the
+   `allow-same-origin` decision recorded in
+   `docs/verification/tools/mic-level-host-activation.md` no longer
+   applies.
 
 The fourth half — the framed document — is `public/_headers`, and it is
 where the platform forces a design decision (measured, Chromium, fake
@@ -111,12 +118,13 @@ capture device):
 
 Read the last three rows with §5 in hand: the *granted* rows were
 measured with `sandbox="allow-scripts allow-same-origin"` on the Tool
-frame, because under the shipped `sandbox="allow-scripts"` the frame has
-an opaque origin and Chromium refuses `getUserMedia` with
-`SecurityError: Invalid security origin` before Permissions-Policy is
-consulted. Only the first row is the configuration that ships today.
-The header contract below is what `mic-level` will need when it
-graduates; it is necessary, not sufficient.
+frame. That measurement describes the pre-ADR-0020 frame, which had an
+opaque origin under `sandbox="allow-scripts"` and was therefore refused
+`getUserMedia` with `SecurityError: Invalid security origin` before
+Permissions-Policy was consulted. The current first-party frame has no
+sandbox at all, so its origin is the host origin and the grant above is
+the whole requirement. The header contract below is what `mic-level`
+uses now that it has graduated (Issue #855).
 
 Two findings, both load-bearing:
 
@@ -133,6 +141,69 @@ Two findings, both load-bearing:
   `/share/*` (host-owned documents) and leaves the Tool namespace
   without a `Permissions-Policy` at all. Which Tool may actually ask is
   decided by the host route's `<iframe allow=…>`, driven by the manifest.
+
+### The sandbox-only capabilities: `downloads` and `fullscreen`
+
+`downloads` was the second declared capability (Issue #773, and the
+same capability Issue #817's second wave declared for `fillgen` /
+`code-type-p5`), and it was the first one where the **sandbox** was the
+whole grant rather than the header. The `ae-expression` Tool's export
+button writes the generated expression as a file (`expression.txt` /
+`expression.json`) through `link.download`; at that time the Tool was a
+sandboxed frame, and a sandboxed frame without `allow-downloads` drops
+that download. The pre-ADR-0020 manifest therefore declared:
+
+```jsonc
+// src/tools/manifest.json — ae-expression, HISTORICAL (removed by ADR-0020)
+"delivery": {
+  "iframe": {
+    "sandbox": "allow-scripts allow-downloads",
+    "referrer_policy": "no-referrer",
+    "allow": "downloads",
+    "sandbox_rationale": "…writes the generated expression as a file…"
+  }
+}
+```
+
+The A/B that established the token is still the measured record
+(2026-11-03, Chromium, the same artefact bytes in both frames):
+
+| Frame | `sandbox` | Download events |
+| --- | --- | --- |
+| the pre-ADR-0020 shipped iframe | `allow-scripts allow-downloads` | **1** (`expression.txt`, 111 B) |
+| control iframe | `allow-scripts` | **0** |
+
+ADR-0020 (Issue #825) removes the first-party sandbox, so the download
+now works without any token; the manifest declares no conditional
+token, `allow`, or `sandbox_rationale` for it. The historical A/B is
+why the sandbox was removed rather than the token kept.
+
+The header half does not exist, and that is deliberate. Chromium
+implements **no** `downloads` Permissions-Policy feature (measured —
+`downloads=()`, `downloads=(self …)` and `downloads=*` all leave the
+download working), so writing the feature into the header would make
+every browser log `Unrecognized feature: downloads` on every response
+— site-wide console noise for a grant the header cannot express. The
+same is true of `fullscreen`: the container half (`<iframe
+allow="fullscreen">`) is what grants it, an explicit
+`fullscreen=(self "…")` was measured not to match the pre-ADR-0020
+sandboxed frame's opaque origin, and the default allowlist (`self`)
+matches the current host-origin frame — so denying it anywhere would
+kill the capability site-wide. Both are therefore recorded in
+`src/http/security-headers.json` under `sandbox_only_capabilities`,
+which the verifier enforces in two directions: such a capability must
+NOT appear in the deny baseline, and the Tool's artefact path must
+carry **no** `Permissions-Policy` at all. No current Tool declares a
+conditional sandbox token; `fullscreen` is still declared in
+`delivery.iframe.allow` on `pi-game` because it is a meaningful
+Permissions-Policy / container delegation to a first-party frame.
+
+So the answer to "how does a Tool earn a capability" has two halves:
+a **header** capability (`microphone`) is denied site-wide and granted
+per Tool through `Permissions-Policy`, and a **sandbox-only**
+capability (`downloads`, `fullscreen`) is granted by the container
+attribute (or, historically, the sandbox token) and must not appear in
+any `Permissions-Policy` value.
 
 ### Residual exposure of that choice
 
@@ -228,9 +299,10 @@ allowlist follows the origin that actually served the request, with no
 production value anywhere.
 
 Tool artefacts only exist when the Tool submodules are checked out.
-When they do, `/tools/<slug>/app/index.html` is measurable; a Tool that
-is still `host_disabled` (`mic-level`) has no artefact, and its rule is
-covered by the parity check plus the fixture used for the report.
+When they do, `/tools/<slug>/app/index.html` is measurable; the two
+shipped grants (`mic-level`, `ae-expression`) are covered by the parity
+check plus the fixture used for the report. A Tool that is still
+`host_disabled` has no artefact and no grant rule at all.
 
 To render those real responses in the verification image instead of the
 resolved rules, capture the dump into
@@ -265,16 +337,15 @@ result of that pass; the image is the same run rendered.
 
 ## 5. Known constraints
 
-- **`mic-level` also needs a frame origin it can use.** Under the
-  shipped `sandbox="allow-scripts"` the Tool frame has an opaque
-  origin, and Chromium rejects `getUserMedia` with
+- **`mic-level` needs no `allow-same-origin` decision any more.** The
+  pre-ADR-0020 measurement showed that a `sandbox="allow-scripts"` frame
+  has an opaque origin and Chromium rejects `getUserMedia` with
   `SecurityError: Invalid security origin` before Permissions-Policy is
-  even consulted (measured; last row of the verification report). The
-  grant in this contract is therefore necessary but not sufficient: when
-  `mic-level` graduates it will also need `allow-same-origin` on that
-  one Tool, which `scripts/check-tools-manifest.mjs` deliberately flags
-  as dangerous and ADR-0006 forbids without a written reason. That is an
-  owner decision and is **not** taken here.
+  even consulted. ADR-0020 (Issue #825) removes the first-party
+  sandbox, so the frame keeps the host origin and the origin-scoped
+  `microphone=(self "…")` grant is sufficient. The old "that one Tool
+  needs `allow-same-origin`" conclusion is historical and is **not**
+  taken.
 - **`_headers` is static**, so the Tool-artefact grant names the
   canonical production origin rather than the request origin. This only
   matters for a locally served Tool artefact, where the frame loses the

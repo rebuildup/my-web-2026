@@ -41,6 +41,30 @@ const sectionDescriptionClassName = css({
 	textWrap: 'pretty',
 });
 
+/**
+ * `<h2>` contents.
+ *
+ * A bilingual title renders as two blocks, so the JA title and its EN
+ * rendering never share a line and the separator cannot be stranded at
+ * the end of one (Issue #792). Two block spans plus the space between
+ * them name the heading "できごと What's here" to assistive technology,
+ * the same two-language reading the single string carried.
+ *
+ * A single-language title renders as the bare string — the pre-#792
+ * markup, unchanged.
+ */
+function SectionTitle({ title, titleEn }: { title: string; titleEn?: string }) {
+	if (!titleEn) return <>{title}</>;
+	return (
+		<>
+			<span className={css({ display: 'block' })}>{title}</span>{' '}
+			<span lang="en" className={css({ display: 'block' })}>
+				{titleEn}
+			</span>
+		</>
+	);
+}
+
 export interface SectionHeadingProps {
 	/**
 	 * Short, all-caps label above the title. Stays in `text.muted`
@@ -49,6 +73,22 @@ export interface SectionHeadingProps {
 	 */
 	eyebrow?: string;
 	title: string;
+	/**
+	 * Optional English half of a bilingual section title (Issue #792).
+	 *
+	 * When the JA and EN titles are concatenated into one string
+	 * (`'できごと / What's here'`), the line breaker treats the slash as
+	 * ordinary punctuation: at 320px, and in the `spread` variant's
+	 * 4/12 column at 1440px, the heading broke as `できごと /` +
+	 * `What's here`, leaving the separator stranded at the end of the
+	 * first line. The two halves are a JA title and its EN rendering —
+	 * one thought, two languages — so they are rendered as two blocks
+	 * and never share a line.
+	 *
+	 * Omit it for a single-language title; the rendered markup is then
+	 * byte-identical to the pre-#792 output.
+	 */
+	titleEn?: string;
 	/**
 	 * Optional description rendered as a muted paragraph below
 	 * the title. Rendered as plain text; pass JSX only when the
@@ -110,6 +150,7 @@ export interface SectionHeadingProps {
 export function SectionHeading({
 	eyebrow,
 	title,
+	titleEn,
 	description,
 	id,
 	variant = 'default',
@@ -150,7 +191,7 @@ export function SectionHeading({
 						id={id}
 						className={cx(sectionTitleClassName, css({ marginBlockStart: eyebrow ? '2' : '0' }))}
 					>
-						{title}
+						<SectionTitle title={title} titleEn={titleEn} />
 					</h2>
 					{description ? (
 						<p className={cx(sectionDescriptionClassName, css({ marginBlockStart: '4' }))}>
@@ -197,7 +238,7 @@ export function SectionHeading({
 				id={id}
 				className={cx(sectionTitleClassName, css({ marginBlockStart: eyebrow ? '2' : '0' }))}
 			>
-				{title}
+				<SectionTitle title={title} titleEn={titleEn} />
 			</h2>
 			{description ? (
 				<p

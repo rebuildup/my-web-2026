@@ -11,6 +11,7 @@ can re-run it.
 | `error-state-gallery.webp` | #501 | the three shipped failure surfaces (404 / 503 / dependency failure) with the props the router wires |
 | `api-timeout-fallback.webp` | earlier issue | the API timeout fallback surface |
 | `prod-smoke-results.webp` | release | the production smoke result board |
+| `release-step-9-operator-gate-2026-11-05.md` | release (v0.8.1) | release step 9, the operator gate CI cannot run: the production R2 key set stayed inside its allowlist (119 / 119 / 0, enumeration complete) and the Infisical ↔ Build Output secret **name** contracts matched, with the live-Worker check explicitly skipped rather than counted as green |
 
 ## `status-incident-context.webp` (Issue #502)
 

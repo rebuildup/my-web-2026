@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import type { PortfolioProject } from '../schema';
+import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
@@ -12,7 +13,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  *   2. project type (facet label, mono / muted),
  *   3. title,
  *   4. summary,
- *   5. role + period,
+ *   5. role / period (each only when recorded),
  *   6. facet pills,
  *   7. detail link.
  *
@@ -24,11 +25,17 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * pseudo-element extends the hit area to the entire card
  * surface).
  *
- * Issue #172 — semantic category accent. The card carries a 4px
- * left-border using `accent.category.<facet>` so the four
- * content categories (design / code / writing / tool) read as a
- * visual hint on each list item without changing the existing
- * reading order. Facet → category mapping:
+ * Issue #794 (owner decision, 2026-11-01) — the left category rule is
+ * gone. Issue #172 painted an absolutely positioned 4px bar with
+ * `accent.category.<facet>` to hint the category, and the owner's
+ * decision is that a decorative left rule is not how a face is
+ * distinguished; a left border is an equally forbidden replacement.
+ * The card is now its own plane: `bg.surface` separates it from the
+ * page canvas, and the category is carried by the `StateMark`
+ * silhouette plus the upper-case category word. **No category hue is
+ * painted on this surface at all**, so removing colour removes
+ * nothing (SC 1.4.1) — the bar was `aria-hidden` reinforcement and the
+ * hue was never the message (Issue #411). Facet → category mapping:
  *   develop → code, video → tool, design → design, other → writing.
  *
  * Issue #490 — the facet group carries `role="group"`. The
@@ -50,30 +57,23 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * Issue measured and are left for a follow-up instead of being fixed
  * silently here.
  *
- * Issue #411 — the category rule is no longer the ONLY
- * non-textual cue, and it is no longer the only cue at all. Before
- * this ticket the 4px rule was four hues of one identical bar: a
- * visitor who cannot separate `accent.category.writing` from
+ * Issue #411 — the category cue is never colour alone. Before that
+ * ticket the 4px rule was four hues of one identical bar: a visitor
+ * who cannot separate `accent.category.writing` from
  * `accent.category.code` had nothing left to read the category from,
  * because the coloured rule was the only element that carried it
  * (the facet pills name the FACET, which is a different word for the
- * same fact). The card now pairs the rule with a `StateMark` whose
+ * same fact). The card pairs the category with a `StateMark` whose
  * silhouette is unique per category (diamond / square / bars /
- * chevron) and with the existing upper-case category word, so
- * shape + text carry the category when hue is removed — WCAG 2.2
- * SC 1.4.1 (Level A). The rule itself stays `aria-hidden` and keeps
- * its category colour as reinforcement only.
+ * chevron) and with the existing upper-case category word, so shape +
+ * text carry the category when hue is removed — WCAG 2.2 SC 1.4.1
+ * (Level A). Issue #794 then removed the hue from this surface
+ * entirely, so shape + text are now the whole cue rather than the
+ * fallback for it.
  */
 export interface ProjectCardProps {
 	project: PortfolioProject;
 }
-
-const FACET_LABEL: Readonly<Record<string, string>> = {
-	develop: 'Develop',
-	video: 'Video',
-	design: 'Design',
-	other: 'Other',
-};
 
 const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 'tool'>> = {
 	develop: 'code',
@@ -84,10 +84,24 @@ const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 't
 
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
-	const type = project.facets[0]
-		? (FACET_LABEL[project.facets[0]] ?? project.facets[0])
-		: 'Project';
+	const type = project.facets[0] ? FACET_LABEL[project.facets[0]] : 'Project';
 	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
+	// The `Role` row exists only when a role is actually recorded
+	// (Issue #813). A kind of work does not belong in this column — the
+	// eyebrow word and the facet pills already carry it — but this
+	// component cannot tell where a stored value came from, so it
+	// prints a non-null value as it is. Keeping the kind out of the
+	// column is the write path's job (Issue #811); until that lands, a
+	// facet-derived value already stored would still print here. An
+	// empty `<dd>` would be a row that claims something while saying
+	// nothing, so it is dropped. The printed string is the stored
+	// string, byte-exact.
+	const hasRole = project.role !== null && project.role.trim() !== '';
+	// Issue #767 — the `Period` row follows the same rule as `Role`:
+	// `periodLabel` is nullable in the schema, and an empty `<dd>` is a
+	// row that claims a fact while saying nothing. The seed writes a
+	// label; a stored null / empty string is dropped rather than printed.
+	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<article
 			// Issue #411: the category is a published fact of the card,
@@ -98,26 +112,25 @@ export function ProjectCard({ project }: ProjectCardProps) {
 			// note above.
 			data-category={category ?? undefined}
 			className={css({
-				position: 'relative',
+				// Issue #794: the card is distinguished from the page by its
+				// own fill, not by a rule on its left edge. `bg.surface` is
+				// the raised-plane role; the hairline `borderTop` below only
+				// separates one card from the next and is unchanged.
+				backgroundColor: 'bg.surface',
 				display: 'grid',
-				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' },
+				// Issue #767 — the two-column composition is the
+				// cover + copy layout. With no cover the copy is the only
+				// child, so a fixed 4fr/8fr grid would strand it in the
+				// narrow column and leave the rest of the row empty. One
+				// column lets the copy — and its title — use the card's
+				// full width.
+				gridTemplateColumns: cover ? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
 				columnGap: { base: '0', md: '8' },
 				rowGap: { base: '4', md: '0' },
 				paddingBlock: '8',
 				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
-			<div
-				aria-hidden="true"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					bottom: '0',
-					width: { base: '0', md: '4px' },
-					backgroundColor: category ? `accent.category.${category}` : 'transparent',
-				})}
-			/>
 			{cover ? (
 				<div className={css({ minWidth: '0' })}>
 					<PortfolioMediaFigure media={cover} loading="lazy" />
@@ -178,14 +191,22 @@ export function ProjectCard({ project }: ProjectCardProps) {
 							href={`/portfolio/${project.slug}`}
 							className={css({
 								color: 'inherit',
-								textDecoration: 'none',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								// The heading is the whole link, so a full-ink rule
+								// under every line would shout. The underline stays
+								// — with no hue left it is the only affordance — but
+								// is drawn in the identifying-rule tone.
+								textDecorationColor: 'border.strong',
 								_focusVisible: {
 									outline: '2px solid {colors.border.focus}',
 									outlineOffset: '4px',
 									borderRadius: '2px',
 								},
 								_hover: {
-									textDecoration: 'underline',
+									textDecorationThickness: '2px',
+									textDecorationColor: 'currentColor',
 								},
 							})}
 						>
@@ -216,28 +237,36 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						color: 'text.muted',
 					})}
 				>
-					<dt
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Role
-					</dt>
-					<dd className={css({ margin: '0' })}>{project.role}</dd>
-					<dt
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Period
-					</dt>
-					<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+					{hasRole ? (
+						<>
+							<dt
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+								})}
+							>
+								Role
+							</dt>
+							<dd className={css({ margin: '0' })}>{project.role}</dd>
+						</>
+					) : null}
+					{hasPeriod ? (
+						<>
+							<dt
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+								})}
+							>
+								Period
+							</dt>
+							<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+						</>
+					) : null}
 				</dl>
 				{/* biome-ignore lint/a11y/useSemanticElements: `role="group"` is the right grouping for a set of static facet badges. A `<fieldset>` would claim a form-control grouping these badges are not, and the card's role / period pairs already use a `<dl>`. */}
 				<div

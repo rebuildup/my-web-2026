@@ -54,31 +54,78 @@ export interface PortfolioMediaEnv {
 	 * Public base URL for media delivery (no trailing slash). In
 	 * production this is `https://rebuildup.dev/media`. When absent,
 	 * every `composeMediaUrl` call returns `null` and the UI renders
-	 * the placeholder branch.
+	 * the placeholder branch — unless the runtime is the DEVELOPMENT
+	 * surface, which serves the same route on its own origin (see
+	 * `DEVELOPMENT_MEDIA_BASE`).
 	 */
 	MEDIA_PUBLIC_BASE_URL?: string;
+	/**
+	 * The development data-source binding (Issue #377). It is declared
+	 * ONLY in development, so its presence is how this module knows the
+	 * runtime is the dev server rather than the deployed Worker.
+	 */
+	MY_WEB_2026_DATA_SOURCE?: string;
+}
+
+/**
+ * Base URL the DEVELOPMENT surface uses for media (Issue #808).
+ *
+ * The dev server serves `GET /media/<key>` from the SAME Worker route
+ * production uses (`src/http/media/router.ts`), on its own origin — and
+ * its port is the operator's choice, so no absolute value is correct.
+ * Without this, every portfolio cover on the verification server
+ * rendered as `placeholder` even though the object was served: the URL
+ * was never composed because `MEDIA_PUBLIC_BASE_URL` is declared
+ * production-only (`wrangler.production.jsonc`,
+ * `quality/cloudflare-config-drift.json`).
+ *
+ * Relative on purpose: it is origin- and port-independent, it cannot
+ * point a development surface at a production delivery path, and it
+ * touches neither the Wrangler configuration nor the drift record. The
+ * deployed Worker never has `MY_WEB_2026_DATA_SOURCE`, so production
+ * composition is unchanged.
+ */
+const DEVELOPMENT_MEDIA_BASE = '/media';
+
+/**
+ * The media base URL this runtime must use, or `null` when the
+ * delivery surface is not configured for it.
+ *
+ * Order: the explicit production var wins; the development binding
+ * selects the relative dev base; neither means "not configured", which
+ * stays fail-closed in `composeMediaUrl`.
+ */
+function mediaBase(env: PortfolioMediaEnv): string | null {
+	if (typeof env.MEDIA_PUBLIC_BASE_URL === 'string' && env.MEDIA_PUBLIC_BASE_URL.length > 0) {
+		return env.MEDIA_PUBLIC_BASE_URL;
+	}
+	if (typeof env.MY_WEB_2026_DATA_SOURCE === 'string' && env.MY_WEB_2026_DATA_SOURCE.length > 0) {
+		return DEVELOPMENT_MEDIA_BASE;
+	}
+	return null;
 }
 
 /**
  * Compose the public URL for an R2 object. Returns `null` when:
  *
  *   - the `MEDIA` binding is not configured,
- *   - `MEDIA_PUBLIC_BASE_URL` is not configured,
+ *   - no media base URL is configured for this runtime (neither
+ *     `MEDIA_PUBLIC_BASE_URL` nor the development data-source binding,
+ *     see `mediaBase`),
  *   - the supplied key fails conservative validation
  *     (defence-in-depth against accidental `..` traversal),
  *   - the key is not publicly servable under the R2 visibility
  *     boundary (#459): a private or undeclared namespace never
  *     becomes a public URL.
  *
- * When configured, the returned URL is
- * `${MEDIA_PUBLIC_BASE_URL}/${r2Key}` — the Worker media route serves
- * the object after the namespace and publication gates, with the
- * cache policy `src/http/media/router.ts` declares.
+ * When configured, the returned URL is `${base}/${r2Key}` — the Worker
+ * media route serves the object after the namespace and publication
+ * gates, with the cache policy `src/http/media/router.ts` declares.
  */
 export function composeMediaUrl(env: PortfolioMediaEnv, r2Key: R2Key): string | null {
 	if (!env.MEDIA) return null;
-	const base = env.MEDIA_PUBLIC_BASE_URL;
-	if (!base) return null;
+	const base = mediaBase(env);
+	if (base === null) return null;
 	if (!isPublicMediaKey(r2Key)) return null;
 	const trimmed = base.replace(/\/+$/, '');
 	return `${trimmed}/${r2Key}`;

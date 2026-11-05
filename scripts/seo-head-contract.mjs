@@ -166,7 +166,7 @@ export const QUERY_STRING_PROBES = Object.freeze([
  * Public routes that deliberately declare `robots: noindex`.
  *
  * A public URL is not automatically an indexable one: `/tools/<slug>`
- * is a sandboxed iframe shell whose Tool artifact is served under
+ * is a Tool iframe shell whose Tool artifact is served under
  * `/tools/<slug>/<artifact_path>/`, so the shell itself must not
  * compete with the artifact in the index (the decision is recorded in
  * `src/routes/tools.$slug.tsx`). The gate would otherwise read that

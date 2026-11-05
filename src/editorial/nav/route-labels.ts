@@ -23,8 +23,8 @@
  *     editorial IA and should not surface a breadcrumb trail.
  *
  * Everything else (`/about`, `/contact`, `/portfolio[/<slug>]`,
- * `/tools[/<slug>]`, every `/admin/*` internal surface) renders
- * the chain.
+ * `/projects/dotfiles`, `/tools[/<slug>]`, every `/admin/*` internal
+ * surface) renders the chain.
  *
  * Canonical origin — `https://rebuildup.dev` (ADR-0014). The
  * breadcrumbs' JSON-LD `item` URL is computed against this origin
@@ -34,6 +34,23 @@
 
 /** Canonical production origin for JSON-LD `item` URLs. */
 export const BREADCRUMB_ORIGIN = 'https://rebuildup.dev' as const;
+
+/**
+ * The root of every rendered chain (Issue #778).
+ *
+ * Until #778 the chain started at the leaf's nearest LABELED ancestor,
+ * so a top-level page such as `/about` rendered one segment with no
+ * link at all — the trail could not reach Home. The root is synthetic:
+ * `__root__` is a layout route, not a destination, so it is declared
+ * here instead of being read from a match. The label is the same
+ * 「ホーム」 that `PublicNav` publishes, so the two nav surfaces name
+ * the same destination the same way.
+ */
+export const BREADCRUMB_ROOT = Object.freeze({
+	routeId: '__root__',
+	label: 'ホーム',
+	href: '/',
+});
 
 /**
  * Route IDs whose leaf presence suppresses breadcrumbs entirely.
@@ -73,6 +90,21 @@ export interface RouteLabel {
 		loaderData: unknown;
 	}) => string | undefined;
 	dropOnMissingLoaderData?: boolean;
+	/**
+	 * Section this route belongs to, when the route tree cannot express
+	 * it (Issue #778).
+	 *
+	 * `/portfolio/$slug` and `/portfolio/` are SIBLINGS under this
+	 * router, so visiting a project produces no `/portfolio/` match and
+	 * the chain lost its section segment. Declaring the parent here
+	 * keeps the visible chain (and the JSON-LD) accurate without
+	 * inventing a nested layout route.
+	 *
+	 * `href` is explicit because the parent's route ID carries the
+	 * index-route trailing slash (`/portfolio/`) while the published
+	 * URL does not (`/portfolio`).
+	 */
+	parent?: { routeId: string; href: string };
 }
 
 /**
@@ -87,12 +119,16 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/keyboard': { label: 'キーボード配列' },
 	'/contact': { label: 'Contact' },
 	'/portfolio/': { label: 'Portfolio' },
+	'/projects/dotfiles': { label: 'dotfiles' },
 	'/portfolio/$slug': {
 		// Static fallback (used only when loaderData has no project
 		// — e.g. the loader threw `notFound()` and the match was
 		// already filtered out). The visible label is sourced from
 		// the project title when available.
 		label: 'Project',
+		// Issue #778: the detail page is a sibling of the index, so
+		// the section segment has to be declared rather than matched.
+		parent: { routeId: '/portfolio/', href: '/portfolio' },
 		resolve: ({ loaderData }) => {
 			const data = loaderData as { project?: { title?: string; slug?: string } } | undefined;
 			return data?.project?.title ?? data?.project?.slug;
@@ -109,12 +145,20 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 		// canonical surface for the 404 path.
 		dropOnMissingLoaderData: true,
 		resolve: ({ loaderData }) => {
-			// `getPublicTool(slug)` returns the tool record directly
-			// (no wrapper), so the loaderData IS the tool — read its
+			// The loader returns a discriminated union
+			// (`{ state: 'embeddable' | 'blocked' | 'disabled', tool, … }`
+			// — see `src/routes/tools.$slug.tsx`), so the Tool record
+			// sits under `tool` in EVERY non-404 state. Read its
 			// `display_name` (registry contract, see
 			// `src/tools/registry.ts`) and fall back to the slug.
-			const data = loaderData as { display_name?: string; slug?: string } | undefined;
-			return data?.display_name ?? data?.slug;
+			//
+			// This resolver was written against the pre-#465 shape, where
+			// the loaderData WAS the public Tool record. It went unnoticed
+			// because Issue #288 removed the breadcrumbs from this route in
+			// the same era; Issue #785 puts them back, so the leaf now has
+			// to read the wrapper.
+			const data = loaderData as { tool?: { display_name?: string; slug?: string } } | undefined;
+			return data?.tool?.display_name ?? data?.tool?.slug;
 		},
 	},
 	'/admin': { label: 'Admin' },

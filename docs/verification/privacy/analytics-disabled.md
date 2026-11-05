@@ -15,7 +15,7 @@
 | capture 手段 | `pnpm run capture:analytics-consent`（`node scripts/capture-analytics-consent.mjs`。`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
 | viewport / DPR | 1280 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1280 x 1722 px、**60 kB** WebP（quality 80、budget 300 kB、最大幅 1600） |
+| 生成物サイズ | 1280 x 2068 px、**76 kB** WebP（quality 80、budget 300 kB、最大幅 1600）。帯化（#783）で各状態の stage が高くなったため、Issue #495 時点の 1280 x 1722 px から変わっている |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 
@@ -29,7 +29,8 @@ Issue は `docs/verification/privacy/analytics-disabled.png` を指定してい�
 
 画像の 5 段が、来訪者が取りうる同意状態に対応する。いずれも
 `AnalyticsConsentPanel` の実物で、文言・操作は `AnalyticsConsent.tsx`
-の定数そのものである。
+の定数そのものである。パネルは Issue #783 で全幅の帯になり、
+各段は帯を stage 幅いっぱいに描いたもの（意味・文言・選択肢は #495 のまま）。
 
 1. **未選択（初回訪問）** — `unset`。計測タグは読み込まれず、何も
    送信されない。拒否しても画面と操作は変わらないことを明示する。

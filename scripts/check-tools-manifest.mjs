@@ -11,7 +11,9 @@
  *   1. Manifest parses as JSON.
  *   2. Manifest shape matches `src/tools/manifest.schema.json` (basic
  *      hand-rolled checks; full ajv validation is out of scope).
- *   3. Slugs are unique.
+ *   3. Slugs are unique, and every Tool carries a `display_name` and a
+ *      non-empty Japanese `description_ja` (Issue #785 — the /tools
+ *      index renders Japanese first).
  *   4. `source.pinned_sha` is a valid 40-char hex SHA.
  *   5. `source.canonical_repo` does not derive from the slug (no
  *      `https://github.com/rebuildup/tool-<slug>.git` guessing).
@@ -44,6 +46,13 @@
  *      needs a purpose in both locales. The consent mode itself is
  *      DERIVED from those facts, so there is nothing to bypass here:
  *      a Tool that contacts a third party cannot ship without the gate.
+ * 12. Issue #879 — `docs/tools/inventory.md` restates the manifest
+ *      (`classification`, `source.pinned_sha`, and the per-class
+ *      counts). The restatement is compared against the manifest in
+ *      both directions: a row that disagrees, a manifest entry with no
+ *      row, a row with no entry, or a count that differs is a
+ *      violation. The document is prose, so the check parses its
+ *      table; the constant it restates is never imported.
  *
  * Exit code 0 on success, 1 on any violation. Each violation is
  * printed as `<file>:<line>  <message>` so the failure points at
@@ -105,6 +114,18 @@ for (let i = 0; i < manifest.tools.length; i++) {
 	}
 	if (seenSlugs.has(tool.slug)) errors.push(`${prefix}  slug: duplicate "${tool.slug}"`);
 	seenSlugs.add(tool.slug);
+
+	// Issue #785: the /tools index renders Japanese first, so a Tool
+	// without a display name or a Japanese description would leave a
+	// row the visitor cannot identify or understand.
+	if (typeof tool.display_name !== 'string' || tool.display_name.trim().length === 0) {
+		errors.push(`${prefix}  display_name: required`);
+	}
+	if (typeof tool.description_ja !== 'string' || tool.description_ja.trim().length === 0) {
+		errors.push(
+			`${prefix}  description_ja: required (one or two Japanese sentences for the /tools index)`,
+		);
+	}
 
 	if (!tool.source || typeof tool.source !== 'object') {
 		errors.push(`${prefix}  source: missing or not an object`);
@@ -268,6 +289,102 @@ if (errors.length > 0) {
 	console.error(`[check-tools-manifest] ${errors.length} violation(s):`);
 	for (const e of errors) console.error(`  ${e}`);
 	process.exit(1);
+}
+
+// 12. Issue #879 — the prose inventories that restate the manifest.
+// The manifest is the authority for classification and pinned SHA;
+// a document that lists them is a restatement, and a restatement that
+// drifts is how `docs/tools/inventory.md` claimed 13 / 2 / 0 while the
+// manifest said 15 / 0 / 0. This rule is the same shape as the privacy
+// notice cross-check: the constant is not imported, the prose is
+// compared against the source of truth.
+const inventoryDoc = resolve(root, 'docs/tools/inventory.md');
+if (existsSync(inventoryDoc)) {
+	const doc = readFileSync(inventoryDoc, 'utf8');
+	const rows = new Map();
+	for (const line of doc.split('\n')) {
+		// | `slug` | [repo](url) | `sha` | ... | classification... |
+		const m = line.match(/^\|\s*`([a-z0-9-]+)`\s*\|[^|]*\|\s*`([0-9a-f]{40})`\s*\|/);
+		if (!m) continue;
+		const cells = line.split('|').map((c) => c.trim());
+		if (cells[cells.length - 1] === '') cells.pop();
+		// The classification is always the last column; read the token
+		// rather than the whole cell so a row may carry a parenthetical
+		// explanation after it.
+		const classification =
+			(cells[cells.length - 1] ?? '').match(
+				/`(same_origin_static|needs_tool_side_fix|external_exception|not_integrable_yet)`/,
+			)?.[1] ?? '';
+		rows.set(m[1], { sha: m[2], classification });
+	}
+	const manifestSlugs = new Set(manifest.tools.map((t) => t.slug));
+	for (const tool of manifest.tools) {
+		const row = rows.get(tool.slug);
+		if (!row) {
+			errors.push(
+				`${inventoryDoc}  ${tool.slug}: the inventory table has no row (the manifest is the authority; add one)`,
+			);
+			continue;
+		}
+		if (row.sha !== tool.source?.pinned_sha) {
+			errors.push(
+				`${inventoryDoc}  ${tool.slug}: HEAD SHA ${row.sha} != manifest pinned_sha ${tool.source?.pinned_sha}`,
+			);
+		}
+		const expected = tool.classification ?? tool.delivery?.kind ?? '';
+		if (row.classification !== expected) {
+			errors.push(
+				`${inventoryDoc}  ${tool.slug}: classification ${row.classification || '(none)'} != manifest ${expected}`,
+			);
+		}
+	}
+	for (const slug of rows.keys()) {
+		if (!manifestSlugs.has(slug)) {
+			errors.push(`${inventoryDoc}  ${slug}: row has no manifest entry (stale row)`);
+		}
+	}
+	// The counts table restates the manifest too.
+	const declared = new Map();
+	for (const line of doc.split('\n')) {
+		const m = line.match(/^\|\s*`([a-z_]+)`\s*\|\s*(\d+)\b/);
+		if (m) declared.set(m[1], Number(m[2]));
+	}
+	const actual = manifest.tools.reduce((acc, t) => {
+		const kind = t.classification ?? t.delivery?.kind ?? 'unknown';
+		acc[kind] = (acc[kind] ?? 0) + 1;
+		return acc;
+	}, {});
+	for (const kind of [
+		'same_origin_static',
+		'needs_tool_side_fix',
+		'external_exception',
+		'not_integrable_yet',
+	]) {
+		const want = actual[kind] ?? 0;
+		const got = declared.get(kind);
+		if (got === undefined) {
+			errors.push(`${inventoryDoc}  counts: no row for ${kind} (expected ${want})`);
+		} else if (got !== want) {
+			errors.push(`${inventoryDoc}  counts: ${kind} = ${got}, manifest says ${want}`);
+		}
+	}
+	for (const kind of Object.keys(actual)) {
+		if (
+			![
+				'same_origin_static',
+				'needs_tool_side_fix',
+				'external_exception',
+				'not_integrable_yet',
+			].includes(kind)
+		) {
+			errors.push(`${inventoryDoc}  counts: manifest uses an unknown classification "${kind}"`);
+		}
+	}
+	if (errors.length > 0) {
+		console.error(`[check-tools-manifest] ${errors.length} violation(s):`);
+		for (const e of errors) console.error(`  ${e}`);
+		process.exit(1);
+	}
 }
 
 const toolsByKind = manifest.tools.reduce((acc, t) => {

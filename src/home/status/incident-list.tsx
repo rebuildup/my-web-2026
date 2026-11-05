@@ -104,8 +104,10 @@ const linkClassName = css({
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	fontWeight: '600',
-	textDecoration: 'none',
-	_hover: { textDecoration: 'underline' },
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	_hover: { textDecorationThickness: '2px' },
 	_focusVisible: {
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '2px',

@@ -77,7 +77,7 @@ Miro の見出し語「哲学 > 使えるものをつくる > DL配布/APIサー
 - 典拠: `src/tools/manifest.json`（tools[slug=readmark]）
 - 事実: delivery.kind = same_origin_static ／ delivery.artifact_path = /tools/readmark/app ／ delivery.entry_html = /tools/readmark/app/index.html ／ license = MIT
 
-- **入手** — 記録が述べていること: manifest が `same_origin_static` として配布 path（`/tools/readmark/app`）と entry HTML（`/tools/readmark/app/index.html`）を宣言し、iframe は `sandbox: allow-scripts` / `referrer_policy: no-referrer`。 ／ 記録に無いこと: 配布の前提（Tool の build が host の release に載る条件）は manifest に宣言されていない。 ／ 判定結果: 未確認 ／ 次の対応: 配布の前提（Tool の build が host の release に載る条件）を manifest に宣言する件は manifest schema の変更であり、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。
+- **入手** — 記録が述べていること: manifest が `same_origin_static` として配布 path（`/tools/readmark/app`）と entry HTML（`/tools/readmark/app/index.html`）を宣言し、iframe は `referrer_policy: no-referrer`（sandbox なし、ADR-0020）。 ／ 記録に無いこと: 配布の前提（Tool の build が host の release に載る条件）は manifest に宣言されていない。 ／ 判定結果: 未確認 ／ 次の対応: 配布の前提（Tool の build が host の release に載る条件）を manifest に宣言する件は manifest schema の変更であり、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。
 - **操作** — 記録が述べていること: manifest の description が「A local-first reading app for the browser. PDFs in MVP; EPUB/Markdown/text next.」と対象範囲を書き、対象形式が PDF に限ると記している。 ／ 記録に無いこと: 入力の型（受け付ける file 形式・上限）と、操作に失敗したときの表示は manifest に宣言されていない。 ／ 判定結果: 不適合 ／ 次の対応: 操作の入力形（受け付ける file 形式・上限）と操作に失敗したときの表示を manifest に宣言する件は、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。
 - **説明** — 記録が述べていること: manifest の description と `license: MIT` が対象とライセンスを説明し、`delivery.privacy.basis` は「measured at pinned readmark 906c90e: no external origin in index.html or src/**; re-measure after a bump」と測定根拠として記録する。 ／ 判定結果: 適合 ／ 次の対応: 対応不要（記録が判定基準を満たしている）。
 - **失敗** — 記録が述べていること: 同じ manifest が、配布できない Tool には `delivery.disabled_reason` で「なぜ出せないか」を宣言する書式を持っている。 ／ 記録に無いこと: readmark には `disabled_reason` が無く、配布に失敗したときの表示（build 不能・成果物が無い）は manifest に宣言されていない。 ／ 判定結果: 不適合 ／ 次の対応: 配布に失敗したときの表示（build 不能・成果物が無い）を manifest に宣言する件は manifest schema の変更であり、保留条項「Tool manifest に操作の入力形（受け付ける file 形式・上限）を宣言するかは、manifest schema の変更として別の Issue の領域にする。」の判断に含める。
@@ -97,19 +97,19 @@ Miro の見出し語「哲学 > 使えるものをつくる > DL配布/APIサー
 - **失敗** — 記録が述べていること: `errorForm` が 401 / 403 / 400 / 422 / 429 を列挙し、`rateLimitBinding` が read と write の上限 binding を示す。 ／ 記録に無いこと: 429 を受けた利用者がいつ再試行してよいか（Retry-After のような指標）は catalog に宣言されていない。 ／ 判定結果: 不適合 ／ 次の対応: 429 を受けた利用者が再試行してよい時期の指標を catalog に宣言する件は、保留条項「API directory の schema に deprecation を表す field を追加するかは、既存 schema の変更として別の Issue の領域にする。」の判断に含める。
 - **廃止** — 記録が述べていること: なし（catalog に、廃止や廃止予定を表す field が無い）。 ／ 記録に無いこと: 提供を終了するときの告知と移行先の記述が catalog に無い。schema への追加は別の Issue の領域である。 ／ 判定結果: 未確認 ／ 次の対応: 提供終了の告知と移行先を catalog に宣言する件は、保留条項「API directory の schema に deprecation を表す field を追加するかは、既存 schema の変更として別の Issue の領域にする。」の判断に含める。
 
-## 反例 — 公開できないTool（text-counter）
+## 反例 — 公開できない記録（delivery.kind = host_disabled）
 
-同じ manifest が「公開できない」ことも記録できる。manifest が host_disabled として持つ記録は、5 段階のどの段階で出口が閉じているかを語れる。
+同じ manifest が「公開できない」ことも記録できる。`delivery.kind = host_disabled` の記録は、5 段階のどの段階で出口が閉じているかを語れる。ここでは特定の Tool ではなく、記録形そのものを schema から読む（どの Tool がこの形を持つかは manifest が決める。2026-11-03 時点で公開中の Tool はすべて same_origin_static である。以前この節は history-quiz、次いで fillgen を題材にしていたが、どちらも standalone build が載って公開されたため、公開状態に依存しない記録形へ引き上げた）。
 
-- 対象: text-counter
-- 典拠: `src/tools/manifest.json`（tools[slug=text-counter]）
-- 事実: delivery.kind = host_disabled ／ classification = needs_tool_side_fix ／ license = MIT
+- 対象: delivery.kind = host_disabled
+- 典拠: `src/tools/manifest.schema.json`（delivery.kind の enum ／ delivery.disabled_reason）
+- 事実: delivery.kind = host_disabled ／ disabled_reason = Required when kind = host_disabled. ／ classification = needs_tool_side_fix
 
-- **入手** — 記録が述べていること: manifest が `delivery.kind: host_disabled` と `disabled_reason` に「Tool is currently a Next.js component library (no vite.config, no index.html). Embedding blocked until the Tool repo adds a standalone Vite build path (Issue #81 follow-up after pilot).」を宣言している。 ／ 判定結果: 不適合 ／ 次の対応: manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と entry HTML が manifest に載る）。
-- **操作** — 記録が述べていること: なし（配布 path が無いので、操作の入口も無い）。 ／ 記録に無いこと: 利用者が入るべき入口が存在しない。 ／ 判定結果: 不適合 ／ 次の対応: manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と操作の入口が manifest に載る）。
-- **説明** — 記録が述べていること: `disabled_reason` が「なぜ公開できないか」を説明している。 ／ 判定結果: 不適合 ／ 次の対応: manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（対象とライセンスの説明が manifest に載る）。
-- **失敗** — 記録が述べていること: なし。 ／ 記録に無いこと: 失敗した利用者に「待つ」以外の復帰手段が無い。 ／ 判定結果: 不適合 ／ 次の対応: manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布に失敗したときの表示が manifest に載る）。
-- **廃止** — 記録が述べていること: `disabled_reason` が解禁の条件（Tool リポジトリ側に standalone Vite build path を追加する）を書いている。 ／ 記録に無いこと: 終了の告知は該当しない（そもそも未公開）。 ／ 判定結果: 不適合 ／ 次の対応: manifest の disabled_reason が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（解禁の条件と移行先が manifest に載る）。
+- **入手** — 記録が述べていること: schema が `delivery.kind` の enum に `host_disabled` を持ち、`delivery.disabled_reason` を「Required when kind = host_disabled.」として要求している。 ／ 判定結果: 不適合 ／ 次の対応: 記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と entry HTML が manifest に載る）。
+- **操作** — 記録が述べていること: なし（配布 path が無いので、操作の入口も無い）。 ／ 記録に無いこと: 利用者が入るべき入口が存在しない。 ／ 判定結果: 不適合 ／ 次の対応: 記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布 path と操作の入口が manifest に載る）。
+- **説明** — 記録が述べていること: `disabled_reason` が「なぜ公開できないか」を書く欄として schema に定義されている。 ／ 判定結果: 不適合 ／ 次の対応: 記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（対象とライセンスの説明が manifest に載る）。
+- **失敗** — 記録が述べていること: なし。 ／ 記録に無いこと: 失敗した利用者に「待つ」以外の復帰手段が無い。 ／ 判定結果: 不適合 ／ 次の対応: 記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（配布に失敗したときの表示が manifest に載る）。
+- **廃止** — 記録が述べていること: `disabled_reason` が解禁の条件（Tool リポジトリ側に standalone Vite build path を追加する）を書く欄である。 ／ 記録に無いこと: 終了の告知は該当しない（そもそも未公開）。 ／ 判定結果: 不適合 ／ 次の対応: 記録が宣言している解禁の条件「Tool repo adds a standalone Vite build path」どおり、Tool リポジトリが standalone Vite build path を追加する（解禁の条件と移行先が manifest に載る）。
 
 ## 採用と保留
 

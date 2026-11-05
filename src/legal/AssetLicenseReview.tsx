@@ -1,12 +1,12 @@
 import { css, cx } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import {
+	type AssetEvidenceStatus,
 	type AssetLicenseRecord,
-	type AssetPublicationDecision,
 	type AssetReview,
 	type AssetReviewSeverity,
-	DECISION_LABEL,
-	DECISION_MEANING,
+	EVIDENCE_STATUS_LABEL,
+	EVIDENCE_STATUS_MEANING,
 	KIND_LABEL,
 	ORIGIN_LABEL,
 	PUBLICATION_LABEL,
@@ -24,8 +24,9 @@ import {
  * card is either a fact from the reviewed record or a fact the contract
  * DERIVED from that record:
  *
- *   - the decision badge is `review.decision`, never `record.publication`.
- *     A record may say "published"; it may not say "cleared".
+ *   - the status badge is `review.evidenceStatus`, never
+ *     `record.publication`. A record may say "published"; it may not say
+ *     "reviewed".
  *   - evidence states say `verified` / `missing` / `not-checked`. There is
  *     no "assumed" state: a browser cannot stat a repository file, so the
  *     component renders `not-checked` rather than implying the gate ran.
@@ -78,17 +79,19 @@ const EVIDENCE_STATE_LABEL: Readonly<Record<AssetEvidenceState, string>> = {
 };
 
 /**
- * The badge tone for a decision.
+ * The badge tone for an evidence status.
  *
  * `provider-terms` is deliberately NEUTRAL: it is neither a clearance to
  * celebrate nor a violation to alarm about, and colouring it as either
  * would put a claim in the visual language that the contract does not
- * make.
+ * make. `unreviewed` and `inconsistent` are neutral too — the contract
+ * reports a state, it does not celebrate or alarm.
  */
-const DECISION_TONE: Readonly<Record<AssetPublicationDecision, 'accent' | 'neutral'>> = {
-	publishable: 'accent',
-	hold: 'neutral',
+const EVIDENCE_STATUS_TONE: Readonly<Record<AssetEvidenceStatus, 'accent' | 'neutral'>> = {
+	reviewed: 'accent',
+	unreviewed: 'neutral',
 	'provider-terms': 'neutral',
+	inconsistent: 'neutral',
 };
 
 const cardClassName = css({
@@ -224,10 +227,22 @@ const sectionLabelClassName = css({
 	color: 'text.muted',
 });
 
+/**
+ * The rule that marks one finding.
+ *
+ * Issue #887: severity used to be read off a hue, and the status
+ * aliases were re-anchored to ink and then deleted, so the rule
+ * could no longer tell an error from a warning anyway. The severity a
+ * reader acts on is carried by the WORD each finding already prints
+ * (`SEVERITY_LABEL` — エラー / 警告 / 情報); the rule only says "this
+ * is a finding". The two severities that need attention get the
+ * identifying rule, plain information gets the hairline. No hue, and
+ * no alias left for the token layer to delete.
+ */
 const FINDING_BORDER: Readonly<Record<AssetReviewSeverity, string>> = {
-	error: 'accent.negative',
-	warn: 'accent.warning',
-	info: 'border.strong',
+	error: 'border.strong',
+	warn: 'border.strong',
+	info: 'border.subtle',
 };
 
 /** Hostname only, so a reference's path and credentials never reach a reader. */
@@ -260,16 +275,18 @@ export function AssetLicenseReview({ record, review, evidenceStates }: AssetLice
 		<article
 			className={cardClassName}
 			data-testid="asset-license-review"
-			data-decision={review.decision}
+			data-evidence-status={review.evidenceStatus}
 		>
 			<header className={headerClassName}>
 				<h2 className={titleClassName}>{record.title}</h2>
 				<Badge>{KIND_LABEL[record.kind]}</Badge>
-				<Badge tone={DECISION_TONE[review.decision]}>{DECISION_LABEL[review.decision]}</Badge>
+				<Badge tone={EVIDENCE_STATUS_TONE[review.evidenceStatus]}>
+					{EVIDENCE_STATUS_LABEL[review.evidenceStatus]}
+				</Badge>
 				<Badge>公開状態: {PUBLICATION_LABEL[record.publication]}</Badge>
 			</header>
 			<p className={summaryClassName}>{record.summary}</p>
-			<p className={meaningClassName}>{DECISION_MEANING[review.decision]}</p>
+			<p className={meaningClassName}>{EVIDENCE_STATUS_MEANING[review.evidenceStatus]}</p>
 
 			<dl className={factsClassName}>
 				{fact('権利者 / rights holder', record.rightsHolder ?? RIGHTS_HOLDER_UNRECORDED)}

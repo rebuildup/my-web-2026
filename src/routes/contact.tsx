@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { getVisibleChannels } from '../contact/public';
 import { ContactPage } from '../contact/page';
+import { getVisibleChannels } from '../contact/public';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
@@ -38,7 +38,7 @@ export const Route = createFileRoute('/contact')({
 	head: () => {
 		const title = 'Contact — rebuildup.dev';
 		const description =
-			'現在 re-verified されている contact channel だけを掲載しています。Channel は用途 (採用 / 技術的な議論 / 配布) 別に明示しています。';
+			'現在 re-verified されている contact channel だけを掲載しています。Channel は用途別に明示しています。';
 		return {
 			meta: [
 				{ charSet: 'utf-8' },

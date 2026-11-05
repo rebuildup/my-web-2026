@@ -219,6 +219,11 @@ export const createApiKey = createServerFn({ method: 'POST' })
 	.validator(CreateApiKeyInput)
 	.handler(async ({ data }): Promise<CreateApiKeyOutcome> => {
 		const session = await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (a new API key row would be written into the
+		// production database).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:keys:create');
 		return createApiKeyOutcome(env.DB, session, getRequestHeaders(), data);
 	});
 
@@ -246,6 +251,11 @@ export const deleteApiKey = createServerFn({ method: 'POST' })
 	.validator(DeleteApiKeyInput)
 	.handler(async ({ data }): Promise<{ deleted: boolean }> => {
 		const session = await requireAdmin();
+		// Issue #377 — refuse the write while the runtime is bound to
+		// production data (the key row would be deleted from the
+		// production database).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:keys:delete');
 		return deleteApiKeyImpl(session, getRequestHeaders(), data);
 	});
 

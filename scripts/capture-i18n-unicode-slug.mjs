@@ -140,12 +140,30 @@ export function naiveSlugCollisions(rows) {
 		.map(([naive, spellings]) => ({ naive, spellings }));
 }
 
-/** `{colors.brand.700}` → `#0369a1`, using the repo's own raw tokens. */
+/**
+ * `{colors.brand.700}` → `#0369a1`, `{colors.mono.light.ground}` →
+ * `#edede8`, using the repo's own raw tokens.
+ *
+ * The path after `colors.` is walked segment by segment, so it works
+ * for any nesting depth — the monochrome role scale introduced
+ * three-segment references (`{colors.mono.light.ground}`) that the
+ * former two-segment form silently failed to resolve. An unknown path
+ * returns the INPUT unchanged rather than a placeholder: `buildPalette`
+ * only emits values it resolved, so an unresolved `{colors.…}` can
+ * never reach the artefact's CSS.
+ */
 export function resolveTokenReference(reference, rawColors) {
-	const match = /^\{colors\.([A-Za-z]+)\.(\d+)\}$/.exec(String(reference));
-	if (!match) return String(reference);
-	const step = rawColors[match[1]]?.[match[2]];
-	return step?.value ?? String(reference);
+	const text = String(reference);
+	const match = /^\{colors\.(.+)\}$/.exec(text);
+	if (!match) return text;
+	let node = rawColors;
+	for (const segment of match[1].split('.')) {
+		if (node === null || typeof node !== 'object') return text;
+		node = node[segment];
+		if (node === undefined) return text;
+	}
+	if (typeof node === 'string') return node;
+	return typeof node?.value === 'string' ? node.value : text;
 }
 
 /**
@@ -314,14 +332,14 @@ export function buildReportHtml(evidence) {
 	td.cp code { color: var(--text-muted); word-break: break-all; }
 	td.form, td.verdict { white-space: nowrap; }
 	td.naive { white-space: nowrap; }
-	.ok { color: var(--accent-positive); font-weight: 600; }
-	.no { color: var(--accent-negative); font-weight: 600; }
-	.warn { color: var(--accent-warning); }
+	.ok { color: var(--text-default); font-weight: 600; }
+	.no { color: var(--text-default); font-weight: 600; }
+	.warn { color: var(--text-default); }
 	.fold { color: var(--text-muted); font-size: 11.5px; white-space: normal; max-width: 24ch; }
 	.bad {
-		color: var(--accent-negative);
+		color: var(--text-default);
 		font-weight: 700;
-		border: 1px solid var(--accent-negative);
+		border: 1px solid var(--text-default);
 		border-radius: 4px;
 		padding: 0 4px;
 	}

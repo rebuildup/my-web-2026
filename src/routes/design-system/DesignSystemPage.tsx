@@ -11,6 +11,7 @@ import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
 import { TableCode } from './sections/TableCode';
 import { Typography } from './sections/Typography';
+import type { DesignSystemTokenData } from './tokens';
 
 /**
  * DesignSystemPage — `/design-system` route surface (presentation only).
@@ -22,10 +23,13 @@ import { Typography } from './sections/Typography';
  *
  * Reading order:
  *   - Hero          (page title + intro)
- *   - 01 Color swatches    every `accent.*` + `bg.*` + `text.*` + `border.*`
- *                          token, rendered as its `base` / `_dark` pair on
- *                          the matching `bg.canvas` appearance, so both
- *                          appearances are visible at a glance.
+ *   - 01 Color surfaces   three content-classification colour fields
+ *                          (design / code / writing), the status row
+ *                          that BORROWS a classification colour, the
+ *                          ink-only operation row, and the token
+ *                          ledger. Colour is the subject here; the
+ *                          word, the shape (StateMark) and the
+ *                          position carry the meaning.
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
@@ -35,8 +39,9 @@ import { Typography } from './sections/Typography';
  *                            dialog, so its focus trap and its Escape
  *                            hand-back can be measured in a deployment
  *                            without a home consumer API key.
- *   - 06 Status / category  positive / negative / warning badges + four
- *                            content-category left-border treatments.
+ *   - 06 Status / category  status as shape + word with NO hue (Issue
+ *                            #887) and the four content-category marks,
+ *                            the only colour this section carries.
  *   - 07 Image / CLS         Issue #486 measurement fixture: the real
  *                            `PortfolioMediaFigure` rendered with
  *                            fixture rows (eager / lazy / placeholder /
@@ -72,12 +77,12 @@ import { Typography } from './sections/Typography';
  * accent hex values — every color is sourced through the semantic
  * layer so the showcase stays accurate when the palette evolves.
  */
-export function DesignSystemPage() {
+export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
 		<>
 			<Hero />
 			<main id="design-system-main">
-				<ColorSection />
+				<ColorSection tokenData={tokenData} />
 				<TypographySection />
 				<SpacingSection />
 				<SurfaceSection />
@@ -192,9 +197,15 @@ function Hero() {
 							<a
 								href="https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md"
 								className={css({
+									// Issue #887: `text.accent` is ink now, so the
+									// permanent underline is what marks this as a
+									// link; hover only fattens it.
 									color: 'text.accent',
 									textDecoration: 'underline',
+									textUnderlineOffset: '0.18em',
+									textDecorationThickness: '1px',
 									marginInlineStart: '1',
+									_hover: { textDecorationThickness: '2px' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',
@@ -212,18 +223,18 @@ function Hero() {
 	);
 }
 
-function ColorSection() {
+function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
-		<section aria-labelledby="design-system-color" className={sectionStyle}>
+		<section aria-labelledby="design-system-color" className={sectionStyle} data-colour-section>
 			<Container>
 				<SectionHeading
 					id="design-system-color"
 					eyebrow="01 — Color"
-					title="色 / Semantic tokens"
-					description="bg.* / text.* / border.* と accent.* (surface / interactive / positive / negative / warning / category.*) の token を、それぞれの base / _dark 値を light / dark の canvas に並べます。ページ自体は prefers-color-scheme に従って切り替わります。"
+					title="色 / Colour as surface"
+					description="色はモノクロの地の上にだけ載ります。分類は語・形・位置が担い、色面の文字は色ではなく地の墨（mono.ink）です。状態は分類色を借り、操作は墨です。"
 					variant="spread"
 				>
-					<ColorSwatches />
+					<ColorSwatches tokenData={tokenData} />
 				</SectionHeading>
 			</Container>
 		</section>
@@ -256,7 +267,7 @@ function SpacingSection() {
 					id="design-system-spacing"
 					eyebrow="03 — Spacing"
 					title="余白 / Whitespace scale"
-					description="editorial の余白は ≈1.618x で段階を刻みます。 小 cluster (4/8) → cluster separator (24) → page-level beat (96/128)。"
+					description="editorial の余白は ≈1.618x で段階を刻みます。 左端は固定のラベル列で揃え、バーは塗りの幅だけで示します。"
 					variant="spread"
 				>
 					<SpacingRuler />
@@ -274,7 +285,7 @@ function SurfaceSection() {
 					id="design-system-surface"
 					eyebrow="04 — Surface"
 					title="面 / Surface treatments"
-					description="bg.canvas / bg.surface / accent.surface の三段を、既存 primitive で組み立てたカード・タイルで示します。"
+					description="bg.canvas / bg.surface / accent.surface の三段を、border ではなく塗りの差だけで区別して示します。"
 					variant="spread"
 				>
 					<SurfaceTreatments />
@@ -292,7 +303,7 @@ function InteractiveSection() {
 					id="design-system-states"
 					eyebrow="05 — Interactive"
 					title="状態 / Default · Hover · Focus · Pressed"
-					description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。"
+					description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。secondary は border を持たず、塗りと反転で示します。"
 					variant="spread"
 				>
 					<InteractiveStates />
@@ -310,8 +321,8 @@ function StatusSection() {
 				<SectionHeading
 					id="design-system-status"
 					eyebrow="06 — Status"
-					title="識別子 / Status & category accents"
-					description="positive / negative / warning の status badge、 と design / code / writing / tool の content category を left-border で識別。"
+					title="識別子 / Status & category marks"
+					description="状態は形（StateMark）と語で示し、色では示しません。状態を示す色トークンはなく、印は見出しの墨（text.default）を継承します（Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
 					variant="spread"
 				>
 					<StatusAccents />

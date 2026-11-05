@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -189,6 +197,48 @@ describe('check-copy-editorial-approval — a rejected change set', () => {
 	});
 });
 
+describe('check-copy-editorial-approval — a record whose owner decision is still pending', () => {
+	it('is NEEDS REVIEW, never a pass', () => {
+		const { result } = runFixture('pending');
+		assert.equal(result.verdict, 'not run');
+		assert.equal(result.dimensions.approval, 'not run');
+		const finding = result.findings.find((item) => item.code === 'approval-awaiting-owner');
+		assert.ok(finding, 'the gate must name the missing owner decision');
+		assert.match(finding.message, /no owner decision yet/);
+		assert.match(finding.message, /un-reviewed/);
+	});
+
+	it('exits 1 without the advisory mode', () => {
+		const { result } = runFixture('pending');
+		assert.equal(exitCodeForVerdict(result.verdict), 1);
+		assert.equal(exitCodeForVerdict(result.verdict, { allowUnreviewed: true }), 0);
+	});
+
+	it('never passes, whatever the provenance says', () => {
+		const { fixture, changeSet } = runFixture('pending');
+		const record = {
+			...fixture.ledger.records[0],
+			provenance: {
+				kind: 'owner-review',
+				reference: 'https://github.com/rebuildup/my-web-2026/pull/512#pullrequestreview-1',
+				recordedBy: 'rebuildup',
+				ownerConfirmation: 'confirmed',
+			},
+		};
+		const result = evaluateApproval({
+			units: changeSet.units,
+			ledger: { version: 1, records: [record] },
+			pr: fixture.pr ?? null,
+		});
+		assert.equal(result.verdict, 'not run');
+		assert.equal(result.dimensions.approval, 'not run');
+	});
+
+	it('knows the pending decision as a decision value', () => {
+		assert.ok(DECISIONS.includes('pending'));
+	});
+});
+
 describe('check-copy-editorial-approval — a change set that changes no public copy', () => {
 	it('is not applicable and owes no review', () => {
 		const { changeSet, result } = runFixture('not-applicable');
@@ -299,10 +349,198 @@ describe('check-copy-editorial-approval — the public copy surfaces', () => {
 	});
 });
 
+/* ------------------------------------------------------------------ *
+ * The declared surface is the FILE that holds displayed text (Issue #672)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The files whose Japanese a visitor reads.
+ *
+ * The owner decision (Issue #672, comment 6567572805) puts the
+ * visitor-facing Japanese of `/keyboard`, the rights / licence display
+ * and the privacy notice under the copy gate, and rejects the naive
+ * `src/keyboard/** src/legal/** src/privacy/**` addition (+473
+ * segments). The unit of the declaration is therefore the FILE, and
+ * the criterion is: does this file hold a string a reader sees?
+ */
+const DISPLAY_BEARING_FILES = [
+	'src/keyboard/catalog.ts',
+	'src/keyboard/components/KeyboardDiagram.tsx',
+	'src/keyboard/components/KeyboardPage.tsx',
+	'src/keyboard/format.ts',
+	'src/keyboard/load.ts',
+	'src/keyboard/sources/manifest.json',
+	'src/legal/AssetLicenseReview.tsx',
+	'src/legal/contract.ts',
+	'src/privacy/data-lifecycle.ts',
+];
+
+/**
+ * The files whose Japanese no visitor reads.
+ *
+ * A key map is a source snapshot whose comments the parser strips
+ * before the model is built; a schema reader's findings render only in
+ * a Storybook sample; a geometry note is never rendered; a pure type
+ * module holds a Japanese doc comment and nothing else.
+ */
+const NON_DISPLAY_FILES = [
+	'src/keyboard/sources/key-map-kanata/win/kay-map-win.kbd',
+	'src/keyboard/sources/key-map-kanata/mac/kanata-us.kbd',
+	'src/keyboard/sources/pc-setup/platforms/macos/keyboard/onishi.json',
+	'src/keyboard/geometry.ts',
+	'src/keyboard/types.ts',
+	'src/keyboard/parse-kanata.ts',
+	'src/keyboard/parse-onishi.ts',
+	'src/keyboard/index.ts',
+	'src/keyboard/components/index.ts',
+	'src/legal/inventory.ts',
+	'src/legal/inventory-table.ts',
+];
+
+/** A diff that changes one Japanese line of `path`. */
+function japaneseLineDiff(path, before, after) {
+	return [
+		`diff --git a/${path} b/${path}`,
+		`--- a/${path}`,
+		`+++ b/${path}`,
+		'@@ -1,1 +1,1 @@',
+		`-${before}`,
+		`+${after}`,
+	].join('\n');
+}
+
+describe('check-copy-editorial-approval — no false negative: displayed text is never dropped', () => {
+	it('gates every file that holds a string a visitor reads', () => {
+		for (const path of DISPLAY_BEARING_FILES) {
+			const classification = classifyFile(path, surfaces);
+			assert.equal(classification.public, true, `${path} holds displayed text and must be gated`);
+		}
+	});
+
+	it('extracts the changed Japanese of a gated file instead of dropping it', () => {
+		for (const path of DISPLAY_BEARING_FILES) {
+			const changeSet = buildChangeSet(
+				japaneseLineDiff(path, '古い文言です。', '新しい文言です。'),
+				surfaces,
+			);
+			assert.equal(changeSet.units.length, 1, `${path} lost a displayed sentence`);
+			assert.equal(changeSet.units[0].path, path);
+			assert.equal(changeSet.units[0].after, '新しい文言です。');
+		}
+	});
+
+	it('keeps the published privacy notice body under the gate', () => {
+		// The sentences of the notice live in `src/privacy/data-lifecycle.ts`,
+		// not in the component that renders them, so the file is what the
+		// declaration has to name.
+		const notice = readFileSync(join(REPO_ROOT, 'src/privacy/data-lifecycle.ts'), 'utf8');
+		const sentence =
+			'このプラットフォームはデータ削除の依頼を受け付ける窓口を公開していません。訪問者が自分でできる削除は、各項目の「削除」に記した操作だけです。';
+		assert.ok(notice.includes(sentence), 'the fixture sentence must exist in the registry');
+		const changeSet = buildChangeSet(
+			japaneseLineDiff('src/privacy/data-lifecycle.ts', '古い文言です。', sentence),
+			surfaces,
+		);
+		assert.equal(changeSet.units.length, 1);
+		assert.equal(changeSet.units[0].after, sentence);
+	});
+
+	it('keeps the adoption sentence of the keyboard manifest under the gate', () => {
+		// The manifest is a committed snapshot, but its `adoption.note` is
+		// rendered by the /keyboard provenance callout: a data file whose
+		// visible body counts (Issue #672).
+		const manifest = readFileSync(join(REPO_ROOT, 'src/keyboard/sources/manifest.json'), 'utf8');
+		const note =
+			'macOS の Kanata 設定は key-map-kanata の最新 head ではなく、pc-setup installer が pin する config_ref を採用する。installer が更新されるまで自動追随しない。';
+		assert.ok(manifest.includes(note), 'the fixture sentence must exist in the manifest');
+		const changeSet = buildChangeSet(
+			japaneseLineDiff('src/keyboard/sources/manifest.json', '古い文言です。', note),
+			surfaces,
+		);
+		assert.equal(changeSet.units.length, 1);
+		assert.equal(changeSet.units[0].after, note);
+	});
+});
+
+describe('check-copy-editorial-approval — no false positive: hidden text is never collected', () => {
+	it('does not gate a file whose Japanese no visitor reads', () => {
+		for (const path of NON_DISPLAY_FILES) {
+			const classification = classifyFile(path, surfaces);
+			assert.equal(classification.public, false, `${path} holds no displayed text`);
+			assert.match(classification.reason, /not a declared public copy surface/);
+		}
+	});
+
+	it('collects nothing from a hidden file, even when its Japanese changes', () => {
+		for (const path of NON_DISPLAY_FILES) {
+			const changeSet = buildChangeSet(
+				japaneseLineDiff(path, '古い文言です。', '新しい文言です。'),
+				surfaces,
+			);
+			assert.equal(changeSet.units.length, 0, `${path} was collected although it is hidden`);
+			assert.equal(changeSet.otherFiles.length, 1);
+			assert.equal(changeSet.otherFiles[0].path, path);
+		}
+	});
+
+	it('does not collect the Kanata key map, whose comments the parser strips', () => {
+		// The committed key map holds Japanese comments, but
+		// `parseExpressions` removes every comment before the model is
+		// built, so no sentence in the file reaches a page.
+		const keyMap = readFileSync(
+			join(REPO_ROOT, 'src/keyboard/sources/key-map-kanata/win/kay-map-win.kbd'),
+			'utf8',
+		);
+		assert.ok(
+			keyMap.includes('このため defsrc は QWERTY ではなく、'),
+			'the key map must hold Japanese',
+		);
+		const changeSet = buildChangeSet(
+			japaneseLineDiff(
+				'src/keyboard/sources/key-map-kanata/win/kay-map-win.kbd',
+				';; 古いコメントです。',
+				';; 新しいコメントです。',
+			),
+			surfaces,
+		);
+		assert.equal(changeSet.units.length, 0);
+	});
+});
+
+describe('check-copy-editorial-approval — the file-level declaration is consistent', () => {
+	it('names no file that also matches an exclusion', () => {
+		for (const path of surfaces.publicCopyFiles) {
+			for (const glob of surfaces.excludeGlobs) {
+				assert.equal(
+					matchesGlob(glob, path),
+					false,
+					`${path} is declared and excluded by "${glob}" at the same time`,
+				);
+			}
+		}
+	});
+
+	it('names only files that exist in the repository', () => {
+		for (const path of surfaces.publicCopyFiles) {
+			assert.ok(
+				existsSync(join(REPO_ROOT, path)),
+				`${path} is declared but does not exist: the declaration is stale`,
+			);
+		}
+	});
+
+	it('reports a file-level entry as such, so the report says why', () => {
+		const classification = classifyFile('src/privacy/data-lifecycle.ts', surfaces);
+		assert.equal(classification.public, true);
+		assert.match(classification.reason, /declared public copy file/);
+	});
+});
+
 describe('check-copy-editorial-approval — the repository declarations', () => {
 	it('the surface declaration is a versioned opt-in list', () => {
-		assert.equal(surfaces.version, 1);
+		assert.equal(surfaces.version, 2);
 		assert.ok(Array.isArray(surfaces.publicCopyGlobs) && surfaces.publicCopyGlobs.length > 0);
+		assert.ok(Array.isArray(surfaces.publicCopyFiles));
 		assert.ok(Array.isArray(surfaces.excludeGlobs));
 	});
 
@@ -324,6 +562,25 @@ describe('check-copy-editorial-approval — the repository declarations', () => 
 				assert.ok(
 					typeof record.provenance.reference === 'string' && record.provenance.reference.length > 0,
 					`${record.id} claims an owner review and must name the artefact`,
+				);
+			}
+		}
+	});
+
+	it('claims no owner decision that was never taken (Issue #754)', () => {
+		for (const record of ledger.records) {
+			if (record.decision === 'pending') {
+				assert.equal(
+					record.reviewer,
+					null,
+					`${record.id} has no owner decision, so it names no reviewer`,
+				);
+			}
+			if (record.provenance?.ownerConfirmation !== 'confirmed') {
+				assert.notEqual(
+					record.decision,
+					'approved',
+					`${record.id} was not confirmed by the owner and may not claim an approval`,
 				);
 			}
 		}

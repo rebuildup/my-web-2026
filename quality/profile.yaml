@@ -89,6 +89,14 @@ gates:
       # and reports freshness as an advisory. A hand-edited snapshot
       # that claims it is current cannot pass this gate.
       - 'pnpm run projects:check'
+      # Issue #316: the committed home git-facts snapshot behind the
+      # "現在地 / Where I am now" section. Offline and read-only: it
+      # re-validates the shape, the tracked-project allowlist, the commit
+      # ids, the calendar and the counts — so a hand-edited snapshot cannot
+      # claim a start date or a commit count the file does not support.
+      # Freshness is an advisory, because a red build cannot make a
+      # repository history younger; the section prints the day it measured.
+      - 'pnpm run current:facts:check'
       # Issue #719: the committed keyboard-layout snapshot. Offline and
       # read-only: it re-validates that the recorded provenance still
       # matches the committed bytes (digest, byte count, adoption ref),
@@ -560,7 +568,7 @@ gates:
       # closure vocabulary, evidence a reader can open (or a written
       # decision reason where the state needs one), and a truthful author
       # mark — an agent-written record may not claim owner confirmation it
-      # cannot point at. The 2026-10-31 sweep closed 132 issues with one
+      # cannot point at. The 2026-10-31 sweep closed 133 issues with one
       # templated comment; that template is refused as evidence (E006).
       # The gate counts states, never a score of closed issues.
       - 'pnpm run issue:closure:check'
@@ -741,6 +749,8 @@ bundle_budget:
     - 'a route that produced no client chunk FAILS — an unmeasured route must not pass at 0 bytes'
     - 'an overage is allowed only via an `exception` carrying a reason of at least 20 characters; a shorter or missing reason is a configuration error and FAILS'
     - 'a missing `tool_iframe` section FAILS — deleting it would silently switch the Tool cap off'
+    - 'a `tool_iframe.per_tool` entry without `reason` (20 characters minimum) or without any numeric cap FAILS — a per-Tool cap is the one place a ceiling can be set without a route exception, so an unreasoned one is a disabled guard'
+    - 'a `per_tool` entry that names a Tool with no build output is a WARNING (`stale-tool-cap`), the same way a missing Tool build output is a warning'
     - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
     - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'
@@ -1713,13 +1723,13 @@ operator_mfa_audit:
 # a step of the CI `validate` job instead - the same split as the
 # dependency advisory gate, which needs the registry.
 copy_editorial_approval:
-  surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs and no excludeGlobs)'
-  ledger: 'quality/copy-editorial-approvals.json (owner approval records, matched to a change set by fingerprint)'
+  surfaces: 'quality/copy-editorial-surfaces.json (opt-in: a changed file is public copy only when it matches publicCopyGlobs, is named in publicCopyFiles, and matches no excludeGlobs)'
+  ledger: 'quality/copy-editorial-approvals.json (owner approval records - or records whose owner decision is still pending, Issue #754 - matched to a change set by fingerprint)'
   command: 'pnpm run copy:approval:check'
   ci_command: 'pnpm run copy:approval:check -- --allow-unreviewed'
   screenshot_command: 'pnpm run verify:copy-editorial-approval-screenshot'
   tests: 'node --test scripts/check-copy-editorial-approval.test.mjs'
-  fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,rejected,stale-approval,not-applicable}.json'
+  fixtures: 'test/fixtures/copy/editorial-approval/{approved,needs-review,agent-recorded,pending,rejected,stale-approval,not-applicable}.json'
   gate: ci
   gate_placement: >-
     the `Copy editorial evidence (pending owner review is advisory)`
@@ -1748,7 +1758,7 @@ copy_editorial_approval:
   statuses:
     - 'pass - the changed public Japanese copy carries a complete owner approval record (proposal + comparison + decision)'
     - 'fail - a review was recorded and it says no, or the record contradicts the change set (a stale fingerprint, a rejected decision, a comparison with no verdict)'
-    - 'not run (NEEDS REVIEW) - the review was never recorded; the pull request asks for an owner decision nobody has taken yet'
+    - 'not run (NEEDS REVIEW) - the review was never recorded; the pull request asks for an owner decision nobody has taken yet; the record that exists names no owner decision (decision: pending, Issue #754)'
     - 'not applicable - the change set changes no Japanese text in a public copy surface'
   review_dimensions:
     - 'proposal - the editing aid ran over the changed text and its suggestions were adjudicated (evidence, never approval)'
@@ -1758,6 +1768,18 @@ copy_editorial_approval:
     an approval is bound to the fingerprint of the changed text, so it
     cannot be reused for a different sentence; a pull request that
     publishes other text does not inherit an earlier approval.
+  surface_granularity: >-
+    Issue #672. The unit of the declaration is the FILE, and the
+    criterion is whether the file holds a string a visitor reads - not
+    whether it lives in a directory that also holds display-bearing
+    files. publicCopyGlobs keeps the subtree granularity for the
+    obligations whose every file is display-bearing; publicCopyFiles
+    names one file for the obligations that mix display with
+    data/schema/logic (src/keyboard/**, src/legal/**, src/privacy/**).
+    A data file whose visible body is rendered is public copy
+    (src/privacy/data-lifecycle.ts); a key map, a schema reader and a
+    pure type module are not. Skipping a hidden definition and letting a
+    visitor-facing sentence escape the gate are different things.
   scope_note: >-
     the surfaces are visitor-facing. Internal documents, skills, scripts,
     tests, Storybook samples, design-system demo routes and the
@@ -1789,7 +1811,7 @@ copy_editorial_approval:
 # an expression to be untrue. Unpublishing is an owner decision.
 stale_content_review:
   registry: 'quality/stale-content-review.json (owner review dates, matched to the expression text)'
-  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads)'
+  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads - publicCopyGlobs + publicCopyFiles)'
   command: 'pnpm run copy:stale:check'
   screenshot_command: 'pnpm run verify:stale-copy-review-screenshot'
   tests: 'node --test scripts/check-stale-content-review.test.mjs'
@@ -1812,6 +1834,17 @@ stale_content_review:
     今 / 現時点 and their Latin counterparts) and nothing else. Precision
     matters more than recall: a noisy detector would make the registry
     unreviewable.
+  surface_note: >-
+    the gate reads the SAME surface declaration as the editorial
+    approval gate, so a surface that enters that declaration enters
+    this scan too (Issue #672: the visitor-facing Japanese of
+    /keyboard, the rights / licence display and the privacy notice).
+    Six time-sensitive expressions of those surfaces carry a record
+    dated 2026-11-02, written by an automated side on the basis of the
+    owner's Issue #672 review of the three surfaces, so they are
+    reported as awaiting owner confirmation. Three expressions of the
+    unpublished `current-projects-signature` entry are excluded: that
+    entry renders nowhere.
   out_of_scope:
     - 'prose quality and typography themselves: the gate records a human decision and never grades either.'
     - 'a duration without a now-word (a 30-day window) - the detector looks for words that point at now, not for time spans.'

@@ -1,22 +1,117 @@
 name: CI
 
-# Triggers — main / release-* AND numeric ticket branches.
+# Triggers — pull_request and push on main / release-* / numeric
+# ticket branches, plus a manual `workflow_dispatch` (Issue #897).
 #
-# The canonical sprint workflow (AGENTS.md §6) is stacked ticket PRs:
-# each ticket branch (e.g. `33`) targets the predecessor (`32`, or the
-# release branch for the first ticket), and every dependent PR base is
-# the previous ticket's head. Without a `push`/PR trigger on the
-# numeric branches, force-pushes never get CI on their current SHA,
-# which breaks the "current-SHA CI green" contract for stacked PRs.
+# ONE `validate` job, TWO step sets, selected by step-level `if:`
+# (Issue #897). Nothing moved to another job and nothing moved to
+# another workflow file, because `check-release-gate-coverage.mjs` and
+# `check-asvs-coverage.mjs` read `jobs.validate.steps[*].run` from
+# THIS file. (The separate `storybook axe` job is untouched: it runs
+# unconditionally by its own documented decision.)
+#
+# Three named condition sets. GitHub's expression language has no
+# variables and this file uses no anchors, so each set is written out
+# in full at every use; the set name is the comment above the step.
+#
+#   full_validation  = pull_request (any base branch)
+#                      | workflow_dispatch
+#                      | push to main / release-*
+#     → `pnpm run validate:integration` plus the CI-only steps
+#       (dependency advisory audit, issue-closure audit, SBOM).
+#       pull_request, workflow_dispatch and a main / release-* push
+#       run the SAME step set: a dispatch means "verify this branch
+#       tip exactly as a push to main / release-* would" and must
+#       never produce fewer checks or fewer artefacts than that push.
+#
+#   push_obligations = push to a numeric ticket branch
+#                      | workflow_dispatch
+#     → what a run owes through a push or a dispatch: cf-typegen
+#       check, a production Build Output, the attestation manifest
+#       and the byte upload. On a numeric ticket push the first two
+#       are delivered by the dedicated steps below (full_validation
+#       does not run there); on workflow_dispatch the identical
+#       obligations arrive through `validate:integration` (its last
+#       component generates the manifest) plus the cf-typegen and
+#       upload steps, so the dedicated pair is conditioned on
+#       `push_obligations && !(full_validation)` and never repeats a
+#       build that already happened in the same run.
+#
+#   attested_bytes   = push (any branch) | workflow_dispatch
+#     → `cf-typegen check` and
+#       `Upload Cloudflare Build Output (attested bytes)` share this
+#       event set: every push, exactly as before Issue #897, plus the
+#       manual dispatch.
+#
+# WHY THE SPLIT (measured 2026-11-04, release-0-8-1; methodology and
+# tables: docs/verification/quality/ci-execution-cost-2026-11-04.md):
+# `concurrency.group` keys on `github.ref`, so a push run
+# (`refs/heads/887`) and the PR run for the same branch
+# (`refs/pull/888/merge`) never cancel each other. Over 2.8 days, 145
+# of 150 pushed SHAs (97%) were verified a SECOND time at the identical
+# SHA by the pull_request run, and the head-only push leg alone caught
+# 0 landing blockers while the PR merge-ref leg caught 6 integration
+# failures the head-only leg did not. The duplicated full suite on
+# numeric pushes cost 1,211 runner-minutes (23.9% of the 1,000-run
+# sample). The documented contract in `docs/development.md` never
+# included a full validate on numeric ticket-branch pushes — it says
+# "every PR and every push to `main` / `release-*`" — so this change
+# aligns the workflow with the already-published contract rather than
+# narrowing anything the repository promised.
+#
+# WHAT IS ACTUALLY TRUE ABOUT FORCE-PUSH (the previous version of this
+# comment was wrong): GitHub documents the `synchronize` action as
+# "the head branch of the pull request was updated", so a force-push
+# that changes the head SHA DOES fire `pull_request` while a PR is
+# open — the push trigger is not what makes force-pushes visible (the
+# measurement agrees: 145 of the 150 pushed SHAs had a pull_request
+# run at the same SHA). The same GitHub documentation states the real
+# constraint: a `pull_request` workflow does NOT run when the pull
+# request has a MERGE CONFLICT — and a branch with no open PR fires no
+# `pull_request` event at all. The old comment folded both cases into
+# "without a push trigger, force-pushes get no CI", which is not what
+# the platform does. The push leg exists for that gap and for the two
+# obligations the pull_request leg structurally cannot satisfy:
+#
+#   1. `cf-typegen:check` (`worker-configuration.d.ts` vs
+#      `wrangler types`) is a push event set check — a pull_request
+#      run never executes it — so a conflicted PR, or a branch pushed
+#      before its Draft PR exists (AGENTS.md §6 calls that state a
+#      bug, but the window exists while a branch is being created),
+#      would otherwise reach GitHub with no type-contract check.
+#   2. `Upload Cloudflare Build Output (attested bytes)` (Issue #816,
+#      mandatory for the pushed commit): the pull_request run builds
+#      the MERGE commit, so its bytes name a tree nobody can check
+#      out — that step cannot be satisfied by the PR leg. The manifest
+#      it pairs with is produced on the ticket-push leg by the
+#      dedicated generation step below.
+#
+# `workflow_dispatch` is the escape hatch the Issue asks for: it runs
+# the union of the pull_request leg and the main / release-* push leg
+# (full_validation + push_obligations + attested_bytes) on any branch
+# on demand, so a ticket-branch tip can be completely validated, with
+# the same artefacts a push would leave, without pushing anything.
+# PLATFORM CAVEAT: GitHub only offers and fires `workflow_dispatch`
+# for a workflow file that exists on the repository's DEFAULT branch
+# (`main`). This change lands on `release-0-8-1`, so until the release
+# PR merges into `main` the "Run workflow" entry point does not exist
+# for this file — the escape hatch is NOT available today. In the
+# meantime: push the ticket branch (it now runs exactly these
+# obligations) or run `pnpm run validate:integration` locally.
 #
 # Ticket branches are digit-only identifiers per AGENTS.md §6, so
 # `'[0-9]+'` matches the legitimate ticket PRs while excluding arbitrary
-# feature branches that happen to share the namespace.
+# feature branches that happen to share the namespace. Within the
+# `push` trigger the branch filter admits only main / release-* /
+# digits, so "a push that is neither main nor release-*" IS the numeric
+# ticket branch — the expression language has no regex, and the branch
+# filter does that job instead.
 on:
   pull_request:
     branches: [main, 'release-*', '[0-9]+']
   push:
     branches: [main, 'release-*', '[0-9]+']
+  workflow_dispatch: {}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -134,7 +229,16 @@ jobs:
       # docs/architecture.md and quality/profile.yaml. Workflow YAML lint
       # is part of `validate:integration` via `pnpm run lint:ci` — see
       # scripts/lint-ci.mjs.
-      - run: pnpm run validate:integration
+      #
+      # full_validation (Issue #897): pull_request (the required check,
+      # evaluated on the MERGE ref), workflow_dispatch, and push to
+      # main / release-*. A push to a numeric ticket branch skips this
+      # step on purpose: the same change gets exactly one full
+      # validation — the pull_request run on the tree that lands — and
+      # docs/development.md only ever promised "every PR and every push
+      # to `main` / `release-*`".
+      - if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+        run: pnpm run validate:integration
       # Dependency advisory gate (Issue #470). It reads the committed
       # lockfile through `pnpm audit --json` and evaluates the result
       # against the reviewed declaration in
@@ -162,7 +266,10 @@ jobs:
       # Flipping the declaration away from `enforcement: block` is the
       # one-line de-escalation; `--enforce` previews the block verdict
       # without editing the reviewed file.
+      # Issue #897 — full_validation: runs with the full suite, not on
+      # a numeric ticket push (that change is verified by the PR leg).
       - name: Dependency advisory audit
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
         run: pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html
       # Issue closure audit (Issue #741). It asks GitHub which issues were
       # closed in the window and reports every closure the repository has
@@ -185,15 +292,21 @@ jobs:
       # covers exactly the population the ledger claims to own. A fixed
       # `--since` here would either miss later closures or pull in
       # pre-audit history the ledger makes no claim about.
+      # Issue #897 — full_validation: runs with the full suite, not on
+      # a numeric ticket push (that change is verified by the PR leg).
       - name: Issue closure audit
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: pnpm run issue:closure:audit
       # The HTML report is derived from the lockfile's resolved package
       # set and public advisory metadata only — no credential, so the
       # artifact carries the same posture as the Cloudflare bundle below.
+      # `always()` keeps the report when the audit above FAILS; the
+      # full_validation part skips the upload on a ticket push, where
+      # the audit never ran and the file does not exist (Issue #897).
       - name: Upload dependency advisory report
-        if: always()
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dependency-advisory-report-${{ github.sha }}
@@ -208,22 +321,63 @@ jobs:
       # is the same posture as the Cloudflare bundle step below.
       # Attaching it to the GitHub Release stays a human-gated release
       # step — see docs/release.md and docs/runbook/sbom.md.
+      # Issue #897 — full_validation for both SBOM steps.
       - name: Build SBOM
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
         run: pnpm run sbom:build
       - name: Upload SBOM
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: sbom-${{ github.sha }}
           path: release-assets/supply-chain/*/sbom.cdx.json
           retention-days: 90
+      # Issue #897 — push_obligations && !(full_validation): the numeric
+      # ticket-branch push leg. `validate:integration` does NOT run on
+      # that leg, so the two artefacts every full leg gets from the
+      # gate's last component are produced here instead:
+      #
+      #   - `build:production` (vite build + `cf build` + Build Output
+      #     verification) writes `.cloudflare/output/v0/`, the directory
+      #     the attestation hashes;
+      #   - `artifact:attestation:check` in its default mode is the
+      #     GENERATE verb this repository exposes — it builds the
+      #     manifest for those bytes, verifies it against them and
+      #     writes `release-assets/supply-chain/<version>/
+      #     artifact-attestation.json` (gitignored). It is named `:check`
+      #     because generation always verifies what it wrote; the same
+      #     command is the last component of
+      #     `quality/profile.yaml#gates.integration.components`.
+      #
+      # On workflow_dispatch this pair is deliberately skipped: both
+      # named sets hold there and `validate:integration` has already
+      # built the artifact and generated the manifest, so running them
+      # again would be a second `build:production` inside one run. The
+      # obligation is still met — by the gate itself.
+      - name: Build production artifact (ticket-push leg)
+        if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-'))) && !(github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
+        run: pnpm run build:production
+      - name: Generate artifact attestation manifest (ticket-push leg)
+        if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-'))) && !(github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
+        run: pnpm run artifact:attestation:check
       # Issue #476 — the deployment artifact attestation manifest. It is
       # produced by `artifact:attestation:check` at the end of
-      # `validate:integration` and describes the exact production-mode
-      # Build Output CI built at this SHA: artifact sha-256, source
-      # commit, package version, declared dependency ranges and lockfile
-      # digest. It is an integrity record, not a signature (`unsigned`),
-      # and carries no credential. See
-      # docs/security/supply-chain-artifact-attestation.md.
+      # `validate:integration` on every full-validation leg (PR, main /
+      # release-* push, dispatch) and by the generation step directly
+      # above on a numeric ticket push, so every leg of this job
+      # publishes the manifest for its own `github.sha`. It describes
+      # the exact production-mode Build Output CI built at this SHA:
+      # artifact sha-256, source commit, package version, declared
+      # dependency ranges and lockfile digest. It is an integrity
+      # record, not a signature (`unsigned`), and carries no
+      # credential. See docs/security/supply-chain-artifact-attestation.md.
+      #
+      # Which pair is RELEASE evidence does not change: docs/release.md
+      # step 9 consumes the release branch's push run (the run whose
+      # `github.sha` is the release commit); a ticket-push pair is not
+      # release evidence, yet Issue #816's "leave the bytes for the
+      # pushed commit" obligation still applies to it — that is one of
+      # the two obligations this job's ticket-push leg exists for.
       - name: Upload artifact attestation manifest
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -236,8 +390,14 @@ jobs:
       # not support regex / length / match, so we keep this gate on
       # every push and let the branch filter above restrict the
       # trigger set to main / release-* / numeric ticket branches.
+      #
+      # attested_bytes event set (Issue #897): every push, exactly as
+      # before, PLUS `workflow_dispatch`, so the manual escape hatch
+      # proves the same type contract a push would. A pull_request run
+      # still does not run it — limitation 1 of the PR leg stated in
+      # the header.
       - name: cf-typegen check
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: pnpm run cf-typegen:check
       # Playwright E2E is gated to push on main / release-* and to PRs
       # with the `ui-change` label. The push gate does NOT include
@@ -247,11 +407,15 @@ jobs:
       # webServer block in playwright.config.ts starts `pnpm dev`
       # automatically when PLAYWRIGHT_BASE_URL points at localhost.
       # Browser binaries install with sudo on GitHub Actions runners.
+      #
+      # Issue #897 — `workflow_dispatch` joins this set: a dispatch is
+      # "verify this branch tip exactly as a push to main / release-*
+      # would", so it must not run fewer suites than that push.
       - name: Install Playwright Chromium
-        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright E2E
-        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm run e2e
       - name: Upload Playwright report
         if: always()
@@ -260,13 +424,52 @@ jobs:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
           retention-days: 7
-      - name: Upload Cloudflare bundle
-        if: github.event_name == 'push'
+      # Issue #816 — the bytes the attestation manifest names, retrievable.
+      #
+      # `artifact:attestation:check` (the last step of
+      # `validate:integration`, or the dedicated generation step on a
+      # numeric ticket push) hashes `.cloudflare/output/v0`, and the
+      # manifest is uploaded above. Until this step pointed at that path,
+      # it named `dist-cloudflare/`, which NO build produces: the upload
+      # silently succeeded with an empty artifact, so a release owner
+      # holding a published manifest could not obtain the bytes it
+      # describes. `if-no-files-found: error` makes a future path drift a
+      # red run instead of an empty artifact, and 90 days matches the
+      # manifest's own retention so the pair stays retrievable together.
+      #
+      # Issue #816 (owner decision, 2026-11-02): the byte comparison is
+      # a MANDATORY release gate, so the bytes have to exist for the
+      # commit under review — not only for main. The step therefore runs
+      # on every PUSH run, and the evidence is the pair this run
+      # produced (`artifact-attestation-<sha>` + `cf-build-output-<sha>`,
+      # same `github.sha`), which the operator compares with
+      # `gh run download` and `pnpm run artifact:attestation:check` /
+      # `pnpm run artifact:bytes:check` (see
+      # docs/release.md step 9 and
+      # docs/security/supply-chain-artifact-attestation.md section 7).
+      # The pull_request run is deliberately NOT uploaded: it builds the
+      # merge commit, not the reviewed commit, so its bytes would name a
+      # commit nobody can check out.
+      #
+      # Issue #897 — attested_bytes event set: every push (unchanged)
+      # plus `workflow_dispatch`, so the manual escape hatch leaves the
+      # same pair a push would leave; a dispatch is never allowed to
+      # produce fewer artefacts than the push it stands in for.
+      - name: Upload Cloudflare Build Output (attested bytes)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: dist-cloudflare-${{ github.sha }}
-          path: dist-cloudflare/
-          retention-days: 7
+          name: cf-build-output-${{ github.sha }}
+          path: .cloudflare/output/v0/
+          # Issue #906 — upload-artifact v4.4+ drops hidden files by
+          # default, but the attestation hashes them. The manifest
+          # recorded `workers/default/bundle/.vite/manifest.json` (492
+          # records) while this upload retained 491 files, so release
+          # step 9.1 failed on both file list and digest. The attested
+          # byte set and the retained byte set must be the same bytes.
+          include-hidden-files: true
+          retention-days: 90
+          if-no-files-found: error
 
   # Issue #392 — the Storybook axe audit as its own job.
   #

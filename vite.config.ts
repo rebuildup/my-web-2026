@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
 import { buildClientBundleGraph } from './scripts/_client-bundle-graph.mjs';
 import { LOCAL_STATE_DIR } from './scripts/_cloudflare-identity.mjs';
+import { isRemoteBindingsEnabled } from './src/cloudflare/data-source';
 
 /**
  * Vite configuration for my-web-2026.
@@ -131,19 +132,19 @@ function clientBundleGraphPlugin(): Plugin {
  *
  * Why this plugin exists:
  *
- * Tool iframes are sandboxed `allow-scripts` only (no
- * `allow-same-origin`). The iframe document therefore has an opaque
- * origin, and any `<script type="module">` and
- * `<link rel="stylesheet">` inside it becomes a CORS request — module
+ * Before ADR-0020 Tool iframes were sandboxed `allow-scripts` only, so
+ * the document had an opaque origin and any `<script type="module">` /
+ * `<link rel="stylesheet">` inside it became a CORS request — module
  * scripts are always fetched with CORS, even without the
- * `crossorigin` attribute. The default `vite preview` response does
- * not include `Access-Control-Allow-Origin`, so the browser blocks
- * the bundle and React never mounts. We scope the wildcard CORS to
- * `/tools/<slug>/app/*` only — the namespacing guarantees these are
- * same-origin Tool artefacts emitted by the Tool build orchestrator
- * (`scripts/build-tools.mjs`). The host's own `/assets/*` keeps its
- * default behaviour (same-origin module scripts from the host page,
- * no CORS).
+ * `crossorigin` attribute. The wildcard is retained for that historical
+ * reason: a first-party frame is now same-origin and does not need it,
+ * but `/tools/<slug>/app/*` is a public static namespace and removing a
+ * permissive CORS header is a separate header-tightening ticket. We
+ * scope the wildcard CORS to `/tools/<slug>/app/*` only — the
+ * namespacing guarantees these are same-origin Tool artefacts emitted
+ * by the Tool build orchestrator (`scripts/build-tools.mjs`). The
+ * host's own `/assets/*` keeps its default behaviour (same-origin
+ * module scripts from the host page, no CORS).
  *
  * The hook runs in `configurePreviewServer` so the change applies to
  * `vite preview` only (NOT `vite dev` — the dev server does not serve
@@ -167,6 +168,36 @@ function toolCorsPreviewPlugin(): Plugin {
 			});
 		},
 	};
+}
+
+/**
+ * Whether the dev server's bindings point at the PRODUCTION D1 / R2
+ * (Issue #377).
+ *
+ * `remoteBindings: true` makes `@cloudflare/vite-plugin` connect the
+ * `DB` / `MEDIA` bindings to the real Cloudflare resources instead of
+ * the local miniflare copies. That is what makes the production data
+ * visible in local development — and it is also what makes a write
+ * dangerous, which is why the runtime refuses every write in this
+ * mode (`src/cloudflare/data-source.ts`).
+ *
+ * The switch is EXPLICIT and OPT-IN: `pnpm dev` never sets the
+ * environment variable, so the default dev server keeps reading and
+ * writing the local copies. `pnpm dev:production-data` sets it (see
+ * `scripts/_run-dev.mjs`), and `cloudflare.config.ts` declares the
+ * matching binding from the SAME environment variable — so the
+ * binding target and the write policy cannot drift apart.
+ */
+const productionDataMode = isRemoteBindingsEnabled(process.env);
+
+if (productionDataMode) {
+	// The operator asked for production data. Say so on the console
+	// too — the on-screen indicator (`src/home/data-source-badge.tsx`)
+	// is the authoritative one, but the dev server's own output is
+	// where a developer looks first.
+	console.log(
+		'[dev] MY_WEB_2026_DATA_SOURCE=production-readonly — the D1 / R2 bindings point at PRODUCTION. Reads show production data; every write is refused.',
+	);
 }
 
 export default defineConfig({
@@ -201,6 +232,13 @@ export default defineConfig({
 		// into a production build.
 		cloudflare({
 			viteEnvironment: { name: 'ssr' },
+			// Issue #377 — `remoteBindings` points the D1 / R2 bindings
+			// at the real Cloudflare resources. It is enabled ONLY when
+			// the operator opted in with `pnpm dev:production-data`;
+			// the default `pnpm dev` keeps the local (miniflare)
+			// bindings, so a local session never touches production by
+			// accident.
+			remoteBindings: productionDataMode,
 			// Issue #247: point the dev server's local D1 persistence at
 			// the same directory `cf d1 --local --persist-to` writes, so
 			// rows are visible in BOTH directions between the CLI and the

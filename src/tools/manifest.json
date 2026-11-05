@@ -10,7 +10,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/ProtoType.git",
 				"submodule_path": "external/prototype",
-				"pinned_sha": "4e1359771768724c0993a6ae4c7b83367a3438e6",
+				"pinned_sha": "263dd931446047c8b16de19bb1c440bb0be4ba5e",
 				"branch": "main"
 			},
 			"build": {

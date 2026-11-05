@@ -17,6 +17,7 @@ repository. Two of them are documented here:
   `.vite/manifest.json` while the attestation hashed it (492 records
   vs 491 files, digest FAIL); the measurement, the
   `include-hidden-files: true` fix, and the offline regression test.
+- [`attestation-byte-comparison-2026-11-05.md`](attestation-byte-comparison-2026-11-05.md) — the release step 9.1 byte-comparison record for v0.8.1 (Issue #906): PASS on run 41958112190.
 
 ## Actions pin / permission verification (Issue #472)
 

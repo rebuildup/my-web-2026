@@ -326,6 +326,13 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 	test('responsive: the frame IS the viewport, desktop and mobile (Issue #911)', async ({
 		page,
 	}) => {
+		// Three viewports, each a full `openWithFrame` cycle (goto +
+		// networkidle + bounded consent activation). The default 30 s
+		// budget is one viewport's worth, and the first run proved it:
+		// the networkidle wait alone burned the budget and the test
+		// went flaky. The geometry assertion itself is instant; the
+		// time is the navigation cycle it is measured on.
+		test.setTimeout(120_000);
 		// 1440 / 390 are the widths the Issue #911 evidence is captured
 		// at; 1280×800 stays the desktop case this spec has always used.
 		const viewports = [

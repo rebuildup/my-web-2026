@@ -92,7 +92,7 @@
 			"status": "implemented",
 			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/tools",
-			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner は撤去理由を受け入れず「index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」と判断した。index は breadcrumb leaf を emit する。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
+			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner は撤去理由を受け入れず「index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」と判断した。index は breadcrumb leaf を emit する。詳細側の同発言は Issue #911（owner 指示 2026-11-05）でツール表示面に限って更新され、次の /tools/[slug] entry が現状を記す。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
 		},
 		{
 			"path": "/tools/[slug]",

@@ -461,6 +461,13 @@ jobs:
         with:
           name: cf-build-output-${{ github.sha }}
           path: .cloudflare/output/v0/
+          # Issue #906 — upload-artifact v4.4+ drops hidden files by
+          # default, but the attestation hashes them. The manifest
+          # recorded `workers/default/bundle/.vite/manifest.json` (492
+          # records) while this upload retained 491 files, so release
+          # step 9.1 failed on both file list and digest. The attested
+          # byte set and the retained byte set must be the same bytes.
+          include-hidden-files: true
           retention-days: 90
           if-no-files-found: error
 

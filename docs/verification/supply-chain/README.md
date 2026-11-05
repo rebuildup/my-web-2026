@@ -12,6 +12,12 @@ repository. Two of them are documented here:
   the run-group v0.8.0 release, what is still checkable without the
   bytes, and the CI change that makes the comparison executable from
   0.8.1.
+- [`build-output-retention-hidden-files-2026-11-05.md`](build-output-retention-hidden-files-2026-11-05.md) —
+  Issue #906: the `cf-build-output` upload dropped
+  `.vite/manifest.json` while the attestation hashed it (492 records
+  vs 491 files, digest FAIL); the measurement, the
+  `include-hidden-files: true` fix, and the offline regression test.
+- [`attestation-byte-comparison-2026-11-05.md`](attestation-byte-comparison-2026-11-05.md) — the release step 9.1 byte-comparison record for v0.8.1 (Issue #906): PASS on run 41958112190.
 
 ## Actions pin / permission verification (Issue #472)
 

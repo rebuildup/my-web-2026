@@ -51,7 +51,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/readmark.git",
 				"submodule_path": "external/readmark",
-				"pinned_sha": "71f296d9ab68f0b2a8a9b78049409d3d329812f5",
+				"pinned_sha": "36ccd863956e63079e3c239a2bd901040b78084b",
 				"branch": "main"
 			},
 			"build": {
@@ -68,12 +68,12 @@
 				},
 				"privacy": {
 					"third_party_origins": [],
-					"basis": "measured at pinned readmark 8895959 (readmark ADR-0008 storage-free redesign, merged via readmark PR #86): no external origin in index.html or src/**, and a run of the built frame observed ZERO third-party requests (every request went to the serving origin; fonts.googleapis / fonts.gstatic are gone with the webfont). The storage-free design means browser storage is not required, though the first-party frame (ADR-0020) no longer blocks it. re-measure after a bump"
+					"basis": "measured at pinned readmark 36ccd863 (readmark PR #88 / #89 / #90, 2026-11-05): the built index.html references only /tools/readmark/app/* (two hrefs and one src) and no external origin; a scan of dist/ finds only XML-namespace identifiers and licence / documentation URLs that pdfjs-dist bundles as strings (w3.org, xfa.org, ns.adobe.com, apache.org, scripts.sil.org, creativecommons.org), none of which is a fetch or XHR target. The storage-free design means browser storage is not required, though the first-party frame (ADR-0020) no longer blocks it."
 				}
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router). Uses bun as package manager. ADR-0020 / Issue #825: the frame is first-party on the host origin and carries no sandbox, so IndexedDB / localStorage are available. The pinned build (8895959) is a scaffold: the import button is disabled and the reader is a placeholder; reaching the empty-library state at /tools/readmark is the acceptance range of #825, and enabling import / the reader follows an upstream pin bump in a separate ticket. Zero external origins, so no consent gate."
+			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router). Uses bun as package manager. ADR-0020 / Issue #825: the frame is first-party on the host origin and carries no sandbox, so IndexedDB / localStorage are available. Issue #896: the build carries a relocatable base (vite.config.ts base: APP_BASE + BrowserRouter basename={import.meta.env.BASE_URL}), so /read/<id> deep links stay inside /tools/readmark/app/ and the Containerfile root build remains valid. Import and the reader are implemented (src/ui/document-import.tsx, src/reader/pdf/), not a scaffold. Zero external origins, so no consent gate."
 		},
 		{
 			"slug": "text-counter",

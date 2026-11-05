@@ -322,3 +322,27 @@ base / basename の有無に依らない既存の gap。修正前の reader relo
 `51681e37`（最終 pin）で build → `PHASE=final` の全30 run:
 **root404 = 0 / console error = 0 / HTTP 4xx-5xx = 0 / 主要操作すべて ok**
 （`.tmp/fix-896-final.json`、証跡 `final-*` 40枚）。§6 の判定を最終 pin でも再確認した。
+
+## 11. ピン更新の記録 — `71f296d9` → `36ccd863`（2026-11-05）
+
+readmark の `main` が PR #89（`app-base.ts` 新設、CI の2ターゲットビルド検証、
+smoke / テスト追加）と PR #90（`package.json#validate` に `build:container` を追加、
+`AGENTS.md` / `docs/development.md` の記述追随）まで進んだため、host の readmark ピンを
+**`71f296d9ab68f0b2a8a9b78049409d3d329812f5` → `36ccd863956e63079e3c239a2bd901040b78084b`** に更新した
+（manifest `source.pinned_sha` / `delivery.privacy.basis` / `notes`、
+`quality/tool-artifact-inventory.json`、`docs/tools/inventory.md`、gitlink の5件）。
+
+- **スクリーンショットを撮り直さない理由**: `71f296d9 → 36ccd863` の差分は
+  テスト / CI workflow / docs / `package.json#validate` のみで、
+  `src/**` のランタイム UI に変更が無い（`90585f4 → 36ccd86` の差分は
+  `package.json` / `AGENTS.md` / `docs/development.md` の3ファイルだけ）。
+  Before / After / Final の各証跡が示す描画・操作結果は新しいピンでも同じ。
+- **`basename` による child document の URL 書き換えの解消**: readmark PR #87 の
+  `<BrowserRouter basename={import.meta.env.BASE_URL}>`（§10.1）により、
+  child document の URL は読み込み・reload 後とも `/tools/readmark/app/` 配下に留まり、
+  host root への脱出が無い（§10.2 の実測）。新ピンでも `vite.config.ts` は
+  `base: APP_BASE`、`App.tsx` は `basename={import.meta.env.BASE_URL}` を維持しており、
+  #896 の欠陥（root 絶対パス 404 / basename 欠落）は解消したまま。
+- ピン更新後の `delivery.privacy.basis` は新ピンでの実測（built `index.html` の全参照が
+  `/tools/readmark/app/*`、`dist/` の絶対 URL は pdfjs-dist が同梱する XML 名前空間識別子と
+  ライセンス / ドキュメント文字列のみでリクエスト対象ではない）に書き換えた。

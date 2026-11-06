@@ -162,7 +162,11 @@ export function sniffImageContentType(bytes) {
  * which the figure already handles.
  */
 export function parseImageDimensions(bytes) {
-	if (bytes.length >= 24 && bytes[0] === 0x89 && bytes.subarray(1, 4).toString('latin1') === 'PNG') {
+	if (
+		bytes.length >= 24 &&
+		bytes[0] === 0x89 &&
+		bytes.subarray(1, 4).toString('latin1') === 'PNG'
+	) {
 		return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 	}
 	if (bytes.length >= 10 && bytes.subarray(0, 3).toString('latin1') === 'GIF') {
@@ -221,17 +225,20 @@ export async function readThumbnailSources(refRoot, projects) {
 		try {
 			db = new DatabaseSync(dbPath, { readOnly: true });
 			const content = db
-				.prepare('select id, title, visibility, status, thumbnails, created_at from contents limit 1')
+				.prepare(
+					'select id, title, visibility, status, thumbnails, created_at from contents limit 1',
+				)
 				.get();
 			if (!content) {
 				problems.push({ project: project.slug, reason: 'empty_contents' });
 				continue;
 			}
 			const mediaIds = new Set(
-				db
-					.prepare("select name from sqlite_master where type = 'table' and name = 'media'")
-					.get()
-					? db.prepare('select id from media').all().map((row) => row.id)
+				db.prepare("select name from sqlite_master where type = 'table' and name = 'media'").get()
+					? db
+							.prepare('select id from media')
+							.all()
+							.map((row) => row.id)
 					: [],
 			);
 			let thumbnail = null;
@@ -411,7 +418,10 @@ async function main() {
 		return EXIT.INPUT;
 	}
 
-	const classificationPath = join(root, 'docs/migration/portfolio-2025-to-2026-classification.json');
+	const classificationPath = join(
+		root,
+		'docs/migration/portfolio-2025-to-2026-classification.json',
+	);
 	const overridesPath = join(root, 'docs/migration/portfolio-2025-role-overrides.json');
 	for (const path of [classificationPath, overridesPath]) {
 		if (!existsSync(path)) {

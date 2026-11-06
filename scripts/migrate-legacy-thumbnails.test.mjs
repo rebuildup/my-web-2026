@@ -31,8 +31,7 @@ describe('classifyThumbnailSrc', () => {
 	const mediaIds = new Set(['media_1']);
 
 	it('classifies a legacy media-API src that names a real media id as a #850 byte source', () => {
-		const src =
-			'https://yusuke-kim.com/api/cms/media?contentId=m5_clock&id=media_1&raw=1';
+		const src = 'https://yusuke-kim.com/api/cms/media?contentId=m5_clock&id=media_1&raw=1';
 		assert.deepEqual(classifyThumbnailSrc(src, mediaIds), {
 			kind: 'media_blob',
 			reason: 'media_blob_source',
@@ -78,7 +77,10 @@ describe('classifyThumbnailSrc', () => {
 
 describe('sniffImageContentType', () => {
 	it('recognises the corpus formats and refuses everything else', () => {
-		assert.equal(sniffImageContentType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), 'image/png');
+		assert.equal(
+			sniffImageContentType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+			'image/png',
+		);
 		assert.equal(sniffImageContentType(Buffer.from([0xff, 0xd8, 0xff, 0xe0])), 'image/jpeg');
 		assert.equal(sniffImageContentType(Buffer.from('GIF89a....', 'latin1')), 'image/gif');
 		assert.equal(sniffImageContentType(Buffer.from('RIFF1234WEBPVP8 ', 'latin1')), 'image/webp');
@@ -150,12 +152,19 @@ describe('planThumbnails', () => {
 			sources: [
 				source('has-media', 'https://img.youtube.com/vi/x/maxresdefault.jpg'),
 				source('no-media', 'https://img.youtube.com/vi/y/maxresdefault.jpg'),
-				source('blob', 'https://yusuke-kim.com/api/cms/media?id=media_1&raw=1', new Set(['media_1'])),
+				source(
+					'blob',
+					'https://yusuke-kim.com/api/cms/media?id=media_1&raw=1',
+					new Set(['media_1']),
+				),
 				source('empty', null),
 			],
 			mediaRowCounts: new Map([['legacy_has-media', 3]]),
 		});
-		assert.deepEqual(uploads.map((entry) => entry.slug), ['no-media']);
+		assert.deepEqual(
+			uploads.map((entry) => entry.slug),
+			['no-media'],
+		);
 		assert.deepEqual(skips, { media_rows_exist: 1, media_blob_source: 1, no_thumbnail: 1 });
 	});
 });
@@ -212,7 +221,9 @@ describe('report and limits', () => {
 		// permanently broken image — the same refusal the media
 		// migration pins.
 		const routerSource = readFileSync(join(repoRoot, 'src/http/media/router.ts'), 'utf8');
-		const block = routerSource.match(/const DELIVERABLE_CONTENT_TYPES[^=]*=\s*new Set\(\[(.*?)\]\)/s);
+		const block = routerSource.match(
+			/const DELIVERABLE_CONTENT_TYPES[^=]*=\s*new Set\(\[(.*?)\]\)/s,
+		);
 		assert.ok(block, 'the media router no longer declares DELIVERABLE_CONTENT_TYPES');
 		const routerTypes = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
 		for (const type of THUMBNAIL_CONTENT_TYPES) {

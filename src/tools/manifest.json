@@ -277,7 +277,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-fillgen.git",
 				"submodule_path": "external/fillgen",
-				"pinned_sha": "962ae889790dfe0e5288c6b1fe61ab9c4f36ae9a",
+				"pinned_sha": "5829b6b2e5c1246e9187151a72e2249853b500a7",
 				"branch": "release-0-1-0"
 			},
 			"build": {

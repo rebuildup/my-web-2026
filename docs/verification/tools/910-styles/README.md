@@ -81,3 +81,39 @@ Issue #911（別 worker）の変更対象であり、本 Issue では触れな�
 
 `before-<slug>-<viewport>.webp`（本ディレクトリ、30 枚）。
 after は修正後撮影で `after-<slug>-<viewport>.webp` として追加する。
+
+## 5. after（修正後）の全数再測定（2026-11-06）
+
+修正後、15 Tool × 2 viewport を再撮影（`after-<slug>-<viewport>.webp`）し、同じ指標で再測定した。
+
+| 指標 | before | after |
+| --- | --- | --- |
+| 横溢れ（`scrollWidth > clientWidth`） | history-quiz mobile で 543 > 390 | **15 Tool × 2 viewport すべて 0** |
+| stylesheet 0 件の Tool | mic-level | **なし**（mic-level は 1 件 / Tailwind 同梱） |
+| 空フレーム | なし | なし（全 frame で本文テキストあり） |
+
+### 修正の内訳（Tool repo 側 PR と pin）
+
+| Tool | 修正 | Tool repo PR | pin |
+| --- | --- | --- | --- |
+| prototype | 640px 未満でヘッダー3要素・`.Components`・`.openbtn` の重なりを解消 | [ProtoType#7](https://github.com/rebuildup/ProtoType/pull/7) | `5fcfd4a` |
+| mic-level | standalone 成果物に Tailwind stylesheet を同梱（0 → 1 stylesheet） | [tool-mic-level#5](https://github.com/rebuildup/tool-mic-level/pull/5) | `36043c2` |
+| pomodoro | label を hover-gate に戻し（`fix/restore-ui-styles` の cherry-pick）、theme を永続化 | [tool-pomodoro#11](https://github.com/rebuildup/tool-pomodoro/pull/11) | `bbae9a0` |
+| history-quiz | 空欄の inline 幅を wrapper + 768px 未満で block 化して clip（543 → 390） | [tool-history-quiz#7](https://github.com/rebuildup/tool-history-quiz/pull/7) | `d79bdc1` |
+| code-type-p5 | canvas の初期化を container 幅に合わせる（720px 固定 → 292px） | [tool-code-type-p5#6](https://github.com/rebuildup/tool-code-type-p5/pull/6) | `a88c7aa` |
+| fillgen | `.section-controls` を折り返しへ（カード外への逸脱を解消） | [tool-fillgen#6](https://github.com/rebuildup/tool-fillgen/pull/6) | `5829b6b` |
+| qr-generator | 表示パネルが宣言する utility を `styles.css` に追加 | [tool-qr-generator#7](https://github.com/rebuildup/tool-qr-generator/pull/7) | `a3e1182` |
+| pi-game | container の flex 系 utility とボタン系 utility を追加 | [tool-pi-game#7](https://github.com/rebuildup/tool-pi-game/pull/7) | `3c1116e` |
+
+### 残存する測定値の注記（defect ではない）
+
+再測定の「重なり」検出は、**clip された scroll container 内の要素**と
+**`opacity: 0` の hover tooltip** を拾う（`getBoundingClientRect()` は clip / opacity を無視するため）。
+実測で以下を確認し、描画上の欠陥ではないと判定した:
+
+- pomodoro dock の label（`Note` / `YouTube` / `Timer` / `Theme` / `Settings`）: すべて `opacity: 0`（hover 時のみ表示、`Dock.tsx` の `group-hover:opacity-100`）
+- history-quiz の `ans-tooltip`: `opacity: 0`（回答表示時のみ出る）
+- business-mail-block の tag span: `overflow-y: auto` のリスト内にあり、clip 縁で切れるだけ（要素が隣の box に描画されることはない — `elementsFromPoint` で確認）
+- ae-expression の list item / 詳細 panel: 同様に clip 内の bounding box
+
+host 側（`/tools/<slug>` の chrome / frame）の修正は Issue #911 が実施済みで、本 Issue では触れていない。

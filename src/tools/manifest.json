@@ -376,7 +376,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-history-quiz.git",
 				"submodule_path": "external/history-quiz",
-				"pinned_sha": "bfcc1569df5b866ac896be501ed7b7fe0a9834c9",
+				"pinned_sha": "d79bdc1b29cbe013c40ab5429983650348efa925",
 				"branch": "release-0-1-0"
 			},
 			"build": {

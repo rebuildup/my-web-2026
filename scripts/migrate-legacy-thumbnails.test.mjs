@@ -175,7 +175,7 @@ describe('buildThumbnailSql', () => {
 			{
 				id: 'legacy_thumb_m5-clock',
 				projectId: 'legacy_m5-clock',
-				r2Key: 'portfolio/m5-clock/thumbnail/' + 'a'.repeat(64) + '.jpg',
+				r2Key: `portfolio/m5-clock/thumbnail/${'a'.repeat(64)}.jpg`,
 				contentType: 'image/jpeg',
 				width: 1280,
 				height: 720,

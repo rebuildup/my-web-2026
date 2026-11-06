@@ -470,7 +470,7 @@ async function main() {
 			try {
 				portfolioMediaPrefixGuard(r2Key);
 			} catch {
-				fetchSkips['key_not_publishable'] = (fetchSkips['key_not_publishable'] ?? 0) + 1;
+				fetchSkips.key_not_publishable = (fetchSkips.key_not_publishable ?? 0) + 1;
 				continue;
 			}
 			const dimensions = parseImageDimensions(result.bytes);

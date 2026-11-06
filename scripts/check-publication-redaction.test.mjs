@@ -813,7 +813,10 @@ describe('repository wiring', () => {
 		for (const root of ['copy', 'public', 'src/about', 'src/contact', 'src/portfolio']) {
 			assert.ok(PUBLISHED_CONTENT_ROOTS.includes(root), `${root} must be a scanned root`);
 		}
-		assert.deepEqual(PUBLISHED_CONTENT_EXCLUDE_PREFIXES, ['public/share/']);
+		assert.deepEqual(PUBLISHED_CONTENT_EXCLUDE_PREFIXES, [
+			'public/share/',
+			'src/portfolio/notion/generated/',
+		]);
 	});
 
 	it('declares every surface it does not scan, with a reason', () => {
@@ -825,6 +828,7 @@ describe('repository wiring', () => {
 			'src/routes/',
 			'src/admin/',
 			'src/i18n/',
+			'src/portfolio/notion/generated/',
 		]) {
 			assert.ok(declared.includes(surface), `${surface} must be declared, not silently skipped`);
 		}

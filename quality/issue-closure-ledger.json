@@ -2595,8 +2595,8 @@
 		{
 			"issue": 598,
 			"title": "判断待ち: mic-level を sandbox=\"allow-scripts allow-same-origin\" で卒業させるか (Issue #449 の残り)",
-			"closedAt": "2026-11-05",
-			"window": "tracked",
+			"closedAt": "2026-10-31",
+			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
 			"evidence": [
@@ -2614,7 +2614,7 @@
 			"ownerConfirmation": "confirmed",
 			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/598#issuecomment-6567590605",
 			"action": "closed",
-			"note": "問いは「sandbox の origin 契約をどうするか」であり、sandbox を外す決定で前提ごと解消した。getUserMedia を opaque origin が拒否する件は同一 origin 配信で解消し、ADR-0020 §4.5.2 の卒業条件（Permissions-Policy grant とブラウザの許可プロンプト）は 2026-11-04 の実測で PASS。",
+			"note": "問いは「sandbox の origin 契約をどうするか」であり、sandbox を外す決定で前提ごと解消した。getUserMedia を opaque origin が拒否する件は同一 origin 配信で解消し、ADR-0020 §4.5.2 の卒業条件（Permissions-Policy grant とブラウザの許可プロンプト）は 2026-11-04 の実測で PASS。2026-11-05 に受入条件が出荷コードで満たされていることを確認し、Issue を close した。close の実日付は 2026-11-05 だが、この entry が属する母集団は 2026-10-31 の sweep 133 件（frozen）なので closedAt は sweep close の日（2026-10-31）と window は sweep-2026-10-31 のまま据え置く（frozen window の population を動かすなという runbook の規則に従う）。",
 			"missing": null
 		},
 		{

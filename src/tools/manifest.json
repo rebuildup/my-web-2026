@@ -408,7 +408,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pi-game.git",
 				"submodule_path": "external/pi-game",
-				"pinned_sha": "b234aa0569ade70a885c8ee8941861fccf7a3603",
+				"pinned_sha": "3c1116ee428d9d9b18866b1e9bafa68c34abb23a",
 				"branch": "develop"
 			},
 			"build": {

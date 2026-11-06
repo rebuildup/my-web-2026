@@ -153,10 +153,13 @@ after はサーバー描画される inline `aspect-ratio: 16 / 9` が初回描�
 
 ## 5. 証跡
 
-WebP 8 文件（PNG なし）:
+WebP（PNG なし）:
 
-- `912-portfolio-grid/912-portfolio-grid-1440-{before,after}-{top,cards}.webp`
-- `912-portfolio-grid/912-portfolio-grid-390-{before,after}-{top,cards}.webp`
+- round 2（2026-11-06 追加）: `912-portfolio-grid-{1440,390}-v2after-full.webp` —
+  グリッドの 2 行分を clip 撮影した全幅証跡（lazy cover を
+  scroll-through + decode 待ちしてから撮影）。
+- round 1: `912-portfolio-grid-{1440,390}-{before,after}-{top,cards}.webp`
+  8 文件。
 
 `-top` はページ先頭（ヘッダ + filter + 最初のカード）、`-cards` は
 cover を持つ最初のカードから 2 枚分。

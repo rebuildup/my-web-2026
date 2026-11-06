@@ -152,10 +152,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
@@ -205,9 +205,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
-| `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
-| `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
+| `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |

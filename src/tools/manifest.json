@@ -73,7 +73,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router). Uses bun as package manager. ADR-0020 / Issue #825: the frame is first-party on the host origin and carries no sandbox, so IndexedDB / localStorage are available. Issue #896: the build carries a relocatable base (vite.config.ts base: APP_BASE + BrowserRouter basename={import.meta.env.BASE_URL}), so /read/<id> deep links stay inside /tools/readmark/app/ and the Containerfile root build remains valid. Import and the reader are implemented (src/ui/document-import.tsx, src/reader/pdf/), not a scaffold. Zero external origins, so no consent gate."
+			"notes": "PDF reading MVP (pdfjs-dist 5.x + React Router). Uses bun as package manager. ADR-0020 / Issue #825: the frame is first-party on the host origin and carries no sandbox, so IndexedDB / localStorage are available. Issue #896: the build carries a relocatable base (vite.config.ts base: APP_BASE + BrowserRouter basename={import.meta.env.BASE_URL}), so /read/<id> deep links stay inside /tools/readmark/app/ and the Containerfile root build remains valid. Import and the reader are implemented (src/ui/document-import.tsx, src/reader/pdf/), not a scaffold. Zero external origins, so the declaration is an empty contact list."
 		},
 		{
 			"slug": "text-counter",
@@ -367,7 +367,7 @@
 			},
 			"classification": "same_origin_static",
 			"license": "MIT",
-			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = the previous pinned submodule HEAD). This pin is PR #10 (commit d4add8a1f19b4a4ffb3c77c745f140796120adc7), which bundles a Tailwind-generated stylesheet in the standalone artifact (Issue #9 / host #868); the earlier pin emitted no CSS at all, so the frame rendered unstyled. Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts; with the first-party frame (ADR-0020) it is available, and the hook still falls back to an in-memory value if storage throws. Because the widget URLs are third-party, the host derives click_to_load consent for this entry."
+			"notes": "Standalone Vite build merged via rebuildup/tool-pomodoro PR #8 (commit 7ce10d78dc6efc1a71aebd2051e29b80216dfd2c = the previous pinned submodule HEAD). This pin is PR #10 (commit d4add8a1f19b4a4ffb3c77c745f140796120adc7), which bundles a Tailwind-generated stylesheet in the standalone artifact (Issue #9 / host #868); the earlier pin emitted no CSS at all, so the frame rendered unstyled. Build: pnpm (pnpm-lock.yaml present, `vite build`); LICENSE (MIT) present in the checkout. Measured at the pin: sessionStorage is used by src/hooks/useSessionStorage.ts; with the first-party frame (ADR-0020) it is available, and the hook still falls back to an in-memory value if storage throws. Because the widget URLs are third-party, the manifest declares them in delivery.privacy.third_party_origins for this entry."
 		},
 		{
 			"slug": "history-quiz",

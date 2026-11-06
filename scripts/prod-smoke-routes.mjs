@@ -403,7 +403,7 @@ export const ONE_CLICK_ENTRIES = Object.freeze([
  * used to be recorded here as an information-architecture fact.
  *
  * Issue #911 (owner decision 2026-11-05) took the chrome off the
- * DETAIL route's Tool-showing states (iframe shell / consent gate) so
+ * DETAIL route's Tool-showing state (the iframe shell) so
  * the frame owns the viewport, and kept it on the 404 / 準備中 /
  * blocked placeholders. That changes nothing here: this roster is
  * representative PAGE routes, `/tools/<slug>` was never in it, and the

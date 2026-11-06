@@ -145,11 +145,9 @@ default `<p>Not Found</p>` string.
 
 The route has two layouts, and the split is "is a Tool shown here":
 
-- **Tool shown** — the embeddable shell (`ToolEmbedShell`) and the
-  consent gate (`ToolEmbedGate`) render no `PublicNav` / breadcrumb
-  band / `BreadcrumbJsonLd`, and the iframe is `100dvh` tall
-  (`frameArea` in the route file; the gate uses `minHeight: '100dvh'`
-  so a long contact list stays scrollable). The old
+- **Tool shown** — the embeddable shell (`ToolEmbedShell`) renders no
+  `PublicNav` / breadcrumb band / `BreadcrumbJsonLd`, and the iframe is
+  `100dvh` tall (`frameArea` in the route file). The old
   `viewport - chrome` subtraction layout is gone with the chrome.
 - **No Tool shown** — the 404, the `host_disabled` placeholder and
   the `blocked` placeholder keep `ToolChrome` (nav + breadcrumbs) and

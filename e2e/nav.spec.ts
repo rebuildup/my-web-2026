@@ -62,9 +62,9 @@ async function readToolDisplayName(slug: string): Promise<string> {
  *     index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」).
  *   - Issue #911 (owner instruction 2026-11-05) then narrowed the
  *     detail half of that restoration: 「各ツールはヘッダーなどを
- *     いれず、各ツール全画面でそれぞれ使われるようにする」. The two
- *     states that SHOW a Tool — the iframe shell and the consent gate
- *     — render no chrome and give the frame the whole `100dvh`; the
+ *     いれず、各ツール全画面でそれぞれ使われるようにする」. The one
+ *     state that SHOWS a Tool — the iframe shell — renders no chrome
+ *     and gives the frame the whole `100dvh`; the
  *     404 / `host_disabled` / `blocked` states keep the chrome because
  *     a visitor who is not using a Tool still has to be able to leave.
  *     The `/tools` index is a list page, not 「各ツール」, so #785
@@ -218,43 +218,18 @@ test.describe('public nav — Tools surfaces (Issue #911: only the non-Tool stat
 	}) => {
 		const res = await page.goto('/tools/prototype');
 		expect(res?.status()).toBe(200);
-		// Issue #498: ProtoType declares third-party contacts, so the
-		// shell opens on the consent notice — and Issue #911 takes the
-		// chrome off that state too: the notice is the first thing a
-		// visitor sees and it is part of the Tool's own surface.
-		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+		// PR #914 removed the consent gate: the iframe mounts directly,
+		// and Issue #911 keeps the chrome off that state — the frame is
+		// the first thing a visitor sees and it is the Tool's own surface.
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
 		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
-		await page.waitForLoadState('networkidle');
-		// The notice is server-rendered: the button exists before React
-		// attaches the handler, so a click that lands before hydration is
-		// swallowed. Re-click until the frame appears (bounded), the
-		// same pattern the prototype spec uses.
 		const frame = page.locator('iframe[title="ProtoType Tool"]');
-		let mounted = false;
-		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
-			await page
-				.getByTestId('tool-embed-consent-activate')
-				.click({ timeout: 2_000 })
-				.catch(() => undefined);
-			mounted = await frame
-				.waitFor({ state: 'attached', timeout: 2_000 })
-				.then(() => true)
-				.catch(() => false);
-		}
-		expect(
-			mounted,
-			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
-		).toBe(true);
 		await expect(frame).toBeVisible();
-		// The state change swaps the notice for the frame; neither half
-		// of it brings the chrome back.
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
-		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
-		// The frame IS the viewport: at the document origin and as tall
-		// as the viewport, i.e. `100dvh` with nothing subtracted. Before
-		// #911 the frame was `viewport - chrome`, which is exactly the
-		// subtraction this assertion would now catch coming back.
+		// No chrome half exists to come back: the frame IS the viewport,
+		// at the document origin and as tall as the viewport, i.e.
+		// `100dvh` with nothing subtracted. Before #911 the frame was
+		// `viewport - chrome`, which is exactly the subtraction this
+		// assertion would now catch coming back.
 		const viewport = page.viewportSize();
 		expect(
 			viewport,

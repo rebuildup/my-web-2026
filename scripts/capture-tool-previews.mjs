@@ -30,8 +30,7 @@
  *     (polled, because a Tool may draw its screen in absolutely
  *     positioned panels and report a 0-height `<body>`), so a blank
  *     frame fails the capture instead of being committed,
- *   - the host analytics consent banner (Issue #495) and the Tool's
- *     own third-party consent notice are both declined/activated the
+ *   - the host analytics consent banner (Issue #495) is declined the
  *     way a visitor can, and the frame is aligned to the viewport
  *     before the shot, so the image is the Tool and nothing else,
  *   - encoding: width 1200 px (`withoutEnlargement`), WebP `quality: 80`
@@ -250,15 +249,9 @@ try {
 			await page.waitForTimeout(300);
 		}
 
-		// A Tool that declares third-party contacts renders a consent
-		// notice and mounts no iframe until the visitor activates it
-		// (`src/tools/embed-privacy.ts`). Activate the same way a
-		// visitor does; the screenshot is then the Tool's real screen.
-		const activate = page.locator('[data-testid="tool-embed-consent-activate"]');
-		if ((await activate.count()) > 0) {
-			await activate.first().click();
-		}
-
+		// PR #914 removed the Tool consent gate: the iframe mounts
+		// directly with the route, so the screenshot is the Tool's real
+		// screen without any activation step.
 		const frameElement = page.locator('iframe').first();
 		await frameElement.waitFor({ state: 'visible', timeout: 30_000 });
 		const frame = page.frameLocator('iframe').first();
@@ -296,10 +289,10 @@ try {
 		if (target.prepare) {
 			await target.prepare({ frame, page });
 		}
-		// Clicking the consent button scrolls the host page (the button
-		// sits below the fold), which leaves the frame's top edge
-		// off-screen; an element screenshot then clips that strip and
-		// fills it with the host background. Align the frame to the
+		// A page whose scroll position drifted (the analytics banner
+		// dismissal, a previous prepare step) can leave the frame's top
+		// edge off-screen; an element screenshot then clips that strip
+		// and fills it with the host background. Align the frame to the
 		// viewport first so the screenshot is the Tool's whole screen.
 		await frameElement.evaluate((el) => el.scrollIntoView({ block: 'start' }));
 		// Let the first paint after the text settle (fonts, images).

@@ -130,35 +130,25 @@ export function ProjectCard({ project }: ProjectCardProps) {
 			className={css({
 				// Issue #794: the card is distinguished from the page by its
 				// own fill, not by a rule on its left edge. `bg.surface` is
-				// the raised-plane role; the hairline `borderTop` below only
-				// separates one card from the next and is unchanged.
+				// the raised-plane role.
+				// Owner feedback (2026-11-05, Issue #912 round 2): the
+				// full-width vertical stack read as stretched-out, so the
+				// card no longer splits into cover/copy columns — it is a
+				// COMPACT vertical plane inside the list grid
+				// (`PortfolioList` places it on `repeat(2|3, minmax(0,1fr))`,
+				// the same declaration the tools index and the home
+				// capabilities grid use). The cover bleeds to the card's
+				// top edge; only the copy is padded. The `borderTop`
+				// hairline is gone: in a grid the planes are separated by
+				// the gutter, so the hairline had nothing left to separate
+				// — and a bordered box is what §1/§4 forbid. The radius
+				// matches the cover's so the bleed has no corner seams.
 				backgroundColor: 'bg.surface',
-				display: 'grid',
-				// Issue #912 — the card's two-column composition IS the
-				// site grid rule (`src/editorial/layout-system.md` §3.1:
-				// `{ base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' }`,
-				// `columnGap { base: '0', lg: '10' }`). The previous
-				// `md` / gap `8` declaration split at 768px with a 32px
-				// gutter, so between 768–1023px the card split where
-				// every other surface stacks, and above it the copy
-				// column sat 5.34px off the site's content-column axis.
-				// With the verbatim rule the cover occupies the title
-				// span (left edge = Container content edge) and the copy
-				// occupies the content span (left edge = content edge +
-				// 4/12 + gutter), matching the hero and every section
-				// content column. The base `rowGap` stays card-local
-				// (`4`): vertical rhythm inside one card is not a grid
-				// coordinate — contact's channel rows make the same
-				// choice (`rowGap { base: '2', lg: '0' }`).
-				// Issue #767 — with no cover the copy is the only child,
-				// so a fixed 4fr/8fr grid would strand it in the narrow
-				// column; one column lets the copy use the card's full
-				// width.
-				gridTemplateColumns: cover ? { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
-				columnGap: { base: '0', lg: '10' },
-				rowGap: { base: '4', lg: '0' },
-				paddingBlock: '8',
-				borderTop: '1px solid {colors.border.subtle}',
+				display: 'flex',
+				flexDirection: 'column',
+				minWidth: '0',
+				borderRadius: '6px',
+				overflow: 'hidden',
 			})}
 		>
 			{cover ? (
@@ -172,6 +162,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 					flexDirection: 'column',
 					gap: '3',
 					minWidth: '0',
+					padding: '6',
 				})}
 			>
 				<header

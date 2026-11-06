@@ -211,25 +211,26 @@ describe('ProjectCard — the role row (Issue #813)', () => {
 });
 
 /**
- * Grid fit (Issue #912).
+ * Grid fit (Issue #912, round 2 — owner feedback 2026-11-05).
  *
- * The card's cover/copy split must be the SITE grid rule verbatim
- * (`src/editorial/layout-system.md` §3.1): split at `lg` with a 40px
- * gutter, so the cover lands on the title-span axis and the copy on
- * the content-span axis every other surface uses. The regression this
- * pins is the one the issue measured — a card that splits at `md`
- * with a 32px gutter, which puts the copy column 5.34px off the
- * site's content axis above 1024px and splits it where the rest of
- * the site stacks between 768–1023px.
+ * Round 1 fitted the card's INTERNAL cover/copy split to the site grid
+ * rule; the owner then rejected the result as stretched-out ("間延びして
+ * てダサい") and asked for more columns. The card is now a COMPACT
+ * vertical plane (cover bleeding to the top edge, padded copy) and the
+ * multi-column grid lives on the LIST (`PortfolioList`: 2 columns at
+ * `md`, 3 at `lg` — the same declaration the tools index and the home
+ * capabilities grid use). This file pins the card half of that
+ * contract; the list's columns are measured in
+ * `docs/verification/design/912-portfolio-grid.md` (this file cannot
+ * render `PortfolioList` — it needs a router match).
  *
- * The cover box is pinned as markup too: inline `aspect-ratio: 16 / 9`
- * (server-rendered, so the box is reserved from first paint — Issue
- * #486's `width` / `height` attributes stay emitted) and the
- * `object-fit: cover` class, which is what crops a non-16/9 bitmap
- * into the frame instead of stretching it. The measured geometry
- * (left edge / column width / gutter at 1440 and 390) lives in
- * `docs/verification/design/912-portfolio-grid/` — this file cannot
- * see a layout engine, so it pins the contract that produces it.
+ * Regressions these assertions catch:
+ *   - a card that re-adds an internal cover/copy SPLIT: inside a ~300px
+ *     grid column a 4fr/8fr split cannot resolve — the round-1 shape;
+ *   - a card that drops the compact-plane contract (the `bg.surface`
+ *     fill, the compact vertical stack);
+ *   - a cover that leaves the fixed 16/9 frame or the Issue #486
+ *     `width` / `height` reservation.
  */
 const coverMedia: PortfolioMediaData = {
 	id: 'm-cover',
@@ -244,32 +245,21 @@ const coverMedia: PortfolioMediaData = {
 	url: 'https://media.example.com/cover.png',
 };
 
-describe('ProjectCard grid fit (Issue #912)', () => {
-	it('applies the site section grid rule to the cover split', () => {
+describe('ProjectCard grid fit (Issue #912 round 2)', () => {
+	it('is a compact vertical plane — no internal cover/copy split', () => {
 		const html = renderToStaticMarkup(
 			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
 		);
 		const cls = articleClass(html);
-		// §3.1 verbatim: `{ base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' }`.
-		expect(cls).toContain('grid-tc_1fr lg:grid-tc_minmax(0,_4fr)_minmax(0,_8fr)');
-		// …and its gutter: `columnGap { base: '0', lg: '10' }` (40px).
-		expect(cls).toContain('cg_0 lg:cg_10');
-		// The measured defect must stay fixed: no split at `md`, no
-		// 32px `md` gutter anywhere on this surface.
-		expect(cls).not.toContain('md:grid-tc');
-		expect(cls).not.toContain('md:cg_');
+		// The plane is the card's own fill — a luminance step, not a hue.
+		expect(cls).toContain('bg-c_bg.surface');
+		// The round-1 split must stay gone: no grid-template-columns on
+		// the card, at any breakpoint.
+		expect(cls).not.toContain('grid-tc_');
+		expect(cls).not.toContain('cg_');
 	});
 
-	it('keeps a coverless card on one full-width column', () => {
-		const html = renderToStaticMarkup(<ProjectCard project={project(['develop'])} />);
-		const cls = articleClass(html);
-		// One child → one column; the copy (and its title) must not be
-		// stranded in a narrow span (#767).
-		expect(cls).toContain('grid-tc_1fr');
-		expect(cls).not.toContain('lg:grid-tc_');
-	});
-
-	it('reserves the cover in the fixed 16/9 frame, cropped not stretched', () => {
+	it('keeps the cover in the fixed 16/9 frame, cropped not stretched', () => {
 		const html = renderToStaticMarkup(
 			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
 		);
@@ -284,5 +274,14 @@ describe('ProjectCard grid fit (Issue #912)', () => {
 		// `object-fit: cover` is what makes a square or portrait cover
 		// fill the frame without distortion.
 		expect(img).toContain('obj-f_cover');
+	});
+
+	it('keeps a coverless card on the same compact plane', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['develop'])} />);
+		const cls = articleClass(html);
+		expect(cls).toContain('bg-c_bg.surface');
+		expect(cls).not.toContain('grid-tc_');
+		// No cover → no frame, and nothing pretending to reserve one.
+		expect(html).not.toMatch(/<img/);
 	});
 });

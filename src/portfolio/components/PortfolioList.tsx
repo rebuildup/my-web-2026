@@ -163,12 +163,32 @@ export function PortfolioList({
 									listStyle: 'none',
 									margin: '0',
 									padding: '0',
-									display: 'flex',
-									flexDirection: 'column',
+									// Issue #912 round 2 (owner feedback
+									// 2026-11-05): the full-width vertical stack
+									// read as stretched-out ("間延びしててダサい").
+									// The list is now a card grid on the
+									// documented pattern (tools index / home
+									// capabilities): 2 columns at `md`, 3 at
+									// `lg` — the 3/12-column subdivision of the
+									// `Container` width — with the 24px gutter
+									// and the 40px row beat those surfaces use.
+									// `gridAutoRows: '1fr'` is the measured fix
+									// for uneven card heights (design #764):
+									// the tallest card in a row sets the height
+									// and the others stretch to it.
+									display: 'grid',
+									gridTemplateColumns: {
+										base: '1fr',
+										md: 'repeat(2, minmax(0, 1fr))',
+										lg: 'repeat(3, minmax(0, 1fr))',
+									},
+									columnGap: { base: '0', md: '6' },
+									rowGap: '10',
+									gridAutoRows: '1fr',
 								})}
 							>
 								{allProjects.map((project) => (
-									<li key={project.id}>
+									<li key={project.id} className={liStretchClass}>
 										<ProjectCard project={project} />
 									</li>
 								))}
@@ -248,4 +268,15 @@ const skipLinkStyle = css({
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '2px',
 	},
+});
+
+/**
+ * Grid item behaviour for one card (same shape as the tools index's
+ * `cardItem`): the `<li>` stretches to its row track (`gridAutoRows` on
+ * the list) and the card inside fills it, so every card in a row is the
+ * same height.
+ */
+const liStretchClass = css({
+	display: 'grid',
+	minWidth: '0',
 });

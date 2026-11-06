@@ -206,3 +206,85 @@ describe('PortfolioMediaFigure — intrinsic size reservation (#486)', () => {
 		expect(img?.hasAttribute('sizes')).toBe(false);
 	});
 });
+
+/**
+ * Fixed frame contract (Issue #912).
+ *
+ * `frameAspectRatio` is the list card's decision: every thumbnail box
+ * is the same shape, whatever the bitmap's own ratio is. The three
+ * properties that make it safe:
+ *
+ *   1. the frame ratio is the rendered box (inline style, so it is
+ *      reserved server-side — a layout decision, not a data one),
+ *   2. the Issue #486 `width` / `height` attributes still travel from
+ *      the row's intrinsic size, and
+ *   3. the placeholder / error branch paints the SAME frame, so the
+ *      swap cannot move the layout.
+ */
+describe('PortfolioMediaFigure — fixed frame (#912)', () => {
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
+	it('renders the frame ratio as the box while keeping the intrinsic attributes', () => {
+		const { container } = render(
+			<PortfolioMediaFigure
+				media={baseMedia('https://media.example.com/cover.webp')}
+				frameAspectRatio="16 / 9"
+			/>,
+		);
+		const img = container.querySelector('img');
+		expect(img?.style.aspectRatio).toBe('16 / 9');
+		// The intrinsic size still rides along for the UA's own
+		// reservation and for any consumer that reads the attributes.
+		expect(img?.getAttribute('width')).toBe('1280');
+		expect(img?.getAttribute('height')).toBe('720');
+		// Cropped into the frame, never stretched to fill it.
+		expect(img?.className).toContain('obj-f_cover');
+	});
+
+	it('reserves the frame even when the row declares no intrinsic size', () => {
+		const { container } = render(
+			<PortfolioMediaFigure
+				media={{
+					...baseMedia('https://media.example.com/cover.webp'),
+					width: null,
+					height: null,
+				}}
+				frameAspectRatio="16 / 9"
+			/>,
+		);
+		const img = container.querySelector('img');
+		// No bogus `width="0"`, but the box IS reserved — the state
+		// the default path cannot cover.
+		expect(img?.hasAttribute('width')).toBe(false);
+		expect(img?.hasAttribute('height')).toBe(false);
+		expect(img?.style.aspectRatio).toBe('16 / 9');
+	});
+
+	it('paints the placeholder with the frame ratio so the error swap cannot shift', () => {
+		const { container } = render(
+			<PortfolioMediaFigure
+				media={baseMedia('https://media.example.com/cover.webp')}
+				frameAspectRatio="16 / 9"
+			/>,
+		);
+		const imageRatio = container.querySelector('img')?.style.aspectRatio;
+
+		return act(async () => {
+			container.querySelector('img')?.dispatchEvent(new Event('error', { bubbles: true }));
+		}).then(() => {
+			const frame = container.querySelector<HTMLElement>('figure[role="img"]');
+			expect(frame?.style.aspectRatio).toBe('16 / 9');
+			expect(frame?.style.aspectRatio).toBe(imageRatio);
+		});
+	});
+
+	it('paints a url-less media with the frame ratio too', () => {
+		const { container } = render(
+			<PortfolioMediaFigure media={baseMedia(null)} frameAspectRatio="16 / 9" />,
+		);
+		const frame = container.querySelector<HTMLElement>('figure[role="img"]');
+		expect(frame?.style.aspectRatio).toBe('16 / 9');
+	});
+});

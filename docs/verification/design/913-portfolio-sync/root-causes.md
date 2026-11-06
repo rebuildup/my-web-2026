@@ -116,11 +116,24 @@ record で `every` が空集合の真値を返し `reviewed` を名乗る**。AD
 誤りで、#908 が着地した瞬間に media 無し record が開示を黙って消す。
 本 PR で修正し、空 media → `unreviewed` を test で固定した。
 
-## 5. 観測（本 Issue の範囲外として記録）
+## 5. owner 指示による再実行（2026-11-06）— Notion の実移行と snapshot 着地
 
-- 全 60 行の narrative 6 セクション（motivation〜retrospective）が**空**。
-  旧 markdown の見出し（`# # タイトル` / `## ## 経緯` 形式）が
-  `partitionMarkdownBySection` のキーワードに 1 件も一致しないため。
-  これは分類台帳の blocker `no_mappable_section`（60 件）として記録済みの
-  既知状態であり、本文の書き直しは D4（加筆禁止）の領域なので本 Issue では
-  触れない。
+owner フィードバック「データ移行の話なのでこの報告では確認不可能。実際にデータを
+移行すること。Notion で my-web-2025 で記述していたポートフォリオ全内容を再現すること」
+を受けた再実行。詳細は [`docs/verification/portfolio/notion-reingest-2026-11-06.md`](../../../verification/portfolio/notion-reingest-2026-11-06.md)。
+
+| 発見 | 処置 |
+| --- | --- |
+| 旧テストフィクスチャ 9 ページ（`test-otu-*`）が `Published`+`Public`（D5 違反） | `Draft`/`Draft` へ変更（9 × PATCH 200） |
+| `kosen-fes-2025` の外部 image block（ube-k.ac.jp）が恒久到達不能で ingest 全体を fail-closed | Wayback copy（sha256 が 11-05 ingest の R2 object と一致 = 交叉検証済み）を file_upload で同一位置へ再配置 |
+| ingest が media 1 件の瞬間的 download 失敗で全体中断（145 ファイル規模で毎回 1 件は発生） | `downloadMedia` に一時的失敗の bounded retry（確定的失敗は retry しない） |
+| committed snapshot が空 placeholder のまま | ingest 再実行 → **records 60（欠落 0）/ media 139** を同梱 |
+| 衝突規則（D1 が勝つ）のままだと 60 slug の authoring 内容（本文全空の lossy 行）が公開面に出ない | loader が authoring フィールド（本文 6 セクション + media union）を CMS record で満たす。identity / 順序 / 可視性 / evidence / links は D1 のまま（1 slug = 1 URL = 1 カード不変） |
+
+### 再実行後のローカル端到端実測（local D1/R2 + 実 snapshot）
+
+| 面 | before（media 行のみ・snapshot 空） | after（thumbnail ingest + 実 snapshot + merge） |
+| --- | --- | --- |
+| 一覧 `/portfolio` | 60 slug / `<img>` 23 | 60 slug / `<img>` **60** |
+| 詳細 `/portfolio/m5-clock` | 本文セクション **0**（全 6 セクション空） | **動機 / 実装 / 証拠の本文が表示される**（実装 582 字） |
+| 詳細 `/portfolio/alice` | 画像なし | cover あり + 本文あり |

@@ -415,7 +415,7 @@ beforeAll(async () => {
 		await seedProjects(pageSize);
 
 		const { counted, statements } = countStatements(env.DB);
-		const loader = createD1PortfolioLoader({ DB: counted });
+		const loader = createD1PortfolioLoader({ DB: counted }, { cmsProjects: [] });
 		const started = Date.now();
 		const page = await loader.listPortfolioProjects({ limit: pageSize });
 		const elapsedMs = Date.now() - started;
@@ -454,7 +454,10 @@ beforeAll(async () => {
 		// The detail surface must not depend on how many children a
 		// project owns: one target query + one link + one media.
 		const detailCounter = countStatements(env.DB);
-		const detailLoader = createD1PortfolioLoader({ DB: detailCounter.counted });
+		const detailLoader = createD1PortfolioLoader(
+			{ DB: detailCounter.counted },
+			{ cmsProjects: [] },
+		);
 		const detail = await detailLoader.loadPortfolioProject('qb-0');
 		expect(detail?.slug).toBe('qb-0');
 		detailMeasurements.push({
@@ -651,7 +654,10 @@ describe('portfolio — id chunk boundary (Issue #491)', () => {
 		await clearTables();
 		await seedProjects(D1_BATCH_ID_CHUNK);
 		const atCap = countStatements(env.DB);
-		const atCapPage = await createD1PortfolioLoader({ DB: atCap.counted }).listPortfolioProjects({
+		const atCapPage = await createD1PortfolioLoader(
+			{ DB: atCap.counted },
+			{ cmsProjects: [] },
+		).listPortfolioProjects({
 			limit: D1_BATCH_ID_CHUNK,
 		});
 		expect(atCapPage.projects).toHaveLength(D1_BATCH_ID_CHUNK);
@@ -665,9 +671,12 @@ describe('portfolio — id chunk boundary (Issue #491)', () => {
 		await clearTables();
 		await seedProjects(D1_BATCH_ID_CHUNK + 1);
 		const overCap = countStatements(env.DB);
-		const overCapPage = await createD1PortfolioLoader({
-			DB: overCap.counted,
-		}).listPortfolioProjects({ limit: D1_BATCH_ID_CHUNK + 1 });
+		const overCapPage = await createD1PortfolioLoader(
+			{ DB: overCap.counted },
+			{ cmsProjects: [] },
+		).listPortfolioProjects({
+			limit: D1_BATCH_ID_CHUNK + 1,
+		});
 		expect(overCapPage.projects).toHaveLength(D1_BATCH_ID_CHUNK + 1);
 		expect(overCap.statements).toHaveLength(5);
 		// The whole page is still ordered, including the project that fell

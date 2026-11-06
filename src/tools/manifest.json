@@ -341,7 +341,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-pomodoro.git",
 				"submodule_path": "external/pomodoro",
-				"pinned_sha": "fc374dbe3f79126c933a7984abe99f361fe7b77a",
+				"pinned_sha": "bbae9a05d544ee90ac45b2abb800dec35a5a149c",
 				"branch": "main"
 			},
 			"build": {

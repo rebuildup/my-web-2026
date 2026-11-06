@@ -9,13 +9,13 @@
 | --- | --- |
 | Corpus | `docs/migration/personal-data-review/corpus.json` (schema `personal-data-review.v1`) |
 | Corpus digest (sha-256, 12) | `6a58c8f66e4a` |
-| Published candidate digest (sha-256, 12) | `e3b0c44298fc` |
-| Published files carrying a candidate | 0 |
+| Published candidate digest (sha-256, 12) | `c8c55c5dfbb3` |
+| Published files carrying a candidate | 1 |
 | Records | 5 |
 | Candidates found | 19 |
 | Published (owner-approved) | 3 |
 | Withheld | 2 (review_required 1 / rejected 1) |
-| Verdict | **review** |
+| Verdict | **fail** |
 
 > the published digest covers only the published files that carry at
 > least one personal-data candidate. A copy edit that carries no
@@ -114,6 +114,16 @@
 
 ## 7. Findings
 
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D006 第三者本人の氏名 (敬称付き日本語名) candidate (`・・・`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D006 第三者本人の氏名 (敬称付き日本語名) candidate (`・・・・`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D006 第三者本人の氏名 (敬称付き日本語名) candidate (`・・・・・・・`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`xxx_########`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
+- **ERROR** `E005` Published file `src/portfolio/notion/generated/snapshot.json` carries a D011 個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名) candidate (`########_`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.
 - **WARN** `W001` Record `notion-personal-notes` (notion) is review_required: 9 candidate(s) found, no owner decision. It is withheld from the public bundle.
 - **WARN** `W002` Record `miro-offsite-photos` (miro) is rejected by owner decision: 9 candidate(s) withheld from the public bundle.
 

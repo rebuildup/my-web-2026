@@ -368,20 +368,28 @@ async function measure(
 		'utf8',
 	).byteLength;
 
-	await page.goto(path, { waitUntil: 'load' });
-	const responsesBeforeLoad = responses.length;
-	const digitImagesBeforeLoad = responses.filter(isDigitImage).length;
-
 	// PR #914 removed the consent gate: the iframe is server-rendered,
 	// so the Tool leg measures the surface the visitor asked for from
 	// the first paint. The frame's own document request is still awaited
 	// explicitly when asked — a `networkidle` check can resolve in a gap
 	// and report "the Tool loaded nothing" for a Tool that loaded fine.
-	if (options.awaitToolArtifactResponse) {
-		const artifactResponse = page.waitForResponse(
-			(res) => res.url().startsWith(origin) && isToolArtifact(new URL(res.url()).pathname),
-			{ timeout: 20_000 },
-		);
+	//
+	// The waiter is armed BEFORE the navigation, because the frame now
+	// loads during the first paint: a waiter armed afterwards waits for
+	// a response that already happened and times out on a Tool that
+	// loaded perfectly well.
+	const artifactResponse = options.awaitToolArtifactResponse
+		? page.waitForResponse(
+				(res) => res.url().startsWith(origin) && isToolArtifact(new URL(res.url()).pathname),
+				{ timeout: 20_000 },
+			)
+		: null;
+
+	await page.goto(path, { waitUntil: 'load' });
+	const responsesBeforeLoad = responses.length;
+	const digitImagesBeforeLoad = responses.filter(isDigitImage).length;
+
+	if (artifactResponse) {
 		await artifactResponse;
 		await page.waitForLoadState('networkidle');
 	}

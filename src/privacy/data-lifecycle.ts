@@ -95,7 +95,13 @@ export type TransferTarget =
 	/** Stays in this deployment (D1 / R2 / the visitor's own browser). */
 	| 'none'
 	/** Google Analytics 4 property (measurement id comes from a runtime secret). */
-	| 'google-analytics-4';
+	| 'google-analytics-4'
+	/**
+	 * YouTube's player, framed from `youtube-nocookie.com` on a
+	 * portfolio detail page (Issue #910: the click-to-load gate was
+	 * removed, so the frame mounts on page load).
+	 */
+	| 'youtube-embed';
 
 /**
  * Who sends a value (Issue #662).
@@ -459,6 +465,84 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			note: {
 				ja: '外部送信は公開してよい事実（コードで送信値が限定されている）。保持期間は第三者設定なので数値を推測せず「確認できない」と書く。',
 				en: 'Published: the transfer and its exact payload are code-visible. Retention is a third-party setting, so no number is guessed — the wording says it cannot be verified here.',
+			},
+		},
+	},
+	{
+		// Issue #910 (owner decision 2026-11-05): the click-to-load gate
+		// was removed, so a portfolio detail page whose project has a
+		// validated video link mounts YouTube's player on page load.
+		// This entry documents that transfer. It is `pending` — the
+		// owner has not approved publishing it, so the fail-closed
+		// filter keeps it out of the public notice until then.
+		id: 'portfolio-video-embed',
+		label: {
+			ja: 'ポートフォリオ詳細ページの YouTube 埋め込み',
+			en: 'The YouTube embed on a portfolio detail page',
+		},
+		stores: {
+			ja: 'このプラットフォームは何も保存しません。埋め込みは Cookie も `localStorage` も使わず、押しボタン時代の同意状態の記録も存在しませんでした。',
+			en: 'This platform stores nothing. The embed uses no cookie and no `localStorage`, and the click-to-load design never persisted a consent state either.',
+		},
+		retention: {
+			kind: 'third-party',
+			statement: {
+				ja: 'プレイヤーが第三者側で保持する値の期間は YouTube 側の設定に従い、このプラットフォームからは確認できません。',
+				en: 'Retention of anything the player keeps on the third party’s side follows YouTube’s settings and cannot be verified from this platform.',
+			},
+		},
+		deletion: {
+			channel: 'third-party',
+			statement: {
+				ja: 'このプラットフォームからは削除できません（そもそも保存がありません）。第三者側の値は YouTube 側の操作が必要です。',
+				en: 'Nothing can be deleted from this platform (nothing is stored). Values on the third party’s side require action inside YouTube.',
+			},
+		},
+		transfer: {
+			target: 'youtube-embed',
+			statement: {
+				ja: '動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定（Issue #910）で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。',
+				en: 'When a portfolio detail page whose project carries a validated video link is loaded, the browser fetches the player from `youtube-nocookie.com`. The 2026-11-05 owner decision (Issue #910) removed the click-to-load gate, so this fetch happens at page load. A page without a video requests nothing.',
+			},
+			senders: [
+				{
+					sender: 'platform-code',
+					label: {
+						ja: 'このプラットフォームのコード',
+						en: 'This platform’s own code',
+					},
+					statement: {
+						ja: 'iframe の `src` を、保存された URL ではなく検証済みの動画 id（11 文字）から組み立てて指定します。保存 URL のクエリ文字列（`t=` など）は埋め込み URL に現れず、`autoplay` を付けることもなく、サイト発行の識別子を明示的に送ることはありません。',
+						en: 'It sets the iframe `src`, built from the validated 11-character video id — never from the stored URL. The stored URL’s query string (such as `t=`) never reaches the embed URL, no `autoplay` flag is added, and no site-issued identifier is sent explicitly.',
+					},
+				},
+				{
+					sender: 'third-party-automatic',
+					label: {
+						ja: 'YouTube のプレイヤー自身',
+						en: 'YouTube’s own player',
+					},
+					statement: {
+						ja: 'プレイヤーは、参照元やブラウザや端末の情報、再生に必要な要求（`ytimg.com` / `googlevideo.com` など）を、YouTube 自身が読み取って送ります。これはこのプラットフォームのコードが明示的に送る値には含まれません。',
+						en: 'The player reads the referrer, the browser and the device information, and the playback requests it needs (`ytimg.com` / `googlevideo.com` and their siblings) itself and sends them on its own. They are not among the values this platform’s code sends explicitly.',
+					},
+				},
+			],
+		},
+		visibility: {
+			ja: 'iframe とその `src` はページの HTML に見えます。保存された訪問者データはこのプラットフォームのどこにも残りません。',
+			en: 'The iframe and its `src` are visible in the page HTML. No visitor data is stored anywhere in this platform.',
+		},
+		evidence: [
+			'src/portfolio/video-facade.ts (受け付ける URL 形式・id 検証・埋め込み URL の組み立て)',
+			'src/portfolio/components/PortfolioVideoFacade.tsx (iframe の属性: referrerpolicy / allow / loading)',
+			'docs/verification/portfolio/video-facade.md (実測記録と 2026-11-06 の訂正)',
+		],
+		publication: {
+			status: 'pending',
+			note: {
+				ja: 'owner が公開 wording を承認するまで描画しない。事実はここに記録して失わない。',
+				en: 'Rendered nowhere until the owner approves the published wording. The fact is recorded here so it is not lost.',
 			},
 		},
 	},

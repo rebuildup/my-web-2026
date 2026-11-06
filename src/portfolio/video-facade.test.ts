@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PortfolioLink } from './schema';
-import {
-	composeVideoEmbedUrl,
-	composeVideoWatchUrl,
-	parseYouTubeVideoId,
-	selectPortfolioVideo,
-} from './video-facade';
+import { composeVideoEmbedUrl, parseYouTubeVideoId, selectPortfolioVideo } from './video-facade';
 
 /**
  * The YouTube facade contract (Issue #870).
@@ -70,10 +65,6 @@ describe('compose URLs', () => {
 	it('builds the embed URL on the privacy-preserving origin', () => {
 		expect(composeVideoEmbedUrl(ID)).toBe(`https://www.youtube-nocookie.com/embed/${ID}`);
 	});
-
-	it('builds the watch URL on the canonical origin', () => {
-		expect(composeVideoWatchUrl(ID)).toBe(`https://www.youtube.com/watch?v=${ID}`);
-	});
 });
 
 describe('selectPortfolioVideo', () => {
@@ -92,7 +83,6 @@ describe('selectPortfolioVideo', () => {
 			id: ID,
 			link: link({}),
 			embedUrl: `https://www.youtube-nocookie.com/embed/${ID}`,
-			watchUrl: `https://www.youtube.com/watch?v=${ID}`,
 		});
 	});
 

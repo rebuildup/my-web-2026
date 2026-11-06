@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 37 |
 | First-party hosts | 0 |
-| Approved transition | 3 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,9 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `www.youtube-nocookie.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -224,13 +224,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/embed/…` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/iframe_api` | `www.youtube.com` | external | `src/tools/manifest.json` |
-| `https://www.youtube.com/watch?v=` | `www.youtube.com` | external | `src/portfolio/video-facade.ts` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube-nocookie.com/embed
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=
+- **WARN** `W003 external-url-removed` External URL removed: https://www.youtube.com/watch?v=
 

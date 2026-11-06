@@ -29,6 +29,7 @@ real constants. A changed constant that is not republished here fails
 | `reaction-rows` | target / actor / principal / kind / value / created_at | none — no expiry column, no purge job | visitor action | none | — |
 | `access-counter` | aggregate counts + per-request dedup UUID | dedup expires after 60 min, purged only on the same id's next hit | operator action | none | — |
 | `analytics-events` | this platform’s code sends the measurement id + `page_path` / `page_location` / `page_title`; GA4 collects the referrer and the browser / device information itself | Google's property setting — not verifiable here | third party | Google Analytics 4 | `platform-code`, `third-party-automatic` |
+| `portfolio-video-embed` | nothing — the embed persists no consent state, no cookie, no `localStorage` | YouTube's property setting — not verifiable here | third party | YouTube player (`youtube-nocookie.com`), fetched at page load (Issue #910) | `platform-code`, `third-party-automatic` |
 | `admin-auth` | operator email / password hash / sessions (incl. the client IP address and the user-agent string) / invitations | 30-day session, invitation expiry | operator action | none | — |
 | `contact-surface` | nothing — the page has no form | not applicable | not applicable | none | — |
 
@@ -37,6 +38,10 @@ and `wrangler.jsonc`, and `publication.status`:
 
 - `approved` — rendered by `<PrivacyNotice />`.
 - `pending` — kept here so the fact is not lost, rendered nowhere.
+
+`portfolio-video-embed` is `pending`: the click-to-load gate it replaced
+was removed on the owner's 2026-11-05 decision (Issue #910), and the
+published wording for the page-load transfer has no owner approval yet.
 
 `getPublishedDataLifecycle()` is fail-closed: an unknown status is not
 published. The same filter (`filterPublishedEntries`) runs inside

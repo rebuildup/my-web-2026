@@ -211,7 +211,7 @@ describe('report and limits', () => {
 			applied: true,
 			target: 'local',
 		});
-		assert.match(report, /\[legacy-thumbnails\] uploads          35/);
+		assert.match(report, /\[legacy-thumbnails\] uploads {10}35/);
 		assert.match(report, /media_rows_exist=25/);
 		assert.doesNotMatch(report, /https?:\/\//);
 	});

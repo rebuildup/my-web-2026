@@ -309,7 +309,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-qr-generator.git",
 				"submodule_path": "external/qr-generator",
-				"pinned_sha": "2a7d64308e1286108c42bbe88b8d9f762e7e8fa3",
+				"pinned_sha": "a3e11821a27461166e26b072a92a7bb02d3ec57a",
 				"branch": "main"
 			},
 			"build": {

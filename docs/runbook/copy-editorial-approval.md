@@ -375,12 +375,15 @@ data / schema / 純ロジックが混在するため、**ファイル 1 個ず�
 | `src/keyboard/index.ts` / `src/keyboard/components/index.ts` | 再輸出のみ。日本語を持たない |
 | `src/legal/inventory.ts` | 記録の **schema reader**。`J` 系の finding は **Storybook サンプルの中だけ**に描画され、公開面には出ない |
 | `src/legal/inventory-table.ts` | Storybook の roster 射影。公開面に載ることはない |
+| `src/portfolio/notion/generated/**` | `scripts/sync-portfolio-notion.mjs` が owner 管理の Notion データソースから書き出す生成 projection。本文はこの repository で著されたものではなく、expression 単位の owner review record は存在できない（ingest のたびに gate が再オープンするため）。copy を黙って落とすのではない — `scripts/check-stale-content-review.mjs` は同じ本文を article source `notion-import` として宣言しており、そこでは `unobserved` として report され、reviewed とは決して扱われない |
 | `**/*.stories.tsx` / `**/fixtures/**` / `**/*.md` / `**/*.test.*` | サンプル・デモ・内部文書・テスト。publish される copy ではない |
 
 この表の除外は **宣言として残す** ガードである。上の 9 ファイルは
 `publicCopyFiles` でファイル単位に宣言しているため、現状はそもそも対象では
 なく、レポートの除外理由にも出ない。将来 `src/keyboard/**` のような広い glob
 を足したときも、**表示されないファイルが二重に対象に入ることはない**。
+`src/portfolio/notion/generated/**` はこの予備の guard ではない —
+`src/portfolio/**` が実際にマッチするため、**現状生きて効く除外**である。
 
 #### 6.1.3 混在ファイル（file 粒度の代償）
 

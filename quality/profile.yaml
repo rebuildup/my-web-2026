@@ -822,6 +822,7 @@ personal_data_review:
     - 'src/portfolio'
   published_content_exclusions:
     - 'public/share/ - the `/share/<slug>/` static document surface is a separate delivery obligation with its own publication decision; this gate reviews migrated content, so it does not re-decide what is already published there.'
+    - 'src/portfolio/notion/generated/ - the committed projection of the owner-controlled Notion data source. Its publication decision is the per-record status / visibility the owner sets there (and the migration publication ledger); its prose is not authored in this repository, and the corpus holds synthetic fixtures only, so no owner-approved record covering its literals can exist here. The residual personal-data-shaped candidates this surface carries are stated in docs/security/personal-data-redaction.md ("対象外と残るリスク"), not hidden.'
     - 'src/home/, src/editorial/, src/routes/, src/admin/, src/i18n/ - component / route code whose copy is authored in this repository and reviewed in the pull request that added it, not migrated content. The scanned roots are the surfaces that carry migrated or declared identity data, the platform copy resources and the static assets a visitor can fetch. Extending the reverse scan to component copy needs a stated policy for placeholder contact values (a `user@example.com` form placeholder is shaped like a personal address), and that policy is an owner decision, not this gate''s to invent.'
   statuses:
     - 'pass - no error finding (a corpus with no pending record)'

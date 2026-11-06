@@ -599,13 +599,36 @@ async function readBoundedBody(response) {
 /**
  * Download one image and decide its content type.
  *
+ * Transient transport failures (the fetch itself, an idle stream, a
+ * dropped body) are retried with a short backoff: a corpus of ~145 files
+ * meets at least one flaky S3 read per run, and aborting a 25-minute
+ * ingest because one signed URL hiccuped made the sync unusable
+ * (measured 2026-11-06, Issue #913). Definitive failures — an HTTP
+ * status the server actually returned, a refused content type, an
+ * oversized body — are never retried.
+ *
  * The response header wins when it names a type we can serve. When it
  * names nothing usable (`''` / `application/octet-stream`), the bytes are
  * asked instead — a signature is evidence, and only the five signatures
  * above can answer. A definite header we cannot serve is refused outright:
  * storing it would create an object the delivery route 404s on.
  */
-export async function downloadMedia(url, { fetchImpl = globalThis.fetch } = {}) {
+export async function downloadMedia(url, { fetchImpl = globalThis.fetch, retry = 2 } = {}) {
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			return await downloadMediaOnce(url, { fetchImpl });
+		} catch (error) {
+			const transient =
+				error instanceof MediaIngestError &&
+				error.code === 'media_download_failed' &&
+				!String(error.detail ?? '').startsWith('http_');
+			if (!transient || attempt >= retry) throw error;
+			await new Promise((done) => setTimeout(done, 1000 * 2 ** attempt));
+		}
+	}
+}
+
+async function downloadMediaOnce(url, { fetchImpl }) {
 	let response;
 	try {
 		response = await fetchImpl(url, { signal: AbortSignal.timeout(MEDIA_DOWNLOAD_TIMEOUT_MS) });

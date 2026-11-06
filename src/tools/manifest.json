@@ -477,7 +477,7 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/tool-mic-level.git",
 				"submodule_path": "external/mic-level",
-				"pinned_sha": "9506e4619541d8912346648ced1239607acea199",
+				"pinned_sha": "36043c2195e92af1044cf59fbb26714c4ac84c72",
 				"branch": "main"
 			},
 			"build": {

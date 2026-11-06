@@ -335,7 +335,7 @@
 			}
 		},
 		"mic-level": {
-			"pinned_sha": "9506e4619541d8912346648ced1239607acea199",
+			"pinned_sha": "36043c2195e92af1044cf59fbb26714c4ac84c72",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",

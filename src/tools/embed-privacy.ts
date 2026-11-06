@@ -7,8 +7,8 @@
  * framed* (referrer policy, frame origin, message channel, and the
  * sandbox that only an external frame declares — ADR-0020). It says
  * nothing about what the framed document does once it
- * is mounted. Measured against the two Tools the registry ships today
- * (`pnpm run verify:embed-privacy-screenshot` re-measures), that gap is
+ * is mounted. Measured against the two Tools the registry ships today,
+ * that gap is
  * not theoretical: the pinned ProtoType artifact loads
  * `https://fonts.googleapis.com` (stylesheet + `preconnect`),
  * `https://fonts.gstatic.com` (font files) and
@@ -24,37 +24,35 @@
  *    `src/tools/manifest.json` names the third-party origins the framed
  *    document may contact, plus a short purpose for each Tool (both
  *    locales). The declaration is REQUIRED for every embeddable Tool and
- *    the gate fails closed when it is missing — "no third-party origin"
+ *    the contract fails closed when it is missing — "no third-party origin"
  *    has to be written down, not assumed by omission.
- * 2. **Consent is derived, never declared.** There is no
- *    `consent_mode` field an operator could write to opt out. The host
- *    computes `click_to_load` from facts it can check itself: the frame
- *    is cross-origin, or the declaration names at least one origin.
- *    Everything else is `not_required`. The consent gate is therefore a
- *    consequence of the declaration, not a second thing to keep in sync.
+ * 2. **The frame mounts directly.** There is no consent gate and no
+ *    `consent_mode` field (the former `click_to_load` gate was removed
+ *    by owner decision, PR #914): an embeddable Tool's iframe renders
+ *    as soon as the route does. What this module still polices is the
+ *    DISCLOSURE — a Tool cannot be framed without declaring, in the
+ *    manifest, which origins its frame may contact and why, and the
+ *    route fails closed on any violation.
  * 3. **A foreign frame must name itself.** An `external_exception`
  *    frame is a document request to a foreign origin by definition, so
  *    its own origin MUST appear in `third_party_origins`. A manifest
  *    cannot embed an external document without publishing which origin
  *    that is.
- * 4. **Pre-activation contacts are empty by construction.** The route
- *    renders a notice and no frame, so the host document names no
- *    third-party origin at all before activation — `pre_activation`
- *    exists as a first-class field of the verdict so a caller can
- *    assert it rather than infer it.
+ * 4. **The host document names no third-party origin of its own.** The
+ *    frame `src` is resolved by `resolveToolFrameSrc()` and every
+ *    embeddable Tool in the registry is same-origin static, so the only
+ *    third-party requests a `/tools/<slug>` document causes are the
+ *    ones the framed artefact itself makes — exactly the requests the
+ *    declaration covers.
  *
  * Deliberately out of scope (owner decisions, not this module's call):
  *
- *   - **Consent persistence.** There is no cookie and no
- *     `localStorage` record for "the visitor agreed once". A per-visit
- *     gate asks again on every navigation; a consent store is a new
- *     published data surface (and needs its own retention story).
  *   - **Host-document analytics.** Every SSR page — including
  *     `/tools/<slug>` — mounts GA4 (`src/editorial/analytics/`) and
  *     Google Fonts in the site chrome. That is a deliberate host-level
  *     product decision (Issue #171 / #447), not an embed-induced
  *     contact, and changing it belongs to a different Issue.
- *   - **What the artifact does after activation.** The host declares
+ *   - **What the artifact does once mounted.** The host declares
  *     the contacts it can see in the manifest and refuses to frame a
  *     Tool whose own frame origin is undeclared. It cannot observe a
  *     framed document's network behaviour, and this module does not
@@ -74,16 +72,8 @@
 import { resolveToolFrameSrc } from './embed-policy.ts';
 
 /* ------------------------------------------------------------------ *
- * 1. consent modes
+ * 1. scope
  * ------------------------------------------------------------------ */
-
-/** The framed document is served from the host origin and declares no third-party contact. */
-export const CONSENT_MODE_NOT_REQUIRED = 'not_required' as const;
-
-/** Nothing is loaded until the visitor activates the notice. */
-export const CONSENT_MODE_CLICK_TO_LOAD = 'click_to_load' as const;
-
-export type EmbedConsentMode = typeof CONSENT_MODE_NOT_REQUIRED | typeof CONSENT_MODE_CLICK_TO_LOAD;
 
 /** Delivery kinds the host can frame; the only ones this contract polices. */
 const EMBEDDABLE_KINDS: ReadonlySet<string> = new Set(['same_origin_static', 'external_exception']);
@@ -102,8 +92,8 @@ export interface ToolPrivacyPurpose {
  * `delivery.privacy` as declared in `src/tools/manifest.json`.
  *
  * Only facts go here: which origins the framed document may contact and
- * why. The consent behaviour is DERIVED from those facts, so there is no
- * field here that could switch the gate off.
+ * why. The declaration is the published disclosure a visitor relies on,
+ * so there is no field here that could weaken it.
  */
 export interface ToolPrivacyDeclaration {
 	/**
@@ -155,16 +145,8 @@ export interface EmbedPrivacyViolation {
 /** What the host does with one embeddable Tool. */
 export interface EmbedPrivacyVerdict {
 	readonly slug: string;
-	readonly consent: EmbedConsentMode;
 	/** Normalised, de-duplicated, sorted origins the frame may contact once mounted. */
-	readonly contacts_after_activation: readonly string[];
-	/**
-	 * Always empty: the host document requests / references no third-party
-	 * origin before the visitor activates the consent notice. (The declared
-	 * list is a statement about the frame's future contacts, not a contact
-	 * the host itself makes.)
-	 */
-	readonly contacts_before_activation: readonly string[];
+	readonly contacts: readonly string[];
 	/** `true` when the frame document itself is served by a third party. */
 	readonly frame_is_third_party: boolean;
 	readonly violations: readonly EmbedPrivacyViolation[];
@@ -240,12 +222,11 @@ export function toPrivacySubject(
  * smuggling attempt) from "the author meant a foreign origin", and this
  * one only needs to know whether the frame document is third-party.
  *
- * An `src` this cannot parse stays `unresolved`, and the gate reads an
- * unresolved frame as requiring consent (fail closed) — an unparseable
- * `src` can never lower the gate. The frame-src rules in
- * `embed-policy.ts` refuse such a `src` outright
+ * An `src` this cannot parse stays `unresolved`. This module reads only
+ * `cross-origin` as third-party; an unresolved `src` is refused outright
+ * by the frame-src rules in `embed-policy.ts`
  * (`embed.frame-src.invalid-scheme`), so nothing unresolved is ever
- * mounted; the fail-closed reading here is the second line of defence.
+ * mounted — the refusal lives there, not here.
  */
 function classifyFrameOrigin(src: string): EmbedPrivacySubject['frame_origin'] {
 	if (typeof src !== 'string' || src.trim().length === 0) return 'unresolved';
@@ -288,7 +269,7 @@ function violation(
  * message can name the consequence.
  *
  * `host_disabled` / `not_integrable_yet` entries are framed by nobody,
- * so they are returned as `not_required` with no violations — the same
+ * so they are returned with no contacts and no violations — the same
  * posture `evaluateToolEmbedPolicy` takes. A Tool that graduates to an
  * embeddable kind then has to declare its contacts before it can ship.
  */
@@ -300,9 +281,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 	if (!EMBEDDABLE_KINDS.has(kind)) {
 		return {
 			slug,
-			consent: CONSENT_MODE_NOT_REQUIRED,
-			contacts_after_activation: [],
-			contacts_before_activation: [],
+			contacts: [],
 			frame_is_third_party: false,
 			violations: [],
 		};
@@ -321,8 +300,8 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 
 	// Omission is not a default. A present declaration whose
 	// `third_party_origins` is absent, null or not an array is a refusal,
-	// not an empty contact list: `privacy: {}` used to derive
-	// `not_required` and mount the frame eagerly (Issue #498 review).
+	// not an empty contact list: `privacy: {}` used to look like a
+	// written "no third-party contact" declaration (Issue #498 review).
 	const origins = declaration?.third_party_origins;
 	const hasOriginList = Array.isArray(origins);
 	if (declaration && !hasOriginList) {
@@ -403,23 +382,9 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 
 	contacts.sort();
 
-	// Consent fails closed: a cross-origin frame, a frame whose `src`
-	// could not be resolved at all, or a non-empty declaration all
-	// require the visitor to activate the load. Only a same-origin
-	// frame that declares no contact may mount without asking.
-	const consent: EmbedConsentMode =
-		frame_is_third_party ||
-		subject.frame_origin === 'unresolved' ||
-		contacts.length > 0 ||
-		(declaration !== undefined && !hasOriginList)
-			? CONSENT_MODE_CLICK_TO_LOAD
-			: CONSENT_MODE_NOT_REQUIRED;
-
 	return {
 		slug,
-		consent,
-		contacts_after_activation: contacts,
-		contacts_before_activation: [],
+		contacts,
 		frame_is_third_party,
 		violations,
 	};
@@ -432,16 +397,4 @@ function normalizeFrameOrigin(frame_src: string): string | null {
 	} catch {
 		return null;
 	}
-}
-
-/**
- * The origins a consent notice has to name.
- *
- * A single accessor so the notice copy, the report generator and the
- * tests all read the same list. `evaluateEmbedPrivacy` already requires
- * a cross-origin frame's own origin to be declared, so the frame origin
- * is never absent from here.
- */
-export function consentNoticeOrigins(verdict: EmbedPrivacyVerdict): readonly string[] {
-	return verdict.contacts_after_activation;
 }

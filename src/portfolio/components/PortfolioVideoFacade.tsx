@@ -13,8 +13,9 @@ import type { PortfolioVideo } from '../video-facade';
  * component renders **no iframe and no image from a third-party
  * origin**, so "zero third-party requests on first paint" is a
  * property of the markup rather than a promise in the copy. That is
- * the same rule `/tools/<slug>` already implements
- * (`src/tools/embed-consent-notice.tsx`, Issue #498); this component
+ * the same publish-what-the-embed-contacts rule the Tool route's
+ * manifest declaration implements (`src/tools/embed-privacy.ts`,
+ * Issue #498); this component
  * is Portfolio's own surface, not a shared abstraction, because the
  * two obligations answer different questions — a Tool frame is a
  * whole application, a Portfolio video is one play affordance.

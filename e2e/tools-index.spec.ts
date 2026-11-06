@@ -119,31 +119,9 @@ test.describe('Tool Registry — /tools index (Issue #80, #195)', () => {
 		await page.goto('/tools');
 		await page.locator('[data-tool-slug="prototype"] a').click();
 		await page.waitForURL('/tools/prototype');
-		// Issue #498: ProtoType declares third-party contacts, so the
-		// shell opens with the consent notice and no frame. Reaching the
-		// Tool is two steps now — the notice, then the load — and the
-		// gate itself is asserted in e2e/tools-prototype.spec.ts.
-		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
-		// The notice is server-rendered: the button exists before React
-		// attaches the handler, so a click that lands before hydration is
-		// swallowed. Re-click until the frame appears (bounded), the same
-		// pattern the prototype spec uses.
-		const frame = page.locator('iframe[title="ProtoType Tool"]');
-		let mounted = false;
-		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
-			await page
-				.getByTestId('tool-embed-consent-activate')
-				.click({ timeout: 2_000 })
-				.catch(() => undefined);
-			mounted = await frame
-				.waitFor({ state: 'attached', timeout: 2_000 })
-				.then(() => true)
-				.catch(() => false);
-		}
-		expect(
-			mounted,
-			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
-		).toBe(true);
+		// PR #914 removed the consent gate: the shell mounts the frame
+		// directly. The frame's own contract is asserted in
+		// e2e/tools-prototype.spec.ts.
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 });
@@ -196,8 +174,10 @@ test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', ()
 		// Issue #785 abolishes Issue #288: the 404 surface carries the
 		// public nav, so a visitor who mistyped a slug can leave without
 		// using the browser's back button. (Reversed assertion — it used
-		// to require count 0.)
+		// to require count 0.) Issue #911 (2026-11-05) keeps that: the
+		// chrome removal applies only to states that SHOW a Tool.
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		await expect(page.locator('[data-testid="tools-not-found"] a[href="/tools"]')).toBeVisible();
 		// No breadcrumb here: the only labeled match for this URL is the
 		// `$slug` leaf, which `route-labels.ts` drops when the loader
 		// threw, so the chain resolves to nothing. Pinned so a future

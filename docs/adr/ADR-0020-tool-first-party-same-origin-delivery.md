@@ -189,6 +189,13 @@ iframe を残す。理由は隔離ではなく、次の 3 つであり、いず�
 2. **host chrome と scroll の分離。** `/tools/<slug>` は host の nav / footer /
    同意 band を持ち、tool の領域だけがその下で scroll する。direct 配信は
    chrome を失い、別の product surface になる。
+   **2026-11-05 更新（Issue #911、owner 決定）**: この記述はツールを表示する
+   面（iframe shell / consent gate）についてはもう成立しない —— それらは
+   chrome を持たず、frame が viewport 全体（`100dvh`）を占有する。chrome を
+   持つのはツールを表示しない 404 / 準備中 / blocked のみで、`/tools` index
+   も chrome を維持する。iframe を残す判断（§1.1 / §1.3 の URL・CSS-DOM 封じ
+   締め）は変わらず、変わったのは本条の「chrome の下に tool 領域が残る」と
+   いう前提のうち詳細ルートのツール利用面についての記述である。
 3. **CSS / DOM の封じ込め。** tool は別 document なので、host の global CSS と
    tool の CSS が互いに漏れない。これは security ではなく layout の性質である。
 
@@ -669,6 +676,8 @@ owner の決定は「sandbox に収める必要がない」であり、新しい
 - Tool が host の DOM を読めるようになるため、`/tools/<slug>` の host chrome に
   表示される情報（visitor の状態など）は Tool から見える。現時点で機微な
   表示はないが、今後 `/tools/**` に secret を描画しない、という制約が生まれる。
+  （2026-11-05 / Issue #911 以降、ツールを表示する面には host chrome 自体が
+  無いため露出はさらに減ったが、この制約は維持する。）
 - `mic-level` は §4.5 の条件を満たしたうえで `same_origin_static` へ移す。
   卒業時に変わるのは **container 側と document 側の Permissions-Policy の
   実測値**（`microphone=(self "https://rebuildup.dev")`）と frame の

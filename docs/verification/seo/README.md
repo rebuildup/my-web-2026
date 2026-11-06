@@ -49,8 +49,8 @@ route ごとの期待値:
 | --- | --- |
 | `/about` | `BreadcrumbList` + `Person` |
 | `/portfolio/aulymo` | `BreadcrumbList` + `CreativeWork` |
-| `/contact`, `/portfolio` | `BreadcrumbList` |
-| `/`, `/tools`, `/tools/prototype`, `/design-system` | 出力なし（宣言済み "not implemented"） |
+| `/contact`, `/portfolio`, `/tools` | `BreadcrumbList` |
+| `/`, `/tools/prototype`, `/design-system` | 出力なし（宣言済み "not implemented"） |
 | `/admin/**` | 対象外（認証必須の内部 surface） |
 
 出力されない（= 宣言されている）事实:

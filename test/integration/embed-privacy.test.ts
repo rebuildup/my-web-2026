@@ -6,21 +6,21 @@ import type { ManifestTool } from '../../src/tools/registry';
 import { listAllTools, resolveToolEntryHtml } from '../../src/tools/registry';
 
 /**
- * Third-party contact contract on real Worker documents (Issue #498).
+ * Third-party contact contract on real Worker documents (Issue #498;
+ * the click_to_load gate was removed by owner decision, PR #914).
  *
  * The unit suite pins the policy over object literals; this suite
  * proves the property on the documents a visitor actually receives,
  * through the local workerd pool and the real SSR pipeline:
  *
  *   1. **Non-empty guarantee.** Every embeddable Tool route returns
- *      200 and a document that references NO declared third-party
- *      origin through a request-bearing attribute. The origins are
- *      named as TEXT (the notice has to name them) — what must never
- *      happen is a URL that makes the browser fetch them.
- *   2. **The gate is real.** A Tool whose verdict is `click_to_load`
- *      ships a document with no `<iframe>` at all; a Tool whose verdict
- *      is `not_required` ships exactly one, pointing at the entry HTML
- *      the registry resolved.
+ *      200 and a document whose HOST markup references NO declared
+ *      third-party origin through a request-bearing attribute. (The
+ *      frame mounts directly and is same-origin for every shipped
+ *      Tool; the requests the framed artefact itself makes are the
+ *      ones the manifest declaration publishes.)
+ *   2. **The frame is real.** Every embeddable Tool ships exactly one
+ *      `<iframe>`, pointing at the entry HTML the registry resolved.
  *   3. **Non-vacuity.** The detector has to fire on something: a
  *      synthetic document carrying a `<link rel=preconnect>` to a
  *      declared origin is caught, so a green row above is evidence
@@ -83,8 +83,12 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 		for (const tool of embeddableTools()) {
 			const { status, html } = await htmlOf(`/tools/${tool.slug}`);
 			expect(status).toBe(200);
+			// The HOST markup adds nothing: every shipped frame src is
+			// same-origin, so the only third-party URLs in the document
+			// are the chrome's own. (What the framed artefact requests
+			// afterwards is the manifest declaration's subject.)
 			const added = thirdPartyUrls(html).filter((url) => !chrome.includes(url));
-			expect(added, `${tool.slug} adds a third-party request before activation`).toEqual([]);
+			expect(added, `${tool.slug} adds a third-party request in its host markup`).toEqual([]);
 		}
 	});
 
@@ -93,12 +97,10 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 		// Google Fonts on every page by owner decision (Issue #171 /
 		// #447). What this Issue governs is the EMBED's own requests, so
 		// the two services the Tool artefact would have pulled on load
-		// (Typekit, Apps Script) must not appear at all.
+		// (Typekit, Apps Script) must not appear in the host markup.
 		for (const tool of embeddableTools()) {
 			const { html } = await htmlOf(`/tools/${tool.slug}`);
-			const contacts = evaluateEmbedPrivacy(
-				toPrivacySubject(tool.slug, tool.delivery),
-			).contacts_after_activation;
+			const contacts = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery)).contacts;
 			const offending = thirdPartyUrls(html).filter(
 				(url) =>
 					!url.includes('fonts.googleapis.com') &&
@@ -109,27 +111,10 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 		}
 	});
 
-	it('mounts no frame at all while a Tool is waiting for activation', async () => {
-		const gated = embeddableTools().filter(
-			(tool) =>
-				evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery)).consent ===
-				'click_to_load',
-		);
-		expect(gated.length).toBeGreaterThan(0);
-		for (const tool of gated) {
-			const { html } = await htmlOf(`/tools/${tool.slug}`);
-			expect(html, `${tool.slug} rendered an iframe before activation`).not.toMatch(/<iframe/i);
-			expect(html).toContain('data-tool-consent="pending"');
-			expect(html).toContain('data-testid="tool-embed-consent"');
-		}
-	});
-
-	it('still mounts the frame for a Tool that declares no contact', async () => {
-		const ungated = embeddableTools().filter(
-			(tool) =>
-				evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery)).consent === 'not_required',
-		);
-		for (const tool of ungated) {
+	it('mounts exactly one frame for every embeddable Tool', async () => {
+		const tools = embeddableTools();
+		expect(tools.length).toBeGreaterThan(0);
+		for (const tool of tools) {
 			const { html } = await htmlOf(`/tools/${tool.slug}`);
 			const frames = html.match(/<iframe[^>]*>/gi) ?? [];
 			expect(frames, `${tool.slug} lost its frame`).toHaveLength(1);
@@ -144,49 +129,5 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 		const origin = 'https://use.typekit.net';
 		const synthetic = `<html><head><link rel="preconnect" href="${origin}"></head></html>`;
 		expect(thirdPartyUrls(synthetic)).toEqual([origin]);
-	});
-});
-
-describe('embed privacy measurements for the verification report (Issue #498)', () => {
-	it('prints the measured matrix for the verification report', async () => {
-		const control = await htmlOf(CONTROL_PATH);
-		const chrome = thirdPartyUrls(control.html);
-		const rows: Array<Record<string, string | number>> = [];
-		for (const tool of embeddableTools()) {
-			const verdict = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
-			const { status, html } = await htmlOf(`/tools/${tool.slug}`);
-			const frames = html.match(/<iframe[^>]*>/gi) ?? [];
-			const urls = thirdPartyUrls(html);
-			const row: Record<string, string | number> = {
-				slug: tool.slug,
-				path: `/tools/${tool.slug}`,
-				delivery: tool.delivery.kind,
-				frame_src: resolveToolEntryHtml(tool),
-				contacts: verdict.contacts_after_activation.join(' '),
-				consent: verdict.consent,
-				status,
-				ssr_iframes: frames.length,
-				ssr_third_party_added: urls.filter((url) => !chrome.includes(url)).length,
-				ssr_third_party_total: urls.length,
-				notice: html.includes('data-testid="tool-embed-consent"') ? 'yes' : 'no',
-				violations: verdict.violations.length,
-			};
-			// The pre-activation document of a gated Tool is carried into
-			// the report so the browser leg can measure the REAL served
-			// document instead of a hand-written facsimile. One row is
-			// enough, and a size guard keeps the marker line readable.
-			if (verdict.consent === 'click_to_load' && row.document === undefined) {
-				expect(html.length).toBeLessThan(600_000);
-				row.document = html;
-			}
-			rows.push(row);
-		}
-		console.log(`EMBED_PRIVACY_MEASUREMENT ${JSON.stringify(rows)}`);
-		expect(rows.length).toBe(embeddableTools().length);
-		// The report would be meaningless if every row were ungated: at
-		// least one shipped Tool must exercise the consent path, and the
-		// report needs its document to measure.
-		expect(rows.some((row) => row.consent === 'click_to_load')).toBe(true);
-		expect(rows.some((row) => typeof row.document === 'string')).toBe(true);
 	});
 });

@@ -1,12 +1,10 @@
-# Tool embed privacy — declared third-party contacts and the consent gate (Issue #498)
+# Tool embed privacy — declared third-party contacts (Issue #498)
 
 > Canonical description of what an embedded Tool is allowed to do to a
-> visitor's network, and of the gate that keeps it from doing it before
-> anyone asked. The executable definition is
+> visitor's network, and of the declaration that publishes it. The
+> executable definition is
 > [`src/tools/embed-privacy.ts`](../../src/tools/embed-privacy.ts); this
 > document explains why each rule exists and how to change it safely.
->
-> Verification record: [`docs/verification/legal/embed-privacy-consent.md`](../verification/legal/embed-privacy-consent.md).
 
 ## Why this document exists
 
@@ -25,19 +23,20 @@ document that, before the visitor touched anything, contacted:
 | `https://use.typekit.net` | Adobe Typekit loader script injected by an inline script in the artefact's `index.html` |
 | `https://script.google.com` | a Google Apps Script endpoint in `src/gamesets/022_Login.ts`, reachable from `src/components/002_Header.tsx`; its `checkPassword()` puts `id` / `password` in the query string |
 
-Every visitor to `/tools/prototype` paid for that, including the ones
-who closed the tab immediately. Nothing about it was visible on the
-host page.
+Nothing about that was visible on the host page.
 
-This Issue adds the missing half: the host **publishes** which origins
-each Tool may contact, and it **loads nothing** until the visitor
-activates the load.
+Issue #498 added the missing half: the host **publishes** which origins
+each Tool may contact, and fails closed when a Tool would be framed
+without that declaration. The click_to_load **gate** that originally
+sat in front of the frame was removed by owner decision (PR #914): the
+iframe mounts directly, and the declaration is the visitor-facing
+disclosure of what the mount will do.
 
 ## Scope
 
 In scope: what an embedded Tool (`/tools/<slug>`, ADR-0006 delivery)
-costs a visitor's network before and after activation, and how that is
-declared, gated, tested and reported.
+costs a visitor's network, and how that is declared, tested and
+published.
 
 Out of scope, deliberately, because they belong to other owners:
 
@@ -45,11 +44,9 @@ Out of scope, deliberately, because they belong to other owners:
   including `/tools/<slug>` — mounts GA4 and Google Fonts in the site
   chrome (Issue #171 mounted GA4; Issue #447 measured the origin
   inventory). That is a deliberate product decision and a larger
-  surface than the embed's. This Issue does not change it.
+  surface than the embed's. This contract does not change it.
 - **Outbound third-party API reads.** `src/external-api/**` (Issue
   #499) owns those, and it is not wired to a route.
-- **A consent store.** No cookie, no `localStorage`, no server-side
-  record. See §5.
 
 ## The contract
 
@@ -73,34 +70,24 @@ An empty `third_party_origins` array is a **written declaration** that
 the Tool contacts nobody — not an omission. The inverse also holds: a
 `delivery.privacy` block whose `third_party_origins` is missing, `null`
 or not an array is a violation (`privacy.origins.missing`), not an
-empty list. Before that rule, `privacy: {}` derived
-`consent: not_required` and mounted the frame eagerly, so a manifest
-could switch the gate off by leaving the field out.
+empty list. Before that rule, `privacy: {}` looked like a written
+"no contact" declaration, so a manifest could publish an undeclared
+contact list by leaving the field out.
 `host_disabled` and `not_integrable_yet` entries are not policed,
 because nobody frames them; a Tool that graduates must declare its
 contacts first.
 
-### 2. Consent is derived, never declared
+### 2. The frame mounts directly — the declaration is the disclosure
 
-There is deliberately **no** `consent_mode` field. The host computes
-it:
-
-```text
-click_to_load  ⇔  the frame is cross-origin  OR  the frame src could not be resolved  OR  third_party_origins is non-empty  OR  the declaration has no origin list
-not_required   ⇔  otherwise
-```
-
-So there is nothing to switch off. An operator cannot write
-`"consent_mode": "not_required"` and ship a Tool that phones home; the
-only way to `not_required` is to prove the Tool is same-origin **and**
-declares no contact.
+There is no gate and there is deliberately **no** `consent_mode` field:
+nothing a manifest could write would weaken the disclosure. The
+`/tools/<slug>` route renders the iframe as soon as the route renders,
+after the embed policy and this contract have both passed the entry.
 
 A frame `src` the contract cannot resolve at all (`javascript:`,
-`data:`, garbage) is read as **third-party**, so it fails closed: the
-gate asks before it mounts. `embed-policy.ts` refuses such an `src`
-outright (`embed.frame-src.invalid-scheme`), so nothing unresolved is
-ever framed — the fail-closed reading here is the second line of
-defence.
+`data:`, garbage) is not special-cased here: `embed-policy.ts` refuses
+such an `src` outright (`embed.frame-src.invalid-scheme`), so nothing
+unresolved is ever framed.
 
 The frame `src` itself is resolved by `resolveToolFrameSrc()` in
 `embed-policy.ts` — the SAME function the policy uses — so the privacy
@@ -122,33 +109,18 @@ without publishing which origin serves it.
 queries and fragments (`https://x.test/track?id=1` is a tracking URL,
 not an origin), `http:`, credentials in the authority, and repeats.
 
-### 5. The gate stores nothing
-
-Activation is per visit. The route holds one boolean of React state;
-no cookie is set, nothing is written to storage, and a reload asks
-again. A consent record would be a new published data surface with its
-own retention story — that is an owner decision, not this Issue's
-call. `e2e/tools-prototype.spec.ts` asserts the reload behaviour so
-the current choice stays deliberate rather than accidental.
-
-## What the gate looks like
+## What the route does
 
 `src/routes/tools.$slug.tsx`:
 
 - `evaluateEmbedPrivacy()` runs in the **loader**. A violation renders
   the existing blocked placeholder (both violation families are listed
   there) — no iframe, ever.
-- A clean `click_to_load` verdict renders
-  `ToolConsentNotice` (`src/tools/embed-consent-notice.tsx`): the
-  Tool name, the sentence that nothing is loaded and nothing is
-  contacted yet, the **declared origin list**, the declared purpose in
-  both locales, the "no consent record is stored" note, and one
-  `<button type=button>`.
-- Pressing it flips the state and mounts the ordinary
-  `ToolEmbedShell` — same referrer policy, same message contract as
-  before this Issue (a first-party frame has no sandbox — ADR-0020).
+- A clean verdict renders the ordinary `ToolEmbedShell` directly (PR
+  #914): same referrer policy, same message contract as before Issue
+  #498 (a first-party frame has no sandbox — ADR-0020).
 
-The notice has no visitor-specific content (no analytics id, no
+The shell has no visitor-specific content (no analytics id, no
 account, no personal data): it is rendered for every visitor of the
 route, crawlers included.
 
@@ -157,15 +129,14 @@ route, crawlers included.
 | Question | Where it is answered |
 | --- | --- |
 | Policy over hostile fixtures (wildcards, undeclared external frame, missing purpose, …) | `src/tools/embed-privacy.test.ts` |
-| Notice markup carries no request-bearing URL | `src/tools/embed-consent-notice.test.tsx` |
-| The served document contacts nothing before activation, and the detector is not vacuous | `test/integration/embed-privacy.test.ts` |
-| Activation is what mounts the frame; the origin list is shown | `e2e/tools-prototype.spec.ts`, `e2e/lazy-media.spec.ts` |
-| Measured record + screenshot | `docs/verification/legal/embed-privacy-consent.md` |
+| The served document's host markup adds no third-party request beyond the chrome's own, and the detector is not vacuous | `test/integration/embed-privacy.test.ts` |
+| The frame mounts directly; the declared contacts are the disclosure | `e2e/tools-prototype.spec.ts`, `e2e/lazy-media.spec.ts` |
 
 The integration suite's headline assertion is a subset, not a count:
-the third-party URLs a Tool document references must be a **subset of
-the ones an embed-free page (`/contact`) already references**. The
-baseline is asserted non-empty, so the subset cannot pass vacuously.
+the third-party URLs a Tool document's HOST markup references must be a
+**subset of the ones an embed-free page (`/contact`) already
+references**. The baseline is asserted non-empty, so the subset cannot
+pass vacuously.
 
 ## Re-measuring after a submodule bump
 
@@ -181,28 +152,22 @@ behaviour. Re-declaring is therefore a manual duty on every Tool bump:
    (the Tool frame declares no `allow-top-navigation` / `allow-popups`
    capability and a same-origin link cannot fire a third-party request
    from the host document).
-3. Write the remainder into `third_party_origins`, update `purpose`
-   and `basis`, and re-run `pnpm run verify:embed-privacy-screenshot`.
+3. Write the remainder into `third_party_origins`, and update `purpose`
+   and `basis`.
 4. A new origin shows up as a publication-surface delta
    (`pnpm run publication:check`) — record it deliberately with
    `pnpm run publication:write`.
 
 ## Open owner decisions
 
-1. **Consent persistence** (§5). Per-visit re-asking is the current,
-   privacy-minimal behaviour. A remembered consent, a cookie banner, or
-   a "necessary vs. functional" classification are all owner calls
-   that need their own record.
-2. **ProtoType's Apps Script endpoint.** The declaration publishes it,
+1. **ProtoType's Apps Script endpoint.** The declaration publishes it,
    so the visitor is told, but the host cannot fix it: the Tool sends a
-   `password` query parameter to a third-party endpoint inside a frame
-   the visitor activated. Whether ProtoType keeps that call, drops it,
-   or moves it to its own origin is a ProtoType-side decision, and it
-   is the strongest reason a future Tool should not need a consent
-   gate at all.
-3. **YouTube / X / Discord embeds.** None ship here, and none are
+   `password` query parameter to a third-party endpoint inside the
+   frame. Whether ProtoType keeps that call, drops it, or moves it to
+   its own origin is a ProtoType-side decision.
+2. **YouTube / X / Discord embeds.** None ship here, and none are
    planned. If one is added, it enters through `delivery.external_url`
-   and is gated by this contract automatically — but the *publication*
-   of that host also needs a `publication:write` record, and the
-   privacy copy a visitor reads would need an owner decision about what
-   the site says about third-party embeds in general.
+   and is policed by this contract automatically — but the
+   *publication* of that host also needs a `publication:write` record,
+   and what the site says about third-party embeds in general would
+   need an owner decision.

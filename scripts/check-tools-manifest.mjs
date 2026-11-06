@@ -43,9 +43,10 @@
  *      request. The entry must declare `delivery.privacy`, every
  *      declared origin must be a bare https origin, a cross-origin
  *      frame must name its own origin, and a non-empty contact list
- *      needs a purpose in both locales. The consent mode itself is
- *      DERIVED from those facts, so there is nothing to bypass here:
- *      a Tool that contacts a third party cannot ship without the gate.
+ *      needs a purpose in both locales. The frame mounts directly
+ *      (PR #914 removed the consent gate); the DECLARATION is the
+ *      published disclosure, so there is nothing to bypass here:
+ *      a Tool that contacts a third party cannot ship without declaring it.
  * 12. Issue #879 — `docs/tools/inventory.md` restates the manifest
  *      (`classification`, `source.pinned_sha`, and the per-class
  *      counts). The restatement is compared against the manifest in

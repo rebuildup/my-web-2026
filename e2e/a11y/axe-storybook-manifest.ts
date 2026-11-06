@@ -334,13 +334,6 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 		expect: 'pass',
 		note: 'Project card — the published project index entry.',
 	},
-	{
-		file: 'src/tools/embed-consent-notice.stories.tsx',
-		title: 'Tools/Embed consent notice',
-		exports: ['ClickToLoad', 'ExternalFrame', 'MissingPurpose', 'Activated'],
-		expect: 'pass',
-		note: 'Embed consent notice — the third-party frame consent surface.',
-	},
 ];
 
 /** One story that is deliberately not audited yet, with the reason. */

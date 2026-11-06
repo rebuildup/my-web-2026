@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import type { HTMLAttributeReferrerPolicy, ReactNode } from 'react';
 import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
@@ -7,19 +7,14 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { ToolConsentNotice } from '../tools/embed-consent-notice';
 import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
 	ToolHostMessageDeclaration,
 } from '../tools/embed-policy';
-import {
-	CONSENT_MODE_CLICK_TO_LOAD,
-	evaluateEmbedPrivacy,
-	toPrivacySubject,
-} from '../tools/embed-privacy';
-import type { EmbedPrivacyVerdict, EmbedPrivacyViolation } from '../tools/embed-privacy';
+import { evaluateEmbedPrivacy, toPrivacySubject } from '../tools/embed-privacy';
+import type { EmbedPrivacyViolation } from '../tools/embed-privacy';
 import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
@@ -68,8 +63,8 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  *   - 2026-11-05 (Issue #911): the owner narrowed that restoration to
  *     the states that do NOT show a Tool — 「各ツールはヘッダーなどを
  *     いれず、各ツール全画面でそれぞれ使われるようにする」. The
- *     embeddable shell and the consent gate now render NO chrome and
- *     give the whole viewport to the Tool (`100dvh`, no subtraction
+ *     embeddable shell renders NO chrome and
+ *     gives the whole viewport to the Tool (`100dvh`, no subtraction
  *     layout); the 404 / `host_disabled` / `blocked` placeholders keep
  *     `ToolChrome` because a visitor who is not using a Tool still has
  *     to be able to leave. The `/tools` index is a list page, not
@@ -118,14 +113,13 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  *   - `disabled`  — the manifest marks the Tool `host_disabled`
  *     (nothing to police; see the "Coming soon" copy below).
  *
- * Third-party contact + consent gate (Issue #498): the loader ALSO
- * runs `evaluateEmbedPrivacy()` (`src/tools/embed-privacy.ts`) over
- * the same entry. A violation blocks the frame exactly like an embed
- * violation, and a clean verdict whose `consent` is `click_to_load`
- * renders `ToolConsentNotice` instead of the frame — no iframe, and no
- * third-party origin anywhere in the document, until the visitor
- * activates the load. The consent mode is derived from the manifest
- * declaration, never declared by it (see the policy module header).
+ * Third-party contact contract (Issue #498): the loader ALSO runs
+ * `evaluateEmbedPrivacy()` (`src/tools/embed-privacy.ts`) over the same
+ * entry. A violation blocks the frame exactly like an embed violation.
+ * The former `click_to_load` consent gate was removed by owner decision
+ * (PR #914): the iframe mounts directly, and the manifest's
+ * `delivery.privacy` declaration remains the published disclosure of
+ * which origins the framed document may contact.
  *
  * The `embeddable` branch also carries the Tool's `host_message`
  * declaration into `ToolEmbedShell`, which is the only place a
@@ -174,7 +168,7 @@ export const Route = createFileRoute('/tools/$slug')({
 		if (violations.length > 0 || privacy.violations.length > 0) {
 			return { state: 'blocked' as const, tool, violations, privacy };
 		}
-		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool, privacy };
+		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
 		if (tool.delivery.kind === 'host_disabled') {
 			const view: DisabledToolView = {
 				slug: tool.slug,
@@ -265,8 +259,8 @@ export const Route = createFileRoute('/tools/$slug')({
  *
  * `ToolChrome` now wraps exactly three surfaces: the 404, the
  * `host_disabled` placeholder and the `blocked` placeholder. The
- * embeddable shell and the consent gate do NOT come through here any
- * more — #911 gave those the whole viewport, so this column exists for
+ * embeddable shell does NOT come through here any
+ * more — #911 gave it the whole viewport, so this column exists for
  * the surfaces where a visitor is NOT using a Tool and therefore still
  * needs the site chrome to leave.
  *
@@ -301,23 +295,6 @@ const frameArea = css({
 	height: '100dvh',
 	minWidth: '0',
 	overflow: 'hidden',
-});
-
-/**
- * The consent gate's own area (Issue #498 / #911): chrome-free and
- * viewport-tall.
- *
- * `minHeight` rather than `height` on purpose: the notice lists the
- * origins the frame may contact plus the declared purpose, and at 390px
- * that content is taller than a phone viewport. A fixed `100dvh` here
- * would clip it behind `overflow: hidden` — the gate must be readable
- * and scrollable even though the frame it guards is exactly one
- * viewport tall.
- */
-const gateArea = css({
-	width: '100%',
-	minHeight: '100dvh',
-	minWidth: '0',
 });
 
 function ToolChrome({ children }: { children: ReactNode }) {
@@ -416,15 +393,15 @@ function ToolRoute() {
 			/>
 		);
 	}
-	const { tool, public: summary, privacy } = loaderData;
+	const { tool, public: summary } = loaderData;
 	return (
-		<ToolEmbedGate
+		// Owner decision (PR #914): no consent gate — the iframe mounts
+		// directly. `src` comes from `resolveToolEntryHtml`, the same
+		// function the embed-policy verifier uses, so the rendered frame
+		// can never point somewhere the policy did not see.
+		<ToolEmbedShell
 			slug={tool.slug}
 			displayName={tool.display_name}
-			privacy={privacy}
-			// Issue #465: `src` comes from `resolveToolEntryHtml`, the same
-			// function the embed-policy verifier uses, so the rendered
-			// frame can never point somewhere the policy did not see.
 			src={resolveToolEntryHtml(tool)}
 			sandbox={summary.iframe.sandbox}
 			referrerPolicy={summary.iframe.referrer_policy}
@@ -434,81 +411,6 @@ function ToolRoute() {
 	);
 }
 
-/**
- * Consent gate in front of the frame (Issue #498).
- *
- * The gate owns exactly one piece of state: whether the visitor has
- * activated the load. Until then the document carries the notice and
- * no frame — which is what makes "no third-party request before
- * activation" a structural property of the route rather than a promise
- * in the copy (asserted in `test/integration/embed-privacy.test.ts`).
- *
- * The state is deliberately NOT persisted: no cookie, no
- * `localStorage`, no server-side record. A consent store would be a new
- * published data surface with its own retention story, and this Issue
- * does not need one — see `docs/tools/embed-privacy.md` §5.
- */
-function ToolEmbedGate({
-	slug,
-	displayName,
-	privacy,
-	src,
-	sandbox,
-	referrerPolicy,
-	allow,
-	hostMessage,
-}: {
-	slug: string;
-	displayName: string;
-	privacy: EmbedPrivacyVerdict;
-	src: string;
-	sandbox?: string | undefined;
-	referrerPolicy: string;
-	allow?: string | undefined;
-	hostMessage: ToolHostMessageDeclaration | undefined;
-}) {
-	const [activated, setActivated] = useState(false);
-
-	if (privacy.consent === CONSENT_MODE_CLICK_TO_LOAD && !activated) {
-		// Owner decision 2026-11-05 (Issue #911): the gate is part of
-		// the Tool's own surface, so it no longer carries the site
-		// chrome — the notice owns the viewport on its own.
-		// `ToolConsentNotice` itself was always chrome-free (it is also
-		// a Storybook fixture); the route decides what wraps it.
-		return (
-			<div className={gateArea}>
-				<ToolConsentNotice
-					displayName={displayName}
-					contacts={privacy.contacts_after_activation}
-					purpose={declaredPurpose(slug)}
-					frameIsThirdParty={privacy.frame_is_third_party}
-					onActivate={() => setActivated(true)}
-				/>
-			</div>
-		);
-	}
-
-	return (
-		<ToolEmbedShell
-			slug={slug}
-			displayName={displayName}
-			src={src}
-			sandbox={sandbox}
-			referrerPolicy={referrerPolicy}
-			allow={allow}
-			hostMessage={hostMessage}
-			consentState={activated ? 'granted' : 'not-required'}
-		/>
-	);
-}
-
-/**
- * The declared purpose for a Tool, read from the manifest entry the
- * verdict was derived from. `evaluateEmbedPrivacy` already refuses a
- * Tool that declares contacts without a purpose in both locales, so a
- * blocked entry never reaches the gate and this cannot render an empty
- * purpose under a list of origins.
- */
 /**
  * Whether the manifest's capability grant names `fullscreen`.
  *
@@ -521,13 +423,6 @@ function ToolEmbedGate({
  */
 function grantsFullscreen(allow: string | undefined): boolean {
 	return (allow ?? '').split(/\s+/).some((token) => token.trim().toLowerCase() === 'fullscreen');
-}
-
-function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
-	const tool = getTool(slug);
-	if (!tool || tool.delivery.kind === 'host_disabled') return undefined;
-	const purpose = tool.delivery.privacy?.purpose;
-	return purpose ? { ja: purpose.ja, en: purpose.en } : undefined;
 }
 
 /**
@@ -564,7 +459,6 @@ function ToolEmbedShell({
 	referrerPolicy,
 	allow,
 	hostMessage,
-	consentState,
 }: {
 	slug: string;
 	displayName: string;
@@ -573,7 +467,6 @@ function ToolEmbedShell({
 	referrerPolicy: string;
 	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
-	consentState?: 'granted' | 'not-required' | undefined;
 }) {
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
 	const getToolWindow = useCallback(() => frameRef.current?.contentWindow ?? null, []);
@@ -591,12 +484,7 @@ function ToolEmbedShell({
 		// Tool gets the viewport. `frameArea` is a definite `100dvh`, so
 		// there is no subtraction layout left to do and no chrome height
 		// the frame can be shorter or taller than.
-		<div
-			data-route="tools/$slug"
-			data-tool-slug={slug}
-			data-tool-consent={consentState ?? 'not-required'}
-			className={frameArea}
-		>
+		<div data-route="tools/$slug" data-tool-slug={slug} className={frameArea}>
 			<iframe
 				ref={frameRef}
 				title={`${displayName} Tool`}

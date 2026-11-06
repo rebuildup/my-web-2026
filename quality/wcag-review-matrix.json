@@ -9,7 +9,7 @@
 		"aaAuditComplete": false,
 		"ledgerStructure": "green",
 		"auditedQuality": "not-passed",
-		"humanReviewOutstanding": 22,
+		"humanReviewOutstanding": 21,
 		"humanReviewVerified": 0,
 		"scopeDecisionsApplicableUnverified": 12,
 		"knownAxeViolations": {
@@ -19,7 +19,7 @@
 			"ledgers": ["e2e/a11y/axe-baseline.json", "e2e/a11y/axe-storybook-baseline.json"],
 			"note": "The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers now hold 0 records. Issue #718 stays open for the MANUAL audit items below, not for a recorded axe violation. An open Issue is not an unfixed violation — read \"recordedViolations\" for that."
 		},
-		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 22 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers hold 0 records, so Issue #718 remains open for the manual items above rather than for a recorded axe violation. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
+		"note": "This ledger is NOT a completed WCAG 2.2 AA audit. The 21 manual items are still outstanding, and 12 of the 25 criteria outside this table are applicable but unverified. The axe-core violations Issue #718 tracked were fixed in the implementation (PR #745) and both ledgers hold 0 records, so Issue #718 remains open for the manual items above rather than for a recorded axe violation. The gate refuses a ledger that claims the AA audit is complete while this is true (release-assessment-unbacked)."
 	},
 	"states": [
 		{
@@ -110,15 +110,6 @@
 			"path": "src/editorial/glyph-headings.stories.tsx",
 			"export": "Default",
 			"reproduces": {}
-		},
-		{
-			"id": "embed-consent-story",
-			"kind": "story",
-			"path": "src/tools/embed-consent-notice.stories.tsx",
-			"export": "ClickToLoad",
-			"reproduces": {
-				"error": ["export:MissingPurpose"]
-			}
 		},
 		{
 			"id": "home-route",
@@ -440,20 +431,6 @@
 			}
 		},
 		{
-			"id": "embed-consent-hover",
-			"sc": ["1.4.13"],
-			"subject": "hover / focus で開く内容があり、操作できるなら閉じられること",
-			"scope": "Tool の埋め込み同意表示。",
-			"surface": "embed-consent-story",
-			"state": "normal",
-			"method": "human",
-			"autoGates": [],
-			"review": {
-				"state": "not-reviewed",
-				"assignedTo": "owner"
-			}
-		},
-		{
 			"id": "orientation",
 			"sc": ["1.3.4"],
 			"subject": "表示が向きを固定していないこと",
@@ -511,6 +488,10 @@
 		}
 	],
 	"excluded": [
+		{
+			"sc": "1.4.13",
+			"reason": "hover / focus で開く内容を出荷していない。唯一の対象面だった Tool の埋め込み同意表示は PR #914（owner 決定）で削除された。"
+		},
 		{
 			"sc": "1.2.2",
 			"reason": "事前録音の音声・動画を出荷していない。Tool の埋め込みは同一オリジンの iframe 製の第三者コードで、この基準の対象外。"

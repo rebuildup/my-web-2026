@@ -156,8 +156,8 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 			// the loaderData WAS the public Tool record. It went unnoticed
 			// because Issue #288 removed the breadcrumbs from this route in
 			// the same era; Issue #785 put them back; Issue #911 (owner
-			// decision 2026-11-05) then took the chrome off the two states
-			// that SHOW a Tool (iframe shell / consent gate) and kept it on
+			// decision 2026-11-05) then took the chrome off the state
+			// that SHOWS a Tool (the iframe shell) and kept it on
 			// the states that do not (404 / 準備中 / blocked). This entry
 			// therefore still feeds the placeholder states, and it still
 			// has to read the wrapper rather than the pre-#465 record.

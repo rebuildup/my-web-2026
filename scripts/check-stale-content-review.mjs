@@ -334,10 +334,11 @@ export const DEFAULT_ARTICLE_SOURCES = {
 		{
 			id: 'notion-import',
 			kind: 'external',
-			location: 'the Notion import (the approved read-content integration)',
+			location:
+				'the Notion import (the approved read-content integration) — its committed projection is src/portfolio/notion/generated/snapshot.json',
 			routes: [],
 			description:
-				'Article bodies imported from Notion. The import runs outside this repository, so the imported prose is not observable offline.',
+				'The import writes its committed projection to `src/portfolio/notion/generated/snapshot.json`. The gate does not parse that JSON, so the imported prose stays `unobserved` rather than reviewed.',
 		},
 	],
 };

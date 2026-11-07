@@ -14,13 +14,19 @@ import { hasPublishedMediaKey, publicProjects } from './publish';
  * 2.2). There is no runtime call and no scheduled job to keep the two
  * stores in step: a person runs the ingest when they mean to.
  *
- * The committed default is an **empty, `unavailable`** snapshot. That is
- * deliberate: a checkout that has never run the sync must contribute zero
- * projects and must not fail the build of a contributor who has no token.
- * The `unavailable` / reason pair is carried into the snapshot itself rather
- * than being flattened into "zero records", so a surface that wants to say
- * so can; no shipped surface renders it yet, because that is a public-copy
- * change (ADR-0018 §2.5) and not part of this ticket.
+ * The committed snapshot used to be an **empty, `unavailable`** placeholder,
+ * so a checkout that had never run the sync contributed zero projects. On
+ * 2026-11-05 the owner published every page in the authoring database and
+ * the ingest ran against it, so what ships now is the real record set. The
+ * properties that made the placeholder safe still hold, and are what the
+ * contract tests pin: the file is validated by the same gate the Worker
+ * applies, a record that fails it publishes nothing (`null` → empty), and
+ * only `published` + `public` records ever leave `publicProjects`. A
+ * contributor with no token still needs no token: the file is committed,
+ * not fetched at build time. The `unavailable` / reason pair stays carried
+ * in the snapshot rather than being flattened into "zero records", so a
+ * surface that wants to say so can; no shipped surface renders it yet,
+ * because that is a public-copy change (ADR-0018 §2.5).
  *
  * Parsing happens once at module load. A snapshot that does not validate
  * becomes `null`, and every consumer treats `null` as "publish nothing

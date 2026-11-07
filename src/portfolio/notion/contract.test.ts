@@ -158,8 +158,30 @@ describe('committed snapshot', () => {
 		expect(parsed).not.toBeNull();
 	});
 
-	it('publishes nothing before a database is connected', () => {
+	it('holds only public, published records (the owner published every page)', () => {
+		// The committed snapshot is no longer the empty `unavailable`
+		// placeholder: on 2026-11-05 the owner decided that every page in the
+		// authoring database is published, the ingest ran against the real
+		// database, and the result is what ships. The invariant that survives
+		// the change is the publication boundary, not emptiness — the bundled
+		// file may never carry a record a visitor must not see.
 		const parsed = parseSnapshot(defaultSnapshot);
+		expect(parsed).not.toBeNull();
+		expect(parsed?.availability).toBe('public');
+		expect(parsed?.records.length).toBeGreaterThan(0);
+		for (const record of parsed?.records ?? []) {
+			expect(record.status).toBe('published');
+			expect(record.visibility).toBe('public');
+		}
+	});
+
+	it('publishes nothing from an empty, unavailable document', () => {
+		// The fail-closed shape is still reachable and still contributes zero
+		// projects: a source that has never been connected, or one that is
+		// down with no last-known records.
+		const parsed = parseSnapshot(
+			snapshot({ availability: 'unavailable', unavailableReason: 'source_error', records: [] }),
+		);
 		expect(parsed?.records).toEqual([]);
 		expect(parsed?.availability).toBe('unavailable');
 	});

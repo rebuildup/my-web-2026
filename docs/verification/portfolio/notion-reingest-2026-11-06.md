@@ -104,6 +104,7 @@ evidence status / links は D1 行のまま保つ（1 slug = 1 URL = 1 カード
 | `portfolio/baramoji/thumbnail/02f697a7….jpg` | **404** | `portfolio/notion/02f697a7….jpg` = 200 | key を既存側へ訂正 |
 
 - snapshot が参照する unique key 123 件を全数 HEAD し、404 は上記 3 件のみ。
+- `contentDigest` は shipped な records から再計算した（`62d9423a…`）。ingest 実行時に記録した `df7b78a7…` は local-only key が混在した時点の値で、本文件の shipped 内容とは別物として扱う。
   訂正後は 123/123 が 200（バイトは同一 sha256 なので内容の欠落は 0）。
 - 再発防止は runbook §6.1（commit 前の全 key 存在確認）に手順として記録した。
   根本原因は「local target の取り込み結果をそのまま commit できる」ことであり、

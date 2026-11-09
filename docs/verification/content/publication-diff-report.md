@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 47 |
 | First-party hosts | 0 |
-| Approved transition | 209 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,18 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (10)
+### Added external hosts (0)
 
-- `pomodoro.yusuke-kim.com`
-- `prototype.yusuke-kim.com`
-- `rebuildup.github.io`
-- `twitter.com`
-- `www.nicovideo.jp`
-- `www.reactbits.dev`
-- `www.tiktok.com`
-- `www2.ube-k.ac.jp`
-- `youtu.be`
-- `youtube.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -170,10 +161,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -242,7 +233,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
-| `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
 | `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1974102198364876878` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -251,8 +242,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://twitter.com/361do_sleep/status/1935259157881569753` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/complexivetunes/status/1842760522137297009` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/snzkuo/status/1962833748761976865` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
-| `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
@@ -438,213 +428,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host pomodoro.yusuke-kim.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host prototype.yusuke-kim.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host rebuildup.github.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host twitter.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.nicovideo.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.reactbits.dev appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.tiktok.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www2.ube-k.ac.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host youtu.be appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6403113
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6472931
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6520211
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6759404
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6872180
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6932001
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/6939869
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/7758823
-- **WARN** `W002 external-url-added` External URL added: https://361do.booth.pm/items/7935112
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae/_FoldLayers
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae/_RGBDelay
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae_FoldLayers
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae_MultiSlicer
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae_RGBDelay
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Ae_sep_color
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/CodeType/_p5
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/CodeType_p5
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/FlashBeat
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/LiteGlow
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/M5/_Clock
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/M5_Clock
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ProtoType
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/kosen-fes-2025
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2025
-- **WARN** `W002 external-url-added` External URL added: https://pomodoro.yusuke-kim.com
-- **WARN** `W002 external-url-added` External URL added: https://prototype.yusuke-kim.com
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.github.io
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_design/status/1905290284763857355
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_design/status/1905491397169611125
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_design/status/1974102198364876878
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_design/status/1984262322828067072
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_sleep/status/1845653703463989526
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/361do_sleep/status/1935259157881569753
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/complexivetunes/status/1842760522137297009
-- **WARN** `W002 external-url-added` External URL added: https://twitter.com/snzkuo/status/1962833748761976865
-- **WARN** `W002 external-url-added` External URL added: https://www.nicovideo.jp/watch/sm44678796
-- **WARN** `W002 external-url-added` External URL added: https://www.reactbits.dev/components/dock
-- **WARN** `W002 external-url-added` External URL added: https://www.tiktok.com/@harutoiizawa/video/7421877342030597384
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@darupoi_
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@hiyori_hiyoko
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@snzkuo
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@susuyo_soot
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=-_PKhPMXMDY
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=6xtoFf0h8x4
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=73KhhTBE3Mk
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=7Qo75j
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=7Qo75j_1X6Y
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=8erghVxQKgg
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=9pNjS_Ahfjc
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=A1r3QpnS3GA
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=B0qWZH3e5ik
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=BQEQMC1sL1M
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=EbtybmiN5pM
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=H-jr6SpAaE8
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=IcknittbbFw
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=Inr6kNzWMcA
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=KYRbEEMCam0
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=LNnxiVA9Idw
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=LW1KBCgvEPQ
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=MDcfP97NVpY
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=NjRVa41kHBs
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=O
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=O_VRIuKM9gw
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=R1nFXZB9lG8
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=RGKhatEchrI
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=Rdrylnr6Vdc
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=V15m8WLGVwg
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=X7XddKpTolw
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=ZJsJ2ss4IBw
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=Z_UAvUt4scU
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=aLBMEIOSxdE
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=aSjeoaoBKPc
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=ay5stCLI9v4
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=b2NTglk9tvI
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=bTUbyDqVzIs
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=c02NG9I1iO8
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=easT0DZDAs8
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=j-Ja7kV_S-I
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=llftGyEqH
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=llftGyEqH_4
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=o4yKnfV2YVs
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=oqfjwzVYDc8
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=qwlAC0qPMXI
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=rKprmWQP7l0
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=syScwjPw57U
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=szUAV_gMLQY
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=vcUXmDwI7PQ
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=wtw0tXAqRKE
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=yr2bwYk0wAk
-- **WARN** `W002 external-url-added` External URL added: https://www2.ube-k.ac.jp/fes2025
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1893620585491792320
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1895423219542466819
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1904339929557266477
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1905491397169611125
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1911047618324795838
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1974102198364876878
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_design/status/1984262322828067072
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1790691816637157444
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1815006753144381874
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1832734742124609779
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1837100915419140131
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1838567775390044294
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1840369939967840508
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1844685698991067303
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1845653703463989526
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1850405797592973597
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1852638050976751749
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1873992217502900284
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1877667236900479412
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1878220390595453260
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1882412041526477277
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1901612081641910556
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1918615732939575763
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1923332601713918423
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1924057386731655327
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do/_sleep/status/1955248758243070349
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1893620585491792320
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1895423219542466819
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1904339929557266477
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1905491397169611125
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1911047618324795838
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/2079195581831156023?s=20
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1790691816637157444
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1815006753144381874
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1832734742124609779
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1837100915419140131
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1838567775390044294
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1840369939967840508
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1844685698991067303
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1845653703463989526
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1850405797592973597
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1852638050976751749
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1873992217502900284
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1877667236900479412
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1878220390595453260
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1882412041526477277
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1901612081641910556
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1918615732939575763
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1923332601713918423
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1924057386731655327
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1995074984331645045/video/1
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/2000158683737768405?s=20
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/2017669205781581891?s=20
-- **WARN** `W002 external-url-added` External URL added: https://x.com/82_yagi
-- **WARN** `W002 external-url-added` External URL added: https://x.com/Lookeong_Works
-- **WARN** `W002 external-url-added` External URL added: https://x.com/PA_Ru6
-- **WARN** `W002 external-url-added` External URL added: https://x.com/complexivetunes/status/1842760522137297009
-- **WARN** `W002 external-url-added` External URL added: https://x.com/darupoi_
-- **WARN** `W002 external-url-added` External URL added: https://x.com/markkuwu
-- **WARN** `W002 external-url-added` External URL added: https://x.com/morpho/_88
-- **WARN** `W002 external-url-added` External URL added: https://x.com/morpho_88
-- **WARN** `W002 external-url-added` External URL added: https://x.com/piyopiyo2424V
-- **WARN** `W002 external-url-added` External URL added: https://x.com/scalegif
-- **WARN** `W002 external-url-added` External URL added: https://x.com/snzkuo
-- **WARN** `W002 external-url-added` External URL added: https://x.com/susuyo_soot
-- **WARN** `W002 external-url-added` External URL added: https://x.com/takeshi__310
-- **WARN** `W002 external-url-added` External URL added: https://x.com/ube/_k/_cclub
-- **WARN** `W002 external-url-added` External URL added: https://x.com/ube_k_cclub
-- **WARN** `W002 external-url-added` External URL added: https://x.com/watasuke1024
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/-
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/-/_uzbG410Cg
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/-_uzbG410Cg
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/6xtoFf0h8x4
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/73KhhTBE3Mk
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/9pNjS_Ahfjc
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/A1r3QpnS3GA
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/D0pItdcPWqE
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/H-jr6SpAaE8
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/IcknittbbFw
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/Inr6kNzWMcA
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/KYRbEEMCam0
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/R1nFXZB9lG8
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/RGKhatEchrI
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/Rdrylnr6Vdc
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/SewXH0Bbm-c
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/V15m8WLGVwg
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/X7XddKpTolw
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/ZJsJ2ss4IBw
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/aSjeoaoBKPc
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/ay5stCLI9v4
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/c02NG9I1iO8
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/o4yKnfV2YVs
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/oqfjwzVYDc8
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/qwlAC0qPMXI
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/syScwjPw57U
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/szUAV/_gMLQY
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/szUAV_gMLQY
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/vcUXmDwI7PQ
-- **WARN** `W002 external-url-added` External URL added: https://youtu.be/yr2bwYk0wAk
-- **WARN** `W002 external-url-added` External URL added: https://youtube.com/shorts/o9GxF/_FLSQA
-- **WARN** `W002 external-url-added` External URL added: https://youtube.com/shorts/o9GxF_FLSQA
-- **WARN** `W002 external-url-added` External URL added: https://youtube.com/shorts/rq2WlOQa9zE
+- **WARN** `W003 external-url-removed` External URL removed: https://use.typekit.net/app
 

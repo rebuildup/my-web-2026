@@ -92,15 +92,15 @@
 			"status": "implemented",
 			"expectedTypes": ["BreadcrumbList"],
 			"samplePath": "/tools",
-			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner は撤去理由を受け入れず「index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」と判断した。index は breadcrumb leaf を emit する。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
+			"note": "Issue #785 で index の breadcrumb chrome を戻した（owner 指示 2026-11-01）。#288 は /tools と /tools/<slug> の両方から PublicNav と Breadcrumbs を外したが、owner は撤去理由を受け入れず「index・詳細とも PublicNav とパンくずを戻す。 #288 を全面廃止する。」と判断した。index は breadcrumb leaf を emit する。詳細側の同発言は Issue #911（owner 指示 2026-11-05）でツール表示面に限って更新され、次の /tools/[slug] entry が現状を記す。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
 		},
 		{
 			"path": "/tools/[slug]",
 			"public": true,
-			"status": "implemented",
-			"expectedTypes": ["BreadcrumbList"],
+			"status": "not-implemented",
+			"expectedTypes": [],
 			"samplePath": "/tools/prototype",
-			"note": "Issue #785（owner 指示 2026-11-01）で #288 を全面廃止し、詳細側も PublicNav とパンくずを戻したので breadcrumb leaf を emit する。iframe shell であり、Tool 自体の記述は manifest が owning する。404 / 準備中 / consent 待ちの各 state も同じ PublicNav を描く。ただし breadcrumb は「Tool 名の leaf 1 件」で、親セグメントは flat route tree に親ルートが無いため出ない（/contact, /tools と同じ既存挙動）。404 では leaf 自体が route-labels の dropOnMissingLoaderData で落ち、chain が空になるので breadcrumb を emit しない。"
+			"note": "Issue #911（owner 指示 2026-11-05）が #785（2026-11-01）の詳細ルート chrome 復元を更新した: ツールを表示する面（iframe shell / consent gate）は PublicNav・パンくず・BreadcrumbJsonLd を出さず viewport 全体を占有するので breadcrumb leaf を emit しない。samplePath の /tools/prototype は consent gate の初期状態 = chrome なしで、shipped manifest に host_disabled も policy違反も無いため到達可能な詳細 state はすべてこれに一致する。chrome を残すのはツールを表示しない 404 / 準備中 / blocked のみ（導線維持）で、この3つのうち 404 は route-labels の dropOnMissingLoaderData で chain が空になる。準備中 / blocked は breadcrumb を描くが、shipped manifest からは到達できない。/tools index の breadcrumb は維持する。Tool 自体の構造化表現は manifest が owning する。"
 		},
 		{
 			"path": "/design-system",

@@ -63,10 +63,10 @@ import manifestJson from './manifest.json' with { type: 'json' };
  * only need the type do not bundle the manifest.
  *
  * Embed privacy (Issue #498): `delivery.privacy` is carried through the
- * same way. This module does not decide the consent mode either —
- * `src/tools/embed-privacy.ts` derives it from the declaration and the
- * frame origin, and the `/tools/<slug>` route renders the notice from
- * that verdict. What the registry contributes is the declared data, so
+ * same way. This module does not decide embed policy either —
+ * `src/tools/embed-privacy.ts` evaluates the declaration (fail closed on
+ * a missing or malformed one) and the `/tools/<slug>` loader blocks on
+ * its violations. What the registry contributes is the declared data, so
  * a route never re-reads raw manifest JSON.
  *
  * Embed policy (Issue #465): this module does NOT decide whether a

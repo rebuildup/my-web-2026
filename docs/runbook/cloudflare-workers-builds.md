@@ -483,9 +483,14 @@ What it deliberately does not check
   (Issue #199), so the home surface is not the surface that proves
   cross-page navigation. The `/tools` surfaces used to be chrome-free
   (Issue #288); Issue #785 abolished that and restored `/tools` /
-  `/tools/<slug>` to the nav, so they are no longer an example of this.
-  Which page mounts which chrome is an information-architecture fact
-  owned by the routes, recorded rather than silently "fixed" here.
+  `/tools/<slug>` to the nav; Issue #911 (owner decision 2026-11-05)
+  then took the chrome back off the `/tools/<slug>` states that show a
+  Tool (iframe shell / consent gate) so the frame owns the viewport,
+  keeping it on the 404 / 準備中 / blocked placeholders and on the
+  `/tools` index. The index is the representative page route this
+  smoke registers, so it is still not an example of a chrome-free
+  surface. Which page mounts which chrome is an information-architecture
+  fact owned by the routes, recorded rather than silently "fixed" here.
 
 ## Diagnosing a failed build (Issue #247)
 

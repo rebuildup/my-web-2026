@@ -141,6 +141,23 @@ contracts:
 The 404 path is a meaningful surface, not a blank page with the
 default `<p>Not Found</p>` string.
 
+### Chrome split (Issue #911, owner decision 2026-11-05)
+
+The route has two layouts, and the split is "is a Tool shown here":
+
+- **Tool shown** — the embeddable shell (`ToolEmbedShell`) renders no
+  `PublicNav` / breadcrumb band / `BreadcrumbJsonLd`, and the iframe is
+  `100dvh` tall (`frameArea` in the route file). The old
+  `viewport - chrome` subtraction layout is gone with the chrome.
+- **No Tool shown** — the 404, the `host_disabled` placeholder and
+  the `blocked` placeholder keep `ToolChrome` (nav + breadcrumbs) and
+  their `ツール一覧に戻る` link, so a visitor is never stranded on a
+  surface that has nothing to do.
+
+`/tools` (index) is a list page rather than 「各ツール」, so Issue
+#785's chrome restoration stands for it — including its
+`BreadcrumbList` node (`src/editorial/structured-data/contract.json`).
+
 ## 7. Forbidden shortcuts
 
 - **Do not** import `src/tools/manifest.json` from a Cloudflare

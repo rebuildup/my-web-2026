@@ -1,32 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import {
-	CONSENT_MODE_CLICK_TO_LOAD,
-	CONSENT_MODE_NOT_REQUIRED,
-	consentNoticeOrigins,
-	evaluateEmbedPrivacy,
-	normalizeThirdPartyOrigin,
-	toPrivacySubject,
-} from './embed-privacy';
+import { evaluateEmbedPrivacy, normalizeThirdPartyOrigin, toPrivacySubject } from './embed-privacy';
 import type { EmbedPrivacySubject, ToolPrivacyDeliveryLike } from './embed-privacy';
 import { listAllTools } from './registry';
 
 /**
- * Third-party contact + consent contract (Issue #498).
+ * Third-party contact contract (Issue #498; the click_to_load gate was
+ * removed by owner decision, PR #914).
  *
  * Three groups of assertions:
  *
- *   1. The LIVE manifest satisfies the contract, and the derived mode
- *      for each shipped Tool is the one the report claims. `pnpm run
- *      tools:check` gates the same function at build time; this test
- *      proves it without shelling out to git.
+ *   1. The LIVE manifest satisfies the contract: every embeddable Tool
+ *      declares its contacts explicitly. `pnpm run tools:check` gates
+ *      the same function at build time; this test proves it without
+ *      shelling out to git.
  *   2. Hostile fixtures prove each rule REJECTS — a missing
  *      declaration, a wildcard or path-bearing "origin", a duplicate,
  *      an external frame that does not name itself, and a contact
  *      list with no purpose. Every fixture is a local object literal:
  *      no Tool repo, no network, no third-party service is contacted.
- *   3. Consent is DERIVED. There is no manifest field that turns the
- *      gate off, so the only way to `not_required` is to prove the Tool
- *      is same-origin AND declares no contact.
+ *   3. The verdict is a FACT list. Unknown manifest fields cannot
+ *      change it, and the contacts are exactly the normalised
+ *      declaration.
  */
 
 /** A minimal valid `same_origin_static` delivery block. */
@@ -106,18 +100,10 @@ describe('embed privacy — the live manifest', () => {
 		}
 	});
 
-	it('pre-activation contacts are empty for every manifest entry', () => {
-		for (const tool of listAllTools()) {
-			const verdict = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
-			expect(verdict.contacts_before_activation).toEqual([]);
-		}
-	});
-
-	it('derives click_to_load for a same-origin Tool that declares contacts', () => {
+	it('collects the declared contacts for a same-origin Tool that declares them', () => {
 		const prototype = tool('prototype');
 		const verdict = evaluateEmbedPrivacy(toPrivacySubject('prototype', prototype.delivery));
-		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
-		expect(verdict.contacts_after_activation).toEqual([
+		expect(verdict.contacts).toEqual([
 			'https://fonts.googleapis.com',
 			'https://fonts.gstatic.com',
 			'https://script.google.com',
@@ -126,14 +112,12 @@ describe('embed privacy — the live manifest', () => {
 		// The artifact is served from the host origin, so the frame
 		// document itself is first-party; only its subresources are not.
 		expect(verdict.frame_is_third_party).toBe(false);
-		expect(consentNoticeOrigins(verdict)).toEqual(verdict.contacts_after_activation);
 	});
 
-	it('derives not_required for a same-origin Tool that declares no contact', () => {
+	it('returns no contacts and no violations for a same-origin Tool that declares none', () => {
 		const readmark = tool('readmark');
 		const verdict = evaluateEmbedPrivacy(toPrivacySubject('readmark', readmark.delivery));
-		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
-		expect(verdict.contacts_after_activation).toEqual([]);
+		expect(verdict.contacts).toEqual([]);
 		expect(verdict.violations).toEqual([]);
 	});
 });
@@ -143,10 +127,10 @@ describe('embed privacy — hostile fixtures are refused', () => {
 		expect(codes(okDelivery({ privacy: undefined }))).toContain('privacy.declaration-missing');
 	});
 
-	// Omission is not a default. Before this guard, `privacy: {}` produced
-	// an empty contact list, no violation and `consent: not_required`, so a
-	// manifest could silently mount a frame eagerly by leaving the list out.
-	it('a declaration without an origin list is refused and still asks for consent', () => {
+	// Omission is not a default. Before this guard, `privacy: {}` looked
+	// like a written "no third-party contact" declaration, so a manifest
+	// could silently ship an undeclared contact list.
+	it('a declaration without an origin list is refused', () => {
 		for (const privacy of [
 			{},
 			{ third_party_origins: null },
@@ -156,14 +140,13 @@ describe('embed privacy — hostile fixtures are refused', () => {
 			expect(verdict.violations.map((violation) => violation.code)).toContain(
 				'privacy.origins.missing',
 			);
-			expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
 		}
 	});
 
 	it('an explicit empty list is still the one way to declare no contact', () => {
 		const verdict = evaluate(okDelivery({ privacy: { third_party_origins: [] } }));
 		expect(verdict.violations).toEqual([]);
-		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
+		expect(verdict.contacts).toEqual([]);
 	});
 
 	it('a non-https origin is refused', () => {
@@ -208,7 +191,7 @@ describe('embed privacy — hostile fixtures are refused', () => {
 		expect(verdict.violations.map((violation) => violation.code)).toContain(
 			'privacy.origin.duplicate',
 		);
-		expect(verdict.contacts_after_activation).toEqual(['https://a.example.invalid']);
+		expect(verdict.contacts).toEqual(['https://a.example.invalid']);
 	});
 
 	it('an external frame that does not name its own origin is refused', () => {
@@ -243,9 +226,9 @@ describe('embed privacy — hostile fixtures are refused', () => {
 		).toContain('privacy.purpose.locale-missing');
 	});
 
-	it('an external frame is contact-gated even with an empty declaration list', () => {
-		// The frame document request IS the contact, so it cannot be
-		// talked out of the gate by claiming an empty list.
+	it('an external frame is third-party even with a declared contact list', () => {
+		// The frame document request IS a contact with the serving origin,
+		// which is why the frame's own origin must be declared.
 		const verdict = evaluate(
 			externalDelivery({
 				privacy: {
@@ -255,7 +238,6 @@ describe('embed privacy — hostile fixtures are refused', () => {
 			}),
 		);
 		expect(verdict.frame_is_third_party).toBe(true);
-		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
 	});
 
 	it('a host_disabled Tool is not policed — nobody frames it', () => {
@@ -264,13 +246,13 @@ describe('embed privacy — hostile fixtures are refused', () => {
 			privacy: undefined,
 		});
 		expect(verdict.violations).toEqual([]);
-		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
+		expect(verdict.contacts).toEqual([]);
 	});
 
-	it('no delivery kind can opt out of the gate by declaring a mode', () => {
+	it('no unknown manifest field can change the verdict', () => {
 		// The declaration is a FACT list. There is no `consent_mode`
-		// field to read, which is the property this test pins: adding
-		// one to the schema would have to change this test.
+		// field to read — the property this test pins: adding one to
+		// the schema would have to change this test.
 		expect(
 			codes(okDelivery({ privacy: { third_party_origins: [], consent_mode: 'not_required' } })),
 		).toHaveLength(0);
@@ -283,8 +265,8 @@ describe('embed privacy — hostile fixtures are refused', () => {
 				},
 			}),
 		);
-		// An unknown field cannot lower the derived mode.
-		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
+		// An unknown field cannot change the derived contacts either.
+		expect(verdict.contacts).toEqual(['https://a.example.invalid']);
 	});
 });
 
@@ -302,7 +284,7 @@ describe('embed privacy — origin normalisation and subject flattening', () => 
 		}
 	});
 
-	it('flattens a delivery block the way the route and the gate both read it', () => {
+	it('flattens a delivery block the way the route and the manifest check both read it', () => {
 		expect(toPrivacySubject('a', okDelivery())).toMatchObject({
 			slug: 'a',
 			frame_src: '/tools/fixture/app/index.html',
@@ -332,18 +314,17 @@ describe('embed privacy — origin normalisation and subject flattening', () => 
 		});
 	});
 
-	it('treats an unresolvable frame src as third-party, never as an exemption', () => {
+	it('leaves an unresolvable frame src to the embed policy, not to its own verdict', () => {
+		// `unresolved` is not read as third-party here — the frame-src
+		// rules in embed-policy.ts refuse such a src outright
+		// (`embed.frame-src.invalid-scheme`), so nothing unresolved is
+		// ever mounted. This test pins that the privacy verdict adds no
+		// violation of its own for the same src (the refusal is
+		// embed-policy's, asserted in embed-policy's suite).
 		const verdict = evaluateEmbedPrivacy(
 			subject({ frame_src: 'javascript:alert(1)', frame_origin: 'unresolved' }),
 		);
-		// `unresolved` fails closed: the gate asks before it mounts. The
-		// separate frame-src rules in embed-policy.ts refuse such a src
-		// outright (`embed.frame-src.invalid-scheme`), so this is the
-		// second line of defence, not the first.
-		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
-		const subject2 = evaluateEmbedPrivacy(
-			subject({ frame_src: 'data:text/html,x', frame_origin: 'unresolved' }),
-		);
-		expect(subject2.violations).toEqual([]);
+		expect(verdict.violations).toEqual([]);
+		expect(verdict.frame_is_third_party).toBe(false);
 	});
 });

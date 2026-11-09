@@ -283,8 +283,8 @@
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "2026-10-31 の sweep close はその時点では正当化されていなかった（キャラクター素材・アニメーションの Web 再利用は未実装）。2026-11-01 の PR #768 でページ全体に対する浮遊レイヤーとして実装され、描画検証（docs/verification/visual/pet-companion/overlay-verification.md）と権利記録（docs/verification/legal/pet-melty-rights-review.md）が残ったため、受入条件は現在の出荷コードで満たされている。state を implemented-and-verified に訂正（2026-11-02 の原典照合）。Issue 自体は現在も open のままであり、本記録の変更では close / reopen しない。",
+			"action": "closed",
+			"note": "2026-10-31 の sweep close はその時点では正当化されていなかった（キャラクター素材・アニメーションの Web 再利用は未実装）。2026-11-01 の PR #768 でページ全体に対する浮遊レイヤーとして実装され、描画検証（docs/verification/visual/pet-companion/overlay-verification.md）と権利記録（docs/verification/legal/pet-melty-rights-review.md）が残った。2026-11-05 に受入条件（同一キャラクターと主要アニメーションの表示、動きの抑制、操作・性能を妨げない）が出荷コードで満たされていることを確認し、Issue を close した。",
 			"missing": "アトラス本体は commit されず scripts/build-pet-sprites.mjs が sha256 で固定する（docs/domain/pet-companion.md §2.2）。Library 外へのバックアップ取得は owner の作業として未了。look 行の quality warning 4 件は既知（同 §3.2）。"
 		},
 		{
@@ -2597,23 +2597,25 @@
 			"title": "判断待ち: mic-level を sandbox=\"allow-scripts allow-same-origin\" で卒業させるか (Issue #449 の残り)",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "deferred-with-reason",
-			"closure": "awaiting-owner",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
 			"evidence": [
-				"docs/security/security-headers.md",
+				"https://github.com/rebuildup/my-web-2026/issues/598#issuecomment-6567590605",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md",
 				"src/tools/manifest.json",
-				"Two investigation comments in the issue (2026-10-23, 2026-10-26) lay out options A/B/C, recommend B, and report that the option-B design would abandon the tool's main feature"
+				"docs/verification/tools/functional-verification-2026-11-04.md",
+				"4ba03139"
 			],
 			"decision": {
-				"kind": "recorded",
-				"reason": "これは owner 判断の追跡用の Issue であり、判断自体は未実施のまま閉じられた。推奨 B と推奨 B への反論が共に記録されている。"
+				"kind": "owner",
+				"reason": "owner は 2026-11-02 のコメント（6567590605）で旧選択肢 B を却下し、A（allow-same-origin 付与）も採らず、#825 の設計どおり first-party iframe は sandbox を付けない方針を選んだ。sandbox という前提自体が消え、mic-level は same_origin_static として sandbox なしで配信される（ADR-0020 §4.5 / §4.5.2 が卒業条件、sandbox 除去は commit 4ba03139）。"
 			},
 			"recordedBy": "agent",
-			"ownerConfirmation": "unconfirmed",
-			"ownerReference": null,
-			"action": "reopened",
-			"note": "これは owner 判断の追跡用の Issue であり、判断自体は未実施のまま閉じられた。推奨 B と推奨 B への反論が共に記録されている。",
-			"missing": "owner が A/B/C のいずれかを確定し、決定記録（docs/security/security-headers.md §5 / ADR-0006）を残すこと。"
+			"ownerConfirmation": "confirmed",
+			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/598#issuecomment-6567590605",
+			"action": "closed",
+			"note": "問いは「sandbox の origin 契約をどうするか」であり、sandbox を外す決定で前提ごと解消した。getUserMedia を opaque origin が拒否する件は同一 origin 配信で解消し、ADR-0020 §4.5.2 の卒業条件（Permissions-Policy grant とブラウザの許可プロンプト）は 2026-11-04 の実測で PASS。2026-11-05 に受入条件が出荷コードで満たされていることを確認し、Issue を close した。close の実日付は 2026-11-05 だが、この entry が属する母集団は 2026-10-31 の sweep 133 件（frozen）なので closedAt は sweep close の日（2026-10-31）と window は sweep-2026-10-31 のまま据え置く（frozen window の population を動かすなという runbook の規則に従う）。",
+			"missing": null
 		},
 		{
 			"issue": 669,
@@ -2641,21 +2643,25 @@
 			"title": "判断待ち: 編集レビュー gate の対象外に残っている src/keyboard / src/legal / src/privacy の公開 copy",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "awaiting-owner",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
 			"evidence": [
+				"https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+				"#831",
 				"quality/copy-editorial-surfaces.json",
-				"copy/resources.json",
-				"docs/runbook/copy-editorial-approval.md",
-				"quality/copy-editorial-approvals.json"
+				"quality/copy-editorial-approvals.json",
+				"docs/runbook/copy-editorial-approval.md"
 			],
-			"decision": null,
+			"decision": {
+				"kind": "owner",
+				"reason": "owner は 2026-11-02 のコメント（6567572805）で directory 一括追加（+473）を却下し、visitor が読む文字列を持つファイルだけを gate 対象にする方針を選んだ。PR #831 が `publicCopyFiles` を新設し、keyboard / legal / privacy の表示 9 ファイルを file 単位で宣言した。"
+			},
 			"recordedBy": "agent",
-			"ownerConfirmation": "unconfirmed",
-			"ownerReference": null,
-			"action": "reopened",
-			"note": "The sweep closed an explicitly owner-owned question ('判断は owner が record で残す') without a decision record. This is an owner copy decision about public surface and must not be decided by an auditor or an agent.",
-			"missing": "the owner's decision itself — either extending publicCopyGlobs (plus owner approval records) or a written reason for keeping the three surfaces out of scope; neither exists, so the issue's own precondition (a recorded decision) is unmet"
+			"ownerConfirmation": "confirmed",
+			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+			"action": "closed",
+			"note": "2026-10-31 の sweep は owner が記録で残すと明記した判断を、判断記録なしに close していた（この点は今も defect）。判断は 2026-11-02 の owner コメント（6567572805）で記録され、directory 一括追加（+473）を却下して visitor が読む文字列を持つファイルだけを対象にする方針が選ばれた。PR #831 が `publicCopyFiles` を新設し、keyboard / legal / privacy の表示 9 ファイルを file 単位で宣言した。2026-11-05 にこの決定記録を根拠として close した。",
+			"missing": null
 		},
 		{
 			"issue": 700,
@@ -3527,6 +3533,225 @@
 			"ownerReference": null,
 			"action": "closed",
 			"note": "受入条件 1: dist/index.html が ./assets/index-*.css（24.0KB / gzip 5.3KB）を参照し、frame 内が styled に描画されることを実測した。条件 2: 修正は rebuildup/tool-pomodoro PR #10（merge d4add8a1）で行い、external/pomodoro の gitlink と manifest の pinned_sha、tool-artifact-inventory の sha256 を pin bump で取り込んだ。条件 3: docs/verification/tools/host-interaction-batch-0-8-1.md §5 / §11 を更新し §12 を追加、1440 / 390 の WebP を再取得した。#882 は validate green で release-0-8-1 に merge 済み。",
+			"missing": null
+		},
+		{
+			"issue": 720,
+			"title": "fix(governance): Agentの自己記録だけでowner承認・確認済みを成立させない",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#747",
+				"e85f305b",
+				"#830",
+				"784a383f",
+				"scripts/check-copy-editorial-approval.mjs",
+				"scripts/check-copy-editorial-approval.test.mjs",
+				"docs/verification/governance/approval-provenance.md",
+				"docs/runbook/copy-editorial-approval.md",
+				"quality/copy-editorial-approvals.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #747 が provenance 形状（kind / reference / recordedBy / ownerConfirmation）を導入し、gate は `owner-review` + reference あり + `confirmed` の record だけを owner 承認として数え、agent が書いた記録は NEEDS REVIEW にする。`scripts/check-copy-editorial-approval.test.mjs` が agent-recorded / pending / unconfirmed を pass にしない回帰試験を持ち、全 record の監査は `docs/verification/governance/approval-provenance.md` に固定されている。",
+			"missing": null
+		},
+		{
+			"issue": 721,
+			"title": "test(ops): rollback rehearsal の記録と実際の復旧検証を分離する",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"scripts/_rollback-fixture.mjs",
+				"scripts/_rollback-rehearsal.mjs",
+				"scripts/_rollback-rehearsal.test.mjs",
+				"docs/verification/ops/rollback-rehearsal.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "disposable fixture 上で失敗注入 → 判定 → 復元 → negative control を実行する経路があり、復元不能シナリオは理由つきで落ちる。credentials 0 / production 操作 0 をテストが assert し、EVIDENCE_LEVEL（recorded / simulated-and-tested / human-verified / production-verified）で記録と実証を別指標に分離している。node --test scripts/_rollback-rehearsal.test.mjs = 53 pass / 0 fail。",
+			"missing": null
+		},
+		{
+			"issue": 722,
+			"title": "fix(a11y): WCAG手動監査の「未検査」を「適用外」として閉じない",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#748",
+				"#745",
+				"quality/wcag-review-matrix.json",
+				"docs/verification/a11y/wcag-review-matrix.md",
+				"scripts/check-a11y-wcag-review-matrix.mjs",
+				"scripts/fixtures/a11y-wcag-review-matrix/scope/pass"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "WCAG 25 基準を `not-applicable` / `applicable-unverified` / `applicable-and-verified` に分類し、未検査を適用外として閉じない gate `scripts/check-a11y-wcag-review-matrix.mjs` が入った。gate は exit 0 で、13 件の not-applicable・12 件の applicable-unverified・人手未検査 22 件・axe 記録 0 件を同時に表示する。6 つの問題基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 / 3.3.3）は applicable-unverified として残る。",
+			"missing": null
+		},
+		{
+			"issue": 723,
+			"title": "fix(content): 公開記事の鮮度レビューを実際の記事本文・同期経路に適用する",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#744",
+				"scripts/check-stale-content-review.mjs",
+				"scripts/check-stale-content-review.test.mjs",
+				"docs/runbook/article-freshness-review.md",
+				"docs/domain/content-review.md",
+				"quality/stale-content-review.json",
+				"quality/profile.yaml"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #744 が article source inventory（`scanned` / `declared-but-absent` / `unobserved`）を出力し、current / stale / unrecorded と未観測を区別する。記事 glob を明示列挙し、読めないソースを fail-closed で記録するため、緑が「記事を監査済み」を意味しないことが report 本文に明記される。`pnpm run copy:stale:check` は `quality/profile.yaml` の fast gate に配線され、fixture テストが 4 状態を固定している。",
+			"missing": null
+		},
+		{
+			"issue": 732,
+			"title": "audit(public): 公開面が「空・矛盾」している 15 項目を owner 判断として束ねる（gate は緑のまま実データが空）",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "research-complete-with-decision",
+			"closure": "supported",
+			"evidence": [
+				"https://github.com/rebuildup/my-web-2026/issues/732#issuecomment-6567589098",
+				"https://github.com/rebuildup/my-web-2026/issues/732#issuecomment-6568723183",
+				"#735",
+				"c14e41d7",
+				"#832",
+				"#833",
+				"#843"
+			],
+			"decision": {
+				"kind": "owner",
+				"reason": "owner は 2026-11-02 のコメント（6567589098）で O-1〜O-15 の委任判断を記録し、第 2 コメント（6568723183）で追跡先 12 件（#832〜#843）の起票と既存 Issue で足りる 3 件を記録した。agent 単独で直せる sitemap 台帳の二重正本は PR #735 で解消した。"
+			},
+			"recordedBy": "agent",
+			"ownerConfirmation": "confirmed",
+			"ownerReference": "https://github.com/rebuildup/my-web-2026/issues/732#issuecomment-6567589098",
+			"action": "closed",
+			"note": "15 項目は owner 判断 O-1〜O-15 として 2026-11-02 のコメントに固定され、追跡先 12 件が起票された。sitemap 台帳の二重正本は PR #735 で解消済み。Issue 本文が求めた「ファイル:行つきの再検証事実・選択肢・事実と推測の分離」は本文自体に残っている。",
+			"missing": null
+		},
+		{
+			"issue": 814,
+			"title": "refactor(portfolio): Notion を「同期」ではなく単発の書き込み + サイトは読み込みのみにする",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#820",
+				"#893",
+				"docs/adr/ADR-0018-notion-as-portfolio-cms-source-of-truth.md",
+				"src/portfolio/notion/runtime-boundary.test.ts",
+				"scripts/write-portfolio-to-notion.mjs",
+				"docs/verification/portfolio/notion-write-log.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "ADR-0018 は 2026-11-02 に「単発の書き込み + サイトは読み込みのみ」へ改訂され、定期同期は明示的に禁止された。`src/portfolio/notion/runtime-boundary.test.ts` が 3 モジュールに `fetch(` / `NOTION_TOKEN` / `api.notion.com` が無いことを検査し、書き込みは offline スクリプトと実行記録（2026-11-04 / 11-05）に閉じている。受け入れ条件 1〜4 を満たす。",
+			"missing": null
+		},
+		{
+			"issue": 867,
+			"title": "fix(tools): qr-generator と pi-game が 390px で frame 内だけ横スクロールする",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#866",
+				"#872",
+				"#880",
+				"src/tools/manifest.json",
+				"docs/verification/tools/host-interaction-batch-0-8-1.md",
+				"docs/verification/tools/qr-generator-mobile.webp",
+				"docs/verification/tools/pi-game-mobile.webp",
+				"docs/verification/tools/qr-generator-desktop.webp",
+				"docs/verification/tools/pi-game-desktop.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "再計測で qr-generator は frame 686/390 → 390/390、pi-game は 422/390 → 390/390 となり、390px で frame 内の横スクロールが解消した。修正は Tool repo 側で行い pin bump で取り込み、390 / 1440 双方の WebP と計測記録を `docs/verification/tools/host-interaction-batch-0-8-1.md` に追記した。viewport を緩める回避も、host 側 `overflow: hidden` での隠蔽も行っていない。",
+			"missing": null
+		},
+		{
+			"issue": 896,
+			"title": "fix(tools): first-party 同一 origin 配信で残る root 絶対パス 404 を解消する（readmark PDF worker / prototype 動的 chunk）",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#899",
+				"#904",
+				"#905",
+				"docs/verification/tools/root-absolute-404-2026-11-04.md",
+				"docs/verification/tools/root-absolute-404-2026-11-04/",
+				"src/tools/manifest.json",
+				"docs/adr/ADR-0020-tool-first-party-same-origin-delivery.md"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "選択肢 1（Tool repo の `base` を `/tools/<slug>/app/` にする）を採用し、2・3 は理由付きで却下した。修正後は 15 Tool すべて PASS、readmark は PDF worker が動作し root 404 と console error は 0。`pnpm run tools:check` / `tools:artifact:check` / provenance / `validate:integration` の exit 0 を記録している。測定は書き換えず追補として残した。",
+			"missing": null
+		},
+		{
+			"issue": 906,
+			"title": "fix(ci): cf-build-output の upload が隠しファイルを落とし、attestation の byte 照合が FAIL する",
+			"closedAt": "2026-11-05",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#907",
+				"#763",
+				".github/workflows/ci.yml",
+				"scripts/ci-upload-hidden-files.test.mjs",
+				"docs/verification/supply-chain/build-output-retention-hidden-files-2026-11-05.md",
+				"docs/verification/supply-chain/attestation-byte-comparison-2026-11-05.md",
+				"docs/release.md",
+				"c6d778c4978ad51491facd9be10b8d94c9df00e2"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "原因（`include-hidden-files` の既定 false で `.vite/manifest.json` が落ち、manifest 492 対 artifact 491）を実測し、`ci.yml` に `include-hidden-files: true` を入れた。再発防止テストは `scripts/run-script-tests.mjs` の自動発見で回る。修正後の run 41958112190 で `artifact:attestation:check` と `artifact:bytes:check` が PASS（492 files / 31,314,893 bytes）。`docs/release.md` step 9.1 に `--source-sha` の条件も追記した。",
 			"missing": null
 		}
 	]

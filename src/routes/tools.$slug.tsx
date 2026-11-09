@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import type { HTMLAttributeReferrerPolicy, ReactNode } from 'react';
 import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
@@ -7,19 +7,14 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { ToolConsentNotice } from '../tools/embed-consent-notice';
 import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
 	ToolHostMessageDeclaration,
 } from '../tools/embed-policy';
-import {
-	CONSENT_MODE_CLICK_TO_LOAD,
-	evaluateEmbedPrivacy,
-	toPrivacySubject,
-} from '../tools/embed-privacy';
-import type { EmbedPrivacyVerdict, EmbedPrivacyViolation } from '../tools/embed-privacy';
+import { evaluateEmbedPrivacy, toPrivacySubject } from '../tools/embed-privacy';
+import type { EmbedPrivacyViolation } from '../tools/embed-privacy';
 import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
@@ -56,21 +51,24 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * stops at "Home > Tools" rather than misleadingly showing a
  * stub "Tool" leaf for a slug that does not exist.
  *
- * Chrome convention (Issue #199; Issue #288 abolished by the owner
- * decision of 2026-11-01 — Issue #785). This route renders
- * `<PublicNav />` / `<Breadcrumbs />` / `<BreadcrumbJsonLd />` itself,
- * in EVERY state: the embeddable shell, the consent gate, the blocked
- * placeholder, the `host_disabled` placeholder and the 404. Issue #288
- * had removed that chrome so the frame could own the whole viewport;
- * the owner rejected the result (「`/tools` は index・詳細とも PublicNav
- * とパンくずを戻す。 #288 を全面廃止する。」), so the overflow #288 was
- * protecting against is now handled by layout instead of by omission:
- * `ToolChrome` stacks the chrome and the Tool in one `100dvh` flex
- * column, the chrome keeps its natural height and the frame takes only
- * what is left (`flex: 1 1 auto` + `min-height: 0`). The subtraction is
- * therefore measured by the layout engine, not assumed as a `64px`
- * constant — the mobile nav is a different height than the desktop
- * strip, and the breadcrumb band wraps at narrow widths.
+ * Chrome convention — three owner decisions in sequence:
+ *
+ *   - Issue #199: chrome is per-page opt-in; `__root.tsx` mounts none.
+ *   - 2026-11-01 (Issue #785): the owner abolished Issue #288 and put
+ *     `<PublicNav />` / `<Breadcrumbs />` / `<BreadcrumbJsonLd />` back
+ *     on EVERY `/tools/<slug>` state — 「`/tools` は index・詳細とも
+ *     PublicNav とパンくずを戻す。 #288 を全面廃止する。」 — and the
+ *     subtraction was done by layout (`ToolChrome` stacked chrome and
+ *     frame in one `100dvh` flex column).
+ *   - 2026-11-05 (Issue #911): the owner narrowed that restoration to
+ *     the states that do NOT show a Tool — 「各ツールはヘッダーなどを
+ *     いれず、各ツール全画面でそれぞれ使われるようにする」. The
+ *     embeddable shell renders NO chrome and
+ *     gives the whole viewport to the Tool (`100dvh`, no subtraction
+ *     layout); the 404 / `host_disabled` / `blocked` placeholders keep
+ *     `ToolChrome` because a visitor who is not using a Tool still has
+ *     to be able to leave. The `/tools` index is a list page, not
+ *     「各ツール」, so it keeps its chrome (#785 stands for it).
  *
  * Case-insensitive lookup (Issue #183): the manifest schema
  * constrains slugs to `[a-z0-9][a-z0-9-]{0,127}` but a visitor
@@ -115,14 +113,13 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  *   - `disabled`  — the manifest marks the Tool `host_disabled`
  *     (nothing to police; see the "Coming soon" copy below).
  *
- * Third-party contact + consent gate (Issue #498): the loader ALSO
- * runs `evaluateEmbedPrivacy()` (`src/tools/embed-privacy.ts`) over
- * the same entry. A violation blocks the frame exactly like an embed
- * violation, and a clean verdict whose `consent` is `click_to_load`
- * renders `ToolConsentNotice` instead of the frame — no iframe, and no
- * third-party origin anywhere in the document, until the visitor
- * activates the load. The consent mode is derived from the manifest
- * declaration, never declared by it (see the policy module header).
+ * Third-party contact contract (Issue #498): the loader ALSO runs
+ * `evaluateEmbedPrivacy()` (`src/tools/embed-privacy.ts`) over the same
+ * entry. A violation blocks the frame exactly like an embed violation.
+ * The former `click_to_load` consent gate was removed by owner decision
+ * (PR #914): the iframe mounts directly, and the manifest's
+ * `delivery.privacy` declaration remains the published disclosure of
+ * which origins the framed document may contact.
  *
  * The `embeddable` branch also carries the Tool's `host_message`
  * declaration into `ToolEmbedShell`, which is the only place a
@@ -171,7 +168,7 @@ export const Route = createFileRoute('/tools/$slug')({
 		if (violations.length > 0 || privacy.violations.length > 0) {
 			return { state: 'blocked' as const, tool, violations, privacy };
 		}
-		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool, privacy };
+		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
 		if (tool.delivery.kind === 'host_disabled') {
 			const view: DisabledToolView = {
 				slug: tool.slug,
@@ -256,28 +253,24 @@ export const Route = createFileRoute('/tools/$slug')({
 });
 
 /**
- * The chrome column every `/tools/<slug>` state renders inside
- * (owner decision 2026-11-01 — Issue #785).
+ * The chrome column the states that do NOT show a Tool render inside
+ * (owner decision 2026-11-01 — Issue #785; narrowed by the owner
+ * decision of 2026-11-05 — Issue #911).
+ *
+ * `ToolChrome` now wraps exactly three surfaces: the 404, the
+ * `host_disabled` placeholder and the `blocked` placeholder. The
+ * embeddable shell does NOT come through here any
+ * more — #911 gave it the whole viewport, so this column exists for
+ * the surfaces where a visitor is NOT using a Tool and therefore still
+ * needs the site chrome to leave.
  *
  * The page is a full-height column: `PublicNav` and the breadcrumb band
- * keep their natural height, and whatever comes after them is the Tool's
- * own area. `minHeight: '100dvh'` (not `height`) so a short viewport can
- * still grow the document rather than clip the chrome, and the frame area
- * itself carries `minHeight: '0'` so the flex track is allowed to give it
- * exactly the leftover space instead of the frame's intrinsic 150px
- * default.
- *
- * Two consequences worth stating, because both were the content of
- * Issue #288:
- *
- *   - The frame can no longer overflow the viewport: it is never taller
- *     than `viewport - chrome`, at any breakpoint, without a magic
- *     `calc()` constant that would go stale the next time the nav or the
- *     breadcrumb band changes height.
- *   - The chrome is REAL chrome, not a decorative strip: the visitor can
- *     leave a Tool that fails to load, and `/tools` is reachable from
- *     `/` in one click again (the prod-smoke `CHROME_NAV_ROUTES` roster
- *     includes it in the same change).
+ * keep their natural height, and whatever comes after them is the
+ * placeholder's own area. `minHeight: '100dvh'` (not `height`) so a
+ * short viewport can still grow the document rather than clip the
+ * chrome, and the content area carries `minHeight: '0'` so the flex
+ * track is allowed to give it exactly the leftover space instead of the
+ * content's intrinsic height.
  */
 const toolColumn = css({
 	display: 'flex',
@@ -285,20 +278,23 @@ const toolColumn = css({
 	minHeight: '100dvh',
 });
 
+/**
+ * The Tool's own area: no chrome, no subtraction.
+ *
+ * `height: '100dvh'` is the whole contract #911 asks for. The
+ * pre-#911 version was `flex: '1 1 auto'` + `min-height: 0` inside
+ * `ToolChrome`'s `100dvh` column, i.e. `viewport - chrome`; with the
+ * chrome gone there is nothing left to subtract from, and keeping a
+ * flex track would only reintroduce the intrinsic-150px iframe
+ * problem the flex was there to solve. A definite `100dvh` parent also
+ * lets the iframe use `height: '100%'` instead of growing into a flex
+ * track.
+ */
 const frameArea = css({
-	flex: '1 1 auto',
-	// Without this a flex child refuses to shrink below its content
-	// height, which is how a full-height iframe would push the document
-	// scrollbar back into existence.
-	minHeight: '0',
+	width: '100%',
+	height: '100dvh',
 	minWidth: '0',
-	// The frame fills this box by FLEX, not by `height: 100%`. A
-	// percentage height needs a definite parent height, and a flex item
-	// whose height comes from `flex-grow` does not have one — measured:
-	// the frame stayed at its intrinsic 150px inside an 811px area until
-	// it became the flex child instead.
-	display: 'flex',
-	flexDirection: 'column',
+	overflow: 'hidden',
 });
 
 function ToolChrome({ children }: { children: ReactNode }) {
@@ -316,14 +312,14 @@ function ToolChrome({ children }: { children: ReactNode }) {
  * Empty state for `/tools/<unknown>` (Issue #183).
  *
  * Renders inside the same `<Outlet />` slot the iframe would occupy,
- * with the same chrome as every other state (`ToolChrome`). The
+ * with the chrome every non-Tool state keeps (`ToolChrome`, #911). The
  * breadcrumb chain stops at "Home > Tools": `route-labels.ts` marks this
  * route `dropOnMissingLoaderData`, so a slug that is not in the registry
  * never produces a stub leaf in the chain.
  *
  * This route deliberately renders no `<main>` landmark. `nav` and
- * `main` are separate decisions: the chrome restoration does not create
- * a content landmark, and both `e2e/compat/contract.ts` and
+ * `main` are separate decisions: restoring / removing the chrome does
+ * not create a content landmark, and both `e2e/compat/contract.ts` and
  * `scripts/check-a11y-heading-landmarks.mjs` register `main: 'none'`
  * for the Tools surfaces.
  */
@@ -397,15 +393,15 @@ function ToolRoute() {
 			/>
 		);
 	}
-	const { tool, public: summary, privacy } = loaderData;
+	const { tool, public: summary } = loaderData;
 	return (
-		<ToolEmbedGate
+		// Owner decision (PR #914): no consent gate — the iframe mounts
+		// directly. `src` comes from `resolveToolEntryHtml`, the same
+		// function the embed-policy verifier uses, so the rendered frame
+		// can never point somewhere the policy did not see.
+		<ToolEmbedShell
 			slug={tool.slug}
 			displayName={tool.display_name}
-			privacy={privacy}
-			// Issue #465: `src` comes from `resolveToolEntryHtml`, the same
-			// function the embed-policy verifier uses, so the rendered
-			// frame can never point somewhere the policy did not see.
 			src={resolveToolEntryHtml(tool)}
 			sandbox={summary.iframe.sandbox}
 			referrerPolicy={summary.iframe.referrer_policy}
@@ -415,80 +411,6 @@ function ToolRoute() {
 	);
 }
 
-/**
- * Consent gate in front of the frame (Issue #498).
- *
- * The gate owns exactly one piece of state: whether the visitor has
- * activated the load. Until then the document carries the notice and
- * no frame — which is what makes "no third-party request before
- * activation" a structural property of the route rather than a promise
- * in the copy (asserted in `test/integration/embed-privacy.test.ts`).
- *
- * The state is deliberately NOT persisted: no cookie, no
- * `localStorage`, no server-side record. A consent store would be a new
- * published data surface with its own retention story, and this Issue
- * does not need one — see `docs/tools/embed-privacy.md` §5.
- */
-function ToolEmbedGate({
-	slug,
-	displayName,
-	privacy,
-	src,
-	sandbox,
-	referrerPolicy,
-	allow,
-	hostMessage,
-}: {
-	slug: string;
-	displayName: string;
-	privacy: EmbedPrivacyVerdict;
-	src: string;
-	sandbox?: string | undefined;
-	referrerPolicy: string;
-	allow?: string | undefined;
-	hostMessage: ToolHostMessageDeclaration | undefined;
-}) {
-	const [activated, setActivated] = useState(false);
-
-	if (privacy.consent === CONSENT_MODE_CLICK_TO_LOAD && !activated) {
-		// The notice is the FIRST thing a visitor of `/tools/prototype`
-		// sees, so it carries the chrome too — `ToolConsentNotice` itself
-		// stays chrome-free (it is also a Storybook fixture), and the
-		// route wraps it.
-		return (
-			<ToolChrome>
-				<ToolConsentNotice
-					displayName={displayName}
-					contacts={privacy.contacts_after_activation}
-					purpose={declaredPurpose(slug)}
-					frameIsThirdParty={privacy.frame_is_third_party}
-					onActivate={() => setActivated(true)}
-				/>
-			</ToolChrome>
-		);
-	}
-
-	return (
-		<ToolEmbedShell
-			slug={slug}
-			displayName={displayName}
-			src={src}
-			sandbox={sandbox}
-			referrerPolicy={referrerPolicy}
-			allow={allow}
-			hostMessage={hostMessage}
-			consentState={activated ? 'granted' : 'not-required'}
-		/>
-	);
-}
-
-/**
- * The declared purpose for a Tool, read from the manifest entry the
- * verdict was derived from. `evaluateEmbedPrivacy` already refuses a
- * Tool that declares contacts without a purpose in both locales, so a
- * blocked entry never reaches the gate and this cannot render an empty
- * purpose under a list of origins.
- */
 /**
  * Whether the manifest's capability grant names `fullscreen`.
  *
@@ -501,13 +423,6 @@ function ToolEmbedGate({
  */
 function grantsFullscreen(allow: string | undefined): boolean {
 	return (allow ?? '').split(/\s+/).some((token) => token.trim().toLowerCase() === 'fullscreen');
-}
-
-function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
-	const tool = getTool(slug);
-	if (!tool || tool.delivery.kind === 'host_disabled') return undefined;
-	const purpose = tool.delivery.privacy?.purpose;
-	return purpose ? { ja: purpose.ja, en: purpose.en } : undefined;
 }
 
 /**
@@ -530,6 +445,11 @@ function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
  *      effect body never runs. It exists so the contract is complete
  *      (declaration → origin-exact, type-allowlisted channel) rather
  *      than a stub that a future Tool has to re-invent.
+ *   3. Own the viewport (owner decision 2026-11-05 — Issue #911): the
+ *      shell renders no `PublicNav` / breadcrumb band and gives the
+ *      frame the full `100dvh`. This is the one state a visitor
+ *      actually uses a Tool in, which is exactly why the owner took
+ *      the chrome off it.
  */
 function ToolEmbedShell({
 	slug,
@@ -539,7 +459,6 @@ function ToolEmbedShell({
 	referrerPolicy,
 	allow,
 	hostMessage,
-	consentState,
 }: {
 	slug: string;
 	displayName: string;
@@ -548,7 +467,6 @@ function ToolEmbedShell({
 	referrerPolicy: string;
 	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
-	consentState?: 'granted' | 'not-required' | undefined;
 }) {
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
 	const getToolWindow = useCallback(() => frameRef.current?.contentWindow ?? null, []);
@@ -562,62 +480,51 @@ function ToolEmbedShell({
 	useToolHostMessage({ slug, declaration: hostMessage, getToolWindow, onMessage: onToolMessage });
 
 	return (
-		<ToolChrome>
-			{/*
-			 * The frame area is whatever the chrome above it left over
-			 * (`ToolChrome`). No `height: 100vh` and no
-			 * `calc(100vh - 64px)`: the first is what Issue #288 shipped,
-			 * which overflows the moment chrome returns; the second is the
-			 * constant that was there before #288 and silently rots as
-			 * soon as the nav changes height (it already differs between
-			 * the desktop strip and the collapsed mobile row).
-			 */}
-			<div
-				data-route="tools/$slug"
-				data-tool-slug={slug}
-				data-tool-consent={consentState ?? 'not-required'}
-				className={frameArea}
-			>
-				<iframe
-					ref={frameRef}
-					title={`${displayName} Tool`}
-					src={src}
-					// ADR-0020: `undefined` for a first-party Tool, so
-					// React renders NO `sandbox` attribute. A sandbox on a
-					// `same_origin_static` entry is a build-time violation
-					// (`embed.sandbox.not-allowed-for-first-party`), not a
-					// weaker declaration.
-					sandbox={sandbox}
-					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
-					// Issue #465: render the DECLARED capability grant.
-					// `allow` is the Permissions-Policy delegation; since
-					// Issue #449 the matching response header IS sent: the
-					// shell route goes through `toolRouteSecurityPolicy()`
-					// in `src/server.ts` and `public/_headers` carries the
-					// grant for `/tools/<slug>/app/**` (see
-					// `docs/security/security-headers.md` §3). See
-					// `docs/tools/embed-policy.md` §2.
-					allow={allow}
-					// Issue #817: the Permissions-Policy half of the
-					// fullscreen grant (`allow="fullscreen"` + the
-					// response header) is not enough on its own —
-					// Chromium reads the CONTAINER half, the HTML
-					// `allowfullscreen` attribute, before it lets the
-					// framed document call requestFullscreen(). The
-					// attribute is derived from the same manifest
-					// declaration, so the two halves cannot disagree.
-					allowFullScreen={grantsFullscreen(allow)}
-					style={{
-						width: '100%',
-						// Grows into the area above; see `frameArea`.
-						flex: '1 1 auto',
-						minHeight: '0',
-						border: '0',
-						display: 'block',
-					}}
-				/>
-			</div>
-		</ToolChrome>
+		// Owner decision 2026-11-05 (Issue #911): no `ToolChrome` — the
+		// Tool gets the viewport. `frameArea` is a definite `100dvh`, so
+		// there is no subtraction layout left to do and no chrome height
+		// the frame can be shorter or taller than.
+		<div data-route="tools/$slug" data-tool-slug={slug} className={frameArea}>
+			<iframe
+				ref={frameRef}
+				title={`${displayName} Tool`}
+				src={src}
+				// ADR-0020: `undefined` for a first-party Tool, so
+				// React renders NO `sandbox` attribute. A sandbox on a
+				// `same_origin_static` entry is a build-time violation
+				// (`embed.sandbox.not-allowed-for-first-party`), not a
+				// weaker declaration.
+				sandbox={sandbox}
+				referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
+				// Issue #465: render the DECLARED capability grant.
+				// `allow` is the Permissions-Policy delegation; since
+				// Issue #449 the matching response header IS sent: the
+				// shell route goes through `toolRouteSecurityPolicy()`
+				// in `src/server.ts` and `public/_headers` carries the
+				// grant for `/tools/<slug>/app/**` (see
+				// `docs/security/security-headers.md` §3). See
+				// `docs/tools/embed-policy.md` §2.
+				allow={allow}
+				// Issue #817: the Permissions-Policy half of the
+				// fullscreen grant (`allow="fullscreen"` + the
+				// response header) is not enough on its own —
+				// Chromium reads the CONTAINER half, the HTML
+				// `allowfullscreen` attribute, before it lets the
+				// framed document call requestFullscreen(). The
+				// attribute is derived from the same manifest
+				// declaration, so the two halves cannot disagree.
+				allowFullScreen={grantsFullscreen(allow)}
+				style={{
+					width: '100%',
+					// Definite because `frameArea` is a definite
+					// `100dvh` — a percentage height resolves against
+					// it, so the frame IS the viewport (#911).
+					height: '100%',
+					border: '0',
+					display: 'block',
+				}}
+			/>
+		</div>
 	);
 }
 
@@ -632,8 +539,10 @@ function ToolEmbedShell({
  * the fix is mechanical.
  *
  * It carries the site chrome (`ToolChrome`, owner decision
- * 2026-11-01) — a blocked Tool is the surface where a visitor most
- * needs a way out.
+ * 2026-11-01, kept by the owner decision of 2026-11-05 — Issue
+ * #911): a blocked Tool shows no Tool, so #911's chrome removal does
+ * not apply here, and this is the surface where a visitor most needs
+ * a way out.
  */
 function BlockedPlaceholder({
 	tool,
@@ -741,9 +650,11 @@ function BlockedPlaceholder({
  * build/repo facts a visitor cannot act on, so it stays in the
  * manifest and never reaches this surface.
  *
- * It carries the same chrome as the embeddable shell (`ToolChrome`,
- * owner decision 2026-11-01): a 「準備中」 page that drops the site nav
- * strands the visitor on the one surface that has nothing to do.
+ * It carries the site chrome (`ToolChrome`, owner decision
+ * 2026-11-01, kept by the owner decision of 2026-11-05 — Issue
+ * #911): the fullscreen treatment applies to surfaces that SHOW a
+ * Tool, and a 「準備中」 page shows none — dropping the site nav there
+ * would strand the visitor on the one surface that has nothing to do.
  */
 function DisabledPlaceholder({ tool }: { tool: DisabledToolView }) {
 	return (

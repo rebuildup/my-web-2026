@@ -255,10 +255,9 @@ describe('Tool Registry — public surface', () => {
 			'iframe',
 			'license',
 			// Issue #498: the declared third-party contacts are part of
-			// the public summary on purpose — the consent notice renders
-			// them, and the visitor has to be able to read what the page
-			// will contact. `basis` stays inside the manifest: it is
-			// review metadata, not visitor copy.
+			// the public summary on purpose — the visitor has to be able
+			// to read what the page will contact. `basis` stays inside
+			// the manifest: it is review metadata, not visitor copy.
 			'privacy',
 			'slug',
 		]);

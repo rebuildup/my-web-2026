@@ -397,11 +397,18 @@ export const ONE_CLICK_ENTRIES = Object.freeze([
  *
  * `/tools` used to be absent too, because Issue #288 removed the chrome
  * from every Tools surface "because the iframe shell wants the full
- * viewport". The owner abolished #288 (Issue #785, 2026-11-01), the
- * shell now subtracts the chrome instead of dropping it, and the index
- * carries `PublicNav` — so `/tools` is a chrome-nav route like the
- * others, and it regains the in-site link back to `/` whose absence
+ * viewport". The owner abolished #288 (Issue #785, 2026-11-01) and the
+ * index carries `PublicNav` — so `/tools` is a chrome-nav route like
+ * the others, and it regains the in-site link back to `/` whose absence
  * used to be recorded here as an information-architecture fact.
+ *
+ * Issue #911 (owner decision 2026-11-05) took the chrome off the
+ * DETAIL route's Tool-showing state (the iframe shell) so
+ * the frame owns the viewport, and kept it on the 404 / 準備中 /
+ * blocked placeholders. That changes nothing here: this roster is
+ * representative PAGE routes, `/tools/<slug>` was never in it, and the
+ * `/tools` index — the surface this roster speaks about — keeps its
+ * chrome.
  *
  * @type {ReadonlyArray<string>}
  */

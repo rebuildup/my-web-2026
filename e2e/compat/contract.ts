@@ -42,8 +42,11 @@ export interface CompatRoute {
 	readonly h1: RegExp;
 	/**
 	 * `PublicNav` is opt-in per page (Issue #199): `/` deliberately
-	 * renders none, and Issue #785 abolished the Issue #288 exclusion
-	 * that also covered the Tools surfaces — they render it again.
+	 * renders none. Issue #785 abolished the Issue #288 exclusion for
+	 * the Tools surfaces; Issue #911 (2026-11-05) then took the chrome
+	 * back off the `/tools/<slug>` states that show a Tool, which is a
+	 * detail route this roster does not cover anyway — the entry here
+	 * is the `/tools` index and it still renders the nav.
 	 * Pinning presence or absence here keeps a regression in either
 	 * direction visible.
 	 */

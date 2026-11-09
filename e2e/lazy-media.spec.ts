@@ -210,11 +210,6 @@ interface PageMeasurement {
 	totalBytes: number;
 	imgTags: string[];
 	iframeSrcs: (string | null)[];
-	/**
-	 * `<iframe>` count before an explicit activation click (Issue
-	 * #498). `null` on a leg with no consent gate.
-	 */
-	preActivationIframeCount: number | null;
 	/** `<video>` / `<audio>` sources in the live DOM, post-hydration. */
 	videoSrcs: (string | null)[];
 	audioSrcs: (string | null)[];
@@ -327,18 +322,11 @@ async function measure(
 		stripMediaMode?: boolean;
 		scrollToSelector?: string;
 		/**
-		 * Selector for an explicit activation control (Issue #498). When
-		 * present the document is measured BEFORE the click as well, so
-		 * the "what did the visitor cost before acting" leg stays a
-		 * measurement instead of an assumption.
-		 */
-		activateSelector?: string;
-		/**
-		 * Set together with `activateSelector` on a Tool route: the frame's
-		 * own document request is awaited on the wire. React inserts the
-		 * `<iframe>` one tick before the browser issues its request, so a
-		 * `networkidle` check can resolve in the gap and report "the Tool
-		 * loaded nothing" for a Tool that loaded fine.
+		 * Set on a Tool route: the frame's own document request is awaited
+		 * on the wire. The iframe is server-rendered (PR #914 removed the
+		 * consent gate), but a `networkidle` check can still resolve in a
+		 * gap and report "the Tool loaded nothing" for a Tool that loaded
+		 * fine, so the response is awaited explicitly.
 		 */
 		awaitToolArtifactResponse?: boolean;
 		reportKey: string;
@@ -380,33 +368,29 @@ async function measure(
 		'utf8',
 	).byteLength;
 
+	// PR #914 removed the consent gate: the iframe is server-rendered,
+	// so the Tool leg measures the surface the visitor asked for from
+	// the first paint. The frame's own document request is still awaited
+	// explicitly when asked — a `networkidle` check can resolve in a gap
+	// and report "the Tool loaded nothing" for a Tool that loaded fine.
+	//
+	// The waiter is armed BEFORE the navigation, because the frame now
+	// loads during the first paint: a waiter armed afterwards waits for
+	// a response that already happened and times out on a Tool that
+	// loaded perfectly well.
+	const artifactResponse = options.awaitToolArtifactResponse
+		? page.waitForResponse(
+				(res) => res.url().startsWith(origin) && isToolArtifact(new URL(res.url()).pathname),
+				{ timeout: 20_000 },
+			)
+		: null;
+
 	await page.goto(path, { waitUntil: 'load' });
 	const responsesBeforeLoad = responses.length;
 	const digitImagesBeforeLoad = responses.filter(isDigitImage).length;
 
-	// Issue #498: a Tool whose declared third-party contacts require
-	// consent renders no frame until the visitor starts the load. The
-	// counts below that describe the live DOM are taken AFTER that
-	// activation, so the Tool leg measures the surface the visitor
-	// actually asked for; `preActivationIframeCount` records what the
-	// document contained before the click.
-	let preActivationIframeCount: number | null = null;
-	if (options.activateSelector) {
-		preActivationIframeCount = await page.locator('iframe').count();
-		// The notice is server-rendered; the click handler is not attached
-		// until hydration finishes, so settle the network first.
-		await page.waitForLoadState('networkidle');
-		const artifactResponse = options.awaitToolArtifactResponse
-			? page.waitForResponse(
-					(res) => res.url().startsWith(origin) && isToolArtifact(new URL(res.url()).pathname),
-					{ timeout: 20_000 },
-				)
-			: null;
-		await page.locator(options.activateSelector).click();
-		await page.waitForFunction(() => document.querySelector('iframe') !== null, undefined, {
-			timeout: 10_000,
-		});
-		if (artifactResponse) await artifactResponse;
+	if (artifactResponse) {
+		await artifactResponse;
 		await page.waitForLoadState('networkidle');
 	}
 
@@ -488,7 +472,6 @@ async function measure(
 		totalBytes: responses.reduce((sum, response) => sum + response.bytes, 0),
 		imgTags,
 		iframeSrcs,
-		preActivationIframeCount,
 		videoSrcs,
 		audioSrcs,
 		embeddedMediaCount,
@@ -628,17 +611,15 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		const baseURL = resolvedBaseURL(testInfo);
 		const tool = await measure(browser, 'tool route', '/tools/prototype', {
 			baseURL,
-			activateSelector: '[data-testid="tool-embed-consent-activate"]',
 			awaitToolArtifactResponse: true,
 			reportKey: 'tool-route',
 		});
 
-		// Issue #498: before the visitor starts the load there is no
-		// frame at all — the Tool's declared third-party contacts
-		// (Google Fonts / Typekit / Apps Script) must not be paid for by
-		// someone who only looked at the page.
-		expect(tool.preActivationIframeCount).toBe(0);
-		// The shell must still mount its first-party iframe (no sandbox —
+		// The frame mounts directly (PR #914 removed the consent gate), so
+		// the Tool's declared third-party contacts (Google Fonts / Typekit /
+		// Apps Script) are paid for by the visit — that is the owner
+		// decision the removal records. What this leg still pins:
+		// The shell must mount its first-party iframe (no sandbox —
 		// ADR-0020) …
 		expect(tool.iframeSrcs).toEqual(['/tools/prototype/app/index.html']);
 		// … and the Tool surface must not gain media elements the
@@ -646,9 +627,9 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		expect(tool.videoSrcs).toEqual([]);
 		expect(tool.audioSrcs).toEqual([]);
 		expect(tool.embeddedMediaCount).toBe(1);
-		// … and once the visitor asked for that Tool, the artifact and
-		// its bundle MUST be requested. "Nothing loads at all" would
-		// satisfy every home-side rule while breaking the Tool.
+		// … and navigating to the Tool MUST fetch the artifact and its
+		// bundle. "Nothing loads at all" would satisfy every home-side
+		// rule while breaking the Tool.
 		expect(tool.toolArtifactResponses.length).toBeGreaterThan(0);
 
 		await testInfo.attach('lazy-media-tool-route', {

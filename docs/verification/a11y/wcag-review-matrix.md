@@ -150,7 +150,7 @@ gate が扱えるのは **Level A / Level AA の達成基準だけ** である
 | SC 1.4.10 Reflow | AA | 人（320 px） |
 | SC 1.4.11 Non-text Contrast | AA | 機械（`a11y:contrast:check`） |
 | SC 1.4.12 Text Spacing | AA | 人（text-spacing 差し込み） |
-| SC 1.4.13 Content on Hover or Focus | AA | 人（Tool の同意表示） |
+| SC 1.4.13 Content on Hover or Focus | AA | 対象外（hover / focus で開く内容を出荷していない — PR #914 で同意表示を削除） |
 | SC 2.1.1 Keyboard | A | 人（キーボードのみ） |
 | SC 2.1.2 No Keyboard Trap | A | 人（フォーカス順序全体） |
 | SC 2.4.1 Bypass Blocks | A | 人（skip link とランドマーク） |
@@ -354,7 +354,6 @@ Issue #722 が名指しした 6 基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 /
 | `table-code-story` | story | `src/editorial/table-code.stories.tsx#MobileWidth` | `narrow` |
 | `status-tiles-story` | story | `src/home/status/tiles.stories.tsx#AllOk` | `empty` / `narrow` |
 | `glyph-headings-story` | story | `src/editorial/glyph-headings.stories.tsx#Default` | — |
-| `embed-consent-story` | story | `src/tools/embed-consent-notice.stories.tsx#ClickToLoad` | `error`（purpose が無い状態） |
 | `home-route` | route | `src/routes/index.tsx` | — |
 | `contact-route` | route | `src/routes/contact.tsx` | — |
 | `app-source` | source | `src` | — |
@@ -382,7 +381,7 @@ Issue #722 が名指しした 6 基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 /
 表はそれを `auto-pass` と記録し、**検査者・実施日・環境・結果は書かない**
 （書くと red になる）。**AA 準拠の根拠にはならない。**
 
-### 人が判断する（22 項目 / 現在は全件 `not-reviewed`）
+### 人が判断する（21 項目 / 現在は全件 `not-reviewed`）
 
 | 項目 | 基準 | surface | state |
 | --- | --- | --- | --- |
@@ -403,13 +402,12 @@ Issue #722 が名指しした 6 基準（2.4.4 / 2.4.5 / 3.2.3 / 3.2.4 / 3.2.6 /
 | `status-messages` | SC 4.1.3 | `form-gallery` | `error` |
 | `control-names` | SC 4.1.2 | `contact-route` | `normal` |
 | `contact-input-purpose` | SC 1.3.5 | `contact-route` | `normal` |
-| `embed-consent-hover` | SC 1.4.13 | `embed-consent-story` | `normal` |
 | `orientation` | SC 1.3.4 | `home-route` | `normal` |
 | `bypass-blocks` | SC 2.4.1 | `home-route` | `normal` |
 | `page-titles` | SC 2.4.2 | `app-source` | `normal` |
 | `language-of-page` | SC 3.1.1 | `app-source` | `normal` |
 
-**現在の状態: 22 項目すべて `not-reviewed`（検査待ち）。**
+**現在の状態: 21 項目すべて `not-reviewed`（検査待ち）。**
 `assignedTo` に **検査の責任を持つ者**（owner）が記録されている。
 **1 件も `human-verified` ではない**ので、**どの文書も AA 準拠を主張できない**。
 
@@ -427,7 +425,7 @@ gate の出力は **2 つを分けて** 報告する。**混ぜない。**
 | 評価 | 2026-11-01 時点の値 | 何を意味するか |
 | --- | --- | --- |
 | **台帳の構造** | **green** | すべての基準に **意味のある区分** がある / 適用範囲の決定が文書と一致する / fixture が期待どおりに振る舞う |
-| **監査された品質** | **not passed** | 手動項目は **22 件が未実施**、人が確認した項目は **0 件**、表の外側の基準は **12 件が適用だが未検証** |
+| **監査された品質** | **not passed** | 手動項目は **21 件が未実施**、人が確認した項目は **0 件**、表の外側の基準は **12 件が適用だが未検証** |
 
 **「台帳が green」は「このサイトが WCAG 2.2 AA に適合している」ことを意味しない。**
 `auto-pass` の 5 項目は **npm の gate が判定した** 記録であって、

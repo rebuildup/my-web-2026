@@ -162,7 +162,7 @@
 							},
 							"privacy": {
 								"type": "object",
-								"description": "Third-party contact + consent contract for this Tool (Issue #498). REQUIRED for every embeddable Tool (same_origin_static / external_exception): the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates src/tools/embed-privacy.ts. Consent is DERIVED from these facts (a cross-origin frame, or a non-empty third_party_origins list, means click_to_load), so there is deliberately no consent_mode field that could switch the gate off. Omit the block only for host_disabled / not_integrable_yet entries, which nobody frames.",
+								"description": "Third-party contact contract for this Tool (Issue #498). REQUIRED for every embeddable Tool (same_origin_static / external_exception): the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates src/tools/embed-privacy.ts. The frame mounts directly (PR #914 removed the consent gate); this declaration is the published disclosure of which origins the framed document may contact, so there is deliberately no field that could weaken it. Omit the block only for host_disabled / not_integrable_yet entries, which nobody frames.",
 								"required": ["third_party_origins"],
 								"properties": {
 									"third_party_origins": {
@@ -176,7 +176,7 @@
 									},
 									"purpose": {
 										"type": "object",
-										"description": "Why the Tool contacts those origins, in both locales. REQUIRED (non-empty) whenever third_party_origins is non-empty; the consent notice renders it verbatim.",
+										"description": "Why the Tool contacts those origins, in both locales. REQUIRED (non-empty) whenever third_party_origins is non-empty; the declaration is the visitor-facing disclosure of the embed's contacts.",
 										"required": ["ja", "en"],
 										"properties": {
 											"ja": { "type": "string", "minLength": 1 },

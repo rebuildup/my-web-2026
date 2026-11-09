@@ -82,6 +82,22 @@ const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 't
 	other: 'writing',
 };
 
+/**
+ * Issue #912 — the list card renders every cover in one fixed frame.
+ *
+ * `16 / 9` is the frame `mediaFrameStyle` already uses for the
+ * placeholder, so the loaded bitmap, the error placeholder and the
+ * no-url placeholder all paint the same box. Before this, the box
+ * followed the cover bitmap's natural ratio (measured on the shipped
+ * catalogue: 1.0 / 1.415 / 1.778 …), so thumbnail heights — and with
+ * them the card heights — varied row by row while the column axes
+ * stayed put. The frame is server-rendered as an inline
+ * `aspect-ratio`, so the box is reserved from the first paint and the
+ * Issue #486 CLS contract holds (the `width` / `height` attributes
+ * still travel from the row's intrinsic size).
+ */
+const COVER_FRAME_RATIO = '16 / 9';
+
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	const type = project.facets[0] ? FACET_LABEL[project.facets[0]] : 'Project';
@@ -114,26 +130,30 @@ export function ProjectCard({ project }: ProjectCardProps) {
 			className={css({
 				// Issue #794: the card is distinguished from the page by its
 				// own fill, not by a rule on its left edge. `bg.surface` is
-				// the raised-plane role; the hairline `borderTop` below only
-				// separates one card from the next and is unchanged.
+				// the raised-plane role.
+				// Owner feedback (2026-11-05, Issue #912 round 2): the
+				// full-width vertical stack read as stretched-out, so the
+				// card no longer splits into cover/copy columns — it is a
+				// COMPACT vertical plane inside the list grid
+				// (`PortfolioList` places it on `repeat(2|3, minmax(0,1fr))`,
+				// the same declaration the tools index and the home
+				// capabilities grid use). The cover bleeds to the card's
+				// top edge; only the copy is padded. The `borderTop`
+				// hairline is gone: in a grid the planes are separated by
+				// the gutter, so the hairline had nothing left to separate
+				// — and a bordered box is what §1/§4 forbid. The radius
+				// matches the cover's so the bleed has no corner seams.
 				backgroundColor: 'bg.surface',
-				display: 'grid',
-				// Issue #767 — the two-column composition is the
-				// cover + copy layout. With no cover the copy is the only
-				// child, so a fixed 4fr/8fr grid would strand it in the
-				// narrow column and leave the rest of the row empty. One
-				// column lets the copy — and its title — use the card's
-				// full width.
-				gridTemplateColumns: cover ? { base: '1fr', md: 'minmax(0, 4fr) minmax(0, 8fr)' } : '1fr',
-				columnGap: { base: '0', md: '8' },
-				rowGap: { base: '4', md: '0' },
-				paddingBlock: '8',
-				borderTop: '1px solid {colors.border.subtle}',
+				display: 'flex',
+				flexDirection: 'column',
+				minWidth: '0',
+				borderRadius: '6px',
+				overflow: 'hidden',
 			})}
 		>
 			{cover ? (
 				<div className={css({ minWidth: '0' })}>
-					<PortfolioMediaFigure media={cover} loading="lazy" />
+					<PortfolioMediaFigure media={cover} loading="lazy" frameAspectRatio={COVER_FRAME_RATIO} />
 				</div>
 			) : null}
 			<div
@@ -142,6 +162,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 					flexDirection: 'column',
 					gap: '3',
 					minWidth: '0',
+					padding: '6',
 				})}
 			>
 				<header

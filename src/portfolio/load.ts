@@ -178,7 +178,12 @@ async function loadPortfolioProjectImpl(
 		...m,
 		url: composeMediaUrl(env, m.r2Key),
 	}));
-	return rowToProject(row, links, mediaWithUrls);
+	const project = rowToProject(row, links, mediaWithUrls);
+	// Issue #913 — the row's authoring fields (body text, media) come from
+	// the CMS when it holds this slug (ADR-0018 §2.11); identity, ordering,
+	// visibility and links stay the D1 row's.
+	const cmsProject = cmsRecordFor(env, cms, slug);
+	return cmsProject ? mergeCmsContent(env, project, cmsProject) : project;
 }
 
 /**
@@ -356,6 +361,65 @@ function withMediaUrls(env: PortfolioEnv, project: PortfolioProject): PortfolioP
 	};
 }
 
+/**
+ * Fill one D1 row's AUTHORING fields from the CMS record of the same slug
+ * (Issue #913).
+ *
+ * ADR-0018 §2.11: the body text and the media are **authoring** — Notion
+ * owns them; D1 is the publication store (identity, visibility, ordering,
+ * evidence status, curated links). The transitional text migration wrote
+ * EMPTY section bodies into every legacy D1 row (the legacy headings
+ * matched no section keyword — blocker `no_mappable_section`, 60 rows),
+ * so a slug both stores hold rendered the lossy D1 copy and the authoring
+ * content never reached the page. This merge changes only that.
+ *
+ * The collision rule itself is UNCHANGED (ADR-0018 §2.7 / ADR-0019 §2.6):
+ * one slug = one URL = one card, and the row's identity is D1's — the
+ * merged object keeps the D1 `id`, ordering keys, visibility, evidence
+ * status and links, so pagination, adjacency and the media approval query
+ * all behave exactly as before.
+ *
+ * Field rules:
+ *   - the six section bodies: the CMS value when it is non-empty, else
+ *     the D1 value. An empty CMS section must never ERASE a stored one.
+ *   - media: a UNION keyed by `r2Key`, D1 rows first. The two stores
+ *     mostly name the same objects (measured: 131 of the CMS's 145 are
+ *     the legacy keys); the CMS-only keys (`portfolio/notion/*`) are
+ *     exactly the images the ingest uploaded without a D1 row. The cover
+ *     stays whatever D1 curated; a D1 row with no cover takes the CMS
+ *     cover through the union's `isCover` flag.
+ */
+function mergeCmsContent(
+	env: PortfolioEnv,
+	d1: PortfolioProject,
+	cms: PortfolioProject,
+): PortfolioProject {
+	const d1Keys = new Set(d1.media.map((media) => media.r2Key));
+	const cmsOnlyMedia = cms.media
+		.filter((media) => !d1Keys.has(media.r2Key))
+		.map((media) => ({ ...media, url: composeMediaUrl(env, media.r2Key) }));
+	return {
+		...d1,
+		motivationMd: cms.motivationMd || d1.motivationMd,
+		architectureMd: cms.architectureMd || d1.architectureMd,
+		constraintsMd: cms.constraintsMd || d1.constraintsMd,
+		implementationMd: cms.implementationMd || d1.implementationMd,
+		evidenceMd: cms.evidenceMd || d1.evidenceMd,
+		retrospectiveMd: cms.retrospectiveMd || d1.retrospectiveMd,
+		media: [...d1.media, ...cmsOnlyMedia],
+	};
+}
+
+/** The CMS record of a slug, already composed with media origins, or null. */
+function cmsRecordFor(
+	env: PortfolioEnv,
+	cms: readonly PortfolioProject[],
+	slug: string,
+): PortfolioProject | null {
+	const found = cms.find((project) => project.slug === slug);
+	return found ? withMediaUrls(env, found) : null;
+}
+
 /** `withMediaUrls` for a lookup that may have found nothing. */
 function withMediaUrlsOrNull(
 	env: PortfolioEnv,
@@ -464,11 +528,16 @@ async function listPortfolioProjectsImpl(
 
 	const d1Projects: PortfolioProject[] = filteredRows.map((row) => {
 		const media = mediaByProject.get(row.id) ?? [];
-		return rowToProject(
+		const project = rowToProject(
 			row,
 			linksByProject.get(row.id) ?? [],
 			media.map((m) => ({ ...m, url: composeMediaUrl(env, m.r2Key) })),
 		);
+		// Issue #913 — authoring fields (body text, media) come from the CMS
+		// record of the same slug when one exists (ADR-0018 §2.11). No extra
+		// statement: `cms` is the in-memory snapshot projection.
+		const cmsProject = cmsRecordFor(env, cms, project.slug);
+		return cmsProject ? mergeCmsContent(env, project, cmsProject) : project;
 	});
 
 	// CMS merge (Issue #765, ADR-0018 §2.2). The bundled snapshot is a

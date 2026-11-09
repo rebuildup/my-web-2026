@@ -18,6 +18,7 @@
 			"*.tsbuildinfo",
 			"worker-configuration.d.ts",
 			"src/routeTree.gen.ts",
+			"src/portfolio/notion/generated",
 			"external",
 			"docs/verification/content",
 			"src/keyboard/sources"

@@ -610,6 +610,22 @@ function imageFetch({ bytes = IMAGE_BYTES, contentType = 'image/png', status = 2
 	};
 }
 
+/**
+ * A 200 response whose body dies mid-transfer, as a fresh object each
+ * call — the shape a real `fetch` produces. Reusing one `Response` across
+ * retries would test the fixture, not the ingest.
+ */
+function failingStreamResponse() {
+	return new Response(
+		new ReadableStream({
+			pull() {
+				throw new Error('terminated');
+			},
+		}),
+		{ status: 200, headers: { 'content-type': 'image/png' } },
+	);
+}
+
 function fakeR2({ existing = [], objects = {}, failPut = false, failList = false } = {}) {
 	const state = { puts: [], lists: 0 };
 	return {
@@ -639,7 +655,14 @@ function fakeR2({ existing = [], objects = {}, failPut = false, failList = false
 }
 
 function runMediaFixture(options = {}, fixtureOptions = {}) {
-	return runFixture(writeFixture(mediaFixture(fixtureOptions)), options);
+	// Retry timing is a production concern; the assertions here are about
+	// the decisions. `backoffMs: 0` keeps a deliberate failure case from
+	// sleeping 1s + 2s while it proves the same contract, and the retry
+	// behaviour itself is asserted in its own tests below.
+	return runFixture(writeFixture(mediaFixture(fixtureOptions)), {
+		mediaRetryBackoffMs: 0,
+		...options,
+	});
 }
 
 describe('media ingest', () => {
@@ -748,8 +771,12 @@ describe('media ingest', () => {
 
 	it('fails closed with a stable code when a byte fetch fails', async () => {
 		const r2 = fakeR2();
+		let calls = 0;
 		const { exitCode, outPath, stderr } = await runMediaFixture({
-			fetchImpl: imageFetch({ status: 404 }),
+			fetchImpl: (url, init) => {
+				calls += 1;
+				return imageFetch({ status: 404 })(url, init);
+			},
 			r2,
 			inventory: readRightsInventory(),
 		});
@@ -758,26 +785,51 @@ describe('media ingest', () => {
 		assert.match(stderr, /nothing was written/u);
 		assert.equal(existsSync(outPath), false);
 		assert.equal(r2.state.puts.length, 0);
+		// A status the server actually returned is definitive: retrying
+		// it would only multiply a decision that is already made.
+		assert.equal(calls, 1);
 	});
 
 	it('maps a mid-body transport failure to the stable code', async () => {
-		const failing = new Response(
-			new ReadableStream({
-				pull() {
-					throw new Error('terminated');
-				},
-			}),
-			{ status: 200, headers: { 'content-type': 'image/png' } },
-		);
 		const r2 = fakeR2();
+		let calls = 0;
 		const { exitCode, stderr } = await runMediaFixture({
-			fetchImpl: () => Promise.resolve(failing),
+			// A real `fetch` returns a NEW response per call; a fixture that
+			// hands back one already-disturbed object would prove nothing
+			// about the retry path.
+			fetchImpl: () => {
+				calls += 1;
+				return Promise.resolve(failingStreamResponse());
+			},
 			r2,
 			inventory: readRightsInventory(),
 		});
 		assert.equal(exitCode, 1);
+		// The stage survives every attempt and the final report: an
+		// operator reads `code=… detail=stream`, never a bare code.
 		assert.match(stderr, /code=media_download_failed detail=stream/u);
 		assert.equal(r2.state.puts.length, 0);
+		// One initial attempt plus the two transient retries.
+		assert.equal(calls, 3);
+	});
+
+	it('retries a transient transport failure and succeeds on the next attempt', async () => {
+		const r2 = fakeR2();
+		let calls = 0;
+		const { exitCode, outPath, stdout } = await runMediaFixture({
+			fetchImpl: (url, init) => {
+				calls += 1;
+				if (calls === 1) return Promise.resolve(failingStreamResponse());
+				return imageFetch()(url, init);
+			},
+			r2,
+			inventory: readRightsInventory(),
+		});
+		assert.equal(exitCode, 0);
+		assert.equal(calls, 2);
+		assert.equal(r2.state.puts.length, 1);
+		assert.match(stdout, /records=1 findings=0 skipped_draft=0 media=1/u);
+		assert.equal(existsSync(outPath), true);
 	});
 
 	it('skips an image the delivery allowlist refuses, and counts it', async () => {

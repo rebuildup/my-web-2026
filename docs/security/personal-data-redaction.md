@@ -133,6 +133,7 @@ corpus の各レコードは `publication` を持つ。
 | 走査しない面 | 理由 |
 | --- | --- |
 | `public/share/**` | 別 delivery obligation（既に別の判断のもと公開されている） |
+| `src/portfolio/notion/generated/**` | owner 管理の Notion データソースから書き出した生成 projection。公開判断は Notion 側の record ごとの `status` / `visibility`（および移行の owner 公開台帳）が持ち、本文はこの repository で著されたものではない。corpus は fixture のみなので、この面の literal をカバーする owner 承認 record はここに存在し得ない（copy 編集 gate も同じ理由で同じ面を除外している） |
 | `src/home/**` `src/editorial/**` `src/routes/**` `src/admin/**` `src/i18n/**` | component / route コード。文言はこの repository で著者され、その pull request でレビューされたもので、移行データではない |
 
 component の文言まで逆向き走査へ広げるには、placeholder な連絡先値
@@ -234,6 +235,25 @@ privacy に関係する変更は依然として失効する。
   配信する別 delivery surface で、既に別の判断のもと公開されている。
   移行データの公開判断をこの gate が代決すべきものではないため、
   除外理由をコードと `quality/profile.yaml` に明記している。
+- **`src/portfolio/notion/generated/**` は対象外（宣言済み）。**
+  この面が持ちうる残差を隠さないために、内容を次の形で記録する。
+  - 検出されるもの: `D006`（敬称つきの日本語名。旧サイトの作品タイトル /
+    要約に残る他者の敬称表記）と `D011`（カメラ由来のファイル名を
+    含む media キーと、それを引き写した `alt` / `caption`）。
+  - なぜこの gate では解除できないか: literal を corpus に置くことは
+    「public repository に private data を置かない」invariant に反する。
+    実データ経路が無いことは上の E005 の項目のとおりである。
+  - 誰が公开发布を判断しているか: owner が管理する Notion データソースの
+    record ごとの `status` / `visibility`、および移行の owner 公開台帳
+    `docs/migration/portfolio-2025-to-2026-publication.json`。
+  - 残的是什么: 名前表記やファイル名の書き換えは owner の内容判断であり、
+    この gate と agent は代理しない。書き換えたい場合は Notion 側で
+    編集してから再 ingest する。
+  - 黙って落としたわけではない: 同じ文言は copy 編集 gate 側も
+    `src/portfolio/notion/generated/**` を対象外として宣言しており、
+    stale content review 側は同じ projection を article source
+    `notion-import` として `unobserved` で報告する（reviewed 扱いには
+    しない）。除外理由をコードと `quality/profile.yaml` に明記している。
 - **component コードは対象外（宣言済み）。** `src/home` / `src/editorial` /
   `src/routes` / `src/admin` / `src/i18n` の文言は移行データではない
   ので逆向き走査しない。逆に走査へ広げる場合の placeholder 方針は

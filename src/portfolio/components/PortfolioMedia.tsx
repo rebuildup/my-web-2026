@@ -61,6 +61,27 @@ export interface PortfolioMediaProps {
 	media: PortfolioMediaData;
 	loading?: 'eager' | 'lazy';
 	className?: string;
+	/**
+	 * Issue #912 — render this media inside a FIXED frame instead of
+	 * the row's intrinsic ratio.
+	 *
+	 * The `/portfolio` list card needs every thumbnail box to be the
+	 * same shape so the covers line up on the grid: the box ratio is
+	 * then a layout decision (`16 / 9`, passed by the card) rather
+	 * than a property of whatever bitmap happens to be the cover, and
+	 * `object-fit: cover` crops the bitmap into it instead of
+	 * stretching it.
+	 *
+	 * The Issue #486 reservation contract is unchanged and gets
+	 * stronger: `width` / `height` attributes are still emitted from
+	 * the row's intrinsic size, and the inline `aspect-ratio` now
+	 * carries the FRAME ratio — which is server-rendered, so the box
+	 * is reserved from the first paint even when the row declares no
+	 * intrinsic size (a state the default path cannot reserve). The
+	 * placeholder branch paints the same frame ratio, so the error
+	 * swap still cannot move the layout.
+	 */
+	frameAspectRatio?: string;
 }
 
 /**
@@ -88,20 +109,34 @@ function boxAspectRatio(media: PortfolioMediaData): string | undefined {
 	return size ? `${size.width} / ${size.height}` : undefined;
 }
 
-export function PortfolioMediaFigure({ media, loading = 'lazy', className }: PortfolioMediaProps) {
+export function PortfolioMediaFigure({
+	media,
+	loading = 'lazy',
+	className,
+	frameAspectRatio,
+}: PortfolioMediaProps) {
 	const [errored, setErrored] = useState(false);
 	const handleError: ReactEventHandler<HTMLImageElement> = () => {
 		setErrored(true);
 	};
 
 	const size = intrinsicSize(media);
-	const aspectRatio = boxAspectRatio(media);
+	// Issue #912: a frame ratio, when given, is the box decision — it
+	// wins over the row's intrinsic ratio for BOTH branches below, so
+	// the loaded image and the placeholder paint the same box.
+	const aspectRatio = frameAspectRatio ?? boxAspectRatio(media);
 
 	if (media.url === null || errored) {
+		// An empty alt is a DECORATIVE image (the mapper's contract: no
+		// caption → decorative). A `role="img"` figure with an empty
+		// `aria-label` is invalid HTML (`html.bad-value`), so a
+		// placeholder for a decorative row is a presentational frame —
+		// the visible "placeholder" text is its whole content.
+		const named = media.alt.trim().length > 0;
 		return (
 			<figure
-				role="img"
-				aria-label={media.alt}
+				role={named ? 'img' : undefined}
+				aria-label={named ? media.alt : undefined}
 				className={cx(mediaFrameStyle, className)}
 				style={aspectRatio ? { aspectRatio } : undefined}
 			>
@@ -120,7 +155,7 @@ export function PortfolioMediaFigure({ media, loading = 'lazy', className }: Por
 				loading={loading}
 				decoding="async"
 				onError={handleError}
-				className={imageStyle}
+				className={cx(imageStyle, frameAspectRatio ? frameCropStyle : undefined)}
 				style={aspectRatio ? { aspectRatio } : undefined}
 			/>
 			{media.caption ? <figcaption className={captionStyle}>{media.caption}</figcaption> : null}
@@ -159,6 +194,19 @@ const imageStyle = css({
 	height: 'auto',
 	borderRadius: '6px',
 	backgroundColor: 'bg.subtle',
+});
+
+/**
+ * Issue #912 — `object-fit: cover` for a fixed-frame render.
+ *
+ * Applied ONLY when `frameAspectRatio` is set: the default path keeps
+ * the row's intrinsic ratio as its box, where the UA default
+ * `object-fit: fill` draws the bitmap 1:1 into its own box (no
+ * distortion possible). A frame box has a DIFFERENT ratio than the
+ * bitmap, so `fill` would stretch it — `cover` crops instead.
+ */
+const frameCropStyle = css({
+	objectFit: 'cover',
 });
 
 const captionStyle = css({

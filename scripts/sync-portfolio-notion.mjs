@@ -544,40 +544,59 @@ async function readBoundedBody(response) {
 	}
 	const body = response.body;
 	if (body !== null && body !== undefined && typeof body.getReader === 'function') {
-		const reader = body.getReader();
+		let reader;
+		try {
+			reader = body.getReader();
+		} catch {
+			// An already-disturbed body (a `Response` read twice, or a
+			// stream whose reader was never released) throws a bare
+			// `TypeError` here. It is still a transport state, so it
+			// leaves as the stable code with its stage — never as a raw
+			// library message, and never as a code without a stage.
+			throw new MediaIngestError('media_download_failed', 'stream');
+		}
 		const chunks = [];
 		let total = 0;
-		for (;;) {
-			let timer = null;
-			const idle = new Promise((_, reject) => {
-				timer = setTimeout(
-					() => reject(new MediaIngestError('media_download_failed', 'idle')),
-					MEDIA_IDLE_TIMEOUT_MS,
-				);
-			});
-			let outcome;
+		try {
+			for (;;) {
+				let timer = null;
+				const idle = new Promise((_, reject) => {
+					timer = setTimeout(
+						() => reject(new MediaIngestError('media_download_failed', 'idle')),
+						MEDIA_IDLE_TIMEOUT_MS,
+					);
+				});
+				let outcome;
+				try {
+					outcome = await Promise.race([reader.read(), idle]);
+				} catch (error) {
+					await reader.cancel().catch(() => {});
+					if (error instanceof MediaIngestError) throw error;
+					// A mid-body `terminated` / `TimeoutError` is the transport's,
+					// not this module's: it becomes the same stable code with a
+					// stage, never a raw library message an operator has to decode.
+					throw new MediaIngestError(
+						'media_download_failed',
+						error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'stream',
+					);
+				} finally {
+					clearTimeout(timer);
+				}
+				if (outcome.done) break;
+				total += outcome.value.byteLength;
+				if (total > MAX_MEDIA_BYTES) {
+					await reader.cancel().catch(() => {});
+					throw new MediaIngestError('media_too_large', 'streamed');
+				}
+				chunks.push(Buffer.from(outcome.value));
+			}
+		} finally {
+			// Release the lock on every exit path: a reader left locked is
+			// what makes a second attempt on the same response fail with an
+			// unclassifiable `TypeError` instead of a stable code.
 			try {
-				outcome = await Promise.race([reader.read(), idle]);
-			} catch (error) {
-				await reader.cancel().catch(() => {});
-				if (error instanceof MediaIngestError) throw error;
-				// A mid-body `terminated` / `TimeoutError` is the transport's,
-				// not this module's: it becomes the same stable code with a
-				// stage, never a raw library message an operator has to decode.
-				throw new MediaIngestError(
-					'media_download_failed',
-					error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'stream',
-				);
-			} finally {
-				clearTimeout(timer);
-			}
-			if (outcome.done) break;
-			total += outcome.value.byteLength;
-			if (total > MAX_MEDIA_BYTES) {
-				await reader.cancel().catch(() => {});
-				throw new MediaIngestError('media_too_large', 'streamed');
-			}
-			chunks.push(Buffer.from(outcome.value));
+				reader.releaseLock();
+			} catch {}
 		}
 		return Buffer.concat(chunks);
 	}
@@ -599,13 +618,53 @@ async function readBoundedBody(response) {
 /**
  * Download one image and decide its content type.
  *
+ * Transient transport failures (the fetch itself, an idle stream, a
+ * dropped body) are retried with a short backoff: a corpus of ~145 files
+ * meets at least one flaky S3 read per run, and aborting a 25-minute
+ * ingest because one signed URL hiccuped made the sync unusable
+ * (measured 2026-11-06, Issue #913). Definitive failures — an HTTP
+ * status the server actually returned, a refused content type, an
+ * oversized body — are never retried.
+ *
  * The response header wins when it names a type we can serve. When it
  * names nothing usable (`''` / `application/octet-stream`), the bytes are
  * asked instead — a signature is evidence, and only the five signatures
  * above can answer. A definite header we cannot serve is refused outright:
  * storing it would create an object the delivery route 404s on.
  */
-export async function downloadMedia(url, { fetchImpl = globalThis.fetch } = {}) {
+export async function downloadMedia(
+	url,
+	{ fetchImpl = globalThis.fetch, retry = 2, backoffMs = 1000 } = {},
+) {
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			return await downloadMediaOnce(url, { fetchImpl });
+		} catch (error) {
+			// Fail closed on the ERROR CONTRACT, not on the library's
+			// shape: a failure that is not one of ours is still a
+			// transport failure, and an operator must be able to read it
+			// as `code=… detail=…`. An unclassified error must never
+			// escape as a bare `TypeError` that the caller can only
+			// report as a code without a stage.
+			const failure =
+				error instanceof MediaIngestError
+					? error
+					: new MediaIngestError(
+							'media_download_failed',
+							error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'stream',
+						);
+			const transient =
+				failure.code === 'media_download_failed' &&
+				!String(failure.detail ?? '').startsWith('http_');
+			if (!transient || attempt >= retry) throw failure;
+			if (backoffMs > 0) {
+				await new Promise((done) => setTimeout(done, backoffMs * 2 ** attempt));
+			}
+		}
+	}
+}
+
+async function downloadMediaOnce(url, { fetchImpl }) {
 	let response;
 	try {
 		response = await fetchImpl(url, { signal: AbortSignal.timeout(MEDIA_DOWNLOAD_TIMEOUT_MS) });
@@ -752,10 +811,10 @@ function planMedia(items, existingKeys, reuse) {
  * undecidable states, and an ingest that cannot prove it will not
  * duplicate bytes must not write.
  */
-async function resolveMedia({ descriptors, fetchImpl, r2Target, env, r2 }) {
+async function resolveMedia({ descriptors, fetchImpl, r2Target, env, r2, retry, backoffMs }) {
 	const outcomes = await mapWithConcurrency(descriptors, MEDIA_CONCURRENCY, async (descriptor) => {
 		try {
-			const fetched = await downloadMedia(descriptor.url, { fetchImpl });
+			const fetched = await downloadMedia(descriptor.url, { fetchImpl, retry, backoffMs });
 			return { ok: true, descriptor, ...fetched };
 		} catch (error) {
 			return {
@@ -895,6 +954,8 @@ export async function syncNotion({
 	fetchImpl = globalThis.fetch,
 	r2 = null,
 	inventory = null,
+	mediaRetry = 2,
+	mediaRetryBackoffMs = 1000,
 	stdout = process.stdout,
 	stderr = process.stderr,
 } = {}) {
@@ -1007,6 +1068,8 @@ export async function syncNotion({
 				r2Target,
 				env,
 				r2: r2Driver,
+				retry: mediaRetry,
+				backoffMs: mediaRetryBackoffMs,
 			});
 		} catch (error) {
 			if (error instanceof MediaIngestError) {

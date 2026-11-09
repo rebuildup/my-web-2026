@@ -3753,6 +3753,76 @@
 			"action": "closed",
 			"note": "原因（`include-hidden-files` の既定 false で `.vite/manifest.json` が落ち、manifest 492 対 artifact 491）を実測し、`ci.yml` に `include-hidden-files: true` を入れた。再発防止テストは `scripts/run-script-tests.mjs` の自動発見で回る。修正後の run 41958112190 で `artifact:attestation:check` と `artifact:bytes:check` が PASS（492 files / 31,314,893 bytes）。`docs/release.md` step 9.1 に `--source-sha` の条件も追記した。",
 			"missing": null
+		},
+		{
+			"issue": 911,
+			"title": "fix(tools): /tools/<slug> をヘッダーなしの全画面表示にする（2026-11-05 owner 指示で #785 の詳細 chrome を更新）",
+			"closedAt": "2026-11-10",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#914",
+				"be88db82",
+				"docs/verification/tools/911-fullscreen/",
+				"e2e/nav.spec.ts",
+				"docs/verification/release/0.8.2-post-deploy.md",
+				"docs/verification/design/live-0.8.2/tools-text-counter-1440.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: /tools/<slug> の shell が PublicNav / Breadcrumbs を出さず、iframe が 100dvh を占有することを e2e/nav.spec.ts が geometry で固定し、1440/390 の WebP を docs/verification/tools/911-fullscreen/ に置いた。条件 2: 404 / 準備中（host_disabled）/ blocked の各状態は shell を通さず、404 と準備中は chrome を維持して /tools へ戻るリンクを持つことを e2e が固定した（shipped manifest に host_disabled が無いため準備中 surface は skip として表明）。条件 3: validate:fast green。条件 4: 古い chrome 契約を前提にしたテストは反転済み。本番 capture でも chrome なしを確認。",
+			"missing": null
+		},
+		{
+			"issue": 912,
+			"title": "fix(portfolio): 一覧をグリッドシステムに適合させ、サムネイルのアライメントを揃える",
+			"closedAt": "2026-11-10",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#915",
+				"a544545b",
+				"docs/verification/design/912-portfolio-grid.md",
+				"docs/verification/design/912-portfolio-grid/",
+				"src/editorial/layout-system.md",
+				"docs/verification/design/live-0.8.2/portfolio-list-1440.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: 列幅 / gutter を実測で示した（1440 で 3 列 × 304px / gutter 24px、900 で 2 列 × 414px、390 で 1 列）。条件 2: cover を 16/9 固定フレーム + object-fit: cover にし、before/after の WebP を PR に添付。条件 3: image-CLS gate は green（ただし同 spec は /design-system の Image fixture を対象とし、本 PR の固定枠経路は直接は exercise しないことは検証 doc §5 に明記）。条件 4: validate:fast green。カードグリッド規則は layout-system.md §3.2 に新設。",
+			"missing": null
+		},
+		{
+			"issue": 913,
+			"title": "fix(portfolio): 公開面のデータ同期を実データに一致させる（外部リンク画像・my-web-2025 由来の承認表示）",
+			"closedAt": "2026-11-10",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#917",
+				"55d62c94",
+				"src/portfolio/notion/generated/snapshot.json",
+				"docs/verification/portfolio/notion-reingest-2026-11-06.md",
+				"docs/verification/design/913-portfolio-sync/",
+				"docs/verification/release/0.8.2-post-deploy.md",
+				"docs/verification/design/live-0.8.2/portfolio-m5-clock-1440.webp"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "本番で実測: /portfolio の SSR が CMS media key を 28 枚の <img> で配信、/portfolio/m5-clock が CMS 本文を表示、参照 123 key がすべて 200、test-otu-* 9 件は 404（非公開）。snapshot は 60 records（フィクスチャ 9 件を除外）。local-only key の混入 3 件は同一 sha256 の既存 key へ訂正済み。validate:release green。",
+			"missing": null
 		}
 	]
 }

@@ -117,3 +117,56 @@ after は修正後撮影で `after-<slug>-<viewport>.webp` として追加する
 - ae-expression の list item / 詳細 panel: 同様に clip 内の bounding box
 
 host 側（`/tools/<slug>` の chrome / frame）の修正は Issue #911 が実施済みで、本 Issue では触れていない。
+
+## 6. 監督による独立再測定（2026-11-10）
+
+回収した上記の修正を、agent 自身の記録ではなく実測で検証し直した。
+
+### 6.1 再測定の方法
+
+| 項目 | 値 |
+| --- | --- |
+| host | ブランチ `910`（`origin/910` = `b4995f59` + qr-generator pin 差し替え） |
+| build | `node scripts/build-tools.mjs`（15 Tool 成功）→ `node scripts/sync-cf-build-output.mjs` |
+| server | `pnpm exec vite preview --port 4404 --strictPort` |
+| 指標 | ① frame の `document.styleSheets` の rule 数、② **要素レベルの横溢れ**（`getBoundingClientRect()` が frame の `clientWidth` を超える可視要素。ただし `overflow-x: auto/scroll/hidden/clip` の祖先を持つ要素は「容器がスクロールする」ため除外）、③ console error |
+| 証跡 | `verify-<slug>-<viewport>.webp`（8 Tool × 2 viewport） |
+
+②は従来の `documentElement.scrollWidth - clientWidth` より強い。`position: fixed` の
+shell は document の scroll 領域を広げないため、document 基準の計測では検出できない
+（実際に取りこぼした例が §6.3）。
+
+### 6.2 結果
+
+| Tool | rules (before → after) | 横溢れ（1440 / 390） | console |
+| --- | --- | --- | --- |
+| prototype | 115 | 0 / 0 | 0 |
+| mic-level | 0 → **186** | 0 / 0 | 0 |
+| pomodoro | 53 | 0 / 0 | 0 |
+| history-quiz | 34 | 0 / 0 | 0 |
+| code-type-p5 | 2 | 0 / 0 | 0 |
+| fillgen | 31 | 0 / 0 | 0 |
+| pi-game | 29 | 0 / 0 | 0 |
+| qr-generator | 4 → 32 | **0 / 0**（§6.3 の修正後） | 0 |
+
+### 6.3 取りこぼしていた欠陥と修正（qr-generator）
+
+§5 の再測定は `documentElement.scrollWidth` 基準で「横溢れ 0」と判定していたが、
+要素レベルで測ると **qr-generator が両 viewport で溢れていた**。
+
+- 原因: app shell が `fixed inset-0 w-screen h-dvh ... p-8` で、`w-screen`（100vw）
+  + `p-8`（2rem）が UA 既定の `content-box` に適用され、shell が
+  **100vw + 64px** になる。app 全体が 32px ずれて右端が frame で切れる。
+- 実測: 1440 で shell `right=1504`（+64）、390 で `right=454`（+64）。
+  `documentElement.scrollWidth` はどちらも viewport 幅と同値（fixed 要素は scroll
+  領域を広げない）ため、§5 の計測では 0 と出ていた。
+- 修正: `styles.css` が既に提供していた `.box-border` を shell が宣言するように
+  した（[tool-qr-generator#8](https://github.com/rebuildup/tool-qr-generator/pull/8)、
+  pin `2149f87`）。修正後再測定で両 viewport とも溢れ 0。
+
+### 6.4 それ以外の Tooltip / clip について
+
+`pomodoro` の dock label、`history-quiz` の `ans-tooltip`、`business-mail-block` の
+tag、`ae-expression` の list item は、`opacity: 0` の hover tooltip または
+`overflow` 容器内要素として bounding box が frame 外に出る。§5 の調査どおり
+描画上の欠陥ではない（`elementsFromPoint` で隣接 box に描画されていないことを確認）。

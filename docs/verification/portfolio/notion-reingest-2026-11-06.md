@@ -85,3 +85,27 @@ committed snapshot が実データになった結果、loader の merge が効�
 （本文 6 セクション + media）を CMS record で満たし**、identity / 順序 / 可視性 /
 evidence status / links は D1 行のまま保つ（1 slug = 1 URL = 1 カードは不変）。
 `src/portfolio/load.ts#mergeCmsContent` + test。
+
+## 6. 追補（2026-11-10）— local-only key の混入と訂正
+
+§3 の末尾に「content-addressed key は同一なので追加 upload 不要」と書いたが、
+**この記述は 3 件について誤りだった**。`planMedia` は同一バイトの既存 object を
+再利用するため、local bucket に旧サムネイル移行の key
+（`portfolio/<slug>/thumbnail/<sha>.jpg`）があると snapshot はその key を指す。
+本番 bucket にはその 3 object が無く、公開面は 404 になるところだった。
+
+実測（2026-11-10、読み取りのみ。`https://media.rebuildup.dev/<key>` は bucket の
+全 key を返す residual 配信面なので、存在確認に使える）:
+
+| 参照されていた key | 本番 bucket | 同一バイトの既存 key | 対応 |
+| --- | --- | --- | --- |
+| `portfolio/rgbdelay/thumbnail/cb630f6a….jpg` | **404** | `portfolio/notion/cb630f6a….jpg` = 200 | key を既存側へ訂正 |
+| `portfolio/foldlayers/thumbnail/f14bb0cd….jpg` | **404** | `portfolio/notion/f14bb0cd….jpg` = 200 | key を既存側へ訂正 |
+| `portfolio/baramoji/thumbnail/02f697a7….jpg` | **404** | `portfolio/notion/02f697a7….jpg` = 200 | key を既存側へ訂正 |
+
+- snapshot が参照する unique key 123 件を全数 HEAD し、404 は上記 3 件のみ。
+  訂正後は 123/123 が 200（バイトは同一 sha256 なので内容の欠落は 0）。
+- 再発防止は runbook §6.1（commit 前の全 key 存在確認）に手順として記録した。
+  根本原因は「local target の取り込み結果をそのまま commit できる」ことであり、
+  ingest 側の target 契約は未決事項として残す（この PR では snapshot の値を
+  実在する key に合わせるところまで）。

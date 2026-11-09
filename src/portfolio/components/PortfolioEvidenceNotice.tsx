@@ -27,7 +27,13 @@ import { css } from '../../../styled-system/css';
  *
  * The text says what is true and nothing more: it does not claim the
  * work is cleared, does not claim it is infringing, and does not
- * apologise for a decision the reader did not make.
+ * apologise for a decision the reader did not make. It also carries BOTH
+ * axes of ADR-0019 §2.2 — what the repository does not know (no rights
+ * record) AND what it does (the publication decision, recorded and
+ * confirmed) — so "unreviewed" cannot be read as "not approved for
+ * publication". Issue #913: a wording that stated only the absence was
+ * read by the owner as「承認がない」, contradicting the repository's own
+ * decision record.
  */
 
 export interface PortfolioEvidenceNoticeProps {
@@ -84,7 +90,7 @@ export function PortfolioEvidenceNotice({ evidenceStatus }: PortfolioEvidenceNot
 		>
 			<p className={labelClassName}>Rights review: unreviewed / 権利レビュー未実施</p>
 			<p className={bodyClassName}>
-				この作品の権利記録（著作者・出典・ライセンス）はこのリポジトリにありません。記録が無いまま公開しているため、公開面にその状態を表示しています。
+				この作品の権利記録（著作者・出典・ライセンス）はこのリポジトリにありません。公開の可否は決定・記録済みであり、この作品はその決定で公開されています。記録が無いまま公開しているため、公開面にその状態を表示しています。
 			</p>
 		</aside>
 	);

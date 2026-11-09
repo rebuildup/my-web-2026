@@ -54,7 +54,15 @@ export function publishedMedia(record: NotionRecord): readonly NotionMedia[] {
  * expressed here in the portfolio vocabulary.
  */
 export function recordEvidenceStatus(record: NotionRecord): 'reviewed' | 'unreviewed' {
-	return record.media.every((media) => media.rights === 'recorded') ? 'reviewed' : 'unreviewed';
+	// An EMPTY media list is not evidence: `every` over an empty array is
+	// vacuously true, which would let a record with no assets claim
+	// `reviewed` — the exact direction ADR-0019 §2.5.2 forbids ("nothing
+	// that is not reviewed is ever labelled as reviewed"). A record whose
+	// asset list is empty is a record the repository knows nothing
+	// about, so it states `unreviewed`.
+	return record.media.length > 0 && record.media.every((media) => media.rights === 'recorded')
+		? 'reviewed'
+		: 'unreviewed';
 }
 
 function toMedia(record: NotionRecord, media: NotionMedia): PortfolioMedia {

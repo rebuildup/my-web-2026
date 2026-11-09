@@ -359,12 +359,16 @@
 			"github.com",
 			"host.invalid",
 			"json-schema.org",
+			"pomodoro.yusuke-kim.com",
+			"prototype.yusuke-kim.com",
 			"raw.githubusercontent.com",
+			"rebuildup.github.io",
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
 			"script.google.com",
 			"scripts.sil.org",
+			"twitter.com",
 			"use.typekit.net",
 			"via.placeholder.com",
 			"www.apache.org",
@@ -374,13 +378,19 @@
 			"www.mhlw.go.jp",
 			"www.mlit.go.jp",
 			"www.naprock.jp",
+			"www.nicovideo.jp",
 			"www.procon.gr.jp",
+			"www.reactbits.dev",
 			"www.sitemaps.org",
 			"www.stat.go.jp",
+			"www.tiktok.com",
 			"www.w3.org",
 			"www.youtube-nocookie.com",
 			"www.youtube.com",
+			"www2.ube-k.ac.jp",
 			"x.com",
+			"youtu.be",
+			"youtube.com",
 			"yusuke-kim.com"
 		],
 		"firstPartyHosts": [],
@@ -501,6 +511,87 @@
 				]
 			},
 			{
+				"url": "https://361do.booth.pm/items/6403113",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6472931",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6520211",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6759404",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6872180",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6932001",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/6939869",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/7758823",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm/items/7935112",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://api.github.com/repos/rebuildup/my-web-2026",
 				"host": "api.github.com",
 				"kind": "external",
@@ -608,7 +699,6 @@
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
-					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
 				]
 			},
@@ -639,7 +729,6 @@
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
-					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
 				]
 			},
@@ -660,6 +749,123 @@
 				"files": [
 					"src/about/data.ts",
 					"src/contact/channels.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae/_FoldLayers",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae/_RGBDelay",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae_FoldLayers",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae_MultiSlicer",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae_RGBDelay",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Ae_sep_color",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/CodeType/_p5",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/CodeType_p5",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/FlashBeat",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/LiteGlow",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/M5/_Clock",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/M5_Clock",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ProtoType",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -814,6 +1020,33 @@
 				"identifier": false,
 				"files": [
 					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/kosen-fes-2025",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2025",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -1021,6 +1254,24 @@
 				]
 			},
 			{
+				"url": "https://pomodoro.yusuke-kim.com",
+				"host": "pomodoro.yusuke-kim.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://prototype.yusuke-kim.com",
+				"host": "prototype.yusuke-kim.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://raw.githubusercontent.com",
 				"host": "raw.githubusercontent.com",
 				"kind": "external",
@@ -1180,6 +1431,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.github.io",
+				"host": "rebuildup.github.io",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://redirect-guard.invalid",
 				"host": "redirect-guard.invalid",
 				"kind": "external",
@@ -1213,8 +1473,79 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_design/status/1905290284763857355",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_design/status/1905491397169611125",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_design/status/1974102198364876878",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_design/status/1984262322828067072",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_sleep/status/1845653703463989526",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/361do_sleep/status/1935259157881569753",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/complexivetunes/status/1842760522137297009",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://twitter.com/snzkuo/status/1962833748761976865",
+				"host": "twitter.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -1224,17 +1555,7 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://use.typekit.net/app",
-				"host": "use.typekit.net",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/tools/embed-consent-notice.stories.tsx"
 				]
 			},
 			{
@@ -1319,12 +1640,31 @@
 				]
 			},
 			{
+				"url": "https://www.nicovideo.jp/watch/sm44678796",
+				"host": "www.nicovideo.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://www.procon.gr.jp",
 				"host": "www.procon.gr.jp",
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"public/share/procon2026/index.html"
+					"public/share/procon2026/index.html",
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.reactbits.dev/components/dock",
+				"host": "www.reactbits.dev",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -1334,6 +1674,15 @@
 				"identifier": false,
 				"files": [
 					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.tiktok.com/@harutoiizawa/video/7421877342030597384",
+				"host": "www.tiktok.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -1364,6 +1713,51 @@
 				]
 			},
 			{
+				"url": "https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/@darupoi_",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/@hiyori_hiyoko",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/@snzkuo",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/@susuyo_soot",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://www.youtube.com/embed/…",
 				"host": "www.youtube.com",
 				"kind": "external",
@@ -1391,12 +1785,1407 @@
 				]
 			},
 			{
+				"url": "https://www.youtube.com/watch?v=-_PKhPMXMDY",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=6xtoFf0h8x4",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=73KhhTBE3Mk",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=7Qo75j",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=7Qo75j_1X6Y",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=8erghVxQKgg",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=9pNjS_Ahfjc",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=A1r3QpnS3GA",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=B0qWZH3e5ik",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=BQEQMC1sL1M",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=EbtybmiN5pM",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=H-jr6SpAaE8",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=IcknittbbFw",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=Inr6kNzWMcA",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=KYRbEEMCam0",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=LNnxiVA9Idw",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=LW1KBCgvEPQ",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=MDcfP97NVpY",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=NjRVa41kHBs",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=O",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=O_VRIuKM9gw",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=R1nFXZB9lG8",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=RGKhatEchrI",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=Rdrylnr6Vdc",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=V15m8WLGVwg",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=X7XddKpTolw",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=ZJsJ2ss4IBw",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=Z_UAvUt4scU",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=aLBMEIOSxdE",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=aSjeoaoBKPc",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=ay5stCLI9v4",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=b2NTglk9tvI",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=bTUbyDqVzIs",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=c02NG9I1iO8",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=easT0DZDAs8",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=j-Ja7kV_S-I",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=llftGyEqH",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=llftGyEqH_4",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=o4yKnfV2YVs",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=oqfjwzVYDc8",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=qwlAC0qPMXI",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=rKprmWQP7l0",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=syScwjPw57U",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=szUAV_gMLQY",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=vcUXmDwI7PQ",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=wtw0tXAqRKE",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/watch?v=yr2bwYk0wAk",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www2.ube-k.ac.jp/fes2025",
+				"host": "www2.ube-k.ac.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1893620585491792320",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1895423219542466819",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1904339929557266477",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1905491397169611125",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1911047618324795838",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1974102198364876878",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_design/status/1984262322828067072",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1790691816637157444",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1815006753144381874",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1832734742124609779",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1837100915419140131",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1838567775390044294",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1840369939967840508",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1844685698991067303",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1845653703463989526",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1850405797592973597",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1852638050976751749",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1873992217502900284",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1877667236900479412",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1878220390595453260",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1882412041526477277",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1901612081641910556",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1918615732939575763",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1923332601713918423",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1924057386731655327",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do/_sleep/status/1955248758243070349",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1893620585491792320",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1895423219542466819",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1904339929557266477",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1905491397169611125",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1911047618324795838",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/2079195581831156023?s=20",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1790691816637157444",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1815006753144381874",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1832734742124609779",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1837100915419140131",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1838567775390044294",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1840369939967840508",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1844685698991067303",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1845653703463989526",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1850405797592973597",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1852638050976751749",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1873992217502900284",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1877667236900479412",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1878220390595453260",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1882412041526477277",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1901612081641910556",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1918615732939575763",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1923332601713918423",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1924057386731655327",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/1995074984331645045/video/1",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/2000158683737768405?s=20",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep/status/2017669205781581891?s=20",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/82_yagi",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/Lookeong_Works",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/PA_Ru6",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/complexivetunes/status/1842760522137297009",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/darupoi_",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/markkuwu",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/morpho/_88",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/morpho_88",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/piyopiyo2424V",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/about/data.ts"
+				]
+			},
+			{
+				"url": "https://x.com/scalegif",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/snzkuo",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/susuyo_soot",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/takeshi__310",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/ube/_k/_cclub",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/ube_k_cclub",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/watasuke1024",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/-",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/-/_uzbG410Cg",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/-_uzbG410Cg",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/6xtoFf0h8x4",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/73KhhTBE3Mk",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/9pNjS_Ahfjc",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/A1r3QpnS3GA",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/D0pItdcPWqE",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/H-jr6SpAaE8",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/IcknittbbFw",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/Inr6kNzWMcA",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/KYRbEEMCam0",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/R1nFXZB9lG8",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/RGKhatEchrI",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/Rdrylnr6Vdc",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/SewXH0Bbm-c",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/V15m8WLGVwg",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/X7XddKpTolw",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/ZJsJ2ss4IBw",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/aSjeoaoBKPc",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/ay5stCLI9v4",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/c02NG9I1iO8",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/o4yKnfV2YVs",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/oqfjwzVYDc8",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/qwlAC0qPMXI",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/syScwjPw57U",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/szUAV/_gMLQY",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/szUAV_gMLQY",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/vcUXmDwI7PQ",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtu.be/yr2bwYk0wAk",
+				"host": "youtu.be",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtube.com/shorts/o9GxF/_FLSQA",
+				"host": "youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtube.com/shorts/o9GxF_FLSQA",
+				"host": "youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://youtube.com/shorts/rq2WlOQa9zE",
+				"host": "youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -1413,33 +3202,20 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://www.youtube-nocookie.com/embed",
-			"https://www.youtube.com/watch?v="
+		"addedExternalUrls": [],
+		"removedExternalUrls": [
+			"https://use.typekit.net/app"
 		],
-		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"www.youtube-nocookie.com"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://www.youtube-nocookie.com/embed"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.youtube.com/watch?v="
+				"message": "External URL removed: https://use.typekit.net/app"
 			}
 		]
 	}

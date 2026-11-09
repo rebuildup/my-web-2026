@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 32 |
-| External hosts | 37 |
+| External hosts | 47 |
 | First-party hosts | 0 |
-| Approved transition | 3 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,9 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `www.youtube-nocookie.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -141,6 +141,15 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
+| `https://361do.booth.pm/items/6403113` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6472931` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6520211` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6759404` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6872180` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6932001` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/6939869` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/7758823` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://361do.booth.pm/items/7935112` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
@@ -152,12 +161,25 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
+| `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Ae_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Ae_MultiSlicer` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Ae_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Ae_sep_color` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/CodeType/_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/CodeType_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/LiteGlow` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/M5/_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
@@ -175,6 +197,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/footer.tsx`, `src/home/hero.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
@@ -197,17 +222,27 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-svg2tsx.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
+| `https://pomodoro.yusuke-kim.com` | `pomodoro.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://prototype.yusuke-kim.com` | `prototype.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://raw.githubusercontent.com` | `raw.githubusercontent.com` | external | `src/keyboard/load.ts` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
+| `https://rebuildup.github.io` | `rebuildup.github.io` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
-| `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
-| `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
+| `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
+| `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/361do_design/status/1974102198364876878` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/361do_design/status/1984262322828067072` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/361do_sleep/status/1845653703463989526` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/361do_sleep/status/1935259157881569753` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/complexivetunes/status/1842760522137297009` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://twitter.com/snzkuo/status/1962833748761976865` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
@@ -217,20 +252,181 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000148322.html` | `www.mhlw.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf` | `www.mlit.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.naprock.jp/intprocon` | `www.naprock.jp` | external | `public/share/procon2026/index.html` |
-| `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html` |
+| `https://www.nicovideo.jp/watch/sm44678796` | `www.nicovideo.jp` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html`, `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.reactbits.dev/components/dock` | `www.reactbits.dev` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
+| `https://www.tiktok.com/@harutoiizawa/video/7421877342030597384` | `www.tiktok.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
 | `https://www.youtube-nocookie.com/embed` | `www.youtube-nocookie.com` | external | `src/portfolio/video-facade.ts` |
 | `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
+| `https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@darupoi_` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@hiyori_hiyoko` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@snzkuo` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@susuyo_soot` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/embed/…` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/iframe_api` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/watch?v=` | `www.youtube.com` | external | `src/portfolio/video-facade.ts` |
+| `https://www.youtube.com/watch?v=-_PKhPMXMDY` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=6xtoFf0h8x4` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=73KhhTBE3Mk` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=7Qo75j` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=7Qo75j_1X6Y` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=8erghVxQKgg` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=9pNjS_Ahfjc` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=A1r3QpnS3GA` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=B0qWZH3e5ik` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=BQEQMC1sL1M` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=EbtybmiN5pM` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=H-jr6SpAaE8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=IcknittbbFw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=Inr6kNzWMcA` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=KYRbEEMCam0` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=LNnxiVA9Idw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=LW1KBCgvEPQ` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=MDcfP97NVpY` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=NjRVa41kHBs` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=O` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=O_VRIuKM9gw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=R1nFXZB9lG8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=RGKhatEchrI` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=Rdrylnr6Vdc` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=V15m8WLGVwg` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=X7XddKpTolw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=ZJsJ2ss4IBw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=Z_UAvUt4scU` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=aLBMEIOSxdE` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=aSjeoaoBKPc` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=ay5stCLI9v4` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=b2NTglk9tvI` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=bTUbyDqVzIs` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=c02NG9I1iO8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=easT0DZDAs8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=j-Ja7kV_S-I` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=llftGyEqH` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=llftGyEqH_4` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=o4yKnfV2YVs` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=oqfjwzVYDc8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=qwlAC0qPMXI` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=rKprmWQP7l0` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=syScwjPw57U` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=szUAV_gMLQY` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=vcUXmDwI7PQ` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=wtw0tXAqRKE` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/watch?v=yr2bwYk0wAk` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www2.ube-k.ac.jp/fes2025` | `www2.ube-k.ac.jp` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1974102198364876878` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_design/status/1984262322828067072` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1815006753144381874` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1832734742124609779` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1837100915419140131` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1838567775390044294` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1840369939967840508` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1844685698991067303` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1845653703463989526` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1850405797592973597` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1852638050976751749` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1873992217502900284` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1877667236900479412` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1878220390595453260` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1882412041526477277` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1901612081641910556` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1918615732939575763` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do/_sleep/status/1955248758243070349` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/2079195581831156023?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1815006753144381874` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1832734742124609779` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1837100915419140131` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1838567775390044294` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1840369939967840508` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1844685698991067303` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1845653703463989526` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1850405797592973597` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1852638050976751749` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1873992217502900284` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1877667236900479412` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1878220390595453260` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1882412041526477277` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1901612081641910556` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1918615732939575763` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1995074984331645045/video/1` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/2000158683737768405?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/2017669205781581891?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/82_yagi` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/Lookeong_Works` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/PA_Ru6` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/complexivetunes/status/1842760522137297009` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/darupoi_` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/markkuwu` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/morpho/_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/morpho_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/piyopiyo2424V` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
+| `https://x.com/scalegif` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/snzkuo` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/susuyo_soot` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/takeshi__310` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/ube/_k/_cclub` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/ube_k_cclub` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/watasuke1024` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/-` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/-/_uzbG410Cg` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/-_uzbG410Cg` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/6xtoFf0h8x4` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/73KhhTBE3Mk` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/9pNjS_Ahfjc` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/A1r3QpnS3GA` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/D0pItdcPWqE` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/H-jr6SpAaE8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/IcknittbbFw` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/Inr6kNzWMcA` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/KYRbEEMCam0` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/R1nFXZB9lG8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/RGKhatEchrI` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/Rdrylnr6Vdc` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/SewXH0Bbm-c` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/V15m8WLGVwg` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/X7XddKpTolw` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/ZJsJ2ss4IBw` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/aSjeoaoBKPc` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/ay5stCLI9v4` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/c02NG9I1iO8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/o4yKnfV2YVs` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/oqfjwzVYDc8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/qwlAC0qPMXI` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/syScwjPw57U` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/szUAV/_gMLQY` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/szUAV_gMLQY` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/vcUXmDwI7PQ` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtu.be/yr2bwYk0wAk` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtube.com/shorts/o9GxF/_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtube.com/shorts/o9GxF_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://youtube.com/shorts/rq2WlOQa9zE` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host www.youtube-nocookie.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube-nocookie.com/embed
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/watch?v=
+- **WARN** `W003 external-url-removed` External URL removed: https://use.typekit.net/app
 

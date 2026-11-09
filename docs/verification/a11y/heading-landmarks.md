@@ -26,7 +26,7 @@ gate は **ページ単位のソース** を走査する。単位は「1 ペー�
 | `legal-review` | component | `src/legal/**` | 資産権利レビュー**カード**（ページに埋め込まれる） |
 | `external-api` | component | `src/external-api/**` | 外部 API 読み取りカード |
 | `tools-index` | page | `src/routes/tools.index.tsx` | Tools 一覧。**`page-missing-landmark` は除外**（理由は「rule 除外（宣言と理由）」の節） |
-| `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（サイト chrome を載せた iframe ホスト。ページ own の outline を持たない。chrome は Issue #785 で復活） |
+| `tools-detail` | component | `src/routes/tools.$slug.tsx` | Tool の埋め込みホスト shell（ツールを表示する面はサイト chrome を出さず viewport 全体を占有 — Issue #911 / owner 指示 2026-11-05。404 / 準備中 / blocked の各 state は nav + パンくずを維持。いずれの state もページ own の outline を持たない） |
 | `contact` | page | `src/routes/contact.tsx` + `src/contact/page.tsx` | お問い合わせ（route シェル + 描画するページ） |
 | `projects-dotfiles` | page | `src/routes/projects.dotfiles.tsx` + `src/projects/DotfilesIntroductionPage.tsx` | dotfiles 導入（route シェル + 描画するページ） |
 | `design-system` | page | `src/routes/design-system.tsx` + `src/routes/design-system/DesignSystemPage.tsx` | デザインシステム（route シェル + 描画するページ） |
@@ -250,8 +250,9 @@ node --test scripts/capture-a11y-heading-landmarks.test.mjs
   変更しない（変更は別 ticket の決定事項）。
 - **`kind: 'component'` の unit は「宣言された判断」である。**
   `legal-review` / `external-api` / `tools-detail` は、ページに埋め込まれる
-  カード、またはサイト chrome を載せた iframe ホスト shell であり、ページ own の
-  `<h1>` / `main` を持たない。種別は **宣言** なので、gate の出力には
+  カード、または iframe ホスト shell（ツールを表示する面は chrome を持たず、
+  ツールを表示しない 404 / 準備中 / blocked だけが chrome を持つ — Issue #911）
+  であり、ページ own の `<h1>` / `main` を持たない。種別は **宣言** なので、gate の出力には
   `(component)` として印字され、reader が判断の根拠を追える。
   一方 `tools-detail` は `<h2>` だけを持ち `<h1>` を持たないため、
   スクリーンリーダーからは「ページ名の-announce がない」状態として残る。

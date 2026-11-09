@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { PortfolioFacet, PortfolioProject } from '../schema';
+import type {
+	PortfolioFacet,
+	PortfolioMedia as PortfolioMediaData,
+	PortfolioProject,
+} from '../schema';
 import { ProjectCard } from './ProjectCard';
 
 /**
@@ -203,5 +207,81 @@ describe('ProjectCard — the role row (Issue #813)', () => {
 			expect(html).toContain('>Period</dt>');
 			expect(html).toContain('2020 — 2021');
 		}
+	});
+});
+
+/**
+ * Grid fit (Issue #912, round 2 — owner feedback 2026-11-05).
+ *
+ * Round 1 fitted the card's INTERNAL cover/copy split to the site grid
+ * rule; the owner then rejected the result as stretched-out ("間延びして
+ * てダサい") and asked for more columns. The card is now a COMPACT
+ * vertical plane (cover bleeding to the top edge, padded copy) and the
+ * multi-column grid lives on the LIST (`PortfolioList`: 2 columns at
+ * `md`, 3 at `lg` — the same declaration the tools index and the home
+ * capabilities grid use). This file pins the card half of that
+ * contract; the list's columns are measured in
+ * `docs/verification/design/912-portfolio-grid.md` (this file cannot
+ * render `PortfolioList` — it needs a router match).
+ *
+ * Regressions these assertions catch:
+ *   - a card that re-adds an internal cover/copy SPLIT: inside a ~300px
+ *     grid column a 4fr/8fr split cannot resolve — the round-1 shape;
+ *   - a card that drops the compact-plane contract (the `bg.surface`
+ *     fill, the compact vertical stack);
+ *   - a cover that leaves the fixed 16/9 frame or the Issue #486
+ *     `width` / `height` reservation.
+ */
+const coverMedia: PortfolioMediaData = {
+	id: 'm-cover',
+	r2Key: 'portfolio/a-project/cover.png',
+	contentType: 'image/png',
+	width: 1280,
+	height: 720,
+	alt: 'Cover',
+	caption: null,
+	isCover: true,
+	displayOrder: 0,
+	url: 'https://media.example.com/cover.png',
+};
+
+describe('ProjectCard grid fit (Issue #912 round 2)', () => {
+	it('is a compact vertical plane — no internal cover/copy split', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
+		);
+		const cls = articleClass(html);
+		// The plane is the card's own fill — a luminance step, not a hue.
+		expect(cls).toContain('bg-c_bg.surface');
+		// The round-1 split must stay gone: no grid-template-columns on
+		// the card, at any breakpoint.
+		expect(cls).not.toContain('grid-tc_');
+		expect(cls).not.toContain('cg_');
+	});
+
+	it('keeps the cover in the fixed 16/9 frame, cropped not stretched', () => {
+		const html = renderToStaticMarkup(
+			<ProjectCard project={project(['develop'], { media: [coverMedia] })} />,
+		);
+		const img = html.match(/<img[^>]*>/)?.[0] ?? '';
+		// The frame is server-rendered → the box is reserved from the
+		// first paint regardless of the bitmap's own ratio.
+		expect(img).toContain('style="aspect-ratio:16 / 9"');
+		// Issue #486 attributes still travel from the row's intrinsic
+		// size; the frame never drops them.
+		expect(img).toContain('width="1280"');
+		expect(img).toContain('height="720"');
+		// `object-fit: cover` is what makes a square or portrait cover
+		// fill the frame without distortion.
+		expect(img).toContain('obj-f_cover');
+	});
+
+	it('keeps a coverless card on the same compact plane', () => {
+		const html = renderToStaticMarkup(<ProjectCard project={project(['develop'])} />);
+		const cls = articleClass(html);
+		expect(cls).toContain('bg-c_bg.surface');
+		expect(cls).not.toContain('grid-tc_');
+		// No cover → no frame, and nothing pretending to reserve one.
+		expect(html).not.toMatch(/<img/);
 	});
 });

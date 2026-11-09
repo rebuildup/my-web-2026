@@ -23,11 +23,10 @@ import type { Page } from '@playwright/test';
  *
  * Issue #498 changed the entry contract: `/tools/prototype` now
  * declares its third-party contacts (Google Fonts / Adobe Typekit /
- * Google Apps Script) in the Tool Registry and the host renders a
- * consent notice instead of the frame until the visitor starts the
- * load. Every host-side assertion below therefore runs through
- * `openWithFrame`, which performs that activation — and the two new
- * tests assert the gate itself.
+ * Google Apps Script) in the Tool Registry. PR #914 removed the
+ * click_to_load consent gate by owner decision, so the frame mounts
+ * directly and every host-side assertion below runs through
+ * `openWithFrame`.
  *
  * The iframe is first-party (ADR-0020): it carries NO `sandbox`
  * attribute, runs on the host origin, and is a layout / URL / CSS-DOM
@@ -47,8 +46,8 @@ import type { Page } from '@playwright/test';
  *   6. Keyboard reachability: Tab from the host route reaches the
  *      iframe (the iframe has `tabindex=0` semantics via being
  *      focusable).
- *   7. Responsive: the iframe fills its container at a typical
- *      desktop viewport.
+ *   7. Responsive: the frame IS the viewport at desktop and mobile
+ *      widths (Issue #911 — no host chrome above or beside it).
  *   8. Refresh: reloading the host route still loads the iframe.
  *   9. CSP console: no CSP violations logged by the host page
  *      during the iframe load.
@@ -81,61 +80,15 @@ const PROTOTYPE_ENTRY = '/tools/prototype/app/index.html';
 const ROUTE = '/tools/prototype';
 
 /**
- * Origin set `/tools/prototype` declares in the Tool Registry
- * (`delivery.privacy.third_party_origins`, Issue #498). The notice has
- * to name exactly these; the values are literals here on purpose — a
- * test that imported the manifest would pass silently when a declared
- * origin was added, which is the drift this assertion exists to catch.
- */
-const DECLARED_CONTACTS = [
-	'https://fonts.googleapis.com',
-	'https://fonts.gstatic.com',
-	'https://script.google.com',
-	'https://use.typekit.net',
-];
-
-/**
- * Navigate to the Tool route and start the load (Issue #498).
+ * Navigate to the Tool route and wait for the frame.
  *
- * ProtoType declares third-party contacts, so the host renders the
- * consent notice and NO iframe until the visitor activates it. Every
- * host-side contract below is asserted on the DOM the visitor actually
- * ends up with, so each test starts from here rather than from a bare
- * `goto` that would now stop at the notice.
- *
- * The helper is idempotent per navigation: call it again after a
- * `page.reload()` to re-activate.
+ * PR #914 removed the consent gate: the iframe mounts directly with the
+ * route. Every host-side contract below is asserted on the DOM the
+ * visitor actually gets, so each test starts from here rather than from
+ * a bare `goto` that would not yet have the frame attached.
  */
 async function openWithFrame(page: Page): Promise<void> {
 	await page.goto(ROUTE);
-	const activate = page.getByTestId('tool-embed-consent-activate');
-	if ((await activate.count()) > 0) {
-		// The gate is the contract: nothing is framed until the visitor
-		// acts. Asserting it here means a regression that re-mounted the
-		// iframe eagerly fails at its own cause, not downstream.
-		await expect(page.locator('iframe')).toHaveCount(0);
-		// The notice is server-rendered, so the button exists before
-		// React attaches the handler: a click that lands before
-		// hydration is swallowed and the frame never mounts. Re-click
-		// until it does — the same bounded pattern the production smoke
-		// spec uses for the reaction picker (Issue #238) — so the race
-		// widens the failure window instead of causing a flake. The
-		// loop is bounded, so a genuine regression still fails.
-		await page.waitForLoadState('networkidle');
-		const frame = page.locator('iframe[title="ProtoType Tool"]');
-		let mounted = false;
-		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
-			await activate.click({ timeout: 2_000 }).catch(() => undefined);
-			mounted = await frame
-				.waitFor({ state: 'attached', timeout: 2_000 })
-				.then(() => true)
-				.catch(() => false);
-		}
-		expect(
-			mounted,
-			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
-		).toBe(true);
-	}
 	await page.waitForSelector('iframe[title="ProtoType Tool"]', {
 		state: 'attached',
 		timeout: 10_000,
@@ -143,46 +96,34 @@ async function openWithFrame(page: Page): Promise<void> {
 }
 
 test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
-	test('host route returns 200 HTML and gates the embed behind consent (Issue #498)', async ({
-		page,
-	}) => {
+	test('host route returns 200 HTML and mounts the frame directly (PR #914)', async ({ page }) => {
 		const res = await page.goto(ROUTE);
 		expect(res?.status()).toBe(200);
 
-		// Before activation: the notice is up and NOTHING is framed.
-		const notice = page.getByTestId('tool-embed-consent');
-		await expect(notice).toBeVisible();
-		await expect(page.locator('iframe')).toHaveCount(0);
-
-		// The notice names every declared contact, and nothing else.
-		await expect(notice.locator('[data-contact-origin]')).toHaveCount(DECLARED_CONTACTS.length);
-		for (const origin of DECLARED_CONTACTS) {
-			await expect(notice.locator(`[data-contact-origin="${origin}"]`)).toHaveCount(1);
-		}
-
-		// After activation the frame is there.
-		await notice.getByTestId('tool-embed-consent-activate').click();
+		// The frame is there with the document — no gate, no activation.
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 
-	test('activation is what mounts the frame — nothing loads before it', async ({ page }) => {
-		const thirdParty: string[] = [];
+	test('the host document itself requests no declared contact in the main frame (#498)', async ({
+		page,
+	}) => {
+		// The manifest declaration is the disclosure of what the framed
+		// artefact may contact, and the frame mounts directly (PR #914) —
+		// so the FRAME will request Typekit / Apps Script. What must stay
+		// empty is the HOST document's own request set: a request for
+		// those origins made in the MAIN frame would mean the host markup
+		// turned the declaration into a fetch.
+		const hostRequests: string[] = [];
 		page.on('request', (request) => {
+			if (request.frame() !== page.mainFrame()) return;
 			const url = request.url();
-			if (url.startsWith('http://127.0.0.1') || url.startsWith('http://localhost')) return;
-			thirdParty.push(url);
+			if (url.includes('use.typekit.net') || url.includes('script.google.com')) {
+				hostRequests.push(url);
+			}
 		});
 		await page.goto(ROUTE);
 		await page.waitForLoadState('networkidle');
-		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
-
-		// The declared origins that the host chrome does NOT load on its
-		// own (Google Fonts is site chrome — Issue #171 / #447; Typekit and
-		// Apps Script are not) must not have been requested at all.
-		const beforeActivation = thirdParty.filter(
-			(url) => url.includes('use.typekit.net') || url.includes('script.google.com'),
-		);
-		expect(beforeActivation).toEqual([]);
+		expect(hostRequests).toEqual([]);
 	});
 
 	test('iframe src is the same-origin Tool artifact', async ({ page }) => {
@@ -323,27 +264,48 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		await expect(frame.locator('script[src*="index-"]')).toHaveCount(1, { timeout: 15_000 });
 	});
 
-	test('responsive: iframe fills container at desktop viewport', async ({ page }) => {
-		await page.setViewportSize({ width: 1280, height: 800 });
-		await openWithFrame(page);
-		const box = await page.locator('iframe[title="ProtoType Tool"]').boundingBox();
-		expect(box).not.toBeNull();
-		// Width fills the viewport (within a small tolerance for any
-		// border / padding).
-		expect(box?.width).toBeGreaterThan(1200);
-		// Height fills at least the viewport minus the host header.
-		expect(box?.height).toBeGreaterThan(600);
+	test('responsive: the frame IS the viewport, desktop and mobile (Issue #911)', async ({
+		page,
+	}) => {
+		// Three viewports, each a full `openWithFrame` cycle (goto +
+		// frame attach). The default 30 s
+		// budget is one viewport's worth, and the first run proved it:
+		// the networkidle wait alone burned the budget and the test
+		// went flaky. The geometry assertion itself is instant; the
+		// time is the navigation cycle it is measured on.
+		test.setTimeout(120_000);
+		// 1440 / 390 are the widths the Issue #911 evidence is captured
+		// at; 1280×800 stays the desktop case this spec has always used.
+		const viewports = [
+			{ width: 1280, height: 800 },
+			{ width: 1440, height: 900 },
+			{ width: 390, height: 844 },
+		];
+		for (const viewport of viewports) {
+			await page.setViewportSize(viewport);
+			await openWithFrame(page);
+			const box = await page.locator('iframe[title="ProtoType Tool"]').boundingBox();
+			const at = `${viewport.width}×${viewport.height}`;
+			expect(box, `the frame has no box at ${at}`).not.toBeNull();
+			// No chrome above or beside the frame: it starts at the
+			// document origin and covers the viewport (`100dvh`). Before
+			// #911 the frame was `viewport - chrome`, so both the origin
+			// and the height assertion are what a chrome regression
+			// coming back trips.
+			expect(box?.x ?? Number.NaN, `frame x at ${at}`).toBeLessThan(2);
+			expect(box?.y ?? Number.NaN, `frame y at ${at}`).toBeLessThan(2);
+			expect(box?.width ?? 0, `frame width at ${at}`).toBeGreaterThanOrEqual(viewport.width - 2);
+			expect(box?.height ?? 0, `frame height at ${at}`).toBeGreaterThanOrEqual(viewport.height - 2);
+		}
 	});
 
 	test('refresh re-loads the iframe document', async ({ page }) => {
 		await openWithFrame(page);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
-		// The consent state is per-visit by design (#498: no stored
-		// record), so a reload shows the notice again and needs a second
-		// activation.
+		// The frame mounts directly (PR #914), so a reload re-serves the
+		// shell with the frame in it — no gate, no re-activation.
 		await page.reload();
-		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
 		await openWithFrame(page);
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
 	});

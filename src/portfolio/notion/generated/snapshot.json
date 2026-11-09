@@ -1,14 +1,3981 @@
 {
 	"schema": "portfolio-notion-snapshot.v1",
 	"source": {
-		"databaseId": "unconfigured",
-		"capabilities": ["read_content"],
-		"fetchedAt": "2026-11-01T00:00:00.000Z",
+		"databaseId": "6a148863-d397-417e-af26-83b628dcd982",
+		"idKind": "data_source",
+		"capabilities": [
+			"read_content"
+		],
+		"fetchedAt": "2026-11-06T05:10:57.389Z",
 		"sourceUrl": null
 	},
-	"availability": "unavailable",
-	"unavailableReason": "not_synced: no Notion database has been connected yet",
-	"observedAt": "2026-11-01T00:00:00.000Z",
-	"contentDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-	"records": []
+	"availability": "public",
+	"unavailableReason": null,
+	"observedAt": "2026-11-06T05:10:57.389Z",
+	"contentDigest": "sha256:62d9423a90ee74adc6a903641a1d34dbe6d0a42638b515b331144416da25d11f",
+	"records": [
+		{
+			"pageId": "40ed54e3-32c3-81ec-bfc2-db919a5664f7",
+			"slug": "flashbeat-bgm",
+			"title": "FlashBeatテーマ曲(BGM)",
+			"summary": "自作音ゲーFlashBeatのテーマ曲 作曲しました",
+			"role": "Composition",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"other"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "自作音ゲーFlashBeatのテーマ曲 作曲しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=9pNjS_Ahfjc](https://www.youtube.com/watch?v=9pNjS_Ahfjc)\n\n[https://www.youtube.com/watch?v=9pNjS_Ahfjc](https://www.youtube.com/watch?v=9pNjS_Ahfjc)\n\n### Links\n\n[https://youtu.be/9pNjS_Ahfjc](https://youtu.be/9pNjS_Ahfjc)",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [],
+			"editedAt": "2026-11-05T06:57:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-818e-8d1f-f054f098a620",
+			"slug": "yukikate",
+			"title": "【二次創作】雪糅 文字pv",
+			"summary": "サビがとても好き。落ち着いた映像が出来上がりました。",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "サビがとても好き。落ち着いた映像が出来上がりました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=A1r3QpnS3GA](https://www.youtube.com/watch?v=A1r3QpnS3GA)\n\n[https://youtu.be/A1r3QpnS3GA](https://youtu.be/A1r3QpnS3GA)\n\n[https://x.com/361do_design/status/1895423219542466819](https://x.com/361do_design/status/1895423219542466819)\n\n[https://www.nicovideo.jp/watch/sm44678796](https://www.nicovideo.jp/watch/sm44678796)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/A1r3QpnS3GA",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_design/status/1895423219542466819",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://www.nicovideo.jp/watch/sm44678796",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81e4-881e-c9901bfdf875",
+			"slug": "usoto",
+			"title": "嘘と未来 文字pv",
+			"summary": "ボカロ曲「嘘と未来/うわべ」の文字pvです",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "ボカロ曲「嘘と未来/うわべ」の文字pvです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=qwlAC0qPMXI](https://www.youtube.com/watch?v=qwlAC0qPMXI)\n\n[https://youtu.be/qwlAC0qPMXI](https://youtu.be/qwlAC0qPMXI)\n\n[https://x.com/361do_sleep/status/1790691816637157444](https://x.com/361do_sleep/status/1790691816637157444)\n\n[https://youtu.be/qwlAC0qPMXI](https://youtu.be/qwlAC0qPMXI)\n\n[https://www.youtube.com/watch?v=LNnxiVA9Idw](https://www.youtube.com/watch?v=LNnxiVA9Idw)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/qwlAC0qPMXI",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1790691816637157444",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/qwlAC0qPMXI",
+					"displayOrder": 2
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=LNnxiVA9Idw",
+					"displayOrder": 3
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-810d-a012-eb57991aafe2",
+			"slug": "ugoita",
+			"title": "動いたっ！ イラストアニメーション",
+			"summary": "Aeでイラストを動かしてみました",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Aeでイラストを動かしてみました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=vcUXmDwI7PQ](https://www.youtube.com/watch?v=vcUXmDwI7PQ)\n\n[https://www.youtube.com/watch?v=vcUXmDwI7PQ](https://www.youtube.com/watch?v=vcUXmDwI7PQ)\n\n### Links\n\n[https://youtu.be/vcUXmDwI7PQ](https://youtu.be/vcUXmDwI7PQ)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/vcUXmDwI7PQ",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81a4-ad89-fccba8130f79",
+			"slug": "tokimeki",
+			"title": "darupoi 様 - Tokimeki",
+			"summary": "darupoi 様 - Tokimeki\n\n歌ってみたのMVを制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "darupoi 様 - Tokimeki\n\n歌ってみたのMVを制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=Z_UAvUt4scU](https://www.youtube.com/watch?v=Z_UAvUt4scU)\n\n歌ってみたの映像を担当しました\n\n[https://www.youtube.com/watch?v=Z_UAvUt4scU](https://www.youtube.com/watch?v=Z_UAvUt4scU)\n\nVocal & MIX : darupoi\n\n[https://www.youtube.com/@darupoi_](https://www.youtube.com/@darupoi_)\n\n[https://x.com/darupoi_](https://x.com/darupoi_)\n\nIllust : やぎ\n\n[https://x.com/82_yagi](https://x.com/82_yagi)\n\nMV : samuido\n\n---\n\n本家様↓\n\n[https://www.youtube.com/watch?v=-_PKhPMXMDY](https://www.youtube.com/watch?v=-_PKhPMXMDY)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8101-a90c-ef708c6f860c",
+			"slug": "tegaki-anime",
+			"title": "手書きアニメーション",
+			"summary": "フォトショを使って初めて手書きアニメーションを作成しました。",
+			"role": "Design",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "フォトショを使って初めて手書きアニメーションを作成しました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://twitter.com/361do_design/status/1905290284763857355](https://twitter.com/361do_design/status/1905290284763857355)\n\n[https://twitter.com/361do_design/status/1905491397169611125](https://twitter.com/361do_design/status/1905491397169611125)\n\n[https://x.com/361do_design/status/1905491397169611125](https://x.com/361do_design/status/1905491397169611125)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_design/status/1905491397169611125",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/tegaki-anime/tegaki-anime/media_1762425129530_7nj5zjnyn-gifanim_m.gif",
+					"contentType": "image/gif",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/tegaki-anime/tegaki-anime/media_1762425108589_cchdggu62-vlcsnap-2025-07-30-10h28m02s858.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-812c-987e-e322a560e30c",
+			"slug": "stretch-v01",
+			"title": "Aeエフェクトプラグイン Stretch",
+			"summary": "AeでAviutlの引き伸ばしを再現しました。これでC++が出来ると自称していいのでしょうか...",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "AeでAviutlの引き伸ばしを再現しました。これでC++が出来ると自称していいのでしょうか...",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "Aeエフェクトプラグイン Stretch\n\nAeエフェクトプラグイン Stretch\n\n- [https://youtu.be/-\\_uzbG410Cg](https://youtu.be/-_uzbG410Cg)\n- [https://x.com/361do\\_sleep/status/1877667236900479412](https://x.com/361do_sleep/status/1877667236900479412)\n- [https://361do.booth.pm/items/6472931](https://361do.booth.pm/items/6472931)\n\nAeでAviutlの引き伸ばしを再現しました。これでC++が出来ると自称していいのでしょうか...\n\n- https://youtu.be/-\\_uzbG410Cg (video/youtube)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/-/_uzbG410Cg",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1877667236900479412",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6472931",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8123-bcfb-dad3c1fa0566",
+			"slug": "stretch-v02",
+			"title": "Aeエフェクトプラグイン Stretch v2",
+			"summary": "AeエフェクトプラグインStretchのv2です。操作性を改善して斜めに引き伸ばせるようにしました。Xの投稿が伸びてくれました。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "AeエフェクトプラグインStretchのv2です。操作性を改善して斜めに引き伸ばせるようにしました。Xの投稿が伸びてくれました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Links\n\n[https://361do.booth.pm/items/6472931](https://361do.booth.pm/items/6472931)\n\n[https://x.com/361do_sleep/status/1901612081641910556](https://x.com/361do_sleep/status/1901612081641910556)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6472931",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1901612081641910556",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-813f-bb2b-dae15d962b0f",
+			"slug": "shinkansen",
+			"title": "シンカンセンスゴイカタイアイス p5js練習",
+			"summary": "「シンカンセンスゴイカタイアイス/シャノン」の映像です p5.jsを使った映像制作の練習です そのうちGithubにソースコードを公開します 後半テンポがズレてるのは動画生成時の負荷で生じる若干のズレが重なったものだと思います",
+			"role": "Development",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop",
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「シンカンセンスゴイカタイアイス/シャノン」の映像です p5.jsを使った映像制作の練習です そのうちGithubにソースコードを公開します 後半テンポがズレてるのは動画生成時の負荷で生じる若干のズレが重なったものだと思います",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=73KhhTBE3Mk](https://www.youtube.com/watch?v=73KhhTBE3Mk)\n\n### Links\n\n[https://youtu.be/73KhhTBE3Mk](https://youtu.be/73KhhTBE3Mk)\n\n[https://x.com/361do_sleep/status/1844685698991067303](https://x.com/361do_sleep/status/1844685698991067303)\n\n[https://www.youtube.com/watch?v=O_VRIuKM9gw](https://www.youtube.com/watch?v=O_VRIuKM9gw)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/73KhhTBE3Mk",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1844685698991067303",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=O\\_VRIuKM9gw",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-812c-9643-f8bad8b81d20",
+			"slug": "sep-color",
+			"title": "Aeエフェクトプラグイン sep_color",
+			"summary": "画像のようにレイヤーの不透明な塗りつぶします。線と円で塗りつぶせるようにしたのがポイント 操作性はStretchよりもよくなってます。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "画像のようにレイヤーの不透明な塗りつぶします。線と円で塗りつぶせるようにしたのがポイント 操作性はStretchよりもよくなってます。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://361do.booth.pm/items/6520211](https://361do.booth.pm/items/6520211)\n\n[https://x.com/361do_sleep/status/1882412041526477277](https://x.com/361do_sleep/status/1882412041526477277)\n\n[https://github.com/rebuildup/Ae_sep_color](https://github.com/rebuildup/Ae_sep_color)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6520211",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1882412041526477277",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8102-857f-f29a310540dd",
+			"slug": "seishun",
+			"title": "青春コンプレックス / darupoi様",
+			"summary": "[３ヶ国語で（英語、韓国語、日本語）歌ってみた] 青春コンプレックス / 結束バンド (ぼっち・ざ・ろっく！) - darupoi\n\nMV制作を担当しました",
+			"role": "Video production",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "\\[３ヶ国語で（英語、韓国語、日本語）歌ってみた\\] 青春コンプレックス / 結束バンド (ぼっち・ざ・ろっく！) - darupoi\n\nMV制作を担当しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=B0qWZH3e5ik](https://www.youtube.com/watch?v=B0qWZH3e5ik)\n\nYoutube リンク↓\n\n[https://www.youtube.com/watch?v=B0qWZH3e5ik](https://www.youtube.com/watch?v=B0qWZH3e5ik)\n\ndarupoi 様 ↓\n\n[https://www.youtube.com/@darupoi_](https://www.youtube.com/@darupoi_)\n\nMIX : markkoo様 ↓\n\n[https://x.com/markkuwu](https://x.com/markkuwu)\n\nEdit : ルカン様 ↓\n\n[https://x.com/Lookeong_Works](https://x.com/Lookeong_Works)\n\nIllust : 五尺玉はぜる様 ↓\n\n[https://x.com/scalegif](https://x.com/scalegif)\n\n---\n\n[https://x.com/361do_design/status/2079195581831156023?s=20](https://x.com/361do_design/status/2079195581831156023?s=20)\n\n---",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/seishun/seishun/media_1786783808944_48aa5e03b9984b0fb1250fcd6afb475d-videoframe_74957.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_18304.png",
+					"caption": "videoframe_18304.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/seishun/seishun/media_1786783834259_4b2a86690279469ca1513569fb835aec-videoframe_44740.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_44575.png",
+					"caption": "videoframe_44575.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/seishun/seishun/media_1786783872041_3a58398104c34a878b1b413d1a4e9d99-videoframe_131784.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_118873.png",
+					"caption": "videoframe_118873.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/seishun/seishun/media_1786783905835_4208f39c1cb548538c3d9dc8c8785865-videoframe_140665.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_144446.png",
+					"caption": "videoframe_144446.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8132-879c-dcab13064dab",
+			"slug": "rgbdelay",
+			"title": "Aeエフェクトプラグイン RGBDelay",
+			"summary": "RGB時間差ずれを実現するAeエフェクトプラグイン。前後のフレームを参照し、RGBに分けて表示します。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "RGB時間差ずれを実現するAeエフェクトプラグイン。前後のフレームを参照し、RGBに分けて表示します。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "RGB時間差ずれを実現するAeエフェクトプラグイン\n\n前後のフレームを参照し、RGBに分けて表示します\n\n[https://x.com/361do_sleep/status/2000158683737768405?s=20](https://x.com/361do_sleep/status/2000158683737768405?s=20)\n\n[https://361do.booth.pm/items/7758823](https://361do.booth.pm/items/7758823)\n\n[https://github.com/rebuildup/Ae_RGBDelay](https://github.com/rebuildup/Ae_RGBDelay)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": "booth",
+					"url": "https://361do.booth.pm/items/7758823",
+					"displayOrder": 0
+				},
+				{
+					"kind": "repo",
+					"label": "github",
+					"url": "https://github.com/rebuildup/Ae/_RGBDelay",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/cb630f6aea10591a87a814b8d08c5125d4da9ede890767d6a878c997b6b743c6.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-815a-bf5b-c31b580a2ad9",
+			"slug": "reel-2025",
+			"title": "REEL 2025",
+			"summary": "2025年に作った映像のまとめです",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "2025年に作った映像のまとめです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "### REEL 2025\n\n[https://www.youtube.com/watch?v=8erghVxQKgg](https://www.youtube.com/watch?v=8erghVxQKgg)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-819e-af14-c1af11434ab2",
+			"slug": "reel-2024",
+			"title": "reel 2024",
+			"summary": "2024年に作った動画の総集編です",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "2024年に作った動画の総集編です",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=oqfjwzVYDc8](https://www.youtube.com/watch?v=oqfjwzVYDc8)\n\n[https://youtu.be/oqfjwzVYDc8](https://youtu.be/oqfjwzVYDc8)\n\n[https://www.youtube.com/watch?v=oqfjwzVYDc8](https://www.youtube.com/watch?v=oqfjwzVYDc8)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/oqfjwzVYDc8",
+					"displayOrder": 0
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=oqfjwzVYDc8",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/reel-2024/reel-2024/media_1762438252825_7bedcfuin-videoframe_123850.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81a9-b74a-ff811517fa6b",
+			"slug": "red-black-design",
+			"title": "赤と黒のデザイン",
+			"summary": "webっぽいデザインの練習です 赤と黒はスタイリッシュな感じが出ますよね",
+			"role": "Design",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "webっぽいデザインの練習です 赤と黒はスタイリッシュな感じが出ますよね",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8186-b769-ea628efcc3e0",
+			"slug": "prototype-brochure",
+			"title": "ProtoType パンフレット",
+			"summary": "久しぶりのデザイン。過去に作った素材を使っています。",
+			"role": "Design",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "久しぶりのデザイン。過去に作った素材を使っています。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://prototype.yusuke-kim.com/",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/prototype-brochure/ProtoType-brochure/media_1762424793582_ajjov4mxn-20250311_com_pan.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/prototype-brochure/ProtoType-brochure/media_1762424793582_ajjov4mxn-20250311_com_pan.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-815c-8b7f-cf03936cdda4",
+			"slug": "prototype",
+			"title": "タイピングゲーム ProtoType",
+			"summary": "WebGL(Pixi.js)を使ってタイピングゲームを作りました。ゲームの実装が難しかった、、。ネットで公開してます",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "WebGL(Pixi.js)を使ってタイピングゲームを作りました。ゲームの実装が難しかった、、。ネットで公開してます",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=ZJsJ2ss4IBw](https://www.youtube.com/watch?v=ZJsJ2ss4IBw)\n\n[https://youtu.be/ZJsJ2ss4IBw](https://youtu.be/ZJsJ2ss4IBw)\n\n[https://prototype.yusuke-kim.com/](https://prototype.yusuke-kim.com/)\n\n[https://github.com/rebuildup/ProtoType](https://github.com/rebuildup/ProtoType)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/ZJsJ2ss4IBw",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://prototype.yusuke-kim.com/",
+					"displayOrder": 1
+				},
+				{
+					"kind": "repo",
+					"label": null,
+					"url": "https://github.com/rebuildup/ProtoType",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81f5-8c27-e0f14fdee125",
+			"slug": "propose",
+			"title": "三途くお 様「プロポーズ/可不」",
+			"summary": "三途くお 様「プロポーズ/可不」\n\nShort動画制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "三途くお 様「プロポーズ/可不」\n\nShort動画制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=bTUbyDqVzIs](https://www.youtube.com/watch?v=bTUbyDqVzIs)\n\n[https://www.youtube.com/watch?v=bTUbyDqVzIs](https://www.youtube.com/watch?v=bTUbyDqVzIs)\n\n三途くお 様\n\n[https://www.youtube.com/@snzkuo/](https://www.youtube.com/@snzkuo/)\n\n[https://x.com/snzkuo](https://x.com/snzkuo)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/propose/propose/media_1763978890990_p2s59d08c-videoframe_2504.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_2504.png",
+					"caption": "videoframe_2504.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/propose/propose/media_1763978909326_t8ecuarzr-videoframe_6287.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_6287.png",
+					"caption": "videoframe_6287.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/propose/propose/media_1762429544596_aa78lp7qm-vlcsnap-2025-11-06-20h45m24s212.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/propose/propose/media_1763978921263_j40x3o9og-videoframe_19773.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_19773.png",
+					"caption": "videoframe_19773.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/propose/propose/media_1763978929838_jiokvt281-videoframe_28505.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_28505.png",
+					"caption": "videoframe_28505.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8199-8024-c8bf533437e6",
+			"slug": "pomodoroom",
+			"title": "pomodoroom",
+			"summary": "ポモドーロタイマーです",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "ポモドーロタイマーです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "テスト週間にポモドーロタイマーを作りました\n\npomodoroomってのは今考えました 我ながらナイスな名前です\n\n読みはポモドルームか、ポモドーロームです\n\n個人的に前者の方が好きなのでポモドルームと呼称することにします\n\n[https://pomodoro.yusuke-kim.com/](https://pomodoro.yusuke-kim.com/)\n\n作り始めたときはもっとシンプルだったのですが、欲しい機能を追加していくうちに複雑になってしまった\n\nメモが書けたり、画像を貼れたり、ミニタイマーが使えたりします\n\nポモドーロタイマーは25分作業、5分休憩を繰り返す仕組みですが、\n\n25分の作業時間が短くて集中力が途切れると思ったので、\n\nデフォルトのサイクルを15分作業→3分休憩→30分作業→3分休憩→45分作業→3分休憩→60分作業→5分休憩→75分作業→30分休憩にしてあります\n\n5分の休憩ってのも、5分あるなら遊べるなと、\n\n集中が散ってしまう実感があったので\n\n好きな音楽を聞ける時間、3分にしました。\n\n本来のポモドーロタイマーでも5分休憩は音楽を聞くといいそうです\n\nYoutubeの埋め込みでBGMを再生できます\n\n再生リストのURLを入力したら再生リストが再生されます\n\n規約的に200\\*200pxサイズの埋込まではOKのようなので、その最小にまで縮小できるようにしています。\n\n上から付箋を重ねると隠せるサイズでもあります\n\nライトモードにもなります\n\n統計として作業時間を記録する機能を簡易実装しています\n\nいいUIが思いつかなかったので、放置してます\n\nコンポーネントライブラリでいいのあったら変わるかもです\n\n下のこれいいですよね\n\nreactbitsのdockです\n\n[https://www.reactbits.dev/components/dock](https://www.reactbits.dev/components/dock)\n\n勉強以外でも集中を維持したいときに使えるので、重宝してます\n\n最初はyusuke-kim.comにそのまま置いていたのですが、それだとキャッシュの削除を気軽に行えないので\n\nサブドメインpomodoroで分離しました。\n\nリダイレクトの仕組みなので本体はyusuke-kim.comに置いてあります\n\n### 今後の構想\n\nWebアプリからデスクトップアプリ化したい気持ちがあります\n\nそれというのも、ブラウザを開きっぱなしにするのが若干面倒なんですね\n\nタブが隠れてると通知がこなかったりもするので、それも不便\n\n次回のテスト週間はデスクトップアプリ開発をしているかもしれません",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813362107_zlcvwradb-image.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "image.png",
+					"caption": "image.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813373154_74jl4qdf4-image.webp",
+					"contentType": "image/webp",
+					"width": null,
+					"height": null,
+					"alt": "image.webp",
+					"caption": "image.webp",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813394643_v6w46ebmb-2025-12-13-134032.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 134032.png",
+					"caption": "スクリーンショット 2025-12-13 134032.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813421313_s1bc6bs31-2025-12-13-135350.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 135350.png",
+					"caption": "スクリーンショット 2025-12-13 135350.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813441664_ns7tap4br-2025-12-13-140334.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 140334.png",
+					"caption": "スクリーンショット 2025-12-13 140334.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/pomodoroom/pomodoroom/media_1765813362107_zlcvwradb-image.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8171-af33-e3e450ae758d",
+			"slug": "ooame",
+			"title": "大雨警報発令中",
+			"summary": "練習です大雨警報が発令中だったので作りました",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "練習です大雨警報が発令中だったので作りました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=6xtoFf0h8x4](https://www.youtube.com/watch?v=6xtoFf0h8x4)\n\n[https://www.youtube.com/watch?v=6xtoFf0h8x4](https://www.youtube.com/watch?v=6xtoFf0h8x4)\n\n### Links\n\n[https://youtu.be/6xtoFf0h8x4](https://youtu.be/6xtoFf0h8x4)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/6xtoFf0h8x4",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81db-a981-cf69090b8084",
+			"slug": "oneself",
+			"title": "ONESELF 二次創作",
+			"summary": "TwinfieldさんのONESELFで文字pv(?)を作りました 満足",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "TwinfieldさんのONESELFで文字pv(?)を作りました 満足",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=aSjeoaoBKPc](https://www.youtube.com/watch?v=aSjeoaoBKPc)\n\n[https://youtu.be/aSjeoaoBKPc](https://youtu.be/aSjeoaoBKPc)\n\n[https://x.com/361do_sleep/status/1878220390595453260](https://x.com/361do_sleep/status/1878220390595453260)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/aSjeoaoBKPc",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1878220390595453260",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-817c-a940-c091cece3d4b",
+			"slug": "nulloto",
+			"title": "NullOto ソフトウェア型ノイズキャンセリングアプリ",
+			"summary": "高専プロコン2025で開発したソフトウェア型ノイズキャンセリングアプリ「NullOto」です",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "高専プロコン2025で開発したソフトウェア型ノイズキャンセリングアプリ「NullOto」です",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "### NullOto ソフトウェア型ノイズキャンセリング\n\nスマートフォン単体でスピーカーを使って特定の空間に騒音の軽減を実現します\n\n### パンフレット原稿\n\n### ポスター\n\n### マニュアル\n\n### 予選資料\n\n### アイコン",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763992036391_huawvw3hr-app10032_pages-to-jpg-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "NullOtoIcon.png",
+					"caption": "NullOtoIcon.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997225833_vnkbgc529-pmp10032_page-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "pmp10032_page-0001.jpg",
+					"caption": "pmp10032_page-0001.jpg",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997453701_pcoqln5y6-20251008_procon_poster_page-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "pmp10032_page-0001.jpg",
+					"caption": "pmp10032_page-0001.jpg",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997463153_512x6ast7-20251008_procon_poster_page-0002.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "pmp10032_page-0001.jpg",
+					"caption": "pmp10032_page-0001.jpg",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997365407_ecwsu9kzc-man10032_page-0002.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0003.jpg",
+					"caption": "man10032_page-0003.jpg",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997373367_rwy0yjnw7-man10032_page-0003.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0004.jpg",
+					"caption": "man10032_page-0004.jpg",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997380310_55qd6yvr3-man10032_page-0004.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0004.jpg",
+					"caption": "man10032_page-0004.jpg",
+					"isCover": false,
+					"displayOrder": 6,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997386478_scsl5ogug-man10032_page-0005.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0005.jpg",
+					"caption": "man10032_page-0005.jpg",
+					"isCover": false,
+					"displayOrder": 7,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997392456_zmqi0vz61-man10032_page-0006.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0006.jpg",
+					"caption": "man10032_page-0006.jpg",
+					"isCover": false,
+					"displayOrder": 8,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763992036391_huawvw3hr-app10032_pages-to-jpg-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0001.jpg",
+					"caption": "app10032_pages-to-jpg-0001.jpg",
+					"isCover": false,
+					"displayOrder": 9,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997260469_je0gq1lt2-app10032_pages-to-jpg-0002.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0001.jpg",
+					"caption": "app10032_pages-to-jpg-0001.jpg",
+					"isCover": false,
+					"displayOrder": 10,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997268590_2yjjazm7b-app10032_pages-to-jpg-0003.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0002.jpg",
+					"caption": "app10032_pages-to-jpg-0002.jpg",
+					"isCover": false,
+					"displayOrder": 11,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997274804_yim0y56r2-app10032_pages-to-jpg-0004.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0003.jpg",
+					"caption": "app10032_pages-to-jpg-0003.jpg",
+					"isCover": false,
+					"displayOrder": 12,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997284564_obwtelca1-app10032_pages-to-jpg-0005.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0004.jpg",
+					"caption": "app10032_pages-to-jpg-0004.jpg",
+					"isCover": false,
+					"displayOrder": 13,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997290650_5mdmbl1mw-app10032_pages-to-jpg-0006.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0005.jpg",
+					"caption": "app10032_pages-to-jpg-0005.jpg",
+					"isCover": false,
+					"displayOrder": 14,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997297360_ev9r752pl-app10032_pages-to-jpg-0007.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0006.jpg",
+					"caption": "app10032_pages-to-jpg-0006.jpg",
+					"isCover": false,
+					"displayOrder": 15,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997327508_9jz5srog2-app10032_pages-to-jpg-0008.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0007.jpg",
+					"caption": "app10032_pages-to-jpg-0007.jpg",
+					"isCover": false,
+					"displayOrder": 16,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997333760_wby82hlzj-app10032_pages-to-jpg-0009.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0008.jpg",
+					"caption": "app10032_pages-to-jpg-0008.jpg",
+					"isCover": false,
+					"displayOrder": 17,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997339688_qcn0vju6c-app10032_pages-to-jpg-0010.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0009.jpg",
+					"caption": "app10032_pages-to-jpg-0009.jpg",
+					"isCover": false,
+					"displayOrder": 18,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997346734_jtnax87h5-app10032_pages-to-jpg-0011.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0010.jpg",
+					"caption": "app10032_pages-to-jpg-0010.jpg",
+					"isCover": false,
+					"displayOrder": 19,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997355190_n1vcrfh42-app10032_pages-to-jpg-0012.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0011.jpg",
+					"caption": "app10032_pages-to-jpg-0011.jpg",
+					"isCover": false,
+					"displayOrder": 20,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763997494054_munqjnmhp-NullOtoIcon.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "app10032_pages-to-jpg-0012.jpg",
+					"caption": "app10032_pages-to-jpg-0012.jpg",
+					"isCover": false,
+					"displayOrder": 21,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763992067922_j122vo5a7-vlcsnap-2025-11-24-19h38m34s975.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 22,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763992036391_huawvw3hr-app10032_pages-to-jpg-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 23,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/nulloto/NullOto/media_1763992036391_huawvw3hr-app10032_pages-to-jpg-0001.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "man10032_page-0002.jpg",
+					"caption": "man10032_page-0002.jpg",
+					"isCover": false,
+					"displayOrder": 24,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81b8-a097-cccf6a3efc38",
+			"slug": "netu",
+			"title": "熱異常 テキストモーション",
+			"summary": "「熱異常/いよわ」のテキストモーションです インパクトのあるテキストモーションの練習です",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「熱異常/いよわ」のテキストモーションです インパクトのあるテキストモーションの練習です",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=IcknittbbFw](https://www.youtube.com/watch?v=IcknittbbFw)\n\n[https://www.youtube.com/watch?v=IcknittbbFw](https://www.youtube.com/watch?v=IcknittbbFw)\n\n### Links\n\n[https://youtu.be/IcknittbbFw](https://youtu.be/IcknittbbFw)\n\n[https://x.com/361do_sleep/status/1840369939967840508](https://x.com/361do_sleep/status/1840369939967840508)\n\n[https://www.youtube.com/watch?v=b2NTglk9tvI](https://www.youtube.com/watch?v=b2NTglk9tvI)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/IcknittbbFw",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1840369939967840508",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=b2NTglk9tvI",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8191-b328-ffb0a74a5319",
+			"slug": "my-web-2025",
+			"title": "my-web-2025",
+			"summary": "このサイトです",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "このサイトです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://github.com/rebuildup/my-web-2025](https://github.com/rebuildup/my-web-2025)\n\nまだ未完成ですし、全てを解説するのも面倒なので語りたいところだけ語ります。\n\n### 技術スタック\n\n割とシンプルに、面倒なことをやっています\n\n根幹部分\n\n・React\n\n・Nextjs\n\n・GCP\n\n・Nextjs server\n\n・Nginx\n\n全体で使用する技術\n\n・Tailwind CSS\n\n・lucide react\n\n各ページの要素など\n\n・GSAP\n\n・shadcn\n\nテスト等\n\n・biome\n\n・Jest\n\n適当に入れますし、使います。そして面倒なので消しません。\n\nパッケージインストール後のプロジェクトが4GBを超えるのはそういうことです\n\n### ポートフォリオ管理\n\nポートフォリオ管理の関係のシステムを開発し、使っています\n\nここ、あまり見せる前提で作っていないのでMUIを適当に積んでいます\n\n本サイトではポートフォリオのコンテンツデータをそれぞれ1データベースファイルに統合して使っています。\n\nmy-web-2025以前の私のサイトでは、jsonにポートフォリオ情報を直書きしていましたが、それを完全に廃止し、現在の形になりました。\n\n現在のシステムでは、\n\n・タイトル,id,日付などの基本情報\n\n・メディアファイルの形式、ファイル名、バイナリ\n\n・markdown記事データ\n\nの3つの層に分けて実現しています。\n\nメディアデータはAPIを使ってデータベースからバイナリを出力しているため、全データが集約しています",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/my-web-2025/my-web-2025/media_1765840789387_szhhifcps-2025-12-13-041823.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 041823.png",
+					"caption": "スクリーンショット 2025-12-13 041823.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-web-2025/my-web-2025/media_1768108503634_isgcc2r74-20251213043958_screen-capture.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 043957.png",
+					"caption": "スクリーンショット 2025-12-13 043957.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-web-2025/my-web-2025/media_1768108671212_8qn9zzejz-20251213044416_screen-capture.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 044415.png",
+					"caption": "スクリーンショット 2025-12-13 044415.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-web-2025/my-web-2025/media_1768108690764_2zzax7shm-20251213044426_screen-capture.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 044425.png",
+					"caption": "スクリーンショット 2025-12-13 044425.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-web-2025/my-web-2025/media_1765840789387_szhhifcps-2025-12-13-041823.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-819b-a3b4-f203bf89a159",
+			"slug": "my-sns-icon",
+			"title": "SNSアイコン",
+			"summary": "アイコンを作って変えました",
+			"role": "Design",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "アイコンを作って変えました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "私が好きな絵文字をモチーフにしています ￼\n\n特に意味は無いです。",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/my-sns-icon/my-sns-icon/media_1786783411535_a6d6b3e2749049a491c962904afe6d05-sns-icon.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "sns-icon.png",
+					"caption": "sns-icon.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/a3443146a798aee520e6704ba477774ba323cd2f9f437c23025dc77fc1075dca.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-sns-icon/my-sns-icon/media_1786783664494_1364a4b0e71e4e9380e609b8867765ab-2026-08-12-165655.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2026-08-12 165655.png",
+					"caption": "スクリーンショット 2026-08-12 165655.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/my-sns-icon/my-sns-icon/media_1786783411535_a6d6b3e2749049a491c962904afe6d05-sns-icon.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ef-84bc-e17dc4c7b83f",
+			"slug": "my-first-blender",
+			"title": "初めてのBlender",
+			"summary": "Blenderを初めて使った動画 普通に難しかったです",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Blenderを初めて使った動画 普通に難しかったです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Links\n\n[https://youtube.com/shorts/o9GxF_FLSQA](https://youtube.com/shorts/o9GxF_FLSQA)\n\n[https://x.com/361do_sleep/status/1832734742124609779](https://x.com/361do_sleep/status/1832734742124609779)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtube.com/shorts/o9GxF/_FLSQA",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1832734742124609779",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8151-bd4c-ea09a6202aba",
+			"slug": "moumoku",
+			"title": "盲目の怪物 文字pv",
+			"summary": "「盲目の怪物/ひらぎ」の文字pvです 赤・黒・白のテキストアニメーション",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「盲目の怪物/ひらぎ」の文字pvです 赤・黒・白のテキストアニメーション",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=Inr6kNzWMcA](https://www.youtube.com/watch?v=Inr6kNzWMcA)\n\n[https://www.youtube.com/watch?v=Inr6kNzWMcA](https://www.youtube.com/watch?v=Inr6kNzWMcA)\n\n### Links\n\n[https://youtu.be/Inr6kNzWMcA](https://youtu.be/Inr6kNzWMcA)\n\n[https://x.com/361do_sleep/status/1837100915419140131](https://x.com/361do_sleep/status/1837100915419140131)\n\n[https://www.youtube.com/watch?v=aLBMEIOSxdE](https://www.youtube.com/watch?v=aLBMEIOSxdE)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/Inr6kNzWMcA",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1837100915419140131",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=aLBMEIOSxdE",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8172-b6fd-f881ce37d533",
+			"slug": "meikai",
+			"title": "冥界 二次創作pv",
+			"summary": "「冥界/kabangu」の二次創作文字pvです。イラレで素材を作る練習です。",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「冥界/kabangu」の二次創作文字pvです。イラレで素材を作る練習です。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=H-jr6SpAaE8](https://www.youtube.com/watch?v=H-jr6SpAaE8)\n\n[https://youtu.be/H-jr6SpAaE8](https://youtu.be/H-jr6SpAaE8)\n\n[https://x.com/361do_sleep/status/1850405797592973597](https://x.com/361do_sleep/status/1850405797592973597)\n\n[https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l](https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/H-jr6SpAaE8",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1850405797592973597",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-813a-82f5-d6da87993483",
+			"slug": "mawaru",
+			"title": "まわる世界 文字pv",
+			"summary": "「まわる世界/飯澤遥土」の二次創作文字pvです。",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「まわる世界/飯澤遥土」の二次創作文字pvです。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=o4yKnfV2YVs](https://www.youtube.com/watch?v=o4yKnfV2YVs)\n\n[https://youtu.be/o4yKnfV2YVs](https://youtu.be/o4yKnfV2YVs)\n\n[https://x.com/361do_sleep/status/1852638050976751749](https://x.com/361do_sleep/status/1852638050976751749)\n\n[https://www.tiktok.com/@harutoiizawa/video/7421877342030597384](https://www.tiktok.com/@harutoiizawa/video/7421877342030597384)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/o4yKnfV2YVs",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1852638050976751749",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://www.tiktok.com/@harutoiizawa/video/7421877342030597384",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8116-be41-f09275233488",
+			"slug": "m5-clock",
+			"title": "M5_Clock",
+			"summary": "M5Stackを使ってポモドーロタイマー兼時計を作りました",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "M5Stackを使ってポモドーロタイマー兼時計を作りました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "M5Stack(マイコン)を使ってポモドーロタイマー兼時計を作りました\n\n[https://github.com/rebuildup/M5_Clock](https://github.com/rebuildup/M5_Clock)\n\n2年前(2023年)のU-16プロコンでノベルティとしてM5Stackを貰っていたのですが、\n\nずっと活用できていなかったので作ってみました\n\nWifiを使ってネット通信で同期しているので時計が正確です\n\nM5Stack、バッテリーが無いのが難点でダイソーのモバイルバッテリーを経由して充電してます\n\nあまりよろしくないですね\n\nM5Stack、全然ドキュメントがなくてArduinoでセットアップするまでが面倒でした\n\nUIはgeminiでシュミレータを作ってデザインし、そこからC++コードに変えています\n\n数値表示はシミュレーターのものよりも、実機の方が好きです\n\nマス単位でデザインしているので、シンプルに整った感じが出ます\n\n大きな時分の表示だけ、大きさを最大化させたかったので無視するようにしています。\n\n無視しなかったら中央の : が大きくてバランスが悪くなってしまった\n\n特にアプデする予定は無いです\n\nM5Stackは定価で買うと7000円とかします\n\n無料でできたのは素晴らしいのでU-16プロコンには感謝です",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "github",
+					"url": "https://github.com/rebuildup/M5/_Clock",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/m5-clock/m5_clock/media_1765813479496_llq9eta0z-IMG_20251205_184639.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "IMG_20251205_184639.jpg",
+					"caption": "IMG_20251205_184639.jpg",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/m5-clock/m5_clock/media_1765813560034_w9wwj5j52-IMG_20251205_184656.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "IMG_20251205_184656.jpg",
+					"caption": "IMG_20251205_184656.jpg",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/m5-clock/m5_clock/media_1765813589348_yab7c8x7t-2025-12-13-145044.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 145044.png",
+					"caption": "スクリーンショット 2025-12-13 145044.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/m5-clock/m5_clock/media_1765813602236_shqqxhicn-2025-12-13-145225.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-12-13 145225.png",
+					"caption": "スクリーンショット 2025-12-13 145225.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/m5-clock/m5_clock/media_1765813479496_llq9eta0z-IMG_20251205_184639.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81a2-9467-e712c06bd2ba",
+			"slug": "liteglow",
+			"title": "【Aeエフェクトプラグイン】LiteGlow",
+			"summary": "Aeでシンプルなグローを実現するエフェクトプラグインです\nDeepGlowが高かったので自分で作りました",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Aeでシンプルなグローを実現するエフェクトプラグインです\nDeepGlowが高かったので自分で作りました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=V15m8WLGVwg](https://www.youtube.com/watch?v=V15m8WLGVwg)",
+				"evidence": "### Links\n\n[https://youtu.be/V15m8WLGVwg](https://youtu.be/V15m8WLGVwg)\n\n[https://361do.booth.pm/items/6939869](https://361do.booth.pm/items/6939869)\n\n[https://x.com/361do_sleep/status/1924057386731655327](https://x.com/361do_sleep/status/1924057386731655327)\n\n[https://github.com/rebuildup/LiteGlow](https://github.com/rebuildup/LiteGlow)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/V15m8WLGVwg",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6939869",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1924057386731655327",
+					"displayOrder": 2
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/liteglow/LiteGlow/media_1762439464229_0z1dz7oim-LiteGlow.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ce-906d-d5b709a0cfec",
+			"slug": "lhaplus",
+			"title": "ラプラスショコラ 二次創作",
+			"summary": "映像依頼の練習で5時間で作りました",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "映像依頼の練習で5時間で作りました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=R1nFXZB9lG8](https://www.youtube.com/watch?v=R1nFXZB9lG8)\n\n[https://youtu.be/R1nFXZB9lG8](https://youtu.be/R1nFXZB9lG8)\n\n[https://x.com/361do_sleep/status/1873992217502900284](https://x.com/361do_sleep/status/1873992217502900284)\n\n[https://www.youtube.com/watch?v=easT0DZDAs8](https://www.youtube.com/watch?v=easT0DZDAs8)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/R1nFXZB9lG8",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1873992217502900284",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=easT0DZDAs8",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81c4-93b3-c1eb3c316538",
+			"slug": "kosen-procon-pv",
+			"title": "高専プロコン 非公式pv",
+			"summary": "全国高等専門学校プログラミングコンテスト 第35回 奈良大会の非公式pvです",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "全国高等専門学校プログラミングコンテスト 第35回 奈良大会の非公式pvです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=c02NG9I1iO8](https://www.youtube.com/watch?v=c02NG9I1iO8)\n\n[https://youtu.be/c02NG9I1iO8](https://youtu.be/c02NG9I1iO8)\n\n[https://x.com/361do_sleep/status/1845653703463989526](https://x.com/361do_sleep/status/1845653703463989526)\n\n[https://x.com/complexivetunes/status/1842760522137297009](https://x.com/complexivetunes/status/1842760522137297009)\n\n[https://www.procon.gr.jp/](https://www.procon.gr.jp/)\n\n[https://twitter.com/361do_sleep/status/1845653703463989526](https://twitter.com/361do_sleep/status/1845653703463989526)\n\n[https://twitter.com/complexivetunes/status/1842760522137297009](https://twitter.com/complexivetunes/status/1842760522137297009)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/c02NG9I1iO8",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1845653703463989526",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/complexivetunes/status/1842760522137297009",
+					"displayOrder": 2
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://www.procon.gr.jp/",
+					"displayOrder": 3
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81dd-bbc8-c3f8e66bb478",
+			"slug": "kosen-fes2025-ending",
+			"title": "宇部高専祭2025 エンディング",
+			"summary": "宇部高専 高専祭2025のエンディングムービーを担当しました",
+			"role": "Design",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "宇部高専 高専祭2025のエンディングムービーを担当しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "スライドショー的な映像なので公開はできませんが、担当しました",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763992067922_j122vo5a7-vlcsnap-2025-11-24-19h38m34s975.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "vlcsnap-2025-11-24-19h38m34s975.png",
+					"caption": "vlcsnap-2025-11-24-19h38m34s975.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763995870792_j3t9q0qj6-vlcsnap-2025-11-24-19h37m02s871.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "vlcsnap-2025-11-24-19h37m02s871.png",
+					"caption": "vlcsnap-2025-11-24-19h37m02s871.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763995886469_rjqg2elrx-vlcsnap-2025-11-24-19h37m15s888.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "vlcsnap-2025-11-24-19h37m15s888.png",
+					"caption": "vlcsnap-2025-11-24-19h37m15s888.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763992067922_j122vo5a7-vlcsnap-2025-11-24-19h38m34s975.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763992067922_j122vo5a7-vlcsnap-2025-11-24-19h38m34s975.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "vlcsnap-2025-11-24-19h38m34s975.png",
+					"caption": "vlcsnap-2025-11-24-19h38m34s975.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763995870792_j3t9q0qj6-vlcsnap-2025-11-24-19h37m02s871.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763995886469_rjqg2elrx-vlcsnap-2025-11-24-19h37m15s888.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 6,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes2025-ending/kosen-fes2025-ending/media_1763992067922_j122vo5a7-vlcsnap-2025-11-24-19h38m34s975.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 7,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81d2-b9b0-c810f04592b5",
+			"slug": "kosen-fes-2025",
+			"title": "宇部高専祭ウェブサイト2025",
+			"summary": "2025年 宇部高専祭ウェブサイトを制作しました",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "2025年 宇部高専祭ウェブサイトを制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www2.ube-k.ac.jp/fes2025/](https://www2.ube-k.ac.jp/fes2025/)\n\n[https://github.com/rebuildup/kosen-fes-2025](https://github.com/rebuildup/kosen-fes-2025)\n\n---\n\nせっかくシステムを作ったのでブログっぽいことをしてみます文章力無いですが、\n\n### 経緯\n\nコンピュータ部の先輩に話を聞いたようで、私のところに高専祭公式サイト開発の依頼が来ました\n\n高専でもWebサイトを作る人というものは意外と少ないんですね\n\n昨年と一昨年はわたすけ先輩がサイトを作っていたので、その引き継ぎです\n\nわたすけ先輩↓\n\n[https://x.com/watasuke1024](https://x.com/watasuke1024)\n\n---\n\n技術的な部分で私の技能は拙いので、デザイン全振りでいきたい...!\n\nバイブコーディングの流行りにのって、claude codeで開発を進めました\n\nAIに任せたほうが自分で書くより速いし品質もいい そして何より開発が楽\n\n---\n\n### 解説\n\nせっかく作ったので語らせてください\n\n### トップページ\n\n高専祭のテーマグラフィック(?)を置いてみました\n\n高専祭のロゴ作成のときに作って、ちょうどいい使い所がここでしたね\n\nファーストビュー「っぽさ」を演出できたのでは無いでしょうか\n\n高専祭に関係あるかと言われると無いのですが、\n\nグラフィックデザインを簡単に使えるのがチケットのグラフィックだったりします\n\n適当に文字を入れただけなのですが、なかなかいい感じです\n\nダークモードではこれですね個人的にはダークモードのほうが好き\n\nライトモードはインスタグラムのテーマカラーダークモードはXのテーマカラーを使用しています\n\n最初の考案段階からSNS風のレイアウトと、SNSのカラーテーマにするってことは決めていたのでいいかんじに取り入れられていると思っています\n\nスクロールしていくとカードが並んでます\n\nヘッダーのここ↓\n\n開発途中でiOSの大幅なスタイル変更があって、ガラスモーフィズムが流行りました\n\n「LiquidGlassがリアルですごい」というあれです\n\n私も流行りにのっかって使ってやろうと思ったのですが、\n\nあんまり上手くいかなかったのでシンプルなブラーに落ち着きました\n\n[https://twitter.com/361do_sleep/status/1935259157881569753](https://twitter.com/361do_sleep/status/1935259157881569753)\n\n### ステージ/展示・露店\n\nカード一覧のページです\n\nカードを表示するときにフェードインで下からアニメーションしてきます\n\nこれ、最初作ったときは一定の間隔でアニメーションさせていたのですが、\n\nそれでは最後のほうのカードが表示されるのにラグがあって\n\nなんとなく不自然でもあったので、\n\n最初はゆっくり、徐々に間隔を狭めて整列するアニメーションになっています\n\nサイトの軽量化をしようと思ったときにGSAP(整列アニメーションに使用したライブラリ)を置き換えて消そうかと思ったのですが、ここの置き換えが面倒だったのでやめました\n\n---\n\n表示形式は初期状態の他にコンパクトなカード形式と、リスト風の横長表示形式があります\n\n個人的に好きなのは、この横長表示↓\n\nスタイリッシュに見えますよね\n\n---\n\nカードは画像の上からテキストを重ねているのですが、画像が白いと見えづらいので、グラデーションをかけています\n\nグラデーションをかけると写真が濁ってしまうのでギリギリまで薄く、かつ見えるように調整しています\n\n横長表示なら片側真っ暗でも良かったのですが、少し面倒\n\nカードのコンポーネントはサイト全体で統一していて、使い勝手はいいのですが、こういうところは設定が面倒くさいです\n\n---\n\nカードをホバーするとタグなどが表示されて浮き上がります\n\nコンパクト表示はコンパクトに詳細を見るボタン\n\nリスト表示は広がります これは動きが気持ちいい\n\n---\n\n### タイムスケジュール\n\n高専祭はイベントが大事なので、タイムスケジュールもカードで見やすく作りました\n\nこれは自分で使ってても便利\n\nスマホで見ることも多かったです\n\n---\n\n### 会場マップ\n\nやっぱり、ここですよねこのサイトのメインともいえます\n\n学内マップを自前実装しました\n\n面倒くさそうに見えますが、実際かなり面倒で一番時間がかかりました\n\nまず、マップのデータが無いのでイラレで作るところから始めました\n\n↓マップには右半分使われていないのですが、実際に制作したのはこのsvgです\n\n学校の公開しているキャンパスマップも、あるはあるのですが、\n\n立体になってたり、実際の建物とズレてるところがあって使うのをやめました\n\n代わりに使用したのがネット上のなにかのマップでした(肝心のところを覚えてない)\n\n最初、航空写真からトレースしようとしたのですが、境界が曖昧で諦めました\n\nGoogleマップからも考えたのですが、Googleマップの建物表示ってかなり曖昧なんですよね\n\n---\n\n話を戻します\n\nマップの操作の実装\n\nこれがまたかなりの難所でした\n\nsvgって万能ではなくて単純に画像を拡大縮小するだけでは、ガサガサになってしまう\n\nマップのベースの部分は参考リポジトリを3つくらい用意して作ったのですが、そのままの実装では使いづらいと感じました\n\nなので、マップを拡大縮小して自分側が動いているのではなく、\n\n実際はマップ側が変形しています\n\nズームで表示サイズを大きくしたり、移動させたり、\n\nそしてそれにピンを追従させています\n\nピンの挙動もいくつか工夫していて、\n\nマップの拡大率に合わせて一定の距離より近いピンをまとまり(クラスター)として表示したり、\n\nラベルの表示・非表示・左右位置を見やすく保つアルゴリズムを組んでいます\n\nピンをクリックするとカードが表示されます\n\nカードを押すとそのまま詳細を見れます\n\nこれもなかなかいい感じでした\n\n---\n\n右下のコントロールでマップの全画面表示と位置のリセットが出来ます\n\nスマホだとマップが小さいので全画面表示は必須です\n\nこれは私だけなのかもしれませんが、\n\nスマホのブラウザで表示したときにタブなどの表示がされたりされなかったりで、\n\n時々コントロールが隠れてしまうことがあったので、マップのダブルタップでも全画面表示を切り替えられるようにしています\n\n---\n\n建物の階で重なってしまって、一部見にくいピンがあると指摘されたことがありました\n\nそのときはタグで検索の機能を使って建物や階を絞れば見やすくなるよ と伝えましたが、\n\nさすがに分かりづらいですよね\n\n面倒ですが、階数切り替えの機能も今後作る必要がありそうです\n\n---\n\n### 詳細ページ\n\nカードをクリックすると遷移するイベント詳細のページです\n\nサムネイル画像と場所、説明、タグ\n\nあとマップと関連アイテムを表示しています\n\nここはもうちょっと頑張りたいところではあったのですが、\n\nイベント企画者からデータを集めるというのを、実行委員はあまりやりたくなさそうだったので私が簡単に説明を入れるという形になりました\n\n使おうと思えば有効活用出来そうだなとは思いつつ、そこは断念\n\nまぁ文化祭って、調べてどうこうするというより、ブラブラと歩くのが醍醐味なので\n\n需要は無いのかもしれないですね\n\n---\n\n### ブックマーク\n\nシンプルなブックマーク機能です\n\nSNSの要素としてあるので、作ってみましたが、\n\n実際使っている人がいたのかどうか、わかりません\n\nカード右上の★マークか、詳細ページ右上の★マークで保存できます\n\nこれアイコンの切り替えが面倒だなと思ってテキストの★と☆を切り替えることで実装したのですが、たぶんブックマークアイコンのほうが良かったですね\n\n---\n\n### 検索ページ\n\n検索機能を実装しました\n\n検索機能を1ページにするとなるとどのような構成がいいのか悩んだ結果、\n\n整っているのか整っていないのか微妙なデザインになりました\n\nGoogleを意識してますが、全然違う気もする\n\nデータを保存しているjsonファイルからタイトルや説明・タグを検索しています\n\nAIに丸投げしましたが、文字をハイライトしてくれる機能気に入っています\n\n検索欄の☓が重複していますね 今気づきました\n\n検索機能はわりと頻繁に使いました\n\n一覧から探すより早いです\n\n---\n\n### スポンサー\n\nスポンサー一覧もカード表示で実装しました\n\n思っていたよりもずっと数が多くて驚きました\n\n説明を書くためにわざわざ1社ずつ調べたり、WebサイトのURLを探したりしました\n\n支援額で表示順を決めています\n\n---\n\n### 【小ネタ】コンソールエッグ\n\n開発者コンソールに技術スタックとリポジトリのURLを表示しています\n\nこれは前任の先輩がやっていたので、真似しました\n\n伝統にしていきたい\n\nこんなところ興味のある人しか見ないですからね\n\n---\n\n### 引き継ぎ\n\n今回、私初めて公式サイト担当をしたのですが\n\nサーバーやURLの申請など、手続きが不明瞭で面倒な部分がありました\n\nそして、説明の文書などなにもない\n\n経験者は既に卒業しているし、担当教員などもいないです\n\n引き継ぎの重要性をひしひしと感じました\n\n[https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt](https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt)\n\nREDME.txtとして日記ついでに残しておきました\n\nセキュリティを考えると大々的に公開できるものではありませんが、みられても大丈夫なくらいの内容ではあるはず...\n\n学内ネットワークからでしかデプロイ出来ないという仕組みなので、まぁ大丈夫でしょう\n\n---\n\n### 次はどうしようか\n\n今年やりたかったことは実現できたと思います\n\n幸い、私はまだ3年なので来年・再来年も高専祭のサイトを作れるわけです(?)\n\n来年は今年よりももっと良いものを作りたい\n\n今年は実装に必死でデザイン的なページを作れていないんですよね\n\nどうせならデザインやアニメーションに凝ったものを作ってみたい\n\n来年の目標はそうしておきます\n\n---\n\nここまで読んでくれた人 ありがとうございます\n\n自己満で書いているものなので、軽い自分語り的なものだと捉えてもらえれば嬉しいです\n\n精進します",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": "宇部高専祭2025",
+					"url": "https://www2.ube-k.ac.jp/fes2025/",
+					"displayOrder": 0
+				},
+				{
+					"kind": "repo",
+					"label": "Githubリポジトリ",
+					"url": "https://github.com/rebuildup/kosen-fes-2025",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762426498159_ye3gp823c-2025-11-06-195051.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762426498159_ye3gp823c-2025-11-06-195051.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762692461268_yuzlboxfz-ticket.webp",
+					"contentType": "image/webp",
+					"width": null,
+					"height": null,
+					"alt": "ticket.webp",
+					"caption": "ticket.webp",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762692582315_m42yvpd3x-2025-11-09-214937.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 214937.png",
+					"caption": "スクリーンショット 2025-11-09 214937.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762692655846_geeuah5mv-2025-11-09-215044.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 215044.png",
+					"caption": "スクリーンショット 2025-11-09 215044.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762694071996_umnbt51hr-2025-11-09-221423.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 221423.png",
+					"caption": "スクリーンショット 2025-11-09 221423.png",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762692513057_8hrj4tcu4-2025-11-09-213803.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 213803.png",
+					"caption": "スクリーンショット 2025-11-09 213803.png",
+					"isCover": false,
+					"displayOrder": 6,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762692532194_qpwibzadt-2025-11-09-214843.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 214843.png",
+					"caption": "スクリーンショット 2025-11-09 214843.png",
+					"isCover": false,
+					"displayOrder": 7,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762695041264_todb5xxki-2025-11-09-223024.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 223024.png",
+					"caption": "スクリーンショット 2025-11-09 223024.png",
+					"isCover": false,
+					"displayOrder": 8,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762695051207_nhk2plxpl-2025-11-09-223030.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 223030.png",
+					"caption": "スクリーンショット 2025-11-09 223030.png",
+					"isCover": false,
+					"displayOrder": 9,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762696096639_3zkiqdjlb-2025-11-09-224754.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 224754.png",
+					"caption": "スクリーンショット 2025-11-09 224754.png",
+					"isCover": false,
+					"displayOrder": 10,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762696418690_hhgqvye5z-2025-11-09-225302.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 225302.png",
+					"caption": "スクリーンショット 2025-11-09 225302.png",
+					"isCover": false,
+					"displayOrder": 11,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762696497960_zlnyrptwu-2025-11-09-225448.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 225448.png",
+					"caption": "スクリーンショット 2025-11-09 225448.png",
+					"isCover": false,
+					"displayOrder": 12,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762696841122_wkmtjw8f3-2025-11-09-230032.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 230032.png",
+					"caption": "スクリーンショット 2025-11-09 230032.png",
+					"isCover": false,
+					"displayOrder": 13,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762697061605_fjg8utzhz-2025-11-09-230409.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 230409.png",
+					"caption": "スクリーンショット 2025-11-09 230409.png",
+					"isCover": false,
+					"displayOrder": 14,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762697333430_5hbmdb6vi-2025-11-09-230844.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 230844.png",
+					"caption": "スクリーンショット 2025-11-09 230844.png",
+					"isCover": false,
+					"displayOrder": 15,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/5e52b10da7e366b15aaa8c29a35278f496698a390edfd4876d08f8f9f976cfb2.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 17,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762698324822_h5bhu62yl-2025-11-09-232506.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 232506.png",
+					"caption": "スクリーンショット 2025-11-09 232506.png",
+					"isCover": false,
+					"displayOrder": 18,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762698619485_883mwn9f9-2025-11-09-233011.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 233011.png",
+					"caption": "スクリーンショット 2025-11-09 233011.png",
+					"isCover": false,
+					"displayOrder": 19,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762698800879_nlkviub3k-2025-11-09-233311.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 233311.png",
+					"caption": "スクリーンショット 2025-11-09 233311.png",
+					"isCover": false,
+					"displayOrder": 20,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762699144516_8hzd4k7zn-2025-11-09-233855.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 233855.png",
+					"caption": "スクリーンショット 2025-11-09 233855.png",
+					"isCover": false,
+					"displayOrder": 21,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762699784006_dsxz6wml2-2025-11-09-234937.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 234937.png",
+					"caption": "スクリーンショット 2025-11-09 234937.png",
+					"isCover": false,
+					"displayOrder": 22,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762699813102_feq13f0lo-2025-11-09-234958.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-09 234958.png",
+					"caption": "スクリーンショット 2025-11-09 234958.png",
+					"isCover": false,
+					"displayOrder": 23,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762700463204_jak8d6hm8-2025-11-10-000055.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-10 000055.png",
+					"caption": "スクリーンショット 2025-11-10 000055.png",
+					"isCover": false,
+					"displayOrder": 24,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762700844507_g5lkno7db-2025-11-10-000713.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-10 000713.png",
+					"caption": "スクリーンショット 2025-11-10 000713.png",
+					"isCover": false,
+					"displayOrder": 25,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762700984203_yxhnww67v-2025-11-10-000923.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-10 000923.png",
+					"caption": "スクリーンショット 2025-11-10 000923.png",
+					"isCover": false,
+					"displayOrder": 26,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762701348760_zriknbtuy-2025-11-10-001533.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-10 001533.png",
+					"caption": "スクリーンショット 2025-11-10 001533.png",
+					"isCover": false,
+					"displayOrder": 27,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762701881007_3y06zrzah-2025-11-10-002430.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "スクリーンショット 2025-11-10 002430.png",
+					"caption": "スクリーンショット 2025-11-10 002430.png",
+					"isCover": false,
+					"displayOrder": 28,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kosen-fes-2025/kosen-fes-2025/media_1762698755453_siry6bflp-2025-11-09-233225.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 29,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-06T04:35:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ea-92c0-f880968104a4",
+			"slug": "kakumei",
+			"title": "蝶羽ヘレナ 様 - 革命道中",
+			"summary": "蝶羽ヘレナ 様 - 革命道中\n\n歌ってみたのMVを制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "蝶羽ヘレナ 様 - 革命道中\n\n歌ってみたのMVを制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=BQEQMC1sL1M](https://www.youtube.com/watch?v=BQEQMC1sL1M)\n\n[https://www.youtube.com/watch?v=BQEQMC1sL1M](https://www.youtube.com/watch?v=BQEQMC1sL1M)\n\n蝶羽ヘレナ 様\n\n[https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A](https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A)\n\n[https://x.com/morpho_88](https://x.com/morpho_88)\n\nイラスト : バンブータケシ\n\n[https://x.com/takeshi__310](https://x.com/takeshi__310)\n\n[https://twitter.com/361do_design/status/1984262322828067072](https://twitter.com/361do_design/status/1984262322828067072)",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": "youtube",
+					"url": "https://www.youtube.com/watch?v=BQEQMC1sL1M",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "X投稿",
+					"url": "https://x.com/361do/_design/status/1984262322828067072",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": "蝶羽ヘレナ 様",
+					"url": "https://x.com/morpho/_88",
+					"displayOrder": 2
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977937881_onb6tcnh5-videoframe_10070.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_10070.png",
+					"caption": "videoframe_10070.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977947554_dq0naunso-videoframe_29255.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_29255.png",
+					"caption": "videoframe_29255.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977955512_4c2doso1c-videoframe_38396.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_38396.png",
+					"caption": "videoframe_38396.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977963720_zb8qbbung-videoframe_65886.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_65886.png",
+					"caption": "videoframe_65886.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977971524_4hjx54qvf-videoframe_79365.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_79365.png",
+					"caption": "videoframe_79365.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1763977985018_nivrkc5uz-videoframe_195141.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_195141.png",
+					"caption": "videoframe_195141.png",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/kakumei/kakumei/media_1786780004253_09119921df504256a0ba073f564bde68-test-upload.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "upload-test",
+					"caption": "upload-test",
+					"isCover": false,
+					"displayOrder": 6,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8173-9beb-c3cae4ed9cb9",
+			"slug": "kaben",
+			"title": "【二次創作】花弁、それにまつわる音声 文字pv",
+			"summary": "ボカコレが盛り上がってましたね。あんまり作らない文字が大きいタイプの映像です。",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "ボカコレが盛り上がってましたね。あんまり作らない文字が大きいタイプの映像です。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=ay5stCLI9v4](https://www.youtube.com/watch?v=ay5stCLI9v4)\n\n[https://youtu.be/ay5stCLI9v4](https://youtu.be/ay5stCLI9v4)\n\n[https://x.com/361do_design/status/1893620585491792320](https://x.com/361do_design/status/1893620585491792320)\n\n[https://www.youtube.com/watch?v=LW1KBCgvEPQ](https://www.youtube.com/watch?v=LW1KBCgvEPQ)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/ay5stCLI9v4",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_design/status/1893620585491792320",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=LW1KBCgvEPQ",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81f5-8fcb-d0fbe68e1dd0",
+			"slug": "isogasii-editor",
+			"title": "忙しい人のための作文エディター 完成版",
+			"summary": "U-22プロコンに向けて制作 チャットGPTAPIを初めて使いました ページ風のドキュメントを作るのが本当に難しかったです ページを開くのにAPIキーが必要です",
+			"role": "Development",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "U-22プロコンに向けて制作 チャットGPTAPIを初めて使いました ページ風のドキュメントを作るのが本当に難しかったです ページを開くのにAPIキーが必要です",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=szUAV_gMLQY](https://www.youtube.com/watch?v=szUAV_gMLQY)\n\n[https://www.youtube.com/watch?v=szUAV_gMLQY](https://www.youtube.com/watch?v=szUAV_gMLQY)\n\n### Links\n\n[https://youtu.be/szUAV_gMLQY](https://youtu.be/szUAV_gMLQY)\n\n[https://www.youtube.com/watch?v=wtw0tXAqRKE](https://www.youtube.com/watch?v=wtw0tXAqRKE)\n\n[https://rebuildup.github.io/](https://rebuildup.github.io/)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/szUAV/_gMLQY",
+					"displayOrder": 0
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=wtw0tXAqRKE",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://rebuildup.github.io/",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ad-8145-e2c3c126b37f",
+			"slug": "isogasii-demo",
+			"title": "忙しい人のための作文エディター 試作",
+			"summary": "U-22プロコンに向けて制作 単語にマウスオーバーすると類義語が表示されるようなテキストエディターです 全体的なクオリティが低かったのでボツにしました",
+			"role": "Development",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "U-22プロコンに向けて制作 単語にマウスオーバーすると類義語が表示されるようなテキストエディターです 全体的なクオリティが低かったのでボツにしました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=RGKhatEchrI](https://www.youtube.com/watch?v=RGKhatEchrI)\n\n[https://www.youtube.com/watch?v=RGKhatEchrI](https://www.youtube.com/watch?v=RGKhatEchrI)\n\n### Links\n\n[https://youtu.be/RGKhatEchrI](https://youtu.be/RGKhatEchrI)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/RGKhatEchrI",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-811a-bfa4-cd65a163d65f",
+			"slug": "icon-tegaki-anime",
+			"title": "アイコン 手書きアニメーション",
+			"summary": "アイコンを動かしました。謎の生き物(？)ですよね。",
+			"role": "Design",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "アイコンを動かしました。謎の生き物(？)ですよね。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "アイコンの謎の生き物(?)を動かしました。\n\nフォトショで並べてます",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/icon-tegaki-anime/icon-tegaki-anime/media_1786783446233_a4460f179e314d3fae4fd0ffc319fd9e-20260408_gif.gif",
+					"contentType": "image/gif",
+					"width": null,
+					"height": null,
+					"alt": "20260408_gif.gif",
+					"caption": "20260408_gif.gif",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/14d44b5239e458e3c55a7a9bfd6ff3583f389713bc565eaccf7d28720335b161.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/icon-tegaki-anime/icon-tegaki-anime/media_1786783446233_a4460f179e314d3fae4fd0ffc319fd9e-20260408_gif.gif",
+					"contentType": "image/gif",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/icon-tegaki-anime/icon-tegaki-anime/media_1786783559048_ef5bf2448f3c495f84a2425e9110175e-20260408_gif_30ms_103.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-811b-ba18-f0b858413c0e",
+			"slug": "hurahu",
+			"title": "フラフープハレーション 文字pv",
+			"summary": "「フラフープハレーション/Twinfield」の文字pvです 雲を使ったテキストアニメーション",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「フラフープハレーション/Twinfield」の文字pvです 雲を使ったテキストアニメーション",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=KYRbEEMCam0](https://www.youtube.com/watch?v=KYRbEEMCam0)\n\n[https://youtu.be/KYRbEEMCam0](https://youtu.be/KYRbEEMCam0)\n\n[https://x.com/361do_sleep/status/1838567775390044294](https://x.com/361do_sleep/status/1838567775390044294)\n\n[https://www.youtube.com/watch?v=llftGyEqH_4](https://www.youtube.com/watch?v=llftGyEqH_4)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/KYRbEEMCam0",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1838567775390044294",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=llftGyEqH\\_4",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8168-a745-f4ca8d65e205",
+			"slug": "homura",
+			"title": "ひよりひよこ 様 - アエギス 第零楽章「焔」",
+			"summary": "ひよりひよこ 様 - アエギス 第零楽章「焔」\n\n歌ってみたのMVを制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "ひよりひよこ 様 - アエギス 第零楽章「焔」\n\n歌ってみたのMVを制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=NjRVa41kHBs](https://www.youtube.com/watch?v=NjRVa41kHBs)\n\n[https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk](https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk)\n\nひよりひよこ 様\n\n[https://x.com/piyopiyo2424V](https://x.com/piyopiyo2424V)\n\n[https://www.youtube.com/@hiyori_hiyoko](https://www.youtube.com/@hiyori_hiyoko)\n\n[https://twitter.com/361do_design/status/1974102198364876878](https://twitter.com/361do_design/status/1974102198364876878)",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": "youtube",
+					"url": "https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "X投稿",
+					"url": "https://x.com/361do/_design/status/1974102198364876878",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": "ひよりひよこ 様",
+					"url": "https://x.com/piyopiyo2424V",
+					"displayOrder": 2
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979365296_rd5fl2mhf-videoframe_22232.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_22232.png",
+					"caption": "videoframe_22232.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979376403_e7u5lpj31-videoframe_50257.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_50257.png",
+					"caption": "videoframe_50257.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979388793_eissqptn5-videoframe_79206.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_79206.png",
+					"caption": "videoframe_79206.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979412499_vzw6y53ux-videoframe_94034.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_94034.png",
+					"caption": "videoframe_94034.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979430216_fvlvq51w6-videoframe_103667.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_103667.png",
+					"caption": "videoframe_103667.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979449648_2u2rt7vpc-videoframe_119865.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_119865.png",
+					"caption": "videoframe_119865.png",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979456756_wxbl4ot2b-videoframe_122522.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_122522.png",
+					"caption": "videoframe_122522.png",
+					"isCover": false,
+					"displayOrder": 6,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979398461_fxx4el0uv-videoframe_82567.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 7,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/homura/homura/media_1763979419960_eivupgusy-videoframe_105087.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 8,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ef-a78d-c54db6dbf7f0",
+			"slug": "foldlayers",
+			"title": "Aeプラグイン FoldLayers",
+			"summary": "グループレイヤー(専用レイヤー)のダブルクリックでタイムラインからグループ内のレイヤーを非表示にするAEGPプラグイン",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop",
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "グループレイヤー(専用レイヤー)のダブルクリックでタイムラインからグループ内のレイヤーを非表示にするAEGPプラグイン",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=7Qo75j_1X6Y](https://www.youtube.com/watch?v=7Qo75j_1X6Y)\n\n[https://x.com/361do_sleep/status/2017669205781581891?s=20](https://x.com/361do_sleep/status/2017669205781581891?s=20)\n\n[https://www.youtube.com/watch?v=7Qo75j_1X6Y](https://www.youtube.com/watch?v=7Qo75j_1X6Y)\n\n[https://github.com/rebuildup/Ae_FoldLayers](https://github.com/rebuildup/Ae_FoldLayers)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": "booth",
+					"url": "https://361do.booth.pm/items/7935112",
+					"displayOrder": 0
+				},
+				{
+					"kind": "repo",
+					"label": "github",
+					"url": "https://github.com/rebuildup/Ae/_FoldLayers",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": "youtube",
+					"url": "https://www.youtube.com/watch?v=7Qo75j\\_1X6Y",
+					"displayOrder": 2
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/f14bb0cd2cfc822a5b9a962689c13e74bebd412b7d74d4a7360e3e07edf1ed5f.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/787fadd3cde8e79a96b03b3f572436cc1626336d8ba932b10bffe3b1b86af902.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-818c-8f8d-e00de919f26a",
+			"slug": "flashbeat-op",
+			"title": "FlashBeatオープニング",
+			"summary": "FlashBeatのオープニング Aeで作りました",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "FlashBeatのオープニング Aeで作りました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=yr2bwYk0wAk](https://www.youtube.com/watch?v=yr2bwYk0wAk)\n\n### Links\n\n[https://youtu.be/yr2bwYk0wAk](https://youtu.be/yr2bwYk0wAk)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/yr2bwYk0wAk",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8148-adda-e6d70b2fd42b",
+			"slug": "flashbeat",
+			"title": "FlashBeat",
+			"summary": "U-16プログラミングコンテスト山口大会 技術賞 企業賞 受賞 Unityで作ったゲームです",
+			"role": "Development",
+			"periodStart": 2023,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "U-16プログラミングコンテスト山口大会 技術賞 企業賞 受賞 Unityで作ったゲームです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "FlashBeat\n\nFlashBeat\n\n- [https://youtu.be/D0pItdcPWqE](https://youtu.be/D0pItdcPWqE)\n- [https://github.com/rebuildup/FlashBeat](https://github.com/rebuildup/FlashBeat)\n\nU-16プログラミングコンテスト山口大会 技術賞 企業賞 受賞 Unityで作ったゲームです\n\n- https://youtu.be/D0pItdcPWqE (video/youtube)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/D0pItdcPWqE",
+					"displayOrder": 0
+				},
+				{
+					"kind": "repo",
+					"label": null,
+					"url": "https://github.com/rebuildup/FlashBeat",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81c3-9d9e-dacb8e8c326e",
+			"slug": "dounika",
+			"title": "どうにかなっちゃいそう 文字pv",
+			"summary": "「どうにかなっちゃいそう/NOMELON NOLEMON」の文字pvです 音声に合わせてイラストが動くエクスプレッションの練習です",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「どうにかなっちゃいそう/NOMELON NOLEMON」の文字pvです 音声に合わせてイラストが動くエクスプレッションの練習です",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=Rdrylnr6Vdc](https://www.youtube.com/watch?v=Rdrylnr6Vdc)\n\n[https://www.youtube.com/watch?v=Rdrylnr6Vdc](https://www.youtube.com/watch?v=Rdrylnr6Vdc)\n\n### Links\n\n[https://youtu.be/Rdrylnr6Vdc](https://youtu.be/Rdrylnr6Vdc)\n\n[https://x.com/361do_sleep/status/1815006753144381874](https://x.com/361do_sleep/status/1815006753144381874)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/Rdrylnr6Vdc",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1815006753144381874",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81c3-85ee-f27ea16190b2",
+			"slug": "design-001",
+			"title": "デザイン練習 #001",
+			"summary": "なにも考えずに手癖で作っています",
+			"role": "Design",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "なにも考えずに手癖で作っています",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n### Links\n\n[https://x.com/361do_design/status/1911047618324795838](https://x.com/361do_design/status/1911047618324795838)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_design/status/1911047618324795838",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/design-001/design-001/media_1762425264732_k4m55o9jj-20250412_tekuse.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81b7-969b-d01a7999039c",
+			"slug": "code-type",
+			"title": "コードタイプ風映像素材",
+			"summary": "p5jsを使ってプログラムコードのアニメーションを作成しました。透過png連番です。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "p5jsを使ってプログラムコードのアニメーションを作成しました。透過png連番です。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Links\n\n[https://youtube.com/shorts/rq2WlOQa9zE](https://youtube.com/shorts/rq2WlOQa9zE)\n\n[https://x.com/361do_design/status/1904339929557266477](https://x.com/361do_design/status/1904339929557266477)\n\n[https://github.com/rebuildup/CodeType_p5](https://github.com/rebuildup/CodeType_p5)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtube.com/shorts/rq2WlOQa9zE",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_design/status/1904339929557266477",
+					"displayOrder": 1
+				},
+				{
+					"kind": "repo",
+					"label": null,
+					"url": "https://github.com/rebuildup/CodeType/_p5",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8145-a84c-c40d4902424c",
+			"slug": "ch4nge",
+			"title": "三途くお 様「CH4NGE/Giga」",
+			"summary": "三途くお 様「CH4NGE/Giga」  \n\nShort動画制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "三途くお 様「CH4NGE/Giga」  \n\nShort動画制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=rKprmWQP7l0](https://www.youtube.com/watch?v=rKprmWQP7l0)\n\n[https://www.youtube.com/watch?v=rKprmWQP7l0](https://www.youtube.com/watch?v=rKprmWQP7l0)\n\n三途くお 様\n\n[https://www.youtube.com/@snzkuo](https://www.youtube.com/@snzkuo)\n\n[https://x.com/snzkuo](https://x.com/snzkuo)\n\n[https://twitter.com/snzkuo/status/1962833748761976865](https://twitter.com/snzkuo/status/1962833748761976865)",
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1763978465258_nzd30m3ao-videoframe_1434.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_1434.png",
+					"caption": "videoframe_1434.png",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1763978473569_1806bsd39-videoframe_11014.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_11014.png",
+					"caption": "videoframe_11014.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1763978481609_hu64nfry4-videoframe_26389.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_26389.png",
+					"caption": "videoframe_26389.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1763978487564_e842zhjoh-videoframe_31163.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_31163.png",
+					"caption": "videoframe_31163.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1763978495888_wkgy142bb-videoframe_46116.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_46116.png",
+					"caption": "videoframe_46116.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/ch4nge/ch4nge/media_1762429732774_ce9yc2jjm-vlcsnap-2025-11-06-20h46m32s605.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8180-9beb-fb980056e6e9",
+			"slug": "cclub-brochure-2025",
+			"title": "コンピュータ部 勧誘チラシ",
+			"summary": "コンピュータ部の勧誘チラシを作成しました。",
+			"role": "Design",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "コンピュータ部の勧誘チラシを作成しました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://x.com/ube_k_cclub](https://x.com/ube_k_cclub)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/ube/_k/_cclub",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/cclub-brochure-2025/cclub-brochure-2025/media_1762425193475_faerrdqzx-20250325_conpu.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81dd-9552-dc4063f6cc11",
+			"slug": "cclub-brochure-2024",
+			"title": "コンピュータ部パンフレットデザイン",
+			"summary": "コンピュータ部のパンフレットを作りました。",
+			"role": "Design",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "コンピュータ部のパンフレットを作りました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n### Links\n\n[https://x.com/ube_k_cclub](https://x.com/ube_k_cclub)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/ube/_k/_cclub",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/cclub-brochure-2024/cclub-brochure-2024/media_1762423825888_psco21q4m-80.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81c2-933e-e33a90c333af",
+			"slug": "border",
+			"title": "Ae縁取りエフェクト Border",
+			"summary": "AfterEffectsで縁取りを描画するエフェクトです",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "AfterEffectsで縁取りを描画するエフェクトです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Links\n\n[https://361do.booth.pm/items/6932001](https://361do.booth.pm/items/6932001)\n\n[https://x.com/361do_sleep/status/1923332601713918423](https://x.com/361do_sleep/status/1923332601713918423)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6932001",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1923332601713918423",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8146-9ea2-f30f92ce30d3",
+			"slug": "blue-white-design",
+			"title": "青と白のデザイン",
+			"summary": "webっぽいデザインの練習です 青と白はかっこよくて好きです",
+			"role": "Design",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "webっぽいデザインの練習です 青と白はかっこよくて好きです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media",
+				"retrospective": null
+			},
+			"links": [],
+			"media": [
+				{
+					"r2Key": "portfolio/blue-white-design/blue-white-design/media_1762423994805_n30y22jcq-Web-1920-2.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8131-af4f-cae578dc8174",
+			"slug": "baramoji",
+			"title": "Ae書式維持文字分解スクリプトBaraMoji",
+			"summary": "AfterEffectsのテキストレイヤーを書式・状態を維持したまま文字ごとに分解できるようにしたスクリプトです。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "AfterEffectsのテキストレイヤーを書式・状態を維持したまま文字ごとに分解できるようにしたスクリプトです。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "### Ae書式維持文字分解スクリプトBaramoji\n\n[https://x.com/361do_sleep/status/1995074984331645045/video/1](https://x.com/361do_sleep/status/1995074984331645045/video/1)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": "booth",
+					"url": "https://361do.booth.pm/items/6759404",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/02f697a76206301d45912dcc363ea97274928076d2ba0be2f759f4bc1c0d4674.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/bb49bab7da14aed8f0c290a373f091d7d67ceae6719ce3c00c8bab57f5327437.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8174-97da-ca324c39e498",
+			"slug": "bansankai",
+			"title": "煤夜 様 - わたし晩餐会",
+			"summary": "わたし晩餐会/煤夜 MVを制作しました",
+			"role": "Video production",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "わたし晩餐会/煤夜 MVを制作しました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "わたし晩餐会/煤夜 様 MVの映像を制作しました\n\n[https://www.youtube.com/watch?v=j-Ja7kV_S-I](https://www.youtube.com/watch?v=j-Ja7kV_S-I)\n\n[https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL](https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL)\n\n煤夜 様\n\n[https://www.youtube.com/@susuyo_soot](https://www.youtube.com/@susuyo_soot)\n\n[https://x.com/susuyo_soot](https://x.com/susuyo_soot)\n\n絵 ぱ 様\n\n[https://x.com/PA_Ru6](https://x.com/PA_Ru6)\n\n初めて依頼をいただいて制作した映像です",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1762425899069_vg3qtaccj-vlcsnap-2025-08-13-21h49m26s292.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1763974753322_uuiwd9nah-videoframe_5173.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_5173.png",
+					"caption": "videoframe_5173.png",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1763974774951_e0fzlvwy5-videoframe_16411.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_16411.png",
+					"caption": "videoframe_16411.png",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1763974904751_kb6y7zoyr-videoframe_39171.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_39171.png",
+					"caption": "videoframe_39171.png",
+					"isCover": false,
+					"displayOrder": 3,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1763974935136_xa9a8zagj-videoframe_82034.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_82034.png",
+					"caption": "videoframe_82034.png",
+					"isCover": false,
+					"displayOrder": 4,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/bansankai/bansankai/media_1763974854942_wi9sp0k9h-videoframe_95031.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "videoframe_95031.png",
+					"caption": "videoframe_95031.png",
+					"isCover": false,
+					"displayOrder": 5,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81f2-9997-c064daf9f7af",
+			"slug": "alice",
+			"title": "Alice in 冷凍庫 文字pv",
+			"summary": "「Alice in 冷凍庫/Orangester Cover-ウォルピスカーター」の文字pvですAviutlを久しぶりに使いました",
+			"role": "Video production",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "「Alice in 冷凍庫/Orangester Cover-ウォルピスカーター」の文字pvですAviutlを久しぶりに使いました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": "### Media\n\n[https://www.youtube.com/watch?v=syScwjPw57U](https://www.youtube.com/watch?v=syScwjPw57U)\n\n[https://www.youtube.com/watch?v=syScwjPw57U](https://www.youtube.com/watch?v=syScwjPw57U)\n\n### Links\n\n[https://youtu.be/syScwjPw57U](https://youtu.be/syScwjPw57U)\n\n[https://x.com/361do_sleep/status/1837100915419140131](https://x.com/361do_sleep/status/1837100915419140131)\n\n[https://www.youtube.com/watch?v=MDcfP97NVpY](https://www.youtube.com/watch?v=MDcfP97NVpY)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/syScwjPw57U",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1837100915419140131",
+					"displayOrder": 1
+				},
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=MDcfP97NVpY",
+					"displayOrder": 2
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8140-b437-eed07aaef734",
+			"slug": "multislicer",
+			"title": "MultiSlicer",
+			"summary": "Aeで画像をスライスするエフェクトプラグインです",
+			"role": "Plugin developer",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop",
+				"video"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Aeで画像をスライスするエフェクトプラグインです",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://www.youtube.com/watch?v=X7XddKpTolw](https://www.youtube.com/watch?v=X7XddKpTolw)\n\n[https://youtu.be/X7XddKpTolw](https://youtu.be/X7XddKpTolw)\n\n[https://361do.booth.pm/items/6872180](https://361do.booth.pm/items/6872180)\n\n[https://x.com/361do_sleep/status/1918615732939575763](https://x.com/361do_sleep/status/1918615732939575763)\n\n[https://github.com/rebuildup/Ae_MultiSlicer](https://github.com/rebuildup/Ae_MultiSlicer)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/X7XddKpTolw",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6872180",
+					"displayOrder": 1
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://x.com/361do/_sleep/status/1918615732939575763",
+					"displayOrder": 2
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/multislicer/MultiSlicer/media_1762437621694_rw8hkaw04-20250503_multi.jpg",
+					"contentType": "image/jpeg",
+					"width": null,
+					"height": null,
+					"alt": "",
+					"caption": null,
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-8139-b330-e8ce981e556f",
+			"slug": "aulymo-v01",
+			"title": "Aulymo",
+			"summary": "Aeのスクリプトです　簡単にリリックモーションを作れます",
+			"role": "Tool developer",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Aeのスクリプトです　簡単にリリックモーションを作れます",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "[https://361do.booth.pm/items/6403113](https://361do.booth.pm/items/6403113)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://youtu.be/SewXH0Bbm-c",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6403113",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81ae-8500-d36d5ce84d6a",
+			"slug": "aulymo-v03",
+			"title": "Aeスクリプト Aulymo_v03",
+			"summary": "Ae版全自動リリックモーション「Aulymo」をアプデしました",
+			"role": "Tool developer",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"design",
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Ae版全自動リリックモーション「Aulymo」をアプデしました",
+				"architecture": null,
+				"constraints": null,
+				"implementation": null,
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "other",
+					"label": "X",
+					"url": "https://x.com/361do/_sleep/status/1955248758243070349",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		},
+		{
+			"pageId": "40bd54e3-32c3-81a4-96e4-d8512109c0f5",
+			"slug": "aulymo-v02",
+			"title": "Aeスクリプト Aulymo",
+			"summary": "Ae全自動リリックモーション「Aulymo」v2の動作説明動画です。PremiereProを初めてまともに使いました。あと、コンピュータ部のMacBookを借りました。",
+			"role": "Tool developer",
+			"periodStart": 2024,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "Ae全自動リリックモーション「Aulymo」v2の動作説明動画です。PremiereProを初めてまともに使いました。あと、コンピュータ部のMacBookを借りました。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "Aeスクリプト Aulymo\n\nAeスクリプト Aulymo\n\n- [https://www.youtube.com/watch?v=EbtybmiN5pM](https://www.youtube.com/watch?v=EbtybmiN5pM)\n- [https://361do.booth.pm/items/6403113](https://361do.booth.pm/items/6403113)\n\nAe全自動リリックモーション「Aulymo」v2の動作説明動画です。PremiereProを初めてまともに使いました。あと、コンピュータ部のMacBookを借りました。\n\n- https://www.youtube.com/watch?v=EbtybmiN5pM (video/youtube)",
+				"evidence": null,
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "video",
+					"label": null,
+					"url": "https://www.youtube.com/watch?v=EbtybmiN5pM",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": null,
+					"url": "https://361do.booth.pm/items/6403113",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-05T06:58:00.000Z"
+		}
+	]
 }

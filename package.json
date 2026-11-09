@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.8.1",
+	"version": "0.8.2",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -111,7 +111,6 @@
 		"r2:local:proof": "node scripts/r2-local-sharing-proof.mjs",
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
 		"verify:admin-authz-screenshot": "node scripts/admin-authz-shoot.mjs",
-		"verify:embed-privacy-screenshot": "node scripts/make-embed-privacy-report.mjs",
 		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs",
 		"verify:data-lifecycle-screenshot": "node --experimental-strip-types scripts/make-data-lifecycle-report.mjs",
 		"install:scripts:check": "node scripts/check-install-scripts.mjs",

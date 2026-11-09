@@ -32,12 +32,11 @@ import { REACTIONS_MIGRATIONS } from '../helpers/reactions-schema';
  * shell would satisfy every assertion above while breaking the product.
  *
  * Issue #498 refines what "asks for the Tool" means, without weakening
- * this contract: a Tool that DECLARES third-party contacts renders a
- * consent notice and no frame until the visitor activates the load,
- * because mounting it would spend the visitor's network on Google /
- * Adobe / Apps Script before anyone touched anything. A Tool that
- * declares no contact still mounts eagerly, and that is the positive
- * control below. Activation itself is a browser question and lives in
+ * this contract: a Tool that DECLARES third-party contacts publishes
+ * that declaration in the manifest (`delivery.privacy`), and the frame
+ * mounts directly (PR #914 removed the former click_to_load gate by
+ * owner decision). The eager mount is the positive control below; the
+ * frame's own behaviour in a browser lives in
  * `e2e/tools-prototype.spec.ts` / `e2e/lazy-media.spec.ts`.
  *
  * Element scope, not document scope
@@ -212,10 +211,12 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 	});
 
 	it('a Tool that declares no third-party contact mounts its iframe eagerly (positive control)', () => {
-		// `readmark` declares an empty contact list (Issue #498), so
-		// nothing about it needs a gate: the eager shell is still the
-		// contract, and a regression that gated EVERY Tool would fail
-		// here rather than pass silently.
+		// `readmark` declares an empty contact list (Issue #498). The
+		// shell mounts the frame directly for EVERY embeddable Tool
+		// (PR #914 removed the consent gate); this readmark leg keeps the
+		// eager mount asserted on a zero-contact Tool, so a regression
+		// that deferred or gated frames fails here rather than passing
+		// silently.
 		const html = markup(ungatedToolRoute);
 		const iframes = [...html.matchAll(/<iframe\b[^>]*>/gi)].map((match) => match[0]);
 		expect(iframes).toHaveLength(1);
@@ -227,15 +228,19 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 		expect(iframes[0]).toContain('referrerPolicy="no-referrer"');
 	});
 
-	it('a Tool that declares third-party contacts mounts no frame before activation (#498)', () => {
+	it('a Tool that declares third-party contacts still mounts its frame (#498, PR #914)', () => {
 		// ProtoType's artefact pulls Google Fonts / Typekit / Apps Script
-		// on load, so the SSR document is the consent notice and nothing
-		// else. This is the media contract's own rule applied to the
-		// third-party dimension: no subresource fetch starts on load.
+		// on load; the manifest `delivery.privacy` declaration is the
+		// published disclosure of that. PR #914 removed the consent gate,
+		// so the frame mounts even for a Tool WITH declared contacts — a
+		// regression that re-gated declared-contact Tools fails here.
+		// The HOST markup carries exactly the one same-origin frame and
+		// no other media element.
 		const html = markup(toolRoute);
-		expect(html).not.toMatch(EMBEDDED_MEDIA);
-		expect(html).not.toContain('/app/index.html');
-		expect(html).toContain('data-testid="tool-embed-consent"');
+		const iframes = [...html.matchAll(/<iframe\b[^>]*>/gi)].map((match) => match[0]);
+		expect(iframes).toHaveLength(1);
+		expect(iframes[0]).toContain('src="/tools/prototype/app/index.html"');
+		expect(html).not.toMatch(/<(video|audio)\b/i);
 	});
 
 	it.skipIf(!DISABLED_TOOL)('a host_disabled Tool mounts no iframe and no artifact', () => {

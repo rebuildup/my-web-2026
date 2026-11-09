@@ -98,7 +98,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('returns null when the binding is missing', async () => {
-		const loader = createD1PortfolioLoader({});
+		const loader = createD1PortfolioLoader({}, { cmsProjects: [] });
 		expect(await loader.loadPortfolioProject('aulymo')).toBeNull();
 		expect(await loader.loadPortfolioAdjacent('aulymo')).toEqual({ prev: null, next: null });
 		const page = await loader.listPortfolioProjects();
@@ -106,7 +106,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('returns null for an unknown slug', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('aulymo');
 		expect(await loader.loadPortfolioProject('nope')).toBeNull();
 	});
@@ -117,25 +117,25 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	// public surface cannot reach unlisted, draft, or archived
 	// rows even by slug.
 	it('PUBLIC BOUNDARY — hides draft rows', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('draft1', { visibility: 'draft' });
 		expect(await loader.loadPortfolioProject('draft1')).toBeNull();
 	});
 
 	it('PUBLIC BOUNDARY — hides archived rows', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('archived1', { status: 'archived' });
 		expect(await loader.loadPortfolioProject('archived1')).toBeNull();
 	});
 
 	it('PUBLIC BOUNDARY — hides unlisted rows (public surface cannot reach by slug)', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('unlisted1', { visibility: 'unlisted' });
 		expect(await loader.loadPortfolioProject('unlisted1')).toBeNull();
 	});
 
 	it('PUBLIC BOUNDARY — hides draft rows even when other fields look fine', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('draft2', {
 			visibility: 'draft',
 			status: 'published',
@@ -145,7 +145,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('PUBLIC BOUNDARY — hides unlisted rows even when other fields look fine', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('unlisted2', {
 			visibility: 'unlisted',
 			status: 'published',
@@ -156,7 +156,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 
 	// Adjacent lookup — prev / next in canonical sort order (Issue #77).
 	it('loadPortfolioAdjacent — returns prev/next in canonical sort order', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		// canonical order: pinned DESC, display_order ASC, updated_at DESC, id ASC
 		await seedOne('p1', { pinned: 0, display_order: 0 });
 		await seedOne('p2', { pinned: 0, display_order: 1 });
@@ -171,7 +171,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('loadPortfolioAdjacent — first row has prev=null', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('p1', { display_order: 0 });
 		await seedOne('p2', { display_order: 1 });
 		const adjacent = await loader.loadPortfolioAdjacent('p1');
@@ -180,7 +180,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('loadPortfolioAdjacent — last row has next=null', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('p1', { display_order: 0 });
 		await seedOne('p2', { display_order: 1 });
 		const adjacent = await loader.loadPortfolioAdjacent('p2');
@@ -189,7 +189,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('loadPortfolioAdjacent — pinned-first ordering is honoured', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		// p_top is pinned (display_order high) — comes FIRST in sort
 		await seedOne('p_top', { pinned: 1, display_order: 999 });
 		await seedOne('p_a', { pinned: 0, display_order: 0 });
@@ -208,7 +208,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('loadPortfolioAdjacent — display_order tiebreaker with same pinned', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		// all pinned=1, display_order increasing
 		await seedOne('p_a', { pinned: 1, display_order: 0 });
 		await seedOne('p_b', { pinned: 1, display_order: 1 });
@@ -220,7 +220,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('loadPortfolioAdjacent — unknown slug returns {prev:null, next:null}', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('p1', { display_order: 0 });
 		expect(await loader.loadPortfolioAdjacent('nope')).toEqual({ prev: null, next: null });
 	});
@@ -229,7 +229,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	// become prev/next of a public target, even when they outrank it
 	// in the sort key.
 	it('PUBLIC BOUNDARY — loadPortfolioAdjacent ignores unlisted neighbours', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('public_a', { display_order: 0 });
 		await seedOne('unlisted_x', {
 			visibility: 'unlisted',
@@ -245,7 +245,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('returns the project for a public slug with parsed facets and techs', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('aulymo', { facets: '["develop","design"]', technologies: '["AE","Rust"]' });
 
 		const project = await loader.loadPortfolioProject('aulymo');
@@ -261,7 +261,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	// List must also be public-only; the loader accepts no
 	// visibility selector at all.
 	it('list honours facet filter', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('dev1', { facets: '["develop"]' });
 		await seedOne('video1', { facets: '["video"]' });
 		await seedOne('design1', { facets: '["design"]' });
@@ -272,7 +272,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('list with multiple facet options (any-of)', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('dev1', { facets: '["develop"]' });
 		await seedOne('video1', { facets: '["video"]' });
 		await seedOne('design1', { facets: '["design"]' });
@@ -282,7 +282,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('PUBLIC BOUNDARY — list never returns draft / archived / unlisted', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('public1', { visibility: 'public', status: 'published' });
 		await seedOne('draft1', { visibility: 'draft', status: 'published' });
 		await seedOne('archived1', { visibility: 'public', status: 'archived' });
@@ -293,7 +293,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('list respects limit', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('a', { display_order: 0 });
 		await seedOne('b', { display_order: 1 });
 		await seedOne('c', { display_order: 2 });
@@ -309,7 +309,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 
 	// Cursor pagination — the contract Issue #77 UI will rely on.
 	it('cursor pagination: stable order with no skip / no duplicate', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		const total = 7;
 		for (let i = 0; i < total; i++) {
 			// varying updated_at + id to exercise the tiebreaker
@@ -334,7 +334,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('cursor pagination: respects pinned-first ordering across pages', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		// p1 is pinned (display_order high) — should still come first
 		await seedOne('p1', { pinned: 1, display_order: 999 });
 		await seedOne('p2', { pinned: 0, display_order: 0 });
@@ -353,7 +353,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('cursor pagination: display_order ASC tiebreaker on updated_at', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		// 4 rows sharing pinned=0 + updated_at — display_order is
 		// the only differentiator. Without `id` we'd risk drift.
 		const now = 1_700_000_000_000;
@@ -374,14 +374,14 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('cursor pagination: empty page returns nextCursor=null', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		const page = await loader.listPortfolioProjects({ limit: 10 });
 		expect(page.projects).toEqual([]);
 		expect(page.nextCursor).toBeNull();
 	});
 
 	it('cursor pagination: malformed cursor falls back to first page', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('a', { display_order: 0 });
 		await seedOne('b', { display_order: 1 });
 
@@ -391,7 +391,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('cursor pagination: cursor encoding is opaque but valid', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('a', { display_order: 0 });
 		await seedOne('b', { display_order: 1 });
 		await seedOne('c', { display_order: 2 });
@@ -429,7 +429,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 			.bind('m2', id, 'portfolio/aulymo/extra.webp', 'image/webp', 'extra', 0, 1, now)
 			.run();
 
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		const project = await loader.loadPortfolioProject('aulymo');
 		expect(project?.media).toHaveLength(2);
 		expect(project?.media[0]?.isCover).toBe(true);
@@ -442,7 +442,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	// Public project index (Issue #420) — the input of `/sitemap.xml`.
 	// Same public boundary as the list surface, reduced to URL identity.
 	it('listPublishedProjectIndex — returns only public + published rows', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('public1', { visibility: 'public', status: 'published' });
 		await seedOne('draft1', { visibility: 'draft', status: 'published' });
 		await seedOne('archived1', { visibility: 'public', status: 'archived' });
@@ -453,7 +453,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('listPublishedProjectIndex — carries updated_at for lastmod', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		const updatedAt = 1_767_322_945_000;
 		await seedOne('tastile', { updated_at: updatedAt });
 
@@ -462,7 +462,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('listPublishedProjectIndex — follows canonical sort order', async () => {
-		const loader = createD1PortfolioLoader(env);
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('pinned', { pinned: 1, display_order: 99 });
 		await seedOne('second', { display_order: 1 });
 		await seedOne('first', { display_order: 0 });
@@ -472,7 +472,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	});
 
 	it('listPublishedProjectIndex — empty array when the binding is missing', async () => {
-		const loader = createD1PortfolioLoader({});
+		const loader = createD1PortfolioLoader({}, { cmsProjects: [] });
 		expect(await loader.listPublishedProjectIndex()).toEqual([]);
 	});
 });
@@ -639,6 +639,84 @@ describe('portfolio — CMS merge (Issue #765)', () => {
 			const index = await loader.listPublishedProjectIndex();
 			expect(index.map((entry) => entry.slug)).toEqual(['cms-one']);
 			expect(index[0]?.updatedAt).not.toBe(cmsProject().updatedAt);
+		});
+
+		// Issue #913 — the collision rule decides WHO OWNS the row; the
+		// authoring fields (body text, media) are Notion's (ADR-0018 §2.11).
+		// The transitional text migration wrote empty section bodies into
+		// every legacy D1 row, so "D1 wins" used to render the lossy copy
+		// and the authoring content never reached the page.
+		it('fills the D1 row’s authoring fields from the CMS record', async () => {
+			await seedOne('cms-one', { display_order: 5 });
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [
+					cmsProject({ motivationMd: 'CMS body.', implementationMd: 'CMS implementation.' }),
+				],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.id).not.toBe('notion:page-1');
+			expect(project?.motivationMd).toBe('CMS body.');
+			expect(project?.implementationMd).toBe('CMS implementation.');
+		});
+
+		it('does not erase a stored section with an empty CMS section', async () => {
+			const id = await seedOne('cms-one', { display_order: 5 });
+			await env.DB.prepare('UPDATE portfolio_project SET motivation_md = ?1 WHERE id = ?2')
+				.bind('D1 body.', id)
+				.run();
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [cmsProject({ motivationMd: '' })],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.motivationMd).toBe('D1 body.');
+		});
+
+		it('unions media: CMS-only keys join, shared keys are not duplicated', async () => {
+			const id = await seedOne('cms-one', { display_order: 5 });
+			const now = Date.now();
+			await env.DB.prepare(
+				'INSERT INTO portfolio_media (id, project_id, r2_key, content_type, alt, is_cover, display_order, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)',
+			)
+				.bind('m1', id, 'portfolio/cms-one/cover.webp', 'image/webp', 'cover', 1, 0, now)
+				.run();
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [
+					cmsProject({
+						media: [
+							{
+								id: 'notion:page-1:0',
+								r2Key: 'portfolio/cms-one/cover.webp',
+								contentType: 'image/webp',
+								width: null,
+								height: null,
+								alt: 'cover',
+								caption: null,
+								isCover: true,
+								displayOrder: 0,
+								url: null,
+							},
+							{
+								id: 'notion:page-1:1',
+								r2Key: 'portfolio/notion/abc.jpg',
+								contentType: 'image/jpeg',
+								width: null,
+								height: null,
+								alt: 'ingested',
+								caption: null,
+								isCover: false,
+								displayOrder: 1,
+								url: null,
+							},
+						],
+					}),
+				],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.media.map((media) => media.r2Key)).toEqual([
+				'portfolio/cms-one/cover.webp',
+				'portfolio/notion/abc.jpg',
+			]);
+			expect(project?.media[0]?.isCover).toBe(true);
 		});
 	});
 });

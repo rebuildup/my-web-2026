@@ -127,10 +127,16 @@ export function PortfolioMediaFigure({
 	const aspectRatio = frameAspectRatio ?? boxAspectRatio(media);
 
 	if (media.url === null || errored) {
+		// An empty alt is a DECORATIVE image (the mapper's contract: no
+		// caption → decorative). A `role="img"` figure with an empty
+		// `aria-label` is invalid HTML (`html.bad-value`), so a
+		// placeholder for a decorative row is a presentational frame —
+		// the visible "placeholder" text is its whole content.
+		const named = media.alt.trim().length > 0;
 		return (
 			<figure
-				role="img"
-				aria-label={media.alt}
+				role={named ? 'img' : undefined}
+				aria-label={named ? media.alt : undefined}
 				className={cx(mediaFrameStyle, className)}
 				style={aspectRatio ? { aspectRatio } : undefined}
 			>

@@ -31,6 +31,7 @@
 		"**/*.md",
 		"**/fixtures/**",
 		"src/projects/snapshots/**",
+		"src/portfolio/notion/generated/**",
 		"src/routes/admin.*",
 		"src/routes/design-system/**",
 		"src/editorial/cjk-line-break.tsx",

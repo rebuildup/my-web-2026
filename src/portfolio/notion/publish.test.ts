@@ -114,6 +114,12 @@ describe('publishedMedia', () => {
 		expect(unreviewed).toBe('unreviewed');
 	});
 
+	it('reports a record with no assets as unreviewed, never as reviewed (ADR-0019 §2.5.2)', () => {
+		// `every` over an empty array is vacuously true; a record the
+		// repository knows nothing about must not claim `reviewed`.
+		expect(recordEvidenceStatus(record({ media: [] }))).toBe('unreviewed');
+	});
+
 	it('puts the cover first, then follows display order', () => {
 		const kept = publishedMedia(
 			record({

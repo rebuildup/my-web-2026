@@ -272,6 +272,39 @@ Notion で本文を編集
 
 遅延は「次の build まで」であり、意図された仕様である。
 
+### 6.1 commit する snapshot のキーは「deploy 先の bucket」に存在しなければならない
+
+`planMedia` は**同一バイトの既存 object を再利用**する（`reused=N`）。つまり
+取り込み先 bucket に `portfolio/<slug>/thumbnail/<sha>.jpg` があれば、snapshot は
+content-addressed な `portfolio/notion/<sha>.jpg` ではなく**その key を指す**。
+
+そのため `--r2-target=local` で取り込んだ snapshot をそのまま commit すると、
+local bucket にしか無い key が本番の公開面を指し得る（2026-11-06 の再 ingest で
+実際に 3 件発生 — `docs/verification/portfolio/notion-reingest-2026-11-06.md` §5）。
+
+commit 前の確認（読み取りのみ・値は出さない）:
+
+```sh
+# snapshot が参照する全 key を、本番の media origin で存在確認する
+node -e '
+const s=require("./src/portfolio/notion/generated/snapshot.json");
+console.log([...new Set(s.records.flatMap(r=>r.media.map(m=>m.r2Key)))].join("\n"));
+' > /tmp/keys.txt
+while read -r k; do
+  c=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 25 "https://media.rebuildup.dev/$k")
+  [ "$c" = "200" ] || echo "$c $k"
+done < /tmp/keys.txt
+```
+
+404 が 1 件でも出たら commit しない。直し方は 2 つだけ:
+
+1. 同じバイトが `portfolio/notion/<sha>.<ext>` に存在するなら、snapshot の key を
+   そちらへ戻す（バイトは失われない）。
+2. 存在しないなら `--r2-target=production --execute` で object を投入する
+   （owner の実行判断が要る）。
+
+「local で見えたから本番にもある」は根拠にならない。
+
 ## 7. 失敗時の読み方
 
 | メッセージ | 意味 |

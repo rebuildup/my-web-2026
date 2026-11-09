@@ -120,8 +120,28 @@ export const PUBLISHED_CONTENT_ROOTS = [
  * it does not own. It is stated rather than silently skipped: if a
  * future change moves share documents into the platform copy, this
  * exclusion has to be revisited in the same PR.
+ *
+ * `src/portfolio/notion/generated/` is the committed projection of the
+ * owner-controlled Notion data source (`scripts/sync-portfolio-notion.mjs`
+ * writes it). Its publication decision lives in that data source — the
+ * per-record `status` / `visibility` the owner sets there, and the
+ * migration's owner publication ledger
+ * (`docs/migration/portfolio-2025-to-2026-publication.json`) — and its
+ * prose is not authored in this repository, exactly as the copy
+ * editorial gate records for the same file
+ * (`quality/copy-editorial-surfaces.json`). The values it carries are
+ * therefore not reviewable here: no expression-level owner record can
+ * exist for them without re-opening the gate on every ingest, and the
+ * corpus cannot hold the same literals because the corpus is synthetic
+ * fixtures only. The exclusion is visible, not silent: the residual
+ * personal-data-shaped candidates this surface carries are stated in
+ * `docs/security/personal-data-redaction.md` ("対象外と残るリスク"),
+ * and the surface is listed in `quality/profile.yaml`.
  */
-export const PUBLISHED_CONTENT_EXCLUDE_PREFIXES = ['public/share/'];
+export const PUBLISHED_CONTENT_EXCLUDE_PREFIXES = [
+	'public/share/',
+	'src/portfolio/notion/generated/',
+];
 
 /**
  * Published surfaces this gate does not scan, each with the reason.
@@ -172,6 +192,11 @@ export const PUBLISHED_CONTENT_NOT_SCANNED = [
 	{
 		surface: 'src/i18n/',
 		reason: 'the Unicode / glyph policy tables are synthetic decision fixtures, not published copy',
+	},
+	{
+		surface: 'src/portfolio/notion/generated/',
+		reason:
+			'the committed projection of the owner-controlled Notion data source: its publication decision is the per-record status / visibility the owner sets in that data source (and the migration publication ledger), its prose is not authored in this repository, and the corpus holds synthetic fixtures only — so no owner-approved record covering its literals can exist here. The residual personal-data-shaped candidates this surface carries are stated in docs/security/personal-data-redaction.md, not hidden',
 	},
 ];
 

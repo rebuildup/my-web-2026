@@ -864,7 +864,14 @@ describe('portfolio loader — slug read by a user-controlled URL segment', () =
 		);
 		expect(adjacent).toEqual({ prev: null, next: null });
 		expectNoPayloadInStatementText(recorder);
-		expectPayloadWasBound(recorder, payload);
+		// Issue #913 — with the real snapshot bundled, the adjacency read
+		// always runs the MERGED path (ADR-0018 §2.7): it projects every
+		// public row once and matches the slug in memory, so there is no
+		// slug predicate to bind and the payload never reaches SQL at all —
+		// the strongest form of the same guarantee. The parameterized
+		// single-slug read is pinned by the `loadPortfolioProject` case
+		// above, whose D1 row lookup still binds.
+		expectPayloadNeverBound(recorder, payload);
 		expect(await snapshot()).toEqual(before);
 	});
 });

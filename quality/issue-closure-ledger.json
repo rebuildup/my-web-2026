@@ -3753,6 +3753,30 @@
 			"action": "closed",
 			"note": "原因（`include-hidden-files` の既定 false で `.vite/manifest.json` が落ち、manifest 492 対 artifact 491）を実測し、`ci.yml` に `include-hidden-files: true` を入れた。再発防止テストは `scripts/run-script-tests.mjs` の自動発見で回る。修正後の run 41958112190 で `artifact:attestation:check` と `artifact:bytes:check` が PASS（492 files / 31,314,893 bytes）。`docs/release.md` step 9.1 に `--source-sha` の条件も追記した。",
 			"missing": null
+		},
+		{
+			"issue": 910,
+			"title": "fix(tools): 全15 Tool のスタイル崩れをビジュアル監査で特定し修正する",
+			"closedAt": "2026-11-10",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"#922",
+				"9258ac93",
+				"docs/verification/tools/910-styles/README.md",
+				"docs/verification/tools/910-styles/before-qr-generator-mobile.webp",
+				"docs/verification/tools/910-styles/verify-qr-generator-mobile.webp",
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "受入条件 1: 15 Tool × 2 viewport の before/after WebP を docs/verification/tools/910-styles/ に commit。条件 2: 棚卸し表（Tool × viewport × 判定 × 根因 × 修正場所）を README に記録（8 OK / 7 BROKEN、host 側の崩れ 0）。条件 3: 7件の Tool 側崩れを Tool repo PR + pin bump で修正（prototype / mic-level / pomodoro / history-quiz / code-type-p5 / fillgen / pi-game / qr-generator）。監督の独立再測定（要素レベルの溢れ計測）で qr-generator の residual（shell の content-box による 100vw+64px）を検出、tool-qr-generator#8 で修正し pin 2149f87 で検証。条件 4: tools:artifact:check / tools:provenance:check green。条件 5: validate:fast green。",
+			"missing": null
 		}
 	]
 }

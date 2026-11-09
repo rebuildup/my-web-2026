@@ -240,7 +240,7 @@
 			}
 		},
 		"qr-generator": {
-			"pinned_sha": "a3e11821a27461166e26b072a92a7bb02d3ec57a",
+			"pinned_sha": "2149f8721d75618d65dc840b816da0e10f100df9",
 			"license": {
 				"status": "verified",
 				"evidence_file": "LICENSE",

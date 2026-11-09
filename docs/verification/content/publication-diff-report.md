@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 47 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -428,5 +428,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W003 external-url-removed` External URL removed: https://use.typekit.net/app
+_No findings._
 

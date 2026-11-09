@@ -3203,20 +3203,12 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"https://use.typekit.net/app"
-		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://use.typekit.net/app"
-			}
-		]
+		"findings": []
 	}
 }

@@ -1,16 +1,17 @@
-import { act, fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { PortfolioVideo } from '../video-facade';
 import { PortfolioVideoFacade } from './PortfolioVideoFacade';
 
 /**
- * Click-to-load contract (Issue #870).
+ * Direct-embed contract (Issue #870; click-to-load removed per owner
+ * decision 2026-11-05, Issue #910).
  *
- * The assertions that matter are the NEGATIVE ones: before activation
- * the document must carry no iframe and no `src` pointing at a
- * third-party origin. The measured proof (zero network requests) lives
- * in `docs/verification/portfolio/video-facade.md`; this test pins the
- * markup shape that makes that measurement possible.
+ * The assertions that matter are the ones that keep the embed safe:
+ * the `src` is the built youtube-nocookie URL (never the stored link),
+ * no `autoplay`, and a referrer policy. The measured proof (which
+ * network requests a page load issues) lives in
+ * `docs/verification/portfolio/video-facade.md`.
  *
  * happy-dom refuses to load a framed document and reports
  * `Failed to load iframe page … Iframe page loading is disabled` through
@@ -29,38 +30,11 @@ const video: PortfolioVideo = {
 		displayOrder: 1,
 	},
 	embedUrl: 'https://www.youtube-nocookie.com/embed/SewXH0Bbm-c',
-	watchUrl: 'https://www.youtube.com/watch?v=SewXH0Bbm-c',
 };
 
 describe('PortfolioVideoFacade', () => {
-	it('renders no iframe before activation', () => {
+	it('mounts exactly one iframe on first render, built from the id', () => {
 		const { container } = render(<PortfolioVideoFacade video={video} />);
-		expect(container.querySelector('iframe')).toBeNull();
-	});
-
-	it('names the source and the id before the visitor presses anything', () => {
-		const { container } = render(<PortfolioVideoFacade video={video} />);
-		const text = container.textContent ?? '';
-		expect(text).toContain('YouTube');
-		expect(text).toContain('SewXH0Bbm-c');
-		expect(text).toContain('動画を読み込む');
-	});
-
-	it('offers a plain watch link that needs no script', () => {
-		const { container } = render(<PortfolioVideoFacade video={video} />);
-		const anchor = container.querySelector('a');
-		expect(anchor?.getAttribute('href')).toBe(video.watchUrl);
-		expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
-		expect(anchor?.getAttribute('target')).toBe('_blank');
-	});
-
-	it('mounts exactly one iframe after activation, built from the id', () => {
-		const { container } = render(<PortfolioVideoFacade video={video} />);
-		const button = container.querySelector('button');
-		expect(button).not.toBeNull();
-		act(() => {
-			if (button) fireEvent.click(button);
-		});
 		const frames = container.querySelectorAll('iframe');
 		expect(frames).toHaveLength(1);
 		const frame = frames[0];
@@ -68,26 +42,23 @@ describe('PortfolioVideoFacade', () => {
 		expect(frame?.getAttribute('src')).not.toContain('autoplay');
 		expect(frame?.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin');
 		expect(frame?.getAttribute('allow')).toBe('accelerometer; encrypted-media; picture-in-picture');
+		expect(frame?.getAttribute('loading')).toBe('lazy');
+		expect(frame?.getAttribute('allowfullscreen')).not.toBeNull();
 		expect(frame?.getAttribute('title')).toBe('YouTube の動画（SewXH0Bbm-c）');
 	});
 
-	it('drops the activation control once the frame is mounted', () => {
+	it('renders no activation control and no consent copy', () => {
 		const { container } = render(<PortfolioVideoFacade video={video} />);
-		act(() => {
-			const button = container.querySelector('button');
-			if (button) fireEvent.click(button);
-		});
 		expect(container.querySelector('button')).toBeNull();
+		const text = container.textContent ?? '';
+		expect(text).not.toContain('動画を読み込む');
+		expect(text).not.toContain('押すまで');
 	});
 
 	it('uses a recorded label as the frame title when one exists', () => {
 		const { container } = render(
 			<PortfolioVideoFacade video={{ ...video, link: { ...video.link, label: 'Aulymo PV' } }} />,
 		);
-		act(() => {
-			const button = container.querySelector('button');
-			if (button) fireEvent.click(button);
-		});
 		expect(container.querySelector('iframe')?.getAttribute('title')).toBe('Aulymo PV');
 	});
 });

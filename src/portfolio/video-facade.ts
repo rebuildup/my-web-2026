@@ -26,8 +26,8 @@
  *      parameter, a `javascript:` scheme, a lookalike host or an
  *      `autoplay` flag into the frame.
  *   3. **The embed origin is `youtube-nocookie.com`**, always https.
- *      `autoplay` is never added: the visitor pressed a button, they
- *      did not ask for sound.
+ *      `autoplay` is never added: the visitor opened a page about the
+ *      work, they did not ask for sound.
  *
  * Fail closed, not fail visible
  * -----------------------------
@@ -39,6 +39,10 @@
  * Dependency-free (no React, no DOM), so the tests can exercise it and
  * `PortfolioVideoFacade` is the only place that turns its output into
  * markup.
+ *
+ * Issue #910 (owner decision 2026-11-05) removed the click-to-load
+ * gate and with it the watch-URL composer: the frame mounts on first
+ * paint, so the only URL this module builds is the embed URL.
  */
 
 import type { PortfolioLink } from './schema';
@@ -79,8 +83,6 @@ export interface PortfolioVideo {
 	link: PortfolioLink;
 	/** `https://www.youtube-nocookie.com/embed/<id>` — built, never stored. */
 	embedUrl: string;
-	/** `https://www.youtube.com/watch?v=<id>` — the no-JavaScript path. */
-	watchUrl: string;
 }
 
 /**
@@ -95,8 +97,8 @@ export interface PortfolioVideo {
  *     `https://www.youtube-nocookie.com/embed/<id>`
  *
  * Refuses everything else. `http:` is accepted (the legacy corpus
- * contains both) but never re-emitted: the embed and watch URLs this
- * module builds are https.
+ * contains both) but never re-emitted: the embed URL this module
+ * builds is https.
  */
 export function parseYouTubeVideoId(input: string): string | null {
 	if (typeof input !== 'string') return null;
@@ -159,11 +161,6 @@ export function composeVideoEmbedUrl(id: string): string {
 	return `https://www.youtube-nocookie.com/embed/${id}`;
 }
 
-/** The plain watch URL, for visitors who did not activate the frame. */
-export function composeVideoWatchUrl(id: string): string {
-	return `https://www.youtube.com/watch?v=${id}`;
-}
-
 /**
  * The first `kind: 'video'` link whose URL parses, as a facade.
  *
@@ -180,7 +177,6 @@ export function selectPortfolioVideo(links: readonly PortfolioLink[]): Portfolio
 			id,
 			link,
 			embedUrl: composeVideoEmbedUrl(id),
-			watchUrl: composeVideoWatchUrl(id),
 		};
 	}
 	return null;

@@ -1776,15 +1776,6 @@
 				]
 			},
 			{
-				"url": "https://www.youtube.com/watch?v=",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/video-facade.ts"
-				]
-			},
-			{
 				"url": "https://www.youtube.com/watch?v=-_PKhPMXMDY",
 				"host": "www.youtube.com",
 				"kind": "external",
@@ -3202,20 +3193,1269 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"https://use.typekit.net/app"
+		"addedExternalUrls": [
+			"https://361do.booth.pm/items/6403113",
+			"https://361do.booth.pm/items/6472931",
+			"https://361do.booth.pm/items/6520211",
+			"https://361do.booth.pm/items/6759404",
+			"https://361do.booth.pm/items/6872180",
+			"https://361do.booth.pm/items/6932001",
+			"https://361do.booth.pm/items/6939869",
+			"https://361do.booth.pm/items/7758823",
+			"https://361do.booth.pm/items/7935112",
+			"https://github.com/rebuildup/Ae/_FoldLayers",
+			"https://github.com/rebuildup/Ae/_RGBDelay",
+			"https://github.com/rebuildup/Ae_FoldLayers",
+			"https://github.com/rebuildup/Ae_MultiSlicer",
+			"https://github.com/rebuildup/Ae_RGBDelay",
+			"https://github.com/rebuildup/Ae_sep_color",
+			"https://github.com/rebuildup/CodeType/_p5",
+			"https://github.com/rebuildup/CodeType_p5",
+			"https://github.com/rebuildup/FlashBeat",
+			"https://github.com/rebuildup/LiteGlow",
+			"https://github.com/rebuildup/M5/_Clock",
+			"https://github.com/rebuildup/M5_Clock",
+			"https://github.com/rebuildup/ProtoType",
+			"https://github.com/rebuildup/kosen-fes-2025",
+			"https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt",
+			"https://github.com/rebuildup/my-web-2025",
+			"https://pomodoro.yusuke-kim.com",
+			"https://prototype.yusuke-kim.com",
+			"https://rebuildup.github.io",
+			"https://twitter.com/361do_design/status/1905290284763857355",
+			"https://twitter.com/361do_design/status/1905491397169611125",
+			"https://twitter.com/361do_design/status/1974102198364876878",
+			"https://twitter.com/361do_design/status/1984262322828067072",
+			"https://twitter.com/361do_sleep/status/1845653703463989526",
+			"https://twitter.com/361do_sleep/status/1935259157881569753",
+			"https://twitter.com/complexivetunes/status/1842760522137297009",
+			"https://twitter.com/snzkuo/status/1962833748761976865",
+			"https://www.nicovideo.jp/watch/sm44678796",
+			"https://www.reactbits.dev/components/dock",
+			"https://www.tiktok.com/@harutoiizawa/video/7421877342030597384",
+			"https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A",
+			"https://www.youtube.com/@darupoi_",
+			"https://www.youtube.com/@hiyori_hiyoko",
+			"https://www.youtube.com/@snzkuo",
+			"https://www.youtube.com/@susuyo_soot",
+			"https://www.youtube.com/watch?v=-_PKhPMXMDY",
+			"https://www.youtube.com/watch?v=6xtoFf0h8x4",
+			"https://www.youtube.com/watch?v=73KhhTBE3Mk",
+			"https://www.youtube.com/watch?v=7Qo75j",
+			"https://www.youtube.com/watch?v=7Qo75j_1X6Y",
+			"https://www.youtube.com/watch?v=8erghVxQKgg",
+			"https://www.youtube.com/watch?v=9pNjS_Ahfjc",
+			"https://www.youtube.com/watch?v=A1r3QpnS3GA",
+			"https://www.youtube.com/watch?v=B0qWZH3e5ik",
+			"https://www.youtube.com/watch?v=BQEQMC1sL1M",
+			"https://www.youtube.com/watch?v=EbtybmiN5pM",
+			"https://www.youtube.com/watch?v=H-jr6SpAaE8",
+			"https://www.youtube.com/watch?v=IcknittbbFw",
+			"https://www.youtube.com/watch?v=Inr6kNzWMcA",
+			"https://www.youtube.com/watch?v=KYRbEEMCam0",
+			"https://www.youtube.com/watch?v=LNnxiVA9Idw",
+			"https://www.youtube.com/watch?v=LW1KBCgvEPQ",
+			"https://www.youtube.com/watch?v=MDcfP97NVpY",
+			"https://www.youtube.com/watch?v=NjRVa41kHBs",
+			"https://www.youtube.com/watch?v=O",
+			"https://www.youtube.com/watch?v=O_VRIuKM9gw",
+			"https://www.youtube.com/watch?v=R1nFXZB9lG8",
+			"https://www.youtube.com/watch?v=RGKhatEchrI",
+			"https://www.youtube.com/watch?v=Rdrylnr6Vdc",
+			"https://www.youtube.com/watch?v=V15m8WLGVwg",
+			"https://www.youtube.com/watch?v=X7XddKpTolw",
+			"https://www.youtube.com/watch?v=ZJsJ2ss4IBw",
+			"https://www.youtube.com/watch?v=Z_UAvUt4scU",
+			"https://www.youtube.com/watch?v=aLBMEIOSxdE",
+			"https://www.youtube.com/watch?v=aSjeoaoBKPc",
+			"https://www.youtube.com/watch?v=ay5stCLI9v4",
+			"https://www.youtube.com/watch?v=b2NTglk9tvI",
+			"https://www.youtube.com/watch?v=bTUbyDqVzIs",
+			"https://www.youtube.com/watch?v=c02NG9I1iO8",
+			"https://www.youtube.com/watch?v=easT0DZDAs8",
+			"https://www.youtube.com/watch?v=j-Ja7kV_S-I",
+			"https://www.youtube.com/watch?v=llftGyEqH",
+			"https://www.youtube.com/watch?v=llftGyEqH_4",
+			"https://www.youtube.com/watch?v=o4yKnfV2YVs",
+			"https://www.youtube.com/watch?v=oqfjwzVYDc8",
+			"https://www.youtube.com/watch?v=qwlAC0qPMXI",
+			"https://www.youtube.com/watch?v=rKprmWQP7l0",
+			"https://www.youtube.com/watch?v=syScwjPw57U",
+			"https://www.youtube.com/watch?v=szUAV_gMLQY",
+			"https://www.youtube.com/watch?v=vcUXmDwI7PQ",
+			"https://www.youtube.com/watch?v=wtw0tXAqRKE",
+			"https://www.youtube.com/watch?v=yr2bwYk0wAk",
+			"https://www2.ube-k.ac.jp/fes2025",
+			"https://x.com/361do",
+			"https://x.com/361do/_design/status/1893620585491792320",
+			"https://x.com/361do/_design/status/1895423219542466819",
+			"https://x.com/361do/_design/status/1904339929557266477",
+			"https://x.com/361do/_design/status/1905491397169611125",
+			"https://x.com/361do/_design/status/1911047618324795838",
+			"https://x.com/361do/_design/status/1974102198364876878",
+			"https://x.com/361do/_design/status/1984262322828067072",
+			"https://x.com/361do/_sleep/status/1790691816637157444",
+			"https://x.com/361do/_sleep/status/1815006753144381874",
+			"https://x.com/361do/_sleep/status/1832734742124609779",
+			"https://x.com/361do/_sleep/status/1837100915419140131",
+			"https://x.com/361do/_sleep/status/1838567775390044294",
+			"https://x.com/361do/_sleep/status/1840369939967840508",
+			"https://x.com/361do/_sleep/status/1844685698991067303",
+			"https://x.com/361do/_sleep/status/1845653703463989526",
+			"https://x.com/361do/_sleep/status/1850405797592973597",
+			"https://x.com/361do/_sleep/status/1852638050976751749",
+			"https://x.com/361do/_sleep/status/1873992217502900284",
+			"https://x.com/361do/_sleep/status/1877667236900479412",
+			"https://x.com/361do/_sleep/status/1878220390595453260",
+			"https://x.com/361do/_sleep/status/1882412041526477277",
+			"https://x.com/361do/_sleep/status/1901612081641910556",
+			"https://x.com/361do/_sleep/status/1918615732939575763",
+			"https://x.com/361do/_sleep/status/1923332601713918423",
+			"https://x.com/361do/_sleep/status/1924057386731655327",
+			"https://x.com/361do/_sleep/status/1955248758243070349",
+			"https://x.com/361do_design/status/1893620585491792320",
+			"https://x.com/361do_design/status/1895423219542466819",
+			"https://x.com/361do_design/status/1904339929557266477",
+			"https://x.com/361do_design/status/1905491397169611125",
+			"https://x.com/361do_design/status/1911047618324795838",
+			"https://x.com/361do_design/status/2079195581831156023?s=20",
+			"https://x.com/361do_sleep/status/1790691816637157444",
+			"https://x.com/361do_sleep/status/1815006753144381874",
+			"https://x.com/361do_sleep/status/1832734742124609779",
+			"https://x.com/361do_sleep/status/1837100915419140131",
+			"https://x.com/361do_sleep/status/1838567775390044294",
+			"https://x.com/361do_sleep/status/1840369939967840508",
+			"https://x.com/361do_sleep/status/1844685698991067303",
+			"https://x.com/361do_sleep/status/1845653703463989526",
+			"https://x.com/361do_sleep/status/1850405797592973597",
+			"https://x.com/361do_sleep/status/1852638050976751749",
+			"https://x.com/361do_sleep/status/1873992217502900284",
+			"https://x.com/361do_sleep/status/1877667236900479412",
+			"https://x.com/361do_sleep/status/1878220390595453260",
+			"https://x.com/361do_sleep/status/1882412041526477277",
+			"https://x.com/361do_sleep/status/1901612081641910556",
+			"https://x.com/361do_sleep/status/1918615732939575763",
+			"https://x.com/361do_sleep/status/1923332601713918423",
+			"https://x.com/361do_sleep/status/1924057386731655327",
+			"https://x.com/361do_sleep/status/1995074984331645045/video/1",
+			"https://x.com/361do_sleep/status/2000158683737768405?s=20",
+			"https://x.com/361do_sleep/status/2017669205781581891?s=20",
+			"https://x.com/82_yagi",
+			"https://x.com/Lookeong_Works",
+			"https://x.com/PA_Ru6",
+			"https://x.com/complexivetunes/status/1842760522137297009",
+			"https://x.com/darupoi_",
+			"https://x.com/markkuwu",
+			"https://x.com/morpho/_88",
+			"https://x.com/morpho_88",
+			"https://x.com/piyopiyo2424V",
+			"https://x.com/scalegif",
+			"https://x.com/snzkuo",
+			"https://x.com/susuyo_soot",
+			"https://x.com/takeshi__310",
+			"https://x.com/ube/_k/_cclub",
+			"https://x.com/ube_k_cclub",
+			"https://x.com/watasuke1024",
+			"https://youtu.be/-",
+			"https://youtu.be/-/_uzbG410Cg",
+			"https://youtu.be/-_uzbG410Cg",
+			"https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l",
+			"https://youtu.be/6xtoFf0h8x4",
+			"https://youtu.be/73KhhTBE3Mk",
+			"https://youtu.be/9pNjS_Ahfjc",
+			"https://youtu.be/A1r3QpnS3GA",
+			"https://youtu.be/D0pItdcPWqE",
+			"https://youtu.be/H-jr6SpAaE8",
+			"https://youtu.be/IcknittbbFw",
+			"https://youtu.be/Inr6kNzWMcA",
+			"https://youtu.be/KYRbEEMCam0",
+			"https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk",
+			"https://youtu.be/R1nFXZB9lG8",
+			"https://youtu.be/RGKhatEchrI",
+			"https://youtu.be/Rdrylnr6Vdc",
+			"https://youtu.be/SewXH0Bbm-c",
+			"https://youtu.be/V15m8WLGVwg",
+			"https://youtu.be/X7XddKpTolw",
+			"https://youtu.be/ZJsJ2ss4IBw",
+			"https://youtu.be/aSjeoaoBKPc",
+			"https://youtu.be/ay5stCLI9v4",
+			"https://youtu.be/c02NG9I1iO8",
+			"https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL",
+			"https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL",
+			"https://youtu.be/o4yKnfV2YVs",
+			"https://youtu.be/oqfjwzVYDc8",
+			"https://youtu.be/qwlAC0qPMXI",
+			"https://youtu.be/syScwjPw57U",
+			"https://youtu.be/szUAV/_gMLQY",
+			"https://youtu.be/szUAV_gMLQY",
+			"https://youtu.be/vcUXmDwI7PQ",
+			"https://youtu.be/yr2bwYk0wAk",
+			"https://youtube.com/shorts/o9GxF/_FLSQA",
+			"https://youtube.com/shorts/o9GxF_FLSQA",
+			"https://youtube.com/shorts/rq2WlOQa9zE"
 		],
-		"addedExternalHosts": [],
+		"removedExternalUrls": [],
+		"addedExternalHosts": [
+			"pomodoro.yusuke-kim.com",
+			"prototype.yusuke-kim.com",
+			"rebuildup.github.io",
+			"twitter.com",
+			"www.nicovideo.jp",
+			"www.reactbits.dev",
+			"www.tiktok.com",
+			"www2.ube-k.ac.jp",
+			"youtu.be",
+			"youtube.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host pomodoro.yusuke-kim.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host prototype.yusuke-kim.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host rebuildup.github.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host twitter.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.nicovideo.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.reactbits.dev appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www.tiktok.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host www2.ube-k.ac.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host youtu.be appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host youtube.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://use.typekit.net/app"
+				"message": "External URL added: https://361do.booth.pm/items/6403113"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6472931"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6520211"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6759404"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6872180"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6932001"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/6939869"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/7758823"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://361do.booth.pm/items/7935112"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae/_FoldLayers"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae/_RGBDelay"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae_FoldLayers"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae_MultiSlicer"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae_RGBDelay"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/Ae_sep_color"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/CodeType/_p5"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/CodeType_p5"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/FlashBeat"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/LiteGlow"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/M5/_Clock"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/M5_Clock"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/ProtoType"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/kosen-fes-2025"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/my-web-2025"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://pomodoro.yusuke-kim.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://prototype.yusuke-kim.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://rebuildup.github.io"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_design/status/1905290284763857355"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_design/status/1905491397169611125"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_design/status/1974102198364876878"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_design/status/1984262322828067072"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_sleep/status/1845653703463989526"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/361do_sleep/status/1935259157881569753"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/complexivetunes/status/1842760522137297009"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitter.com/snzkuo/status/1962833748761976865"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.nicovideo.jp/watch/sm44678796"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.reactbits.dev/components/dock"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.tiktok.com/@harutoiizawa/video/7421877342030597384"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/@darupoi_"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/@hiyori_hiyoko"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/@snzkuo"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/@susuyo_soot"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=-_PKhPMXMDY"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=6xtoFf0h8x4"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=73KhhTBE3Mk"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=7Qo75j"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=7Qo75j_1X6Y"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=8erghVxQKgg"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=9pNjS_Ahfjc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=A1r3QpnS3GA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=B0qWZH3e5ik"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=BQEQMC1sL1M"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=EbtybmiN5pM"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=H-jr6SpAaE8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=IcknittbbFw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=Inr6kNzWMcA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=KYRbEEMCam0"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=LNnxiVA9Idw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=LW1KBCgvEPQ"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=MDcfP97NVpY"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=NjRVa41kHBs"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=O"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=O_VRIuKM9gw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=R1nFXZB9lG8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=RGKhatEchrI"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=Rdrylnr6Vdc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=V15m8WLGVwg"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=X7XddKpTolw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=ZJsJ2ss4IBw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=Z_UAvUt4scU"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=aLBMEIOSxdE"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=aSjeoaoBKPc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=ay5stCLI9v4"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=b2NTglk9tvI"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=bTUbyDqVzIs"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=c02NG9I1iO8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=easT0DZDAs8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=j-Ja7kV_S-I"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=llftGyEqH"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=llftGyEqH_4"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=o4yKnfV2YVs"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=oqfjwzVYDc8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=qwlAC0qPMXI"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=rKprmWQP7l0"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=syScwjPw57U"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=szUAV_gMLQY"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=vcUXmDwI7PQ"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=wtw0tXAqRKE"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.youtube.com/watch?v=yr2bwYk0wAk"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www2.ube-k.ac.jp/fes2025"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1893620585491792320"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1895423219542466819"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1904339929557266477"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1905491397169611125"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1911047618324795838"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1974102198364876878"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_design/status/1984262322828067072"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1790691816637157444"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1815006753144381874"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1832734742124609779"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1837100915419140131"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1838567775390044294"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1840369939967840508"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1844685698991067303"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1845653703463989526"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1850405797592973597"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1852638050976751749"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1873992217502900284"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1877667236900479412"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1878220390595453260"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1882412041526477277"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1901612081641910556"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1918615732939575763"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1923332601713918423"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1924057386731655327"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do/_sleep/status/1955248758243070349"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/1893620585491792320"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/1895423219542466819"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/1904339929557266477"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/1905491397169611125"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/1911047618324795838"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_design/status/2079195581831156023?s=20"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1790691816637157444"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1815006753144381874"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1832734742124609779"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1837100915419140131"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1838567775390044294"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1840369939967840508"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1844685698991067303"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1845653703463989526"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1850405797592973597"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1852638050976751749"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1873992217502900284"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1877667236900479412"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1878220390595453260"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1882412041526477277"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1901612081641910556"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1918615732939575763"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1923332601713918423"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1924057386731655327"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/1995074984331645045/video/1"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/2000158683737768405?s=20"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/361do_sleep/status/2017669205781581891?s=20"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/82_yagi"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/Lookeong_Works"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/PA_Ru6"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/complexivetunes/status/1842760522137297009"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/darupoi_"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/markkuwu"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/morpho/_88"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/morpho_88"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/piyopiyo2424V"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/scalegif"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/snzkuo"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/susuyo_soot"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/takeshi__310"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/ube/_k/_cclub"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/ube_k_cclub"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://x.com/watasuke1024"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/-"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/-/_uzbG410Cg"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/-_uzbG410Cg"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/6xtoFf0h8x4"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/73KhhTBE3Mk"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/9pNjS_Ahfjc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/A1r3QpnS3GA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/D0pItdcPWqE"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/H-jr6SpAaE8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/IcknittbbFw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/Inr6kNzWMcA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/KYRbEEMCam0"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/NjRVa41kHBs?si=VJ80CavaJRG34UNk"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/R1nFXZB9lG8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/RGKhatEchrI"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/Rdrylnr6Vdc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/SewXH0Bbm-c"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/V15m8WLGVwg"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/X7XddKpTolw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/ZJsJ2ss4IBw"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/aSjeoaoBKPc"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/ay5stCLI9v4"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/c02NG9I1iO8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/o4yKnfV2YVs"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/oqfjwzVYDc8"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/qwlAC0qPMXI"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/syScwjPw57U"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/szUAV/_gMLQY"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/szUAV_gMLQY"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/vcUXmDwI7PQ"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtu.be/yr2bwYk0wAk"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtube.com/shorts/o9GxF/_FLSQA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtube.com/shorts/o9GxF_FLSQA"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://youtube.com/shorts/rq2WlOQa9zE"
 			}
 		]
 	}

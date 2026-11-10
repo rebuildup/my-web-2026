@@ -1,39 +1,25 @@
-import { useState } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import type { PortfolioVideo } from '../video-facade';
 
 /**
- * Click-to-load YouTube facade (Issue #870).
+ * Direct YouTube embed (Issue #870; click-to-load removed per owner
+ * decision 2026-11-05, Issue #910).
  *
  * The detail page composes this in place of a bare §07 link when the
  * project has a `kind: 'video'` row whose URL `video-facade.ts` could
- * validate.
+ * validate. The frame mounts on first paint: no activation control,
+ * no consent interruption.
  *
- * The contract is structural, not editorial: before activation this
- * component renders **no iframe and no image from a third-party
- * origin**, so "zero third-party requests on first paint" is a
- * property of the markup rather than a promise in the copy. That is
- * the same publish-what-the-embed-contacts rule the Tool route's
- * manifest declaration implements (`src/tools/embed-privacy.ts`,
- * Issue #498); this component
- * is Portfolio's own surface, not a shared abstraction, because the
- * two obligations answer different questions — a Tool frame is a
- * whole application, a Portfolio video is one play affordance.
+ * What stays from the #870 contract — the parts that made the embed
+ * safe, not the parts that made it lazy:
  *
- * Pressing the button counts as consent, and the source is named
- * BEFORE the press: the notice says the video is delivered by YouTube
- * and the id is printed next to the control. Nothing is persisted —
- * no cookie, no `localStorage` — so a reload asks again. The privacy
- * notice (`src/privacy/data-lifecycle.ts`) therefore does not have to
- * describe a new stored value.
- *
- * The frame itself:
  *   - `src` is built from the validated 11-character id by
  *     `composeVideoEmbedUrl`, never copied from the stored URL;
+ *   - the embed origin is `youtube-nocookie.com`, always https;
  *   - `referrerpolicy="strict-origin-when-cross-origin"`,
  *   - `allow="accelerometer; encrypted-media; picture-in-picture"`
  *     and no `autoplay`,
- *   - `loading="lazy"` so the activation request starts when the frame
+ *   - `loading="lazy"` so the frame's request starts when it
  *     approaches the viewport.
  *
  * No `sandbox` attribute: the framed document is YouTube's own player,
@@ -48,130 +34,22 @@ export interface PortfolioVideoFacadeProps {
 }
 
 export function PortfolioVideoFacade({ video, className }: PortfolioVideoFacadeProps) {
-	const [activated, setActivated] = useState(false);
 	const title = video.link.label ?? `YouTube の動画（${video.id}）`;
 
-	if (activated) {
-		return (
-			<div className={cx(frameStyle, className)}>
-				<iframe
-					src={video.embedUrl}
-					title={title}
-					className={iframeStyle}
-					referrerPolicy="strict-origin-when-cross-origin"
-					allow="accelerometer; encrypted-media; picture-in-picture"
-					loading="lazy"
-					allowFullScreen
-				/>
-			</div>
-		);
-	}
-
 	return (
-		<div className={cx(panelStyle, className)}>
-			<p className={noticeStyle} id="portfolio-video-notice">
-				この動画は YouTube から配信されます。押すまで YouTube への要求は送信しません。
-			</p>
-			<p className={metaStyle}>
-				<span>YouTube</span>
-				<span aria-hidden="true">·</span>
-				<code className={idStyle}>{video.id}</code>
-			</p>
-			<div className={controlsStyle}>
-				<button
-					type="button"
-					onClick={() => setActivated(true)}
-					aria-describedby="portfolio-video-notice"
-					className={buttonStyle}
-				>
-					動画を読み込む
-				</button>
-				<a href={video.watchUrl} target="_blank" rel="noopener noreferrer" className={linkStyle}>
-					YouTube で開く
-				</a>
-			</div>
+		<div className={cx(frameStyle, className)}>
+			<iframe
+				src={video.embedUrl}
+				title={title}
+				className={iframeStyle}
+				referrerPolicy="strict-origin-when-cross-origin"
+				allow="accelerometer; encrypted-media; picture-in-picture"
+				loading="lazy"
+				allowFullScreen
+			/>
 		</div>
 	);
 }
-
-const panelStyle = css({
-	margin: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-	padding: '6',
-	backgroundColor: 'bg.subtle',
-	borderRadius: '6px',
-});
-
-const noticeStyle = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	color: 'text.muted',
-	lineHeight: '1.6',
-	maxWidth: '60ch',
-});
-
-const metaStyle = css({
-	margin: '0',
-	display: 'flex',
-	alignItems: 'center',
-	gap: '2',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
-
-const idStyle = css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: 'normal',
-	textTransform: 'none',
-});
-
-const controlsStyle = css({
-	display: 'flex',
-	flexWrap: 'wrap',
-	alignItems: 'center',
-	gap: '4',
-});
-
-const buttonStyle = css({
-	appearance: 'none',
-	cursor: 'pointer',
-	paddingInline: '5',
-	paddingBlock: '2',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	fontWeight: '600',
-	color: 'text.inverse',
-	backgroundColor: 'bg.accent',
-	borderRadius: '4px',
-	_hover: {
-		backgroundColor: 'accent.interactive',
-	},
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
-
-const linkStyle = css({
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-	_hover: { textDecorationThickness: '2px' },
-});
 
 const frameStyle = css({
 	position: 'relative',

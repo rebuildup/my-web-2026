@@ -1,8 +1,8 @@
 import type {
-	PortfolioProject,
 	ListPortfolioProjectsOptions,
-	PortfolioListPage,
 	PortfolioAdjacent,
+	PortfolioListPage,
+	PortfolioProject,
 	PortfolioProjectIndexEntry,
 } from './schema';
 

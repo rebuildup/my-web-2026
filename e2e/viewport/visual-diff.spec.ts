@@ -107,8 +107,30 @@ async function openControlSurface(page: Page): Promise<void> {
 	await page.waitForTimeout(300);
 }
 
+/**
+ * Why these controls capture with `prefers-reduced-motion: reduce`
+ * ----------------------------------------------------------------
+ * The stability control asserts that re-capturing an unchanged page
+ * produces the same raster. The Home roster entry carries the pet
+ * companion (Issue #274), a `position: fixed` overlay that travels in
+ * on arrival and reacts to scroll and pointer movement, so in the
+ * default motion mode the two captures land on different animation
+ * phases and the control is flaky — measured 2 of 5 rounds at
+ * ratio 0.0033-0.0034 against `STABLE_MAX_RATIO` 0.002 on
+ * `release-0-8-4` (CI run 42748530515), while the reduced-motion
+ * mode measured 5 of 5 at 0.
+ *
+ * The platform's reduced-motion contract (`src/editorial/reduced-motion.ts`)
+ * is exactly the guarantee this control needs: a surface that creates
+ * motion must not create it at all when the visitor asked for less, so
+ * the resting document is identical every time. That makes the mode
+ * deterministic rather than merely quieter — which is why the controls
+ * run in it instead of hiding the pet or waiting out its arrival.
+ * The expectation itself is unchanged, and the breakage and
+ * viewport-shift controls below still have to exceed their floors.
+ */
 test.describe('visual-diff controls', () => {
-	test.use({ viewport: { width: PHONE.width, height: PHONE.height } });
+	test.use({ viewport: { width: PHONE.width, height: PHONE.height }, reducedMotion: 'reduce' });
 
 	test('an unchanged page compares equal to its own re-capture', async ({ page }) => {
 		await openControlSurface(page);

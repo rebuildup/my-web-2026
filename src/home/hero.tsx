@@ -49,15 +49,18 @@ export interface HeroProps {
 
 // The reproduced creative's palette — literal values on purpose. These
 // are the observed ad's colours (Meta link-ad card: white card,
-// #050505 ink, #65676b secondary, #1877F2 CTA), scoped to this
+// #050505 ink, #65676b secondary, FB-blue CTA), scoped to this
 // component; they are NOT new semantic tokens and do not leak into the
-// rest of the page.
+// rest of the page. The CTA is the ad's #1877F2 nudged to #1773E0:
+// the observed blue measures ~4.3:1 against white, under the WCAG AA
+// 4.5:1 floor the axe gate enforces, and #1773E0 keeps the same hue
+// at ~4.6:1.
 const AD = {
 	card: '#ffffff',
 	ink: '#050505',
 	inkSoft: '#65676b',
 	line: '#dfdfdf',
-	cta: '#1877f2',
+	cta: '#1773e0',
 	ctaHover: '#166fe5',
 	chip: '#f0f2f5',
 } as const;
@@ -273,6 +276,7 @@ export function Hero({ stats }: HeroProps) {
 						<img
 							src="/og/default-card.png"
 							alt=""
+							aria-hidden="true"
 							width={1200}
 							height={630}
 							loading="eager"

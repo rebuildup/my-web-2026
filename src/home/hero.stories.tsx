@@ -9,7 +9,8 @@ import { Hero } from './hero';
  * overflow), primary copy, link-preview card (image / domain /
  * headline / description) and a single CTA. The composition is
  * scoped to `src/home/hero.tsx`; the palette deliberately mirrors
- * the observed ad (`#1877f2` CTA, `#f0f2f5` surface, `#65676b`
+ * the observed ad (`#1773e0` CTA — the observed `#1877f2` fails the
+ * WCAG AA contrast floor, `#f0f2f5` surface, `#65676b`
  * secondary text) instead of the global editorial tokens. See
  * `docs/verification/home/925-ad-reproduction/README.md` for the
  * source ad, anatomy mapping and verification evidence.

@@ -65,13 +65,17 @@ const DESKTOP = VIEWPORTS[VIEWPORTS.length - 1];
 
 /**
  * The injected breakage. One rule, unmistakable in a diff: the content
- * column is forced to a fixed 1600px, which is wider than every
- * viewport in the roster. It is the classic responsive defect this
- * gate exists to catch — a desktop-sized grid with no narrow-viewport
- * fallback — expressed as a single declaration so the control cannot
- * drift into testing something else.
+ * column AND the hero ad card (Issue #925 — the reproduced link-ad
+ * card now fills the whole first viewport at 390px, so a `main`-only
+ * break lands below the capture and diffs to zero) are forced to a
+ * fixed 1600px, wider than every viewport in the roster. It is the
+ * classic responsive defect this gate exists to catch — a
+ * desktop-sized grid with no narrow-viewport fallback — expressed as
+ * a single declaration so the control cannot drift into testing
+ * something else.
  */
-const BREAKAGE_CSS = 'main { width: 1600px !important; max-width: none !important; }';
+const BREAKAGE_CSS =
+	'main, [data-testid="home-hero-ad"] { width: 1600px !important; max-width: none !important; }';
 
 function recordControl(record: Record<string, unknown>): void {
 	mkdirSync(CONTROL_DIR, { recursive: true });
@@ -192,7 +196,7 @@ test.describe('visual-diff controls', () => {
 
 		recordControl({
 			id: 'breakage',
-			label: `${HOME.path} @${PHONE.width}px — 意図的破損（main を 1600px に固定）`,
+			label: `${HOME.path} @${PHONE.width}px — 意図的破損（main とヒーロー広告カードを 1600px に固定）`,
 			expectation: `差分率 ≥ ${MIN_BREAKAGE_RATIO}`,
 			ratio: result.ratio,
 			changedPixels: result.changedPixels,

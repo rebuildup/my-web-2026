@@ -1057,7 +1057,6 @@
 				"files": [
 					"src/contact/channels.json",
 					"src/home/footer.tsx",
-					"src/home/hero.tsx",
 					"src/portfolio/seed.ts"
 				]
 			},

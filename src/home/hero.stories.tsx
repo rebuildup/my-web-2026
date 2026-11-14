@@ -2,28 +2,25 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Hero } from './hero';
 
 /**
- * Hero stories. The component takes no props — these variants exist
- * so designers can confirm the editorial spread composition holds
- * across the breakpoints defined in `responsive-design` (§Macro layout):
- * single column at `base`, stacked at `md`, asymmetric `4fr / 8fr` at
- * `lg` and wider.
+ * Hero stories (Issue #925 redesign).
  *
- * Issue #287 — the Hero uses the same 12-column grid rule the body
- * sections use in their spread `SectionHeading`: the left 4/12
- * **title span** carries the eyebrow line (mono caption at base,
- * metadata rail at `lg` — one breakpoint shows one of them) above
- * the `SiteMark` h1, on the same x-axis as the section titles; the
- * right 8/12 span starts with the lead description. Below `lg` the
- * columns stack into the original single flow.
+ * The hero is a faithful reproduction of a real Facebook feed link-ad
+ * card — advertiser row (avatar + page name + 「スポンサー広告」 +
+ * overflow), primary copy, link-preview card (image / domain /
+ * headline / description) and a single CTA. The composition is
+ * scoped to `src/home/hero.tsx`; the palette deliberately mirrors
+ * the observed ad (`#1877f2` CTA, `#f0f2f5` surface, `#65676b`
+ * secondary text) instead of the global editorial tokens. See
+ * `docs/verification/home/925-ad-reproduction/README.md` for the
+ * source ad, anatomy mapping and verification evidence.
  *
- * Type and spacing jump at golden ratio:
- * - The h1 renders the `SiteMark` identity mark (Issue #287) at
- *   64px (`16`) base / 96px (`24`) at `lg` — the display tier the
- *   previous `4xl` name occupied, a 4× jump over body `md` (16px).
- *   That contrast is the editorial voice.
- * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
- *   (0, continuous prose), secondary ↔ CTAs (16px).
- * - Hero padding is `16/32` (64/128px) — the page-entry beat.
+ * `stats` is optional: when the caller has measured git activity it
+ * adds one factual bullet (`直近 N 日で M 件のコミット`); without it
+ * the ad renders no unmeasured number.
+ *
+ * Accessibility contract kept from Issue #287: exactly one `h1`
+ * whose accessible name is `my-web-2026`, inside
+ * `section[aria-labelledby="hero-title"]`.
  */
 const meta = {
 	title: 'home/Hero',
@@ -36,6 +33,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithMeasuredStats: Story = {
+	args: {
+		stats: { commitsInWindow: 2433, windowDays: 30, commitsTotal: 9102 },
+	},
+};
 
 export const StackAtMd: Story = {
 	parameters: {

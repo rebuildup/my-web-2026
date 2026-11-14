@@ -120,12 +120,14 @@ test.describe('home page composition', () => {
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
-		// Issue #287 — in-site destinations only: the hero CTA and the
-		// footer index entry both point at /portfolio, and no link to
-		// the removed real-name domain remains on the top page.
+		// Issue #925 — the hero is now a reproduced link-ad card whose
+		// single destination is /about (link card + CTA button both
+		// point there, matching the observed ad anatomy). The old
+		// hero /portfolio link moved below the fold; /portfolio stays
+		// reachable through the capabilities grid and the footer index.
 		await expect(
-			page.locator('section[aria-labelledby="hero-title"] a[href="/portfolio"]'),
-		).toHaveCount(1);
+			page.locator('section[aria-labelledby="hero-title"] a[href="/about"]'),
+		).toHaveCount(2);
 		await expect(page.locator('footer a[href="/portfolio"]')).toHaveCount(1);
 		await expect(page.locator('a[href*="yusuke-kim.com"]')).toHaveCount(0);
 

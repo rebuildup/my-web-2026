@@ -8,15 +8,15 @@ import { AdLeaderboard, AdLinkCard, AdNative, AdRect, AdVideo } from './units';
  * Tool from the committed registry (`src/tools/manifest.json`) using
  * that Tool's own committed screen capture
  * (`public/tool-previews/<slug>.webp`, the same asset the Tools index
- * renders). Copy is ad-style but stays truthful: it restates what the
- * Tool actually does, in the voice a real ad would use. No invented
- * numbers, no fake urgency, no self-referential meta pages.
+ * renders). Copy is deliberately minimal: one hook line plus the CTA,
+ * the way image-led display ads actually run. No invented numbers,
+ * no fake urgency, no self-referential meta pages.
  */
 
 const preview = (slug: string) => `/tool-previews/${slug}.webp`;
 
 // ---------------------------------------------------------------------------
-// Leaderboard — page-top strip, product thumbnail + pitch + CTA
+// Leaderboard — page-top strip, product visual + one-line pitch + CTA
 // ---------------------------------------------------------------------------
 
 export function AdTopBanner() {
@@ -24,8 +24,7 @@ export function AdTopBanner() {
 		<AdLeaderboard
 			imageSrc={preview('mic-level')}
 			imageAlt="Mic Level の画面。マイク入力レベルの目盛り表示。"
-			headline="マイクの音量、目視で合わせていませんか。"
-			sub="OBS と同じ目盛りでブラウザ表示。-14 dBFS に近づける調整量まで提案します。"
+			headline="マイク音量、OBS と同じ目盛りで。"
 			ctaLabel="無料で試す"
 			href="/tools/mic-level"
 		/>
@@ -40,15 +39,7 @@ export function AdToolLinkCard() {
 	return (
 		<AdLinkCard
 			advertiser="rebuildup"
-			body={[
-				'ブラウザだけで使える小さなツールを、15 個公開しています。',
-				'.',
-				'・インストールも登録も不要',
-				'・作ったものはその場で PNG / SVG / HTML に書き出せる',
-				'・ソースは公開リポジトリで確認できる',
-				'.',
-				'今日の一本: QR Generator。テキストや URL から QR コードを作って、そのまま保存できます。',
-			].join('\n')}
+			body="ブラウザだけで使えるツール、全15個。"
 			domain="rebuildup.dev"
 			headline="QR Generator — ブラウザで作る QR コード"
 			description="テキストや URL から QR コードを生成。色やパラメータを調整して PNG / SVG で保存できます。"
@@ -70,7 +61,7 @@ export function AdToolVideo() {
 			imageSrc={preview('prototype')}
 			imageAlt="ProtoType のタイトル画面。Game Start とメニューが並ぶ。"
 			durationLabel="0:32"
-			headline="ブラウザで遊べるタイピングゲーム「ProtoType」"
+			headline="ブラウザで遊べるタイピングゲーム"
 			ctaLabel="今すぐプレイ"
 			href="/tools/prototype"
 		/>
@@ -88,7 +79,7 @@ export function AdToolRect() {
 			imageSrc={preview('pi-game')}
 			imageAlt="Pi Memory Game の画面。タイトルと数字の盤面。"
 			headline="円周率の桁を、どこまで覚えられる？"
-			sub="順番に桁を入力していく記憶ゲーム。全画面表示とキーボード入力に対応。"
+			sub="順番に桁を入力する記憶ゲーム。"
 			ctaLabel="挑戦する"
 			href="/tools/pi-game"
 		/>
@@ -104,8 +95,8 @@ export function AdToolNative() {
 		<AdNative
 			imageSrc={preview('readmark')}
 			imageAlt="readmark のライブラリ画面。"
-			headline="PDF をブラウザ内で読む「readmark」"
-			description="ローカルファーストのリーディングアプリ。音声も文書もこのブラウザの外へ出ません。"
+			headline="PDF をブラウザ内で読む"
+			description="ローカルファースト。文書は外へ出ません。"
 			domain="rebuildup.dev"
 			href="/tools/readmark"
 		/>

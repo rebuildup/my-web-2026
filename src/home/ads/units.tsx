@@ -136,8 +136,8 @@ export function AdLeaderboard({
 					loading="lazy"
 					className={css({
 						display: 'block',
-						width: '28',
-						height: '16',
+						width: '44',
+						height: '25',
 						objectFit: 'cover',
 						borderRadius: 'sm',
 						flexShrink: '0',
@@ -505,14 +505,14 @@ export function AdRect({
 					loading="lazy"
 					className={css({
 						display: 'block',
-						width: { base: '100%', sm: '44%' },
+						width: { base: '100%', sm: '52%' },
 						flexShrink: '0',
 						aspectRatio: '16 / 9',
 						objectFit: 'cover',
 						backgroundColor: AD.chip,
 					})}
 				/>
-				<span
+				<div
 					className={css({
 						display: 'flex',
 						flexDirection: 'column',
@@ -520,6 +520,7 @@ export function AdRect({
 						gap: '2',
 						padding: '5',
 						minWidth: '0',
+						flex: '1',
 					})}
 				>
 					<span
@@ -549,7 +550,7 @@ export function AdRect({
 							{ctaLabel}
 						</span>
 					</span>
-				</span>
+				</div>
 			</a>
 		</div>
 	);
@@ -643,8 +644,8 @@ export function AdNative({
 					loading="lazy"
 					className={css({
 						display: 'block',
-						width: '32',
-						height: '20',
+						width: '40',
+						height: '24',
 						objectFit: 'cover',
 						borderRadius: 'md',
 						flexShrink: '0',

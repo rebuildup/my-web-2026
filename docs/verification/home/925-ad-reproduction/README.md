@@ -152,6 +152,8 @@ Tools index と同一アセット）を使う。
 「現在地 / Where I am now」+ h1 + リード + About リンク）に戻した。
 広告コピーは広告文体だが、内容は各 Tool の実説明
 （`description_ja`）の言い換えに留め、数値・効果の捏造はない。
+追加フィードバック「テキストにするな」を受け、各ユニットのコピーは
+最小化した（画像リード + 1 行フック + CTA）。
 
 ### Second pass の検証
 
@@ -161,10 +163,10 @@ Tools index と同一アセット）を使う。
   の実ルート（`/tools/mic-level`・`/tools/qr-generator`・
   `/tools/prototype`・`/tools/pi-game`・`/tools/readmark`）。
   h1 は 1 つ（accessible name `my-web-2026`）、横スクロールなし、
-  コンソールエラーなし。証跡: `final3-desktop-1440.png` /
-  `final3-desktop-full.png`。
+  コンソールエラーなし。証跡: `final4-desktop-1440.png` /
+  `final4-desktop-full.png`（コピー最小化後の再撮影）。
 - モバイル 390×844（mobile エミュレーション）: 横スクロールなし、
-  h1 ×1。証跡: `final3-mobile.png`。
+  h1 ×1。証跡: `final4-mobile.png`。
 - `e2e/smoke.spec.ts`: ヒーロー `/about` リンク期待を ×2 → ×1 に更新
   （広告はヒーローセクションの外に配置）。`e2e/viewport/
   visual-diff.spec.ts` の BREAKAGE_CSS は新しい広告 testid 群を

@@ -61,7 +61,7 @@ export function AdTopBanner() {
 			imageSrc={preview('mic-level')}
 			imageAlt="Mic Level の画面。マイク入力レベルの目盛り表示。"
 			headline="マイクの音量、もう勘で合わせていませんか？"
-			ctaLabel="ツールを開く"
+			ctaLabel="レベルを確認"
 			href="/tools/mic-level"
 		/>
 	);
@@ -82,7 +82,7 @@ export function AdToolLinkCard() {
 			imageSrc={preview('qr-generator')}
 			imageAlt="QR Generator の画面。入力設定と生成結果パネルが並ぶ。"
 			href="/tools/qr-generator"
-			ctaLabel="ツールを開く"
+			ctaLabel="QR を作る"
 		/>
 	);
 }
@@ -173,6 +173,19 @@ export function AdToolRect() {
 	);
 }
 
+/** Portfolio variant so the display rect does not repeat the video spot's destination. */
+export function AdPortfolioRect({ project }: { readonly project: HomeAdProject }) {
+	return (
+		<AdRect
+			imageSrc={project.coverUrl}
+			imageAlt={project.coverAlt}
+			headline={project.title}
+			ctaLabel="作品を見る"
+			href={projectHref(project.slug)}
+		/>
+	);
+}
+
 // ---------------------------------------------------------------------------
 // App-install ad — store-listing anatomy, selling a Tool
 // ---------------------------------------------------------------------------
@@ -184,7 +197,7 @@ export function AdToolInstall() {
 			iconAlt="SVG to TSX の画面。SVG 入力と TSX 出力ペイン。"
 			name="SVG to TSX"
 			tagline="SVG を React コンポーネントに変換。"
-			ctaLabel="使ってみる"
+			ctaLabel="変換する"
 			href="/tools/svg2tsx"
 		/>
 	);
@@ -203,7 +216,7 @@ export function AdToolProduct() {
 			title="Fillgen — 穴埋め教材ページ生成ツール"
 			description="Markdown 風テキストから穴埋め教材を生成。"
 			domain="rebuildup.dev"
-			ctaLabel="使ってみる"
+			ctaLabel="教材を生成"
 			href="/tools/fillgen"
 		/>
 	);

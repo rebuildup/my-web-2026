@@ -9,6 +9,7 @@ import { CounterTile } from './access/tiles';
 import {
 	AdPortfolioNative,
 	AdPortfolioProduct,
+	AdPortfolioRect,
 	AdToolCarousel,
 	AdToolInstall,
 	AdToolLinkCard,
@@ -181,6 +182,85 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			>
 				本文へスキップ
 			</a>
+			{/* Issue #925 — publisher masthead. Real ad surfaces never show
+			    a leaderboard without the site chrome it belongs to; the
+			    wordmark + section links are what make the banner below
+			    read as "this publisher's ad slot" rather than a floating
+			    banner. */}
+			<header
+				className={css({
+					paddingBlock: '4',
+					paddingInline: { base: '4', lg: '6' },
+					borderBottomWidth: '1px',
+					borderBottomStyle: 'solid',
+					borderBottomColor: 'border.subtle',
+				})}
+			>
+				<div
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '4',
+					})}
+				>
+					<a
+						href="/"
+						className={css({
+							fontFamily: 'sans',
+							fontSize: 'lg',
+							fontWeight: '800',
+							letterSpacing: '-0.02em',
+							color: 'text.default',
+							textDecoration: 'none',
+							_focusVisible: {
+								outline: '2px solid {colors.border.focus}',
+								outlineOffset: '2px',
+							},
+						})}
+					>
+						rebuildup
+					</a>
+					<nav aria-label="Site">
+						<ul
+							className={css({
+								display: 'flex',
+								alignItems: 'center',
+								gap: { base: '3', sm: '5' },
+								margin: '0',
+								padding: '0',
+								listStyle: 'none',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+							})}
+						>
+							{[
+								{ href: '/tools', label: 'Tools' },
+								{ href: '/portfolio', label: 'Portfolio' },
+								{ href: '/about', label: 'About' },
+							].map((item) => (
+								<li key={item.href}>
+									<a
+										href={item.href}
+										className={css({
+											color: 'text.muted',
+											textDecoration: 'none',
+											_hover: { color: 'text.default' },
+											_focusVisible: {
+												outline: '2px solid {colors.border.focus}',
+												outlineOffset: '2px',
+											},
+										})}
+									>
+										{item.label}
+									</a>
+								</li>
+							))}
+						</ul>
+					</nav>
+				</div>
+			</header>
 			<div className={css({ paddingBlock: '6', paddingInline: { base: '4', lg: '6' } })}>
 				<AdTopBanner />
 			</div>
@@ -287,7 +367,11 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							<div className={css({ marginBlock: '10' })}>
 								<AdToolPlayable />
 								<div className={css({ marginBlockStart: '10' })}>
-									<AdToolRect />
+									{data.adProjects?.[3] ? (
+										<AdPortfolioRect project={data.adProjects[3]} />
+									) : (
+										<AdToolRect />
+									)}
 								</div>
 							</div>
 						</Container>

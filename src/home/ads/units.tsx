@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import {
 	AD_PULSE_MOTION,
@@ -1048,6 +1048,13 @@ export function AdPlayable({
 	ctaLabel,
 	href,
 }: AdPlayableProps) {
+	// The playable mounts its iframe only after an explicit tap — the
+	// same engagement gate real playable ads use, and the reason the
+	// home document stays free of embedded media (the Issue #487 lazy
+	// media contract scans the SSR markup for <iframe>/<video>/<audio>;
+	// a click-gated mount keeps the unit honest without putting the
+	// Tool's bundle on the critical path of every home view).
+	const [started, setStarted] = useState(false);
 	return (
 		<AdSlot testid="home-ad-playable" motion="pop">
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
@@ -1097,18 +1104,77 @@ export function AdPlayable({
 						その場でプレイ
 					</span>
 				</div>
-				<iframe
-					src={embedSrc}
-					title={embedTitle}
-					loading="lazy"
-					className={css({
-						display: 'block',
-						width: '100%',
-						height: { base: '80', sm: '96' },
-						border: '0',
-						backgroundColor: '#ffffff',
-					})}
-				/>
+				{started ? (
+					<iframe
+						src={embedSrc}
+						title={embedTitle}
+						className={css({
+							display: 'block',
+							width: '100%',
+							height: { base: '80', sm: '96' },
+							border: '0',
+							backgroundColor: '#ffffff',
+						})}
+					/>
+				) : (
+					<button
+						type="button"
+						onClick={() => setStarted(true)}
+						aria-label={`${headline} — タップしてその場でプレイ`}
+						className={css({
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '3',
+							width: '100%',
+							height: { base: '80', sm: '96' },
+							border: '0',
+							backgroundColor: AD.ink,
+							cursor: 'pointer',
+							_focusVisible: {
+								outline: `2px solid ${AD.cta}`,
+								outlineOffset: '-2px',
+							},
+						})}
+						data-testid="home-ad-playable-start"
+					>
+						<AdPulse>
+							<span
+								className={css({
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									width: '16',
+									height: '16',
+									borderRadius: 'full',
+									backgroundColor: 'rgba(255, 255, 255, 0.95)',
+								})}
+							>
+								<span
+									className={css({
+										display: 'block',
+										width: '0',
+										height: '0',
+										borderTop: '8px solid transparent',
+										borderBottom: '8px solid transparent',
+										borderLeft: '12px solid #050505',
+										marginLeft: '2px',
+									})}
+								/>
+							</span>
+						</AdPulse>
+						<span
+							className={css({
+								fontSize: 'sm',
+								fontWeight: '700',
+								color: '#ffffff',
+							})}
+						>
+							タップしてその場でプレイ
+						</span>
+					</button>
+				)}
 				<div
 					className={css({
 						display: 'flex',

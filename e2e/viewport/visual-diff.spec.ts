@@ -75,7 +75,7 @@ const DESKTOP = VIEWPORTS[VIEWPORTS.length - 1];
  * something else.
  */
 const BREAKAGE_CSS =
-	'main, [data-testid="home-ad-leaderboard"], [data-testid="home-ad-linkcard"], [data-testid="home-ad-video"], [data-testid="home-ad-rect"], [data-testid="home-ad-native"] { width: 1600px !important; max-width: none !important; }';
+	'main, [data-testid="home-ad-leaderboard"], [data-testid="home-ad-linkcard"], [data-testid="home-ad-carousel"], [data-testid="home-ad-video"], [data-testid="home-ad-playable"], [data-testid="home-ad-rect"], [data-testid="home-ad-install"], [data-testid="home-ad-product"], [data-testid="home-ad-native"] { width: 1600px !important; max-width: none !important; }';
 
 function recordControl(record: Record<string, unknown>): void {
 	mkdirSync(CONTROL_DIR, { recursive: true });

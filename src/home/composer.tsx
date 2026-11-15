@@ -6,6 +6,17 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
+import {
+	AdToolCarousel,
+	AdToolInstall,
+	AdToolLinkCard,
+	AdToolNative,
+	AdToolPlayable,
+	AdToolProduct,
+	AdToolRect,
+	AdToolVideo,
+	AdTopBanner,
+} from './ads/placements';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
 import { CurrentProjects } from './current/CurrentProjects';
@@ -13,13 +24,6 @@ import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
-import {
-	AdToolLinkCard,
-	AdToolNative,
-	AdToolRect,
-	AdToolVideo,
-	AdTopBanner,
-} from './ads/placements';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
@@ -187,7 +191,10 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				<CapabilitiesGrid capabilities={data.capabilities} />
 				<Container>
 					<div className={css({ marginBlock: '10' })}>
-						<AdToolVideo />
+						<AdToolCarousel />
+						<div className={css({ marginBlockStart: '10' })}>
+							<AdToolVideo />
+						</div>
 					</div>
 				</Container>
 				<section
@@ -251,7 +258,10 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				</section>
 				<Container>
 					<div className={css({ marginBlock: '10' })}>
-						<AdToolRect />
+						<AdToolPlayable />
+						<div className={css({ marginBlockStart: '10' })}>
+							<AdToolRect />
+						</div>
 					</div>
 				</Container>
 				<section
@@ -308,7 +318,16 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Container>
 				</section>
 				<Container>
-					<div className={css({ marginBlock: '10' })}>
+					<div
+						className={css({
+							marginBlock: '10',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '10',
+						})}
+					>
+						<AdToolInstall />
+						<AdToolProduct />
 						<AdToolNative />
 					</div>
 				</Container>

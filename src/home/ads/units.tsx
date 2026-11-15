@@ -760,3 +760,402 @@ function AdAvatarRow({ pageName }: { readonly pageName: string }) {
 		</span>
 	);
 }
+
+// ---------------------------------------------------------------------------
+// Carousel — the swipeable multi-card unit feeds and search run:
+// 「スワイプしよう」 cards, each its own creative + destination
+// ---------------------------------------------------------------------------
+
+export interface AdCarouselItem {
+	readonly imageSrc: string;
+	readonly imageAlt: string;
+	readonly title: string;
+	readonly href: string;
+}
+
+export interface AdCarouselProps {
+	readonly items: readonly AdCarouselItem[];
+}
+
+export function AdCarousel({ items }: AdCarouselProps) {
+	return (
+		<div className={slotClassName} data-testid="home-ad-carousel">
+			<div
+				className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+			>
+				<AdTag label="広告" />
+				<span
+					aria-hidden="true"
+					className={css({ fontSize: 'xs', fontWeight: '600', color: AD.inkSoft })}
+				>
+					‹ スワイプ ›
+				</span>
+			</div>
+			<div
+				className={css({
+					display: 'flex',
+					gap: '3',
+					overflowX: 'auto',
+					scrollSnapType: 'x mandatory',
+					marginBlockStart: '2',
+					paddingBlock: '2',
+					// Bleed the scroll area to the container edges so cards can
+					// scroll under the padding like a real feed carousel.
+					marginInline: '-2',
+					paddingInline: '2',
+				})}
+			>
+				{items.map((item) => (
+					<a
+						key={item.href}
+						href={item.href}
+						className={css({
+							flexShrink: '0',
+							width: { base: '56', sm: '52' },
+							scrollSnapAlign: 'start',
+							display: 'flex',
+							flexDirection: 'column',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: AD.line,
+							borderRadius: 'lg',
+							overflow: 'hidden',
+							backgroundColor: AD.card,
+							textDecoration: 'none',
+							_focusVisible: {
+								outline: `2px solid ${AD.cta}`,
+								outlineOffset: '2px',
+							},
+						})}
+					>
+						<img
+							src={item.imageSrc}
+							alt={item.imageAlt}
+							width={1200}
+							height={669}
+							loading="lazy"
+							className={css({
+								display: 'block',
+								width: '100%',
+								aspectRatio: '16 / 9',
+								objectFit: 'cover',
+								backgroundColor: AD.chip,
+							})}
+						/>
+						<span
+							className={css({
+								display: 'block',
+								padding: '3',
+								fontSize: 'sm',
+								fontWeight: '700',
+								lineHeight: '1.35',
+								color: AD.ink,
+							})}
+						>
+							{item.title}
+						</span>
+					</a>
+				))}
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Playable ad — the in-feed unit game ads run: a live, framed piece of
+// the product itself with play chrome and a CTA bar
+// ---------------------------------------------------------------------------
+
+export interface AdPlayableProps {
+	/** The chromeless tool shell the frame embeds (`/tools/<slug>`). */
+	readonly embedSrc: string;
+	readonly embedTitle: string;
+	readonly headline: string;
+	readonly domain: string;
+	readonly ctaLabel: string;
+	readonly href: string;
+}
+
+export function AdPlayable({
+	embedSrc,
+	embedTitle,
+	headline,
+	domain,
+	ctaLabel,
+	href,
+}: AdPlayableProps) {
+	return (
+		<div className={slotClassName} data-testid="home-ad-playable">
+			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<AdTag label="プレイアブル広告" />
+				<span
+					className={css({
+						fontSize: '11px',
+						fontWeight: '700',
+						letterSpacing: '0.06em',
+						color: '#ffffff',
+						backgroundColor: AD.ink,
+						borderRadius: 'sm',
+						paddingInline: '2',
+						paddingBlock: '1',
+					})}
+				>
+					TRY IT
+				</span>
+			</div>
+			<div
+				className={css({
+					marginBlockStart: '2',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'lg',
+					overflow: 'hidden',
+					backgroundColor: AD.ink,
+				})}
+			>
+				<div
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						paddingInline: '3',
+						paddingBlock: '2',
+						backgroundColor: AD.ink,
+						color: '#ffffff',
+					})}
+				>
+					<span className={css({ fontSize: 'sm', fontWeight: '700' })}>▶ {headline}</span>
+					<span className={css({ fontSize: 'xs', color: 'rgba(255,255,255,0.7)' })}>
+						その場でプレイ
+					</span>
+				</div>
+				<iframe
+					src={embedSrc}
+					title={embedTitle}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '100%',
+						height: { base: '80', sm: '96' },
+						border: '0',
+						backgroundColor: '#ffffff',
+					})}
+				/>
+				<div
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						backgroundColor: AD.card,
+						padding: '3',
+					})}
+				>
+					<span className={css({ fontSize: 'sm', fontWeight: '600', color: AD.inkSoft })}>
+						{domain}
+					</span>
+					<a href={href} className={ctaClassName} data-testid="home-ad-playable-cta">
+						{ctaLabel}
+					</a>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// App-install ad — the store-listing anatomy game/app ads run:
+// icon, name, developer, free badge, install CTA
+// ---------------------------------------------------------------------------
+
+export interface AdInstallProps {
+	readonly iconSrc: string;
+	readonly iconAlt: string;
+	readonly name: string;
+	readonly tagline: string;
+	readonly ctaLabel: string;
+	readonly href: string;
+}
+
+export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: AdInstallProps) {
+	return (
+		<div className={slotClassName} data-testid="home-ad-install">
+			<AdTag label="広告" />
+			<div
+				className={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '4',
+					marginBlockStart: '2',
+					padding: '4',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'lg',
+					backgroundColor: AD.card,
+				})}
+			>
+				<img
+					src={iconSrc}
+					alt={iconAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '20',
+						height: '20',
+						objectFit: 'cover',
+						borderRadius: 'xl',
+						flexShrink: '0',
+						backgroundColor: AD.chip,
+					})}
+				/>
+				<div className={css({ flex: '1', minWidth: '0' })}>
+					<p className={css({ margin: '0', fontSize: 'md', fontWeight: '700', color: AD.ink })}>
+						{name}
+					</p>
+					<p className={css({ margin: '0', fontSize: 'xs', color: AD.inkSoft })}>
+						rebuildup · <span className={css({ fontWeight: '700', color: AD.cta })}>無料</span>
+					</p>
+					<p
+						className={css({
+							margin: '0',
+							marginBlockStart: '1',
+							fontSize: 'sm',
+							lineHeight: '1.45',
+							color: AD.inkSoft,
+						})}
+					>
+						{tagline}
+					</p>
+				</div>
+				<a href={href} className={ctaClassName} data-testid="home-ad-install-cta">
+					{ctaLabel}
+				</a>
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Product/listing ad — the commerce anatomy Amazon-style ads run:
+// hero image, long product title, domain, price-row CTA
+// ---------------------------------------------------------------------------
+
+export interface AdProductProps extends AdVisualProps {
+	readonly title: string;
+	readonly description: string;
+	readonly domain: string;
+	readonly ctaLabel: string;
+}
+
+export function AdProduct({
+	imageSrc,
+	imageAlt,
+	title,
+	description,
+	domain,
+	ctaLabel,
+	href,
+}: AdProductProps) {
+	return (
+		<div className={slotClassName} data-testid="home-ad-product">
+			<AdTag label="スポンサー広告" />
+			<a
+				href={href}
+				className={css({
+					display: 'block',
+					marginBlockStart: '2',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'lg',
+					overflow: 'hidden',
+					backgroundColor: AD.card,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-product-link"
+			>
+				<img
+					src={imageSrc}
+					alt={imageAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '100%',
+						aspectRatio: '16 / 9',
+						objectFit: 'cover',
+						backgroundColor: AD.chip,
+					})}
+				/>
+				<span className={css({ display: 'block', padding: '4' })}>
+					<span
+						className={css({
+							display: 'block',
+							fontSize: 'xs',
+							fontWeight: '600',
+							letterSpacing: '0.02em',
+							color: AD.inkSoft,
+						})}
+					>
+						{domain}
+					</span>
+					<span
+						className={css({
+							display: 'block',
+							marginBlockStart: '1',
+							fontSize: 'md',
+							fontWeight: '700',
+							lineHeight: '1.4',
+							color: AD.ink,
+						})}
+					>
+						{title}
+					</span>
+					<span
+						className={css({
+							display: 'block',
+							marginBlockStart: '1',
+							fontSize: 'sm',
+							lineHeight: '1.5',
+							color: AD.inkSoft,
+						})}
+					>
+						{description}
+					</span>
+					<span
+						className={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: '3',
+							marginBlockStart: '3',
+						})}
+					>
+						<span
+							className={css({
+								fontSize: 'lg',
+								fontWeight: '800',
+								color: AD.cta,
+							})}
+						>
+							無料
+						</span>
+						<span className={ctaClassName} data-testid="home-ad-product-cta">
+							{ctaLabel}
+						</span>
+					</span>
+				</span>
+			</a>
+		</div>
+	);
+}

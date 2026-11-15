@@ -189,11 +189,9 @@ export function scanViolationsInFile({ relativePath, source }) {
 			// first '>' after it.
 			const tagStart = code.lastIndexOf('<', match.index ?? 0);
 			const tagEnd = code.indexOf('>', match.index ?? 0);
-			const tag =
-				tagStart === -1 || tagEnd === -1 ? '' : code.slice(tagStart, tagEnd + 1);
+			const tag = tagStart === -1 || tagEnd === -1 ? '' : code.slice(tagStart, tagEnd + 1);
 			const reachable =
-				/<[a-zA-Z][^>]*\btabIndex=\{0\}/.test(tag) &&
-				/\baria-label(ledby)?=/.test(tag);
+				/<[a-zA-Z][^>]*\btabIndex=\{0\}/.test(tag) && /\baria-label(ledby)?=/.test(tag);
 			if (reachable) continue;
 			record('scroll-container-outside-primitive', match, {
 				wcag: '1.4.10',

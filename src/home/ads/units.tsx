@@ -149,52 +149,9 @@ export type AdMotion = 'rise' | 'drop' | 'slideLeft' | 'slideRight' | 'scale' | 
 // extracts styles statically, so a `css({ ...AD_MOTIONS[motion] })`
 // spread would emit no `animation-name` rule and the slot would render
 // unanimated (the same failure mode documented in
-// `src/home/access/tiles.tsx`).
-const AD_MOTION_CSS: Record<AdMotion, string> = {
-	rise: css({
-		animationName: 'adReveal',
-		animationDuration: '560ms',
-		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	drop: css({
-		animationName: 'adDrop',
-		animationDuration: '520ms',
-		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	slideLeft: css({
-		animationName: 'adSlideLeft',
-		animationDuration: '620ms',
-		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	slideRight: css({
-		animationName: 'adSlideRight',
-		animationDuration: '620ms',
-		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	scale: css({
-		animationName: 'adScaleIn',
-		animationDuration: '480ms',
-		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	pop: css({
-		animationName: 'adPop',
-		animationDuration: '560ms',
-		animationTimingFunction: 'cubic-bezier(0.34, 1.4, 0.64, 1)',
-		animationFillMode: 'both',
-	}),
-	wipe: css({
-		animationName: 'adWipeLeft',
-		animationDuration: '700ms',
-		animationTimingFunction: 'cubic-bezier(0.6, 0, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-};
-
+// `src/home/access/tiles.tsx`). The table is declared inside `AdSlot`
+// (see the comment there) so the reduced-motion gate sees the
+// animation and the preference read in one region.
 export function AdSlot({
 	testid,
 	as: Tag = 'div',
@@ -210,6 +167,55 @@ export function AdSlot({
 }) {
 	const reducedMotion = usePrefersReducedMotion();
 	const animated = !reducedMotion && motion !== 'none';
+	// The variant table lives inside the component on purpose: the
+	// reduced-motion gate pairs animation declarations with the
+	// preference read and the data-motion hook written in the SAME
+	// top-level region, so a module-level table would read as an
+	// unguarded surface even though AdSlot applies both correctly.
+	const motionCss: Record<AdMotion, string> = {
+		rise: css({
+			animationName: 'adReveal',
+			animationDuration: '560ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		drop: css({
+			animationName: 'adDrop',
+			animationDuration: '520ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		slideLeft: css({
+			animationName: 'adSlideLeft',
+			animationDuration: '620ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		slideRight: css({
+			animationName: 'adSlideRight',
+			animationDuration: '620ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		scale: css({
+			animationName: 'adScaleIn',
+			animationDuration: '480ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		pop: css({
+			animationName: 'adPop',
+			animationDuration: '560ms',
+			animationTimingFunction: 'cubic-bezier(0.34, 1.4, 0.64, 1)',
+			animationFillMode: 'both',
+		}),
+		wipe: css({
+			animationName: 'adWipeLeft',
+			animationDuration: '700ms',
+			animationTimingFunction: 'cubic-bezier(0.6, 0, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+	};
 	return (
 		<Tag
 			data-testid={testid}
@@ -217,7 +223,7 @@ export function AdSlot({
 			data-motion-state={reducedMotion ? 'reduced' : animated ? 'animated' : 'static'}
 			className={cx(
 				css({ fontFamily: 'sans' }),
-				animated ? AD_MOTION_CSS[motion] : undefined,
+				animated ? motionCss[motion] : undefined,
 				className,
 			)}
 		>

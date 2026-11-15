@@ -120,14 +120,15 @@ test.describe('home page composition', () => {
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
-		// Issue #925 — the hero is now a reproduced link-ad card whose
-		// single destination is /about (link card + CTA button both
-		// point there, matching the observed ad anatomy). The old
-		// hero /portfolio link moved below the fold; /portfolio stays
-		// reachable through the capabilities grid and the footer index.
+		// Issue #925 second pass — the hero is editorial flow content
+		// again with a single /about link; the ad units are a separate
+		// axis placed around the sections (leaderboard above the hero,
+		// link card / search listing / rectangles between sections).
+		// /portfolio stays reachable through the capabilities grid
+		// and the footer index.
 		await expect(
 			page.locator('section[aria-labelledby="hero-title"] a[href="/about"]'),
-		).toHaveCount(2);
+		).toHaveCount(1);
 		await expect(page.locator('footer a[href="/portfolio"]')).toHaveCount(1);
 		await expect(page.locator('a[href*="yusuke-kim.com"]')).toHaveCount(0);
 

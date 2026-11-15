@@ -117,3 +117,58 @@ Google リスティング広告も同型: 「スポンサー」ラベル → 青
   WCAG AA コントラストを満たすよう `#1877F2` → `#1773E0` に微調整。
   いずれもグローバル editorial トークンには混ぜず
   `src/home/hero.tsx` 内にスコープした。
+
+## 6. Second pass — 全形態混在・ビジュアル広告への再設計（2026-11-15）
+
+第一弾の単一リンク広告ヒーローは「よくある Web 広告のイメージでは
+ない」「AI Slop」「内容に興味を持てない」との評価を受けて再設計。
+さらに以下の 2 点の追加フィードバックを反映した:
+
+- **広告は全形態をごちゃ混ぜにする**。特定フォーマットに固執せず、
+  観察した実在フォーマットを複数同時にページへ混在させる。
+- **「現在地」は通常のフローコンテンツ**。広告と現在地は完全に別軸
+  であり、現在地コンテンツ自体を広告化しない。
+- **広告の指し示す先は実コンテンツ**。`/about` のような自己言及の
+  メタページではなく、公開済みの Tool / Portfolio の実ページを
+  指す（自分を説明する広告は広告ではない）。
+- **テキストだけの広告は置かない**。実際のディスプレイ・SNS 広告は
+  画像リードなので、全ユニットにビジュアルを必須とする。
+
+### 再現したフォーマットと配置（`src/home/ads/`）
+
+全ユニットが公開 Tool を宣伝し、クリエイティブはその Tool 自身の
+コミット済み画面キャプチャ（`public/tool-previews/<slug>.webp`、
+Tools index と同一アセット）を使う。
+
+| フォーマット | 出典 | 実装 | 宣伝対象 / 遷移先 | 配置 |
+| --- | --- | --- | --- | --- |
+| Leaderboard（728×90 / 300×60 系） | natalie.mu・smhn.info の AdSense 実測 | `AdTopBanner` → `AdLeaderboard`（サムネイル + 見出し + CTA） | Mic Level → `/tools/mic-level` | ページ最上部 |
+| フィード内リンク広告カード | Meta Ad Library の実広告 anatomy | `AdToolLinkCard` → `AdLinkCard`（1.91:1 画像カード） | QR Generator → `/tools/qr-generator` | 「現在地」直後 |
+| 動画スポット（インフィード動画） | フィード面で常時観察される動画ユニット | `AdToolVideo` → `AdVideo`（16:9 + 再生ボタン + 尺チップ） | ProtoType → `/tools/prototype` | capabilities 直後 |
+| ディスプレイ矩形（300×250 / 336×280 系） | natalie.mu の AdSense 実測 | `AdToolRect` → `AdRect`（画像 + コピー横並び・dark 面） | Pi Game → `/tools/pi-game` | status 直後 |
+| ネイティブカード（ティーザー） | コンテンツフィードの PR ユニット | `AdToolNative` → `AdNative`（小サムネ + 見出し + PR 開示） | readmark → `/tools/readmark` | contact 直前 |
+
+「現在地」側は `src/home/hero.tsx` を editorial ヒーロー（eyebrow
+「現在地 / Where I am now」+ h1 + リード + About リンク）に戻した。
+広告コピーは広告文体だが、内容は各 Tool の実説明
+（`description_ja`）の言い換えに留め、数値・効果の捏造はない。
+
+### Second pass の検証
+
+- 実ブラウザ（Orca 内蔵ブラウザ、`pnpm dev`）1440×900:
+  5 ユニット全て描画、各ユニットの `<img>` は対応する
+  `/tool-previews/*.webp` を指し、遷移先は全て `/tools/<slug>`
+  の実ルート（`/tools/mic-level`・`/tools/qr-generator`・
+  `/tools/prototype`・`/tools/pi-game`・`/tools/readmark`）。
+  h1 は 1 つ（accessible name `my-web-2026`）、横スクロールなし、
+  コンソールエラーなし。証跡: `final3-desktop-1440.png` /
+  `final3-desktop-full.png`。
+- モバイル 390×844（mobile エミュレーション）: 横スクロールなし、
+  h1 ×1。証跡: `final3-mobile.png`。
+- `e2e/smoke.spec.ts`: ヒーロー `/about` リンク期待を ×2 → ×1 に更新
+  （広告はヒーローセクションの外に配置）。`e2e/viewport/
+  visual-diff.spec.ts` の BREAKAGE_CSS は新しい広告 testid 群を
+  対象に更新。
+- Storybook: `home/Ads` stories を追加（5 フォーマット）、axe 監査
+  対象に自動収録。
+- `publication:check` 再記録済み。

@@ -2,22 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Hero } from './hero';
 
 /**
- * Hero stories (Issue #925 redesign).
+ * Hero stories (Issue #925 second pass).
  *
- * The hero is a faithful reproduction of a real Facebook feed link-ad
- * card — advertiser row (avatar + page name + 「スポンサー広告」 +
- * overflow), primary copy, link-preview card (image / domain /
- * headline / description) and a single CTA. The composition is
- * scoped to `src/home/hero.tsx`; the palette deliberately mirrors
- * the observed ad (`#1773e0` CTA — the observed `#1877f2` fails the
- * WCAG AA contrast floor, `#f0f2f5` surface, `#65676b`
- * secondary text) instead of the global editorial tokens. See
+ * The hero is the page's editorial entry — the 現在地 statement in
+ * normal flow content. The advertising surfaces are a separate axis
+ * and live in `src/home/ads/` (see `home/Ads` stories), placed around
+ * the content sections by the composer. See
  * `docs/verification/home/925-ad-reproduction/README.md` for the
- * source ad, anatomy mapping and verification evidence.
- *
- * `stats` is optional: when the caller has measured git activity it
- * adds one factual bullet (`直近 N 日で M 件のコミット`); without it
- * the ad renders no unmeasured number.
+ * observed source ads and verification evidence.
  *
  * Accessibility contract kept from Issue #287: exactly one `h1`
  * whose accessible name is `my-web-2026`, inside
@@ -34,12 +26,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const WithMeasuredStats: Story = {
-	args: {
-		stats: { commitsInWindow: 2433, windowDays: 30, commitsTotal: 9102 },
-	},
-};
 
 export const StackAtMd: Story = {
 	parameters: {

@@ -65,9 +65,9 @@ const DESKTOP = VIEWPORTS[VIEWPORTS.length - 1];
 
 /**
  * The injected breakage. One rule, unmistakable in a diff: the content
- * column AND the hero ad card (Issue #925 — the reproduced link-ad
- * card now fills the whole first viewport at 390px, so a `main`-only
- * break lands below the capture and diffs to zero) are forced to a
+ * column AND the home ad slots (Issue #925 second pass — the mixed ad
+ * units can occupy the first viewport at 390px, so a `main`-only
+ * break can land below the capture and diff to zero) are forced to a
  * fixed 1600px, wider than every viewport in the roster. It is the
  * classic responsive defect this gate exists to catch — a
  * desktop-sized grid with no narrow-viewport fallback — expressed as
@@ -75,7 +75,7 @@ const DESKTOP = VIEWPORTS[VIEWPORTS.length - 1];
  * something else.
  */
 const BREAKAGE_CSS =
-	'main, [data-testid="home-hero-ad"] { width: 1600px !important; max-width: none !important; }';
+	'main, [data-testid="home-ad-leaderboard"], [data-testid="home-ad-linkcard"], [data-testid="home-ad-video"], [data-testid="home-ad-rect"], [data-testid="home-ad-native"] { width: 1600px !important; max-width: none !important; }';
 
 function recordControl(record: Record<string, unknown>): void {
 	mkdirSync(CONTROL_DIR, { recursive: true });

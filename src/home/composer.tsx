@@ -13,8 +13,14 @@ import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
+import {
+	AdToolLinkCard,
+	AdToolNative,
+	AdToolRect,
+	AdToolVideo,
+	AdTopBanner,
+} from './ads/placements';
 import { Hero } from './hero';
-import type { HeroStats } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
 import type { DataSourceDescriptor } from './status/data-source';
@@ -135,20 +141,6 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * section — they are `h3` sub-blocks of "サイトの状態".
  */
 export function HomePage({ data, locale, timeZone }: HomePageProps) {
-	// Issue #925 — the hero ad cites the measured activity of the
-	// `my-web-2026` record (git-sourced `weight.activity`). The number
-	// is printed only when the record carries it; the ad never shows an
-	// unmeasured figure.
-	const heroStats: HeroStats | undefined = (() => {
-		const activity = data.projects?.find((project) => project.id === 'my-web-2026')?.weight
-			?.activity?.value;
-		if (!activity) return undefined;
-		return {
-			commitsInWindow: activity.commits,
-			windowDays: activity.windowDays,
-			...(activity.commitsTotal !== undefined ? { commitsTotal: activity.commitsTotal } : {}),
-		};
-	})();
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls
@@ -174,15 +166,30 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			>
 				本文へスキップ
 			</a>
-			<Hero stats={heroStats} />
+			<Container>
+				<div className={css({ paddingBlock: '6' })}>
+					<AdTopBanner />
+				</div>
+			</Container>
+			<Hero />
 			<main id="main">
 				<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolLinkCard />
+					</div>
+				</Container>
 				{data.dataSource ? (
 					<Container>
 						<DataSourceBadge source={data.dataSource} />
 					</Container>
 				) : null}
 				<CapabilitiesGrid capabilities={data.capabilities} />
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolVideo />
+					</div>
+				</Container>
 				<section
 					aria-labelledby="site-status-heading"
 					className={css({
@@ -242,6 +249,11 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</SectionHeading>
 					</Container>
 				</section>
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolRect />
+					</div>
+				</Container>
 				<section
 					aria-labelledby="contact-cta-heading"
 					className={css({
@@ -295,6 +307,11 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</SectionHeading>
 					</Container>
 				</section>
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolNative />
+					</div>
+				</Container>
 			</main>
 			<Footer />
 			<PetCompanion />

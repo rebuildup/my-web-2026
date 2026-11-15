@@ -74,10 +74,11 @@ export const Route = createFileRoute('/')({
 	 * public-route head gate (`test/integration/seo-head.test.ts`)
 	 * now fails on that, which is the point of the gate.
 	 *
-	 * The description restates the hero lead rather than inventing
-	 * copy: `src/home/hero.tsx` says the same thing on the page, and
-	 * the migration state ("段階的に移行中") is the honest state, not a
-	 * claim the site cannot back.
+	 * The description restates the page's 現在地 statement rather
+	 * than inventing copy: `src/home/hero.tsx` and the Issue #925 ad
+	 * units say the same thing on the page, and the migration state
+	 * ("段階的に移行中") is the honest state, not a claim the site
+	 * cannot back.
 	 *
 	 * Canonical is the origin WITH its trailing slash — `/` is the
 	 * home document and the gate derives the expected value from the

@@ -926,7 +926,12 @@ export function AdCarousel({ items }: AdCarouselProps) {
 					‹ スワイプ ›
 				</span>
 			</div>
+			{/* Keyboard-scrollable: a scroll container that is not
+				focusable cannot be scrolled without a pointer, which
+				the table/code a11y gate (WCAG 1.4.10) refuses. */}
 			<div
+				tabIndex={0}
+				aria-label="広告カルーセル"
 				className={css({
 					display: 'flex',
 					gap: '3',

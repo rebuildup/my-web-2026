@@ -61,6 +61,7 @@ export function AdTopBanner() {
 			imageSrc={preview('mic-level')}
 			imageAlt="Mic Level の画面。マイク入力レベルの目盛り表示。"
 			headline="マイクの音量、もう勘で合わせていませんか？"
+			sub="OBS と同じ目盛り。適正ゲインをその場で提案。"
 			ctaLabel="レベルを確認"
 			href="/tools/mic-level"
 		/>
@@ -99,24 +100,28 @@ export function AdToolCarousel({
 			imageSrc: preview('pomodoro'),
 			imageAlt: 'Pomodoro の画面。カウントダウンと作業・休憩スケジュール。',
 			title: 'Pomodoro — 作業と休憩のタイマー',
+			domain: 'rebuildup.dev',
 			href: '/tools/pomodoro',
 		},
 		{
 			imageSrc: preview('history-quiz'),
 			imageAlt: 'History Quiz の画面。空欄入りの歴史クイズ。',
 			title: 'History Quiz — 歴史の穴埋めクイズ',
+			domain: 'rebuildup.dev',
 			href: '/tools/history-quiz',
 		},
 		{
 			imageSrc: preview('code-type-p5'),
 			imageAlt: 'Code Type p5 の画面。コードが打たれていくアニメーション。',
 			title: 'Code Type p5 — タイプ演出メーカー',
+			domain: 'rebuildup.dev',
 			href: '/tools/code-type-p5',
 		},
 		...projects.slice(0, 2).map((project) => ({
 			imageSrc: project.coverUrl,
 			imageAlt: project.coverAlt,
 			title: project.title,
+			domain: 'rebuildup.dev',
 			href: projectHref(project.slug),
 		})),
 	];
@@ -132,7 +137,6 @@ export function AdToolVideo() {
 		<AdVideo
 			imageSrc={preview('prototype')}
 			imageAlt="ProtoType のタイトル画面。Game Start とメニューが並ぶ。"
-			durationLabel="0:32"
 			headline="3 分で始まる、ブラウザのタイピングゲーム"
 			ctaLabel="今すぐプレイ"
 			href="/tools/prototype"

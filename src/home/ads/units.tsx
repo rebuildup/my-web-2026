@@ -289,6 +289,7 @@ interface AdVisualProps {
 export interface AdLeaderboardProps extends AdVisualProps {
 	readonly chip?: string;
 	readonly headline: string;
+	readonly sub?: string;
 	readonly ctaLabel: string;
 }
 
@@ -297,6 +298,7 @@ export function AdLeaderboard({
 	imageAlt,
 	chip,
 	headline,
+	sub,
 	ctaLabel,
 	href,
 }: AdLeaderboardProps) {
@@ -307,7 +309,7 @@ export function AdLeaderboard({
 				href={href}
 				className={css({
 					display: 'flex',
-					flexDirection: { base: 'column', sm: 'row' },
+					alignItems: 'stretch',
 					sm: { height: '44' },
 					marginBlockStart: '2',
 					overflow: 'hidden',
@@ -324,8 +326,8 @@ export function AdLeaderboard({
 				<div
 					className={css({
 						flexShrink: '0',
-						height: { base: '48', sm: 'auto' },
-						sm: { width: '34%' },
+						width: { base: '28', sm: '34%' },
+						height: { base: '20', sm: 'auto' },
 					})}
 				>
 					<img
@@ -348,8 +350,8 @@ export function AdLeaderboard({
 						display: 'flex',
 						flexDirection: 'column',
 						justifyContent: 'center',
-						gap: '3',
-						padding: '6',
+						gap: { base: '2', sm: '3' },
+						padding: { base: '4', sm: '6' },
 						minWidth: '0',
 					})}
 				>
@@ -357,7 +359,7 @@ export function AdLeaderboard({
 					<p
 						className={css({
 							margin: '0',
-							fontSize: { base: 'xl', sm: '3xl' },
+							fontSize: { base: 'lg', sm: '3xl' },
 							fontWeight: '800',
 							lineHeight: '1.25',
 							letterSpacing: '-0.01em',
@@ -367,6 +369,19 @@ export function AdLeaderboard({
 					>
 						{headline}
 					</p>
+					{sub ? (
+						<p
+							className={css({
+								margin: '0',
+								fontSize: 'sm',
+								fontWeight: '500',
+								lineHeight: '1.5',
+								color: 'rgba(255, 255, 255, 0.72)',
+							})}
+						>
+							{sub}
+						</p>
+					) : null}
 					<span>
 						<span className={lightCtaClassName} data-testid="home-ad-leaderboard-cta">
 							{ctaLabel}
@@ -529,19 +544,11 @@ export function AdLinkCard({
 // ---------------------------------------------------------------------------
 
 export interface AdVideoProps extends AdVisualProps {
-	readonly durationLabel: string;
 	readonly headline: string;
 	readonly ctaLabel: string;
 }
 
-export function AdVideo({
-	imageSrc,
-	imageAlt,
-	durationLabel,
-	headline,
-	ctaLabel,
-	href,
-}: AdVideoProps) {
+export function AdVideo({ imageSrc, imageAlt, headline, ctaLabel, href }: AdVideoProps) {
 	return (
 		<AdSlot testid="home-ad-video" motion="scale">
 			<AdTag label="広告" />
@@ -612,23 +619,6 @@ export function AdVideo({
 								/>
 							</span>
 						</AdPulse>
-					</span>
-					<span
-						className={css({
-							position: 'absolute',
-							right: '3',
-							bottom: '3',
-							paddingInline: '2',
-							paddingBlock: '1',
-							borderRadius: 'sm',
-							backgroundColor: 'rgba(5, 5, 5, 0.8)',
-							color: '#ffffff',
-							fontSize: '11px',
-							fontWeight: '600',
-							fontVariantNumeric: 'tabular-nums',
-						})}
-					>
-						{durationLabel}
 					</span>
 					<span
 						className={css({
@@ -924,6 +914,7 @@ export interface AdCarouselItem {
 	readonly imageSrc: string;
 	readonly imageAlt: string;
 	readonly title: string;
+	readonly domain?: string;
 	readonly href: string;
 }
 
@@ -964,17 +955,17 @@ export function AdCarousel({ items }: AdCarouselProps) {
 						key={item.href}
 						href={item.href}
 						className={css({
+							position: 'relative',
 							flexShrink: '0',
 							width: { base: '56', sm: '52' },
 							scrollSnapAlign: 'start',
-							display: 'flex',
-							flexDirection: 'column',
+							display: 'block',
 							borderWidth: '1px',
 							borderStyle: 'solid',
 							borderColor: AD.line,
 							borderRadius: 'lg',
 							overflow: 'hidden',
-							backgroundColor: AD.card,
+							backgroundColor: AD.ink,
 							textDecoration: 'none',
 							_focusVisible: {
 								outline: `2px solid ${AD.cta}`,
@@ -991,22 +982,55 @@ export function AdCarousel({ items }: AdCarouselProps) {
 							className={css({
 								display: 'block',
 								width: '100%',
-								aspectRatio: '16 / 9',
+								aspectRatio: '4 / 3',
 								objectFit: 'cover',
 								backgroundColor: AD.chip,
 							})}
 						/>
 						<span
+							aria-hidden="true"
 							className={css({
-								display: 'block',
+								position: 'absolute',
+								inset: '0',
+								backgroundImage:
+									'linear-gradient(to top, rgba(5, 5, 5, 0.92) 0%, rgba(5, 5, 5, 0.45) 40%, rgba(5, 5, 5, 0) 75%)',
+							})}
+						/>
+						<span
+							className={css({
+								position: 'absolute',
+								insetInline: '0',
+								bottom: '0',
 								padding: '3',
-								fontSize: 'sm',
-								fontWeight: '700',
-								lineHeight: '1.35',
-								color: AD.ink,
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '1',
 							})}
 						>
-							{item.title}
+							{item.domain ? (
+								<span
+									className={css({
+										fontSize: '10px',
+										fontWeight: '600',
+										letterSpacing: '0.06em',
+										textTransform: 'uppercase',
+										color: 'rgba(255, 255, 255, 0.75)',
+									})}
+								>
+									{item.domain}
+								</span>
+							) : null}
+							<span
+								className={css({
+									fontSize: 'sm',
+									fontWeight: '700',
+									lineHeight: '1.3',
+									color: '#ffffff',
+									textShadow: '0 1px 6px rgba(0, 0, 0, 0.5)',
+								})}
+							>
+								{item.title}
+							</span>
 						</span>
 					</a>
 				))}

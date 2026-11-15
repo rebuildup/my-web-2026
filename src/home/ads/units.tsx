@@ -145,14 +145,7 @@ const offerChipClassName = /* @__PURE__ */ css({
  * it says; all of them share the `ad-reveal` data-motion hook, so the
  * reduced-motion stylesheet opt-out covers every variant at once.
  */
-export type AdMotion =
-	| 'rise'
-	| 'drop'
-	| 'slideLeft'
-	| 'slideRight'
-	| 'scale'
-	| 'pop'
-	| 'wipe';
+export type AdMotion = 'rise' | 'drop' | 'slideLeft' | 'slideRight' | 'scale' | 'pop' | 'wipe';
 
 // Each variant is its own `css()` call with literal properties: Panda
 // extracts styles statically, so a `css({ ...AD_MOTIONS[motion] })`

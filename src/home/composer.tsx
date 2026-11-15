@@ -192,9 +192,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				<Container>
 					<div className={css({ marginBlock: '10' })}>
 						<AdToolCarousel />
-						<div className={css({ marginBlockStart: '10' })}>
-							<AdToolVideo />
-						</div>
 					</div>
 				</Container>
 				<section
@@ -212,46 +209,78 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
 							variant="spread"
 						>
+							{/* Issue #925 — the status section doubles as the
+							    page's article+rail region: on lg the three status
+							    blocks read down a narrow column while a sponsored
+							    rail stacks beside them, and one unit breaks the
+							    article flow between the first two blocks — the
+							    in-article rectangle placement real publisher
+							    pages use. On base everything stacks in reading
+							    order. */}
 							<div
 								className={css({
-									display: 'flex',
-									flexDirection: 'column',
-									gap: { base: '14', lg: '16' },
+									display: 'grid',
+									gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1fr) 18rem' },
+									columnGap: '10',
+									alignItems: 'start',
 								})}
 							>
-								<div>
-									<h3 id="status-heading" className={subsectionTitleClassName}>
-										プラットフォームの状態 / Platform health
-									</h3>
-									<StatusTiles
-										chrome="body"
-										services={data.services}
-										statuses={data.statuses}
-										observedAt={data.observedAt}
-										incidents={data.incidents}
-										locale={locale}
-										timeZone={timeZone}
-									/>
+								<div
+									className={css({
+										display: 'flex',
+										flexDirection: 'column',
+										gap: { base: '14', lg: '16' },
+									})}
+								>
+									<div>
+										<h3 id="status-heading" className={subsectionTitleClassName}>
+											プラットフォームの状態 / Platform health
+										</h3>
+										<StatusTiles
+											chrome="body"
+											services={data.services}
+											statuses={data.statuses}
+											observedAt={data.observedAt}
+											incidents={data.incidents}
+											locale={locale}
+											timeZone={timeZone}
+										/>
+									</div>
+									<div className={css({ marginBlock: '2' })}>
+										<AdToolVideo />
+									</div>
+									<div>
+										<h3 id="reactions-heading" className={subsectionTitleClassName}>
+											みんなの反応 / Reactions
+										</h3>
+										<p className={subsectionDescriptionClassName}>
+											リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+											を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+										</p>
+										<ReactionsWidget data={data.reactions} />
+									</div>
+									<div>
+										<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+											ページビュー / Page views
+										</h3>
+										<p className={subsectionDescriptionClassName}>
+											各リクエストは短時間ウィンドウ内で重複加算されません。
+										</p>
+										<CounterTile data={data.counter} locale={locale} />
+									</div>
 								</div>
-								<div>
-									<h3 id="reactions-heading" className={subsectionTitleClassName}>
-										みんなの反応 / Reactions
-									</h3>
-									<p className={subsectionDescriptionClassName}>
-										リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
-										を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
-									</p>
-									<ReactionsWidget data={data.reactions} />
-								</div>
-								<div>
-									<h3 id="access-counter-heading" className={subsectionTitleClassName}>
-										ページビュー / Page views
-									</h3>
-									<p className={subsectionDescriptionClassName}>
-										各リクエストは短時間ウィンドウ内で重複加算されません。
-									</p>
-									<CounterTile data={data.counter} locale={locale} />
-								</div>
+								<aside
+									aria-label="Sponsored"
+									className={css({
+										display: 'flex',
+										flexDirection: 'column',
+										gap: '6',
+										marginBlockStart: { base: '10', lg: '0' },
+									})}
+								>
+									<AdToolNative />
+									<AdToolInstall />
+								</aside>
 							</div>
 						</SectionHeading>
 					</Container>
@@ -318,17 +347,8 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Container>
 				</section>
 				<Container>
-					<div
-						className={css({
-							marginBlock: '10',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-						})}
-					>
-						<AdToolInstall />
+					<div className={css({ marginBlock: '10' })}>
 						<AdToolProduct />
-						<AdToolNative />
 					</div>
 				</Container>
 			</main>

@@ -177,179 +177,178 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</Container>
 			<Hero />
 			<main id="main">
-				<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolLinkCard />
-					</div>
-				</Container>
-				{data.dataSource ? (
-					<Container>
-						<DataSourceBadge source={data.dataSource} />
-					</Container>
-				) : null}
-				<CapabilitiesGrid capabilities={data.capabilities} />
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolCarousel />
-					</div>
-				</Container>
-				<section
-					aria-labelledby="site-status-heading"
+				{/* Issue #925 — the body grid is ad-defined, the way real
+				    publisher pages compose: the editorial sections read down
+				    a narrow article column while a sponsored rail runs the
+				    full height of the page beside them (sticky on lg). The
+				    rail is a sibling of the whole flow, not a block dropped
+				    between sections — that persistent occupancy is what
+				    makes a page read as an ad surface. On base the rail
+				    stacks after the article in reading order. */}
+				<Container
 					className={css({
-						paddingBlock: { base: '16', lg: '24' },
+						display: 'grid',
+						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1fr) 19rem' },
+						columnGap: '10',
+						alignItems: 'start',
 					})}
 				>
-					<Container>
-						<SectionHeading
-							id="site-status-heading"
-							eyebrow="02 — Status"
-							title="サイトの状態"
-							titleEn="Site status"
-							description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
-							variant="spread"
-						>
-							{/* Issue #925 — the status section doubles as the
-							    page's article+rail region: on lg the three status
-							    blocks read down a narrow column while a sponsored
-							    rail stacks beside them, and one unit breaks the
-							    article flow between the first two blocks — the
-							    in-article rectangle placement real publisher
-							    pages use. On base everything stacks in reading
-							    order. */}
-							<div
-								className={css({
-									display: 'grid',
-									gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1fr) 18rem' },
-									columnGap: '10',
-									alignItems: 'start',
-								})}
-							>
-								<div
-									className={css({
-										display: 'flex',
-										flexDirection: 'column',
-										gap: { base: '14', lg: '16' },
-									})}
-								>
-									<div>
-										<h3 id="status-heading" className={subsectionTitleClassName}>
-											プラットフォームの状態 / Platform health
-										</h3>
-										<StatusTiles
-											chrome="body"
-											services={data.services}
-											statuses={data.statuses}
-											observedAt={data.observedAt}
-											incidents={data.incidents}
-											locale={locale}
-											timeZone={timeZone}
-										/>
-									</div>
-									<div className={css({ marginBlock: '2' })}>
-										<AdToolVideo />
-									</div>
-									<div>
-										<h3 id="reactions-heading" className={subsectionTitleClassName}>
-											みんなの反応 / Reactions
-										</h3>
-										<p className={subsectionDescriptionClassName}>
-											リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
-											を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
-										</p>
-										<ReactionsWidget data={data.reactions} />
-									</div>
-									<div>
-										<h3 id="access-counter-heading" className={subsectionTitleClassName}>
-											ページビュー / Page views
-										</h3>
-										<p className={subsectionDescriptionClassName}>
-											各リクエストは短時間ウィンドウ内で重複加算されません。
-										</p>
-										<CounterTile data={data.counter} locale={locale} />
-									</div>
+					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
+						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
+						<Container>
+							<div className={css({ marginBlock: '10' })}>
+								<AdToolLinkCard />
+							</div>
+						</Container>
+						{data.dataSource ? (
+							<Container>
+								<DataSourceBadge source={data.dataSource} />
+							</Container>
+						) : null}
+						<CapabilitiesGrid capabilities={data.capabilities} />
+						<Container>
+							<div className={css({ marginBlock: '10' })}>
+								<AdToolCarousel />
+								<div className={css({ marginBlockStart: '10' })}>
+									<AdToolVideo />
 								</div>
-								<aside
-									aria-label="Sponsored"
-									className={css({
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '6',
-										marginBlockStart: { base: '10', lg: '0' },
-									})}
-								>
-									<AdToolNative />
-									<AdToolInstall />
-								</aside>
 							</div>
-						</SectionHeading>
-					</Container>
-				</section>
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolPlayable />
-						<div className={css({ marginBlockStart: '10' })}>
-							<AdToolRect />
-						</div>
-					</div>
-				</Container>
-				<section
-					aria-labelledby="contact-cta-heading"
-					className={css({
-						paddingBlock: { base: '16', lg: '24' },
-					})}
-				>
-					<Container>
-						<SectionHeading
-							id="contact-cta-heading"
-							eyebrow="03 — Contact"
-							title="Contact / お問い合わせ"
-							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
-							variant="spread"
+						</Container>
+						<section
+							aria-labelledby="site-status-heading"
+							className={css({
+								paddingBlock: { base: '16', lg: '24' },
+							})}
 						>
-							<div
-								data-testid="home-contact-cta"
-								className={css({
-									display: 'flex',
-									flexWrap: 'wrap',
-									gap: '4',
-								})}
-							>
-								<a
-									href="/contact"
-									data-testid="home-contact-link"
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '2',
-										paddingInline: '4',
-										height: '10',
-										borderRadius: 'md',
-										backgroundColor: 'bg.accent',
-										color: 'text.inverse',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										fontWeight: '600',
-										textDecoration: 'none',
-										transition: 'background-color 120ms ease',
-										_hover: { backgroundColor: 'accent.interactive' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
+							<Container>
+								<SectionHeading
+									id="site-status-heading"
+									eyebrow="02 — Status"
+									title="サイトの状態"
+									titleEn="Site status"
+									description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
+									variant="spread"
 								>
-									<span lang="ja">Contact を見る</span>
-									<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
-								</a>
+									<div
+										className={css({
+											display: 'flex',
+											flexDirection: 'column',
+											gap: { base: '14', lg: '16' },
+										})}
+									>
+										<div>
+											<h3 id="status-heading" className={subsectionTitleClassName}>
+												プラットフォームの状態 / Platform health
+											</h3>
+											<StatusTiles
+												chrome="body"
+												services={data.services}
+												statuses={data.statuses}
+												observedAt={data.observedAt}
+												incidents={data.incidents}
+												locale={locale}
+												timeZone={timeZone}
+											/>
+										</div>
+										<div>
+											<h3 id="reactions-heading" className={subsectionTitleClassName}>
+												みんなの反応 / Reactions
+											</h3>
+											<p className={subsectionDescriptionClassName}>
+												リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+												を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+											</p>
+											<ReactionsWidget data={data.reactions} />
+										</div>
+										<div>
+											<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+												ページビュー / Page views
+											</h3>
+											<p className={subsectionDescriptionClassName}>
+												各リクエストは短時間ウィンドウ内で重複加算されません。
+											</p>
+											<CounterTile data={data.counter} locale={locale} />
+										</div>
+									</div>
+								</SectionHeading>
+							</Container>
+						</section>
+						<Container>
+							<div className={css({ marginBlock: '10' })}>
+								<AdToolPlayable />
+								<div className={css({ marginBlockStart: '10' })}>
+									<AdToolRect />
+								</div>
 							</div>
-						</SectionHeading>
-					</Container>
-				</section>
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolProduct />
+						</Container>
+						<section
+							aria-labelledby="contact-cta-heading"
+							className={css({
+								paddingBlock: { base: '16', lg: '24' },
+							})}
+						>
+							<Container>
+								<SectionHeading
+									id="contact-cta-heading"
+									eyebrow="03 — Contact"
+									title="Contact / お問い合わせ"
+									description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
+									variant="spread"
+								>
+									<div
+										data-testid="home-contact-cta"
+										className={css({
+											display: 'flex',
+											flexWrap: 'wrap',
+											gap: '4',
+										})}
+									>
+										<a
+											href="/contact"
+											data-testid="home-contact-link"
+											className={css({
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: '2',
+												paddingInline: '4',
+												height: '10',
+												borderRadius: 'md',
+												backgroundColor: 'bg.accent',
+												color: 'text.inverse',
+												fontFamily: 'sans',
+												fontSize: 'md',
+												fontWeight: '600',
+												textDecoration: 'none',
+												transition: 'background-color 120ms ease',
+												_hover: { backgroundColor: 'accent.interactive' },
+												_focusVisible: {
+													outline: '2px solid {colors.border.focus}',
+													outlineOffset: '2px',
+												},
+											})}
+										>
+											<span lang="ja">Contact を見る</span>
+											<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+										</a>
+									</div>
+								</SectionHeading>
+							</Container>
+						</section>
 					</div>
+					<aside
+						aria-label="Sponsored"
+						className={css({
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '6',
+							position: { lg: 'sticky' },
+							top: { lg: '6' },
+						})}
+					>
+						<AdToolNative />
+						<AdToolInstall />
+						<AdToolProduct />
+					</aside>
 				</Container>
 			</main>
 			<Footer />

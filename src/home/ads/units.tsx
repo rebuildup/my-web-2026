@@ -861,8 +861,6 @@ export function AdNative({
 					</span>
 					<span
 						className={css({
-							display: '-webkit-box',
-							WebkitBoxOrient: 'vertical',
 							lineClamp: '2',
 							marginBlockStart: '1',
 							fontSize: 'sm',
@@ -1284,8 +1282,6 @@ export function AdProduct({
 					</span>
 					<span
 						className={css({
-							display: '-webkit-box',
-							WebkitBoxOrient: 'vertical',
 							lineClamp: '2',
 							marginBlockStart: '1',
 							fontSize: 'sm',

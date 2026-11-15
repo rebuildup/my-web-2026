@@ -2,28 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Hero } from './hero';
 
 /**
- * Hero stories. The component takes no props — these variants exist
- * so designers can confirm the editorial spread composition holds
- * across the breakpoints defined in `responsive-design` (§Macro layout):
- * single column at `base`, stacked at `md`, asymmetric `4fr / 8fr` at
- * `lg` and wider.
+ * Hero stories (Issue #925 second pass).
  *
- * Issue #287 — the Hero uses the same 12-column grid rule the body
- * sections use in their spread `SectionHeading`: the left 4/12
- * **title span** carries the eyebrow line (mono caption at base,
- * metadata rail at `lg` — one breakpoint shows one of them) above
- * the `SiteMark` h1, on the same x-axis as the section titles; the
- * right 8/12 span starts with the lead description. Below `lg` the
- * columns stack into the original single flow.
+ * The hero is the page's editorial entry — the 現在地 statement in
+ * normal flow content. The advertising surfaces are a separate axis
+ * and live in `src/home/ads/` (see `home/Ads` stories), placed around
+ * the content sections by the composer. See
+ * `docs/verification/home/925-ad-reproduction/README.md` for the
+ * observed source ads and verification evidence.
  *
- * Type and spacing jump at golden ratio:
- * - The h1 renders the `SiteMark` identity mark (Issue #287) at
- *   64px (`16`) base / 96px (`24`) at `lg` — the display tier the
- *   previous `4xl` name occupied, a 4× jump over body `md` (16px).
- *   That contrast is the editorial voice.
- * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
- *   (0, continuous prose), secondary ↔ CTAs (16px).
- * - Hero padding is `16/32` (64/128px) — the page-entry beat.
+ * Accessibility contract kept from Issue #287: exactly one `h1`
+ * whose accessible name is `my-web-2026`, inside
+ * `section[aria-labelledby="hero-title"]`.
  */
 const meta = {
 	title: 'home/Hero',

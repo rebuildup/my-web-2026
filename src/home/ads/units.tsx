@@ -1,0 +1,1407 @@
+import { useState, type ReactNode } from 'react';
+import { css, cx } from '../../../styled-system/css';
+import {
+	AD_PULSE_MOTION,
+	AD_REVEAL_MOTION,
+	usePrefersReducedMotion,
+} from '../../editorial/reduced-motion';
+import { SiteMark } from '../mark';
+
+/**
+ * Ad units — the advertising surfaces woven through the home page
+ * (Issue #925 redesign, second pass).
+ *
+ * These reproduce REAL ad formats observed live — the evidence and
+ * anatomy mapping live in
+ * `docs/verification/home/925-ad-reproduction/README.md`. The page
+ * mixes every observed format the way a real monetized page does:
+ * leaderboard strip, in-feed link card, video spot, display
+ * rectangle and native card. The 現在地 content stays normal flow
+ * content; the ads are a separate axis.
+ *
+ * Direction rules (owner feedback, second/third pass):
+ *   - an ad must point at real content — a published Tool — and must
+ *     carry a visual; text-only units were rejected;
+ *   - copy is minimal — one hook line plus the CTA;
+ *   - format mimicry alone is not enough: each unit is built as a
+ *     designed ad CREATIVE (bold type scale, colour fields, image-led
+ *     composition, offer-style chips) because that — not the frame —
+ *     is what gives real ads their pull.
+ *
+ * Every creative is a committed asset (`/tool-previews/*.webp`, the
+ * same captures the Tools index uses) and every destination is a real
+ * route. Palette literals below are the observed ad chrome colours,
+ * scoped to this file — not editorial tokens.
+ */
+
+// ---------------------------------------------------------------------------
+// Shared bits
+// ---------------------------------------------------------------------------
+
+const AD = {
+	card: '#ffffff',
+	ink: '#050505',
+	inkSoft: '#65676b',
+	line: '#dfdfdf',
+	chip: '#f0f2f5',
+	cta: '#1773e0',
+	ctaHover: '#166fe5',
+} as const;
+
+/** The small disclosure label real ad slots carry (「広告」「スポンサー」「PR」). */
+function AdTag({ label }: { readonly label: string }) {
+	return (
+		<span
+			className={css({
+				fontFamily: 'sans',
+				fontSize: '11px',
+				fontWeight: '600',
+				letterSpacing: '0.04em',
+				color: AD.inkSoft,
+			})}
+		>
+			{label}
+		</span>
+	);
+}
+
+/** Blue CTA used on light surfaces (the observed ad blue, AA-adjusted). */
+const ctaClassName = /* @__PURE__ */ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	height: '9',
+	paddingInline: '4',
+	borderRadius: 'md',
+	backgroundColor: AD.cta,
+	color: '#ffffff',
+	fontFamily: 'sans',
+	fontSize: '14px',
+	fontWeight: '600',
+	lineHeight: '1',
+	textDecoration: 'none',
+	transition: 'background-color 120ms ease',
+	_hover: { backgroundColor: AD.ctaHover },
+	_focusVisible: {
+		outline: `2px solid ${AD.cta}`,
+		outlineOffset: '2px',
+	},
+});
+
+/** White pill CTA for dark/image creatives — the high-contrast button real banners use. */
+const lightCtaClassName = /* @__PURE__ */ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	height: '9',
+	paddingInline: '4',
+	borderRadius: 'full',
+	backgroundColor: '#ffffff',
+	color: AD.ink,
+	fontFamily: 'sans',
+	fontSize: '14px',
+	fontWeight: '700',
+	lineHeight: '1',
+	textDecoration: 'none',
+	transition: 'background-color 120ms ease',
+	_hover: { backgroundColor: AD.chip },
+	_focusVisible: {
+		outline: '2px solid #ffffff',
+		outlineOffset: '2px',
+	},
+});
+
+/** Offer chip — the 「無料」「期間限定」burst real ad creatives carry. */
+const offerChipClassName = /* @__PURE__ */ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	alignSelf: 'flex-start',
+	paddingInline: '2',
+	paddingBlock: '1',
+	borderRadius: 'full',
+	backgroundColor: 'rgba(255, 255, 255, 0.16)',
+	color: '#ffffff',
+	fontSize: '11px',
+	fontWeight: '700',
+	letterSpacing: '0.06em',
+});
+
+/**
+ * The slot every ad unit renders inside. Owns the unit's entrance
+ * motion (`adReveal`, Issue #925): real ad surfaces animate creatives
+ * into the flow instead of snapping them in. The reveal is decoration
+ * — the unit's full content is in the resting document — so the
+ * reduced-motion branch emits no `animation-name` at all, the
+ * `data-motion` hook lets the stylesheet opt out the same elements,
+ * and `data-motion-state` records which side of the contract rendered
+ * (the same fact the access counter publishes).
+ */
+/**
+ * Entrance variants — one per observed format, because real ad
+ * surfaces do NOT animate every unit identically (owner feedback,
+ * eighth pass). The variant changes how the unit arrives, never what
+ * it says; all of them share the `ad-reveal` data-motion hook, so the
+ * reduced-motion stylesheet opt-out covers every variant at once.
+ */
+export type AdMotion = 'rise' | 'drop' | 'slideLeft' | 'slideRight' | 'scale' | 'pop' | 'wipe';
+
+// Each variant is its own `css()` call with literal properties: Panda
+// extracts styles statically, so a `css({ ...AD_MOTIONS[motion] })`
+// spread would emit no `animation-name` rule and the slot would render
+// unanimated (the same failure mode documented in
+// `src/home/access/tiles.tsx`). The table is declared inside `AdSlot`
+// (see the comment there) so the reduced-motion gate sees the
+// animation and the preference read in one region.
+export function AdSlot({
+	testid,
+	as: Tag = 'div',
+	className,
+	motion = 'rise',
+	children,
+}: {
+	readonly testid: string;
+	readonly as?: 'div' | 'article';
+	readonly className?: string;
+	readonly motion?: AdMotion | 'none';
+	readonly children: ReactNode;
+}) {
+	const reducedMotion = usePrefersReducedMotion();
+	const animated = !reducedMotion && motion !== 'none';
+	// The variant table lives inside the component on purpose: the
+	// reduced-motion gate pairs animation declarations with the
+	// preference read and the data-motion hook written in the SAME
+	// top-level region, so a module-level table would read as an
+	// unguarded surface even though AdSlot applies both correctly.
+	const motionCss: Record<AdMotion, string> = {
+		rise: css({
+			animationName: 'adReveal',
+			animationDuration: '560ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		drop: css({
+			animationName: 'adDrop',
+			animationDuration: '520ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		slideLeft: css({
+			animationName: 'adSlideLeft',
+			animationDuration: '620ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		slideRight: css({
+			animationName: 'adSlideRight',
+			animationDuration: '620ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		scale: css({
+			animationName: 'adScaleIn',
+			animationDuration: '480ms',
+			animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+		pop: css({
+			animationName: 'adPop',
+			animationDuration: '560ms',
+			animationTimingFunction: 'cubic-bezier(0.34, 1.4, 0.64, 1)',
+			animationFillMode: 'both',
+		}),
+		wipe: css({
+			animationName: 'adWipeLeft',
+			animationDuration: '700ms',
+			animationTimingFunction: 'cubic-bezier(0.6, 0, 0.2, 1)',
+			animationFillMode: 'both',
+		}),
+	};
+	return (
+		<Tag
+			data-testid={testid}
+			data-motion={AD_REVEAL_MOTION}
+			data-motion-state={reducedMotion ? 'reduced' : animated ? 'animated' : 'static'}
+			className={cx(
+				css({ fontFamily: 'sans' }),
+				animated ? motionCss[motion] : undefined,
+				className,
+			)}
+		>
+			{children}
+		</Tag>
+	);
+}
+
+/**
+ * The attention pulse real ad chrome carries (play affordance, TRY IT
+ * badge). Same two-layer contract as `AdSlot`: the render-time branch
+ * decides, the `data-motion` hook is the stylesheet backstop.
+ */
+function AdPulse({
+	children,
+	delay = '0s',
+}: { readonly children: ReactNode; readonly delay?: string }) {
+	const reducedMotion = usePrefersReducedMotion();
+	return (
+		<span
+			data-motion={AD_PULSE_MOTION}
+			data-motion-state={reducedMotion ? 'reduced' : 'animated'}
+			className={css({
+				display: 'inline-flex',
+				...(reducedMotion
+					? {}
+					: {
+							animationName: 'adPulse',
+							animationDuration: '2.4s',
+							animationTimingFunction: 'ease-in-out',
+							animationIterationCount: 'infinite',
+							animationDelay: delay,
+						}),
+			})}
+		>
+			{children}
+		</span>
+	);
+}
+
+/** Shared props for every visual ad unit: the creative + the destination. */
+interface AdVisualProps {
+	readonly imageSrc: string;
+	readonly imageAlt: string;
+	readonly href: string;
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard — designed banner creative: dark field, huge headline,
+// offer chip, product visual bleeding in from the right
+// ---------------------------------------------------------------------------
+
+export interface AdLeaderboardProps extends AdVisualProps {
+	readonly chip?: string;
+	readonly headline: string;
+	readonly sub?: string;
+	readonly ctaLabel: string;
+}
+
+export function AdLeaderboard({
+	imageSrc,
+	imageAlt,
+	chip,
+	headline,
+	sub,
+	ctaLabel,
+	href,
+}: AdLeaderboardProps) {
+	return (
+		<AdSlot testid="home-ad-leaderboard" motion="drop">
+			<AdTag label="広告" />
+			<a
+				href={href}
+				className={css({
+					display: 'flex',
+					alignItems: 'stretch',
+					sm: { height: '44' },
+					marginBlockStart: '2',
+					overflow: 'hidden',
+					borderRadius: 'xs',
+					backgroundColor: AD.ink,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-leaderboard-link"
+			>
+				<div
+					className={css({
+						flexShrink: '0',
+						width: { base: '28', sm: '34%' },
+						height: { base: '20', sm: 'auto' },
+					})}
+				>
+					<img
+						src={imageSrc}
+						alt={imageAlt}
+						width={1200}
+						height={669}
+						loading="lazy"
+						className={css({
+							display: 'block',
+							width: '100%',
+							height: '100%',
+							objectFit: 'cover',
+						})}
+					/>
+				</div>
+				<div
+					className={css({
+						flex: '1',
+						display: 'flex',
+						flexDirection: 'column',
+						justifyContent: 'center',
+						gap: { base: '2', sm: '3' },
+						padding: { base: '4', sm: '6' },
+						minWidth: '0',
+					})}
+				>
+					{chip ? <span className={offerChipClassName}>{chip}</span> : null}
+					<p
+						className={css({
+							margin: '0',
+							fontSize: { base: 'lg', sm: '3xl' },
+							fontWeight: '800',
+							lineHeight: '1.25',
+							letterSpacing: '-0.01em',
+							color: '#ffffff',
+							textWrap: 'balance',
+						})}
+					>
+						{headline}
+					</p>
+					{sub ? (
+						<p
+							className={css({
+								margin: '0',
+								fontSize: 'sm',
+								fontWeight: '500',
+								lineHeight: '1.5',
+								color: 'rgba(255, 255, 255, 0.72)',
+							})}
+						>
+							{sub}
+						</p>
+					) : null}
+					<span>
+						<span className={lightCtaClassName} data-testid="home-ad-leaderboard-cta">
+							{ctaLabel}
+						</span>
+					</span>
+				</div>
+			</a>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Feed link card — the Facebook/Meta anatomy from the first pass
+// ---------------------------------------------------------------------------
+
+const linkCardClassName = /* @__PURE__ */ css({
+	display: 'block',
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: AD.line,
+	borderRadius: 'lg',
+	overflow: 'hidden',
+	backgroundColor: AD.card,
+	textDecoration: 'none',
+	color: 'inherit',
+	_focusVisible: {
+		outline: `2px solid ${AD.cta}`,
+		outlineOffset: '2px',
+	},
+});
+
+const linkCardImageClassName = /* @__PURE__ */ css({
+	display: 'block',
+	width: '100%',
+	aspectRatio: '1.91 / 1',
+	objectFit: 'cover',
+	backgroundColor: AD.chip,
+});
+
+const linkCardBodyClassName = /* @__PURE__ */ css({
+	display: 'block',
+	padding: '4',
+});
+
+const linkDomainClassName = /* @__PURE__ */ css({
+	display: 'block',
+	fontSize: '12px',
+	fontWeight: '600',
+	letterSpacing: '0.02em',
+	textTransform: 'uppercase',
+	color: AD.inkSoft,
+	lineHeight: '1.3',
+});
+
+const linkHeadlineClassName = /* @__PURE__ */ css({
+	margin: '0',
+	marginBlockStart: '1',
+	fontSize: 'lg',
+	fontWeight: '700',
+	lineHeight: '1.3',
+	color: AD.ink,
+});
+
+const linkDescriptionClassName = /* @__PURE__ */ css({
+	margin: '0',
+	marginBlockStart: '1',
+	fontSize: 'sm',
+	lineHeight: '1.35',
+	color: AD.inkSoft,
+});
+
+export interface AdLinkCardProps extends AdVisualProps {
+	readonly advertiser: string;
+	readonly body: string;
+	readonly domain: string;
+	readonly headline: string;
+	readonly description: string;
+	readonly ctaLabel: string;
+}
+
+export function AdLinkCard({
+	advertiser,
+	body,
+	domain,
+	headline,
+	description,
+	imageSrc,
+	imageAlt,
+	href,
+	ctaLabel,
+}: AdLinkCardProps) {
+	return (
+		// Feed link cards render at feed-column width (~470–640 px), not
+		// full bleed — the observed anatomy is a column unit.
+		<AdSlot
+			as="article"
+			testid="home-ad-linkcard"
+			motion="none"
+			className={css({ maxWidth: '640px' })}
+		>
+			<header
+				className={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					minWidth: '0',
+				})}
+			>
+				<AdAvatarRow pageName={advertiser} />
+				<span className={css({ marginLeft: 'auto', color: AD.inkSoft, flexShrink: '0' })}>⋯</span>
+			</header>
+			<div className={css({ marginBlockStart: '1' })}>
+				<AdTag label="スポンサー広告" />
+			</div>
+			<div className={css({ marginBlockStart: '2' })}>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						fontSize: 'md',
+						fontWeight: '600',
+						lineHeight: '1.4',
+						color: AD.ink,
+						whiteSpace: 'pre-line',
+					})}
+					data-testid="home-ad-linkcard-body"
+				>
+					{body}
+				</p>
+				<a href={href} className={linkCardClassName} data-testid="home-ad-linkcard-link">
+					<img
+						src={imageSrc}
+						alt={imageAlt}
+						width={1200}
+						height={669}
+						loading="lazy"
+						className={linkCardImageClassName}
+					/>
+					<span className={linkCardBodyClassName}>
+						<span className={linkDomainClassName}>{domain}</span>
+						<span className={linkHeadlineClassName}>{headline}</span>
+						<span className={linkDescriptionClassName}>{description}</span>
+					</span>
+				</a>
+				<div
+					className={css({ display: 'flex', justifyContent: 'flex-end', marginBlockStart: '3' })}
+				>
+					<a href={href} className={ctaClassName} data-testid="home-ad-linkcard-cta">
+						{ctaLabel}
+					</a>
+				</div>
+			</div>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Video spot — 16:9 creative + play affordance + headline, the in-feed
+// video unit real feeds run constantly
+// ---------------------------------------------------------------------------
+
+export interface AdVideoProps extends AdVisualProps {
+	readonly headline: string;
+	readonly ctaLabel: string;
+}
+
+export function AdVideo({ imageSrc, imageAlt, headline, ctaLabel, href }: AdVideoProps) {
+	return (
+		<AdSlot testid="home-ad-video" motion="scale">
+			<AdTag label="広告" />
+			<a
+				href={href}
+				className={css({
+					display: 'block',
+					marginBlockStart: '2',
+					borderRadius: 'md',
+					overflow: 'hidden',
+					backgroundColor: AD.ink,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-video-link"
+			>
+				<span className={css({ position: 'relative', display: 'block' })}>
+					<img
+						src={imageSrc}
+						alt={imageAlt}
+						width={1200}
+						height={669}
+						loading="lazy"
+						className={css({
+							display: 'block',
+							width: '100%',
+							aspectRatio: '16 / 9',
+							objectFit: 'cover',
+						})}
+					/>
+					<span
+						aria-hidden="true"
+						className={css({
+							position: 'absolute',
+							inset: '0',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							backgroundColor: 'rgba(5, 5, 5, 0.35)',
+						})}
+					>
+						<AdPulse>
+							<span
+								className={css({
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									width: '16',
+									height: '16',
+									borderRadius: 'full',
+									backgroundColor: 'rgba(255, 255, 255, 0.95)',
+									boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
+								})}
+							>
+								<span
+									className={css({
+										display: 'block',
+										width: '0',
+										height: '0',
+										borderTop: '8px solid transparent',
+										borderBottom: '8px solid transparent',
+										borderLeft: '12px solid #050505',
+										marginLeft: '2px',
+									})}
+								/>
+							</span>
+						</AdPulse>
+					</span>
+					<span
+						className={css({
+							position: 'absolute',
+							left: '4',
+							bottom: '4',
+							right: '4',
+							fontSize: { base: 'lg', sm: 'xl' },
+							fontWeight: '800',
+							lineHeight: '1.3',
+							color: '#ffffff',
+							textShadow: '0 1px 8px rgba(0, 0, 0, 0.6)',
+							textWrap: 'balance',
+						})}
+					>
+						{headline}
+					</span>
+				</span>
+				<span
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						backgroundColor: AD.card,
+						padding: '3',
+					})}
+				>
+					<span className={css({ fontSize: 'sm', fontWeight: '600', color: AD.ink })}>
+						rebuildup.dev
+					</span>
+					<span className={ctaClassName} data-testid="home-ad-video-cta">
+						{ctaLabel}
+					</span>
+				</span>
+			</a>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Display rectangle — full-bleed creative: image under a scrim gradient,
+// huge headline, offer-style CTA. The IAB unit real pages run.
+// ---------------------------------------------------------------------------
+
+export interface AdRectProps extends AdVisualProps {
+	readonly headline: string;
+	readonly sub?: string;
+	readonly ctaLabel: string;
+}
+
+export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: AdRectProps) {
+	return (
+		<AdSlot testid="home-ad-rect" motion="wipe">
+			<AdTag label="広告" />
+			<a
+				href={href}
+				className={css({
+					position: 'relative',
+					display: 'block',
+					marginBlockStart: '2',
+					overflow: 'hidden',
+					borderRadius: 'xs',
+					minHeight: '64',
+					sm: { height: '80' },
+					backgroundColor: AD.ink,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-rect-link"
+			>
+				<img
+					src={imageSrc}
+					alt={imageAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						position: 'absolute',
+						inset: '0',
+						width: '100%',
+						height: '100%',
+						objectFit: 'cover',
+					})}
+				/>
+				<span
+					aria-hidden="true"
+					className={css({
+						position: 'absolute',
+						inset: '0',
+						backgroundImage:
+							'linear-gradient(to top, rgba(5, 5, 5, 0.94) 0%, rgba(5, 5, 5, 0.6) 45%, rgba(5, 5, 5, 0.15) 100%)',
+					})}
+				/>
+				<span
+					className={css({
+						position: 'relative',
+						display: 'flex',
+						flexDirection: 'column',
+						justifyContent: 'flex-end',
+						gap: '3',
+						height: '100%',
+						minHeight: '64',
+						padding: '6',
+					})}
+				>
+					<span
+						className={css({
+							fontSize: { base: '2xl', sm: '4xl' },
+							fontWeight: '800',
+							lineHeight: '1.2',
+							letterSpacing: '-0.015em',
+							color: '#ffffff',
+							textWrap: 'balance',
+							textShadow: '0 2px 12px rgba(0, 0, 0, 0.45)',
+						})}
+					>
+						{headline}
+					</span>
+					{sub ? (
+						<span
+							className={css({
+								fontSize: { base: 'sm', sm: 'md' },
+								fontWeight: '500',
+								lineHeight: '1.5',
+								color: 'rgba(255, 255, 255, 0.88)',
+							})}
+						>
+							{sub}
+						</span>
+					) : null}
+					<span>
+						<span className={lightCtaClassName} data-testid="home-ad-rect-cta">
+							{ctaLabel}
+						</span>
+					</span>
+				</span>
+			</a>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Native card — thumbnail teaser unit, selling a Tool
+// ---------------------------------------------------------------------------
+
+export interface AdNativeProps extends AdVisualProps {
+	readonly headline: string;
+	readonly description: string;
+	readonly domain: string;
+	readonly motion?: AdMotion | 'none';
+}
+
+export function AdNative({
+	imageSrc,
+	imageAlt,
+	headline,
+	description,
+	domain,
+	motion = 'none',
+	href,
+}: AdNativeProps) {
+	return (
+		<AdSlot testid="home-ad-native" motion={motion}>
+			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<AdTag label="PR" />
+				<span className={css({ color: AD.inkSoft })}>·</span>
+				<span
+					className={css({
+						fontSize: '11px',
+						fontWeight: '600',
+						letterSpacing: '0.04em',
+						color: AD.inkSoft,
+					})}
+				>
+					{domain}
+				</span>
+			</div>
+			<a
+				href={href}
+				className={css({
+					display: 'flex',
+					gap: '4',
+					alignItems: 'flex-start',
+					marginBlockStart: '2',
+					padding: '4',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'sm',
+					backgroundColor: AD.card,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-native-link"
+			>
+				<img
+					src={imageSrc}
+					alt={imageAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '40',
+						height: '24',
+						objectFit: 'cover',
+						borderRadius: 'md',
+						flexShrink: '0',
+						backgroundColor: AD.chip,
+					})}
+				/>
+				<span className={css({ minWidth: '0' })}>
+					<span
+						className={css({
+							display: 'block',
+							fontSize: 'md',
+							fontWeight: '700',
+							lineHeight: '1.35',
+							color: AD.ink,
+						})}
+					>
+						{headline}
+					</span>
+					<span
+						className={css({
+							lineClamp: '2',
+							marginBlockStart: '1',
+							fontSize: 'sm',
+							lineHeight: '1.5',
+							color: AD.inkSoft,
+						})}
+					>
+						{description}
+					</span>
+				</span>
+			</a>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Avatar row — the advertiser header the link card carries
+// ---------------------------------------------------------------------------
+
+function AdAvatarRow({ pageName }: { readonly pageName: string }) {
+	return (
+		<span className={css({ display: 'flex', alignItems: 'center', gap: '2', minWidth: '0' })}>
+			<span
+				className={css({
+					display: 'inline-flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					width: '10',
+					height: '10',
+					borderRadius: 'full',
+					backgroundColor: AD.card,
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					flexShrink: '0',
+					overflow: 'hidden',
+				})}
+			>
+				<SiteMark className={css({ height: '6', width: 'auto' })} />
+			</span>
+			<span
+				className={css({
+					fontSize: 'md',
+					fontWeight: '700',
+					lineHeight: '1.3',
+					color: AD.ink,
+				})}
+			>
+				{pageName}
+			</span>
+		</span>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Carousel — the swipeable multi-card unit feeds and search run:
+// 「スワイプしよう」 cards, each its own creative + destination
+// ---------------------------------------------------------------------------
+
+export interface AdCarouselItem {
+	readonly imageSrc: string;
+	readonly imageAlt: string;
+	readonly title: string;
+	readonly domain?: string;
+	readonly href: string;
+}
+
+export interface AdCarouselProps {
+	readonly items: readonly AdCarouselItem[];
+}
+
+export function AdCarousel({ items }: AdCarouselProps) {
+	return (
+		<AdSlot testid="home-ad-carousel" motion="slideLeft">
+			<div
+				className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+			>
+				<AdTag label="広告" />
+				<span
+					aria-hidden="true"
+					className={css({ fontSize: 'xs', fontWeight: '600', color: AD.inkSoft })}
+				>
+					‹ スワイプ ›
+				</span>
+			</div>
+			<div
+				// A scrollable box that cannot be focused cannot be
+				// scrolled with a keyboard (SC 2.1.1).
+				// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container must be focusable so arrow keys scroll it (WCAG 2.2 SC 2.1.1).
+				tabIndex={0}
+				aria-label="広告カルーセル"
+				className={css({
+					display: 'flex',
+					gap: '3',
+					overflowX: 'auto',
+					scrollSnapType: 'x mandatory',
+					marginBlockStart: '2',
+					paddingBlock: '2',
+					// Bleed the scroll area to the container edges so cards can
+					// scroll under the padding like a real feed carousel.
+					marginInline: '-2',
+					paddingInline: '2',
+				})}
+			>
+				{items.map((item) => (
+					<a
+						key={item.href}
+						href={item.href}
+						className={css({
+							position: 'relative',
+							flexShrink: '0',
+							width: { base: '56', sm: '52' },
+							scrollSnapAlign: 'start',
+							display: 'block',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: AD.line,
+							borderRadius: 'lg',
+							overflow: 'hidden',
+							backgroundColor: AD.ink,
+							textDecoration: 'none',
+							_focusVisible: {
+								outline: `2px solid ${AD.cta}`,
+								outlineOffset: '2px',
+							},
+						})}
+					>
+						<img
+							src={item.imageSrc}
+							alt={item.imageAlt}
+							width={1200}
+							height={669}
+							loading="lazy"
+							className={css({
+								display: 'block',
+								width: '100%',
+								aspectRatio: '4 / 3',
+								objectFit: 'cover',
+								backgroundColor: AD.chip,
+							})}
+						/>
+						<span
+							aria-hidden="true"
+							className={css({
+								position: 'absolute',
+								inset: '0',
+								backgroundImage:
+									'linear-gradient(to top, rgba(5, 5, 5, 0.92) 0%, rgba(5, 5, 5, 0.45) 40%, rgba(5, 5, 5, 0) 75%)',
+							})}
+						/>
+						<span
+							className={css({
+								position: 'absolute',
+								insetInline: '0',
+								bottom: '0',
+								padding: '3',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '1',
+							})}
+						>
+							{item.domain ? (
+								<span
+									className={css({
+										fontSize: '10px',
+										fontWeight: '600',
+										letterSpacing: '0.06em',
+										textTransform: 'uppercase',
+										color: 'rgba(255, 255, 255, 0.75)',
+									})}
+								>
+									{item.domain}
+								</span>
+							) : null}
+							<span
+								className={css({
+									fontSize: 'sm',
+									fontWeight: '700',
+									lineHeight: '1.3',
+									color: '#ffffff',
+									textShadow: '0 1px 6px rgba(0, 0, 0, 0.5)',
+								})}
+							>
+								{item.title}
+							</span>
+						</span>
+					</a>
+				))}
+			</div>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Playable ad — the in-feed unit game ads run: a live, framed piece of
+// the product itself with play chrome and a CTA bar
+// ---------------------------------------------------------------------------
+
+export interface AdPlayableProps {
+	/** The chromeless tool shell the frame embeds (`/tools/<slug>`). */
+	readonly embedSrc: string;
+	readonly embedTitle: string;
+	readonly headline: string;
+	readonly domain: string;
+	readonly ctaLabel: string;
+	readonly href: string;
+}
+
+export function AdPlayable({
+	embedSrc,
+	embedTitle,
+	headline,
+	domain,
+	ctaLabel,
+	href,
+}: AdPlayableProps) {
+	// The playable mounts its iframe only after an explicit tap — the
+	// same engagement gate real playable ads use, and the reason the
+	// home document stays free of embedded media (the Issue #487 lazy
+	// media contract scans the SSR markup for <iframe>/<video>/<audio>;
+	// a click-gated mount keeps the unit honest without putting the
+	// Tool's bundle on the critical path of every home view).
+	const [started, setStarted] = useState(false);
+	return (
+		<AdSlot testid="home-ad-playable" motion="pop">
+			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<AdTag label="プレイアブル広告" />
+				<AdPulse delay="0.6s">
+					<span
+						className={css({
+							fontSize: '11px',
+							fontWeight: '700',
+							letterSpacing: '0.06em',
+							color: '#ffffff',
+							backgroundColor: AD.ink,
+							borderRadius: 'sm',
+							paddingInline: '2',
+							paddingBlock: '1',
+						})}
+					>
+						TRY IT
+					</span>
+				</AdPulse>
+			</div>
+			<div
+				className={css({
+					marginBlockStart: '2',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'md',
+					overflow: 'hidden',
+					backgroundColor: AD.ink,
+				})}
+			>
+				<div
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						paddingInline: '3',
+						paddingBlock: '2',
+						backgroundColor: AD.ink,
+						color: '#ffffff',
+					})}
+				>
+					<span className={css({ fontSize: 'sm', fontWeight: '700' })}>▶ {headline}</span>
+					<span className={css({ fontSize: 'xs', color: 'rgba(255,255,255,0.7)' })}>
+						その場でプレイ
+					</span>
+				</div>
+				{started ? (
+					<iframe
+						src={embedSrc}
+						title={embedTitle}
+						className={css({
+							display: 'block',
+							width: '100%',
+							height: { base: '80', sm: '96' },
+							border: '0',
+							backgroundColor: '#ffffff',
+						})}
+					/>
+				) : (
+					<button
+						type="button"
+						onClick={() => setStarted(true)}
+						aria-label={`${headline} — タップしてその場でプレイ`}
+						className={css({
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '3',
+							width: '100%',
+							height: { base: '80', sm: '96' },
+							border: '0',
+							backgroundColor: AD.ink,
+							cursor: 'pointer',
+							_focusVisible: {
+								outline: `2px solid ${AD.cta}`,
+								outlineOffset: '-2px',
+							},
+						})}
+						data-testid="home-ad-playable-start"
+					>
+						<AdPulse>
+							<span
+								className={css({
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									width: '16',
+									height: '16',
+									borderRadius: 'full',
+									backgroundColor: 'rgba(255, 255, 255, 0.95)',
+								})}
+							>
+								<span
+									className={css({
+										display: 'block',
+										width: '0',
+										height: '0',
+										borderTop: '8px solid transparent',
+										borderBottom: '8px solid transparent',
+										borderLeft: '12px solid #050505',
+										marginLeft: '2px',
+									})}
+								/>
+							</span>
+						</AdPulse>
+						<span
+							className={css({
+								fontSize: 'sm',
+								fontWeight: '700',
+								color: '#ffffff',
+							})}
+						>
+							タップしてその場でプレイ
+						</span>
+					</button>
+				)}
+				<div
+					className={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						backgroundColor: AD.card,
+						padding: '3',
+					})}
+				>
+					<span className={css({ fontSize: 'sm', fontWeight: '600', color: AD.inkSoft })}>
+						{domain}
+					</span>
+					<a href={href} className={ctaClassName} data-testid="home-ad-playable-cta">
+						{ctaLabel}
+					</a>
+				</div>
+			</div>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// App-install ad — the store-listing anatomy game/app ads run:
+// icon, name, developer, free badge, install CTA
+// ---------------------------------------------------------------------------
+
+export interface AdInstallProps {
+	readonly iconSrc: string;
+	readonly iconAlt: string;
+	readonly name: string;
+	readonly tagline: string;
+	readonly ctaLabel: string;
+	readonly href: string;
+}
+
+export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: AdInstallProps) {
+	return (
+		<AdSlot testid="home-ad-install" motion="none">
+			<AdTag label="広告" />
+			<div
+				className={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '4',
+					marginBlockStart: '2',
+					padding: '4',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'xl',
+					backgroundColor: AD.card,
+				})}
+			>
+				<img
+					src={iconSrc}
+					alt={iconAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '20',
+						height: '20',
+						objectFit: 'cover',
+						borderRadius: 'xl',
+						flexShrink: '0',
+						backgroundColor: AD.chip,
+					})}
+				/>
+				<div className={css({ flex: '1', minWidth: '0' })}>
+					<p className={css({ margin: '0', fontSize: 'md', fontWeight: '700', color: AD.ink })}>
+						{name}
+					</p>
+					<p className={css({ margin: '0', fontSize: 'xs', color: AD.inkSoft })}>rebuildup</p>
+					<p
+						className={css({
+							margin: '0',
+							marginBlockStart: '1',
+							fontSize: 'sm',
+							lineHeight: '1.45',
+							color: AD.inkSoft,
+						})}
+					>
+						{tagline}
+					</p>
+				</div>
+				<a href={href} className={ctaClassName} data-testid="home-ad-install-cta">
+					{ctaLabel}
+				</a>
+			</div>
+		</AdSlot>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Product/listing ad — the commerce anatomy Amazon-style ads run:
+// hero image, long product title, domain, price-row CTA
+// ---------------------------------------------------------------------------
+
+export interface AdProductProps extends AdVisualProps {
+	readonly title: string;
+	readonly description: string;
+	readonly domain: string;
+	readonly ctaLabel: string;
+	/** Optional price/offer text — omitted when the listing has no honest offer to state. */
+	readonly priceLabel?: string;
+	readonly motion?: AdMotion | 'none';
+}
+
+export function AdProduct({
+	imageSrc,
+	imageAlt,
+	title,
+	description,
+	domain,
+	ctaLabel,
+	priceLabel,
+	motion = 'none',
+	href,
+}: AdProductProps) {
+	return (
+		<AdSlot testid="home-ad-product" motion={motion}>
+			<AdTag label="スポンサー広告" />
+			<a
+				href={href}
+				className={css({
+					display: 'block',
+					marginBlockStart: '2',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: AD.line,
+					borderRadius: 'md',
+					overflow: 'hidden',
+					backgroundColor: AD.card,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
+				})}
+				data-testid="home-ad-product-link"
+			>
+				<img
+					src={imageSrc}
+					alt={imageAlt}
+					width={1200}
+					height={669}
+					loading="lazy"
+					className={css({
+						display: 'block',
+						width: '100%',
+						aspectRatio: '16 / 9',
+						objectFit: 'cover',
+						backgroundColor: AD.chip,
+					})}
+				/>
+				<span className={css({ display: 'block', padding: '4' })}>
+					<span
+						className={css({
+							display: 'block',
+							fontSize: 'xs',
+							fontWeight: '600',
+							letterSpacing: '0.02em',
+							color: AD.inkSoft,
+						})}
+					>
+						{domain}
+					</span>
+					<span
+						className={css({
+							display: 'block',
+							marginBlockStart: '1',
+							fontSize: 'md',
+							fontWeight: '700',
+							lineHeight: '1.4',
+							color: AD.ink,
+						})}
+					>
+						{title}
+					</span>
+					<span
+						className={css({
+							lineClamp: '2',
+							marginBlockStart: '1',
+							fontSize: 'sm',
+							lineHeight: '1.5',
+							color: AD.inkSoft,
+						})}
+					>
+						{description}
+					</span>
+					<span
+						className={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: '3',
+							marginBlockStart: '3',
+						})}
+					>
+						{priceLabel ? (
+							<span
+								className={css({
+									fontSize: 'lg',
+									fontWeight: '800',
+									color: AD.cta,
+								})}
+							>
+								{priceLabel}
+							</span>
+						) : null}
+						<span className={ctaClassName} data-testid="home-ad-product-cta">
+							{ctaLabel}
+						</span>
+					</span>
+				</span>
+			</a>
+		</AdSlot>
+	);
+}

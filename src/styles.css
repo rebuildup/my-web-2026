@@ -368,6 +368,20 @@
 }
 
 /*
+ * Layer 2, the home ad units (Issue #925): `ad-reveal` is each slot's
+ * one-time entrance and `ad-pulse` is the in-creative attention breath.
+ * Both are decoration — the units' content is complete in the resting
+ * document — so the hooks name the elements the render-time branch in
+ * `src/home/ads/units.tsx` already leaves unanimated.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="ad-reveal"]),
+	:where([data-motion="ad-pulse"]) {
+		animation: none !important;
+	}
+}
+
+/*
  * Layer 2, the companion character's greeting (`animation: petReaction`
  * in `src/editorial/pet/PetSprite.tsx`). The element does not exist in
  * a reduced-motion render — the component emits neither the strip nor

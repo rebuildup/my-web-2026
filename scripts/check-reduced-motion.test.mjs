@@ -73,7 +73,13 @@ test('parseReducedMotionBlocks finds the shipped blocks and keeps their line num
 	// inventory states WHICH opt-outs exist; adding a surface means adding
 	// its hook here, which is a claim about the page, not a number to bump.
 	const scoped = blocks.flatMap((block) => [...motionHooksIn(block.body)]).sort();
-	assert.deepEqual(scoped, ['counter-roll', 'current-location-change', 'pet-reaction']);
+	assert.deepEqual(scoped, [
+		'ad-pulse',
+		'ad-reveal',
+		'counter-roll',
+		'current-location-change',
+		'pet-reaction',
+	]);
 });
 
 test('parseReducedMotionBlocks matches nested braces rather than stopping at the inner one', () => {

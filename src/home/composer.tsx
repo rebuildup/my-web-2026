@@ -7,6 +7,8 @@ import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-path
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import {
+	AdPortfolioNative,
+	AdPortfolioProduct,
 	AdToolCarousel,
 	AdToolInstall,
 	AdToolLinkCard,
@@ -17,6 +19,7 @@ import {
 	AdToolRect,
 	AdToolVideo,
 	AdTopBanner,
+	type HomeAdProject,
 } from './ads/placements';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
@@ -62,6 +65,13 @@ export interface HomePageData {
 	 * so the shipped page carries no development text.
 	 */
 	dataSource?: DataSourceDescriptor;
+	/**
+	 * Issue #925 — portfolio projects promoted by the ad surface,
+	 * mapped by the route from the public `listPortfolioProjects`
+	 * read. Optional: the ad roster degrades to its Tool-only set
+	 * when the portfolio read is unavailable or yields no covers.
+	 */
+	adProjects?: readonly HomeAdProject[];
 }
 
 export interface HomePageProps {
@@ -208,7 +218,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						<CapabilitiesGrid capabilities={data.capabilities} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>
-								<AdToolCarousel />
+								<AdToolCarousel projects={data.adProjects ?? []} />
 								<div className={css({ marginBlockStart: '10' })}>
 									<AdToolVideo />
 								</div>
@@ -345,10 +355,22 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							top: { xl: '6' },
 						})}
 					>
-						<AdToolNative />
+						{data.adProjects?.[0] ? (
+							<AdPortfolioNative project={data.adProjects[0]} />
+						) : (
+							<AdToolNative />
+						)}
 						<AdToolInstall />
-						<AdToolProduct />
-						<AdToolNativeCounter />
+						{data.adProjects?.[1] ? (
+							<AdPortfolioProduct project={data.adProjects[1]} />
+						) : (
+							<AdToolProduct />
+						)}
+						{data.adProjects?.[2] ? (
+							<AdPortfolioNative project={data.adProjects[2]} />
+						) : (
+							<AdToolNativeCounter />
+						)}
 					</aside>
 				</div>
 			</main>

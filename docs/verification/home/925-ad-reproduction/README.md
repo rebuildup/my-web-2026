@@ -283,3 +283,45 @@ Meta 広告ライブラリ（`country=JP`, `active_status=active`）で、
   ような専用ビジュアル制作物ではない。
 - 動画広告は静止画+再生ボタンの表現に留まる（実動画素材は
   未制作・未コミット）。
+
+## Eighth pass — API 実データ・モーション・クレーム精査
+
+### 変更点
+
+1. **ツール広告だけにしない** — 広告の遷移先に Portfolio の実プロジェクトを
+   追加。`src/routes/index.tsx` の loader が公開 API
+   `listPortfolioProjects`（`/portfolio` 一覧と同じ読み取り）を呼び、
+   表紙メディアを持つプロジェクトを `HomeAdProject`（slug / title /
+   summary / coverUrl / coverAlt の狭い形）に写像して HomePage へ渡す。
+   `home` は portfolio obligation を import しない（AGENTS.md §3）。
+   API 障害時は `.catch(() => null)` で Tool のみのロースターに縮退。
+   - レール: `AdPortfolioNative` / `AdPortfolioProduct` がプロジェクトを
+     販売（実測: `/portfolio/kosen-fes-2025`・`/portfolio/tegaki-anime`・
+     `/portfolio/seishun` が実データで描画）
+   - カルーセル: プロジェクトカードを末尾に追加
+   - フォールバック: プロジェクトが無い/表紙が無い場合は従来の Tool
+     ユニットをそのまま表示
+2. **動き** — 全広告スロットに `adReveal`（不透明度+上昇の一回きりの
+   出現アニメーション）、動画スポットの再生ボタンとプレイアブルの
+   TRY IT バッジに `adPulse`（2.4s の呼吸パルス）。Panda keyframes +
+   `data-motion` フック + `usePrefersReducedMotion` のレンダー時分岐 +
+   `src/styles.css` のレイヤー2セレクタという既存の reduced-motion
+   契約（`scripts/check-reduced-motion.mjs`）に完全準拠。
+   `AD_REVEAL_MOTION` / `AD_PULSE_MOTION` 定数を
+   `src/editorial/reduced-motion.ts` に追加。
+3. **クレーム精査** — 「無料・登録不要」など本来の趣旨と違う情報を除去:
+   - Leaderboard の offer chip「無料・登録不要」→ 削除（chip を optional 化）
+   - App-install の「rebuildup · 無料」バッジ → 「rebuildup」のみ
+   - Product/listing の「無料」価格表示 → `priceLabel` optional 化し非表示
+   - CTA「無料で使う」→「使ってみる」
+   - Link card 説明文の「インストールも登録も不要です」→ 削除
+   残るコピーは全て対象コンテンツの事実（機能・形式・制作物）のみ。
+
+### Eighth pass の検証
+
+- 実ブラウザ 1440×900: `data-motion="ad-reveal"` ×10・`ad-pulse` ×2、
+  computed `animation-name: adReveal`、レールに実 Portfolio 3 件
+  （`/portfolio/kosen-fes-2025`・`/portfolio/tegaki-anime`・
+  `/portfolio/seishun`）、カルーセルに `/portfolio/*` ×2、
+  h1 ×1、横スクロールなし。証跡: `final10-desktop-1440.png` /
+  `final10-desktop-full.png` / `final10-mobile.png`。

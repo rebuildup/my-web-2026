@@ -87,6 +87,22 @@ export default defineConfig({
 					from: { transform: 'translateX(0)' },
 					to: { transform: 'translateX(-87.5%)' },
 				},
+				// Issue #925 — the home ad units. `adReveal` is the
+				// one-time entrance every ad slot plays (opacity + a
+				// short rise, no layout property so the slot's height
+				// cannot move while it plays); `adPulse` is the slow
+				// attention breath on in-creative chrome (play button,
+				// TRY IT badge). Both opt out at render time through
+				// `usePrefersReducedMotion` and at the stylesheet layer
+				// through their `data-motion` hooks.
+				adReveal: {
+					'0%': { transform: 'translateY(14px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
+				adPulse: {
+					'0%, 100%': { transform: 'scale(1)', opacity: '1' },
+					'50%': { transform: 'scale(1.06)', opacity: '0.85' },
+				},
 			},
 		},
 	},

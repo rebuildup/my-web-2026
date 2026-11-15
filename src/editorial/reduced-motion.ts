@@ -113,6 +113,25 @@ export const CURRENT_LOCATION_CHANGE_MOTION = 'current-location-change';
 export const PET_REACTION_MOTION = 'pet-reaction';
 
 /**
+ * The `data-motion` value the home ad units' entrance reveal uses
+ * (Issue #925). Every ad slot fades/rises in once on mount — real ad
+ * surfaces animate their units into the flow rather than snapping
+ * them in. The reveal is decoration only: the unit's content is fully
+ * present in the resting document, so under reduced motion the slot
+ * simply renders without the `animation-name`.
+ */
+export const AD_REVEAL_MOTION = 'ad-reveal';
+
+/**
+ * The `data-motion` value the in-creative attention pulses use
+ * (Issue #925): the video spot's play affordance and the playable
+ * unit's TRY IT badge breathe once per cycle to pull the eye the way
+ * real ad chrome does. Same contract as `AD_REVEAL_MOTION` — the
+ * resting frame carries no state, only the pulse is switched off.
+ */
+export const AD_PULSE_MOTION = 'ad-pulse';
+
+/**
  * Read the preference once, outside React.
  *
  * Returns `false` wherever the query cannot be asked — the Worker

@@ -1,5 +1,6 @@
 import {
 	AdCarousel,
+	type AdCarouselItem,
 	AdInstall,
 	AdLeaderboard,
 	AdLinkCard,
@@ -11,26 +12,42 @@ import {
 } from './units';
 
 /**
- * Concrete ad placements for the home page (Issue #925, second pass).
+ * Concrete ad placements for the home page (Issue #925).
  *
- * Direction rules (owner feedback): an ad points at real content — a
- * published Tool — carries a visual, keeps copy minimal, and is built
- * as a designed ad creative rather than a format shell. The roster
- * below mixes every format observed live — banner, feed link card,
+ * Direction rules (owner feedback): an ad points at real content —
+ * a published Tool or a published Portfolio project — carries a
+ * visual, and makes only claims that are true of that content. Ads
+ * are NOT only Tool ads: the roster mixes Tool creatives with
+ * portfolio projects loaded through the real public API
+ * (`listPortfolioProjects`, mapped by the route into
+ * `HomeAdProject`). Every unit animates in (`adReveal`) and the
+ * attention chrome pulses (`ad-pulse`); both honour the shared
+ * reduced-motion contract.
+ *
+ * The roster mixes every observed format — banner, feed link card,
  * carousel, video spot, playable, display rect, app-install, product
  * listing and native card — because real ad surfaces run many formats
- * at once, each with its own job (reach / consideration / play /
- * install / purchase). Every unit promotes one Tool from the committed
- * registry (`src/tools/manifest.json`) using that Tool's own committed
- * screen capture (`public/tool-previews/<slug>.webp`, the same asset
- * the Tools index renders); the playable unit embeds the chromeless
- * `/tools/<slug>` shell itself — the same surface a visitor gets.
- * Hooks use real ad techniques (question / offer / dare / play) but
- * every claim stays truthful: the tools are free, need no install or
- * account, and run entirely in the browser.
+ * at once. Layout is ad-defined: a persistent sponsored rail at the
+ * viewport's right edge plus in-article breaks inside the article
+ * column.
  */
 
 const preview = (slug: string) => `/tool-previews/${slug}.webp`;
+
+/**
+ * The narrow project shape the ad surface needs — mapped from the
+ * real `PortfolioProject` rows by the route loader, so `home` never
+ * imports the portfolio obligation (AGENTS.md §3).
+ */
+export interface HomeAdProject {
+	readonly slug: string;
+	readonly title: string;
+	readonly summary: string;
+	readonly coverUrl: string;
+	readonly coverAlt: string;
+}
+
+const projectHref = (slug: string) => `/portfolio/${slug}`;
 
 // ---------------------------------------------------------------------------
 // Leaderboard — page-top banner creative
@@ -41,9 +58,8 @@ export function AdTopBanner() {
 		<AdLeaderboard
 			imageSrc={preview('mic-level')}
 			imageAlt="Mic Level の画面。マイク入力レベルの目盛り表示。"
-			chip="無料・登録不要"
 			headline="マイクの音量、もう勘で合わせていませんか？"
-			ctaLabel="無料で試す"
+			ctaLabel="ツールを開く"
 			href="/tools/mic-level"
 		/>
 	);
@@ -64,7 +80,7 @@ export function AdToolLinkCard() {
 			].join('\n')}
 			domain="rebuildup.dev"
 			headline="QR Generator — ブラウザで作る QR コード"
-			description="テキストや URL から QR コードを生成。インストールも登録も不要です。"
+			description="テキストや URL から QR コードを生成。"
 			imageSrc={preview('qr-generator')}
 			imageAlt="QR Generator の画面。入力設定と生成結果パネルが並ぶ。"
 			href="/tools/qr-generator"
@@ -74,34 +90,39 @@ export function AdToolLinkCard() {
 }
 
 // ---------------------------------------------------------------------------
-// Carousel — swipeable multi-tool unit
+// Carousel — swipeable multi-item unit; Tools plus portfolio projects
 // ---------------------------------------------------------------------------
 
-export function AdToolCarousel() {
-	return (
-		<AdCarousel
-			items={[
-				{
-					imageSrc: preview('pomodoro'),
-					imageAlt: 'Pomodoro の画面。カウントダウンと作業・休憩スケジュール。',
-					title: 'Pomodoro — 作業と休憩のタイマー',
-					href: '/tools/pomodoro',
-				},
-				{
-					imageSrc: preview('history-quiz'),
-					imageAlt: 'History Quiz の画面。空欄入りの歴史クイズ。',
-					title: 'History Quiz — 歴史の穴埋めクイズ',
-					href: '/tools/history-quiz',
-				},
-				{
-					imageSrc: preview('code-type-p5'),
-					imageAlt: 'Code Type p5 の画面。コードが打たれていくアニメーション。',
-					title: 'Code Type p5 — タイプ演出メーカー',
-					href: '/tools/code-type-p5',
-				},
-			]}
-		/>
-	);
+export function AdToolCarousel({
+	projects = [],
+}: { readonly projects?: readonly HomeAdProject[] }) {
+	const items: AdCarouselItem[] = [
+		{
+			imageSrc: preview('pomodoro'),
+			imageAlt: 'Pomodoro の画面。カウントダウンと作業・休憩スケジュール。',
+			title: 'Pomodoro — 作業と休憩のタイマー',
+			href: '/tools/pomodoro',
+		},
+		{
+			imageSrc: preview('history-quiz'),
+			imageAlt: 'History Quiz の画面。空欄入りの歴史クイズ。',
+			title: 'History Quiz — 歴史の穴埋めクイズ',
+			href: '/tools/history-quiz',
+		},
+		{
+			imageSrc: preview('code-type-p5'),
+			imageAlt: 'Code Type p5 の画面。コードが打たれていくアニメーション。',
+			title: 'Code Type p5 — タイプ演出メーカー',
+			href: '/tools/code-type-p5',
+		},
+		...projects.slice(0, 2).map((project) => ({
+			imageSrc: project.coverUrl,
+			imageAlt: project.coverAlt,
+			title: project.title,
+			href: projectHref(project.slug),
+		})),
+	];
+	return <AdCarousel items={items} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,14 +187,15 @@ export function AdToolInstall() {
 			iconAlt="SVG to TSX の画面。SVG 入力と TSX 出力ペイン。"
 			name="SVG to TSX"
 			tagline="SVG を React コンポーネントに変換。色変数化・パス最適化つき。"
-			ctaLabel="無料で使う"
+			ctaLabel="使ってみる"
 			href="/tools/svg2tsx"
 		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// Product/listing ad — commerce anatomy, selling a Tool
+// Product/listing ad — commerce anatomy. Two sources share the anatomy:
+// a Tool (fallback) or a real Portfolio project from the public API.
 // ---------------------------------------------------------------------------
 
 export function AdToolProduct() {
@@ -190,8 +212,22 @@ export function AdToolProduct() {
 	);
 }
 
+export function AdPortfolioProduct({ project }: { readonly project: HomeAdProject }) {
+	return (
+		<AdProduct
+			imageSrc={project.coverUrl}
+			imageAlt={project.coverAlt}
+			title={project.title}
+			description={project.summary}
+			domain="rebuildup.dev"
+			ctaLabel="作品を見る"
+			href={projectHref(project.slug)}
+		/>
+	);
+}
+
 // ---------------------------------------------------------------------------
-// Native card — thumbnail teaser unit, selling a Tool
+// Native card — thumbnail teaser unit. Tool and Portfolio variants.
 // ---------------------------------------------------------------------------
 
 export function AdToolNative() {
@@ -217,6 +253,19 @@ export function AdToolNativeCounter() {
 			description="文字数・バイト数・行数をブラウザだけで計測。"
 			domain="rebuildup.dev"
 			href="/tools/text-counter"
+		/>
+	);
+}
+
+export function AdPortfolioNative({ project }: { readonly project: HomeAdProject }) {
+	return (
+		<AdNative
+			imageSrc={project.coverUrl}
+			imageAlt={project.coverAlt}
+			headline={project.title}
+			description={project.summary}
+			domain="rebuildup.dev"
+			href={projectHref(project.slug)}
 		/>
 	);
 }

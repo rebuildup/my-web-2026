@@ -1,4 +1,10 @@
-import { css } from '../../../styled-system/css';
+import type { ReactNode } from 'react';
+import { css, cx } from '../../../styled-system/css';
+import {
+	AD_PULSE_MOTION,
+	AD_REVEAL_MOTION,
+	usePrefersReducedMotion,
+} from '../../editorial/reduced-motion';
 import { SiteMark } from '../mark';
 
 /**
@@ -122,9 +128,84 @@ const offerChipClassName = /* @__PURE__ */ css({
 	letterSpacing: '0.06em',
 });
 
-const slotClassName = /* @__PURE__ */ css({
-	fontFamily: 'sans',
-});
+/**
+ * The slot every ad unit renders inside. Owns the unit's entrance
+ * motion (`adReveal`, Issue #925): real ad surfaces animate creatives
+ * into the flow instead of snapping them in. The reveal is decoration
+ * — the unit's full content is in the resting document — so the
+ * reduced-motion branch emits no `animation-name` at all, the
+ * `data-motion` hook lets the stylesheet opt out the same elements,
+ * and `data-motion-state` records which side of the contract rendered
+ * (the same fact the access counter publishes).
+ */
+export function AdSlot({
+	testid,
+	as: Tag = 'div',
+	className,
+	children,
+}: {
+	readonly testid: string;
+	readonly as?: 'div' | 'article';
+	readonly className?: string;
+	readonly children: ReactNode;
+}) {
+	const reducedMotion = usePrefersReducedMotion();
+	return (
+		<Tag
+			data-testid={testid}
+			data-motion={AD_REVEAL_MOTION}
+			data-motion-state={reducedMotion ? 'reduced' : 'animated'}
+			className={cx(
+				css({
+					fontFamily: 'sans',
+					...(reducedMotion
+						? {}
+						: {
+								animationName: 'adReveal',
+								animationDuration: '560ms',
+								animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+								animationFillMode: 'both',
+							}),
+				}),
+				className,
+			)}
+		>
+			{children}
+		</Tag>
+	);
+}
+
+/**
+ * The attention pulse real ad chrome carries (play affordance, TRY IT
+ * badge). Same two-layer contract as `AdSlot`: the render-time branch
+ * decides, the `data-motion` hook is the stylesheet backstop.
+ */
+function AdPulse({
+	children,
+	delay = '0s',
+}: { readonly children: ReactNode; readonly delay?: string }) {
+	const reducedMotion = usePrefersReducedMotion();
+	return (
+		<span
+			data-motion={AD_PULSE_MOTION}
+			data-motion-state={reducedMotion ? 'reduced' : 'animated'}
+			className={css({
+				display: 'inline-flex',
+				...(reducedMotion
+					? {}
+					: {
+							animationName: 'adPulse',
+							animationDuration: '2.4s',
+							animationTimingFunction: 'ease-in-out',
+							animationIterationCount: 'infinite',
+							animationDelay: delay,
+						}),
+			})}
+		>
+			{children}
+		</span>
+	);
+}
 
 /** Shared props for every visual ad unit: the creative + the destination. */
 interface AdVisualProps {
@@ -139,7 +220,7 @@ interface AdVisualProps {
 // ---------------------------------------------------------------------------
 
 export interface AdLeaderboardProps extends AdVisualProps {
-	readonly chip: string;
+	readonly chip?: string;
 	readonly headline: string;
 	readonly ctaLabel: string;
 }
@@ -153,7 +234,7 @@ export function AdLeaderboard({
 	href,
 }: AdLeaderboardProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-leaderboard">
+		<AdSlot testid="home-ad-leaderboard">
 			<AdTag label="広告" />
 			<a
 				href={href}
@@ -205,7 +286,7 @@ export function AdLeaderboard({
 						minWidth: '0',
 					})}
 				>
-					<span className={offerChipClassName}>{chip}</span>
+					{chip ? <span className={offerChipClassName}>{chip}</span> : null}
 					<p
 						className={css({
 							margin: '0',
@@ -226,7 +307,7 @@ export function AdLeaderboard({
 					</span>
 				</div>
 			</a>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -313,10 +394,7 @@ export function AdLinkCard({
 	return (
 		// Feed link cards render at feed-column width (~470–640 px), not
 		// full bleed — the observed anatomy is a column unit.
-		<article
-			className={css({ fontFamily: 'sans', maxWidth: '160' })}
-			data-testid="home-ad-linkcard"
-		>
+		<AdSlot as="article" testid="home-ad-linkcard" className={css({ maxWidth: '160' })}>
 			<header
 				className={css({
 					display: 'flex',
@@ -369,7 +447,7 @@ export function AdLinkCard({
 					</a>
 				</div>
 			</div>
-		</article>
+		</AdSlot>
 	);
 }
 
@@ -393,7 +471,7 @@ export function AdVideo({
 	href,
 }: AdVideoProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-video">
+		<AdSlot testid="home-ad-video">
 			<AdTag label="広告" />
 			<a
 				href={href}
@@ -436,30 +514,32 @@ export function AdVideo({
 							backgroundColor: 'rgba(5, 5, 5, 0.35)',
 						})}
 					>
-						<span
-							className={css({
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								width: '16',
-								height: '16',
-								borderRadius: 'full',
-								backgroundColor: 'rgba(255, 255, 255, 0.95)',
-								boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
-							})}
-						>
+						<AdPulse>
 							<span
 								className={css({
-									display: 'block',
-									width: '0',
-									height: '0',
-									borderTop: '8px solid transparent',
-									borderBottom: '8px solid transparent',
-									borderLeft: '12px solid #050505',
-									marginLeft: '2px',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									width: '16',
+									height: '16',
+									borderRadius: 'full',
+									backgroundColor: 'rgba(255, 255, 255, 0.95)',
+									boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
 								})}
-							/>
-						</span>
+							>
+								<span
+									className={css({
+										display: 'block',
+										width: '0',
+										height: '0',
+										borderTop: '8px solid transparent',
+										borderBottom: '8px solid transparent',
+										borderLeft: '12px solid #050505',
+										marginLeft: '2px',
+									})}
+								/>
+							</span>
+						</AdPulse>
 					</span>
 					<span
 						className={css({
@@ -513,7 +593,7 @@ export function AdVideo({
 					</span>
 				</span>
 			</a>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -530,7 +610,7 @@ export interface AdRectProps extends AdVisualProps {
 
 export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: AdRectProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-rect">
+		<AdSlot testid="home-ad-rect">
 			<AdTag label="広告" />
 			<a
 				href={href}
@@ -618,7 +698,7 @@ export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: Ad
 					</span>
 				</span>
 			</a>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -641,7 +721,7 @@ export function AdNative({
 	href,
 }: AdNativeProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-native">
+		<AdSlot testid="home-ad-native">
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<AdTag label="PR" />
 				<span className={css({ color: AD.inkSoft })}>·</span>
@@ -718,7 +798,7 @@ export function AdNative({
 					</span>
 				</span>
 			</a>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -779,7 +859,7 @@ export interface AdCarouselProps {
 
 export function AdCarousel({ items }: AdCarouselProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-carousel">
+		<AdSlot testid="home-ad-carousel">
 			<div
 				className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
 			>
@@ -857,7 +937,7 @@ export function AdCarousel({ items }: AdCarouselProps) {
 					</a>
 				))}
 			</div>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -885,23 +965,25 @@ export function AdPlayable({
 	href,
 }: AdPlayableProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-playable">
+		<AdSlot testid="home-ad-playable">
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<AdTag label="プレイアブル広告" />
-				<span
-					className={css({
-						fontSize: '11px',
-						fontWeight: '700',
-						letterSpacing: '0.06em',
-						color: '#ffffff',
-						backgroundColor: AD.ink,
-						borderRadius: 'sm',
-						paddingInline: '2',
-						paddingBlock: '1',
-					})}
-				>
-					TRY IT
-				</span>
+				<AdPulse delay="0.6s">
+					<span
+						className={css({
+							fontSize: '11px',
+							fontWeight: '700',
+							letterSpacing: '0.06em',
+							color: '#ffffff',
+							backgroundColor: AD.ink,
+							borderRadius: 'sm',
+							paddingInline: '2',
+							paddingBlock: '1',
+						})}
+					>
+						TRY IT
+					</span>
+				</AdPulse>
 			</div>
 			<div
 				className={css({
@@ -961,7 +1043,7 @@ export function AdPlayable({
 					</a>
 				</div>
 			</div>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -981,7 +1063,7 @@ export interface AdInstallProps {
 
 export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: AdInstallProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-install">
+		<AdSlot testid="home-ad-install">
 			<AdTag label="広告" />
 			<div
 				className={css({
@@ -1017,9 +1099,7 @@ export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: A
 					<p className={css({ margin: '0', fontSize: 'md', fontWeight: '700', color: AD.ink })}>
 						{name}
 					</p>
-					<p className={css({ margin: '0', fontSize: 'xs', color: AD.inkSoft })}>
-						rebuildup · <span className={css({ fontWeight: '700', color: AD.cta })}>無料</span>
-					</p>
+					<p className={css({ margin: '0', fontSize: 'xs', color: AD.inkSoft })}>rebuildup</p>
 					<p
 						className={css({
 							margin: '0',
@@ -1036,7 +1116,7 @@ export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: A
 					{ctaLabel}
 				</a>
 			</div>
-		</div>
+		</AdSlot>
 	);
 }
 
@@ -1050,6 +1130,8 @@ export interface AdProductProps extends AdVisualProps {
 	readonly description: string;
 	readonly domain: string;
 	readonly ctaLabel: string;
+	/** Optional price/offer text — omitted when the listing has no honest offer to state. */
+	readonly priceLabel?: string;
 }
 
 export function AdProduct({
@@ -1059,10 +1141,11 @@ export function AdProduct({
 	description,
 	domain,
 	ctaLabel,
+	priceLabel,
 	href,
 }: AdProductProps) {
 	return (
-		<div className={slotClassName} data-testid="home-ad-product">
+		<AdSlot testid="home-ad-product">
 			<AdTag label="スポンサー広告" />
 			<a
 				href={href}
@@ -1141,21 +1224,23 @@ export function AdProduct({
 							marginBlockStart: '3',
 						})}
 					>
-						<span
-							className={css({
-								fontSize: 'lg',
-								fontWeight: '800',
-								color: AD.cta,
-							})}
-						>
-							無料
-						</span>
+						{priceLabel ? (
+							<span
+								className={css({
+									fontSize: 'lg',
+									fontWeight: '800',
+									color: AD.cta,
+								})}
+							>
+								{priceLabel}
+							</span>
+						) : null}
 						<span className={ctaClassName} data-testid="home-ad-product-cta">
 							{ctaLabel}
 						</span>
 					</span>
 				</span>
 			</a>
-		</div>
+		</AdSlot>
 	);
 }

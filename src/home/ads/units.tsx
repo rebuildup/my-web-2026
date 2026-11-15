@@ -926,10 +926,10 @@ export function AdCarousel({ items }: AdCarouselProps) {
 					‹ スワイプ ›
 				</span>
 			</div>
-			{/* Keyboard-scrollable: a scroll container that is not
-				focusable cannot be scrolled without a pointer, which
-				the table/code a11y gate (WCAG 1.4.10) refuses. */}
 			<div
+				// A scrollable box that cannot be focused cannot be
+				// scrolled with a keyboard (SC 2.1.1).
+				// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container must be focusable so arrow keys scroll it (WCAG 2.2 SC 2.1.1).
 				tabIndex={0}
 				aria-label="広告カルーセル"
 				className={css({

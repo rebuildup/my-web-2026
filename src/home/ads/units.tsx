@@ -13,17 +13,19 @@ import { SiteMark } from '../mark';
  * rectangle and native card. The 現在地 content stays normal flow
  * content; the ads are a separate axis.
  *
- * Direction rule (owner feedback, second pass): an ad must point at
- * real content — a published Tool or Portfolio piece — and must
- * carry a visual. Text-only units were rejected: real display and
- * social ads are image-led. Every creative below is a committed
- * asset (`/tool-previews/*.webp`, the same captures the Tools index
- * uses) and every destination is a real route.
+ * Direction rules (owner feedback, second/third pass):
+ *   - an ad must point at real content — a published Tool — and must
+ *     carry a visual; text-only units were rejected;
+ *   - copy is minimal — one hook line plus the CTA;
+ *   - format mimicry alone is not enough: each unit is built as a
+ *     designed ad CREATIVE (bold type scale, colour fields, image-led
+ *     composition, offer-style chips) because that — not the frame —
+ *     is what gives real ads their pull.
  *
- * Palette note: each unit keeps its observed surface colours as local
- * literals (they are reproductions of other companies' ad chrome, not
- * this site's design tokens). Text/background pairs are checked
- * against the WCAG AA 4.5:1 floor the axe gate enforces.
+ * Every creative is a committed asset (`/tool-previews/*.webp`, the
+ * same captures the Tools index uses) and every destination is a real
+ * route. Palette literals below are the observed ad chrome colours,
+ * scoped to this file — not editorial tokens.
  */
 
 // ---------------------------------------------------------------------------
@@ -38,8 +40,6 @@ const AD = {
 	chip: '#f0f2f5',
 	cta: '#1773e0',
 	ctaHover: '#166fe5',
-	page: '#f0f2f5',
-	scrim: 'rgba(5, 5, 5, 0.55)',
 } as const;
 
 /** The small disclosure label real ad slots carry (「広告」「スポンサー」「PR」). */
@@ -59,6 +59,7 @@ function AdTag({ label }: { readonly label: string }) {
 	);
 }
 
+/** Blue CTA used on light surfaces (the observed ad blue, AA-adjusted). */
 const ctaClassName = /* @__PURE__ */ css({
 	display: 'inline-flex',
 	alignItems: 'center',
@@ -82,6 +83,45 @@ const ctaClassName = /* @__PURE__ */ css({
 	},
 });
 
+/** White pill CTA for dark/image creatives — the high-contrast button real banners use. */
+const lightCtaClassName = /* @__PURE__ */ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	height: '9',
+	paddingInline: '4',
+	borderRadius: 'md',
+	backgroundColor: '#ffffff',
+	color: AD.ink,
+	fontFamily: 'sans',
+	fontSize: '14px',
+	fontWeight: '700',
+	lineHeight: '1',
+	textDecoration: 'none',
+	whiteSpace: 'nowrap',
+	transition: 'background-color 120ms ease',
+	_hover: { backgroundColor: AD.chip },
+	_focusVisible: {
+		outline: '2px solid #ffffff',
+		outlineOffset: '2px',
+	},
+});
+
+/** Offer chip — the 「無料」「期間限定」burst real ad creatives carry. */
+const offerChipClassName = /* @__PURE__ */ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	alignSelf: 'flex-start',
+	paddingInline: '2',
+	paddingBlock: '1',
+	borderRadius: 'full',
+	backgroundColor: 'rgba(255, 255, 255, 0.16)',
+	color: '#ffffff',
+	fontSize: '11px',
+	fontWeight: '700',
+	letterSpacing: '0.06em',
+});
+
 const slotClassName = /* @__PURE__ */ css({
 	fontFamily: 'sans',
 });
@@ -94,87 +134,98 @@ interface AdVisualProps {
 }
 
 // ---------------------------------------------------------------------------
-// Leaderboard — the 728×90-class strip observed on publisher pages,
-// with the product thumbnail real display units carry
+// Leaderboard — designed banner creative: dark field, huge headline,
+// offer chip, product visual bleeding in from the right
 // ---------------------------------------------------------------------------
 
 export interface AdLeaderboardProps extends AdVisualProps {
+	readonly chip: string;
 	readonly headline: string;
-	readonly sub?: string;
 	readonly ctaLabel: string;
 }
 
 export function AdLeaderboard({
 	imageSrc,
 	imageAlt,
+	chip,
 	headline,
-	sub,
 	ctaLabel,
 	href,
 }: AdLeaderboardProps) {
 	return (
 		<div className={slotClassName} data-testid="home-ad-leaderboard">
 			<AdTag label="広告" />
-			<div
+			<a
+				href={href}
 				className={css({
 					display: 'flex',
-					alignItems: 'center',
-					gap: '4',
-					backgroundColor: AD.card,
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: AD.line,
-					borderRadius: 'md',
-					padding: '3',
+					flexDirection: { base: 'column', sm: 'row' },
+					sm: { height: '44' },
+					marginBlockStart: '2',
+					overflow: 'hidden',
+					borderRadius: 'lg',
+					backgroundColor: AD.ink,
+					textDecoration: 'none',
+					_focusVisible: {
+						outline: `2px solid ${AD.cta}`,
+						outlineOffset: '2px',
+					},
 				})}
+				data-testid="home-ad-leaderboard-link"
 			>
-				<img
-					src={imageSrc}
-					alt={imageAlt}
-					width={1200}
-					height={669}
-					loading="lazy"
+				<div
 					className={css({
-						display: 'block',
-						width: '44',
-						height: '25',
-						objectFit: 'cover',
-						borderRadius: 'sm',
 						flexShrink: '0',
-						backgroundColor: AD.chip,
+						height: { base: '48', sm: 'auto' },
+						sm: { width: '34%' },
 					})}
-				/>
-				<div className={css({ minWidth: '0', flex: '1' })}>
+				>
+					<img
+						src={imageSrc}
+						alt={imageAlt}
+						width={1200}
+						height={669}
+						loading="lazy"
+						className={css({
+							display: 'block',
+							width: '100%',
+							height: '100%',
+							objectFit: 'cover',
+						})}
+					/>
+				</div>
+				<div
+					className={css({
+						flex: '1',
+						display: 'flex',
+						flexDirection: 'column',
+						justifyContent: 'center',
+						gap: '3',
+						padding: '6',
+						minWidth: '0',
+					})}
+				>
+					<span className={offerChipClassName}>{chip}</span>
 					<p
 						className={css({
 							margin: '0',
-							fontSize: 'md',
-							fontWeight: '700',
-							lineHeight: '1.35',
-							color: AD.ink,
+							fontSize: { base: 'xl', sm: '3xl' },
+							fontWeight: '800',
+							lineHeight: '1.25',
+							letterSpacing: '-0.01em',
+							color: '#ffffff',
 							textWrap: 'balance',
 						})}
 					>
 						{headline}
 					</p>
-					{sub ? (
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '1',
-								fontSize: 'sm',
-								lineHeight: '1.4',
-								color: AD.inkSoft,
-							})}
-						>
-							{sub}
-						</p>
-					) : null}
+					<span>
+						<span className={lightCtaClassName} data-testid="home-ad-leaderboard-cta">
+							{ctaLabel}
+						</span>
+					</span>
 				</div>
-				<a href={href} className={ctaClassName} data-testid="home-ad-leaderboard-cta">
-					{ctaLabel}
-				</a>
-			</div>
+			</a>
 		</div>
 	);
 }
@@ -260,7 +311,12 @@ export function AdLinkCard({
 	ctaLabel,
 }: AdLinkCardProps) {
 	return (
-		<article className={slotClassName} data-testid="home-ad-linkcard">
+		// Feed link cards render at feed-column width (~470–640 px), not
+		// full bleed — the observed anatomy is a column unit.
+		<article
+			className={css({ fontFamily: 'sans', maxWidth: '160' })}
+			data-testid="home-ad-linkcard"
+		>
 			<header
 				className={css({
 					display: 'flex',
@@ -281,6 +337,7 @@ export function AdLinkCard({
 					className={css({
 						margin: '0',
 						fontSize: 'md',
+						fontWeight: '600',
 						lineHeight: '1.4',
 						color: AD.ink,
 						whiteSpace: 'pre-line',
@@ -317,8 +374,8 @@ export function AdLinkCard({
 }
 
 // ---------------------------------------------------------------------------
-// Video spot — the in-feed video unit real feeds run constantly:
-// 16:9 creative, play affordance, duration chip, headline + CTA
+// Video spot — 16:9 creative + play affordance + headline, the in-feed
+// video unit real feeds run constantly
 // ---------------------------------------------------------------------------
 
 export interface AdVideoProps extends AdVisualProps {
@@ -376,7 +433,7 @@ export function AdVideo({
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							backgroundColor: AD.scrim,
+							backgroundColor: 'rgba(5, 5, 5, 0.35)',
 						})}
 					>
 						<span
@@ -387,7 +444,8 @@ export function AdVideo({
 								width: '16',
 								height: '16',
 								borderRadius: 'full',
-								backgroundColor: 'rgba(255, 255, 255, 0.92)',
+								backgroundColor: 'rgba(255, 255, 255, 0.95)',
+								boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
 							})}
 						>
 							<span
@@ -420,6 +478,22 @@ export function AdVideo({
 					>
 						{durationLabel}
 					</span>
+					<span
+						className={css({
+							position: 'absolute',
+							left: '4',
+							bottom: '4',
+							right: '4',
+							fontSize: { base: 'lg', sm: 'xl' },
+							fontWeight: '800',
+							lineHeight: '1.3',
+							color: '#ffffff',
+							textShadow: '0 1px 8px rgba(0, 0, 0, 0.6)',
+							textWrap: 'balance',
+						})}
+					>
+						{headline}
+					</span>
 				</span>
 				<span
 					className={css({
@@ -431,17 +505,12 @@ export function AdVideo({
 						padding: '3',
 					})}
 				>
-					<span
-						className={css({
-							fontSize: 'md',
-							fontWeight: '700',
-							lineHeight: '1.35',
-							color: AD.ink,
-						})}
-					>
-						{headline}
+					<span className={css({ fontSize: 'sm', fontWeight: '600', color: AD.ink })}>
+						rebuildup.dev
 					</span>
-					<span className={ctaClassName}>{ctaLabel}</span>
+					<span className={ctaClassName} data-testid="home-ad-video-cta">
+						{ctaLabel}
+					</span>
 				</span>
 			</a>
 		</div>
@@ -449,46 +518,31 @@ export function AdVideo({
 }
 
 // ---------------------------------------------------------------------------
-// Display rectangle — the 300×250 / 336×280-class unit observed on
-// publisher pages, image-led with the copy beside it
+// Display rectangle — full-bleed creative: image under a scrim gradient,
+// huge headline, offer-style CTA. The IAB unit real pages run.
 // ---------------------------------------------------------------------------
 
 export interface AdRectProps extends AdVisualProps {
 	readonly headline: string;
 	readonly sub?: string;
 	readonly ctaLabel: string;
-	/** 'dark' inverts to the ink surface real display ads often use. */
-	readonly tone?: 'light' | 'dark';
 }
 
-export function AdRect({
-	imageSrc,
-	imageAlt,
-	headline,
-	sub,
-	ctaLabel,
-	href,
-	tone = 'light',
-}: AdRectProps) {
-	const dark = tone === 'dark';
+export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: AdRectProps) {
 	return (
 		<div className={slotClassName} data-testid="home-ad-rect">
 			<AdTag label="広告" />
 			<a
 				href={href}
 				className={css({
-					display: 'flex',
-					flexDirection: { base: 'column', sm: 'row' },
-					alignItems: 'stretch',
-					gap: '0',
+					position: 'relative',
+					display: 'block',
 					marginBlockStart: '2',
-					minHeight: '56',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: dark ? AD.ink : AD.line,
-					borderRadius: 'lg',
 					overflow: 'hidden',
-					backgroundColor: dark ? AD.ink : AD.card,
+					borderRadius: 'lg',
+					minHeight: '64',
+					sm: { height: '80' },
+					backgroundColor: AD.ink,
 					textDecoration: 'none',
 					_focusVisible: {
 						outline: `2px solid ${AD.cta}`,
@@ -504,32 +558,43 @@ export function AdRect({
 					height={669}
 					loading="lazy"
 					className={css({
-						display: 'block',
-						width: { base: '100%', sm: '52%' },
-						flexShrink: '0',
-						aspectRatio: '16 / 9',
+						position: 'absolute',
+						inset: '0',
+						width: '100%',
+						height: '100%',
 						objectFit: 'cover',
-						backgroundColor: AD.chip,
 					})}
 				/>
-				<div
+				<span
+					aria-hidden="true"
 					className={css({
+						position: 'absolute',
+						inset: '0',
+						backgroundImage:
+							'linear-gradient(to top, rgba(5, 5, 5, 0.94) 0%, rgba(5, 5, 5, 0.6) 45%, rgba(5, 5, 5, 0.15) 100%)',
+					})}
+				/>
+				<span
+					className={css({
+						position: 'relative',
 						display: 'flex',
 						flexDirection: 'column',
-						justifyContent: 'center',
-						gap: '2',
-						padding: '5',
-						minWidth: '0',
-						flex: '1',
+						justifyContent: 'flex-end',
+						gap: '3',
+						height: '100%',
+						minHeight: '64',
+						padding: '6',
 					})}
 				>
 					<span
 						className={css({
-							fontSize: 'lg',
-							fontWeight: '700',
-							lineHeight: '1.3',
-							color: dark ? '#ffffff' : AD.ink,
+							fontSize: { base: '2xl', sm: '4xl' },
+							fontWeight: '800',
+							lineHeight: '1.2',
+							letterSpacing: '-0.015em',
+							color: '#ffffff',
 							textWrap: 'balance',
+							textShadow: '0 2px 12px rgba(0, 0, 0, 0.45)',
 						})}
 					>
 						{headline}
@@ -537,52 +602,28 @@ export function AdRect({
 					{sub ? (
 						<span
 							className={css({
-								fontSize: 'sm',
+								fontSize: { base: 'sm', sm: 'md' },
+								fontWeight: '500',
 								lineHeight: '1.5',
-								color: dark ? AD.chip : AD.inkSoft,
+								color: 'rgba(255, 255, 255, 0.88)',
 							})}
 						>
 							{sub}
 						</span>
 					) : null}
 					<span>
-						<span className={dark ? darkCtaClassName : ctaClassName} data-testid="home-ad-rect-cta">
+						<span className={lightCtaClassName} data-testid="home-ad-rect-cta">
 							{ctaLabel}
 						</span>
 					</span>
-				</div>
+				</span>
 			</a>
 		</div>
 	);
 }
 
-const darkCtaClassName = /* @__PURE__ */ css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	justifyContent: 'center',
-	height: '9',
-	width: 'fit-content',
-	paddingInline: '4',
-	borderRadius: 'md',
-	backgroundColor: '#ffffff',
-	color: AD.ink,
-	fontFamily: 'sans',
-	fontSize: '14px',
-	fontWeight: '600',
-	lineHeight: '1',
-	textDecoration: 'none',
-	whiteSpace: 'nowrap',
-	transition: 'background-color 120ms ease',
-	_hover: { backgroundColor: AD.chip },
-	_focusVisible: {
-		outline: '2px solid #ffffff',
-		outlineOffset: '2px',
-	},
-});
-
 // ---------------------------------------------------------------------------
-// Native card — the thumbnail-and-teaser unit content feeds run:
-// small creative, headline, description, 「PR」 disclosure, domain
+// Native card — thumbnail teaser unit, selling a Tool
 // ---------------------------------------------------------------------------
 
 export interface AdNativeProps extends AdVisualProps {

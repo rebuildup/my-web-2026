@@ -21,8 +21,9 @@ import {
  * are NOT only Tool ads: the roster mixes Tool creatives with
  * portfolio projects loaded through the real public API
  * (`listPortfolioProjects`, mapped by the route into
- * `HomeAdProject`). Every unit animates in (`adReveal`) and the
- * attention chrome pulses (`ad-pulse`); both honour the shared
+ * `HomeAdProject`). Rich-media-style units carry their own entrance
+ * variant while feed/native/install/product units stay static; the
+ * in-creative chrome pulses (`ad-pulse`). All honour the shared
  * reduced-motion contract.
  *
  * The roster mixes every observed format — banner, feed link card,
@@ -74,11 +75,7 @@ export function AdToolLinkCard() {
 	return (
 		<AdLinkCard
 			advertiser="rebuildup"
-			body={[
-				'URL を送るたび、QR を作り直していませんか？',
-				'・色もパラメータも自由に調整',
-				'・PNG / SVG でそのまま保存',
-			].join('\n')}
+			body="URL を送るたび、QR を作り直していませんか？"
 			domain="rebuildup.dev"
 			headline="QR Generator — ブラウザで作る QR コード"
 			description="テキストや URL から QR コードを生成。"
@@ -170,7 +167,6 @@ export function AdToolRect() {
 			imageSrc={preview('prototype')}
 			imageAlt="ProtoType のタイトル画面。Game Start とメニューが並ぶ。"
 			headline="3 分で始まる、ブラウザのタイピングゲーム"
-			sub="gsap・three.js・pixi.js で作った演出つき。"
 			ctaLabel="プレイする"
 			href="/tools/prototype"
 		/>
@@ -187,7 +183,7 @@ export function AdToolInstall() {
 			iconSrc={preview('svg2tsx')}
 			iconAlt="SVG to TSX の画面。SVG 入力と TSX 出力ペイン。"
 			name="SVG to TSX"
-			tagline="SVG を React コンポーネントに変換。色変数化・パス最適化つき。"
+			tagline="SVG を React コンポーネントに変換。"
 			ctaLabel="使ってみる"
 			href="/tools/svg2tsx"
 		/>
@@ -204,8 +200,8 @@ export function AdToolProduct() {
 		<AdProduct
 			imageSrc={preview('fillgen')}
 			imageAlt="Fillgen の画面。穴埋めプリントのエディタと出力欄。"
-			title="Fillgen — 穴埋め教材ページ生成ツール | Markdown 風テキストから HTML / React を書き出し"
-			description="Markdown 風のテキストから穴埋め問題つきの教材ページを生成。印刷してそのまま使えます。"
+			title="Fillgen — 穴埋め教材ページ生成ツール"
+			description="Markdown 風テキストから穴埋め教材を生成。"
 			domain="rebuildup.dev"
 			ctaLabel="使ってみる"
 			href="/tools/fillgen"

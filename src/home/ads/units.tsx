@@ -465,7 +465,7 @@ export function AdLinkCard({
 			as="article"
 			testid="home-ad-linkcard"
 			motion="none"
-			className={css({ maxWidth: '160' })}
+			className={css({ maxWidth: '640px' })}
 		>
 			<header
 				className={css({
@@ -861,7 +861,9 @@ export function AdNative({
 					</span>
 					<span
 						className={css({
-							display: 'block',
+							display: '-webkit-box',
+							WebkitBoxOrient: 'vertical',
+							lineClamp: '2',
 							marginBlockStart: '1',
 							fontSize: 'sm',
 							lineHeight: '1.5',
@@ -1282,7 +1284,9 @@ export function AdProduct({
 					</span>
 					<span
 						className={css({
-							display: 'block',
+							display: '-webkit-box',
+							WebkitBoxOrient: 'vertical',
+							lineClamp: '2',
 							marginBlockStart: '1',
 							fontSize: 'sm',
 							lineHeight: '1.5',

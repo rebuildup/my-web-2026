@@ -80,7 +80,6 @@ const ctaClassName = /* @__PURE__ */ css({
 	fontWeight: '600',
 	lineHeight: '1',
 	textDecoration: 'none',
-	whiteSpace: 'nowrap',
 	transition: 'background-color 120ms ease',
 	_hover: { backgroundColor: AD.ctaHover },
 	_focusVisible: {
@@ -104,7 +103,6 @@ const lightCtaClassName = /* @__PURE__ */ css({
 	fontWeight: '700',
 	lineHeight: '1',
 	textDecoration: 'none',
-	whiteSpace: 'nowrap',
 	transition: 'background-color 120ms ease',
 	_hover: { backgroundColor: AD.chip },
 	_focusVisible: {

@@ -87,58 +87,59 @@ export default defineConfig({
 					from: { transform: 'translateX(0)' },
 					to: { transform: 'translateX(-87.5%)' },
 				},
-				// Issue #925 — the home ad units. `adReveal` is the
-				// one-time entrance every ad slot plays (opacity + a
-				// short rise, no layout property so the slot's height
-				// cannot move while it plays); `adPulse` is the slow
-				// attention breath on in-creative chrome (play button,
-				// TRY IT badge). Both opt out at render time through
-				// `usePrefersReducedMotion` and at the stylesheet layer
-				// through their `data-motion` hooks.
+				// Issue #925 — the home ad units. The entrance variants
+				// animate transform / clip-path only, never opacity: an
+				// opacity fade leaves every descendant blended toward
+				// the page background while it plays, which the axe
+				// color-contrast scan reads as a real violation
+				// (composer.stories.tsx#AllReachable / #Degraded).
+				// `adPulse` is the slow attention breath on in-creative
+				// chrome (play button, TRY IT badge) — scale only, for
+				// the same reason. All of them opt out at render time
+				// through `usePrefersReducedMotion` and at the
+				// stylesheet layer through their `data-motion` hooks.
 				adReveal: {
-					'0%': { transform: 'translateY(14px)', opacity: '0' },
-					'100%': { transform: 'translateY(0)', opacity: '1' },
+					'0%': { transform: 'translateY(14px)' },
+					'100%': { transform: 'translateY(0)' },
 				},
 				adPulse: {
-					'0%, 100%': { transform: 'scale(1)', opacity: '1' },
-					'50%': { transform: 'scale(1.06)', opacity: '0.85' },
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.06)' },
 				},
 				// Issue #925 — per-format entrance variants. Real ad
 				// surfaces do not animate every unit identically: a
 				// masthead banner drops in from above, a feed card
 				// rises, a carousel slides, a display rectangle wipes,
-				// a store card slides from the side, and a commerce
-				// card simply fades. The `ad-reveal` data-motion hook
+				// a store card pops. No variant animates opacity — a
+				// translucent entrance blends every descendant toward the
+				// page background and the axe color-contrast scan reads
+				// it as a violation. The `ad-reveal` data-motion hook
 				// covers all of them — the variant changes HOW the unit
 				// arrives, never WHAT it says.
 				adDrop: {
-					'0%': { transform: 'translateY(-18px)', opacity: '0' },
-					'100%': { transform: 'translateY(0)', opacity: '1' },
+					'0%': { transform: 'translateY(-18px)' },
+					'100%': { transform: 'translateY(0)' },
 				},
 				adSlideLeft: {
-					'0%': { transform: 'translateX(-22px)', opacity: '0' },
-					'100%': { transform: 'translateX(0)', opacity: '1' },
+					'0%': { transform: 'translateX(-22px)' },
+					'100%': { transform: 'translateX(0)' },
 				},
 				adSlideRight: {
-					'0%': { transform: 'translateX(22px)', opacity: '0' },
-					'100%': { transform: 'translateX(0)', opacity: '1' },
+					'0%': { transform: 'translateX(22px)' },
+					'100%': { transform: 'translateX(0)' },
 				},
 				adScaleIn: {
-					'0%': { transform: 'scale(0.96)', opacity: '0' },
-					'100%': { transform: 'scale(1)', opacity: '1' },
+					'0%': { transform: 'scale(0.96)' },
+					'100%': { transform: 'scale(1)' },
 				},
 				adPop: {
-					'0%': { transform: 'scale(0.9)', opacity: '0' },
-					'70%': { transform: 'scale(1.02)', opacity: '1' },
-					'100%': { transform: 'scale(1)', opacity: '1' },
+					'0%': { transform: 'scale(0.9)' },
+					'70%': { transform: 'scale(1.02)' },
+					'100%': { transform: 'scale(1)' },
 				},
 				adWipeLeft: {
-					'0%': { clipPath: 'inset(0 100% 0 0)', opacity: '0.4' },
-					'100%': { clipPath: 'inset(0 0 0 0)', opacity: '1' },
-				},
-				adFade: {
-					'0%': { opacity: '0' },
-					'100%': { opacity: '1' },
+					'0%': { clipPath: 'inset(0 100% 0 0)' },
+					'100%': { clipPath: 'inset(0 0 0 0)' },
 				},
 			},
 		},

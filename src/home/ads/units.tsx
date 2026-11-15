@@ -152,8 +152,7 @@ export type AdMotion =
 	| 'slideRight'
 	| 'scale'
 	| 'pop'
-	| 'wipe'
-	| 'fade';
+	| 'wipe';
 
 // Each variant is its own `css()` call with literal properties: Panda
 // extracts styles statically, so a `css({ ...AD_MOTIONS[motion] })`
@@ -201,12 +200,6 @@ const AD_MOTION_CSS: Record<AdMotion, string> = {
 		animationName: 'adWipeLeft',
 		animationDuration: '700ms',
 		animationTimingFunction: 'cubic-bezier(0.6, 0, 0.2, 1)',
-		animationFillMode: 'both',
-	}),
-	fade: css({
-		animationName: 'adFade',
-		animationDuration: '640ms',
-		animationTimingFunction: 'ease-out',
 		animationFillMode: 'both',
 	}),
 };

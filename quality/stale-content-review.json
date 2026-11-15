@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -847,6 +849,62 @@
 				]
 			},
 			"note": "Head description of `/contact`. Same data basis as the home CTA: the freshness gate plus the per-row purpose label. (src/routes/contact.tsx:41)"
+		},
+		{
+			"id": "home-hero-eyebrow-current-location",
+			"path": "src/home/hero.tsx",
+			"expression": "現在地 / Where I am now",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-15",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "bb85e033c0b8277d921b8e93d5a35c284992d725",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/925",
+						"note": "the hero eyebrow labels the page-level 現在地 statement; the same phrase remains the CurrentProjects section title (src/home/current/CurrentProjects.tsx) as the section-level label"
+					}
+				]
+			},
+			"note": "hero の eyebrow (src/home/hero.tsx:41)。ページ全体の「現在地」宣言を指すモノスペースの小見出しで、現在地セクション自体の見出し (CurrentProjects.tsx) とは役割が異なるページレベル/セクションレベルのラベルとして併存させている。時制・数量・期限を含まない不変のラベル文。"
+		},
+		{
+			"id": "home-ad-video-play-cta",
+			"path": "src/home/ads/placements.tsx",
+			"expression": "今すぐプレイ",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-15",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "bb85e033c0b8277d921b8e93d5a35c284992d725",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/925",
+						"note": "CTA on the playable-style video spot; the whole unit links to /tools/prototype which the visitor can actually play in the browser"
+					}
+				]
+			},
+			"note": "動画スポット型広告ユニットの CTA (src/home/ads/placements.tsx:141)。遷移先 /tools/prototype はブラウザで実際に遊べるタイピングゲームであり、「今すぐプレイ」はその行動をそのまま述べる。緊急性・期限・数量の主張は含まない。"
 		}
 	]
 }

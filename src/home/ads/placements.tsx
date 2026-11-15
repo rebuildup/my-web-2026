@@ -4,6 +4,7 @@ import {
 	AdInstall,
 	AdLeaderboard,
 	AdLinkCard,
+	type AdMotion,
 	AdNative,
 	AdPlayable,
 	AdProduct,
@@ -247,6 +248,7 @@ export function AdToolNative() {
 export function AdToolNativeCounter() {
 	return (
 		<AdNative
+			motion="none"
 			imageSrc={preview('text-counter')}
 			imageAlt="Text Counter の画面。入力テキストと文字数の計測結果。"
 			headline="テキストの文字数、秒で数えられます。"
@@ -257,9 +259,16 @@ export function AdToolNativeCounter() {
 	);
 }
 
-export function AdPortfolioNative({ project }: { readonly project: HomeAdProject }) {
+export function AdPortfolioNative({
+	project,
+	motion = 'none',
+}: {
+	readonly project: HomeAdProject;
+	readonly motion?: AdMotion | 'none';
+}) {
 	return (
 		<AdNative
+			motion={motion}
 			imageSrc={project.coverUrl}
 			imageAlt={project.coverAlt}
 			headline={project.title}

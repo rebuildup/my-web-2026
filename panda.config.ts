@@ -103,6 +103,43 @@ export default defineConfig({
 					'0%, 100%': { transform: 'scale(1)', opacity: '1' },
 					'50%': { transform: 'scale(1.06)', opacity: '0.85' },
 				},
+				// Issue #925 — per-format entrance variants. Real ad
+				// surfaces do not animate every unit identically: a
+				// masthead banner drops in from above, a feed card
+				// rises, a carousel slides, a display rectangle wipes,
+				// a store card slides from the side, and a commerce
+				// card simply fades. The `ad-reveal` data-motion hook
+				// covers all of them — the variant changes HOW the unit
+				// arrives, never WHAT it says.
+				adDrop: {
+					'0%': { transform: 'translateY(-18px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
+				adSlideLeft: {
+					'0%': { transform: 'translateX(-22px)', opacity: '0' },
+					'100%': { transform: 'translateX(0)', opacity: '1' },
+				},
+				adSlideRight: {
+					'0%': { transform: 'translateX(22px)', opacity: '0' },
+					'100%': { transform: 'translateX(0)', opacity: '1' },
+				},
+				adScaleIn: {
+					'0%': { transform: 'scale(0.96)', opacity: '0' },
+					'100%': { transform: 'scale(1)', opacity: '1' },
+				},
+				adPop: {
+					'0%': { transform: 'scale(0.9)', opacity: '0' },
+					'70%': { transform: 'scale(1.02)', opacity: '1' },
+					'100%': { transform: 'scale(1)', opacity: '1' },
+				},
+				adWipeLeft: {
+					'0%': { clipPath: 'inset(0 100% 0 0)', opacity: '0.4' },
+					'100%': { clipPath: 'inset(0 0 0 0)', opacity: '1' },
+				},
+				adFade: {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' },
+				},
 			},
 		},
 	},

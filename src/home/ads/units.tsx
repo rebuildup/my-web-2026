@@ -96,7 +96,7 @@ const lightCtaClassName = /* @__PURE__ */ css({
 	justifyContent: 'center',
 	height: '9',
 	paddingInline: '4',
-	borderRadius: 'md',
+	borderRadius: 'full',
 	backgroundColor: '#ffffff',
 	color: AD.ink,
 	fontFamily: 'sans',
@@ -138,35 +138,102 @@ const offerChipClassName = /* @__PURE__ */ css({
  * and `data-motion-state` records which side of the contract rendered
  * (the same fact the access counter publishes).
  */
+/**
+ * Entrance variants — one per observed format, because real ad
+ * surfaces do NOT animate every unit identically (owner feedback,
+ * eighth pass). The variant changes how the unit arrives, never what
+ * it says; all of them share the `ad-reveal` data-motion hook, so the
+ * reduced-motion stylesheet opt-out covers every variant at once.
+ */
+export type AdMotion =
+	| 'rise'
+	| 'drop'
+	| 'slideLeft'
+	| 'slideRight'
+	| 'scale'
+	| 'pop'
+	| 'wipe'
+	| 'fade';
+
+// Each variant is its own `css()` call with literal properties: Panda
+// extracts styles statically, so a `css({ ...AD_MOTIONS[motion] })`
+// spread would emit no `animation-name` rule and the slot would render
+// unanimated (the same failure mode documented in
+// `src/home/access/tiles.tsx`).
+const AD_MOTION_CSS: Record<AdMotion, string> = {
+	rise: css({
+		animationName: 'adReveal',
+		animationDuration: '560ms',
+		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	drop: css({
+		animationName: 'adDrop',
+		animationDuration: '520ms',
+		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	slideLeft: css({
+		animationName: 'adSlideLeft',
+		animationDuration: '620ms',
+		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	slideRight: css({
+		animationName: 'adSlideRight',
+		animationDuration: '620ms',
+		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	scale: css({
+		animationName: 'adScaleIn',
+		animationDuration: '480ms',
+		animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	pop: css({
+		animationName: 'adPop',
+		animationDuration: '560ms',
+		animationTimingFunction: 'cubic-bezier(0.34, 1.4, 0.64, 1)',
+		animationFillMode: 'both',
+	}),
+	wipe: css({
+		animationName: 'adWipeLeft',
+		animationDuration: '700ms',
+		animationTimingFunction: 'cubic-bezier(0.6, 0, 0.2, 1)',
+		animationFillMode: 'both',
+	}),
+	fade: css({
+		animationName: 'adFade',
+		animationDuration: '640ms',
+		animationTimingFunction: 'ease-out',
+		animationFillMode: 'both',
+	}),
+};
+
 export function AdSlot({
 	testid,
 	as: Tag = 'div',
 	className,
+	motion = 'rise',
 	children,
 }: {
 	readonly testid: string;
 	readonly as?: 'div' | 'article';
 	readonly className?: string;
+	readonly motion?: AdMotion | 'none';
 	readonly children: ReactNode;
 }) {
 	const reducedMotion = usePrefersReducedMotion();
+	const animated = !reducedMotion && motion !== 'none';
 	return (
 		<Tag
 			data-testid={testid}
 			data-motion={AD_REVEAL_MOTION}
-			data-motion-state={reducedMotion ? 'reduced' : 'animated'}
+			data-motion-state={reducedMotion ? 'reduced' : animated ? 'animated' : 'static'}
 			className={cx(
-				css({
-					fontFamily: 'sans',
-					...(reducedMotion
-						? {}
-						: {
-								animationName: 'adReveal',
-								animationDuration: '560ms',
-								animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-								animationFillMode: 'both',
-							}),
-				}),
+				css({ fontFamily: 'sans' }),
+				animated ? AD_MOTION_CSS[motion] : undefined,
 				className,
 			)}
 		>
@@ -234,7 +301,7 @@ export function AdLeaderboard({
 	href,
 }: AdLeaderboardProps) {
 	return (
-		<AdSlot testid="home-ad-leaderboard">
+		<AdSlot testid="home-ad-leaderboard" motion="drop">
 			<AdTag label="広告" />
 			<a
 				href={href}
@@ -244,7 +311,7 @@ export function AdLeaderboard({
 					sm: { height: '44' },
 					marginBlockStart: '2',
 					overflow: 'hidden',
-					borderRadius: 'lg',
+					borderRadius: 'xs',
 					backgroundColor: AD.ink,
 					textDecoration: 'none',
 					_focusVisible: {
@@ -394,7 +461,12 @@ export function AdLinkCard({
 	return (
 		// Feed link cards render at feed-column width (~470–640 px), not
 		// full bleed — the observed anatomy is a column unit.
-		<AdSlot as="article" testid="home-ad-linkcard" className={css({ maxWidth: '160' })}>
+		<AdSlot
+			as="article"
+			testid="home-ad-linkcard"
+			motion="none"
+			className={css({ maxWidth: '160' })}
+		>
 			<header
 				className={css({
 					display: 'flex',
@@ -471,14 +543,14 @@ export function AdVideo({
 	href,
 }: AdVideoProps) {
 	return (
-		<AdSlot testid="home-ad-video">
+		<AdSlot testid="home-ad-video" motion="scale">
 			<AdTag label="広告" />
 			<a
 				href={href}
 				className={css({
 					display: 'block',
 					marginBlockStart: '2',
-					borderRadius: 'lg',
+					borderRadius: 'md',
 					overflow: 'hidden',
 					backgroundColor: AD.ink,
 					textDecoration: 'none',
@@ -610,7 +682,7 @@ export interface AdRectProps extends AdVisualProps {
 
 export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: AdRectProps) {
 	return (
-		<AdSlot testid="home-ad-rect">
+		<AdSlot testid="home-ad-rect" motion="wipe">
 			<AdTag label="広告" />
 			<a
 				href={href}
@@ -619,7 +691,7 @@ export function AdRect({ imageSrc, imageAlt, headline, sub, ctaLabel, href }: Ad
 					display: 'block',
 					marginBlockStart: '2',
 					overflow: 'hidden',
-					borderRadius: 'lg',
+					borderRadius: 'xs',
 					minHeight: '64',
 					sm: { height: '80' },
 					backgroundColor: AD.ink,
@@ -710,6 +782,7 @@ export interface AdNativeProps extends AdVisualProps {
 	readonly headline: string;
 	readonly description: string;
 	readonly domain: string;
+	readonly motion?: AdMotion | 'none';
 }
 
 export function AdNative({
@@ -718,10 +791,11 @@ export function AdNative({
 	headline,
 	description,
 	domain,
+	motion = 'none',
 	href,
 }: AdNativeProps) {
 	return (
-		<AdSlot testid="home-ad-native">
+		<AdSlot testid="home-ad-native" motion={motion}>
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<AdTag label="PR" />
 				<span className={css({ color: AD.inkSoft })}>·</span>
@@ -747,7 +821,7 @@ export function AdNative({
 					borderWidth: '1px',
 					borderStyle: 'solid',
 					borderColor: AD.line,
-					borderRadius: 'lg',
+					borderRadius: 'sm',
 					backgroundColor: AD.card,
 					textDecoration: 'none',
 					_focusVisible: {
@@ -859,7 +933,7 @@ export interface AdCarouselProps {
 
 export function AdCarousel({ items }: AdCarouselProps) {
 	return (
-		<AdSlot testid="home-ad-carousel">
+		<AdSlot testid="home-ad-carousel" motion="slideLeft">
 			<div
 				className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
 			>
@@ -965,7 +1039,7 @@ export function AdPlayable({
 	href,
 }: AdPlayableProps) {
 	return (
-		<AdSlot testid="home-ad-playable">
+		<AdSlot testid="home-ad-playable" motion="pop">
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<AdTag label="プレイアブル広告" />
 				<AdPulse delay="0.6s">
@@ -991,7 +1065,7 @@ export function AdPlayable({
 					borderWidth: '1px',
 					borderStyle: 'solid',
 					borderColor: AD.line,
-					borderRadius: 'lg',
+					borderRadius: 'md',
 					overflow: 'hidden',
 					backgroundColor: AD.ink,
 				})}
@@ -1063,7 +1137,7 @@ export interface AdInstallProps {
 
 export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: AdInstallProps) {
 	return (
-		<AdSlot testid="home-ad-install">
+		<AdSlot testid="home-ad-install" motion="none">
 			<AdTag label="広告" />
 			<div
 				className={css({
@@ -1075,7 +1149,7 @@ export function AdInstall({ iconSrc, iconAlt, name, tagline, ctaLabel, href }: A
 					borderWidth: '1px',
 					borderStyle: 'solid',
 					borderColor: AD.line,
-					borderRadius: 'lg',
+					borderRadius: 'xl',
 					backgroundColor: AD.card,
 				})}
 			>
@@ -1132,6 +1206,7 @@ export interface AdProductProps extends AdVisualProps {
 	readonly ctaLabel: string;
 	/** Optional price/offer text — omitted when the listing has no honest offer to state. */
 	readonly priceLabel?: string;
+	readonly motion?: AdMotion | 'none';
 }
 
 export function AdProduct({
@@ -1142,10 +1217,11 @@ export function AdProduct({
 	domain,
 	ctaLabel,
 	priceLabel,
+	motion = 'none',
 	href,
 }: AdProductProps) {
 	return (
-		<AdSlot testid="home-ad-product">
+		<AdSlot testid="home-ad-product" motion={motion}>
 			<AdTag label="スポンサー広告" />
 			<a
 				href={href}
@@ -1155,7 +1231,7 @@ export function AdProduct({
 					borderWidth: '1px',
 					borderStyle: 'solid',
 					borderColor: AD.line,
-					borderRadius: 'lg',
+					borderRadius: 'md',
 					overflow: 'hidden',
 					backgroundColor: AD.card,
 					textDecoration: 'none',

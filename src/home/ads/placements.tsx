@@ -206,3 +206,17 @@ export function AdToolNative() {
 		/>
 	);
 }
+
+/** Second native unit so the rail stack fills the page height. */
+export function AdToolNativeCounter() {
+	return (
+		<AdNative
+			imageSrc={preview('text-counter')}
+			imageAlt="Text Counter の画面。入力テキストと文字数の計測結果。"
+			headline="テキストの文字数、秒で数えられます。"
+			description="文字数・バイト数・行数をブラウザだけで計測。"
+			domain="rebuildup.dev"
+			href="/tools/text-counter"
+		/>
+	);
+}

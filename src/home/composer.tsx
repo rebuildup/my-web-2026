@@ -11,6 +11,7 @@ import {
 	AdToolInstall,
 	AdToolLinkCard,
 	AdToolNative,
+	AdToolNativeCounter,
 	AdToolPlayable,
 	AdToolProduct,
 	AdToolRect,
@@ -170,11 +171,9 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			>
 				本文へスキップ
 			</a>
-			<Container>
-				<div className={css({ paddingBlock: '6' })}>
-					<AdTopBanner />
-				</div>
-			</Container>
+			<div className={css({ paddingBlock: '6', paddingInline: { base: '4', lg: '6' } })}>
+				<AdTopBanner />
+			</div>
 			<Hero />
 			<main id="main">
 				{/* Issue #925 — the body grid is ad-defined, the way real
@@ -185,12 +184,13 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    between sections — that persistent occupancy is what
 				    makes a page read as an ad surface. On base the rail
 				    stacks after the article in reading order. */}
-				<Container
+				<div
 					className={css({
 						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1fr) 19rem' },
+						gridTemplateColumns: { base: '1fr', xl: 'minmax(0, 1fr) 22rem' },
 						columnGap: '10',
 						alignItems: 'start',
+						paddingInline: { base: '4', lg: '6' },
 					})}
 				>
 					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
@@ -341,15 +341,16 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							display: 'flex',
 							flexDirection: 'column',
 							gap: '6',
-							position: { lg: 'sticky' },
-							top: { lg: '6' },
+							position: { xl: 'sticky' },
+							top: { xl: '6' },
 						})}
 					>
 						<AdToolNative />
 						<AdToolInstall />
 						<AdToolProduct />
+						<AdToolNativeCounter />
 					</aside>
-				</Container>
+				</div>
 			</main>
 			<Footer />
 			<PetCompanion />

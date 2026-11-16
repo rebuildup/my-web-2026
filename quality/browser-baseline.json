@@ -786,6 +786,12 @@
 			],
 			"min_files": 7,
 			"role": "App shell: client entry, its zod non-JIT CSP configuration, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
+		},
+		{
+			"id": "vendor",
+			"root": "src/vendor",
+			"min_files": 1,
+			"role": "Vendored third-party server-side code (github-readme-stats-fast, Issue #933): renders SVG at the HTTP boundary and never ships to a browser, but the files are scanned like every other src/** file so an adopted browser feature is caught by the same Baseline gate"
 		}
 	],
 	"features": [

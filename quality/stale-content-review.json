@@ -46,6 +46,16 @@
 			"path": "src/privacy/data-lifecycle.ts",
 			"expression": "For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.",
 			"reason": "not-published: the registry entry `current-projects-signature` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
+		},
+		{
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
+			"reason": "not-published: the registry entry `discord-presence-snapshot` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
+		},
+		{
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
+			"reason": "not-published: the registry entry `discord-presence-snapshot` has publication.status `pending`, so its wording renders nowhere (src/privacy/data-lifecycle.ts, filterPublishedEntries). Remove this exclusion when the entry is published."
 		}
 	],
 	"expressions": [

@@ -49,17 +49,13 @@ export function isPromotionActive(
  * ONE row is featured — the section has one emphasis position, and
  * two pinned entries would cancel each other out visually.
  */
-export function selectGuideRows(
-	ledger: readonly GuideEntry[],
-	today: string,
-): readonly GuideRow[] {
+export function selectGuideRows(ledger: readonly GuideEntry[], today: string): readonly GuideRow[] {
 	const active = ledger
 		.map((entry, index) => ({ entry, index, priority: entry.promotion?.priority ?? 0 }))
 		.filter(({ entry }) => isPromotionActive(entry.promotion, today));
 	const winner = active.length
 		? active.reduce((best, row) =>
-				row.priority > best.priority ||
-				(row.priority === best.priority && row.index < best.index)
+				row.priority > best.priority || (row.priority === best.priority && row.index < best.index)
 					? row
 					: best,
 			)

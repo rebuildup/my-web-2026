@@ -44,13 +44,9 @@ describe('promotion windows', () => {
 	});
 
 	it('fails closed on malformed or reversed windows', () => {
-		expect(
-			isPromotionActive({ startsOn: '2026-11-30', endsOn: '2026-11-01' }, TODAY),
-		).toBe(false);
+		expect(isPromotionActive({ startsOn: '2026-11-30', endsOn: '2026-11-01' }, TODAY)).toBe(false);
 		expect(isPromotionActive({ startsOn: 'x', endsOn: '2026-11-30' }, TODAY)).toBe(false);
-		expect(isPromotionActive({ startsOn: '2026-11-01', endsOn: '2026-13-01' }, TODAY)).toBe(
-			false,
-		);
+		expect(isPromotionActive({ startsOn: '2026-11-01', endsOn: '2026-13-01' }, TODAY)).toBe(false);
 		expect(isPromotionActive(undefined, TODAY)).toBe(false);
 	});
 });
@@ -95,12 +91,8 @@ describe('href rules', () => {
 describe('shipped ledger vs the route tree', () => {
 	// Static `path: '…'` entries in the generated tree. Dynamic
 	// segments (`$slug`) are matched by prefix against the pattern.
-	const staticPaths = new Set(
-		[...routeTreeSource.matchAll(/path: '([^']+)'/g)].map((m) => m[1]),
-	);
-	const dynamicPrefixes = [...routeTreeSource.matchAll(/path: '([^']*\$[^']*)'/g)].map(
-		(m) => m[1],
-	);
+	const staticPaths = new Set([...routeTreeSource.matchAll(/path: '([^']+)'/g)].map((m) => m[1]));
+	const dynamicPrefixes = [...routeTreeSource.matchAll(/path: '([^']*\$[^']*)'/g)].map((m) => m[1]);
 
 	function routeExists(href: string): boolean {
 		if (staticPaths.has(href)) return true;

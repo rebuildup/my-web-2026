@@ -28,6 +28,7 @@ interface GraphQLResponse {
 	data?: unknown;
 	status: number;
 	statusText: string;
+	errors?: Array<{ type: string; message: string }>;
 }
 
 interface TopLangsGraphQLResponse {
@@ -49,6 +50,7 @@ interface TopLangsGraphQLResponse {
 
 interface FetcherVariables {
 	login: string;
+	[key: string]: unknown;
 }
 
 /**

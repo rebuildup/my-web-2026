@@ -262,7 +262,9 @@ function calculateStreaks(contributions: Record<string, number>): StreakData {
 
 	const currentYear = now.getUTCFullYear();
 	const longestEndIncludeYear =
-		longestStreakEnd && new Date(longestStreakEnd).getUTCFullYear() !== currentYear;
+		longestStreakEnd !== null &&
+		longestStreakEnd !== '' &&
+		new Date(longestStreakEnd).getUTCFullYear() !== currentYear;
 
 	return {
 		currentStreak,

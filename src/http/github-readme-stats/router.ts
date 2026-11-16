@@ -41,6 +41,25 @@ import { isLocaleAvailable } from '../../vendor/github-readme-stats-fast/transla
 // Module scope so token rotation survives across requests on a warm instance
 let tokenIndex = 0;
 
+/**
+ * The vendored fetchers only read string env vars (`GITHUB_README_STATS_PAT_*`,
+ * `GITHUB_TOKEN`, `CACHE_SECONDS`). `Env` also carries bindings (D1, R2, …)
+ * that are not strings, so the router hands the vendor a plain string view.
+ */
+function stringEnv(env: Env): Record<string, string | undefined> {
+	const out: Record<string, string | undefined> = {};
+	for (const [key, value] of Object.entries(env)) {
+		if (typeof value === 'string') out[key] = value;
+	}
+	return out;
+}
+
+/** Optional integer query param: absent or unparseable stays `undefined`. */
+function optInt(value: string | undefined): number | undefined {
+	const parsed = Number.parseInt(value ?? '', 10);
+	return Number.isNaN(parsed) ? undefined : parsed;
+}
+
 function getNextToken(env: Record<string, string | undefined>): string | undefined {
 	const tokens = Object.keys(env)
 		.filter((key) => key.startsWith('GITHUB_README_STATS_PAT_'))
@@ -118,6 +137,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 	}
 
 	try {
+		const env = stringEnv(c.env);
 		const showStats = parseArray(show);
 		// Data key must cover every arg fetchStats receives, incl. `show`
 		const dataKey = `stats:${username}:${include_all_commits}:${exclude_repo}:${showStats.join(',')}`;
@@ -129,7 +149,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 				showStats.includes('prs_merged') || showStats.includes('prs_merged_percentage'),
 				showStats.includes('discussions_started'),
 				showStats.includes('discussions_answered'),
-				c.env,
+				env,
 			),
 		);
 
@@ -138,8 +158,8 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 			CONSTANTS.TWELVE_HOURS,
 			CONSTANTS.TWO_DAY,
 		);
-		cacheSeconds = c.env.CACHE_SECONDS
-			? Number.parseInt(c.env.CACHE_SECONDS, 10) || cacheSeconds
+		cacheSeconds = env.CACHE_SECONDS
+			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
 			: cacheSeconds;
 
 		c.header(
@@ -177,16 +197,16 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		// Stable SVG cache key (Layer 3)
 		const svgKey = `stats-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
 
-		const svg = await svgCacheGetOrSet(svgKey, () =>
+		const svg = await svgCacheGetOrSet(svgKey, async () =>
 			renderStatsCard(stats, {
 				hide: parseArray(hide),
 				show_icons: parseBoolean(show_icons),
 				hide_title: parseBoolean(hide_title),
 				hide_border: parseBoolean(hide_border),
-				card_width: Number.parseInt(card_width ?? '', 10),
+				card_width: optInt(card_width),
 				hide_rank: parseBoolean(hide_rank),
 				include_all_commits: parseBoolean(include_all_commits),
-				line_height,
+				line_height: optInt(line_height),
 				title_color,
 				ring_color,
 				icon_color,
@@ -195,7 +215,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 				bg_color,
 				theme,
 				custom_title,
-				border_radius,
+				border_radius: optInt(border_radius),
 				border_color,
 				number_format,
 				locale: locale ? locale.toLowerCase() : null,
@@ -276,6 +296,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 	}
 
 	try {
+		const env = stringEnv(c.env);
 		// Data key must cover every arg fetchTopLanguages receives
 		const dataKey = `toplangs:${username}:${exclude_repo}:${size_weight}:${count_weight}`;
 		const topLangs = await microCache(dataKey, () =>
@@ -284,7 +305,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 				parseArray(exclude_repo),
 				Number.parseInt(size_weight ?? '', 10) || 1,
 				Number.parseInt(count_weight ?? '', 10) || 0,
-				c.env,
+				env,
 			),
 		);
 
@@ -293,8 +314,8 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 			CONSTANTS.TWO_DAY,
 			CONSTANTS.TEN_DAY,
 		);
-		cacheSeconds = c.env.CACHE_SECONDS
-			? Number.parseInt(c.env.CACHE_SECONDS, 10) || cacheSeconds
+		cacheSeconds = env.CACHE_SECONDS
+			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
 			: cacheSeconds;
 
 		c.header(
@@ -322,20 +343,20 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 			hide_progress,
 		});
 		const svgKey = `toplangs-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, () =>
+		const svg = await svgCacheGetOrSet(svgKey, async () =>
 			renderTopLanguages(topLangs, {
 				custom_title,
 				hide_title: parseBoolean(hide_title),
 				hide_border: parseBoolean(hide_border),
-				card_width: Number.parseInt(card_width ?? '', 10),
+				card_width: optInt(card_width),
 				hide: parseArray(hide),
 				title_color,
 				text_color,
 				bg_color,
 				theme,
 				layout,
-				langs_count: Number.parseInt(langs_count ?? '', 10),
-				border_radius,
+				langs_count: optInt(langs_count),
+				border_radius: optInt(border_radius),
 				border_color,
 				locale: locale ? locale.toLowerCase() : null,
 				disable_animations: parseBoolean(disable_animations),
@@ -382,7 +403,8 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 	}
 
 	try {
-		const token = getNextToken(c.env);
+		const env = stringEnv(c.env);
+		const token = getNextToken(env);
 		if (!token) {
 			return c.body(
 				renderError('Something went wrong', 'GitHub token is not configured', {
@@ -396,7 +418,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		}
 
 		const dataKey = `streak:${username}`;
-		const streak = await microCache(dataKey, () => fetchStreak(username, token, c.env));
+		const streak = await microCache(dataKey, () => fetchStreak(username, token, env));
 
 		// Streaks are pinned to a fixed 1 hour CDN cache; `cache_seconds` is
 		// deliberately not honoured here.
@@ -411,7 +433,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 			border_color,
 		});
 		const svgKey = `streak-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, () =>
+		const svg = await svgCacheGetOrSet(svgKey, async () =>
 			renderStreakCard(username, streak, {
 				theme,
 				hide_border: parseBoolean(hide_border),
@@ -486,16 +508,17 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 	}
 
 	try {
+		const env = stringEnv(c.env);
 		const dataKey = `pin:${username}/${repo}`;
-		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', c.env));
+		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', env));
 
 		let cacheSeconds = clampValue(
 			Number.parseInt(cache_seconds || String(CONSTANTS.PIN_CARD_CACHE_SECONDS), 10),
 			CONSTANTS.ONE_DAY,
 			CONSTANTS.TEN_DAY,
 		);
-		cacheSeconds = c.env.CACHE_SECONDS
-			? Number.parseInt(c.env.CACHE_SECONDS, 10) || cacheSeconds
+		cacheSeconds = env.CACHE_SECONDS
+			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
 			: cacheSeconds;
 
 		c.header(
@@ -517,7 +540,7 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 			description_lines_count,
 		});
 		const svgKey = `pin-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, () =>
+		const svg = await svgCacheGetOrSet(svgKey, async () =>
 			renderRepoCard(repoData, {
 				hide_border: parseBoolean(hide_border),
 				title_color,
@@ -525,11 +548,11 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 				text_color,
 				bg_color,
 				theme,
-				border_radius,
+				border_radius: optInt(border_radius),
 				border_color,
 				show_owner: parseBoolean(show_owner),
 				locale: locale ? locale.toLowerCase() : null,
-				description_lines_count: Number.parseInt(description_lines_count ?? '', 10),
+				description_lines_count: optInt(description_lines_count),
 			}),
 		);
 		return c.body(svg);
@@ -540,7 +563,7 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message, error.secondaryMessage, {
+			renderError(error.message, (error as { secondaryMessage?: string }).secondaryMessage, {
 				title_color,
 				text_color,
 				bg_color,

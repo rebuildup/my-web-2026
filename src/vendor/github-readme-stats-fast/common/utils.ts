@@ -502,11 +502,16 @@ export function getGithubToken(env: Record<string, string | undefined>): string 
  * Send GraphQL request to GitHub API using native fetch.
  * Returns the GraphQL data field directly (responseData.data) for compatibility with fetchers.
  */
-export async function request(
+export async function request<T = unknown>(
 	data: { query: string; variables: Record<string, unknown> },
 	headers: Record<string, string>,
 	env: Record<string, string | undefined>,
-): Promise<{ data: unknown; status: number; statusText: string; errors?: unknown[] }> {
+): Promise<{
+	data: T;
+	status: number;
+	statusText: string;
+	errors?: Array<{ type: string; message: string }>;
+}> {
 	const token = getGithubToken(env);
 	if (!token) {
 		throw new CustomError('GitHub token not configured', CustomError.NO_TOKENS);
@@ -522,10 +527,13 @@ export async function request(
 		body: JSON.stringify(data),
 	});
 
-	const responseData = await response.json();
+	const responseData = (await response.json()) as {
+		data?: T;
+		errors?: Array<{ type: string; message: string }>;
+	};
 	// Return GraphQL data field directly for fetcher compatibility
 	return {
-		data: responseData.data,
+		data: responseData.data as T,
 		status: response.status,
 		statusText: response.statusText,
 		errors: responseData.errors,

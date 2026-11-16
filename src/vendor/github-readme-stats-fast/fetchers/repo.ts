@@ -112,7 +112,9 @@ export async function fetchRepo(
 	);
 
 	// Extract repo data from the response
-	const responseData = res.data as RepoDataResponse | undefined;
+	const responseData = res.data as
+		| (RepoDataResponse & { data?: RepoDataResponse })
+		| undefined;
 	const data = responseData?.data ?? responseData;
 
 	if (!data?.user && !data?.organization) {

@@ -145,6 +145,7 @@ interface FetcherVariables {
 	includeMergedPullRequests?: boolean;
 	includeDiscussions?: boolean;
 	includeDiscussionsAnswers?: boolean;
+	[key: string]: unknown;
 }
 
 /**
@@ -157,7 +158,7 @@ const fetcher = async (
 ): Promise<GraphQLResponse> => {
 	const { after } = variables;
 	const query = after ? GRAPHQL_REPOS_QUERY : GRAPHQL_STATS_QUERY;
-	return request(
+	return request<NonNullable<GraphQLResponse['data']>>(
 		{
 			query,
 			variables,
@@ -194,7 +195,7 @@ const statsFetcher = async (
 		const variables: FetcherVariables = {
 			login: username,
 			first: 100,
-			after: endCursor,
+			after: endCursor ?? undefined,
 			includeMergedPullRequests,
 			includeDiscussions,
 			includeDiscussionsAnswers,
@@ -225,6 +226,9 @@ const statsFetcher = async (
 		endCursor = res.data?.user?.repositories?.pageInfo?.endCursor ?? null;
 	}
 
+	if (!stats) {
+		throw new CustomError('Could not fetch stats.', CustomError.GRAPHQL_ERROR);
+	}
 	return stats;
 };
 
@@ -270,7 +274,7 @@ const totalCommitsFetcher = async (
 		throw new Error(String(err));
 	}
 
-	const totalCount = res.data?.total_count;
+	const totalCount = (res.data as { total_count?: number } | undefined)?.total_count;
 	if (!totalCount || Number.isNaN(totalCount)) {
 		throw new CustomError('Could not fetch total commits.', CustomError.GITHUB_REST_API_ERROR);
 	}

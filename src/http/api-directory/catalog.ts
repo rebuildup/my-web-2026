@@ -146,7 +146,8 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		authentication: 'anonymous',
 		authForm: 'none',
 		rateLimitBinding: 'RATE_LIMIT_READ',
-		errorForm: '400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
 		responseExample: {
 			contentType: 'image/svg+xml',
 			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
@@ -160,13 +161,13 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		authentication: 'anonymous',
 		authForm: 'none',
 		rateLimitBinding: 'RATE_LIMIT_READ',
-		errorForm: '400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
 		responseExample: {
 			contentType: 'image/svg+xml',
 			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
 		},
-		purpose:
-			'Public top languages card. Anonymous access. Returns SVG.',
+		purpose: 'Public top languages card. Anonymous access. Returns SVG.',
 	},
 	{
 		path: '/api/v1/github-readme-stats/api/streak',
@@ -174,7 +175,8 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		authentication: 'anonymous',
 		authForm: 'none',
 		rateLimitBinding: 'RATE_LIMIT_READ',
-		errorForm: '400 missing_username; 401 token_not_configured; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		errorForm:
+			'400 missing_username; 401 token_not_configured; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
 		responseExample: {
 			contentType: 'image/svg+xml',
 			cacheControl: 'max-age=3600, s-maxage=3600, stale-while-revalidate=3600',
@@ -188,13 +190,13 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		authentication: 'anonymous',
 		authForm: 'none',
 		rateLimitBinding: 'RATE_LIMIT_READ',
-		errorForm: '400 missing_username_or_repo; 404 repo_not_found; 500 upstream_error; SVG error card always returned on failure',
+		errorForm:
+			'400 missing_username_or_repo; 404 repo_not_found; 500 upstream_error; SVG error card always returned on failure',
 		responseExample: {
 			contentType: 'image/svg+xml',
 			cacheControl: 'max-age=604800, s-maxage=604800, stale-while-revalidate=604800',
 		},
-		purpose:
-			'Public repository pin card. Anonymous access. Returns SVG.',
+		purpose: 'Public repository pin card. Anonymous access. Returns SVG.',
 	},
 ];
 

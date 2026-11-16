@@ -10,6 +10,7 @@ import {
 	getCurrentProjects,
 	getHomeCounter,
 	getHomeDataSource,
+	getHomeGitHubActivity,
 	getHomeReactions,
 	getHomeSystemStatus,
 	recordHomeHit,
@@ -38,7 +39,16 @@ export const Route = createFileRoute('/')({
 		// never disagree about which day they describe (Issue #316).
 		const observedAt = new Date().toISOString();
 		const today = observedAt.slice(0, 10);
-		const [statuses, reactions, counter, dataSource, projects, portfolioProjects, discordPresence] =
+		const [
+			statuses,
+			reactions,
+			counter,
+			dataSource,
+			projects,
+			portfolioProjects,
+			githubActivity,
+			discordPresence,
+		] =
 			await Promise.all([
 				getHomeSystemStatus(),
 				getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
@@ -56,6 +66,10 @@ export const Route = createFileRoute('/')({
 				listPortfolioProjects({ data: { limit: 6 } })
 					.then((page) => page.projects)
 					.catch(() => null),
+				// Issue #319 — the committed GitHub activity snapshot,
+				// projected for the status card. Same committed-data rule
+				// as the projects section: no runtime fetch.
+				getHomeGitHubActivity({ data: {} }).catch(() => null),
 				// Issue #320 — Discord presence card from committed snapshot.
 				// Degrades cleanly when snapshot is missing/stale/invalid.
 				// No runtime fetch to Discord from the Worker.
@@ -78,6 +92,7 @@ export const Route = createFileRoute('/')({
 			// *now*, and a claim that changes without a commit cannot be
 			// reviewed. There is no runtime fetch here.
 			projects,
+			githubActivity,
 			dataSource,
 			// Issue #925 — map the public portfolio rows into the narrow
 			// shape the ad placements consume. Projects without a

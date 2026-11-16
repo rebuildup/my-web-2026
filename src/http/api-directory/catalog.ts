@@ -282,6 +282,12 @@ export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
 			'Boundary middleware mount (cache isolation, request id, CSRF guard, CORS). It runs on the way to a route and answers nothing itself, so it is not a published contract.',
 	},
 	{
+		method: 'PUT',
+		path: '/api/v1/presence/discord',
+		reason:
+			'Operator ingest endpoint (Issue #320): the operator-side Discord Gateway script pushes the owner-presence snapshot here. It is a write-only pipeline boundary with a dedicated discord_presence:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',
+	},
+	{
 		method: 'ALL',
 		path: '/*',
 		reason:

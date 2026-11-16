@@ -120,6 +120,15 @@ export const CORS_ROUTES: readonly CorsRoute[] = Object.freeze([
 		methods: Object.freeze(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS']),
 	},
 	{
+		path: '/api/v1/presence',
+		klass: 'credentialed',
+		// `PUT /discord` — operator-side ingest of the owner's Discord
+		// presence snapshot (Issue #320). API-key credentialed like the
+		// other write surfaces; same-origin `Origin` evidence is already
+		// required by the CSRF guard.
+		methods: Object.freeze(['PUT', 'OPTIONS']),
+	},
+	{
 		path: '/api/v1/reaction-images',
 		klass: 'public-read',
 		// `GET /:id`, public by design (see `reactionsRouter`).

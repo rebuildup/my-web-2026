@@ -19,6 +19,7 @@
 			"worker-configuration.d.ts",
 			"src/routeTree.gen.ts",
 			"src/portfolio/notion/generated",
+			"skills",
 			"external",
 			"docs/verification/content",
 			"src/keyboard/sources"

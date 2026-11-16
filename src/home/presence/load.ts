@@ -16,6 +16,7 @@
  * unavailable — fail closed, never guess.
  */
 
+import { createServerFn } from '@tanstack/react-start';
 import type { DiscordPresenceCard } from './reader';
 import { loadDiscordPresenceCardFromSource } from './reader';
 
@@ -40,27 +41,35 @@ function unavailableCard(): Promise<DiscordPresenceCard> {
  * Loads the Discord presence card for the home page.
  * Returns a DiscordPresenceCard (available=true or false).
  * Never throws — failures are encoded in the card's available=false.
+ *
+ * `createServerFn` is load-bearing, not decoration (Issue #951
+ * audit): a plain exported async function is reachable from the
+ * client bundle through the `home/public.ts` barrel, which shipped
+ * the reader + snapshot JSON to every route. The server-fn wrapper
+ * keeps the whole read path server-side.
  */
-export async function getDiscordPresence(): Promise<DiscordPresenceCard> {
-	try {
-		const { env } = await import('cloudflare:workers');
-		const envLike = env as unknown as PresenceEnv;
-		const expectedUserId = envLike.DISCORD_PRESENCE_USER_ID;
-		if (!envLike.DB || !expectedUserId) {
+export const getDiscordPresence = createServerFn({ method: 'GET' }).handler(
+	async (): Promise<DiscordPresenceCard> => {
+		try {
+			const { env } = await import('cloudflare:workers');
+			const envLike = env as unknown as PresenceEnv;
+			const expectedUserId = envLike.DISCORD_PRESENCE_USER_ID;
+			if (!envLike.DB || !expectedUserId) {
+				return unavailableCard();
+			}
+			const row = await envLike.DB.prepare(
+				'SELECT payload FROM discord_presence_snapshot WHERE id = 1',
+			).first<{ payload: string }>();
+			if (!row?.payload) {
+				return unavailableCard();
+			}
+			const payload = row.payload;
+			return loadDiscordPresenceCardFromSource(
+				{ read: async () => payload },
+				{ expectedUserId, maxAgeMs: MAX_AGE_MS },
+			);
+		} catch {
 			return unavailableCard();
 		}
-		const row = await envLike.DB.prepare(
-			'SELECT payload FROM discord_presence_snapshot WHERE id = 1',
-		).first<{ payload: string }>();
-		if (!row?.payload) {
-			return unavailableCard();
-		}
-		const payload = row.payload;
-		return loadDiscordPresenceCardFromSource(
-			{ read: async () => payload },
-			{ expectedUserId, maxAgeMs: MAX_AGE_MS },
-		);
-	} catch {
-		return unavailableCard();
-	}
-}
+	},
+);

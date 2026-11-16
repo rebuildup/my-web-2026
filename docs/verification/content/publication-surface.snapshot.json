@@ -452,22 +452,11 @@
 				]
 			},
 			{
-				"url": "http://www.w3.org/1999/xlink",
-				"host": "www.w3.org",
-				"kind": "external",
-				"identifier": true,
-				"files": [
-					"external/prototype/public/vite.svg"
-				]
-			},
-			{
 				"url": "http://www.w3.org/2000/svg",
 				"host": "www.w3.org",
 				"kind": "external",
 				"identifier": true,
 				"files": [
-					"external/prototype/public/vite.svg",
-					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
@@ -696,19 +685,9 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
-				"host": "fonts.googleapis.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"external/prototype/index.html"
 				]
 			},
 			{
@@ -726,7 +705,6 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
@@ -1750,7 +1728,6 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/tools/manifest.json"
 				]
 			},
@@ -3389,30 +3366,11 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://github.com/rebuildup/GRI-2nd",
-			"https://github.com/rebuildup/ai-knowledge",
-			"https://github.com/rebuildup/atcoder-kit",
-			"https://github.com/rebuildup/key-map-kanata",
-			"https://github.com/rebuildup/procon-2026",
-			"https://github.com/rebuildup/readmark",
-			"https://github.com/rebuildup/tool-ae-expression",
-			"https://github.com/rebuildup/tool-business-mail-block",
-			"https://github.com/rebuildup/tool-code-type-p5",
-			"https://github.com/rebuildup/tool-color-palette",
-			"https://github.com/rebuildup/tool-fillgen",
-			"https://github.com/rebuildup/tool-history-quiz",
-			"https://github.com/rebuildup/tool-mic-level",
-			"https://github.com/rebuildup/tool-pi-game",
-			"https://github.com/rebuildup/tool-pomodoro",
-			"https://github.com/rebuildup/tool-qr-generator",
-			"https://github.com/rebuildup/tool-sequential-png-preview",
-			"https://github.com/rebuildup/tool-svg2tsx",
-			"https://github.com/rebuildup/tool-text-counter",
-			"https://github.com/rebuildup/ube-kosen-map",
-			"https://github.com/rebuildup/writing-skills"
+		"addedExternalUrls": [],
+		"removedExternalUrls": [
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 		],
-		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -3420,109 +3378,14 @@
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/GRI-2nd"
+				"message": "External URL removed: http://www.w3.org/1999/xlink"
 			},
 			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/ai-knowledge"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/atcoder-kit"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/key-map-kanata"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/procon-2026"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/readmark"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-ae-expression"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-business-mail-block"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-code-type-p5"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-color-palette"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-fillgen"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-history-quiz"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-mic-level"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-pi-game"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-pomodoro"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-qr-generator"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-sequential-png-preview"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-svg2tsx"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/tool-text-counter"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/ube-kosen-map"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/writing-skills"
+				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 			}
 		]
 	}

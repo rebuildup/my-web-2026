@@ -14,13 +14,13 @@
 import { describe, expect, it } from 'vitest';
 import routeTreeSource from '../../routeTree.gen.ts?raw';
 import { GUIDE_LEDGER } from './ledger';
+import type { GuideEntry } from './ledger';
 import {
 	isExternalGuideHref,
 	isInternalGuideHref,
 	isPromotionActive,
 	selectGuideRows,
 } from './select';
-import type { GuideEntry } from './ledger';
 
 const TODAY = '2026-11-16';
 

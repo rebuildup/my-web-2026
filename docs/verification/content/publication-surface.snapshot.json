@@ -371,6 +371,7 @@
 			"script.google.com",
 			"scripts.sil.org",
 			"tiny.one",
+			"twitch.tv",
 			"twitter.com",
 			"use.typekit.net",
 			"via.placeholder.com",
@@ -3817,6 +3818,15 @@
 				]
 			},
 			{
+				"url": "https://twitch.tv/example",
+				"host": "twitch.tv",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/presence/fixtures.ts"
+				]
+			},
+			{
 				"url": "https://twitter.com/361do_design/status/1905290284763857355",
 				"host": "twitter.com",
 				"kind": "external",
@@ -5533,13 +5543,28 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://twitch.tv/example"
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"twitch.tv"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host twitch.tv appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://twitch.tv/example"
+			}
+		]
 	}
 }

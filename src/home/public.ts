@@ -18,3 +18,4 @@ export { KNOWN_INCIDENTS } from './status/incidents';
 export { getHomeCounter, recordHomeHit } from './access/load';
 export type { HomeCounterData } from './access/load';
 export { getHomeGitHubActivity } from './activity/load';
+export { getDiscordPresence } from './presence/load';

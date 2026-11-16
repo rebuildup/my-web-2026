@@ -6,6 +6,8 @@ import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../../editorial/social-card';
+import { HOME_REACTIONS_TARGET, getHomeReactions } from '../../home/public';
+import { ReactionsWidget } from '../../home/reactions/widget';
 import { PortfolioList } from '../../portfolio/components';
 import { listPortfolioProjects } from '../../portfolio/public';
 import {
@@ -15,6 +17,8 @@ import {
 	type PortfolioProject,
 } from '../../portfolio/schema';
 
+/** Target key for the portfolio list page reactions. */
+export const PORTFOLIO_REACTIONS_TARGET = 'portfolio-list';
 /**
  * `/portfolio` — list route (Issue #77, Issue #199).
  *
@@ -50,7 +54,8 @@ export const Route = createFileRoute('/portfolio/')({
 		const page = await listPortfolioProjects({
 			data: { facets: activeFacets.length > 0 ? activeFacets : undefined },
 		});
-		return { initialPage: page, activeFacets };
+		const reactions = await getHomeReactions({ data: { target: PORTFOLIO_REACTIONS_TARGET } });
+		return { initialPage: page, activeFacets, reactions };
 	},
 	head: ({ loaderData }) => {
 		const title = 'Portfolio — rebuildup.dev';
@@ -85,7 +90,7 @@ export const Route = createFileRoute('/portfolio/')({
 });
 
 function PortfolioRoute() {
-	const { initialPage, activeFacets } = Route.useLoaderData();
+	const { initialPage, activeFacets, reactions } = Route.useLoaderData();
 	const [extra, setExtra] = useState<PortfolioProject[]>([]);
 	const [cursor, setCursor] = useState<string | null>(initialPage.nextCursor);
 	const [busy, setBusy] = useState(false);
@@ -117,6 +122,7 @@ function PortfolioRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
+			<ReactionsWidget data={reactions} />
 			<PortfolioList
 				initialPage={initialPage}
 				activeFacets={activeFacets}

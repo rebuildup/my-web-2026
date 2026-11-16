@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { VisitTrail } from './VisitTrail';
 import { GUIDE_LEDGER } from './ledger';
 import type { GuideRow } from './select';
 import { selectGuideRows } from './select';
@@ -238,6 +239,13 @@ export function GuideSection({ today }: GuideSectionProps) {
 							</li>
 						))}
 					</ul>
+					{/* Issue #936 — the visitor's own recently-visited
+					    destinations. Renders nothing on SSR, first visit
+					    or blocked storage; the guide above is complete
+					    without it. */}
+					<div className={css({ marginBlockStart: '8' })}>
+						<VisitTrail />
+					</div>
 				</SectionHeading>
 			</Container>
 		</section>

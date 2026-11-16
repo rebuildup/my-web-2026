@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { createAuditLogger } from '../../logging/logger';
+import { isValidReactionTarget } from '../../reactions/targets';
 import type { ApiKeyContext } from '../api-keys/middleware';
 import { requireApiKey, requireResourceAction } from '../api-keys/middleware';
 import { rateLimitRead, rateLimitWrite } from '../middleware/rate-limit';
@@ -60,16 +61,14 @@ const reactionsLogger = createAuditLogger('http.reactions');
 reactionsRouter.put('/', requireApiKey, rateLimitWrite, jsonBody(parseReactionInput), async (c) => {
 	const apiKey = requireResourceAction(c, 'reactions', 'write');
 	const input = c.get('boundaryBody') as ReactionInputValue;
+	if (!isValidReactionTarget(input.target_key)) {
+		return c.json({ error: 'invalid_target' }, 400);
+	}
 	try {
 		const result = await putReaction(c.env.DB, { ...input, principal: apiKey.id });
 		return c.json({ created: result.created, id: result.id });
 	} catch (err) {
 		if (err instanceof ReactionReferenceError) {
-			// Issue #457: `err.message` names the backing table
-			// (`reaction_images`) and echoes the submitted id, so it
-			// is internal schema detail, not a client-facing reason.
-			// The stable code is self-describing and is the whole
-			// public contract; the message stays in the log.
 			reactionsLogger.warn('image reference rejected', err);
 			return c.json({ error: err.code }, 422);
 		}
@@ -85,6 +84,9 @@ reactionsRouter.delete(
 	async (c) => {
 		const apiKey = requireResourceAction(c, 'reactions', 'write');
 		const input = c.get('boundaryBody') as ReactionInputValue;
+		if (!isValidReactionTarget(input.target_key)) {
+			return c.json({ error: 'invalid_target' }, 400);
+		}
 		const result = await deleteReaction(c.env.DB, { ...input, principal: apiKey.id });
 		return c.json({ deleted: result.deleted });
 	},
@@ -103,6 +105,9 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	const targetResult = parseBoundaryInput('invalid_target', validateTargetKey, targetKeyRaw);
 	if (!targetResult.ok) return rejection(c, targetResult.failure);
 	const targetKey = targetResult.value;
+	if (!isValidReactionTarget(targetKey)) {
+		return c.json({ error: 'invalid_target' }, 400);
+	}
 	// Aggregate scoped to the calling principal (API key id) —
 	// see reactions.aggregateByTarget. Cross-principal rolls up
 	// are explicitly out of scope.

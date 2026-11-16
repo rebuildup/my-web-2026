@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 32 |
-| External hosts | 50 |
+| External hosts | 47 |
 | First-party hosts | 0 |
-| Approved transition | 242 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,11 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (3)
+### Added external hosts (0)
 
-- ``
-- `github-readme-stats-fast.vercel.app`
-- `tiny.one`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -137,8 +135,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/cards/streak-card.js`, `src/vendor/github-readme-stats-fast/src/common/Card.js`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
-| `https://` | `` | external | `src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
@@ -152,9 +149,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://361do.booth.pm/items/6939869` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7758823` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7935112` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
-| `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts`, `src/vendor/github-readme-stats-fast/src/fetchers/stats.js` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
@@ -168,240 +163,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
 | `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ayu-mirage` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=bear` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue-green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue_navy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blueberry` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=buefy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm_pink` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_latte` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_mocha` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=chartreuse-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=city_lights` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt2` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=codeSTACKr` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=darcula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=date_night` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default_repocard` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=discord_old_blurple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dracula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=flag-india` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark_dimmed` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gotham` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=graywhite` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=great-gatsby` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=highcontrast` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=holi` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=jolly` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=kacho_ga` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=maroongold` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=material-palenight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=merko` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=midnight-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=moltack` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=monokai` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=neon` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nightowl` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=noctis_minimus` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nord` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ocean_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=omni` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=one_dark_pro` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=onedark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=outrun` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=panda` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=prussian` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=radical` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=react` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose_pine` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shades-of-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_blue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_red` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=slateorange` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=swift` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=synthwave` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=tokyonight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=transparent` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vision-friendly-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ayu-mirage` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=bear` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue-green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue_navy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blueberry` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=buefy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm_pink` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_latte` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_mocha` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=chartreuse-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=city_lights` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt2` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=codeSTACKr` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=darcula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=date_night` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=default_streakcard` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=discord_old_blurple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dracula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=flag-india` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark_dimmed` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gotham` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=graywhite` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=great-gatsby` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=highcontrast` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=holi` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=jolly` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=kacho_ga` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=maroongold` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=material-palenight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=merko` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=midnight-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=moltack` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=monokai` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=neon` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nightowl` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=noctis_minimus` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nord` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ocean_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=omni` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=one_dark_pro` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=onedark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=outrun` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=panda` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=prussian` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=radical` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=react` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose_pine` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shades-of-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_blue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_red` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=slateorange` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=swift` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=synthwave` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=tokyonight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=transparent` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vision-friendly-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ayu-mirage` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=bear` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue-green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue_navy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blueberry` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=buefy` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm_pink` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_latte` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_mocha` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=chartreuse-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=city_lights` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt2` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=codeSTACKr` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=darcula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=date_night` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default_repocard` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=discord_old_blurple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dracula` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=flag-india` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark_dimmed` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gotham` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=graywhite` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=great-gatsby` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=highcontrast` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=holi` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=jolly` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=kacho_ga` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=maroongold` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=material-palenight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=merko` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=midnight-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=moltack` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=monokai` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=neon` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nightowl` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=noctis_minimus` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nord` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ocean_dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=omni` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=one_dark_pro` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=onedark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=outrun` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=panda` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=prussian` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=radical` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=react` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose_pine` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shades-of-purple` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_blue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_green` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_red` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=slateorange` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-light` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=swift` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=synthwave` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=tokyonight` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=transparent` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vision-friendly-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
-| `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
-| `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -491,7 +253,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
-| `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
 | `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1974102198364876878` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -685,246 +446,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host  appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host github-readme-stats-fast.vercel.app appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host tiny.one appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://
-- **WARN** `W002 external-url-added` External URL added: https://api.github.com/graphql
-- **WARN** `W002 external-url-added` External URL added: https://api.github.com/search/commits?q=author
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default_repocard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=default_streakcard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default_repocard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true
-- **WARN** `W002 external-url-added` External URL added: https://github.com/Pranesh-2005/github-readme-stats-fast
-- **WARN** `W002 external-url-added` External URL added: https://github.com/Pranesh-2005/github-readme-stats-fast.git
-- **WARN** `W002 external-url-added` External URL added: https://tiny.one/readme-stats
 - **WARN** `W003 external-url-removed` External URL removed: http://www.w3.org/1999/xlink
 - **WARN** `W003 external-url-removed` External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

@@ -102,7 +102,13 @@
 	// `docs/runbook/analytics.md`.
 	"vars": {
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
-		"MY_WEB_2026_COUNTER_KEY": "home-page"
+		"MY_WEB_2026_COUNTER_KEY": "home-page",
+		// Issue #320 — the owner Discord snowflake the presence card
+		// is allowed to claim. Non-secret (visible to mutual guild
+		// members); EMPTY means "unconfigured" and the card fails
+		// closed to unavailable. Set the real ID before enabling the
+		// ingest feed — see docs/runbook/discord-presence.md.
+		"DISCORD_PRESENCE_USER_ID": ""
 	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).
 	// `simple` is the only rate-limit configuration shape supported by

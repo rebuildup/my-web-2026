@@ -209,23 +209,6 @@ export const fixtureUnknownCard: DiscordPresenceCard = projectToCard(
 );
 
 /**
- * Expected unavailable card (for missing/stale/failed).
- */
-export const fixtureUnavailableCard: DiscordPresenceCard = {
-	statusLabel: 'Unknown',
-	statusTone: 'neutral',
-	customStatus: null,
-	primaryActivity: null,
-	additionalActivities: [],
-	freshness: {
-		generatedAt: '', // placeholder, actual value set at call time
-		isStale: true,
-		isLive: false,
-	},
-	available: false,
-};
-
-/**
  * Helper to create an unavailable card with current timestamp.
  */
 export function createUnavailableCard(): DiscordPresenceCard {

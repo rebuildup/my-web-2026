@@ -140,6 +140,64 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		responseExample: { key: 'home', count: 42, principal: 'mk_...' },
 		purpose: 'Read aggregate access count for a key, scoped to the authenticated principal.',
 	},
+	{
+		path: '/api/v1/github-readme-stats/api',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+		},
+		purpose:
+			'Public GitHub stats card (total stars, commits, PRs, issues, etc.). Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/top-langs/',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+		},
+		purpose: 'Public top languages card. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/streak',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 401 token_not_configured; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=3600, s-maxage=3600, stale-while-revalidate=3600',
+		},
+		purpose:
+			'Public contribution streak card. Anonymous access but requires server-side GitHub token. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/pin/',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username_or_repo; 404 repo_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=604800, s-maxage=604800, stale-while-revalidate=604800',
+		},
+		purpose: 'Public repository pin card. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

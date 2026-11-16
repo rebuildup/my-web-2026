@@ -191,6 +191,9 @@ export default defineConfig({
 			// environment — `vm.Script` in Node collides with the
 			// happy-dom shim — so we exclude them from this config.
 			'**/*.client.test.{ts,tsx}',
+			// Vendored upstream sources keep their own test suite;
+			// the repository contract is covered by src/http/github-readme-stats.
+			'src/vendor/**',
 		],
 		// Apply the canonical Better Auth + auth_invitation schema to
 		// the local D1 binding BEFORE any test file is loaded. The

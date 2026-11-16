@@ -15,6 +15,7 @@ import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 import { securityTxtRouter } from './security-txt/router';
 import { seoRouter } from './seo/router';
+import { githubReadmeStatsRouter } from './github-readme-stats/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -181,6 +182,7 @@ externalBoundary.route('/', securityTxtRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
+externalBoundary.route('/api/v1/github-readme-stats', githubReadmeStatsRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

@@ -18,5 +18,17 @@
 		"@storybook/react",
 		"@notionhq/notion-mcp-server"
 	],
-	"ignoreExportsUsedInFile": true
+	"ignoreExportsUsedInFile": true,
+	"ignoreIssues": {
+		"src/vendor/**": [
+			"files",
+			"exports",
+			"types",
+			"duplicates",
+			"nsExports",
+			"nsTypes",
+			"enumMembers",
+			"namespaceMembers"
+		]
+	}
 }

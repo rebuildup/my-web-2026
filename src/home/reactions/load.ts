@@ -5,20 +5,23 @@ import type { ReactionAggregate } from '../../http/reactions/schema';
 import { createAuditLogger } from '../../logging/logger';
 import type { CatalogEntry } from '../../reactions/emoji-catalog';
 import {
+	MAX_EMOJI_SLUG_LEN,
 	insertCatalogEntry,
 	loadCatalog,
 	validateCodepoint,
 	validateSlug,
 } from '../../reactions/emoji-catalog';
+import { HOME_REACTIONS_TARGET, isValidReactionTarget } from '../../reactions/targets';
+import type { DataSourceDescriptor } from '../status/data-source';
 import {
+	ACTOR_COOKIE_MAX_AGE_SECONDS,
 	buildActorCookieSetHeader,
 	generateActorId,
 	isWellFormedActorId,
 	readActorIdFromCookieHeader,
 } from './cookie';
-import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
+import { validateEmojiSlug } from './emoji-catalog';
 import { readProductionReactionAggregates } from './production-read';
-import type { DataSourceDescriptor } from '../status/data-source';
 
 const reactionsLogger = createAuditLogger('home.reactions');
 
@@ -156,10 +159,6 @@ export interface HomeReactionMutationResult {
 	created?: boolean;
 	deleted?: boolean;
 }
-
-/** Default target key — single canonical home page. */
-export const HOME_REACTIONS_TARGET = 'home-page';
-
 export interface HomeReactionsEnv {
 	MY_WEB_2026_CONSUMER_API_KEY?: string;
 	MY_WEB_2026_REACTIONS_TARGET?: string;
@@ -527,12 +526,17 @@ function readRequestContext(): HomeReactionsRequestContext {
 export const getHomeReactions = createServerFn({ method: 'GET' })
 	.validator(GetInput)
 	.handler(async ({ data }): Promise<HomeReactionsData> => {
+		if (!isValidReactionTarget(data.target)) {
+			return {
+				target_key: data.target,
+				aggregates: [],
+				viewer_reactions: [],
+				catalog: [],
+				enabled: false,
+			};
+		}
 		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
-		// The data-source rule is reached with a dynamic import INSIDE
-		// the handler body: the architecture gate allows only
-		// `home/status -> cloudflare`, and the start compiler plugin
-		// removes the handler body from the client build.
 		const { resolveHomeDataSource } = await import('../status/data-source');
 		const dataSource = await resolveHomeDataSource(envLike);
 		return getHomeReactionsImpl(
@@ -549,12 +553,12 @@ export const getHomeReactions = createServerFn({ method: 'GET' })
 export const addHomeReaction = createServerFn({ method: 'POST' })
 	.validator(PutInput)
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
+		if (!isValidReactionTarget(data.target)) {
+			return { ok: false, reason: 'invalid_body' };
+		}
 		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
-		// Resolve the visitor's actor id ONCE so the PUT body and
-		// the Set-Cookie carry the same value (P1 review finding —
-		// see `addHomeReactionImpl` for the rationale).
 		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 		if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
 		const { resolveHomeDataSource } = await import('../status/data-source');
@@ -575,6 +579,9 @@ export const addHomeReaction = createServerFn({ method: 'POST' })
 export const removeHomeReaction = createServerFn({ method: 'POST' })
 	.validator(DeleteInput)
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
+		if (!isValidReactionTarget(data.target)) {
+			return { ok: false, reason: 'invalid_body' };
+		}
 		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
@@ -594,3 +601,4 @@ export const removeHomeReaction = createServerFn({ method: 'POST' })
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;
 	});
+export { HOME_REACTIONS_TARGET } from '../../reactions/targets';

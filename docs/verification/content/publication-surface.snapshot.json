@@ -368,6 +368,7 @@
 			"schema.org",
 			"script.google.com",
 			"scripts.sil.org",
+			"twitch.tv",
 			"twitter.com",
 			"use.typekit.net",
 			"via.placeholder.com",
@@ -1648,6 +1649,15 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://twitch.tv/example",
+				"host": "twitch.tv",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/presence/fixtures.ts"
 				]
 			},
 			{
@@ -3366,26 +3376,27 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+		"addedExternalUrls": [
+			"https://twitch.tv/example"
 		],
-		"addedExternalHosts": [],
+		"removedExternalUrls": [],
+		"addedExternalHosts": [
+			"twitch.tv"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: http://www.w3.org/1999/xlink"
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host twitch.tv appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
-				"code": "W003 external-url-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+				"message": "External URL added: https://twitch.tv/example"
 			}
 		]
 	}

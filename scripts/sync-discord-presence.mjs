@@ -42,7 +42,8 @@
  * presence data is ever printed.
  */
 
-import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { ActivityType, Client, GatewayIntentBits } from 'discord.js';
 
 const INGEST_URL =
@@ -262,7 +263,12 @@ async function main() {
 	await client.login(token);
 }
 
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// Compare REAL paths: on macOS temp dirs live under /var →
+// /private/var, so import.meta.url and argv[1] can differ textually
+// while naming the same file — a textual compare silently skips main.
+const isMain =
+	process.argv[1] &&
+	realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
 if (isMain) {
 	main().catch((err) => {
 		console.error(`sync-discord-presence failed: ${err?.message ?? err}`);

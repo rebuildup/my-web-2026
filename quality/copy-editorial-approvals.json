@@ -1894,7 +1894,7 @@
 			"reviewer": null,
 			"reviewedAt": "2026-11-16",
 			"decision": "pending",
-			"fingerprint": "sha256:c1e174e03430649af18b853a6a3248b5096d195000d085e5193352501b5b20a0",
+			"fingerprint": "sha256:a5234f013687bac4ec73851cdf93625e57e187baa05ad883f64f39ea673aa517",
 			"proposal": {
 				"tool": "agent editorial pass (Devin)",
 				"ran": true,
@@ -2029,6 +2029,54 @@
 					"text": "コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。",
 					"verdict": "intentional",
 					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"after": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"text": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"after": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"text": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"after": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"text": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"after": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"text": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"after": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"text": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"after": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"text": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
 				}
 			],
 			"provenance": {

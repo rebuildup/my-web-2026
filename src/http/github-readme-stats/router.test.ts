@@ -16,12 +16,12 @@ global.fetch = mockFetch;
 
 function createMockRequest(path: string, query: Record<string, string> = {}) {
 	const url = new URL(`https://rebuildup.dev${path}`);
-	Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
+	for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
 	return new Request(url.toString(), { method: 'GET', headers: { 'User-Agent': 'test' } });
 }
 
 function createMockEnv(overrides: Record<string, string | undefined> = {}) {
-	return { ...mockEnv, ...overrides } as any;
+	return { ...mockEnv, ...overrides } as unknown as Env;
 }
 
 function createGraphQLMock(data: unknown, errors?: unknown[]) {

@@ -23,3 +23,4 @@ export {
 	getEnabledReactionTargetKeys,
 	REACTION_TARGETS,
 } from '../reactions/targets';
+export { getHomeGitHubActivity } from './activity/load';

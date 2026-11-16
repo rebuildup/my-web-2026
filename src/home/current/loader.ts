@@ -14,6 +14,8 @@
  * one entry to `FACT_SOURCES` — the component and the page do not change.
  */
 
+import githubActivityJson from '../activity/github-activity.json' with { type: 'json' };
+import { activityProjectRecords, readGitHubActivitySnapshot } from '../activity/snapshot';
 import gitFactsJson from './git-facts.json' with { type: 'json' };
 import type { GitFactsSnapshot } from './providers';
 import {
@@ -23,7 +25,7 @@ import {
 	handwrittenFacts,
 } from './providers';
 import { PROJECT_ROSTER } from './roster';
-import { composeRecords, createCurrentProjectsLoader } from './source';
+import { composeRecords, createCurrentProjectsLoader, selectPublishedProjects } from './source';
 import type { CurrentProjectRecord } from './types';
 
 /**
@@ -55,8 +57,30 @@ export const FACT_SOURCES = [
 	createGitSnapshotSource(GIT_FACTS),
 ] as const;
 
+/**
+ * GitHub-observed projects (Issues #316 / #932), composed from the
+ * committed activity snapshot. An invalid or absent snapshot yields
+ * the empty list — the section degrades to roster+git only.
+ */
+const GITHUB_PROJECTS = (() => {
+	const snapshot = readGitHubActivitySnapshot(githubActivityJson);
+	return snapshot ? activityProjectRecords(snapshot) : [];
+})();
+
 /** The loader the route awaits. */
-export const currentProjectsLoader = createCurrentProjectsLoader(PROJECT_ROSTER, FACT_SOURCES);
+export const currentProjectsLoader = {
+	async loadCurrentProjects(today: string): Promise<readonly CurrentProjectRecord[]> {
+		const base = await createCurrentProjectsLoader(
+			PROJECT_ROSTER,
+			FACT_SOURCES,
+		).loadCurrentProjects(today);
+		// Auto-selected GitHub projects merge into the SAME published
+		// ordering: they carry `github`-stamped facts and compete on the
+		// same level/date rules, so a repository the owner also rostered
+		// is never duplicated (ids are namespaced `gh-`).
+		return selectPublishedProjects([...base, ...GITHUB_PROJECTS], today);
+	},
+};
 
 /**
  * The published records for a given base date, synchronously.

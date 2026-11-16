@@ -11,7 +11,14 @@ function render(today = TODAY): string {
 describe('GuideSection', () => {
 	it('renders every ledger facility as a same-level link with its summary', () => {
 		const html = render();
-		for (const href of ['/about', '/portfolio', '/projects/dotfiles', '/tools', '/keyboard', '/contact']) {
+		for (const href of [
+			'/about',
+			'/portfolio',
+			'/projects/dotfiles',
+			'/tools',
+			'/keyboard',
+			'/contact',
+		]) {
 			expect(html, href).toContain(`href="${href}"`);
 		}
 		expect(html).toContain('サイト内案内');

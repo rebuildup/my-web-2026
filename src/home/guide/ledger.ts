@@ -70,16 +70,14 @@ export const GUIDE_LEDGER = [
 		kind: 'site',
 		href: '/about',
 		titleJa: 'About — この人について',
-		summaryJa:
-			'運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。',
+		summaryJa: '運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。',
 	},
 	{
 		id: 'portfolio',
 		kind: 'site',
 		href: '/portfolio',
 		titleJa: 'Portfolio — 作品',
-		summaryJa:
-			'公開している制作物の一覧。個別の作品ページへはここから辿る。',
+		summaryJa: '公開している制作物の一覧。個別の作品ページへはここから辿る。',
 		children: [
 			{
 				id: 'portfolio-index',
@@ -94,24 +92,21 @@ export const GUIDE_LEDGER = [
 		kind: 'site',
 		href: '/projects/dotfiles',
 		titleJa: 'Dotfiles — 開発環境の設計図',
-		summaryJa:
-			'日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。',
+		summaryJa: '日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。',
 	},
 	{
 		id: 'tools',
 		kind: 'site',
 		href: '/tools',
 		titleJa: 'Tools — ブラウザで使える小物',
-		summaryJa:
-			'インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。',
+		summaryJa: 'インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。',
 	},
 	{
 		id: 'keyboard',
 		kind: 'site',
 		href: '/keyboard',
 		titleJa: 'Keyboard — キーボードレイアウト',
-		summaryJa:
-			'現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。',
+		summaryJa: '現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。',
 	},
 	{
 		id: 'contact',
@@ -125,7 +120,6 @@ export const GUIDE_LEDGER = [
 		kind: 'external',
 		href: 'https://github.com/rebuildup',
 		titleJa: 'GitHub — ソースと活動',
-		summaryJa:
-			'リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。',
+		summaryJa: 'リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。',
 	},
 ] as const satisfies readonly GuideEntry[];

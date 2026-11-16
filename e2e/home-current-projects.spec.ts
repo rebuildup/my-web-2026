@@ -1,14 +1,24 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { activityProjectRecords, readGitHubActivitySnapshot } from '../src/home/activity/snapshot';
+import {
+	type GitFactsSnapshot,
+	gitSnapshotFacts,
+	handwrittenFacts,
+} from '../src/home/current/providers';
 import { PROJECT_ROSTER } from '../src/home/current/roster';
+import { composeRecords, selectPublishedProjects } from '../src/home/current/source';
 
 /**
  * The "現在地 / Where I am now" section on `/` (Issue #316).
  *
- * The section is composed from two committed artefacts — the owner's roster
- * (`src/home/current/roster.ts`) and this repository's git snapshot — so the
- * browser contract is exact:
+ * The section is composed from three committed artefacts — the owner's
+ * roster (`src/home/current/roster.ts`), this repository's git snapshot
+ * and the GitHub activity snapshot (Issues #316 / #932) — so the browser
+ * contract is exact:
  *
  *   - every roster project appears, with its name and its Japanese one-liner;
+ *   - the GitHub-observed projects (`gh-` ids) are published alongside them;
  *   - a measured value is never shown without the word for its source, and a
  *     value the record does not carry is absent rather than filled with a
  *     placeholder;
@@ -18,6 +28,30 @@ import { PROJECT_ROSTER } from '../src/home/current/roster';
  * they change with the repository's history and with the owner's writing, and
  * a test that froze them would fail on every honest edit.
  */
+
+function readJsonArtifact(path: string): unknown {
+	return JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
+}
+
+/**
+ * The published count the loader computes for today, rebuilt from the
+ * same committed artefacts and the same pure functions — the spec never
+ * freezes the number, it re-derives it, so an honest roster or snapshot
+ * edit moves both sides together.
+ */
+function expectedPublishedCount(): number {
+	const today = new Date().toISOString().slice(0, 10);
+	const gitFacts = readJsonArtifact('../src/home/current/git-facts.json') as GitFactsSnapshot;
+	const githubJson = readJsonArtifact('../src/home/activity/github-activity.json');
+	const snapshot = readGitHubActivitySnapshot(githubJson);
+	const githubProjects = snapshot ? activityProjectRecords(snapshot) : [];
+	const rosterRecords = composeRecords(
+		PROJECT_ROSTER,
+		[handwrittenFacts(PROJECT_ROSTER), gitSnapshotFacts(gitFacts)],
+		today,
+	);
+	return selectPublishedProjects([...rosterRecords, ...githubProjects], today).length;
+}
 test.describe('home — current projects section (Issue #316)', () => {
 	test('publishes the section with its own heading', async ({ page }) => {
 		const response = await page.goto('/');
@@ -34,7 +68,15 @@ test.describe('home — current projects section (Issue #316)', () => {
 		await page.goto('/');
 
 		const items = page.locator('[data-testid="home-current-project"]');
-		await expect(items).toHaveCount(PROJECT_ROSTER.length);
+		await expect(items).toHaveCount(expectedPublishedCount());
+
+		// Issue #932 — the GitHub-observed projects share the section under
+		// `gh-` ids; at least one must be published while the committed
+		// snapshot validates.
+		const githubItems = page.locator(
+			'[data-testid="home-current-project"][data-project-id^="gh-"]',
+		);
+		expect(await githubItems.count()).toBeGreaterThan(0);
 
 		for (const project of PROJECT_ROSTER) {
 			const item = page.locator(
@@ -51,7 +93,7 @@ test.describe('home — current projects section (Issue #316)', () => {
 
 		const summary = page.locator('[data-testid="home-current-projects-summary"]');
 		await expect(summary).toHaveCount(1);
-		await expect(summary).toContainText(`全 ${PROJECT_ROSTER.length} 件。`);
+		await expect(summary).toContainText(`全 ${expectedPublishedCount()} 件。`);
 		await expect(summary).toContainText(/時点・直近 30 日の更新は/);
 	});
 

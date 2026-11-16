@@ -3,6 +3,7 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
+import { VisitTrailRecorder } from '../home/guide/VisitTrailRecorder';
 import '../styles.css';
 
 /**
@@ -305,6 +306,11 @@ function RootComponent() {
 				    nothing before hydration, so it can never delay or
 				    change the page it sits on. */}
 				{!isAdminPath ? <AnalyticsConsentControl /> : null}
+				{/* Issue #936 — records public paths into the visitor's
+				    own localStorage trail. Public routes only, renders
+				    nothing, and every storage failure is swallowed in
+				    `recordVisit`. */}
+				{!isAdminPath ? <VisitTrailRecorder /> : null}
 			</body>
 		</html>
 	);

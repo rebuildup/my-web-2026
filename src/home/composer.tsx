@@ -290,7 +290,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						    question is "what exists here and how do I reach
 						    it". */}
 						<GuideSection today={data.observedAt.slice(0, 10)} />
-						<div className={css({ paddingBlock: '16', lg: '24' })} />
+						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
 						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>

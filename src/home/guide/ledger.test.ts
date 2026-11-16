@@ -14,13 +14,13 @@
 import { describe, expect, it } from 'vitest';
 import routeTreeSource from '../../routeTree.gen.ts?raw';
 import { GUIDE_LEDGER } from './ledger';
+import type { GuideEntry } from './ledger';
 import {
 	isExternalGuideHref,
 	isInternalGuideHref,
 	isPromotionActive,
 	selectGuideRows,
 } from './select';
-import type { GuideEntry } from './ledger';
 
 const TODAY = '2026-11-16';
 
@@ -44,13 +44,9 @@ describe('promotion windows', () => {
 	});
 
 	it('fails closed on malformed or reversed windows', () => {
-		expect(
-			isPromotionActive({ startsOn: '2026-11-30', endsOn: '2026-11-01' }, TODAY),
-		).toBe(false);
+		expect(isPromotionActive({ startsOn: '2026-11-30', endsOn: '2026-11-01' }, TODAY)).toBe(false);
 		expect(isPromotionActive({ startsOn: 'x', endsOn: '2026-11-30' }, TODAY)).toBe(false);
-		expect(isPromotionActive({ startsOn: '2026-11-01', endsOn: '2026-13-01' }, TODAY)).toBe(
-			false,
-		);
+		expect(isPromotionActive({ startsOn: '2026-11-01', endsOn: '2026-13-01' }, TODAY)).toBe(false);
 		expect(isPromotionActive(undefined, TODAY)).toBe(false);
 	});
 });
@@ -95,12 +91,8 @@ describe('href rules', () => {
 describe('shipped ledger vs the route tree', () => {
 	// Static `path: '…'` entries in the generated tree. Dynamic
 	// segments (`$slug`) are matched by prefix against the pattern.
-	const staticPaths = new Set(
-		[...routeTreeSource.matchAll(/path: '([^']+)'/g)].map((m) => m[1]),
-	);
-	const dynamicPrefixes = [...routeTreeSource.matchAll(/path: '([^']*\$[^']*)'/g)].map(
-		(m) => m[1],
-	);
+	const staticPaths = new Set([...routeTreeSource.matchAll(/path: '([^']+)'/g)].map((m) => m[1]));
+	const dynamicPrefixes = [...routeTreeSource.matchAll(/path: '([^']*\$[^']*)'/g)].map((m) => m[1]);
 
 	function routeExists(href: string): boolean {
 		if (staticPaths.has(href)) return true;
@@ -121,7 +113,7 @@ describe('shipped ledger vs the route tree', () => {
 			}
 			expect(isInternalGuideHref(item.href), item.id).toBe(true);
 			expect(routeExists(item.href), `${item.id} → ${item.href}`).toBe(true);
-			for (const child of item.children ?? []) {
+			for (const child of 'children' in item ? (item.children ?? []) : []) {
 				expect(isInternalGuideHref(child.href), child.id).toBe(true);
 				expect(routeExists(child.href), `${child.id} → ${child.href}`).toBe(true);
 			}
@@ -130,7 +122,10 @@ describe('shipped ledger vs the route tree', () => {
 
 	it('never points into the admin or another private surface', () => {
 		for (const item of GUIDE_LEDGER) {
-			for (const href of [item.href, ...(item.children ?? []).map((c) => c.href)]) {
+			for (const href of [
+				item.href,
+				...('children' in item ? (item.children ?? []) : []).map((c) => c.href),
+			]) {
 				expect(href.startsWith('/admin'), `${item.id} → ${href}`).toBe(false);
 			}
 		}

@@ -5,11 +5,11 @@
 	"sources": {
 		"public": {
 			"status": "ok",
-			"observedAt": "2026-11-16T02:25:12.832Z"
+			"observedAt": "2026-11-16T13:36:39.135Z"
 		},
 		"private": {
-			"status": "unconfigured",
-			"observedAt": "2026-11-16T02:25:12.832Z"
+			"status": "ok",
+			"observedAt": "2026-11-16T13:36:39.135Z"
 		}
 	},
 	"repos": [
@@ -19,9 +19,9 @@
 			"name": "my-web-2026",
 			"repoFullName": "rebuildup/my-web-2026",
 			"htmlUrl": "https://github.com/rebuildup/my-web-2026",
-			"lastActiveAt": "2026-11-16T02:23:13Z",
+			"lastActiveAt": "2026-11-16T13:36:24Z",
 			"activity": {
-				"events": 6,
+				"events": 2,
 				"windowDays": 30
 			}
 		},
@@ -31,9 +31,21 @@
 			"name": "FlashBeat",
 			"repoFullName": "rebuildup/FlashBeat",
 			"htmlUrl": "https://github.com/rebuildup/FlashBeat",
-			"lastActiveAt": "2026-11-16T01:56:20Z",
+			"lastActiveAt": "2026-11-16T12:30:26Z",
 			"activity": {
-				"events": 5,
+				"events": 3,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "rebuildup/pc-setup",
+			"kind": "public",
+			"name": "pc-setup",
+			"repoFullName": "rebuildup/pc-setup",
+			"htmlUrl": "https://github.com/rebuildup/pc-setup",
+			"lastActiveAt": "2026-11-16T06:30:16Z",
+			"activity": {
+				"events": 0,
 				"windowDays": 30
 			}
 		},
@@ -46,18 +58,6 @@
 			"lastActiveAt": "2026-11-16T00:42:09Z",
 			"activity": {
 				"events": 0,
-				"windowDays": 30
-			}
-		},
-		{
-			"id": "rebuildup/pc-setup",
-			"kind": "public",
-			"name": "pc-setup",
-			"repoFullName": "rebuildup/pc-setup",
-			"htmlUrl": "https://github.com/rebuildup/pc-setup",
-			"lastActiveAt": "2026-11-15T06:32:56Z",
-			"activity": {
-				"events": 1,
 				"windowDays": 30
 			}
 		},
@@ -348,218 +348,308 @@
 				"events": 0,
 				"windowDays": 30
 			}
+		},
+		{
+			"id": "private-ea31e52c3599",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-10-30T01:03:46Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-12e3a776d2ea",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-07T05:20:45Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-fefe2e75d461",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-09T10:09:21Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-b1e2746b06d8",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-16T12:08:18Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-6659ba7b704c",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-10-19T14:20:13Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-d46751ee5966",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-10-24T02:43:57Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-bfba8e729c6d",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-11T12:56:22Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-d9dc248a5f3c",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-12T16:44:19Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-bc256a8bc5d0",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-11-12T08:16:03Z",
+			"activity": {
+				"events": 0,
+				"windowDays": 30
+			}
 		}
 	],
 	"feed": [
 		{
-			"id": "27299831782",
+			"id": "20271336887",
+			"kind": "public",
+			"repoId": "rebuildup/my-web-2026",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:36:26Z"
+		},
+		{
+			"id": "20271248257",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:35:25Z"
+		},
+		{
+			"id": "20271243725",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:35:25Z"
+		},
+		{
+			"id": "20270880360",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssueCommentEvent",
+			"at": "2026-11-16T13:31:36Z"
+		},
+		{
+			"id": "20270880017",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:31:38Z"
+		},
+		{
+			"id": "20270869139",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:31:22Z"
+		},
+		{
+			"id": "20270802473",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:30:36Z"
+		},
+		{
+			"id": "20270800130",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:30:36Z"
+		},
+		{
+			"id": "20270545442",
+			"kind": "public",
+			"repoId": "rebuildup/my-web-2026",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:27:50Z"
+		},
+		{
+			"id": "20270469125",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:26:57Z"
+		},
+		{
+			"id": "20270466259",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:26:57Z"
+		},
+		{
+			"id": "20270413546",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "IssueCommentEvent",
+			"at": "2026-11-16T12:30:45Z"
+		},
+		{
+			"id": "27344349826",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "DeleteEvent",
+			"at": "2026-11-14T08:20:42Z"
+		},
+		{
+			"id": "27344345004",
+			"kind": "public",
+			"repoId": "ido-bata/ae-test",
+			"type": "DeleteEvent",
+			"at": "2026-11-16T11:23:05Z"
+		},
+		{
+			"id": "27344315245",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "DeleteEvent",
+			"at": "2026-11-14T08:20:04Z"
+		},
+		{
+			"id": "20270141271",
+			"kind": "public",
+			"repoId": "ido-bata/ido-bata-server-bot",
+			"type": "PullRequestEvent",
+			"at": "2026-11-16T13:23:29Z"
+		},
+		{
+			"id": "20269472450",
 			"kind": "public",
 			"repoId": "ido-bata/ae-devtools",
+			"type": "IssueCommentEvent",
+			"at": "2026-11-16T12:26:07Z"
+		},
+		{
+			"id": "27343611497",
+			"kind": "public",
+			"repoId": "tastile/tastile-cli",
+			"type": "DeleteEvent",
+			"at": "2026-11-16T07:55:45Z"
+		},
+		{
+			"id": "27343607786",
+			"kind": "public",
+			"repoId": "tastile/tastile-cli",
 			"type": "PushEvent",
-			"at": "2026-11-13T15:22:14Z"
+			"at": "2026-11-16T07:55:43Z"
 		},
 		{
-			"id": "27299824349",
+			"id": "20268924130",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "PushEvent",
-			"at": "2026-11-15T23:22:39Z"
-		},
-		{
-			"id": "20220485417",
-			"kind": "public",
-			"repoId": "ido-bata/ae-devtools",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T02:24:03Z"
+			"at": "2026-11-16T13:10:28Z"
 		},
 		{
-			"id": "20220468185",
-			"kind": "public",
-			"repoId": "ido-bata/ae-devtools",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:23:44Z"
-		},
-		{
-			"id": "20220441344",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:23:13Z"
-		},
-		{
-			"id": "20220424195",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:22:57Z"
-		},
-		{
-			"id": "20220387065",
-			"kind": "public",
-			"repoId": "tastile/tastile-android",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:22:17Z"
-		},
-		{
-			"id": "20220378736",
-			"kind": "public",
-			"repoId": "tastile/tastile-root",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:22:02Z"
-		},
-		{
-			"id": "20220374702",
-			"kind": "public",
-			"repoId": "tastile/tastile-root",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:22:02Z"
-		},
-		{
-			"id": "20220373701",
-			"kind": "public",
-			"repoId": "tastile/tastile-root",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:22:02Z"
-		},
-		{
-			"id": "20220316642",
-			"kind": "public",
-			"repoId": "tastile/tastile-root",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T02:21:02Z"
-		},
-		{
-			"id": "27299394016",
+			"id": "20268915678",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "CreateEvent",
-			"at": "2026-11-15T23:17:37Z"
-		},
-		{
-			"id": "20219978286",
-			"kind": "public",
-			"repoId": "ido-bata/ae-devtools",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:15:05Z"
-		},
-		{
-			"id": "20219891615",
-			"kind": "public",
-			"repoId": "ido-bata/ae-devtools",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:13:33Z"
-		},
-		{
-			"id": "20219863849",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:13:02Z"
-		},
-		{
-			"id": "20219850096",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:12:49Z"
-		},
-		{
-			"id": "20219784938",
-			"kind": "public",
-			"repoId": "tastile/tastile-android",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T02:11:39Z"
+			"at": "2026-11-16T13:10:25Z"
 		},
 		{
-			"id": "27298819611",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "PushEvent",
-			"at": "2026-11-16T01:44:09Z"
-		},
-		{
-			"id": "20219421979",
-			"kind": "public",
-			"repoId": "ido-bata/ae-devtools",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T02:05:06Z"
-		},
-		{
-			"id": "20219382552",
-			"kind": "public",
-			"repoId": "tastile/tastile-root",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T02:04:21Z"
-		},
-		{
-			"id": "20219284661",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:02:31Z"
-		},
-		{
-			"id": "20219276543",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T02:02:24Z"
-		},
-		{
-			"id": "27298054709",
-			"kind": "public",
-			"repoId": "rebuildup/pc-setup",
-			"type": "CreateEvent",
-			"at": "2026-11-13T15:03:24Z"
-		},
-		{
-			"id": "20218929402",
+			"id": "20268911141",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T01:54:29Z"
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:20Z"
 		},
 		{
-			"id": "20218682166",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T01:51:14Z"
-		},
-		{
-			"id": "20218680892",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T01:51:12Z"
-		},
-		{
-			"id": "20218679449",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T01:51:10Z"
-		},
-		{
-			"id": "20218629601",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T01:50:14Z"
-		},
-		{
-			"id": "20218587070",
+			"id": "20268907719",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T01:49:25Z"
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:18Z"
 		},
 		{
-			"id": "20218576304",
+			"id": "20268903193",
 			"kind": "public",
-			"repoId": "ido-bata/ae-a8n",
+			"repoId": "ido-bata/ty-plus",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T01:49:15Z"
+			"at": "2026-11-16T13:10:17Z"
+		},
+		{
+			"id": "20268901504",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:16Z"
+		},
+		{
+			"id": "20268900062",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:12Z"
+		},
+		{
+			"id": "20268899729",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:11Z"
+		},
+		{
+			"id": "20268898315",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:10Z"
+		},
+		{
+			"id": "20268895818",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:08Z"
+		},
+		{
+			"id": "20268886621",
+			"kind": "public",
+			"repoId": "ido-bata/ty-plus",
+			"type": "IssuesEvent",
+			"at": "2026-11-16T13:10:04Z"
 		}
 	]
 }

@@ -6,9 +6,9 @@ import type { PresenceSnapshotValue } from './schema';
  * Single-row upsert into `discord_presence_snapshot` (migration
  * 0011). The stored `payload` is the already-validated wire document
  * serialised verbatim; `received_at` is the server receipt instant.
+ * The table name is written literally — the D1 binding gate
+ * (`scripts/check-d1-sql-binding.mjs`) refuses interpolated SQL.
  */
-
-const TABLE = 'discord_presence_snapshot';
 
 export async function upsertDiscordPresence(
 	db: D1Database,
@@ -17,7 +17,7 @@ export async function upsertDiscordPresence(
 ): Promise<void> {
 	await db
 		.prepare(
-			`INSERT INTO ${TABLE} (id, payload, received_at)
+			`INSERT INTO discord_presence_snapshot (id, payload, received_at)
 			 VALUES (1, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   payload = excluded.payload,

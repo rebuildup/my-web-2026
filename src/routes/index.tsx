@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { HomeAdProject } from '../home/ads/placements';
+import { getDiscordPresence } from '../home/public';
 import {
 	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
@@ -37,7 +38,7 @@ export const Route = createFileRoute('/')({
 		// never disagree about which day they describe (Issue #316).
 		const observedAt = new Date().toISOString();
 		const today = observedAt.slice(0, 10);
-		const [statuses, reactions, counter, dataSource, projects, portfolioProjects] =
+		const [statuses, reactions, counter, dataSource, projects, portfolioProjects, discordPresence] =
 			await Promise.all([
 				getHomeSystemStatus(),
 				getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
@@ -55,6 +56,10 @@ export const Route = createFileRoute('/')({
 				listPortfolioProjects({ data: { limit: 6 } })
 					.then((page) => page.projects)
 					.catch(() => null),
+				// Issue #320 — Discord presence card from committed snapshot.
+				// Degrades cleanly when snapshot is missing/stale/invalid.
+				// No runtime fetch to Discord from the Worker.
+				getDiscordPresence(),
 			]);
 		return {
 			capabilities: CAPABILITIES,
@@ -82,6 +87,9 @@ export const Route = createFileRoute('/')({
 				.map(toHomeAdProject)
 				.filter((project): project is HomeAdProject => project !== null)
 				.slice(0, 4),
+			// Issue #320 — Discord presence card from committed snapshot.
+			// Optional: degrades to unavailable when snapshot missing/stale.
+			discordPresence,
 		};
 	},
 	/**

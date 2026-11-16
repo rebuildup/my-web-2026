@@ -32,16 +32,12 @@ export default defineConfig({
 		environmentOptions: {
 			happyDOM: {
 				settings: {
-					// A `<script src>` in the rendered tree must stay inert: the
-					// consent test mounts the real GA4 tag, and happy-dom would
-					// otherwise fetch googletagmanager.com — a third-party
-					// request from a unit test, and a teardown race with the
-					// next test.
 					disableJavaScriptFileLoading: true,
 					disableJavaScriptEvaluation: true,
 					disableCSSFileLoading: true,
 				},
 			},
 		},
+		setupFiles: ['./test/setup/client-cleanup.ts'],
 	},
 });

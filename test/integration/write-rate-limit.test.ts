@@ -244,7 +244,7 @@ function userAgentFor(index: number): string {
 
 function reactionBody(actorId: string): string {
 	return JSON.stringify({
-		target_key: 'rate-limit-target',
+		target_key: 'home-page',
 		actor_id: actorId,
 		kind: 'emoji',
 		value: '👍',
@@ -496,7 +496,7 @@ describe('write rate limit — what is NOT throttled', { timeout: 60_000 }, () =
 		await spendInsideOneWindow(async (attempt) => {
 			usePrincipal(`rl-reads-${attempt}`);
 			await exhaustWriteBudget(attempt);
-			const aggregates = await probe('/api/v1/reactions?target=rate-limit-target', {
+			const aggregates = await probe('/api/v1/reactions?target=home-page', {
 				headers: AUTH_HEADER,
 			});
 			const count = await probe('/api/v1/access/count/rate-limit-counter', {
@@ -603,7 +603,7 @@ describe('write rate limit — what is NOT throttled', { timeout: 60_000 }, () =
 		const malformed = await probe('/api/v1/reactions', {
 			method: 'PUT',
 			headers: JSON_HEADERS,
-			body: JSON.stringify({ target_key: 'rate-limit-target', actor_id: 'a', kind: 'sticker' }),
+			body: JSON.stringify({ target_key: 'home-page', actor_id: 'a', kind: 'sticker' }),
 		});
 		expect(malformed.status).toBe(400);
 		expect(malformed.error).toBe('invalid_body');
@@ -672,7 +672,7 @@ describe('accepted vs rejected input matrix (measured)', { timeout: 60_000 }, ()
 				await probe('/api/v1/reactions', {
 					method: 'PUT',
 					headers: JSON_HEADERS,
-					body: JSON.stringify({ target_key: 'rate-limit-target', actor_id: 'a', kind: 'sticker' }),
+					body: JSON.stringify({ target_key: 'home-page', actor_id: 'a', kind: 'sticker' }),
 				}),
 			);
 			record(
@@ -707,7 +707,7 @@ describe('accepted vs rejected input matrix (measured)', { timeout: 60_000 }, ()
 			record(
 				'GET /api/v1/reactions',
 				'target 指定（read budget）',
-				await probe('/api/v1/reactions?target=rate-limit-target', {
+				await probe('/api/v1/reactions?target=home-page', {
 					headers: AUTH_HEADER,
 				}),
 			);

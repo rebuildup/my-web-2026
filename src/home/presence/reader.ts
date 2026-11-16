@@ -24,7 +24,6 @@ export type {
 	DiscordPresenceReaderConfig,
 };
 
-const DEFAULT_SNAPSHOT_PATH = 'src/home/presence/discord-presence.json';
 const DEFAULT_MAX_AGE_MS = 15 * 60 * 1000; // 15 minutes
 
 const VALID_STATUSES = ['online', 'idle', 'dnd', 'offline', 'unknown'] as const;
@@ -252,7 +251,6 @@ export function projectToCard(
 
 /**
  * Reads the raw snapshot content from the given source.
- * In production Workers: reads from the ASSETS binding via fetch.
  * In tests: accepts a provided string.
  */
 export interface SnapshotSource {
@@ -290,7 +288,7 @@ export function createTestSnapshotSource(content: string | null): SnapshotSource
 }
 
 /**
- * Reads and validates the committed snapshot from a source.
+ * Reads and validates the stored snapshot document from a source.
  * Fail-closed: any error returns a typed failure result.
  */
 export async function readDiscordPresenceSnapshotFromSource(

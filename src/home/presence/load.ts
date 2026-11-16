@@ -1,26 +1,40 @@
 /**
  * Discord Presence — home route loader.
  *
- * Loads the Discord presence card from the committed snapshot.
- * The snapshot JSON is imported INSIDE the function so it never
- * enters the client bundle (same rule as `activity/load.ts`).
- * Degrades cleanly when no snapshot exists or it fails validation.
+ * Reads the latest owner-presence snapshot from D1
+ * (`discord_presence_snapshot`, migration 0011). The snapshot is
+ * written by `PUT /api/v1/presence/discord`, which is fed by the
+ * operator-side Gateway script `scripts/sync-discord-presence.mjs`
+ * (Issue #320). A Cloudflare Worker cannot hold a Gateway
+ * WebSocket, so the Worker never talks to Discord — it only reads
+ * the last accepted document and lets the reader's freshness check
+ * (`generatedAt` vs `MAX_AGE_MS`) degrade a stopped feed to the
+ * unavailable state instead of showing a stale "online".
  *
- * Issue #320 note: `discord-presence.json` is currently a PLACEHOLDER
- * (generatedAt is the epoch, so the reader's staleness check always
- * fails closed and the card renders its unavailable state). A real
- * snapshot requires an operator-run acquisition mechanism and the
- * owner's Discord user ID — an owner decision tracked outside this
- * ticket. `EXPECTED_USER_ID` must be updated to the real snowflake
- * at the same time, or every genuine snapshot will mismatch and
- * degrade to unavailable.
+ * `env.DISCORD_PRESENCE_USER_ID` (wrangler var, non-secret) pins the
+ * expected owner snowflake; while it is unset the card stays
+ * unavailable — fail closed, never guess.
  */
 
 import type { DiscordPresenceCard } from './reader';
 import { loadDiscordPresenceCardFromSource } from './reader';
 
-const EXPECTED_USER_ID = '123456789012345678'; // PLACEHOLDER — owner decision pending
 const MAX_AGE_MS = 15 * 60 * 1000; // 15 minutes
+
+interface PresenceEnv {
+	DB?: D1Database;
+	DISCORD_PRESENCE_USER_ID?: string;
+}
+
+function unavailableCard(): Promise<DiscordPresenceCard> {
+	// An unreadable source projects to the same unavailable card the
+	// reader returns for every failure mode — one code path, no
+	// invented state.
+	return loadDiscordPresenceCardFromSource(
+		{ read: async () => null },
+		{ expectedUserId: 'unconfigured', maxAgeMs: MAX_AGE_MS },
+	);
+}
 
 /**
  * Loads the Discord presence card for the home page.
@@ -28,12 +42,25 @@ const MAX_AGE_MS = 15 * 60 * 1000; // 15 minutes
  * Never throws — failures are encoded in the card's available=false.
  */
 export async function getDiscordPresence(): Promise<DiscordPresenceCard> {
-	const { default: json } = await import('./discord-presence.json', {
-		with: { type: 'json' },
-	});
-	const source = { read: async () => JSON.stringify(json) };
-	return loadDiscordPresenceCardFromSource(source, {
-		expectedUserId: EXPECTED_USER_ID,
-		maxAgeMs: MAX_AGE_MS,
-	});
+	try {
+		const { env } = await import('cloudflare:workers');
+		const envLike = env as unknown as PresenceEnv;
+		const expectedUserId = envLike.DISCORD_PRESENCE_USER_ID;
+		if (!envLike.DB || !expectedUserId) {
+			return unavailableCard();
+		}
+		const row = await envLike.DB.prepare(
+			'SELECT payload FROM discord_presence_snapshot WHERE id = 1',
+		).first<{ payload: string }>();
+		if (!row?.payload) {
+			return unavailableCard();
+		}
+		const payload = row.payload;
+		return loadDiscordPresenceCardFromSource(
+			{ read: async () => payload },
+			{ expectedUserId, maxAgeMs: MAX_AGE_MS },
+		);
+	} catch {
+		return unavailableCard();
+	}
 }

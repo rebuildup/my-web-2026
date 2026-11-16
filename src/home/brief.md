@@ -617,8 +617,8 @@ The shipped order is the contract, top to bottom:
    `h3` subsections carry the meaningful states: platform health
    (`StatusTiles`), GitHub activity (`GitHubActivityCard`, committed
    snapshot), reactions (`ReactionsWidget`), access counter
-   (`CounterTile`), and Discord presence (`PresenceCard`, committed
-   snapshot).
+   (`CounterTile`), and Discord presence (`PresenceCard`, D1 snapshot
+   fed by the operator-side Gateway script — Issue #320).
 6. **Contact / footer** — participation paths and identity.
 
 ### Advertising stays independent (#931)

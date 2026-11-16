@@ -751,6 +751,57 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			},
 		},
 	},
+	{
+		id: 'discord-presence-snapshot',
+		label: {
+			ja: 'Discord プレゼンススナップショット（D1 `discord_presence_snapshot`、単一行）',
+			en: 'Discord presence snapshot (D1 `discord_presence_snapshot`, single row)',
+		},
+		stores: {
+			ja: '運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。',
+			en: 'The latest presence document for the operator’s own Discord account only: status, custom-status text and emoji, activity / Rich Presence names, details, state, timestamps, asset keys and party info, and the client platform. No message content, no other guild member’s presence, no token.',
+		},
+		retention: {
+			kind: 'until-deleted',
+			statement: {
+				ja: '単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。',
+				en: 'A single row overwritten by each new snapshot. If the feed stops the row remains, and the public side fails closed to "unknown" via the `generatedAt` freshness check. Row deletion is a manual operator action.',
+			},
+		},
+		deletion: {
+			channel: 'operator-action',
+			statement: {
+				ja: '公開面から消すには運営者が D1 の行を削除します。訪問者が自分で削除する経路はありません（本人のデータではないため）。',
+				en: 'Removing it from the public surface is an operator D1 delete. Visitors have no self-service path — it is not their data.',
+			},
+		},
+		transfer: {
+			target: 'none',
+			statement: {
+				ja: '保存された値がこのプラットフォームの外へ送信されることはありません。Discord から運営者側スクリプトへの取得は本人のボット連携であり、このデータベースから第三者への送信はありません。',
+				en: 'Nothing stored here is sent outside this deployment. The Discord → operator-script fetch is the owner’s own bot integration; nothing in this database is transmitted to a third party.',
+			},
+			senders: [],
+		},
+		visibility: {
+			ja: 'ホームのステータス欄に、本人が公開を意図した範囲で表示されます（ステータス・カスタムステータス・アクティビティ名など）。API キーやトークン、他者の情報は公開されません。',
+			en: 'Rendered on the home status section within the scope the owner intends to publish (status, custom status, activity names). API keys, tokens and other people’s data are never published.',
+		},
+		evidence: [
+			'migrations/0011_discord_presence.sql (単一行テーブル)',
+			'src/http/presence/schema.ts (受理するフィールドの allowlist)',
+			'src/http/presence/store.ts (upsert のみ・追記しない)',
+			'src/home/presence/reader.ts (公開側の再検証と鮮度チェック)',
+			'scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)',
+		],
+		publication: {
+			status: 'pending',
+			note: {
+				ja: 'Issue #320 で追加した運営者本人のプレゼンス保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。',
+				en: 'Added by Issue #320. No owner approval of public wording exists yet, so it renders nowhere.',
+			},
+		},
+	},
 ] as const satisfies readonly DataLifecycleEntry[];
 
 /**

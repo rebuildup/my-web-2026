@@ -69,9 +69,11 @@ export const Route = createFileRoute('/')({
 			// projected for the status card. Same committed-data rule
 			// as the projects section: no runtime fetch.
 			getHomeGitHubActivity({ data: {} }).catch(() => null),
-			// Issue #320 — Discord presence card from committed snapshot.
-			// Degrades cleanly when snapshot is missing/stale/invalid.
-			// No runtime fetch to Discord from the Worker.
+			// Issue #320 — Discord presence card from the D1 snapshot
+			// the operator-side Gateway script pushes via
+			// PUT /api/v1/presence/discord. Degrades cleanly when the
+			// row is missing/stale/invalid. No runtime fetch to
+			// Discord from the Worker.
 			getDiscordPresence(),
 		]);
 		return {
@@ -101,8 +103,8 @@ export const Route = createFileRoute('/')({
 				.map(toHomeAdProject)
 				.filter((project): project is HomeAdProject => project !== null)
 				.slice(0, 4),
-			// Issue #320 — Discord presence card from committed snapshot.
-			// Optional: degrades to unavailable when snapshot missing/stale.
+			// Issue #320 — Discord presence card from the D1 snapshot.
+			// Optional: degrades to unavailable when missing/stale.
 			discordPresence,
 		};
 	},

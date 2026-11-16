@@ -3,10 +3,12 @@
  * presence/activities/Rich Presence/custom status snapshot.
  *
  * This module owns the contract types only. The snapshot itself is a
- * committed JSON file produced by an operator-run script (same pattern
- * as `scripts/sync-github-activity.mjs`). The Worker never calls
- * Discord at runtime. No self-bot, no user-token automation, no
- * scraping, no third-party presence data, no private messages.
+ * JSON document stored in D1 (`discord_presence_snapshot`), written
+ * by `PUT /api/v1/presence/discord` from the operator-side Gateway
+ * script `scripts/sync-discord-presence.mjs` (Issue #320). The Worker
+ * never calls Discord at runtime. No self-bot, no user-token
+ * automation, no scraping, no third-party presence data, no private
+ * messages.
  */
 
 export type DiscordPresenceStatus = 'online' | 'idle' | 'dnd' | 'offline' | 'unknown';
@@ -234,7 +236,7 @@ export interface DiscordPresenceCard {
 }
 
 /**
- * Result of reading the committed snapshot file.
+ * Result of reading the stored snapshot document.
  * Fail-closed: any read/parse/validation failure returns an error
  * variant with a reason code; the caller must not invent data.
  */
@@ -250,12 +252,6 @@ export type DiscordPresenceReadResult =
  * Configuration for the snapshot reader.
  */
 export interface DiscordPresenceReaderConfig {
-	/**
-	 * Path to the committed snapshot JSON (relative to repo root).
-	 * Default: 'src/home/presence/discord-presence.json'.
-	 */
-	snapshotPath: string;
-
 	/**
 	 * Expected owner Discord user ID (snowflake). Used for
 	 * ownership validation — a snapshot for a different account

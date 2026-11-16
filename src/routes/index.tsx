@@ -48,33 +48,32 @@ export const Route = createFileRoute('/')({
 			portfolioProjects,
 			githubActivity,
 			discordPresence,
-		] =
-			await Promise.all([
-				getHomeSystemStatus(),
-				getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
-				getHomeCounter({ data: {} }),
-				// Issue #377 — which data source this runtime reads. The
-				// home renders an indicator for every mode except the
-				// deployed production Worker.
-				getHomeDataSource(),
-				getCurrentProjects({ data: { today } }),
-				// Issue #925 — the sponsored rail / carousel promote real
-				// portfolio work through the SAME public read the
-				// /portfolio index uses. A portfolio outage must not take
-				// the home page down with it: the ad surface degrades to
-				// its Tool-only roster.
-				listPortfolioProjects({ data: { limit: 6 } })
-					.then((page) => page.projects)
-					.catch(() => null),
-				// Issue #319 — the committed GitHub activity snapshot,
-				// projected for the status card. Same committed-data rule
-				// as the projects section: no runtime fetch.
-				getHomeGitHubActivity({ data: {} }).catch(() => null),
-				// Issue #320 — Discord presence card from committed snapshot.
-				// Degrades cleanly when snapshot is missing/stale/invalid.
-				// No runtime fetch to Discord from the Worker.
-				getDiscordPresence(),
-			]);
+		] = await Promise.all([
+			getHomeSystemStatus(),
+			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
+			getHomeCounter({ data: {} }),
+			// Issue #377 — which data source this runtime reads. The
+			// home renders an indicator for every mode except the
+			// deployed production Worker.
+			getHomeDataSource(),
+			getCurrentProjects({ data: { today } }),
+			// Issue #925 — the sponsored rail / carousel promote real
+			// portfolio work through the SAME public read the
+			// /portfolio index uses. A portfolio outage must not take
+			// the home page down with it: the ad surface degrades to
+			// its Tool-only roster.
+			listPortfolioProjects({ data: { limit: 6 } })
+				.then((page) => page.projects)
+				.catch(() => null),
+			// Issue #319 — the committed GitHub activity snapshot,
+			// projected for the status card. Same committed-data rule
+			// as the projects section: no runtime fetch.
+			getHomeGitHubActivity({ data: {} }).catch(() => null),
+			// Issue #320 — Discord presence card from committed snapshot.
+			// Degrades cleanly when snapshot is missing/stale/invalid.
+			// No runtime fetch to Discord from the Worker.
+			getDiscordPresence(),
+		]);
 		return {
 			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,

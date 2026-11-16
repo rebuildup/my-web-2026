@@ -577,3 +577,20 @@ next to the element that uses it:
 - Digit grouping does **not** differ today: `en` / `ja` / `ko` all
   render "1,234,567". Recorded as an observation, not an assumption —
   `src/home/format.test.ts` asserts it.
+
+## Site-guide amendment (Issue #929 / Epic #928)
+
+> Supersedes two earlier statements for the TOP PAGE ONLY: "Not an
+> application workspace — no nested routes are reachable from the top"
+> and "Header global navigation is deferred." Epic #928 makes `GET /`
+> a station-directory-style entrance: the guide section
+> (`src/home/guide/`) publishes the site's destinations as "facilities"
+> with one level of subordinate destinations, plus a small set of
+> explicitly chosen external bases. The guide data is a typed,
+> hand-edited ledger (`ledger.ts`) validated against the generated
+> route tree — it is NOT a URL-tree projection and NOT a CMS.
+> Time-boxed promotions emphasise at most one entry inside their
+> window and never remove permanent entries. The guide's visual
+> language and its component live in `src/home/guide/` (Issue #930);
+> this amendment records only the direction change. Other pages keep
+> their existing navigation; nothing here propagates.

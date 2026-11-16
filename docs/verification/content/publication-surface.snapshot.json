@@ -748,7 +748,8 @@
 				"identifier": false,
 				"files": [
 					"src/about/data.ts",
-					"src/contact/channels.json"
+					"src/contact/channels.json",
+					"src/home/guide/ledger.ts"
 				]
 			},
 			{
@@ -829,7 +830,17 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/GRI-2nd",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -865,6 +876,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
@@ -878,11 +890,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/ai-knowledge",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/atcoder-kit",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/design-skills",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -892,6 +923,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/projects/DotfilesIntroductionPage.tsx",
 					"src/projects/snapshots/dotfiles.json"
 				]
@@ -1023,6 +1055,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/key-map-kanata",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/kosen-fes-2025",
 				"host": "github.com",
 				"kind": "external",
@@ -1056,6 +1097,7 @@
 				"identifier": false,
 				"files": [
 					"src/contact/channels.json",
+					"src/home/activity/github-activity.json",
 					"src/home/footer.tsx",
 					"src/portfolio/seed.ts"
 				]
@@ -1104,8 +1146,18 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/projects/DotfilesIntroductionPage.tsx",
 					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/procon-2026",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1114,7 +1166,17 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/readmark",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1127,12 +1189,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-ae-expression",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-ae-expression.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-business-mail-block",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1145,12 +1225,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-code-type-p5",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-code-type-p5.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-color-palette",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1163,12 +1261,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-fillgen",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-fillgen.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-history-quiz",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1181,12 +1297,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-mic-level",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-mic-level.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-pi-game",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1199,12 +1333,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-pomodoro",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-pomodoro.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-qr-generator",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1217,12 +1369,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-sequential-png-preview",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-sequential-png-preview.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-svg2tsx",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1235,12 +1405,39 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-text-counter",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-text-counter.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/writing-skills",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -3192,13 +3389,141 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://github.com/rebuildup/GRI-2nd",
+			"https://github.com/rebuildup/ai-knowledge",
+			"https://github.com/rebuildup/atcoder-kit",
+			"https://github.com/rebuildup/key-map-kanata",
+			"https://github.com/rebuildup/procon-2026",
+			"https://github.com/rebuildup/readmark",
+			"https://github.com/rebuildup/tool-ae-expression",
+			"https://github.com/rebuildup/tool-business-mail-block",
+			"https://github.com/rebuildup/tool-code-type-p5",
+			"https://github.com/rebuildup/tool-color-palette",
+			"https://github.com/rebuildup/tool-fillgen",
+			"https://github.com/rebuildup/tool-history-quiz",
+			"https://github.com/rebuildup/tool-mic-level",
+			"https://github.com/rebuildup/tool-pi-game",
+			"https://github.com/rebuildup/tool-pomodoro",
+			"https://github.com/rebuildup/tool-qr-generator",
+			"https://github.com/rebuildup/tool-sequential-png-preview",
+			"https://github.com/rebuildup/tool-svg2tsx",
+			"https://github.com/rebuildup/tool-text-counter",
+			"https://github.com/rebuildup/ube-kosen-map",
+			"https://github.com/rebuildup/writing-skills"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/GRI-2nd"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/ai-knowledge"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/atcoder-kit"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/key-map-kanata"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/procon-2026"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/readmark"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-ae-expression"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-business-mail-block"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-code-type-p5"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-color-palette"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-fillgen"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-history-quiz"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-mic-level"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-pi-game"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-pomodoro"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-qr-generator"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-sequential-png-preview"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-svg2tsx"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/tool-text-counter"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/ube-kosen-map"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/writing-skills"
+			}
+		]
 	}
 }

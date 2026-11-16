@@ -121,7 +121,7 @@ describe('shipped ledger vs the route tree', () => {
 			}
 			expect(isInternalGuideHref(item.href), item.id).toBe(true);
 			expect(routeExists(item.href), `${item.id} → ${item.href}`).toBe(true);
-			for (const child of item.children ?? []) {
+			for (const child of 'children' in item ? (item.children ?? []) : []) {
 				expect(isInternalGuideHref(child.href), child.id).toBe(true);
 				expect(routeExists(child.href), `${child.id} → ${child.href}`).toBe(true);
 			}
@@ -130,7 +130,10 @@ describe('shipped ledger vs the route tree', () => {
 
 	it('never points into the admin or another private surface', () => {
 		for (const item of GUIDE_LEDGER) {
-			for (const href of [item.href, ...(item.children ?? []).map((c) => c.href)]) {
+			for (const href of [
+				item.href,
+				...('children' in item ? (item.children ?? []) : []).map((c) => c.href),
+			]) {
 				expect(href.startsWith('/admin'), `${item.id} → ${href}`).toBe(false);
 			}
 		}

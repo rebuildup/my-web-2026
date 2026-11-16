@@ -6,6 +6,8 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
+import { GitHubActivityCard } from './activity/GitHubActivityCard';
+import type { HomeGitHubActivity } from './activity/contract';
 import {
 	AdPortfolioNative,
 	AdPortfolioProduct,
@@ -74,6 +76,12 @@ export interface HomePageData {
 	 * when the portfolio read is unavailable or yields no covers.
 	 */
 	adProjects?: readonly HomeAdProject[];
+	/**
+	 * Issue #319 — the committed GitHub activity snapshot projected
+	 * for the status section. `null` means the snapshot could not be
+	 * read; the card renders its unavailable state.
+	 */
+	githubActivity?: HomeGitHubActivity | null;
 }
 
 export interface HomePageProps {
@@ -290,7 +298,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						    question is "what exists here and how do I reach
 						    it". */}
 						<GuideSection today={data.observedAt.slice(0, 10)} />
-						<div className={css({ paddingBlock: '16', lg: '24' })} />
+						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
 						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>
@@ -346,6 +354,15 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 												locale={locale}
 												timeZone={timeZone}
 											/>
+										</div>
+										<div>
+											<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+												GitHub の活動 / GitHub activity
+											</h3>
+											<p className={subsectionDescriptionClassName}>
+												コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。
+											</p>
+											<GitHubActivityCard activity={data.githubActivity ?? null} />
 										</div>
 										<div>
 											<h3 id="reactions-heading" className={subsectionTitleClassName}>

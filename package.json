@@ -190,6 +190,8 @@
 		"copy:i18n:check": "node scripts/check-copy-i18n.mjs",
 		"keyboard:sync": "node scripts/sync-keyboard-layout.mjs",
 		"activity:sync": "node scripts/sync-github-activity.mjs",
+		"activity:check": "node scripts/check-github-activity.mjs",
+		"activity:publish": "node scripts/publish-github-activity.mjs",
 		"presence:sync": "node scripts/sync-discord-presence.mjs",
 		"keyboard:check": "node scripts/sync-keyboard-layout.mjs --check",
 		"keyboard:publish": "node scripts/_keyboard-sync-publish.mjs",

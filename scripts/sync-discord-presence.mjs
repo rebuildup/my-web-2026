@@ -267,8 +267,7 @@ async function main() {
 // /private/var, so import.meta.url and argv[1] can differ textually
 // while naming the same file — a textual compare silently skips main.
 const isMain =
-	process.argv[1] &&
-	realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
+	process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
 if (isMain) {
 	main().catch((err) => {
 		console.error(`sync-discord-presence failed: ${err?.message ?? err}`);

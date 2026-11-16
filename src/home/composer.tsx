@@ -29,6 +29,7 @@ import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
+import { GuideSection } from './guide/GuideSection';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
@@ -284,6 +285,12 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					})}
 				>
 					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
+						{/* Issue #930 / Epic #928 — the site guide is the FIRST
+						    body section: a first-time visitor's primary
+						    question is "what exists here and how do I reach
+						    it". */}
+						<GuideSection today={data.observedAt.slice(0, 10)} />
+						<div className={css({ paddingBlock: '16', lg: '24' })} />
 						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>

@@ -701,6 +701,56 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			},
 		},
 	},
+	{
+		id: 'visit-trail',
+		label: {
+			ja: 'サイト内案内の訪問先一覧（ブラウザの localStorage `mw_home_visit_trail_v1`）',
+			en: 'Guide visit trail (browser localStorage `mw_home_visit_trail_v1`)',
+		},
+		stores: {
+			ja: 'このブラウザがこのサイト内で訪れた公開ページのパスを、新しい順に最大 5 件。パス以外の情報（識別子・時刻・検索語・参照元・端末情報）は含みません。`/admin` と `/api` は記録しません。',
+			en: 'Up to 5 site-internal public paths this browser has visited, newest first. Nothing but paths — no identifier, timestamp, query, referrer or device data. `/admin` and `/api` are never recorded.',
+		},
+		retention: {
+			kind: 'until-deleted',
+			statement: {
+				ja: '自動失効はありません。キーは訪問者のブラウザにだけ残り、サイトデータを消すまで残ります。サーバーには複製されません。',
+				en: 'No automatic expiry. The key lives only in the visitor’s browser until site data is cleared. It is not copied to the server.',
+			},
+		},
+		deletion: {
+			channel: 'visitor-action',
+			statement: {
+				ja: 'ブラウザのサイトデータ削除で消えます。値は訪問のたびに上書きされるだけなので、削除しなくても表示が壊れることはありません。',
+				en: 'Clearing site data in the browser removes it. It is simply overwritten on each visit, so the page renders the same whether or not it was deleted.',
+			},
+		},
+		transfer: {
+			target: 'none',
+			statement: {
+				ja: 'このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。',
+				en: 'The value is never sent to a server. Reading and writing happen entirely in the browser.',
+			},
+			senders: [],
+		},
+		visibility: {
+			ja: '訪問者本人のブラウザにだけ表示される一覧で、公開ページの SSR 出力にも公開 API にも現れません。',
+			en: 'The list is meaningful only inside the visitor’s own browser and appears in no SSR output or public API response.',
+		},
+		evidence: [
+			'src/home/guide/trail.ts (キー名・保存する項目・除外パス・失敗時挙動)',
+			'src/home/guide/VisitTrailRecorder.tsx (記録は公開ルートのみ・pathname のみ)',
+			'src/home/guide/VisitTrail.tsx (SSR/初回/ストレージ不可では何も描画しない)',
+			'src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)',
+		],
+		publication: {
+			status: 'pending',
+			note: {
+				ja: 'Issue #936 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。案内セクション内の短い説明文は実装と一致する範囲で表示している。',
+				en: 'Added by Issue #936. No owner approval of public wording exists yet, so it renders nowhere; the short in-section note matches the implementation.',
+			},
+		},
+	},
 ] as const satisfies readonly DataLifecycleEntry[];
 
 /**

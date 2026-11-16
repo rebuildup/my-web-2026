@@ -128,7 +128,7 @@ function applyOverride(repo: ActivityRepoFacts): ActivityRepoFacts | null {
 
 const SAFE_DEFAULT_SUMMARY: Readonly<Record<ActivityRepoFacts['kind'], string>> = {
 	public: 'GitHub 上で活動が観測された公開リポジトリ。',
-	private: 'GitHub 上で活動が観測された非公開リポジトリ（匿名表示）。',
+	private: 'GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。',
 };
 
 /**

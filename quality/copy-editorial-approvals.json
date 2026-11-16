@@ -1953,10 +1953,10 @@
 				{
 					"path": "src/home/activity/GitHubActivityCard.tsx",
 					"before": null,
-					"after": "公開ソース: {publicState} / 非公開ソース（匿名）: {privateState} ・ 観測日{' '}",
-					"text": "公開ソース: {publicState} / 非公開ソース（匿名）: {privateState} ・ 観測日{' '}",
+					"after": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
+					"text": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
 					"verdict": "intentional",
-					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
 				},
 				{
 					"path": "src/home/activity/GitHubActivityCard.tsx",
@@ -1985,10 +1985,10 @@
 				{
 					"path": "src/home/activity/GitHubActivityCard.tsx",
 					"before": null,
-					"after": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（匿名）{' '}",
-					"text": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（匿名）{' '}",
+					"after": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
+					"text": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
 					"verdict": "intentional",
-					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
 				},
 				{
 					"path": "src/home/activity/GitHubActivityCard.tsx",
@@ -2009,10 +2009,10 @@
 				{
 					"path": "src/home/activity/snapshot.ts",
 					"before": null,
-					"after": "GitHub 上で活動が観測された非公開リポジトリ（匿名表示）。",
-					"text": "GitHub 上で活動が観測された非公開リポジトリ（匿名表示）。",
+					"after": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
+					"text": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
 					"verdict": "intentional",
-					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
 				},
 				{
 					"path": "src/home/composer.tsx",

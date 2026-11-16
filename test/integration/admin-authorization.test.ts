@@ -469,7 +469,7 @@ describe('internal APIs — API key scope matrix (Issue #441)', () => {
 		},
 		{
 			label: 'GET /api/v1/reactions?target=',
-			path: '/api/v1/reactions?target=authz-matrix',
+			path: '/api/v1/reactions?target=home-page',
 			scope: 'reactions',
 		},
 	] as const;
@@ -566,7 +566,7 @@ describe('internal APIs — write paths and the public image read (Issue #441)',
 	it('PUT /api/v1/reactions — anonymous → 401, wrong scope → 403, scoped → 200', async () => {
 		const url = 'https://example.com/api/v1/reactions';
 		const body = JSON.stringify({
-			target_key: 'authz-matrix',
+			target_key: 'home-page',
 			actor_id: 'authz-matrix-actor',
 			kind: 'emoji',
 			value: '👍',

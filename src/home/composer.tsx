@@ -132,6 +132,18 @@ const subsectionTitleClassName = /*#__PURE__*/ css({
 	textWrap: 'balance',
 });
 
+/**
+ * Issue #933 — the self-hosted GitHub Readme Stats card the status
+ * section's GitHub-activity block renders. The path is RELATIVE on
+ * purpose: the Worker serves the card itself under
+ * `/api/v1/github-readme-stats/` (`src/http/hono.ts`), so the home
+ * page and the image endpoint can never disagree about origin, and
+ * the old `github-readme-stats-fast.vercel.app` URL stays gone
+ * everywhere. `username=rebuildup` matches the owner's profile
+ * README (`gh api repos/rebuildup/rebuildup/readme`).
+ */
+const GITHUB_STATS_IMAGE_URL = '/api/v1/github-readme-stats/api?username=rebuildup';
+
 const subsectionDescriptionClassName = /*#__PURE__*/ css({
 	margin: '0',
 	marginBlockEnd: '6',
@@ -373,6 +385,26 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 												コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。
 											</p>
 											<GitHubActivityCard activity={data.githubActivity ?? null} />
+											{/* Issue #933 — the self-hosted stats card
+											    supplements the committed-activity feed
+											    with the same GitHub numbers the profile
+											    README advertises. It is decorative
+											    support: `lazy` + `async` because the
+											    block sits well below the fold, and a
+											    Japanese alt that names what the image
+											    shows rather than "image". */}
+											<img
+												src={GITHUB_STATS_IMAGE_URL}
+												alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+												loading="lazy"
+												decoding="async"
+												className={css({
+													display: 'block',
+													maxWidth: '100%',
+													height: 'auto',
+													marginBlockStart: '4',
+												})}
+											/>
 										</div>
 										<div>
 											<h3 id="reactions-heading" className={subsectionTitleClassName}>

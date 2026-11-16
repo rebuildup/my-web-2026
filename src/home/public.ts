@@ -17,10 +17,4 @@ export { getHomeDataSource } from './status/data-source';
 export { KNOWN_INCIDENTS } from './status/incidents';
 export { getHomeCounter, recordHomeHit } from './access/load';
 export type { HomeCounterData } from './access/load';
-export {
-	isValidReactionTarget,
-	getReactionTarget,
-	getEnabledReactionTargetKeys,
-	REACTION_TARGETS,
-} from '../reactions/targets';
 export { getHomeGitHubActivity } from './activity/load';

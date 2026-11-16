@@ -85,7 +85,7 @@ const PRINCIPAL = '00000000-0000-0000-0000-0000000c0de1';
 const OTHER_PRINCIPAL = '00000000-0000-0000-0000-0000000beef1';
 
 /** A benign value used as the structural baseline for every endpoint. */
-const BENIGN_TARGET = 'blog-intro';
+const BENIGN_TARGET = 'home-page';
 
 const SEEDED_AT = 1_700_000_000_000;
 
@@ -574,7 +574,11 @@ describe('GET /api/v1/access/count/:key — path-parameter read', () => {
  * ------------------------------------------------------------------ */
 
 describe('PUT /api/v1/reactions — target_key / actor_id / value', () => {
-	it('accepts a metacharacter target_key and stores it verbatim', async () => {
+	it('rejects a metacharacter target_key before D1 (opt-in registry)', async () => {
+		// Issue #934: the reactions boundary only accepts registry
+		// targets, so an arbitrary metacharacter target_key is refused
+		// before any statement runs — the payload can never become a
+		// bound value or SQL text.
 		const benign = createRecorder();
 		const benignRes = await putReaction(benign.env, {
 			target_key: BENIGN_TARGET,
@@ -583,6 +587,7 @@ describe('PUT /api/v1/reactions — target_key / actor_id / value', () => {
 		});
 		expect(benignRes.status).toBe(200);
 
+		const before = await snapshot();
 		for (const payload of INJECTION_PAYLOADS) {
 			const recorder = createRecorder();
 			const res = await putReaction(recorder.env, {
@@ -590,22 +595,13 @@ describe('PUT /api/v1/reactions — target_key / actor_id / value', () => {
 				actor_id: 'actor-attack',
 				value: '👍',
 			});
-			expect(res.status).toBe(200);
-			expect(await res.json()).toMatchObject({ created: true });
-
-			expect(sqlTexts(recorder), `payload '${payload.id}' changed the statement`).toEqual(
-				sqlTexts(benign),
-			);
+			expect(res.status).toBe(400);
+			const body = (await res.json()) as { error: string };
+			expect(body.error).toBe('invalid_target');
+			expectPayloadNeverBound(recorder, payload.value);
 			expectNoPayloadInStatementText(recorder);
-			expectPayloadWasBound(recorder, payload.value);
 		}
-
-		const rows = await env.DB.prepare('SELECT target_key FROM reactions WHERE actor_id = ?1')
-			.bind('actor-attack')
-			.all<{ target_key: string }>();
-		expect([...(rows.results ?? [])].map((row) => row.target_key).sort()).toEqual(
-			INJECTION_PAYLOADS.map((payload) => payload.value).sort(),
-		);
+		expect(await snapshot()).toEqual(before);
 	});
 
 	it('accepts a metacharacter actor_id and emoji value as bound data', async () => {
@@ -691,10 +687,12 @@ describe('DELETE /api/v1/reactions — a payload deletes only its own row', () =
 			},
 			recorder.env,
 		);
-		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ deleted: false });
+		// Issue #934: unregistered targets are refused at the boundary,
+		// so the payload never reaches D1 at all.
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ error: 'invalid_target' });
+		expectPayloadNeverBound(recorder, payload);
 		expectNoPayloadInStatementText(recorder);
-		expectPayloadWasBound(recorder, payload);
 		// The seeded rows — the exact tuple the payload "matched" — are
 		// still there.
 		expect(await snapshot()).toEqual(before);
@@ -723,16 +721,12 @@ describe('GET /api/v1/reactions — aggregate + viewer-scoped read', () => {
 			{ headers: authHeaders() },
 			attack.env,
 		);
-		expect(res.status).toBe(200);
-		const body = (await res.json()) as { target_key: string; aggregates: unknown[] };
-		// Rows exist for `blog-intro` (this principal AND another
-		// one). A spliced tautology would have aggregated both.
-		expect(body.aggregates).toEqual([]);
-		expect(body.target_key).toBe(payload);
-
-		expect(sqlTexts(attack)).toEqual(sqlTexts(benign));
+		// Issue #934: unregistered targets are refused at the boundary,
+		// so the payload never reaches D1 at all.
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ error: 'invalid_target' });
+		expectPayloadNeverBound(attack, payload);
 		expectNoPayloadInStatementText(attack);
-		expectPayloadWasBound(attack, payload);
 		expect(await snapshot()).toEqual(before);
 	});
 

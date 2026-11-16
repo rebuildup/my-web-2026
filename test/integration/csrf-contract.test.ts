@@ -73,7 +73,7 @@ const MIGRATIONS = [
 	},
 ];
 
-const TARGET = 'csrf-contract-target';
+const TARGET = 'home-page';
 const ACTOR = 'csrf-contract-actor';
 const REACTION_BODY = JSON.stringify({
 	target_key: TARGET,

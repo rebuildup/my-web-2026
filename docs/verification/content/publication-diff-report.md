@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 50 |
 | First-party hosts | 0 |
-| Approved transition | 240 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,11 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (3)
+### Added external hosts (0)
 
-- ``
-- `github-readme-stats-fast.vercel.app`
-- `tiny.one`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -137,7 +135,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/cards/streak-card.js`, `src/vendor/github-readme-stats-fast/src/common/Card.js`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/cards/streak-card.js`, `src/vendor/github-readme-stats-fast/src/common/Card.js`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
 | `https://` | `` | external | `src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
@@ -165,9 +164,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
@@ -500,7 +500,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://twitter.com/361do_sleep/status/1935259157881569753` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/complexivetunes/status/1842760522137297009` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/snzkuo/status/1962833748761976865` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `src/tools/manifest.json` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
@@ -685,244 +685,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host  appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host github-readme-stats-fast.vercel.app appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host tiny.one appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://
-- **WARN** `W002 external-url-added` External URL added: https://api.github.com/graphql
-- **WARN** `W002 external-url-added` External URL added: https://api.github.com/search/commits?q=author
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default_repocard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=default_streakcard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=algolia
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ambient_gradient
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=apprentice
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ayu-mirage
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=bear
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue-green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue_navy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blueberry
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=buefy
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm_pink
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_latte
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_mocha
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=chartreuse-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=city_lights
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt2
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=codeSTACKr
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=darcula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=date_night
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default_repocard
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=discord_old_blurple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dracula
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=flag-india
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark_dimmed
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gotham
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=graywhite
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=great-gatsby
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=highcontrast
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=holi
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=jolly
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=kacho_ga
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=maroongold
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=material-palenight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=merko
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=midnight-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=moltack
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=monokai
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=neon
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nightowl
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=noctis_minimus
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nord
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ocean_dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=omni
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=one_dark_pro
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=onedark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=outrun
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=panda
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=prussian
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=radical
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=react
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose_pine
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shades-of-purple
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_blue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_green
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_red
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=slateorange
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-light
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=swift
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=synthwave
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=tokyonight
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=transparent
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vision-friendly-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu
-- **WARN** `W002 external-url-added` External URL added: https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true
-- **WARN** `W002 external-url-added` External URL added: https://github.com/Pranesh-2005/github-readme-stats-fast
-- **WARN** `W002 external-url-added` External URL added: https://github.com/Pranesh-2005/github-readme-stats-fast.git
-- **WARN** `W002 external-url-added` External URL added: https://tiny.one/readme-stats
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

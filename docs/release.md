@@ -115,9 +115,13 @@ below are in place; ruleset id `#22942689` (`main-protection`).
 - [x] Deletion disabled (`deletion` rule).
 - [x] PR required for any change (`pull_request` rule).
 - [x] Required status check `validate` on every PR; on push to
-      `release-*` the additional `cf-typegen check` step and
-      Playwright E2E (with the `ui-change` label gate on PR) must
-      pass.
+      `release-*` the additional `cf-typegen check` step must pass.
+      Issue #937: heavy verification is not repeated per ticket
+      merge — ticket PRs run `validate:fast`, `release-*` pushes run
+      `validate:fast` + `cf-typegen:check`, and the frozen candidate
+      is verified once by `workflow_dispatch` (full
+      `validate:integration` + Playwright E2E). Playwright E2E also
+      runs on the release PR and on PRs labelled `ui-change`.
 - [x] `release-* -> main` only is enforced via the head-ref
       policy check in `.github/workflows/ci.yml` (PRs into `main`
       whose `head_ref` does not match `^release-` fail the check).
@@ -326,8 +330,8 @@ production domain to be wired (Issue #43 / ADR-0014):
    | question | answer |
    | --- | --- |
    | Who | the release owner (human). The manifest, the bytes and the tag live outside the runner, and `AGENTS.md` §6 keeps the release PR merge / tag / publish under the same human gate. |
-   | When | after the release branch's **push** run is green and **before** the release PR is merged (step 10 / 11). The `--release-tag` comparison runs after step 12 created the tag and before the GitHub Release is published. |
-   | Which run | the release branch's push run — the run whose `github.sha` is the release commit. The pull_request run builds the merge commit, not the released commit, so it is not the evidence. |
+   | When | after the **freeze run** (`workflow_dispatch` on the candidate SHA) is green and **before** the release PR is merged (step 10 / 11). The `--release-tag` comparison runs after step 12 created the tag and before the GitHub Release is published. |
+   | Which run | the freeze run — the `workflow_dispatch` run whose `github.sha` is the frozen candidate commit (= the release head at freeze). Issue #937: a `release-*` push no longer builds, so the push run is NOT the evidence; the pull_request run builds the merge commit, not the released commit, so it is not the evidence either. |
    | Which commands | `gh run download <run-id> -n artifact-attestation-<sha> -D .tmp/release-manifest/<sha>` and `gh run download <run-id> -n cf-build-output-<sha> -D .tmp/release-bytes/<sha>`, then `pnpm run artifact:attestation:check -- --manifest=<downloaded manifest> --artifact-dir=.tmp/release-bytes/<sha>` and `pnpm run artifact:bytes:check -- --artifact-dir=.tmp/release-bytes/<sha> --manifest=<downloaded manifest>` (the second command states the reason code when the retained bytes differ from the recorded ones, and scans the retained bytes for a secret shape). release ブランチの head 以外の commit（チケットブランチの push run など）を照合するときは、checkout の HEAD ではなく manifest の source.commit と比較させるため `--source-sha=<run の commit>` を渡す。渡さないと byte が一致していても `SOURCE_COMMIT_MISMATCH` で FAIL する。 |
    | Where the result is recorded | the release report, and the verification record `docs/verification/supply-chain/attestation-byte-comparison-<date>.md` (run id, commit, artifact names, both verdicts, the tag). A run without that record is "not executed". |
 

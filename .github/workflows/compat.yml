@@ -12,8 +12,9 @@ name: browser compat
 # downloadable artefact so a per-engine failure is inspectable without
 # re-running locally.
 #
-# Triggers mirror the Playwright gate in `ci.yml`: pushes to `main` /
-# `release-*`, every PR into `main` / `release-*`, and a manual run.
+# Triggers mirror the Playwright gate in `ci.yml` (Issue #937): the
+# release PR, `ui-change` labelled ticket PRs, pushes to `main`, and a
+# manual run — not every ticket PR or `release-*` push.
 # `workflow_dispatch` also takes a `runner` input so an OS difference
 # can be re-measured on a different host instead of being argued about
 # (the Issue asks for OS differences to be recorded separately).
@@ -27,7 +28,7 @@ on:
   pull_request:
     branches: [main, 'release-*']
   push:
-    branches: [main, 'release-*']
+    branches: [main]
   workflow_dispatch:
     inputs:
       runner:
@@ -48,6 +49,16 @@ permissions:
 
 jobs:
   compat:
+    # Issue #937 — heavy browser suites run once per candidate, not
+    # per ticket merge: the release PR (base `main`), a `ui-change`
+    # labelled ticket PR, a push to `main`, or a manual dispatch
+    # (the freeze). Unlabeled ticket PRs and `release-*` pushes skip.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+        (github.base_ref == 'main' ||
+         contains(github.event.pull_request.labels.*.name, 'ui-change')))
     name: compat (${{ github.event.inputs.runner || 'ubuntu-latest' }})
     runs-on: ${{ github.event.inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 25

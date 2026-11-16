@@ -1894,7 +1894,7 @@
 			"reviewer": null,
 			"reviewedAt": "2026-11-16",
 			"decision": "pending",
-			"fingerprint": "sha256:a5234f013687bac4ec73851cdf93625e57e187baa05ad883f64f39ea673aa517",
+			"fingerprint": "sha256:ecaac7de0e0348f64c38344eebfb73b71aabf460d9ffff5fb699630beec3e7e3",
 			"proposal": {
 				"tool": "agent editorial pass (Devin)",
 				"ran": true,

@@ -355,7 +355,7 @@ describe('reactionsRouter GET — actor_id query validation (P2 review #10)', ()
 		stubAuthSuccess();
 		const tooLong = 'x'.repeat(257); // MAX_ACTOR_ID_LEN is 256.
 		const res = await app.request(
-			`/?target=blog-intro&actor_id=${tooLong}`,
+			`/?target=home-page&actor_id=${tooLong}`,
 			{ headers: { authorization: 'Bearer mk_home_anything' } },
 			env,
 		);
@@ -371,7 +371,7 @@ describe('reactionsRouter GET — actor_id query validation (P2 review #10)', ()
 		// `viewer_reactions`.
 		stubAuthSuccess();
 		const res = await app.request(
-			'/?target=blog-intro&actor_id=visitor-1',
+			'/?target=home-page&actor_id=visitor-1',
 			{ headers: { authorization: 'Bearer mk_home_anything' } },
 			env,
 		);
@@ -381,7 +381,7 @@ describe('reactionsRouter GET — actor_id query validation (P2 review #10)', ()
 			aggregates: unknown[];
 			viewer_reactions: unknown[];
 		};
-		expect(body.target_key).toBe('blog-intro');
+		expect(body.target_key).toBe('home-page');
 		expect(Array.isArray(body.aggregates)).toBe(true);
 		expect(Array.isArray(body.viewer_reactions)).toBe(true);
 	});

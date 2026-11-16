@@ -3367,26 +3367,12 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: http://www.w3.org/1999/xlink"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-			}
-		]
+		"findings": []
 	}
 }

@@ -124,19 +124,19 @@ function validateSnapshot(data: unknown, expectedUserId: string): DiscordPresenc
 						}
 					: undefined;
 
-			const rawParty = a.party;
-			const party = isObject(rawParty)
-				? {
-					id: isString(rawParty.id) ? rawParty.id : undefined,
-					size:
-						isArray(rawParty.size) &&
-						rawParty.size.length === 2 &&
-						isNumber(rawParty.size[0]) &&
-						isNumber(rawParty.size[1])
-							? [rawParty.size[0], rawParty.size[1]] as [number, number]
-							: undefined,
-				}
-				: undefined;
+				const rawParty = a.party;
+				const party = isObject(rawParty)
+					? {
+							id: isString(rawParty.id) ? rawParty.id : undefined,
+							size:
+								isArray(rawParty.size) &&
+								rawParty.size.length === 2 &&
+								isNumber(rawParty.size[0]) &&
+								isNumber(rawParty.size[1])
+									? ([rawParty.size[0], rawParty.size[1]] as [number, number])
+									: undefined,
+						}
+					: undefined;
 
 				return {
 					type: isNumber(a.type) ? a.type : 0,

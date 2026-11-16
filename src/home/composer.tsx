@@ -38,6 +38,7 @@ import { ReactionsWidget } from './reactions/widget';
 import type { DataSourceDescriptor } from './status/data-source';
 import type { SystemService, SystemServiceStatus } from './status/health';
 import type { KnownIncident } from './status/incidents';
+import { StatusTiles } from './status/tiles';
 
 export interface HomePageData {
 	capabilities: readonly Capability[];
@@ -299,7 +300,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						    question is "what exists here and how do I reach
 						    it". */}
 						<GuideSection today={data.observedAt.slice(0, 10)} />
-						<div className={css({ paddingBlock: '16', lg: '24' })} />
+						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
 						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>

@@ -232,13 +232,17 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
+			renderError(
+				error.message || 'Something went wrong',
+				(error as { secondaryMessage?: string }).secondaryMessage,
+				{
+					title_color,
+					text_color,
+					bg_color,
+					border_color,
+					theme,
+				},
+			),
 		);
 	}
 });
@@ -372,13 +376,17 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
+			renderError(
+				error.message || 'Something went wrong',
+				(error as { secondaryMessage?: string }).secondaryMessage,
+				{
+					title_color,
+					text_color,
+					bg_color,
+					border_color,
+					theme,
+				},
+			),
 		);
 	}
 });
@@ -451,13 +459,17 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
+			renderError(
+				error.message || 'Something went wrong',
+				(error as { secondaryMessage?: string }).secondaryMessage,
+				{
+					title_color,
+					text_color,
+					bg_color,
+					border_color,
+					theme,
+				},
+			),
 		);
 	}
 });

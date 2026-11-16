@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 12 |
 | Publicly reachable URLs (surface + Static Assets) | 32 |
-| External hosts | 50 |
+| External hosts | 51 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -106,9 +106,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (1)
 
-- (none)
+- `twitch.tv`
 
 ### Removed external hosts (0)
 
@@ -492,6 +492,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
 | `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `https://twitch.tv/example` | `twitch.tv` | external | `src/home/presence/fixtures.ts` |
 | `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1974102198364876878` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -685,5 +686,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **ERROR** `E004 external-host-added` New external host twitch.tv appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://twitch.tv/example
 

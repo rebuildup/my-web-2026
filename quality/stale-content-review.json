@@ -903,6 +903,52 @@
 				]
 			},
 			"note": "動画スポット型広告ユニットの CTA (src/home/ads/placements.tsx:141)。遷移先 /tools/prototype はブラウザで実際に遊べるタイピングゲームであり、「今すぐプレイ」はその行動をそのまま述べる。緊急性・期限・数量の主張は含まない。"
+		},
+		{
+			"id": "guide-keyboard-reference",
+			"path": "src/home/guide/ledger.ts",
+			"expression": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-16",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
+						"note": "site-guide ledger entry for /keyboard (Issue #930, Epic #928)"
+					}
+				]
+			},
+			"note": "「現在使っている」はキーボード配列リファレンスページの恒常的な用途説明であり、日付・期限・数量の主張を含まない。陳腐化しない記述。"
+		},
+		{
+			"id": "guide-github-current-location",
+			"path": "src/home/guide/ledger.ts",
+			"expression": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-16",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
+						"note": "external guide entry for github.com/rebuildup (Issue #930, Epic #928)"
+					}
+				]
+			},
+			"note": "「現在地」は Epic #928 のテーマ名であり、特定の日付や時点に依存する事実主張ではない。陳腐化しない記述。"
 		}
 	]
 }

@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 47 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 21 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -166,7 +166,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
 | `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
-| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
+| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -175,14 +175,17 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/Ae_sep_color` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/CodeType/_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/CodeType_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/FlashBeat` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/GRI-2nd` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/LiteGlow` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/M5/_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
-| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
-| `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/ai-knowledge` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/rebuildup/atcoder-kit` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
@@ -197,30 +200,48 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/key-map-kanata` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
 | `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
-| `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
-| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/readmark` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-ae-expression` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-ae-expression.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-business-mail-block` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-business-mail-block.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-code-type-p5` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-code-type-p5.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-color-palette` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-color-palette.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-fillgen` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-fillgen.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-history-quiz` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-history-quiz.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-mic-level` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-mic-level.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-pi-game` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-pi-game.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-pomodoro` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-pomodoro.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-qr-generator` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-qr-generator.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-sequential-png-preview` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-sequential-png-preview.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-svg2tsx` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-svg2tsx.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/tool-text-counter` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/rebuildup/writing-skills` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
 | `https://pomodoro.yusuke-kim.com` | `pomodoro.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://prototype.yusuke-kim.com` | `prototype.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -427,5 +448,25 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/GRI-2nd
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ai-knowledge
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/atcoder-kit
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/key-map-kanata
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/procon-2026
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/readmark
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-ae-expression
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-business-mail-block
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-code-type-p5
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-color-palette
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-fillgen
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-history-quiz
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-mic-level
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-pi-game
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-pomodoro
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-qr-generator
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-sequential-png-preview
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-svg2tsx
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/tool-text-counter
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/writing-skills
 

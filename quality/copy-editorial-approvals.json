@@ -1886,6 +1886,212 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-943",
+			"pr": 943,
+			"base": "release-0-9-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-16",
+			"decision": "pending",
+			"fingerprint": "sha256:ecaac7de0e0348f64c38344eebfb73b71aabf460d9ffff5fb699630beec3e7e3",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "GitHub 活動カードとステータス節の新規日本語コピー 16 セグメントをレビュー。観測状態を誇張せず「観測中/未接続/取得失敗/不明」と出所・観測日を併記する構成で、既存のサイト状態表示の語彙に合わせた。",
+				"disposition": "提案は上記 comparisons の各 note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "観測中",
+					"text": "観測中",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "未接続",
+					"text": "未接続",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "取得失敗",
+					"text": "取得失敗",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "GitHub 活動スナップショットを読み込めませんでした。",
+					"text": "GitHub 活動スナップショットを読み込めませんでした。",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "不明",
+					"text": "不明",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "不明",
+					"text": "不明",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
+					"text": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}",
+					"text": "<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "日のイベント",
+					"text": "日のイベント",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "<p className={mutedClassName}>直近の公開イベントはありません。</p>",
+					"text": "<p className={mutedClassName}>直近の公開イベントはありません。</p>",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
+					"text": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "{activity.repoCount.private} 件",
+					"text": "{activity.repoCount.private} 件",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/snapshot.ts",
+					"before": null,
+					"after": "GitHub 上で活動が観測された公開リポジトリ。",
+					"text": "GitHub 上で活動が観測された公開リポジトリ。",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/snapshot.ts",
+					"before": null,
+					"after": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
+					"text": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。 当初「匿名」と表記したが、src/privacy/data-lifecycle.ts の UNSUPPORTED_PUBLIC_CLAIMS が公開文書での「匿名」主張を禁止するため「名称非表示」へ修正（Issue #316/#932, Epic #928）。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "GitHub の活動 / GitHub activity",
+					"text": "GitHub の活動 / GitHub activity",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。",
+					"text": "コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。",
+					"verdict": "intentional",
+					"note": "Issue #316/#319 (Epic #928) で追加した GitHub 活動スナップショット表示の新規日本語コピー。状態語（観測中/未接続/取得失敗/不明）と件数・出所を併記する方針で、既存の status 表示と同じ簡潔な体言止め・です・ます調に揃えた。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"after": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"text": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"after": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"text": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"after": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"text": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"after": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"text": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"after": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"text": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"after": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"text": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"verdict": "equivalent",
+					"note": "biome format による行折り畳み（summaryJa を 1 行化）のみで、表示文字列は before/after でバイト一致。公開コピーの内容変更なし。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue-comment",
+						"reference": null,
+						"note": "Epic #928 / Issue #316・#319・#932 の実装に伴う公開日本語コピー。owner の明示的な copy 承認 artefact はまだ存在しない。"
+					}
+				]
+			}
 		}
 	]
 }

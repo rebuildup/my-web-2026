@@ -82,6 +82,13 @@ export const FIXTURE = Object.freeze({
 	memberToken: 'e2e-authz-member-session-token',
 	acceptToken: 'authz-e2e-accept-token-aaaaaaaaaaaa',
 	counterKey: 'authz-e2e',
+	/**
+	 * Reactions targets are registry-gated (Issue #934): the fixture
+	 * uses the registered `home-page` key rather than the counter key,
+	 * which is not a reaction target and is refused with
+	 * `invalid_target` before the scope check can matter.
+	 */
+	reactionTargetKey: 'home-page',
 });
 
 /**
@@ -178,7 +185,7 @@ export const API_MATRIX = Object.freeze([
 	},
 	{
 		label: 'GET /api/v1/reactions?target=',
-		path: `/api/v1/reactions?target=${FIXTURE.counterKey}`,
+		path: `/api/v1/reactions?target=${FIXTURE.reactionTargetKey}`,
 		method: 'GET',
 		scope: 'reactions',
 		action: 'read',
@@ -190,7 +197,7 @@ export const API_MATRIX = Object.freeze([
 		scope: 'reactions',
 		action: 'write',
 		body: {
-			target_key: FIXTURE.counterKey,
+			target_key: FIXTURE.reactionTargetKey,
 			actor_id: 'authz-e2e-actor',
 			kind: 'emoji',
 			value: '👍',

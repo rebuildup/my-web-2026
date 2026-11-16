@@ -232,7 +232,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as any).secondaryMessage, {
+			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
 				title_color,
 				text_color,
 				bg_color,
@@ -372,7 +372,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as any).secondaryMessage, {
+			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
 				title_color,
 				text_color,
 				bg_color,
@@ -451,7 +451,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message || 'Something went wrong', (error as any).secondaryMessage, {
+			renderError(error.message || 'Something went wrong', (error as { secondaryMessage?: string }).secondaryMessage, {
 				title_color,
 				text_color,
 				bg_color,

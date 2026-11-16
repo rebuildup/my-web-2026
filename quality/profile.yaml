@@ -4,8 +4,13 @@
 # Three deterministic entry points drive both local and CI validation:
 #
 #   - validate:fast         local feedback (read-only)
-#   - validate:integration  ticket PR verification (build + dry-run +
-#                           actionlint via lint:ci + build-storybook)
+#   - validate:integration  release-candidate verification: the release
+#                           PR (base `main`), `workflow_dispatch` on the
+#                           frozen candidate SHA, and push to `main`
+#                           (Issue #937 — ticket PRs run `validate:fast`
+#                           on the merge ref; `release-*` pushes run
+#                           `validate:fast` only; the heavy suite runs
+#                           once per candidate, not per ticket merge)
 #   - validate:release      pre-`main` verification (cf-typegen check + Playwright)
 #
 # Coverage thresholds are intentionally disabled at 0.1.0; see ADR-0007.
@@ -646,7 +651,7 @@ gates:
       # would ship, not an intermediate build.
       - 'pnpm run artifact:attestation:check' # artifact sha-256 / source / dependency manifest
     cost_class: medium
-    trigger: pull_request, push_to_main_and_release
+    trigger: release_pr_and_dispatch_and_push_main_only_issue_937
 
   release:
     command: 'pnpm run validate:release'
@@ -657,7 +662,7 @@ gates:
       # what is committed. A bare `cf workers types` would always pass.
       - 'pnpm run cf-typegen:check'
     cost_class: medium
-    trigger: push_to_main_and_release
+    trigger: local_pre_main_and_release_pr
 
 change_risk_mapping:
   doc_only:
@@ -694,7 +699,8 @@ change_risk_mapping:
     gate: fast
     note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs'
   release_branch:
-    gate: release
+    gate: fast
+    note: 'Issue #937 — a `release-*` push runs `validate:fast` in CI; the frozen candidate is verified once by `workflow_dispatch` (validate:integration + Playwright + attested bytes)'
 
 # Issue #484 — cache-header contract: NO new gate component.
 #
@@ -731,7 +737,7 @@ bundle_budget:
   tests: 'scripts/check-bundle-budget.test.mjs'
   gate: integration
   cost_class: cheap
-  trigger: every `validate:integration` run (pull_request, push_to_main, push_to_release_branch)
+  trigger: every `validate:integration` run (release PR, workflow_dispatch, push_to_main — Issue #937)
   input: 'dist/client/bundle-graph.json — written by the Vite client build from `writeBundle`, measuring the files emitted into the Cloudflare plugin asset output (.cloudflare/output/v0/workers/default/assets); it only READS that deploy artifact, it never modifies it'
   tool_iframe: 'aggregated and capped separately (each Tool is an independent Vite build served from /tools/<slug>/app/ inside a sandboxed iframe)'
   reproduction:
@@ -772,7 +778,7 @@ bundle_server_only:
   tests: 'scripts/check-client-bundle-server-only.test.mjs'
   gate: integration
   cost_class: cheap
-  trigger: every `validate:integration` run (pull_request, push_to_main, push_to_release_branch)
+  trigger: every `validate:integration` run (release PR, workflow_dispatch, push_to_main — Issue #937)
   input: 'dist/client/bundle-graph.json — the same graph the byte budget reads; the gate only READS it'
   reproduction:
     measurement: 'module-level attribution — the module ids Rollup recorded per chunk, normalised to `pkg:<name>` / `src:<path>`'

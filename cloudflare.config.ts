@@ -3,7 +3,6 @@ import { type ConfigContext, bindings, defineConfig } from 'cf/config';
 import {
 	PRODUCTION_BETTER_AUTH_URL,
 	PRODUCTION_CUSTOM_DOMAIN,
-	PRODUCTION_DISCORD_PRESENCE_USER_ID,
 	PRODUCTION_MEDIA_PUBLIC_BASE_URL,
 	RATE_LIMITS,
 	RATE_LIMIT_BINDING,
@@ -212,12 +211,10 @@ export default defineConfig({
 					? {
 							BETTER_AUTH_URL: bindings.text(PRODUCTION_BETTER_AUTH_URL),
 							MEDIA_PUBLIC_BASE_URL: bindings.text(PRODUCTION_MEDIA_PUBLIC_BASE_URL),
-							DISCORD_PRESENCE_USER_ID: bindings.text(PRODUCTION_DISCORD_PRESENCE_USER_ID),
 						}
 					: ({} as {
 							BETTER_AUTH_URL?: ReturnType<typeof bindings.text>;
 							MEDIA_PUBLIC_BASE_URL?: ReturnType<typeof bindings.text>;
-							DISCORD_PRESENCE_USER_ID?: ReturnType<typeof bindings.text>;
 						})),
 				// Runtime secrets. Infisical is the value SoT
 				// (ADR-0015 §6 / §9); Workers Builds injects values at
@@ -229,6 +226,7 @@ export default defineConfig({
 				[WORKER_RUNTIME_SECRET.CONSUMER_API_KEY]: bindings.secret(),
 				[WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID]: bindings.secret(),
 				[WORKER_RUNTIME_SECRET.GITHUB_README_STATS_PAT_1]: bindings.secret(),
+				[WORKER_RUNTIME_SECRET.DISCORD_PRESENCE_USER_ID]: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
 				DB: bindings.d1({
 					name: D1_DATABASE_NAME,

@@ -63,6 +63,13 @@ export const WORKER_RUNTIME_SECRET = Object.freeze({
 	 * the first slot is required.
 	 */
 	GITHUB_README_STATS_PAT_1: 'GITHUB_README_STATS_PAT_1',
+	/**
+	 * Owner Discord snowflake the presence card may claim (Issue #320).
+	 * Semi-public (visible to mutual guild members) but operator-managed
+	 * from the Infisical dashboard like the GA measurement ID, so the
+	 * value never lives in committed config.
+	 */
+	DISCORD_PRESENCE_USER_ID: 'DISCORD_PRESENCE_USER_ID',
 });
 
 /**
@@ -82,6 +89,7 @@ export const REQUIRED_RUNTIME_SECRETS = Object.freeze([
 	WORKER_RUNTIME_SECRET.CONSUMER_API_KEY,
 	WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID,
 	WORKER_RUNTIME_SECRET.GITHUB_README_STATS_PAT_1,
+	WORKER_RUNTIME_SECRET.DISCORD_PRESENCE_USER_ID,
 ]);
 
 /**
@@ -121,14 +129,6 @@ export const PRODUCTION_BETTER_AUTH_URL = `https://${PRODUCTION_CUSTOM_DOMAIN}`;
  * `docs/security/r2-media-visibility.md`.
  */
 export const PRODUCTION_MEDIA_PUBLIC_BASE_URL = `https://${PRODUCTION_CUSTOM_DOMAIN}/media`;
-
-/**
- * Issue #320 — the owner Discord snowflake the presence card may
- * claim. Non-secret (visible to mutual guild members), so it is
- * committed config (`bindings.text()`), not an Infisical value.
- * The ingest feed refuses any other user id.
- */
-export const PRODUCTION_DISCORD_PRESENCE_USER_ID = '1228484020103287020';
 
 /** Cloudflare zone for the canonical production domain (verified 2026-09-20). */
 export const PRODUCTION_ZONE_ID = '7dde90c8a7be8a304300daa719a7de0a';

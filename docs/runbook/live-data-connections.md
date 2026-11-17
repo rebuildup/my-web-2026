@@ -164,18 +164,18 @@ infisical run --env=dev --path=/feeds/discord-presence -- \
   node scripts/sync-discord-presence.mjs
 ```
 
-`DISCORD_PRESENCE_USER_ID` (the non-secret `vars`/`bindings.text()`
-entry the public card checks the snapshot against) is **not yet in
-`cloudflare.config.ts` / `wrangler.production.jsonc`** — it exists
-only in the dev config as `""`. Enabling the card on production
-requires a ticket PR that adds the real snowflake to
-`cloudflare.config.ts` (production `bindings.text()`), mirrors it in
-`wrangler.production.jsonc#vars`, AND records the binding in
-`quality/cloudflare-config-drift.json` (the drift gate fails on an
-undeclared binding). The snowflake is owner input (semi-public, not
-a secret). Until that PR deploys, the card fails closed to
-"unavailable" even with the feed running — connecting the feed first
-is harmless.
+`DISCORD_PRESENCE_USER_ID` — the owner snowflake the public card
+checks the snapshot against — is a **required runtime secret** in
+the shared contract (`REQUIRED_RUNTIME_SECRETS` →
+`bindings.secret()`), seeded only via Infisical `prod`:
+
+```sh
+infisical secrets set DISCORD_PRESENCE_USER_ID=<owner-snowflake> --env=prod --path=/
+```
+
+Until the secret is seeded AND the release deploy ships the binding,
+the card fails closed to "unavailable" even with the feed running —
+connecting the feed first is harmless.
 
 Run the long-running feed under launchd/`KeepAlive` per
 [`discord-presence.md`](discord-presence.md) §Running.
@@ -188,5 +188,5 @@ Run the long-running feed under launchd/`KeepAlive` per
 | Activity ingest key missing / migration absent | PUT refused; home keeps serving the committed snapshot |
 | `GITHUB_TOKEN` without `GITHUB_ACTIVITY_SALT` | sync refuses BEFORE any private fetch (exit 2) |
 | Discord feed stopped > 15 min | presence card shows unavailable, never stale "online" |
-| `DISCORD_PRESENCE_USER_ID` unset in production vars | presence card unavailable regardless of feed |
+| `DISCORD_PRESENCE_USER_ID` secret unset in Infisical `prod` | presence card unavailable regardless of feed |
 | Any feed's `MY_WEB_2026_API_KEY` from the wrong Infisical path | 401/403 on PUT; last good snapshot ages out honestly |

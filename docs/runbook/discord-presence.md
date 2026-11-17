@@ -62,7 +62,7 @@ operator's secret store (Infisical `dev` environment) as
 `MY_WEB_2026_API_KEY` for the presence-feed identity — do NOT reuse
 the home self-consumption key.
 
-### 3. Worker var + migration
+### 3. Worker secret + migration
 
 Apply the migration to each target database before the feed is
 enabled (`pnpm run db:migrate:apply:local` /
@@ -70,12 +70,20 @@ enabled (`pnpm run db:migrate:apply:local` /
 usual gated operator step).
 
 Set the real owner snowflake as the `DISCORD_PRESENCE_USER_ID`
-non-secret binding: `bindings.text()` in `cloudflare.config.ts`
-(production branch), mirrored in `wrangler.production.jsonc#vars`,
-recorded in `quality/cloudflare-config-drift.json`. While it is the
-empty string the card fails closed to unavailable. The snowflake is
-semi-public (visible to mutual guild members); it is not a secret —
-but it is committed config, not an Infisical value.
+runtime secret — it is a required name in the shared contract
+(`scripts/_cloudflare-contract.mjs` → `REQUIRED_RUNTIME_SECRETS`,
+mirrored in both `wrangler*.jsonc#secrets.required` and
+`cloudflare.config.ts` `bindings.secret()`). Like the GA measurement
+ID it is semi-public, but the value is operator-managed from the
+Infisical dashboard, never committed config:
+
+```sh
+infisical secrets set DISCORD_PRESENCE_USER_ID=<owner-snowflake> --env=prod --path=/
+```
+
+While the secret is unset the card fails closed to unavailable.
+The ingest feed must publish the same snowflake as `userId` or the
+public reader refuses the snapshot.
 
 ### 4. Operator secrets
 
@@ -125,10 +133,10 @@ on missing env or fatal login errors.
 
 | Condition | Card shows |
 |---|---|
-| No D1 row / empty `DISCORD_PRESENCE_USER_ID` var | unavailable |
+| No D1 row / `DISCORD_PRESENCE_USER_ID` secret unset | unavailable |
 | Feed stopped > 15 min (`generatedAt` stale) | unavailable |
 | Stored document fails re-validation | unavailable |
-| `userId` mismatch vs the wrangler var | unavailable |
+| `userId` mismatch vs the `DISCORD_PRESENCE_USER_ID` secret | unavailable |
 | Ingest key revoked / wrong scope | push fails, last snapshot ages out |
 
 ## Privacy notes

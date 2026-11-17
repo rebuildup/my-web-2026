@@ -159,7 +159,9 @@ pnpm run artifact:bytes:check -- \
 node scripts/check-attestation-manifest-integrity.mjs \
   --manifest=<published-manifest.json>
 
-# release tag の commit と照合する（tag は release owner の操作で作られる）
+# release tag の commit と照合する（tag は release owner の操作で作られる）。
+# manifest は tag が指す commit 自身の run が生成したものを使う
+# （通常 merge では merge commit の `main` push run。§7 参照）
 pnpm run artifact:attestation:check -- \
   --manifest=release-assets/supply-chain/<version>/artifact-attestation.json \
   --release-tag="v$(node -p "require('./package.json').version")"
@@ -223,7 +225,7 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 | `ARTIFACT_DIGEST_MISMATCH` / `ARTIFACT_SHAPE_MISMATCH` | 手元の byte が記録した build と違う | 記録された commit から rebuild する。drift した artifact を deploy / publish しない |
 | `ARTIFACT_EMPTY` | hash 対象が空 | Build Output を生成してから再実行する |
 | `SOURCE_COMMIT_MISMATCH` | release / workflow の commit と artifact の source が違う | release を止め、記録された commit を checkout して rebuild する |
-| `RELEASE_TAG_COMMIT_MISMATCH` | 公開する release tag が manifest の source commit を指していない | manifest を release に添付しない。tag が指す commit で checkout して rebuild し、manifest を再生成する |
+| `RELEASE_TAG_COMMIT_MISMATCH` | 公開する release tag が manifest の source commit を指していない | manifest を release に添付しない。その manifest は別 commit（例: release ブランチ head）のものであり、tag が指す commit 自身の run が生成した manifest を使う（`docs/release.md` §9.1 phase B） |
 | `RELEASE_TAG_VERSION_MISMATCH` | tag 名が別の release version を宣言している | 正しい release の tag を使う。別 version の manifest を添付しない |
 | `SOURCE_TREE_DIRTY` / `WORKTREE_DIRTY` | dirty tree は commit を記述しない | commit / stash して rebuild し、manifest を再生成する |
 | `LOCKFILE_DIGEST_MISMATCH` / `LOCKFILE_INVENTORY_MISMATCH` | 依存解決が記録と違う | lockfile を戻すか、再生成して差分を review する |
@@ -275,8 +277,15 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   停止する。手順・担当・記録先は `docs/release.md` step 9.1。
 - release では GitHub Release への添付を release owner の判断で行う。
   添付の前に `docs/release.md` step 9 / §8 の手順どおり
-  `--release-tag="v<version>"` で manifest を tag と照合する。CI
-  (`ci.yml`) は tag push を trigger しないので、この照合は
+  `--release-tag="v<version>"` で manifest を tag と照合する。照合に
+  使う manifest は **tag が指す commit 自身の run が生成したもの**
+  （通常 merge なら merge commit の `main` push run の
+  `artifact-attestation-<merge-sha>`）であり、release ブランチの
+  freeze run が残した候補 manifest ではない。候補 manifest の
+  `source.commit` は release head なので、merge commit を指す tag
+  とは `RELEASE_TAG_COMMIT_MISMATCH` で一致せず、それが契約の
+  正しい振る舞いである（`docs/release.md` §9.1 の phase A / phase B）。
+  CI (`ci.yml`) は tag push を trigger しないので、この照合は
   release owner が tag を fetch した checkout で実行する。tag push を
   CI trigger にして gate を自動化するか（含意する runner 時間の
   増分）は owner 決定（2026-10-19）で **自動化しない**。照合は
@@ -285,7 +294,10 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   `AGENTS.md §6` の release PR merge human gate は変更しない。
 - CI の pull_request run は `actions/checkout` の merge commit を
   build するため、manifest の `source.commit` もその merge commit に
-  なる。release branch への push では release commit そのものになる。
+  なる。release branch では `workflow_dispatch`（freeze）が release
+  commit そのものを attest し、`release-*` push は Issue #937 以降
+  manifest を生成しない。`main` push は merge commit を attest する
+  ので、tag 対象 commit の manifest はそこから得る。
 - secret SoT（Infisical）・Cloudflare Workers Builds の deploy 権限・
   release 承認のいずれも変更しない。
 

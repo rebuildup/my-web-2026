@@ -36,13 +36,15 @@ order and the credential layout only:
    normal order) apply manually:
    `pnpm run db:migrate:apply:production` (dry run) then
    `pnpm run db:migrate:apply:production -- --execute`.
-3. **Cloudflare authentication.** Two distinct credentials, both
-   available through Infisical:
-   - `CLOUDFLARE_D1_API_TOKEN` (Infisical `prod`) — every `--target=remote`
-     / `--target=production` D1 operation, including the two
-     `bootstrap:*-ingest-key` commands.
-   - Wrangler auth for `wrangler secret put` — `wrangler login`
-     (OAuth) or `CLOUDFLARE_API_TOKEN` with Worker secret-edit scope.
+3. **Cloudflare authentication.** `CLOUDFLARE_D1_API_TOKEN`
+   (Infisical `prod`) covers every `--target=remote` /
+   `--target=production` D1 operation, including the two
+   `bootstrap:*-ingest-key` commands. Deploys and Worker secret
+   bindings go through `cf deploy --prebuilt --secrets-file`, driven
+   by `scripts/deploy-with-secrets.mjs` under Infisical `prod` —
+   there is NO `wrangler secret put` / `cf workers secrets` path
+   (Issue #969): a binding written outside the Infisical → deploy
+   pipeline would diverge between local development and production.
 4. **Infisical CLI** authenticated for `dev` (feed secrets) and `prod`
    (the D1 token).
 
@@ -88,11 +90,12 @@ time; nothing below waits on them except the feed it belongs to.
 Fastest feed; independent of the other two.
 
 ```sh
-# interim binding — persists across deploys (deploys preserve existing
-# Worker secrets and only rewrite secrets.required names)
-pnpm exec wrangler secret put GITHUB_README_STATS_PAT_1 \
-  -c wrangler.production.jsonc
-# paste the fine-grained PAT at the prompt
+# Infisical is the ONLY secret path (Issue #969). The name is already
+# in secrets.required on both wrangler configs + _cloudflare-contract.mjs,
+# so the next `cf deploy --prebuilt --secrets-file` binds it — and a
+# deploy attempted BEFORE the seed fails closed at run-deploy-inner.
+infisical secrets set --env=prod GITHUB_README_STATS_PAT_1   # paste the PAT
+infisical secrets set --env=dev  GITHUB_README_STATS_PAT_1   # optional: local cards
 ```
 
 Verify all four endpoints answer real cards (200 + `image/svg+xml`;
@@ -161,19 +164,18 @@ infisical run --env=dev --path=/feeds/discord-presence -- \
   node scripts/sync-discord-presence.mjs
 ```
 
-`DISCORD_PRESENCE_USER_ID` (the wrangler `vars` entry the public card
-checks the snapshot against) is **not yet in
-`wrangler.production.jsonc`** — it exists only in the dev config as
-`""`. Enabling the card on production requires a ticket PR that adds
-the real snowflake to `wrangler.production.jsonc#vars` AND records
-the binding in `quality/cloudflare-config-drift.json` (the drift gate
-fails on an undeclared binding). The snowflake is owner input
-(semi-public, not a secret). Until that PR deploys, the card fails
-closed to "unavailable" even with the feed running — connecting the
-feed first is harmless. Landing it as a post-release ticket on `main`
-avoids re-opening the v0.9.0 candidate verification; landing it on
-`release-0-9-0` before the merge requires a new freeze + byte
-comparison (§9.1 phase A).
+`DISCORD_PRESENCE_USER_ID` (the non-secret `vars`/`bindings.text()`
+entry the public card checks the snapshot against) is **not yet in
+`cloudflare.config.ts` / `wrangler.production.jsonc`** — it exists
+only in the dev config as `""`. Enabling the card on production
+requires a ticket PR that adds the real snowflake to
+`cloudflare.config.ts` (production `bindings.text()`), mirrors it in
+`wrangler.production.jsonc#vars`, AND records the binding in
+`quality/cloudflare-config-drift.json` (the drift gate fails on an
+undeclared binding). The snowflake is owner input (semi-public, not
+a secret). Until that PR deploys, the card fails closed to
+"unavailable" even with the feed running — connecting the feed first
+is harmless.
 
 Run the long-running feed under launchd/`KeepAlive` per
 [`discord-presence.md`](discord-presence.md) §Running.

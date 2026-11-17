@@ -69,10 +69,13 @@ enabled (`pnpm run db:migrate:apply:local` /
 `pnpm run db:migrate:apply:production` — the production apply is the
 usual gated operator step).
 
-Set the real owner snowflake in `wrangler.jsonc` `vars`
-(`DISCORD_PRESENCE_USER_ID`). While it is the empty string the card
-fails closed to unavailable. The snowflake is semi-public (visible
-to mutual guild members); it is not a secret.
+Set the real owner snowflake as the `DISCORD_PRESENCE_USER_ID`
+non-secret binding: `bindings.text()` in `cloudflare.config.ts`
+(production branch), mirrored in `wrangler.production.jsonc#vars`,
+recorded in `quality/cloudflare-config-drift.json`. While it is the
+empty string the card fails closed to unavailable. The snowflake is
+semi-public (visible to mutual guild members); it is not a secret —
+but it is committed config, not an Infisical value.
 
 ### 4. Operator secrets
 

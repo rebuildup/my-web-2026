@@ -6,13 +6,13 @@
  * `BETTER_AUTH_SECRET` / `MY_WEB_2026_CONSUMER_API_KEY` from its own
  * `process.env` (Infisical injects them into the immediate child of
  * `infisical run`), writes them to a tempdir secrets.json, then
- * spawns Wrangler deploy with a sanitized env that does NOT carry
- * runtime secrets or `INFISICAL_TOKEN`.
+ * spawns `cf deploy --prebuilt --secrets-file` with a sanitized env
+ * that does NOT carry runtime secrets or `INFISICAL_TOKEN`.
  *
  * The reason for the wrapper:
- *   - Wrangler reads secrets from `--secrets-file`, not `process.env`.
+ *   - `cf deploy` reads secrets from `--secrets-file`, not `process.env`.
  *   - We must not pass `INFISICAL_TOKEN` or any runtime secret to the
- *     db:migrate / wrangler child processes (process tree depth = 2).
+ *     db:migrate / cf child processes (process tree depth = 2).
  *
  * Args (forwarded by `deploy-with-secrets.mjs`):
  * (no --config: the Build Output itself is the production gate — Issue #247)

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { anonId, buildSnapshot, repoFacts } from './sync-github-activity.mjs';
 
@@ -29,6 +30,25 @@ const privateRepo = {
 };
 
 const privateRepoStale = { ...privateRepo, id: 111, pushed_at: OLD };
+
+describe('anonId — no fallback salt (privacy regression)', () => {
+	it('refuses an empty salt instead of deriving a predictable id', () => {
+		assert.throws(() => anonId(42, ''), /GITHUB_ACTIVITY_SALT/);
+		assert.throws(() => anonId(42, undefined), /GITHUB_ACTIVITY_SALT/);
+		assert.throws(() => anonId(42, null), /GITHUB_ACTIVITY_SALT/);
+	});
+	it('never derives ids from a guessable constant', () => {
+		// The removed `salt || 'unset-salt'` fallback made every
+		// private-anon id recomputable by anyone who knew the repo id.
+		// Assert the function output cannot equal an HMAC keyed by
+		// that literal for any input.
+		const predictable = `private-${createHmac('sha256', 'unset-salt')
+			.update('987654321')
+			.digest('hex')
+			.slice(0, 12)}`;
+		assert.notEqual(anonId(987654321, SALT), predictable);
+	});
+});
 
 describe('anonId', () => {
 	it('is stable for the same repo id + salt', () => {
@@ -106,6 +126,34 @@ describe('buildSnapshot — privacy contract (#932)', () => {
 		assert.equal(pub.activity.events, 1);
 		assert.equal(snapshot.feed[0].repoId, 'rebuildup/my-web-2026');
 		assert.equal(snapshot.headSha, 'abc123');
+	});
+
+	it('fails closed when private repos were fetched without a salt', () => {
+		// Token present + salt absent must NOT degrade to public-only
+		// or predictable-id output — the whole build refuses.
+		assert.throws(
+			() =>
+				buildSnapshot({
+					events: [],
+					publicRepos: [publicRepo],
+					privateRepos: [privateRepo],
+					now: NOW,
+					salt: '',
+				}),
+			/GITHUB_ACTIVITY_SALT/,
+		);
+	});
+
+	it('still builds the public half when no token was used', () => {
+		const snap = buildSnapshot({
+			events: [],
+			publicRepos: [publicRepo],
+			privateRepos: null,
+			now: NOW,
+			salt: '',
+		});
+		assert.equal(snap.sources.private.status, 'unconfigured');
+		assert.equal(snap.repos.filter((r) => r.kind === 'private').length, 0);
 	});
 
 	it('reports private source unconfigured when no token was used', () => {

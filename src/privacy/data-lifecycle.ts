@@ -802,6 +802,57 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			},
 		},
 	},
+	{
+		id: 'github-activity-snapshot',
+		label: {
+			ja: 'GitHub アクティビティスナップショット（D1 `github_activity_snapshot`、単一行）',
+			en: 'GitHub activity snapshot (D1 `github_activity_snapshot`, single row)',
+		},
+		stores: {
+			ja: '運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-<hmac12>` の安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。',
+			en: 'The latest GitHub activity snapshot for the operator only: public-repository names, URLs, recent-activity aggregates and feed items; private repositories appear solely as stable `private-<hmac12>` anonymous ids with aggregate counts (never real names, URLs, owners, branches, commit messages, issue text or hashes). No visitor identifier.',
+		},
+		retention: {
+			kind: 'until-deleted',
+			statement: {
+				ja: '単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。',
+				en: 'A single row overwritten by each new snapshot. If the sync job stops the row remains, and the public side falls back to the committed (reviewed) artefact or shows whichever document observed more recently. Row deletion is a manual operator action.',
+			},
+		},
+		deletion: {
+			channel: 'operator-action',
+			statement: {
+				ja: '公開面から消すには運営者が D1 の行を削除します（削除後はコミット済みスナップショットが表示されます）。訪問者が自分で削除する経路はありません。',
+				en: 'Removing it from the public surface is an operator D1 delete (after which the committed snapshot is shown). Visitors have no self-service path.',
+			},
+		},
+		transfer: {
+			target: 'none',
+			statement: {
+				ja: '保存された値がこのプラットフォームの外へ送信されることはありません。GitHub から運営者側スクリプトへの取得は公開 API と運営者自身のトークンによるもので、このデータベースから第三者への送信はありません。',
+				en: 'Nothing stored here is sent outside this deployment. The GitHub → operator-script fetch uses the public API plus the owner’s own token; nothing in this database is transmitted to a third party.',
+			},
+			senders: [],
+		},
+		visibility: {
+			ja: 'ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの匿名 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。',
+			en: 'Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository anonymous ids / aggregates). API keys, tokens and private repository names are never published.',
+		},
+		evidence: [
+			'migrations/0012_github_activity.sql (単一行テーブル)',
+			'src/http/activity/schema.ts (受理するフィールドの allowlist・private 匿名契約)',
+			'src/http/activity/store.ts (upsert のみ・追記しない)',
+			'src/home/activity/live.ts (公開側の再検証と鮮度による選択)',
+			'scripts/sync-github-activity.mjs (匿名化はシリアライズ前・ソルト未設定は fail-closed)',
+		],
+		publication: {
+			status: 'pending',
+			note: {
+				ja: 'Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。',
+				en: 'Added by Issues #316 / #319 / #932 for the D1-backed GitHub activity snapshot. No owner approval of public wording exists yet, so it renders nowhere; the existing committed-snapshot rendering is outside this entry.',
+			},
+		},
+	},
 ] as const satisfies readonly DataLifecycleEntry[];
 
 /**

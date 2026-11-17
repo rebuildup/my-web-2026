@@ -141,7 +141,13 @@ scope by owner decision (2026-10-19). Before attaching a manifest to
 a GitHub Release, verify it against the release tag itself with
 `pnpm run artifact:attestation:check -- --manifest=<path>
 --release-tag="v<version>"`: the tag must resolve to the manifest's
-source commit and name its version. Hashing the artifact Cloudflare
+source commit and name its version. The manifest must be the one the
+**tag target commit's own run** produced — after a normal release-PR
+merge that is the merge commit's `main` push run
+(`artifact-attestation-<merge-sha>`), not the pre-merge release-branch
+freeze manifest, whose `source.commit` is the release head and which
+correctly fails `RELEASE_TAG_COMMIT_MISMATCH` against a merge-commit
+tag (`docs/release.md` §9.1 phase A / phase B). Hashing the artifact Cloudflare
 Workers Builds actually deploys, and comparing it to that manifest, stays
 outside the attested scope by owner decision (2026-10-19,
 attestation §8-3) — this step does not change the deploy authority, and

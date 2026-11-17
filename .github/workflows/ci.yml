@@ -415,9 +415,10 @@ jobs:
       # credential. See docs/security/supply-chain-artifact-attestation.md.
       #
       # Which pair is RELEASE evidence does not change: docs/release.md
-      # step 9 consumes the release branch's push run (the run whose
-      # `github.sha` is the release commit); a ticket-push pair is not
-      # release evidence, yet Issue #816's "leave the bytes for the
+      # step 9 consumes the freeze run's pair for the candidate SHA
+      # (phase A) and the `main` push run's pair for the merge commit
+      # the release tag names (phase B, §9.1); a ticket-push pair is
+      # not release evidence, yet Issue #816's "leave the bytes for the
       # pushed commit" obligation still applies to it — that is one of
       # the two obligations this job's ticket-push leg exists for.
       - name: Upload artifact attestation manifest
@@ -487,7 +488,10 @@ jobs:
       # Issue #816 (owner decision, 2026-11-02): the byte comparison is
       # a MANDATORY release gate, so the bytes have to exist for the
       # commit under review — not only for main. The step therefore runs
-      # on every PUSH run, and the evidence is the pair this run
+      # on every push run that builds (Issue #937 excludes `release-*`
+      # pushes, which run `validate:fast` only; the freeze
+      # `workflow_dispatch` leaves the candidate pair instead), and the
+      # evidence is the pair this run
       # produced (`artifact-attestation-<sha>` + `cf-build-output-<sha>`,
       # same `github.sha`), which the operator compares with
       # `gh run download` and `pnpm run artifact:attestation:check` /

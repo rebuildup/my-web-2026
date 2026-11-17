@@ -291,6 +291,12 @@ hero.tsx の 7 件はヒーロー文言の**書き換え**（「構築してい�
   公開するかどうかの owner 決定が残っている（PR #926 残作業参照）。
 - **`github-activity.json` の `非公開プロジェクト` ×9**: committed fallback の表示名。
   「匿名」ではなく「名称非表示」表記に修正済み（privacy refusal list 対応、PR #943 系）。
+- **⚠ privacy 台帳 `github-activity-snapshot` entry の「匿名」表記**: pending entry の本文
+  （L812/L813/L838/L839 相当）に「安定匿名 ID」「匿名 ID」「anonymous ids」が残っている。
+  出荷済みカード copy は「名称非表示」に修正済みで、`UNSUPPORTED_PUBLIC_CLAIMS`
+  （`src/privacy/data-lifecycle.ts` 末尾）は公開文書での「匿名」主張を禁止する。
+  **この entry を approved にして公開する場合、文面の修正が先に必要になる可能性が高い**
+  — owner が公開可否を判断する際の確認点（本資料は修正を提案・実施しない）。
 - **composer.tsx**: ほぼ全て移動。新規は `GitHub の活動 / GitHub activity` 説明 2 件と
   `Discord プレゼンス / Discord Presence` 見出し（pr-943/pr-960 が一部をカバー）。
 - **hero.tsx**: キャッチコピー全面書き換え。「移行中の public preview」という

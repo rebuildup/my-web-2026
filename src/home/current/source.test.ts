@@ -79,9 +79,11 @@ describe('the structure gate', () => {
 		expect(published[0]?.name).toBe('先頭');
 	});
 
-	it('drops an entry that carries only one of the two dates', () => {
-		// A duration needs a start and an end; rendering one date alone
-		// would read as if it were the whole story.
+	it('drops an entry that carries only a start date, keeps a lone last-update', () => {
+		// A start without an end would read as a duration with no end;
+		// a last-update date stands alone as a complete claim (Issue
+		// #967 — GitHub-observed projects know when they last moved,
+		// not when they began).
 		const published = selectPublishedProjects(
 			[
 				record({ id: 'only-start', startedOn: fact('2026-09-11') }),
@@ -90,7 +92,7 @@ describe('the structure gate', () => {
 			],
 			TODAY,
 		);
-		expect(published.map((entry) => entry.id)).toEqual(['both']);
+		expect(published.map((entry) => entry.id)).toEqual(['both', 'only-update']);
 	});
 
 	it('drops an entry whose start follows its last update', () => {

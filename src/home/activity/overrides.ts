@@ -22,6 +22,12 @@ export interface ActivityOverride {
 }
 
 export const ACTIVITY_OVERRIDES: Readonly<Record<string, ActivityOverride>> = {
+	// my-web-2026 is already the roster's flagship entry: its dates and
+	// commit counts come from the git snapshot (`git-facts.json`), which
+	// is reproducible evidence. Publishing the same project a second
+	// time as a GitHub-observed row would duplicate it under a
+	// different id (Issue #967).
+	'rebuildup/my-web-2026': { exclude: true },
 	// Example shape (uncomment and fill as needed):
 	// 'rebuildup/my-web-2026': { summaryJa: '個人 Web Platform の再構築。' },
 };

@@ -29,7 +29,12 @@ const privateRepo = {
 	pushed_at: RECENT,
 };
 
-const privateRepoStale = { ...privateRepo, id: 111, pushed_at: OLD };
+const privateRepoStale = {
+	...privateRepo,
+	id: 111,
+	full_name: 'rebuildup/other-private',
+	pushed_at: OLD,
+};
 
 describe('anonId — no fallback salt (privacy regression)', () => {
 	it('refuses an empty salt instead of deriving a predictable id', () => {
@@ -94,6 +99,12 @@ describe('buildSnapshot — privacy contract (#932)', () => {
 		],
 		publicRepos: [publicRepo],
 		privateRepos: [privateRepo, privateRepoStale],
+		// Issue #967 — inclusion now requires an OBSERVED owner signal:
+		// the recent private repo has measured commits; the stale one
+		// has none (its pushed_at alone no longer admits it).
+		contributions: {
+			'rebuildup/secret-side-project': { commits: 4, prs: 1 },
+		},
 		now: NOW,
 		salt: SALT,
 		headSha: 'abc123',
@@ -126,6 +137,13 @@ describe('buildSnapshot — privacy contract (#932)', () => {
 		assert.equal(pub.activity.events, 1);
 		assert.equal(snapshot.feed[0].repoId, 'rebuildup/my-web-2026');
 		assert.equal(snapshot.headSha, 'abc123');
+	});
+
+	it('publishes measured contribution counts, not events, as commits (Issue #967)', () => {
+		const priv = snapshot.repos.find((r) => r.kind === 'private');
+		assert.equal(priv.activity.commits, 4);
+		assert.equal(priv.activity.prs, 1);
+		assert.equal(priv.activity.events, 0);
 	});
 
 	it('fails closed when private repos were fetched without a salt', () => {

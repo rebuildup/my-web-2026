@@ -92,6 +92,51 @@ describe('activityProjectRecords', () => {
 		expect(JSON.stringify(priv)).not.toContain('secret');
 		expect(priv?.name).not.toContain('/');
 	});
+	it('reports measured commits/PRs, never the feed events count (Issue #967)', () => {
+		const records = activityProjectRecords(base);
+		const pub = records.find((r) => r.id === 'gh-rebuildup/public-a');
+		expect(pub?.weight?.activity?.value).toEqual({
+			commits: 2,
+			windowDays: 30,
+		});
+	});
+	it('publishes no activity claim when the contribution search did not run', () => {
+		const records = activityProjectRecords(base);
+		const priv = records.find((r) => r.id === 'gh-private-0123456789ab');
+		expect(priv?.weight?.activity).toBeUndefined();
+	});
+	it('maps lastActiveAt to a github-stamped updatedOn', () => {
+		const records = activityProjectRecords(base);
+		const pub = records.find((r) => r.id === 'gh-rebuildup/public-a');
+		expect(pub?.updatedOn).toEqual({
+			value: '2026-11-15',
+			source: 'github',
+			observedOn: '2026-11-16',
+			evidence: 'github-activity @ 2026-11-16',
+		});
+	});
+	it('ranks by measured contribution and caps the published set', () => {
+		const many = Array.from({ length: 20 }, (_, i) => ({
+			id: `rebuildup/r${String(i).padStart(2, '0')}`,
+			kind: 'public' as const,
+			name: `r${i}`,
+			repoFullName: `rebuildup/r${i}`,
+			activity: {
+				events: 0,
+				commits: i * 2,
+				...(i % 2 === 0 ? { prs: 1 } : {}),
+				windowDays: 30,
+			},
+		}));
+		const snapshot: GitHubActivitySnapshot = { ...base, repos: many };
+		const records = activityProjectRecords(snapshot);
+		expect(records).toHaveLength(12);
+		expect(records[0]?.id).toBe('gh-rebuildup/r19');
+		expect(records[0]?.weight?.activity?.value.commits).toBe(38);
+		expect(records[0]?.weight?.activity?.value.pullRequests).toBeUndefined();
+		expect(records[1]?.id).toBe('gh-rebuildup/r18');
+		expect(records[1]?.weight?.activity?.value.pullRequests).toBe(1);
+	});
 });
 
 describe('publicGitHubActivity', () => {

@@ -3,6 +3,9 @@
 Runbook for keeping the GitHub activity snapshot the home "現在地"
 sections read fresh — including the anonymised private-repository
 half — **without a commit, PR merge or site release per refresh**.
+For the ordered production connection sequence across all three
+v0.9.0 live feeds see
+[`live-data-connections.md`](live-data-connections.md).
 
 ## Data flow
 
@@ -47,7 +50,7 @@ job with secrets injected by `infisical run` into that process only.
 |---|---|
 | `GITHUB_TOKEN` | PAT with `repo` scope (fine-grained PAT scoped to the owner's repos also works) |
 | `GITHUB_ACTIVITY_SALT` | Random salt, e.g. `openssl rand -hex 32`. **Generate once, never rotate** — rotation changes every private-anon id. |
-| `MY_WEB_2026_API_KEY` | The `github_activity:write` ingest key (see below) |
+| `MY_WEB_2026_API_KEY` | The `github_activity:write` ingest key (see below). Stored at the feed's own Infisical path `/feeds/github-activity` — see [`live-data-connections.md`](live-data-connections.md) "Secret layout"; the env name is shared by all three feeds, so the path is what keeps the keys distinct |
 
 Store all three in the self-hosted Infisical
 (`https://secrets.rebuildup.dev`, project `d4c2fc09-…`, env `dev`).
@@ -74,12 +77,12 @@ Never write them to `.env` files or the repository.
 
 ```sh
 # refresh the committed artefact only (reviewed fallback / seed)
-infisical run --env=dev -- pnpm run activity:sync
-infisical run --env=dev -- pnpm run activity:check   # privacy/shape gate
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:sync
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:check   # privacy/shape gate
 
 # live update: fetch → anonymise → gate → PUT to D1 ingest
-infisical run --env=dev -- pnpm run activity:publish
-infisical run --env=dev -- pnpm run activity:publish -- --dry-run
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:publish
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:publish -- --dry-run
 ```
 
 `activity:publish` (`sync-github-activity.mjs --push`) writes
@@ -101,7 +104,7 @@ A daily run is enough — the snapshot carries its own
 document observed most recently. Example launchd/cron entry:
 
 ```sh
-infisical run --env=dev -- pnpm run activity:publish
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:publish
 ```
 
 The push is idempotent: an unchanged snapshot simply overwrites the
@@ -151,7 +154,7 @@ Refresh it deliberately (e.g. before a release that should carry a
 recent seed):
 
 ```sh
-infisical run --env=dev -- pnpm run activity:sync   # writes the file
-infisical run --env=dev -- pnpm run activity:check
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:sync   # writes the file
+infisical run --env=dev --path=/feeds/github-activity -- pnpm run activity:check
 # review the diff, commit on a ticket branch → release-0-9-0
 ```

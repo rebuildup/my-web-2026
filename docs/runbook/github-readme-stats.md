@@ -2,7 +2,9 @@
 
 Runbook for the self-hosted `github-readme-stats-fast` endpoints the
 Worker serves under `/api/v1/github-readme-stats/` and the profile
-README (`rebuildup/rebuildup`) will point at.
+README (`rebuildup/rebuildup`) will point at. For the ordered
+production connection sequence across all three v0.9.0 live feeds see
+[`live-data-connections.md`](live-data-connections.md).
 
 ## Endpoints
 

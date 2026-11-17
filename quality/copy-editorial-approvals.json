@@ -2135,6 +2135,1233 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-926",
+			"pr": 926,
+			"base": "main",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-11-17",
+			"decision": "approved",
+			"fingerprint": "sha256:dca17a5986715878faf9d0c9e11ad6bd09a822b847e403a4bd460f6f5820d7e2",
+			"proposal": {
+				"tool": "agent editorial pass (Devin) + owner review document",
+				"ran": true,
+				"summary": "main→release-0-9-0 の公開日本語 copy 180 セグメント（一意 160 比較対象）をレビュー資料 docs/verification/copy/release-0-9-0-public-copy-review-2026-11-17.md に整理。新規 Home 面（活動・presence・guide・広告）と privacy 台帳の公開文を対象に、観測状態の誇張なし・出所併記・fail-closed 語彙の方針を確認。",
+				"disposition": "全セグメントを intentional（意図的な新規/変更）または equivalent（composer 移動の同一文面）に分類。owner が 2026-11-17 に全差分を承認（PR #926 コメント issuecomment-6947470726）。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "観測中",
+					"text": "観測中",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "未接続",
+					"text": "未接続",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "取得失敗",
+					"text": "取得失敗",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "GitHub 活動スナップショットを読み込めませんでした。",
+					"text": "GitHub 活動スナップショットを読み込めませんでした。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "不明",
+					"text": "不明",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
+					"text": "公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}",
+					"text": "<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "日のイベント",
+					"text": "日のイベント",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "<p className={mutedClassName}>直近の公開イベントはありません。</p>",
+					"text": "<p className={mutedClassName}>直近の公開イベントはありません。</p>",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
+					"text": "観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "{activity.repoCount.private} 件",
+					"text": "{activity.repoCount.private} 件",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/github-activity.json",
+					"before": null,
+					"after": "非公開プロジェクト",
+					"text": "非公開プロジェクト",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/snapshot.ts",
+					"before": null,
+					"after": "GitHub 上で活動が観測された公開リポジトリ。",
+					"text": "GitHub 上で活動が観測された公開リポジトリ。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/activity/snapshot.ts",
+					"before": null,
+					"after": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
+					"text": "GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Mic Level の画面。マイク入力レベルの目盛り表示。",
+					"text": "Mic Level の画面。マイク入力レベルの目盛り表示。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "マイクの音量、もう勘で合わせていませんか？",
+					"text": "マイクの音量、もう勘で合わせていませんか？",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "OBS と同じ目盛り。適正ゲインをその場で提案。",
+					"text": "OBS と同じ目盛り。適正ゲインをその場で提案。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "レベルを確認",
+					"text": "レベルを確認",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "URL を送るたび、QR を作り直していませんか？",
+					"text": "URL を送るたび、QR を作り直していませんか？",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "QR Generator — ブラウザで作る QR コード",
+					"text": "QR Generator — ブラウザで作る QR コード",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "テキストや URL から QR コードを生成。",
+					"text": "テキストや URL から QR コードを生成。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "QR Generator の画面。入力設定と生成結果パネルが並ぶ。",
+					"text": "QR Generator の画面。入力設定と生成結果パネルが並ぶ。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "QR を作る",
+					"text": "QR を作る",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Pomodoro の画面。カウントダウンと作業・休憩スケジュール。",
+					"text": "Pomodoro の画面。カウントダウンと作業・休憩スケジュール。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Pomodoro — 作業と休憩のタイマー",
+					"text": "Pomodoro — 作業と休憩のタイマー",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "History Quiz の画面。空欄入りの歴史クイズ。",
+					"text": "History Quiz の画面。空欄入りの歴史クイズ。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "History Quiz — 歴史の穴埋めクイズ",
+					"text": "History Quiz — 歴史の穴埋めクイズ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Code Type p5 の画面。コードが打たれていくアニメーション。",
+					"text": "Code Type p5 の画面。コードが打たれていくアニメーション。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Code Type p5 — タイプ演出メーカー",
+					"text": "Code Type p5 — タイプ演出メーカー",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "ProtoType のタイトル画面。Game Start とメニューが並ぶ。",
+					"text": "ProtoType のタイトル画面。Game Start とメニューが並ぶ。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "3 分で始まる、ブラウザのタイピングゲーム",
+					"text": "3 分で始まる、ブラウザのタイピングゲーム",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "今すぐプレイ",
+					"text": "今すぐプレイ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Pi Memory Game — プレイアブル広告",
+					"text": "Pi Memory Game — プレイアブル広告",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "フル画面で遊ぶ",
+					"text": "フル画面で遊ぶ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "プレイする",
+					"text": "プレイする",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "作品を見る",
+					"text": "作品を見る",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "SVG to TSX の画面。SVG 入力と TSX 出力ペイン。",
+					"text": "SVG to TSX の画面。SVG 入力と TSX 出力ペイン。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "SVG を React コンポーネントに変換。",
+					"text": "SVG を React コンポーネントに変換。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "変換する",
+					"text": "変換する",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Fillgen の画面。穴埋めプリントのエディタと出力欄。",
+					"text": "Fillgen の画面。穴埋めプリントのエディタと出力欄。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Fillgen — 穴埋め教材ページ生成ツール",
+					"text": "Fillgen — 穴埋め教材ページ生成ツール",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Markdown 風テキストから穴埋め教材を生成。",
+					"text": "Markdown 風テキストから穴埋め教材を生成。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "教材を生成",
+					"text": "教材を生成",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "readmark のライブラリ画面。",
+					"text": "readmark のライブラリ画面。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "PDF を、アプリなしで読む。",
+					"text": "PDF を、アプリなしで読む。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "ローカルファースト。文書は外へ出ません。",
+					"text": "ローカルファースト。文書は外へ出ません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "Text Counter の画面。入力テキストと文字数の計測結果。",
+					"text": "Text Counter の画面。入力テキストと文字数の計測結果。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "テキストの文字数、秒で数えられます。",
+					"text": "テキストの文字数、秒で数えられます。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/placements.tsx",
+					"before": null,
+					"after": "文字数・バイト数・行数をブラウザだけで計測。",
+					"text": "文字数・バイト数・行数をブラウザだけで計測。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "広告",
+					"text": "広告",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "スポンサー広告",
+					"text": "スポンサー広告",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "‹ スワイプ ›",
+					"text": "‹ スワイプ ›",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "広告カルーセル",
+					"text": "広告カルーセル",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "プレイアブル広告",
+					"text": "プレイアブル広告",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "その場でプレイ",
+					"text": "その場でプレイ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "${headline} — タップしてその場でプレイ",
+					"text": "${headline} — タップしてその場でプレイ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/ads/units.tsx",
+					"before": null,
+					"after": "タップしてその場でプレイ",
+					"text": "タップしてその場でプレイ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "サイトの状態",
+					"after": null,
+					"text": "サイトの状態",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"after": null,
+					"text": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "プラットフォームの状態 / Platform health",
+					"after": null,
+					"text": "プラットフォームの状態 / Platform health",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "みんなの反応 / Reactions",
+					"after": null,
+					"text": "みんなの反応 / Reactions",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"after": null,
+					"text": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"after": null,
+					"text": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "ページビュー / Page views",
+					"after": null,
+					"text": "ページビュー / Page views",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"after": null,
+					"text": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "Contact / お問い合わせ",
+					"after": null,
+					"text": "Contact / お問い合わせ",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"after": null,
+					"text": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "<span lang=\"ja\">Contact を見る</span>",
+					"after": null,
+					"text": "<span lang=\"ja\">Contact を見る</span>",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "GitHub の活動 / GitHub activity",
+					"text": "GitHub の活動 / GitHub activity",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"text": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"text": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "Discord プレゼンス / Discord Presence",
+					"text": "Discord プレゼンス / Discord Presence",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/GuideSection.tsx",
+					"before": null,
+					"after": "サイト内案内",
+					"text": "サイト内案内",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/GuideSection.tsx",
+					"before": null,
+					"after": "このサイトに何があり、どう辿るか。主要ページは同列の施設として、必要なときだけ下の階層まで開けます。",
+					"text": "このサイトに何があり、どう辿るか。主要ページは同列の施設として、必要なときだけ下の階層まで開けます。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/GuideSection.tsx",
+					"before": null,
+					"after": "{featured ? <span className={featuredBadgeClassName}>注目</span> : null}",
+					"text": "{featured ? <span className={featuredBadgeClassName}>注目</span> : null}",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/GuideSection.tsx",
+					"before": null,
+					"after": "<span className={externalMarkClassName}>外部 ↗</span>",
+					"text": "<span className={externalMarkClassName}>外部 ↗</span>",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/GuideSection.tsx",
+					"before": null,
+					"after": "下の階層を見る ({entry.children.length})",
+					"text": "下の階層を見る ({entry.children.length})",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/VisitTrail.tsx",
+					"before": null,
+					"after": "このブラウザで見たページ",
+					"text": "このブラウザで見たページ",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/VisitTrail.tsx",
+					"before": null,
+					"after": "<p className={trailLabelClassName}>このブラウザで見たページ</p>",
+					"text": "<p className={trailLabelClassName}>このブラウザで見たページ</p>",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/VisitTrail.tsx",
+					"before": null,
+					"after": "この一覧はあなたのブラウザの中だけに保存され、サーバーには送信されません。",
+					"text": "この一覧はあなたのブラウザの中だけに保存され、サーバーには送信されません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "About — この人について",
+					"text": "About — この人について",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"text": "運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Portfolio — 作品",
+					"text": "Portfolio — 作品",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"text": "公開している制作物の一覧。個別の作品ページへはここから辿る。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "作品一覧",
+					"text": "作品一覧",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "公開作品の一覧と絞り込み。",
+					"text": "公開作品の一覧と絞り込み。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Dotfiles — 開発環境の設計図",
+					"text": "Dotfiles — 開発環境の設計図",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"text": "日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Tools — ブラウザで使える小物",
+					"text": "Tools — ブラウザで使える小物",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"text": "インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Keyboard — キーボードレイアウト",
+					"text": "Keyboard — キーボードレイアウト",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"text": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Contact — 連絡先",
+					"text": "Contact — 連絡先",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "re-verified 済みの連絡手段だけを掲載している窓口。",
+					"text": "re-verified 済みの連絡手段だけを掲載している窓口。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "GitHub — ソースと活動",
+					"text": "GitHub — ソースと活動",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"text": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": null,
+					"after": "現在地 / Where I am now",
+					"text": "現在地 / Where I am now",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": null,
+					"after": "個人の Web プラットフォームを、毎日作り直している。",
+					"text": "個人の Web プラットフォームを、毎日作り直している。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": null,
+					"after": "完成していないから、毎日更新されている。開発・制作・活動の記録と、公開中のツール、移行中の制作物をこのページに集約しています。",
+					"text": "完成していないから、毎日更新されている。開発・制作・活動の記録と、公開中のツール、移行中の制作物をこのページに集約しています。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /",
+					"after": null,
+					"text": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "content / activity を段階的に移行中です。",
+					"after": null,
+					"text": "content / activity を段階的に移行中です。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "この 2026 edition は移行途中の public preview",
+					"after": null,
+					"text": "この 2026 edition は移行途中の public preview",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "です。コンテンツは段階的に公開していきます。",
+					"after": null,
+					"text": "です。コンテンツは段階的に公開していきます。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "<span>About me / 自己紹介</span>",
+					"after": null,
+					"text": "<span>About me / 自己紹介</span>",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "<span lang=\"en\">Portfolio</span> を見る",
+					"after": null,
+					"text": "<span lang=\"en\">Portfolio</span> を見る",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/hero.tsx",
+					"before": "<span lang=\"en\">GitHub</span> でソースを見る",
+					"after": null,
+					"text": "<span lang=\"en\">GitHub</span> でソースを見る",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/presence/PresenceCard.tsx",
+					"before": null,
+					"after": "Discordの本人プレゼンス / アクティビティ / リッチプレゼンス / カスタムステータス。運営者が実行するスクリプトで生成された確定スナップショットのみを表示。スナップショットが存在しない / 期限切れ / 検証失敗の場合は「未取得」として安全にデグレードします。",
+					"text": "Discordの本人プレゼンス / アクティビティ / リッチプレゼンス / カスタムステータス。運営者が実行するスクリプトで生成された確定スナップショットのみを表示。スナップショットが存在しない / 期限切れ / 検証失敗の場合は「未取得」として安全にデグレードします。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/presence/PresenceCard.tsx",
+					"before": null,
+					"after": "<span>Discordプレゼンス: 未取得 (スナップショットが存在しないか、期限切れ/検証失敗)</span>",
+					"text": "<span>Discordプレゼンス: 未取得 (スナップショットが存在しないか、期限切れ/検証失敗)</span>",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/presence/PresenceCard.tsx",
+					"before": null,
+					"after": "Discord プレゼンス",
+					"text": "Discord プレゼンス",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/presence/PresenceCard.tsx",
+					"before": null,
+					"after": "· ライブ接続",
+					"text": "· ライブ接続",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/home/presence/PresenceCard.tsx",
+					"before": null,
+					"after": "· 古いスナップショット",
+					"text": "· 古いスナップショット",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "owner が公開 wording を承認するまで描画しない。事実はここに記録して失わない。",
+					"after": "owner が公開 wording を承認したため公開する。",
+					"text": "owner が公開 wording を承認したため公開する。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "Issue #316 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。",
+					"text": "Issue #316 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "サイト内案内の訪問先一覧（ブラウザの localStorage `mw_home_visit_trail_v1`）",
+					"text": "サイト内案内の訪問先一覧（ブラウザの localStorage `mw_home_visit_trail_v1`）",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "このブラウザがこのサイト内で訪れた公開ページのパスを、新しい順に最大 5 件。パス以外の情報（識別子・時刻・検索語・参照元・端末情報）は含みません。`/admin` と `/api` は記録しません。",
+					"text": "このブラウザがこのサイト内で訪れた公開ページのパスを、新しい順に最大 5 件。パス以外の情報（識別子・時刻・検索語・参照元・端末情報）は含みません。`/admin` と `/api` は記録しません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "自動失効はありません。キーは訪問者のブラウザにだけ残り、サイトデータを消すまで残ります。サーバーには複製されません。",
+					"text": "自動失効はありません。キーは訪問者のブラウザにだけ残り、サイトデータを消すまで残ります。サーバーには複製されません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "ブラウザのサイトデータ削除で消えます。値は訪問のたびに上書きされるだけなので、削除しなくても表示が壊れることはありません。",
+					"text": "ブラウザのサイトデータ削除で消えます。値は訪問のたびに上書きされるだけなので、削除しなくても表示が壊れることはありません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。",
+					"text": "このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "訪問者本人のブラウザにだけ表示される一覧で、公開ページの SSR 出力にも公開 API にも現れません。",
+					"text": "訪問者本人のブラウザにだけ表示される一覧で、公開ページの SSR 出力にも公開 API にも現れません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/guide/trail.ts (キー名・保存する項目・除外パス・失敗時挙動)",
+					"text": "src/home/guide/trail.ts (キー名・保存する項目・除外パス・失敗時挙動)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/guide/VisitTrailRecorder.tsx (記録は公開ルートのみ・pathname のみ)",
+					"text": "src/home/guide/VisitTrailRecorder.tsx (記録は公開ルートのみ・pathname のみ)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/guide/VisitTrail.tsx (SSR/初回/ストレージ不可では何も描画しない)",
+					"text": "src/home/guide/VisitTrail.tsx (SSR/初回/ストレージ不可では何も描画しない)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)",
+					"text": "src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "Issue #936 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。",
+					"text": "Issue #936 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "Discord プレゼンススナップショット（D1 `discord_presence_snapshot`、単一行）",
+					"text": "Discord プレゼンススナップショット（D1 `discord_presence_snapshot`、単一行）",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
+					"text": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
+					"text": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "公開面から消すには運営者が D1 の行を削除します。訪問者が自分で削除する経路はありません（本人のデータではないため）。",
+					"text": "公開面から消すには運営者が D1 の行を削除します。訪問者が自分で削除する経路はありません（本人のデータではないため）。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "保存された値がこのプラットフォームの外へ送信されることはありません。Discord から運営者側スクリプトへの取得は本人のボット連携であり、このデータベースから第三者への送信はありません。",
+					"text": "保存された値がこのプラットフォームの外へ送信されることはありません。Discord から運営者側スクリプトへの取得は本人のボット連携であり、このデータベースから第三者への送信はありません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "ホームのステータス欄に、本人が公開を意図した範囲で表示されます（ステータス・カスタムステータス・アクティビティ名など）。API キーやトークン、他者の情報は公開されません。",
+					"text": "ホームのステータス欄に、本人が公開を意図した範囲で表示されます（ステータス・カスタムステータス・アクティビティ名など）。API キーやトークン、他者の情報は公開されません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "migrations/0011_discord_presence.sql (単一行テーブル)",
+					"text": "migrations/0011_discord_presence.sql (単一行テーブル)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/http/presence/schema.ts (受理するフィールドの allowlist)",
+					"text": "src/http/presence/schema.ts (受理するフィールドの allowlist)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/http/presence/store.ts (upsert のみ・追記しない)",
+					"text": "src/http/presence/store.ts (upsert のみ・追記しない)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/presence/reader.ts (公開側の再検証と鮮度チェック)",
+					"text": "src/home/presence/reader.ts (公開側の再検証と鮮度チェック)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)",
+					"text": "scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "Issue #320 で追加した運営者本人のプレゼンス保存項目。owner が公開 wording を承認したため公開する。",
+					"text": "Issue #320 で追加した運営者本人のプレゼンス保存項目。owner が公開 wording を承認したため公開する。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "GitHub アクティビティスナップショット（D1 `github_activity_snapshot`、単一行）",
+					"text": "GitHub アクティビティスナップショット（D1 `github_activity_snapshot`、単一行）",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+					"text": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。",
+					"text": "単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "公開面から消すには運営者が D1 の行を削除します（削除後はコミット済みスナップショットが表示されます）。訪問者が自分で削除する経路はありません。",
+					"text": "公開面から消すには運営者が D1 の行を削除します（削除後はコミット済みスナップショットが表示されます）。訪問者が自分で削除する経路はありません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "保存された値がこのプラットフォームの外へ送信されることはありません。GitHub から運営者側スクリプトへの取得は公開 API と運営者自身のトークンによるもので、このデータベースから第三者への送信はありません。",
+					"text": "保存された値がこのプラットフォームの外へ送信されることはありません。GitHub から運営者側スクリプトへの取得は公開 API と運営者自身のトークンによるもので、このデータベースから第三者への送信はありません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
+					"text": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.",
+					"text": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "migrations/0012_github_activity.sql (単一行テーブル)",
+					"text": "migrations/0012_github_activity.sql (単一行テーブル)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/http/activity/schema.ts (受理するフィールドの allowlist・private 仮名契約)",
+					"text": "src/http/activity/schema.ts (受理するフィールドの allowlist・private 仮名契約)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/http/activity/store.ts (upsert のみ・追記しない)",
+					"text": "src/http/activity/store.ts (upsert のみ・追記しない)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "src/home/activity/live.ts (公開側の再検証と鮮度による選択)",
+					"text": "src/home/activity/live.ts (公開側の再検証と鮮度による選択)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": null,
+					"after": "scripts/sync-github-activity.mjs (仮名化はシリアライズ前・ソルト未設定は fail-closed)",
+					"text": "scripts/sync-github-activity.mjs (仮名化はシリアライズ前・ソルト未設定は fail-closed)",
+					"verdict": "intentional",
+					"note": "v0.9.0 の新規・変更公開日本語 copy。意味比較: main には存在しない新規文面（移動の場合は同一文面が composer 再構成で別位置に出る）。owner が 2026-11-17 に PR #926 コメントで承認。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "Issue #316 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。",
+					"after": "Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。owner が公開 wording を承認したため公開する。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。",
+					"text": "Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。owner が公開 wording を承認したため公開する。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。",
+					"verdict": "intentional",
+					"note": "削除/書き換え対象の旧文面。hero は新キャッチコピーへ置換、composer の移動分は同一文面が added 側に残る。owner が 2026-11-17 に PR #926 コメントで承認。"
+				}
+			],
+			"provenance": {
+				"kind": "owner-review",
+				"reference": "https://github.com/rebuildup/my-web-2026/pull/926#issuecomment-6947470726",
+				"recordedBy": "agent",
+				"ownerConfirmation": "confirmed",
+				"evidence": [
+					{
+						"type": "issue-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/926#issuecomment-6947470726",
+						"note": "owner が 2026-11-17 のリリース作業セッションで copy 差分の承認を明示し、その判断を PR #926 コメントとして記録したもの。"
+					},
+					{
+						"type": "commit",
+						"reference": "0ed7cc517ebcfe9a52bbb9d82a96cf47372a659a",
+						"note": "承認時点の release-0-9-0 HEAD（レビュー資料同梱）。"
+					}
+				]
+			}
 		}
 	]
 }

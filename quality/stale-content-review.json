@@ -962,6 +962,190 @@
 				]
 			},
 			"note": "上書き・フォールバック・手動削除の保持規則の記述。公開文の承認待ち (pending) でレンダリングされない。"
+		},
+		{
+			"id": "current-projects-signature-label",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "現在地セクションの前回表示署名（ブラウザの localStorage `mw_home_current_projects_v1`）",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "current-projects-signature entry (approved 2026-11-17, owner decision on PR #926). Label of the localStorage signature store; matches src/home/current/use-changed-projects.ts key mw_home_current_projects_v1."
+		},
+		{
+			"id": "current-projects-signature-stores-ja",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」に並ぶ各プロジェクトについて、識別子・名称・一行説明・保存された事実（日付・段階・計測値）とその出所を連結した文字列 1 本ずつ。訪問者の識別子、IP、閲覧履歴、端末情報は含みません。導出値（「1 か月」「12 日前」など）は保存しません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja stores sentence. Claims checked against use-changed-projects.ts: stores per-project signature strings only; no visitor id, IP, history or device data; derived values excluded (pinned by use-changed-projects.test.ts)."
+		},
+		{
+			"id": "current-projects-signature-stores-en",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.",
+			"locale": "en",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, en stores sentence — same checks as the ja record."
+		},
+		{
+			"id": "discord-presence-snapshot-stores",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "discord-presence-snapshot entry (approved 2026-11-17). Claims checked against src/http/presence/schema.ts allowlist and scripts/sync-discord-presence.mjs (owner-only tracking, no message content, no other members, no token)."
+		},
+		{
+			"id": "discord-presence-snapshot-retention",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja retention sentence. Single-row upsert (src/http/presence/store.ts) and generatedAt freshness fail-closed (src/home/presence/reader.ts) match the wording."
+		},
+		{
+			"id": "github-activity-snapshot-stores",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "github-activity-snapshot entry (approved 2026-11-17). Wording corrected from 匿名 to 名称非公開 before publication (UNSUPPORTED_PUBLIC_CLAIMS); claims checked against src/http/activity/schema.ts private-id contract and scripts/sync-github-activity.mjs anonymization-before-serialize."
+		},
+		{
+			"id": "github-activity-snapshot-visibility",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja visibility sentence (名称非公開 wording). Render scope matches src/home/activity/live.ts + GitHubActivityCard.tsx."
+		},
+		{
+			"id": "github-activity-snapshot-visibility-en",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.",
+			"locale": "en",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, en visibility sentence (name-hidden ids). Same checks as the ja record."
 		}
 	]
 }

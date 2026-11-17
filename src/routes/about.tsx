@@ -7,6 +7,8 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../editorial/social-card';
 import { PersonJsonLd } from '../editorial/structured-data';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 
 /**
  * `/about` — single page route (Issue #102, Issue #199).
@@ -49,12 +51,18 @@ import { PersonJsonLd } from '../editorial/structured-data';
  *   - `src/about/structured-data.ts` — the approved projection
  *   - `src/portfolio/load.ts` — DI seam that supplies experience
  */
+export const ABOUT_REACTIONS_TARGET = 'about-page';
+
 export const Route = createFileRoute('/about')({
 	loader: async () => {
-		return loadAboutPage({ data: undefined });
+		const [data, reactions] = await Promise.all([
+			loadAboutPage({ data: undefined }),
+			getHomeReactions({ data: { target: ABOUT_REACTIONS_TARGET } }),
+		]);
+		return { data, reactions };
 	},
 	head: ({ loaderData }) => {
-		const data = loaderData;
+		const data = loaderData?.data;
 		const identity = data?.identity;
 		const name = identity?.name ?? 'About';
 		const role = identity?.role ?? '';
@@ -92,7 +100,7 @@ export const Route = createFileRoute('/about')({
 });
 
 function AboutRoute() {
-	const data = Route.useLoaderData();
+	const { data, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -100,6 +108,7 @@ function AboutRoute() {
 			<BreadcrumbJsonLd />
 			<PersonJsonLd facts={personFactsFromAbout(data)} />
 			<AboutPage data={data} />
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

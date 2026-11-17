@@ -4,6 +4,8 @@ import { getVisibleChannels } from '../contact/public';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 
 /**
  * `/contact` route (Issue #103, Issue #199).
@@ -29,11 +31,14 @@ import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
  * imported and rendered here explicitly rather than mounted at the
  * `__root` level — see `src/routes/about.tsx` for the rationale.
  */
+export const CONTACT_REACTIONS_TARGET = 'contact-page';
+
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
 		const now = Date.now();
 		const channels = getVisibleChannels(now);
-		return { channels, now, empty: channels.length === 0 };
+		const reactions = await getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } });
+		return { channels, now, empty: channels.length === 0, reactions };
 	},
 	head: () => {
 		const title = 'Contact — rebuildup.dev';
@@ -57,13 +62,14 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactRoute() {
-	const { channels, now, empty } = Route.useLoaderData();
+	const { channels, now, empty, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
 			<ContactPage channels={channels} now={now} empty={empty} />
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

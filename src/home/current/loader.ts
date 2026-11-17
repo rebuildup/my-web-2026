@@ -69,7 +69,10 @@ const GITHUB_PROJECTS = (() => {
 
 /** The loader the route awaits. */
 export const currentProjectsLoader = {
-	async loadCurrentProjects(today: string): Promise<readonly CurrentProjectRecord[]> {
+	async loadCurrentProjects(
+		today: string,
+		githubProjects: readonly CurrentProjectRecord[] | null = GITHUB_PROJECTS,
+	): Promise<readonly CurrentProjectRecord[]> {
 		const base = await createCurrentProjectsLoader(
 			PROJECT_ROSTER,
 			FACT_SOURCES,
@@ -77,8 +80,10 @@ export const currentProjectsLoader = {
 		// Auto-selected GitHub projects merge into the SAME published
 		// ordering: they carry `github`-stamped facts and compete on the
 		// same level/date rules, so a repository the owner also rostered
-		// is never duplicated (ids are namespaced `gh-`).
-		return selectPublishedProjects([...base, ...GITHUB_PROJECTS], today);
+		// is never duplicated (ids are namespaced `gh-`). The caller may
+		// pass records projected from the live D1 snapshot; `null`
+		// means "no usable snapshot" and degrades to roster+git only.
+		return selectPublishedProjects([...base, ...(githubProjects ?? [])], today);
 	},
 };
 

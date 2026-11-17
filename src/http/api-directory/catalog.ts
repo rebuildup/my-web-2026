@@ -283,6 +283,12 @@ export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
 	},
 	{
 		method: 'PUT',
+		path: '/api/v1/activity/github',
+		reason:
+			'Operator ingest endpoint (Issues #316 / #319 / #932): the operator-side sync script pushes the anonymised GitHub activity snapshot here. It is a write-only pipeline boundary with a dedicated github_activity:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',
+	},
+	{
+		method: 'PUT',
 		path: '/api/v1/presence/discord',
 		reason:
 			'Operator ingest endpoint (Issue #320): the operator-side Discord Gateway script pushes the owner-presence snapshot here. It is a write-only pipeline boundary with a dedicated discord_presence:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',

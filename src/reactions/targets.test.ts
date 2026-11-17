@@ -74,12 +74,16 @@ describe('reaction targets registry', () => {
 		const keys = getEnabledReactionTargetKeys();
 		expect(keys).toContain('home-page');
 		expect(keys).toContain('portfolio-list');
-		expect(keys.length).toBe(2); // Exactly the two registered targets
+		expect(keys).toContain('about-page');
+		expect(keys).toContain('contact-page');
+		expect(keys).toContain('projects-dotfiles');
+		expect(keys).toContain('tools-index');
+		expect(keys.length).toBe(6);
 	});
 
-	it('has exactly two targets in the registry', () => {
-		expect(REACTION_TARGETS.length).toBe(2);
-		expect(REACTION_TARGETS_BY_KEY.size).toBe(2);
+	it('has exactly six targets in the registry', () => {
+		expect(REACTION_TARGETS.length).toBe(6);
+		expect(REACTION_TARGETS_BY_KEY.size).toBe(6);
 	});
 
 	it('target keys are opaque strings, not URL-derived', () => {

@@ -10,11 +10,11 @@
 | --- | --- |
 | 対象 PR | [#926](https://github.com/rebuildup/my-web-2026/pull/926) `release-0-9-0` → `main` |
 | base | `origin/main` = `2ce6f87e`（merge-base と同一。main は cut 以降未更新） |
-| head（資料作成時） | `4d47547c` |
-| 変更された公開日本語 segment | **178**（added 160 / removed 18、生の gate 単位） |
-| 重複を畳んだ承認対象 | **158 行**（added の一意 `(path, after)` 140 + removed 18） |
-| release 変更集合 fingerprint | `sha256:17b1f577dceefe65ce18eecc4c811db0111bb9ac6eff3314eab13ed2b6168ea6` |
-| gate verdict | **NEEDS REVIEW** — この変更集合を覆う approval record は存在しない |
+| head（資料作成時） | `59ae16f2`（privacy entry 公開 + stale-review record 追加を含む） |
+| 変更された公開日本語 segment | **180**（added 160 / removed 20、生の gate 単位） |
+| 重複を畳んだ承認対象 | **160 行**（added の一意 `(path, after)` 140 + removed 20） |
+| release 変更集合 fingerprint | `sha256:dca17a5986715878faf9d0c9e11ad6bd09a822b847e403a4bd460f6f5820d7e2` |
+| gate verdict | **NEEDS REVIEW** — この変更集合を覆う approval record は存在しない（owner 判断後に `pr-926` record を追加） |
 | 再現 | `node scripts/check-copy-editorial-approval.mjs --base=origin/main`（release head で実行） |
 
 fingerprint は「変更後の文面」全体に紐づく。**承認は文面に結び付く**ため、
@@ -35,22 +35,21 @@ fingerprint であり、release 全体の変更集合（上記 fingerprint）は
 
 **release 用の record（`pr-926` 相当・`base: "main"`）はまだ存在しない。**
 v0.7.0 では release PR #619 用に同じ手順で record が作られた（commit `54a7d97f`）。
-今回も owner 判断後に同様の record を `quality/copy-editorial-approvals.json` へ追加する必要がある。
+owner 判断（2026-11-17、PR #926 での明示承認）を provenance に記録した record を追加する。
 
 ## 3. 承認対象の一覧（ファイル別・重複畳み）
 
-gate の 178 単位のうち、同一 `(path, after)` の反復（例: `非公開プロジェクト` ×9、
-`広告` ×5、`Discord プレゼンス` ×4）を 1 行に畳んだ。**`×N` は同じ文面が N 箇所に
+gate の 180 単位のうち、同一 `(path, after)` の反復を 1 行に畳んだ。**`×N` は同じ文面が N 箇所に
 現れることを示す**。record の comparisons は gate 単位で書く必要がある点に注意
 （pr-619 の先例では gate 単位 120 件分を記録した）。
 
 表の「既存 record の対応」は **同一文面を comparisons に含む record** を示すだけで、
-release の fingerprint `sha256:17b1f577…` を覆う record は存在しない（§2）。
+release の fingerprint `sha256:dca17a59…` を覆う record は存在しない（§2）。
 
 ### 集計
 
 - added の一意 `(path, after)` ペア: **140**（gate 単位 160 から反復を畳んだもの）
-- removed: **18**（composer の移動 11 + hero の書き換え 7）
+- removed: **20**
 - ファイル数: **12**
 
 ### `src/home/activity/GitHubActivityCard.tsx` — トップ「現在地」GitHub 活動カード（観測状態・件数・出所表示）
@@ -212,51 +211,51 @@ release の fingerprint `sha256:17b1f577…` を覆う record は存在しない
 | 4 | — | `· ライブ接続` |  L371 | — |
 | 5 | — | `· 古いスナップショット` |  L372 | — |
 
-### `src/privacy/data-lifecycle.ts` — 公開データライフサイクル台帳（privacy notice の本文ソース。pending エントリは非描画）
+### `src/privacy/data-lifecycle.ts` — 公開データライフサイクル台帳（privacy notice の本文ソース。v0.9.0 で全 11 entry が approved）
 
 | # | before | after | 出現 | 既存 record の対応 |
 | --- | --- | --- | --- | --- |
-| 1 | — | `サイト内案内の訪問先一覧（ブラウザの localStorage `mw_home_visit_trail_v1`）` |  L707 | — |
-| 2 | — | `このブラウザがこのサイト内で訪れた公開ページのパスを、新しい順に最大 5 件。パス以外の情報（識別子・時刻・検索語・参照元・端末情報）は含みません。`/admin` と `/api` は記録しません。` |  L711 | — |
-| 3 | — | `自動失効はありません。キーは訪問者のブラウザにだけ残り、サイトデータを消すまで残ります。サーバーには複製されません。` |  L717 | — |
-| 4 | — | `ブラウザのサイトデータ削除で消えます。値は訪問のたびに上書きされるだけなので、削除しなくても表示が壊れることはありません。` |  L724 | — |
-| 5 | — | `このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。` |  L731 | — |
-| 6 | — | `訪問者本人のブラウザにだけ表示される一覧で、公開ページの SSR 出力にも公開 API にも現れません。` |  L737 | — |
-| 7 | — | `src/home/guide/trail.ts (キー名・保存する項目・除外パス・失敗時挙動)` |  L741 | — |
-| 8 | — | `src/home/guide/VisitTrailRecorder.tsx (記録は公開ルートのみ・pathname のみ)` |  L742 | — |
-| 9 | — | `src/home/guide/VisitTrail.tsx (SSR/初回/ストレージ不可では何も描画しない)` |  L743 | — |
-| 10 | — | `src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)` |  L744 | — |
-| 11 | — | `Issue #936 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。案内セクション内の短い説明文は実装と一致する範囲で表示している。` |  L749 | — |
-| 12 | — | `Discord プレゼンススナップショット（D1 `discord_presence_snapshot`、単一行）` |  L757 | — |
-| 13 | — | `運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。` |  L761 | — |
-| 14 | — | `単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。` |  L767 | — |
-| 15 | — | `公開面から消すには運営者が D1 の行を削除します。訪問者が自分で削除する経路はありません（本人のデータではないため）。` |  L774 | — |
-| 16 | — | `保存された値がこのプラットフォームの外へ送信されることはありません。Discord から運営者側スクリプトへの取得は本人のボット連携であり、このデータベースから第三者への送信はありません。` |  L781 | — |
-| 17 | — | `ホームのステータス欄に、本人が公開を意図した範囲で表示されます（ステータス・カスタムステータス・アクティビティ名など）。API キーやトークン、他者の情報は公開されません。` |  L787 | — |
-| 18 | — | `migrations/0011_discord_presence.sql (単一行テーブル)` |  L791 | — |
-| 19 | — | `src/http/presence/schema.ts (受理するフィールドの allowlist)` |  L792 | — |
-| 20 | — | `src/http/presence/store.ts (upsert のみ・追記しない)` |  L793 | — |
-| 21 | — | `src/home/presence/reader.ts (公開側の再検証と鮮度チェック)` |  L794 | — |
-| 22 | — | `scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)` |  L795 | — |
-| 23 | — | `Issue #320 で追加した運営者本人のプレゼンス保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。` |  L800 | — |
-| 24 | — | `GitHub アクティビティスナップショット（D1 `github_activity_snapshot`、単一行）` |  L808 | — |
-| 25 | — | `運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。` |  L812 | — |
-| 26 | — | `単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。` |  L818 | — |
-| 27 | — | `公開面から消すには運営者が D1 の行を削除します（削除後はコミット済みスナップショットが表示されます）。訪問者が自分で削除する経路はありません。` |  L825 | — |
-| 28 | — | `保存された値がこのプラットフォームの外へ送信されることはありません。GitHub から運営者側スクリプトへの取得は公開 API と運営者自身のトークンによるもので、このデータベースから第三者への送信はありません。` |  L832 | — |
-| 29 | — | `ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの匿名 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。` |  L838 | — |
-| 30 | — | `Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository anonymous ids / aggregates). API keys, tokens and private repository names are never published.` |  L839 | — |
-| 31 | — | `migrations/0012_github_activity.sql (単一行テーブル)` |  L842 | — |
-| 32 | — | `src/http/activity/schema.ts (受理するフィールドの allowlist・private 匿名契約)` |  L843 | — |
-| 33 | — | `src/http/activity/store.ts (upsert のみ・追記しない)` |  L844 | — |
-| 34 | — | `src/home/activity/live.ts (公開側の再検証と鮮度による選択)` |  L845 | — |
-| 35 | — | `scripts/sync-github-activity.mjs (匿名化はシリアライズ前・ソルト未設定は fail-closed)` |  L846 | — |
-| 36 | — | `Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。` |  L851 | — |
+| 1 | — | `Issue #316 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。` |  L699 | — |
+| 2 | — | `サイト内案内の訪問先一覧（ブラウザの localStorage `mw_home_visit_trail_v1`）` |  L707 | — |
+| 3 | — | `このブラウザがこのサイト内で訪れた公開ページのパスを、新しい順に最大 5 件。パス以外の情報（識別子・時刻・検索語・参照元・端末情報）は含みません。`/admin` と `/api` は記録しません。` |  L711 | — |
+| 4 | — | `自動失効はありません。キーは訪問者のブラウザにだけ残り、サイトデータを消すまで残ります。サーバーには複製されません。` |  L717 | — |
+| 5 | — | `ブラウザのサイトデータ削除で消えます。値は訪問のたびに上書きされるだけなので、削除しなくても表示が壊れることはありません。` |  L724 | — |
+| 6 | — | `このキーの値はサーバーへ送信されません。読み書きはブラウザ内で完結します。` |  L731 | — |
+| 7 | — | `訪問者本人のブラウザにだけ表示される一覧で、公開ページの SSR 出力にも公開 API にも現れません。` |  L737 | — |
+| 8 | — | `src/home/guide/trail.ts (キー名・保存する項目・除外パス・失敗時挙動)` |  L741 | — |
+| 9 | — | `src/home/guide/VisitTrailRecorder.tsx (記録は公開ルートのみ・pathname のみ)` |  L742 | — |
+| 10 | — | `src/home/guide/VisitTrail.tsx (SSR/初回/ストレージ不可では何も描画しない)` |  L743 | — |
+| 11 | — | `src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)` |  L744 | — |
+| 12 | — | `Issue #936 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。` |  L749 | — |
+| 13 | — | `Discord プレゼンススナップショット（D1 `discord_presence_snapshot`、単一行）` |  L757 | — |
+| 14 | — | `運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。` |  L761 | — |
+| 15 | — | `単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。` |  L767 | — |
+| 16 | — | `公開面から消すには運営者が D1 の行を削除します。訪問者が自分で削除する経路はありません（本人のデータではないため）。` |  L774 | — |
+| 17 | — | `保存された値がこのプラットフォームの外へ送信されることはありません。Discord から運営者側スクリプトへの取得は本人のボット連携であり、このデータベースから第三者への送信はありません。` |  L781 | — |
+| 18 | — | `ホームのステータス欄に、本人が公開を意図した範囲で表示されます（ステータス・カスタムステータス・アクティビティ名など）。API キーやトークン、他者の情報は公開されません。` |  L787 | — |
+| 19 | — | `migrations/0011_discord_presence.sql (単一行テーブル)` |  L791 | — |
+| 20 | — | `src/http/presence/schema.ts (受理するフィールドの allowlist)` |  L792 | — |
+| 21 | — | `src/http/presence/store.ts (upsert のみ・追記しない)` |  L793 | — |
+| 22 | — | `src/home/presence/reader.ts (公開側の再検証と鮮度チェック)` |  L794 | — |
+| 23 | — | `scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)` |  L795 | — |
+| 24 | — | `Issue #320 で追加した運営者本人のプレゼンス保存項目。owner が公開 wording を承認したため公開する。` |  L800 | — |
+| 25 | — | `GitHub アクティビティスナップショット（D1 `github_activity_snapshot`、単一行）` |  L808 | — |
+| 26 | — | `運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。` |  L812 | — |
+| 27 | — | `単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。` |  L818 | — |
+| 28 | — | `公開面から消すには運営者が D1 の行を削除します（削除後はコミット済みスナップショットが表示されます）。訪問者が自分で削除する経路はありません。` |  L825 | — |
+| 29 | — | `保存された値がこのプラットフォームの外へ送信されることはありません。GitHub から運営者側スクリプトへの取得は公開 API と運営者自身のトークンによるもので、このデータベースから第三者への送信はありません。` |  L832 | — |
+| 30 | — | `ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。` |  L838 | — |
+| 31 | — | `Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.` |  L839 | — |
+| 32 | — | `migrations/0012_github_activity.sql (単一行テーブル)` |  L842 | — |
+| 33 | — | `src/http/activity/schema.ts (受理するフィールドの allowlist・private 仮名契約)` |  L843 | — |
+| 34 | — | `src/http/activity/store.ts (upsert のみ・追記しない)` |  L844 | — |
+| 35 | — | `src/home/activity/live.ts (公開側の再検証と鮮度による選択)` |  L845 | — |
+| 36 | — | `scripts/sync-github-activity.mjs (仮名化はシリアライズ前・ソルト未設定は fail-closed)` |  L846 | — |
 
-### removed セグメント（18 件・全件）
+### removed セグメント（全件）
 
 composer.tsx の 11 件はセクション再構成に伴う**移動**（同一文面が added 側に存在）。
-hero.tsx の 7 件はヒーロー文言の**書き換え**（「構築しています／移行中」→「作り直している／更新されている」系）。
+hero.tsx の 7 件はヒーロー文言の**書き換え**。
 
 | path | before | 移動先/性質 |
 | --- | --- | --- |
@@ -278,37 +277,26 @@ hero.tsx の 7 件はヒーロー文言の**書き換え**（「構築してい�
 | `src/home/hero.tsx` | `<span>About me / 自己紹介</span>` | 削除/書き換え |
 | `src/home/hero.tsx` | `<span lang="en">Portfolio</span> を見る` | 削除/書き換え |
 | `src/home/hero.tsx` | `<span lang="en">GitHub</span> でソースを見る` | 削除/書き換え |
+| `src/privacy/data-lifecycle.ts` | `owner が公開 wording を承認するまで描画しない。事実はここに記録して失わない。` | 削除/書き換え |
+| `src/privacy/data-lifecycle.ts` | `Issue #316 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。` | 削除/書き換え |
 
 ## 4. owner が判断するときの確認観点（事実のみ・評価ではない）
 
-- **広告 copy（`src/home/ads/*`、51 セグメント）**: Issue #925 系の広告クリエイティブ。
-  Epic #928 は「広告クリエイティブは独立した視覚体系・サイト本体の editorial トークンに従わない」
-  と定めるが、公開面に出る日本語なので gate の対象にはなる。文言の採否は owner 判断。
-- **privacy 台帳（`src/privacy/data-lifecycle.ts`、36 セグメント）**: v0.9.0 で新規追加された
-  `visit-trail` / `discord-presence-snapshot` / `github-activity-snapshot` の 3 entry と、
-  main 時点から pending の `portfolio-video-embed` / `current-projects-signature` の文面を含む。
-  pending entry は **現状レンダリングされない**（fail-closed）。copy 承認とは別に、
-  公開するかどうかの owner 決定が残っている（PR #926 残作業参照）。
+- **広告 copy（`src/home/ads/*`）**: Issue #925 系の広告クリエイティブ。公開面の日本語なので gate 対象。
+- **privacy 台帳（`src/privacy/data-lifecycle.ts`）**: owner 判断（2026-11-17）で全 11 entry が
+  `approved` になり、privacy notice に新たに 5 entry 分の文面が描画される。
+  `github-activity-snapshot` は公開前に「匿名 ID」→「名称非公開 ID / name-hidden ids」へ修正済み
+  （`UNSUPPORTED_PUBLIC_CLAIMS` の「匿名」禁止と出荷済みカードの「名称非表示」表記に合わせた）。
 - **`github-activity.json` の `非公開プロジェクト` ×9**: committed fallback の表示名。
-  「匿名」ではなく「名称非表示」表記に修正済み（privacy refusal list 対応、PR #943 系）。
-- **⚠ privacy 台帳 `github-activity-snapshot` entry の「匿名」表記**: pending entry の本文
-  （L812/L813/L838/L839 相当）に「安定匿名 ID」「匿名 ID」「anonymous ids」が残っている。
-  出荷済みカード copy は「名称非表示」に修正済みで、`UNSUPPORTED_PUBLIC_CLAIMS`
-  （`src/privacy/data-lifecycle.ts` 末尾）は公開文書での「匿名」主張を禁止する。
-  **この entry を approved にして公開する場合、文面の修正が先に必要になる可能性が高い**
-  — owner が公開可否を判断する際の確認点（本資料は修正を提案・実施しない）。
-- **composer.tsx**: ほぼ全て移動。新規は `GitHub の活動 / GitHub activity` 説明 2 件と
-  `Discord プレゼンス / Discord Presence` 見出し（pr-943/pr-960 が一部をカバー）。
-- **hero.tsx**: キャッチコピー全面書き換え。「移行中の public preview」という
-  時制主張が消えている — 公開文としての時制の扱いは owner 判断。
+- **composer.tsx**: ほぼ全て移動。新規は GitHub 活動・Discord プレゼンスの見出しと説明。
+- **hero.tsx**: キャッチコピー全面書き換え（「構築/移行中」→「作り直し/更新」系）。
 - **guide / VisitTrail**: サイト案内・訪問者トレイルの新規 UI 文言。
   「この一覧はあなたのブラウザの中だけに保存され、サーバーには送信されません」は
-  client-local 実装（localStorage）と一致するか確認の価値あり。
+  client-local 実装（localStorage）と一致。
 
 ## 5. この資料の限界
 
 - gate は文字列の機械抽出であり、JSX 式・テンプレートの意味までは見ない。
-- `×N` の反復は同一文面の別箇所出現であり、文脈（どのカード/項目か）は行番号を参照。
-- record の `comparisons` は PR 単位の変更集合に対するもので、release 単位の
-  record を書く際は gate 単位（178 セグメント）での comparisons が必要（pr-619 先例）。
-- 本資料は承認を推定しない。`decision: "pending"` のまま merge してはならない。
+- `×N` の反復は同一文面の別箇所出現であり、文脈は行番号を参照。
+- record の `comparisons` は gate 単位で書く必要がある（pr-619 先例: 120 件）。
+- 本資料は承認を推定しない。owner の明示判断と traceable artefact が record の前提。

@@ -106,6 +106,7 @@ describe('assertDeployableBuildOutput (Issue #247)', () => {
 					BETTER_AUTH_SECRETS: { type: 'secret' },
 					MY_WEB_2026_CONSUMER_API_KEY: { type: 'secret' },
 					GOOGLE_ANALYTICS_MEASUREMENT_ID: { type: 'secret' },
+					GITHUB_README_STATS_PAT_1: { type: 'secret' },
 				},
 			});
 			// The bundle check counts FILES, so an empty directory is

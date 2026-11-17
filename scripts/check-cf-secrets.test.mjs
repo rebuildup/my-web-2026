@@ -544,6 +544,7 @@ describe('resolveWorkerContract (Issue #243)', () => {
 		'BETTER_AUTH_SECRETS',
 		'MY_WEB_2026_CONSUMER_API_KEY',
 		'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+		'GITHUB_README_STATS_PAT_1',
 	];
 	const TRANSITION = ['BETTER_AUTH_SECRETS', 'BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
 
@@ -554,6 +555,7 @@ describe('resolveWorkerContract (Issue #243)', () => {
 				'BETTER_AUTH_SECRETS',
 				'GOOGLE_ANALYTICS_MEASUREMENT_ID',
 				'MY_WEB_2026_CONSUMER_API_KEY',
+				'GITHUB_README_STATS_PAT_1',
 			]),
 			'final',
 		);

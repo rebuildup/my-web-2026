@@ -40,6 +40,7 @@ const SECRET_BETTER_AUTH_SECRETS = '2:newsecretvalue,1:oldsecretvalue';
 const SECRET_BETTER_AUTH_SECRET_LEGACY = 'legacy-single-secret-value';
 const SECRET_CONSUMER_API_KEY = 'mk_home_TESTCONSUMERKEYXXXXXXXXXXXXXX';
 const SECRET_GOOGLE_ANALYTICS_MEASUREMENT_ID = 'G-TEST0000000';
+const SECRET_GITHUB_README_STATS_PAT_1 = 'github_pat_TESTSTATSPAT0000000000';
 
 // Phase 3+ (Issue #89) plus Issue #187: the current runtime contract
 // requires the versioned auth secret, consumer API key, and GA measurement
@@ -49,6 +50,7 @@ const REQUIRED_FOR_PHASE_3_PLUS = {
 	BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
 	MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
 	GOOGLE_ANALYTICS_MEASUREMENT_ID: SECRET_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+	GITHUB_README_STATS_PAT_1: SECRET_GITHUB_README_STATS_PAT_1,
 };
 
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
@@ -136,7 +138,7 @@ describe('run-deploy-inner.mjs', () => {
 		});
 	});
 
-	describe('required secret validation (Phase 3+: current 3-name)', () => {
+	describe('required secret validation (Phase 3+: current 4-name)', () => {
 		it('rejects missing BETTER_AUTH_SECRETS', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
@@ -175,7 +177,7 @@ describe('run-deploy-inner.mjs', () => {
 	});
 
 	describe('dry-run mode (Phase 3+)', () => {
-		it('succeeds with current 3-name runtime contract', () => {
+		it('succeeds with current 4-name runtime contract', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
@@ -186,7 +188,7 @@ describe('run-deploy-inner.mjs', () => {
 			// the Build Output, not a wrangler config path.
 			assert.match(result.stdout, /cf deploy --prebuilt --mode production --secrets-file/);
 			assert.match(result.stdout, /Build Output/);
-			assert.match(result.stdout, /contains 3 keys/);
+			assert.match(result.stdout, /contains 4 keys/);
 		});
 
 		it('cleans up the tempdir even on dry-run', () => {
@@ -216,7 +218,7 @@ describe('run-deploy-inner.mjs', () => {
 			// secrets.json would have been written with exactly 3 keys
 			// (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY,
 			// GOOGLE_ANALYTICS_MEASUREMENT_ID). BETTER_AUTH_SECRET MUST NOT be among them.
-			assert.match(result.stdout, /contains 3 keys/);
+			assert.match(result.stdout, /contains 4 keys/);
 			// The legacy value MUST NOT appear in dry-run output.
 			assert.doesNotMatch(result.stdout, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
 		});

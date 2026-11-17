@@ -20,6 +20,7 @@
 				"id": "d761ddb7-8179-48dd-855f-c8b7b2924bad"
 			},
 			"GOOGLE_ANALYTICS_MEASUREMENT_ID": { "type": "secret" },
+			"GITHUB_README_STATS_PAT_1": { "type": "secret" },
 			"MEDIA": { "type": "r2", "name": "my-web-2026" },
 			"MEDIA_PUBLIC_BASE_URL": { "type": "text", "value": "https://rebuildup.dev/media" },
 			"MY_WEB_2026_CONSUMER_API_KEY": { "type": "secret" },

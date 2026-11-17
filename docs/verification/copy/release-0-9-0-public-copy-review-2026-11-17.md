@@ -284,9 +284,11 @@ hero.tsx の 7 件はヒーロー文言の**書き換え**（「構築してい�
 - **広告 copy（`src/home/ads/*`、51 セグメント）**: Issue #925 系の広告クリエイティブ。
   Epic #928 は「広告クリエイティブは独立した視覚体系・サイト本体の editorial トークンに従わない」
   と定めるが、公開面に出る日本語なので gate の対象にはなる。文言の採否は owner 判断。
-- **privacy 台帳（`src/privacy/data-lifecycle.ts`、36 セグメント）**: Discord presence・
-  GitHub activity の 4 entry は `status: "pending"` で **現状レンダリングされない**。
-  copy 承認とは別に、公開するかどうかの owner 決定が残っている（PR #926 残作業参照）。
+- **privacy 台帳（`src/privacy/data-lifecycle.ts`、36 セグメント）**: v0.9.0 で新規追加された
+  `visit-trail` / `discord-presence-snapshot` / `github-activity-snapshot` の 3 entry と、
+  main 時点から pending の `portfolio-video-embed` / `current-projects-signature` の文面を含む。
+  pending entry は **現状レンダリングされない**（fail-closed）。copy 承認とは別に、
+  公開するかどうかの owner 決定が残っている（PR #926 残作業参照）。
 - **`github-activity.json` の `非公開プロジェクト` ×9**: committed fallback の表示名。
   「匿名」ではなく「名称非表示」表記に修正済み（privacy refusal list 対応、PR #943 系）。
 - **composer.tsx**: ほぼ全て移動。新規は `GitHub の活動 / GitHub activity` 説明 2 件と

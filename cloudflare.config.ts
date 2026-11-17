@@ -3,6 +3,7 @@ import { type ConfigContext, bindings, defineConfig } from 'cf/config';
 import {
 	PRODUCTION_BETTER_AUTH_URL,
 	PRODUCTION_CUSTOM_DOMAIN,
+	PRODUCTION_DISCORD_PRESENCE_USER_ID,
 	PRODUCTION_MEDIA_PUBLIC_BASE_URL,
 	RATE_LIMITS,
 	RATE_LIMIT_BINDING,
@@ -211,10 +212,12 @@ export default defineConfig({
 					? {
 							BETTER_AUTH_URL: bindings.text(PRODUCTION_BETTER_AUTH_URL),
 							MEDIA_PUBLIC_BASE_URL: bindings.text(PRODUCTION_MEDIA_PUBLIC_BASE_URL),
+							DISCORD_PRESENCE_USER_ID: bindings.text(PRODUCTION_DISCORD_PRESENCE_USER_ID),
 						}
 					: ({} as {
 							BETTER_AUTH_URL?: ReturnType<typeof bindings.text>;
 							MEDIA_PUBLIC_BASE_URL?: ReturnType<typeof bindings.text>;
+							DISCORD_PRESENCE_USER_ID?: ReturnType<typeof bindings.text>;
 						})),
 				// Runtime secrets. Infisical is the value SoT
 				// (ADR-0015 §6 / §9); Workers Builds injects values at

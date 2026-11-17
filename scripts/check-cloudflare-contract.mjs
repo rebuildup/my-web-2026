@@ -53,7 +53,7 @@ const WORKER_CONFIG = join(BUILD_OUTPUT, 'workers', 'default', 'worker.config.js
 const ROOT_CONFIG = join(BUILD_OUTPUT, 'config.json');
 
 /** The number of Worker runtime secrets this repository has settled on. */
-const EXPECTED_REQUIRED_SECRET_COUNT = 4;
+const EXPECTED_REQUIRED_SECRET_COUNT = 5;
 
 const errors = [];
 const notes = [];

@@ -50,6 +50,7 @@ describe('check-sbom — runtime secret names', () => {
 			'MY_WEB_2026_CONSUMER_API_KEY',
 			'GOOGLE_ANALYTICS_MEASUREMENT_ID',
 			'GITHUB_README_STATS_PAT_1',
+			'DISCORD_PRESENCE_USER_ID',
 			'BETTER_AUTH_SECRET',
 		]);
 		// The derivation proves the gate re-exports the contract module

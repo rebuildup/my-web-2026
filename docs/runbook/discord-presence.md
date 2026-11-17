@@ -2,6 +2,9 @@
 
 Runbook for the owner's Discord presence card on the home status
 section: how the data flows, how to provision it, and how to stop it.
+For the ordered production connection sequence across all three
+v0.9.0 live feeds see
+[`live-data-connections.md`](live-data-connections.md).
 
 ## Architecture
 
@@ -78,16 +81,20 @@ values to disk):
 
 - `DISCORD_BOT_TOKEN` — the bot token from step 1.
 - `DISCORD_USER_ID` — the owner snowflake from step 3.
-- `MY_WEB_2026_API_KEY` — the ingest key from step 2.
+- `MY_WEB_2026_API_KEY` — the ingest key from step 2. Stored at the
+  feed's own Infisical path `/feeds/discord-presence` — see
+  [`live-data-connections.md`](live-data-connections.md) "Secret
+  layout"; the env name is shared by all three feeds, so the path is
+  what keeps the keys distinct.
 
 ## Running
 
 ```sh
 # one-shot verification (pushes current presence, exits)
-infisical run --env=dev -- node scripts/sync-discord-presence.mjs --once
+infisical run --env=dev --path=/feeds/discord-presence -- node scripts/sync-discord-presence.mjs --once
 
 # long-running feed (launchd / tmux / any always-on shell)
-infisical run --env=dev -- node scripts/sync-discord-presence.mjs
+infisical run --env=dev --path=/feeds/discord-presence -- node scripts/sync-discord-presence.mjs
 ```
 
 The script re-pushes the re-observed presence every

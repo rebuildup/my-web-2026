@@ -382,7 +382,8 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 												GitHub の活動 / GitHub activity
 											</h3>
 											<p className={subsectionDescriptionClassName}>
-												GitHub から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+												GitHub
+												から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
 											</p>
 											<GitHubActivityCard activity={data.githubActivity ?? null} />
 											{/* Issue #933 — the self-hosted stats card

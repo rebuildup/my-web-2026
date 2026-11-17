@@ -959,6 +959,118 @@
 				]
 			},
 			"note": "「現在地」は Epic #928 のテーマ名であり、特定の日付や時点に依存する事実主張ではない。陳腐化しない記述。"
+		},
+		{
+			"id": "github-activity-snapshot-stores",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-<hmac12>` の安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
+						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "the change set that introduced this wording"
+					}
+				]
+			},
+			"note": "D1 単一行スナップショットの内容説明。「最新」「直近」は snapshot の generatedAt に基づく相対表現で、特定の日付に依存しない。entry は publication.status=pending で現時点ではレンダリングされない。"
+		},
+		{
+			"id": "github-activity-snapshot-retention",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
+						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "the change set that introduced this wording"
+					}
+				]
+			},
+			"note": "上書き・フォールバック・手動削除の保持規則の記述。公開文の承認待ち (pending) でレンダリングされない。"
+		},
+		{
+			"id": "github-activity-snapshot-visibility",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの匿名 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
+						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "the change set that introduced this wording"
+					}
+				]
+			},
+			"note": "表示範囲の限定記述（公開意図のある範囲のみ・秘密情報は出さない）。pending でレンダリングされない。"
+		},
+		{
+			"id": "github-activity-snapshot-visibility-en",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository anonymous ids / aggregates). API keys, tokens and private repository names are never published.",
+			"locale": "en",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
+						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "the change set that introduced this wording"
+					}
+				]
+			},
+			"note": "英語版の同趣旨。en はレビュー対象 locale に opt-in していないが queue 報告のため記録を追加。"
 		}
 	]
 }

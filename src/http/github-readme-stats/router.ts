@@ -26,12 +26,13 @@ import { normalizeParams } from '../../vendor/github-readme-stats-fast/common/no
 import { svgCacheGetOrSet } from '../../vendor/github-readme-stats-fast/common/svgCache.ts';
 import {
 	CONSTANTS,
+	CustomError,
 	clampValue,
+	getGithubToken,
 	parseArray,
 	parseBoolean,
 	renderError,
 } from '../../vendor/github-readme-stats-fast/common/utils.ts';
-import { getGithubToken } from '../../vendor/github-readme-stats-fast/common/utils.ts';
 import { fetchRepo } from '../../vendor/github-readme-stats-fast/fetchers/repo.ts';
 import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats.ts';
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
@@ -58,6 +59,48 @@ function stringEnv(env: Env): Record<string, string | undefined> {
 function optInt(value: string | undefined): number | undefined {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * CustomError types that describe a *per-request* condition (the requested
+ * user/repo does not exist) rather than service degradation. Every other
+ * CustomError — missing token, upstream API/GraphQL failure, rate-limit
+ * retry exhaustion, or a dynamically-typed upstream error — means the
+ * service is degraded and must surface as HTTP 503 so it is never
+ * presented as a normal statistics card.
+ */
+const PER_REQUEST_ERROR_TYPES = new Set([CustomError.USER_NOT_FOUND]);
+
+function isServiceUnavailable(err: unknown): boolean {
+	return err instanceof CustomError && !PER_REQUEST_ERROR_TYPES.has(err.type);
+}
+
+type CardThemeParams = {
+	title_color?: string;
+	text_color?: string;
+	bg_color?: string;
+	border_color?: string;
+	theme?: string;
+};
+
+/**
+ * Degraded-state contract: upstream/config failures return 503 with a
+ * short-lived cache header so CDN/embed layers do not pin an outage as a
+ * normal card. The body stays image/svg+xml so <img> consumers still get
+ * an image-shaped response.
+ */
+function degradedResponse(
+	c: {
+		body: (body: string | null, status?: number) => Response;
+		header: (name: string, value: string) => void;
+	},
+	params: CardThemeParams,
+): Response {
+	c.header('Cache-Control', 'max-age=60, s-maxage=60');
+	return c.body(
+		renderError('Service unavailable', 'Statistics are temporarily unavailable', params),
+		503,
+	);
 }
 
 function getNextToken(env: Record<string, string | undefined>): string | undefined {
@@ -138,6 +181,9 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 
 	try {
 		const env = stringEnv(c.env);
+		if (!getGithubToken(env)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		const showStats = parseArray(show);
 		// Data key must cover every arg fetchStats receives, incl. `show`
 		const dataKey = `stats:${username}:${include_all_commits}:${exclude_repo}:${showStats.join(',')}`;
@@ -226,6 +272,9 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		);
 		return c.body(svg);
 	} catch (err) {
+		if (isServiceUnavailable(err)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		c.header(
 			'Cache-Control',
 			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
@@ -301,6 +350,9 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 
 	try {
 		const env = stringEnv(c.env);
+		if (!getGithubToken(env)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		// Data key must cover every arg fetchTopLanguages receives
 		const dataKey = `toplangs:${username}:${exclude_repo}:${size_weight}:${count_weight}`;
 		const topLangs = await microCache(dataKey, () =>
@@ -370,6 +422,9 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 
 		return c.body(svg);
 	} catch (err) {
+		if (isServiceUnavailable(err)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		c.header(
 			'Cache-Control',
 			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS * 60}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
@@ -414,15 +469,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		const env = stringEnv(c.env);
 		const token = getNextToken(env);
 		if (!token) {
-			return c.body(
-				renderError('Something went wrong', 'GitHub token is not configured', {
-					title_color,
-					text_color,
-					bg_color,
-					border_color,
-					theme,
-				}),
-			);
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
 		}
 
 		const dataKey = `streak:${username}`;
@@ -453,6 +500,9 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		);
 		return c.body(svg);
 	} catch (err) {
+		if (isServiceUnavailable(err)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		c.header(
 			'Cache-Control',
 			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
@@ -521,6 +571,9 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 
 	try {
 		const env = stringEnv(c.env);
+		if (!getGithubToken(env)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		const dataKey = `pin:${username}/${repo}`;
 		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', env));
 
@@ -569,6 +622,9 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 		);
 		return c.body(svg);
 	} catch (err) {
+		if (isServiceUnavailable(err)) {
+			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
+		}
 		c.header(
 			'Cache-Control',
 			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,

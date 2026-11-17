@@ -221,7 +221,7 @@ describe('GitHub Readme Stats Router', () => {
 			expect(body).toContain('<svg');
 		});
 
-		it('returns error when no token configured', async () => {
+		it('returns 503 degraded response when no token configured', async () => {
 			const req = createMockRequest('/api/streak', { username: 'testuser' });
 			const res = await githubReadmeStatsRouter.fetch(
 				req,
@@ -231,9 +231,12 @@ describe('GitHub Readme Stats Router', () => {
 					GITHUB_README_STATS_PAT_2: undefined,
 				}),
 			);
-			expect(res.status).toBe(200);
+			expect(res.status).toBe(503);
+			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
+			expect(res.headers.get('Cache-Control')).toBe('max-age=60, s-maxage=60');
 			const body = await res.text();
-			expect(body).toContain('GitHub token is not configured');
+			expect(body).toContain('Service unavailable');
+			expect(body).not.toContain('PAT_1');
 		});
 	});
 
@@ -282,6 +285,62 @@ describe('GitHub Readme Stats Router', () => {
 			expect(body).toContain('<svg');
 			expect(body).toContain('testrepo');
 			expect(body).toContain('TypeScript');
+		});
+	});
+
+	describe('Degraded-state contract', () => {
+		const envWithoutTokens = () =>
+			createMockEnv({
+				GITHUB_TOKEN: undefined,
+				GITHUB_README_STATS_PAT_1: undefined,
+				GITHUB_README_STATS_PAT_2: undefined,
+			});
+
+		it.each([
+			['/api', { username: 'testuser' }],
+			['/api/top-langs/', { username: 'testuser' }],
+			['/api/pin/', { username: 'testuser', repo: 'testrepo' }],
+		])(
+			'returns 503 (not an error card) when no GitHub token is configured: %s',
+			async (path, query) => {
+				const req = createMockRequest(path, query);
+				const res = await githubReadmeStatsRouter.fetch(req, envWithoutTokens());
+				expect(res.status).toBe(503);
+				expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
+				expect(res.headers.get('Cache-Control')).toBe('max-age=60, s-maxage=60');
+				const body = await res.text();
+				expect(body).toContain('Service unavailable');
+				expect(body).not.toContain('PAT_1');
+				expect(body).not.toContain('ghp_');
+			},
+		);
+
+		it('returns 503 when the upstream GraphQL API fails', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				status: 200,
+				statusText: 'OK',
+				json: async () => ({
+					data: null,
+					errors: [{ type: 'RATE_LIMITED', message: 'API rate limit exceeded' }],
+				}),
+			});
+			const req = createMockRequest('/api', { username: 'upstream-fail-user' });
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			expect(res.status).toBe(503);
+			expect(res.headers.get('Content-Type')).toBe('image/svg+xml');
+			const body = await res.text();
+			expect(body).toContain('Service unavailable');
+			expect(body).not.toContain('rate limit exceeded');
+		});
+
+		it('keeps 200 error SVG for per-user failures (user not found)', async () => {
+			mockFetch.mockResolvedValue(createGraphQLMock({ user: null }));
+			const req = createMockRequest('/api', { username: 'nonexistent-user-xyz' });
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			expect(res.status).toBe(200);
+			const body = await res.text();
+			expect(body).toContain('Could not fetch user');
 		});
 	});
 

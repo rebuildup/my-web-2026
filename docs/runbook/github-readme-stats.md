@@ -21,9 +21,10 @@ commit `8e2c76e`, MIT — see `PROVENANCE.md`).
 ## Required secret — the one remaining gate
 
 The vendored fetchers call the GitHub **GraphQL** API, which
-requires a token. Without one every endpoint answers HTTP 200 with
-an error SVG (`GitHub token not configured`) — routing, content
-type and the error contract all work, but no real card renders.
+requires a token. Without one every endpoint answers **HTTP 503**
+with a short-lived degraded SVG (`Service unavailable`) — see
+"Failure behaviour". Routing, content type and the degraded
+contract work, but no real card renders until a token is bound.
 
 Token resolution order (`src/vendor/.../common/utils.ts`):
 `GITHUB_README_STATS_PAT_1..10` → `GITHUB_TOKEN`.
@@ -60,11 +61,12 @@ for p in 'api?username=rebuildup' 'api/top-langs/?username=rebuildup' \
     | grep -iE 'HTTP/|content-type|cache-control'
 done
 # expect: 200, image/svg+xml, cache headers; body is a real card
-# (not the "GitHub token not configured" error SVG)
+# (a 503 "Service unavailable" body means the token is NOT bound)
 ```
 
 Contract tests: `src/http/github-readme-stats/router.test.ts`
-(19 cases — params, cache/ETag, error sanitisation, locale).
+(24 cases — params, cache/ETag, degraded-state contract, error
+sanitisation, locale).
 
 ## README migration plan (`rebuildup/rebuildup` — separate repo)
 
@@ -82,12 +84,29 @@ Contract tests: `src/http/github-readme-stats/router.test.ts`
 4. After the README deploys and renders correctly, the Vercel
    dependency is fully retired; no code change is needed here.
 
-## Failure behaviour
+## Failure behaviour — degraded-state contract
 
-- Missing/invalid token → error SVG (HTTP 200), never a 5xx and
-  never a leaked token/URL/stack in the body.
-- GitHub API failure → error SVG; the rest of the site is
-  unaffected (the home `<img>` simply shows the upstream error
-  card; consider a follow-up to hide the img on error if desired).
+Two response classes, deliberately distinct:
+
+- **Per-request errors stay HTTP 200 error SVG** (upstream
+  contract): blacklisted username, unsupported locale/layout,
+  missing params, user/repo not found. These describe the
+  *request*, not the service.
+- **Service degradation returns HTTP 503** with
+  `Cache-Control: max-age=60, s-maxage=60` and a generic
+  `Service unavailable` SVG (`src/http/github-readme-stats/router.ts`
+  `degradedResponse`):
+  - no GitHub token configured (`GITHUB_README_STATS_PAT_*` and
+    `GITHUB_TOKEN` all absent) — checked before any upstream call;
+  - any upstream `CustomError` that is not `USER_NOT_FOUND`
+    (GraphQL/REST API failure, `MAX_RETRY` rate-limit exhaustion,
+    dynamically-typed upstream errors).
+
+  The 503 body never carries the upstream message, token names, or
+  internal detail, and the short cache window keeps an outage from
+  being pinned as a normal card by CDN or `<img>` consumers.
+
+- Non-`CustomError` throws still render the sanitized 200 error SVG.
 - Caching: microCache 5 s (data) + svgCache 5 min (rendered SVG) +
-  HTTP cache headers — external hot-linking is cheap.
+  HTTP cache headers — external hot-linking is cheap. Failed fetches
+  are never written to microCache.

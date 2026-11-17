@@ -102,6 +102,11 @@
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
 		"BETTER_AUTH_URL": "https://rebuildup.dev",
+		// Issue #320 — owner Discord snowflake the presence card may
+		// claim. Non-secret committed config; mirrors
+		// `PRODUCTION_DISCORD_PRESENCE_USER_ID` in
+		// `scripts/_cloudflare-contract.mjs`.
+		"DISCORD_PRESENCE_USER_ID": "1228484020103287020",
 		// Issue #634 — public media is delivered by the Worker, not by
 		// an R2 custom domain. `GET /media/<key>` runs the namespace
 		// and publication gates (`src/cloudflare/media-visibility.ts`,

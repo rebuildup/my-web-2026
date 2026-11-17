@@ -19,6 +19,7 @@
 				"name": "my-web-2026",
 				"id": "d761ddb7-8179-48dd-855f-c8b7b2924bad"
 			},
+			"DISCORD_PRESENCE_USER_ID": { "type": "text", "value": "1228484020103287020" },
 			"GOOGLE_ANALYTICS_MEASUREMENT_ID": { "type": "secret" },
 			"GITHUB_README_STATS_PAT_1": { "type": "secret" },
 			"MEDIA": { "type": "r2", "name": "my-web-2026" },
@@ -42,7 +43,11 @@
 		"$comment": "Development must never inherit the production origin (ADR-0014), so the route list is empty here. `LOCAL_API_MODE` is opt-in through `.dev.vars` (Issue #186): its ABSENCE in development is normal, its PRESENCE in production is drift. `MY_WEB_2026_DATA_SOURCE` (Issue #377) states which data the development runtime reads (`local` / `production-readonly`); it is declared in development only, so its PRESENCE in production is drift. Any other difference between the two modes is drift too, which is what the gate checks. `mode_only_fields` lists the SCALAR fields (`accountId` / `name` / `compatibilityDate` / `compatibilityFlags` / `entrypoint` / `observability`) that are declared to differ between the two modes; it is empty, so every scalar must be identical in both modes.",
 		"routes": [],
 		"mode_only_bindings": {
-			"production_only": ["BETTER_AUTH_URL", "MEDIA_PUBLIC_BASE_URL"],
+			"production_only": [
+				"BETTER_AUTH_URL",
+				"DISCORD_PRESENCE_USER_ID",
+				"MEDIA_PUBLIC_BASE_URL"
+			],
 			"development_only": ["LOCAL_API_MODE", "MY_WEB_2026_DATA_SOURCE"]
 		},
 		"mode_only_fields": []

@@ -21,7 +21,8 @@
 			"src/portfolio/notion/generated",
 			"external",
 			"docs/verification/content",
-			"src/keyboard/sources"
+			"src/keyboard/sources",
+			"src/vendor"
 		]
 	},
 	"formatter": {

@@ -140,6 +140,64 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		responseExample: { key: 'home', count: 42, principal: 'mk_...' },
 		purpose: 'Read aggregate access count for a key, scoped to the authenticated principal.',
 	},
+	{
+		path: '/api/v1/github-readme-stats/api',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+		},
+		purpose:
+			'Public GitHub stats card (total stars, commits, PRs, issues, etc.). Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/top-langs/',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+		},
+		purpose: 'Public top languages card. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/streak',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username; 401 token_not_configured; 404 user_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=3600, s-maxage=3600, stale-while-revalidate=3600',
+		},
+		purpose:
+			'Public contribution streak card. Anonymous access but requires server-side GitHub token. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-readme-stats/api/pin/',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'400 missing_username_or_repo; 404 repo_not_found; 500 upstream_error; SVG error card always returned on failure',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'max-age=604800, s-maxage=604800, stale-while-revalidate=604800',
+		},
+		purpose: 'Public repository pin card. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**
@@ -222,6 +280,18 @@ export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
 		path: '/api/v1/*',
 		reason:
 			'Boundary middleware mount (cache isolation, request id, CSRF guard, CORS). It runs on the way to a route and answers nothing itself, so it is not a published contract.',
+	},
+	{
+		method: 'PUT',
+		path: '/api/v1/activity/github',
+		reason:
+			'Operator ingest endpoint (Issues #316 / #319 / #932): the operator-side sync script pushes the anonymised GitHub activity snapshot here. It is a write-only pipeline boundary with a dedicated github_activity:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',
+	},
+	{
+		method: 'PUT',
+		path: '/api/v1/presence/discord',
+		reason:
+			'Operator ingest endpoint (Issue #320): the operator-side Discord Gateway script pushes the owner-presence snapshot here. It is a write-only pipeline boundary with a dedicated discord_presence:write key, not a public data contract — the public surface reads D1 at SSR time and never calls this route.',
 	},
 	{
 		method: 'ALL',

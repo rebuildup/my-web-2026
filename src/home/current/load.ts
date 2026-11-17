@@ -30,5 +30,15 @@ export const getCurrentProjects = createServerFn({ method: 'GET' })
 	.validator(Input)
 	.handler(async ({ data }): Promise<readonly CurrentProjectRecord[]> => {
 		const { currentProjectsLoader } = await import('./loader');
-		return currentProjectsLoader.loadCurrentProjects(data.today);
+		// Issues #316 / #932 — the GitHub-observed projects come from
+		// the same preferred snapshot the status card reads: the D1
+		// document the operator sync job pushes when it is valid and
+		// fresher than the committed artefact. Both modules are
+		// imported inside the handler so neither the binding nor the
+		// snapshot JSON enters the client bundle.
+		const { readPreferredGitHubActivitySnapshot } = await import('../activity/live');
+		const { activityProjectRecords } = await import('../activity/snapshot');
+		const snapshot = await readPreferredGitHubActivitySnapshot();
+		const githubProjects = snapshot ? activityProjectRecords(snapshot) : null;
+		return currentProjectsLoader.loadCurrentProjects(data.today, githubProjects);
 	});

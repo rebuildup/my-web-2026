@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
+import type { HomeAdProject } from '../home/ads/placements';
+import { getDiscordPresence } from '../home/public';
 import {
 	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
@@ -8,10 +10,13 @@ import {
 	getCurrentProjects,
 	getHomeCounter,
 	getHomeDataSource,
+	getHomeGitHubActivity,
 	getHomeReactions,
 	getHomeSystemStatus,
 	recordHomeHit,
 } from '../home/public';
+import { listPortfolioProjects } from '../portfolio/public';
+import type { PortfolioProject } from '../portfolio/schema';
 
 /**
  * TanStack Start route binding for the canonical home surface.
@@ -34,7 +39,16 @@ export const Route = createFileRoute('/')({
 		// never disagree about which day they describe (Issue #316).
 		const observedAt = new Date().toISOString();
 		const today = observedAt.slice(0, 10);
-		const [statuses, reactions, counter, dataSource, projects] = await Promise.all([
+		const [
+			statuses,
+			reactions,
+			counter,
+			dataSource,
+			projects,
+			portfolioProjects,
+			githubActivity,
+			discordPresence,
+		] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
 			getHomeCounter({ data: {} }),
@@ -43,6 +57,24 @@ export const Route = createFileRoute('/')({
 			// deployed production Worker.
 			getHomeDataSource(),
 			getCurrentProjects({ data: { today } }),
+			// Issue #925 — the sponsored rail / carousel promote real
+			// portfolio work through the SAME public read the
+			// /portfolio index uses. A portfolio outage must not take
+			// the home page down with it: the ad surface degrades to
+			// its Tool-only roster.
+			listPortfolioProjects({ data: { limit: 6 } })
+				.then((page) => page.projects)
+				.catch(() => null),
+			// Issue #319 — the committed GitHub activity snapshot,
+			// projected for the status card. Same committed-data rule
+			// as the projects section: no runtime fetch.
+			getHomeGitHubActivity({ data: {} }).catch(() => null),
+			// Issue #320 — Discord presence card from the D1 snapshot
+			// the operator-side Gateway script pushes via
+			// PUT /api/v1/presence/discord. Degrades cleanly when the
+			// row is missing/stale/invalid. No runtime fetch to
+			// Discord from the Worker.
+			getDiscordPresence(),
 		]);
 		return {
 			capabilities: CAPABILITIES,
@@ -61,7 +93,19 @@ export const Route = createFileRoute('/')({
 			// *now*, and a claim that changes without a commit cannot be
 			// reviewed. There is no runtime fetch here.
 			projects,
+			githubActivity,
 			dataSource,
+			// Issue #925 — map the public portfolio rows into the narrow
+			// shape the ad placements consume. Projects without a
+			// resolvable cover image are skipped: an ad creative without
+			// a visual is not a creative.
+			adProjects: (portfolioProjects ?? [])
+				.map(toHomeAdProject)
+				.filter((project): project is HomeAdProject => project !== null)
+				.slice(0, 4),
+			// Issue #320 — Discord presence card from the D1 snapshot.
+			// Optional: degrades to unavailable when missing/stale.
+			discordPresence,
 		};
 	},
 	/**
@@ -74,10 +118,11 @@ export const Route = createFileRoute('/')({
 	 * public-route head gate (`test/integration/seo-head.test.ts`)
 	 * now fails on that, which is the point of the gate.
 	 *
-	 * The description restates the hero lead rather than inventing
-	 * copy: `src/home/hero.tsx` says the same thing on the page, and
-	 * the migration state ("段階的に移行中") is the honest state, not a
-	 * claim the site cannot back.
+	 * The description restates the page's 現在地 statement rather
+	 * than inventing copy: `src/home/hero.tsx` and the Issue #925 ad
+	 * units say the same thing on the page, and the migration state
+	 * ("段階的に移行中") is the honest state, not a claim the site
+	 * cannot back.
 	 *
 	 * Canonical is the origin WITH its trailing slash — `/` is the
 	 * home document and the gate derives the expected value from the
@@ -111,4 +156,22 @@ export const Route = createFileRoute('/')({
 
 function HomeRoute() {
 	return <HomePage data={Route.useLoaderData()} />;
+}
+
+/**
+ * Project row → the narrow ad-creative shape. The cover is the same
+ * media the /portfolio index resolves (`isCover` first, then the
+ * first media row); a project whose media has no composed URL is not
+ * promotable and returns `null`.
+ */
+function toHomeAdProject(project: PortfolioProject): HomeAdProject | null {
+	const media = project.media.find((m) => m.isCover) ?? project.media[0];
+	if (!media?.url) return null;
+	return {
+		slug: project.slug,
+		title: project.title,
+		summary: project.summary,
+		coverUrl: media.url,
+		coverAlt: media.alt || project.title,
+	};
 }

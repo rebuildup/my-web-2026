@@ -1,230 +1,103 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
-import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
-import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import { SiteMark } from './mark';
-import { PACKAGE_VERSION } from './version';
 
 /**
  * Hero — top section of the home page.
  *
- * Carries the single `<h1>` on the page and identifies the platform
- * before describing the migration state (Issue #287 — the h1 is the
- * site identity motif, not a personal name). In-site destinations
- * (About, Portfolio) are the primary actions; source is available as
- * a secondary action.
+ * Issue #925 second pass: the hero is back to being the page's
+ * editorial entry — the 現在地 statement in normal flow content.
+ * The advertising surfaces are a separate axis and live in
+ * `src/home/ads/` (leaderboard strip, in-feed link card, search
+ * listing, display rectangles), placed around the content sections
+ * by the composer the way a real monetized page mixes formats.
+ * See `docs/verification/home/925-ad-reproduction/README.md`.
  *
- * Issue #287 — composition mirrors the body sections' spread
- * `SectionHeading`: the same `minmax(0, 4fr) / minmax(0, 8fr)` grid,
- * with the h1 in the left 4/12 **title span** — the exact grid
- * position where the section titles below sit, sharing their x-axis
- * and column width. The right 8/12 column starts with the
- * description. The eyebrow line above the mark is the mono caption
- * at base and the metadata rail at `lg` (they carry the same
- * version metadata, so one breakpoint shows one of them — the rail
- * was already hidden below `lg` for the same duplication reason).
- *
- * Type and spacing jump at golden ratio:
- * - The h1 renders the `SiteMark` identity motif (Issue #287) at
- *   64px (`16`) base / 96px (`24`) height at `lg` — it replaces the
- *   `3xl/4xl` name at the same hierarchy step, sized on the
- *   canonical spacing tokens. The accessible name ("my-web-2026")
- *   sits inside the h1 as visually-hidden text.
- * - eyebrow ↔ h1 (8px, token `2` — same tight cluster the section
- *   titles use), h1 ↔ lead body (40px, carried by the grid
- *   `rowGap` below `lg`; cross-column above it, tops aligned like
- *   the spread sections), lead ↔ secondary (0, continuous prose),
- *   secondary ↔ CTAs (token `6`).
- * - Hero padding is `24/32` (96/128px) — the page-entry beat.
+ * Invariants kept (e2e/smoke.spec.ts, e2e/about.spec.ts):
+ *   - exactly one `<h1>` on the page, accessible name `my-web-2026`
+ *   - the section stays `aria-labelledby="hero-title"`
+ *   - one visible `/about` link inside the section
  */
 export function Hero() {
 	return (
 		<section
 			aria-labelledby="hero-title"
 			className={css({
-				paddingBlock: { base: '16', lg: '32' },
+				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
-				<div
+				<p
 					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-						columnGap: { base: '0', lg: '10' },
-						rowGap: { base: '10', lg: '0' },
+						margin: '0',
+						marginBlockEnd: '4',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						letterSpacing: '0.08em',
+						textTransform: 'uppercase',
+						color: 'text.muted',
 					})}
 				>
-					<header
+					現在地 / Where I am now
+				</p>
+				<h1 id="hero-title" className={css({ margin: '0' })}>
+					<SiteMark className={css({ height: '16', width: 'auto' })} />
+					<span className={css({ srOnly: true })}>my-web-2026</span>
+				</h1>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						maxWidth: '640px',
+						fontFamily: 'sans',
+						fontSize: { base: 'xl', lg: '2xl' },
+						fontWeight: '700',
+						lineHeight: '1.4',
+						color: 'text.default',
+						textWrap: 'balance',
+					})}
+					data-testid="home-hero-lead"
+				>
+					個人の Web プラットフォームを、毎日作り直している。
+				</p>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '4',
+						maxWidth: '640px',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.7',
+						color: 'text.muted',
+						textWrap: 'pretty',
+					})}
+				>
+					完成していないから、毎日更新されている。開発・制作・活動の記録と、公開中のツール、移行中の制作物をこのページに集約しています。
+				</p>
+				<div className={css({ marginBlockStart: '6' })}>
+					<a
+						href="/about"
+						data-testid="home-hero-about"
 						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							minWidth: '0',
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							fontWeight: '600',
+							color: 'text.default',
+							textDecoration: 'underline',
+							textUnderlineOffset: '4px',
+							_focusVisible: {
+								outline: '2px solid {colors.border.focus}',
+								outlineOffset: '2px',
+							},
 						})}
 					>
-						<span
-							className={css({
-								display: { base: 'block', lg: 'none' },
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-							})}
-						>
-							my-web-2026 · v{PACKAGE_VERSION} — 2026 Preview
-						</span>
-						<aside
-							aria-hidden="true"
-							className={css({
-								display: { base: 'none', lg: 'flex' },
-								flexDirection: 'column',
-								gap: '1',
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								lineHeight: '1.6',
-							})}
-						>
-							<span lang="en">edition</span>
-							<span lang="en">my-web-2026 · 2026 Preview</span>
-							<span lang="en">v{PACKAGE_VERSION} · MIT</span>
-						</aside>
-						<h1
-							id="hero-title"
-							lang="en"
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								display: 'flex',
-							})}
-						>
-							<SiteMark className={css({ height: { base: '16', lg: '24' }, width: 'auto' })} />
-							<span className={css({ srOnly: true })}>my-web-2026</span>
-						</h1>
-					</header>
-					<div
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							minWidth: '0',
-						})}
-					>
-						<p
-							lang="ja"
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'lg',
-								lineHeight: '1.6',
-								color: 'text.default',
-							})}
-						>
-							開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /
-							content / activity を段階的に移行中です。
-						</p>
-						<p
-							lang="ja"
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-								color: 'text.muted',
-							})}
-						>
-							この 2026 edition は移行途中の public preview
-							です。コンテンツは段階的に公開していきます。
-						</p>
-						<div
-							className={css({
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '4',
-								marginBlockStart: '6',
-							})}
-						>
-							<a
-								href="/about"
-								className={css({
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: '2',
-									paddingInline: '4',
-									height: '10',
-									borderRadius: 'md',
-									backgroundColor: 'bg.accent',
-									color: 'text.inverse',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									fontWeight: '600',
-									textDecoration: 'none',
-									transition: 'background-color 120ms ease',
-									_hover: { backgroundColor: 'accent.interactive' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								<span>About me / 自己紹介</span>
-								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
-							</a>
-							<a
-								href="/portfolio"
-								className={css({
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: '2',
-									paddingInline: '4',
-									height: '10',
-									borderRadius: 'md',
-									backgroundColor: 'bg.surface',
-									color: 'text.default',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.subtle',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									fontWeight: '600',
-									textDecoration: 'none',
-									transition: 'background-color 120ms ease',
-									_hover: { borderColor: 'border.strong' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								<span lang="en">Portfolio</span> を見る
-							</a>
-							<a
-								href="https://github.com/rebuildup/my-web-2026"
-								rel="noopener noreferrer"
-								target="_blank"
-								className={css({
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: '2',
-									color: 'text.accent',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									fontWeight: '600',
-									textDecoration: 'underline',
-									textUnderlineOffset: '0.18em',
-									textDecorationThickness: '1px',
-									transition: 'text-decoration-thickness 120ms ease',
-									_hover: { textDecorationThickness: '2px' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								<span>
-									<span lang="en">GitHub</span> でソースを見る
-								</span>
-								<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
-							</a>
-						</div>
-					</div>
+						About me
+					</a>
 				</div>
 			</Container>
 		</section>

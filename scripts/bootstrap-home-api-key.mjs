@@ -70,13 +70,37 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { queryRows, runStatement } from './_d1.mjs';
 
-const KEY_NAME = 'home-self-consumption';
-const KEY_PREFIX = 'mk_home_';
+// Consumer identity is parameterizable (Issue #320) so the same
+// provisioning logic can mint OTHER ingest keys — e.g. the Discord
+// presence feed's `discord_presence:write`-only key — without
+// duplicating the concurrent-safe insert path. Defaults preserve the
+// original home self-consumption consumer exactly.
+//
+//   API_KEY_NAME     row `name` (default 'home-self-consumption')
+//   API_KEY_PREFIX   plaintext prefix (default 'mk_home_')
+//   API_KEY_SCOPES   comma-separated `resource:action` pairs
+//                    (default 'reactions:read,reactions:write,access_counter:read,access_counter:write')
+const KEY_NAME = process.env.API_KEY_NAME ?? 'home-self-consumption';
+const KEY_PREFIX = process.env.API_KEY_PREFIX ?? 'mk_home_';
 const KEY_BODY_LEN = 32;
-const REQUIRED_SCOPES = {
-	reactions: ['read', 'write'],
-	access_counter: ['read', 'write'],
-};
+
+function parseScopes(spec) {
+	const scopes = {};
+	for (const pair of spec.split(',')) {
+		const [resource, action] = pair.split(':');
+		if (!resource || !action) {
+			throw new Error(`API_KEY_SCOPES: malformed pair '${pair}' (want resource:action)`);
+		}
+		if (!scopes[resource]) scopes[resource] = [];
+		scopes[resource].push(action);
+	}
+	return scopes;
+}
+
+const REQUIRED_SCOPES = parseScopes(
+	process.env.API_KEY_SCOPES ??
+		'reactions:read,reactions:write,access_counter:read,access_counter:write',
+);
 
 function parseTarget(argv) {
 	const eq = argv.find((arg) => arg.startsWith('--target='));

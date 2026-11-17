@@ -89,7 +89,7 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveText('my-web-2026');
 		await expect(h1).toHaveAccessibleName('my-web-2026');
 
-		// Five named sections, in order, all anchored by aria-labelledby.
+		// Six named sections, in order, all anchored by aria-labelledby.
 		//
 		// The count alone is not the assertion: every section is also
 		// named by the id that labels it, so a section that is removed,
@@ -100,12 +100,16 @@ test.describe('home page composition', () => {
 		// ("現在地 / Where I am now"), rendered between the hero and the
 		// capabilities grid.
 		//
+		// Epic #928 / Issue #930 added `site-guide-heading` — the site
+		// guide is the FIRST body section, answering "what exists here
+		// and how do I reach it" before the projects and status blocks.
+		//
 		// Issue #884 merged the three "is this site working right now"
 		// blocks — platform health, reactions, page views — into ONE
 		// section named by `site-status-heading`. Those three ids
 		// (`status-heading`, `reactions-heading`,
 		// `access-counter-heading`) now label `h3` sub-blocks inside it,
-		// which is why the page has five top-level sections instead of
+		// which is why the page has six top-level sections instead of
 		// seven.
 		//
 		// The selector is scoped to the page subtree (Issue #664): the
@@ -113,18 +117,22 @@ test.describe('home page composition', () => {
 		// is itself a named `<section>` — is rendered outside it and is
 		// not a section of this page.
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
-		await expect(sections).toHaveCount(5);
+		await expect(sections).toHaveCount(6);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
-		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
-		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'site-status-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
-		// Issue #287 — in-site destinations only: the hero CTA and the
-		// footer index entry both point at /portfolio, and no link to
-		// the removed real-name domain remains on the top page.
+		// Issue #925 second pass — the hero is editorial flow content
+		// again with a single /about link; the ad units are a separate
+		// axis placed around the sections (leaderboard above the hero,
+		// link card / search listing / rectangles between sections).
+		// /portfolio stays reachable through the capabilities grid
+		// and the footer index.
 		await expect(
-			page.locator('section[aria-labelledby="hero-title"] a[href="/portfolio"]'),
+			page.locator('section[aria-labelledby="hero-title"] a[href="/about"]'),
 		).toHaveCount(1);
 		await expect(page.locator('footer a[href="/portfolio"]')).toHaveCount(1);
 		await expect(page.locator('a[href*="yusuke-kim.com"]')).toHaveCount(0);
@@ -212,14 +220,22 @@ test.describe('home page composition', () => {
 		// The observed-at footer line is rendered.
 		await expect(section.getByText('observed at')).toBeVisible();
 
-		// Issue #884 — the three blocks the merge folded into this
+		// Issue #884 — the blocks the merge folded into this
 		// section must stay reachable inside it: each keeps its own `h3`
 		// and its own id, so the screen-reader outline still names
-		// platform health, reactions and page views separately. The
-		// fourth `h3` is the known-incident list the status rows own
-		// (Issue #502); it is asserted by count, not by wording.
-		await expect(section.locator('h3')).toHaveCount(4);
-		for (const id of ['status-heading', 'reactions-heading', 'access-counter-heading']) {
+		// platform health, GitHub activity, reactions, page views and
+		// Discord presence separately (Issues #319 / #320). The
+		// remaining `h3`s are the known-incident list the status rows
+		// own (Issue #502) and the presence card's own heading — both
+		// asserted by count, not by wording.
+		await expect(section.locator('h3')).toHaveCount(7);
+		for (const id of [
+			'status-heading',
+			'github-activity-heading',
+			'reactions-heading',
+			'access-counter-heading',
+			'discord-presence-heading',
+		]) {
 			const block = section.locator(`h3#${id}`);
 			await expect(block).toHaveCount(1);
 			await expect(block).toBeVisible();

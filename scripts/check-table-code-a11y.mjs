@@ -180,6 +180,19 @@ export function scanViolationsInFile({ relativePath, source }) {
 			});
 		}
 		for (const match of code.matchAll(/overflowX: '(auto|scroll)'/g)) {
+			// The rule is about keyboard reachability, not the property
+			// itself: a hand-rolled scroll box passes when the element
+			// that owns it is focusable and named — the same contract
+			// `DataTable`'s scroll region keeps (tabIndex + an
+			// accessible name). The element's opening tag is the text
+			// between the nearest '<' before the declaration and the
+			// first '>' after it.
+			const tagStart = code.lastIndexOf('<', match.index ?? 0);
+			const tagEnd = code.indexOf('>', match.index ?? 0);
+			const tag = tagStart === -1 || tagEnd === -1 ? '' : code.slice(tagStart, tagEnd + 1);
+			const reachable =
+				/<[a-zA-Z][^>]*\btabIndex=\{0\}/.test(tag) && /\baria-label(ledby)?=/.test(tag);
+			if (reachable) continue;
 			record('scroll-container-outside-primitive', match, {
 				wcag: '1.4.10',
 				message:

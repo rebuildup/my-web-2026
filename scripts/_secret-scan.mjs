@@ -326,6 +326,14 @@ export const ALLOWLIST = Object.freeze([
 			'in the repository carries the shape, and it is issued by no environment.',
 	},
 	{
+		path: 'src/http/github-readme-stats/router.test.ts',
+		detector: 'secret-assignment',
+		reason:
+			'The router unit-test env mock (Issue #933). The GITHUB_* values are ' +
+			'synthetic placeholders the mocked fetch never validates; they are issued by ' +
+			'no environment and grant nothing.',
+	},
+	{
 		path: 'scripts/scan-secrets.mjs',
 		detector: 'home-consumer-api-key',
 		reason:

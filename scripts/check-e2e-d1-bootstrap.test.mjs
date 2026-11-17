@@ -193,11 +193,28 @@ describe('E2E local D1 bootstrap wiring (Issue #262)', () => {
 				'to prevent.',
 		);
 		assert.match(body, /run: pnpm run e2e/, 'the E2E step must still run the suite.');
+		// Issue #937 — the E2E gate moved from "every release-branch push"
+		// to the candidate model: the release PR (base `main`), a
+		// `ui-change` labelled ticket PR, a push to `main`, or a manual
+		// dispatch (the freeze). A red release trunk is observed by the
+		// freeze run and the release PR, not by re-running the suite on
+		// every ticket merge.
 		assert.match(
 			body,
+			/github\.base_ref == 'main'/,
+			'the E2E step must still run for the release PR (base `main`) —\n' +
+				'that is how a red release trunk is observed at the candidate gate.',
+		);
+		assert.match(
+			body,
+			/ui-change/,
+			'the E2E step must keep the `ui-change` label escape hatch for ticket PRs.',
+		);
+		assert.doesNotMatch(
+			body,
 			/startsWith\(github\.ref, 'refs\/heads\/release-'\)/,
-			'the E2E step must still run on release branches — that is how a red release\n' +
-				'trunk is observed at all.',
+			'Issue #937 — the E2E step must NOT run on every `release-*` push;\n' +
+				'the suite runs once per frozen candidate, not per ticket merge.',
 		);
 	});
 });

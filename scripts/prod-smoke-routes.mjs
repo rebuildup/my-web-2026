@@ -175,7 +175,7 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'home-default',
 				description:
-					'all five default sections render and the reactions widget is configured (no disabled placeholder)',
+					'all six default sections render and the reactions widget is configured (no disabled placeholder)',
 				probes: Object.freeze({ homeSections: true, reactionsDisabled: false }),
 			}),
 		]),
@@ -326,7 +326,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * instead of as literals inside the Playwright adapter: one place to
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
- * against a real render (`e2e/smoke.spec.ts` for the five home sections,
+ * against a real render (`e2e/smoke.spec.ts` for the six home sections,
  * `e2e/about.spec.ts` for the five narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
  *
@@ -338,11 +338,14 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * reactions, page views) into the single `site-status-heading` section,
  * so the count went 7 -> 5; those blocks still render as `h3`
  * sub-blocks inside it, and `e2e/smoke.spec.ts` pins their ids there.
+ * Epic #928 / Issue #930 added `site-guide-heading` as the FIRST body
+ * section ("what exists here and how do I reach it"), so the count went
+ * 5 -> 6.
  *
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 5 }),
+	'/': Object.freeze({ labelled: 6 }),
 	'/about': Object.freeze({ narrative: 5 }),
 });
 

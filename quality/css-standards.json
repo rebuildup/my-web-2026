@@ -170,8 +170,8 @@
 				"grid-template-rows"
 			],
 			"https://www.w3.org/TR/css-images-3/": [
-				"image-rendering",
 				"image-orientation",
+				"image-rendering",
 				"object-fit",
 				"object-position"
 			],
@@ -210,6 +210,7 @@
 				"border-inline-start-width",
 				"border-inline-style",
 				"border-inline-width",
+				"border-left",
 				"inline-size",
 				"inset-block",
 				"inset-block-end",
@@ -236,6 +237,7 @@
 			],
 			"https://www.w3.org/TR/css-masking-1/": [
 				"clip",
+				"clip-path",
 				"mask",
 				"mask-clip",
 				"mask-composite",
@@ -256,7 +258,11 @@
 				"column-span",
 				"column-width"
 			],
-			"https://www.w3.org/TR/css-overflow-3/": ["overscroll-behavior-x", "text-overflow"],
+			"https://www.w3.org/TR/css-overflow-3/": [
+				"line-clamp",
+				"overscroll-behavior-x",
+				"text-overflow"
+			],
 			"https://drafts.csswg.org/cssom-view/": ["scroll-behavior"],
 			"https://www.w3.org/TR/css-position-3/": [
 				"bottom",
@@ -405,6 +411,7 @@
 			"hwb",
 			"if",
 			"image-set",
+			"inset",
 			"invert",
 			"lab",
 			"lch",
@@ -552,6 +559,14 @@
 				"surfaces": ["panda-generated"],
 				"reason": "Emitted by Panda's preflight reset for the Gecko-on-macOS rasterisation path. Engine-specific with no standard counterpart; kept so the reset Panda generates stays byte-stable for the baseline gate (Issue #414).",
 				"basis": "https://developer.mozilla.org/en-US/docs/Web/CSS/-moz-osx-font-smoothing"
+			},
+			{
+				"id": "panda-lineclamp-webkit-box-orient",
+				"name": "-webkit-box-orient",
+				"kind": "engine-specific",
+				"surfaces": ["panda-generated"],
+				"reason": "Emitted by Panda's lineClamp utility for the two-line description clamp on the native/product ad cards (src/home/ads/units.tsx). box-orient is a legacy flexible-box property with no unprefixed spec counterpart — the standard line-clamp path is covered once 'line-clamp' sits in css-overflow-3, but the -webkit-box display mode still needs the orient declaration. Dropping it silently unclamps the text.",
+				"basis": "https://developer.mozilla.org/en-US/docs/Web/CSS/-webkit-box-orient"
 			}
 		],
 		"functions": [],

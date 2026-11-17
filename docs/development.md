@@ -357,8 +357,11 @@ allowlist エントリだけを受理する（何も抑止していないエン�
 詳細は
 [`docs/verification/standards/css-validated.md`](verification/standards/css-validated.md)。
 
-CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
-`validate` job on every PR and every push to `main` / `release-*`.
+CI (`.github/workflows/ci.yml`) splits verification by trigger
+(Issue #937): a ticket PR (base `release-*` or a numeric branch) runs
+`validate:fast` on the merge ref; a `release-*` push runs
+`validate:fast` + `cf-typegen:check`; the release PR, `workflow_dispatch`
+(the candidate freeze) and pushes to `main` run `validate:integration`.
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
 

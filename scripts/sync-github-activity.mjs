@@ -12,6 +12,10 @@
  *   - GET /users/<owner>/repos?per_page=100   (public repos + pushed_at)
  *   - with GITHUB_TOKEN: GET /user/repos?visibility=private&affiliation=owner
  *     (private repos too — anonymised before anything is written)
+ *   - GET /search/commits + /search/issues    (per-repo contribution
+ *     counts: authored commits / authored PRs inside the window —
+ *     Issue #967. Search `total_count` is exact and needs no paging;
+ *     requests are paced under the authenticated search rate limit.)
  *
  * Privacy contract (#932): private repositories are reduced to
  *   { id: 'private-<hmac12>', kind:'private', name: alias-or-generic,
@@ -85,6 +89,40 @@ export function repoFacts(repo, kind, salt) {
 }
 
 /**
+ * The publishable activity block for one repo (Issue #967).
+ *
+ * `events` counts public feed events inside the window; `commits` and
+ * `prs` are the measured contribution counts the Search API returned
+ * for this repo — authored commits (`committer-date`) and authored PRs
+ * (`updated`). A count the search did not produce is ABSENT, never 0:
+ * "not measured" and "zero" are different claims.
+ */
+function activityBlock(events, contribution, windowDays) {
+	return {
+		events,
+		...(contribution?.commits !== undefined ? { commits: contribution.commits } : {}),
+		...(contribution?.prs !== undefined ? { prs: contribution.prs } : {}),
+		windowDays,
+	};
+}
+
+/**
+ * Whether a repo belongs in the snapshot at all (Issue #967).
+ *
+ * The old rule admitted every repo with a feed event OR a `pushed_at`
+ * inside the window — which listed repositories the owner never
+ * touched (a collaborator's push, a mirror sync). The rule now
+ * requires an OBSERVED owner signal: a public feed event, or a
+ * measured authored commit / PR. `pushed_at` alone no longer admits a
+ * repo; it still supplies `lastActiveAt` for the ones that qualify.
+ */
+function hasObservedSignal(events, contribution) {
+	if (events > 0) return true;
+	if (!contribution) return false;
+	return (contribution.commits ?? 0) > 0 || (contribution.prs ?? 0) > 0;
+}
+
+/**
  * Pure snapshot builder — fetch results in, serialisable snapshot
  * out. Exported so the privacy contract (private fields never
  * survive) is testable without network or credentials.
@@ -94,7 +132,15 @@ export function repoFacts(repo, kind, salt) {
  * leak the contract forbids, so the whole build fails instead of
  * degrading to public-only output the operator did not ask for.
  */
-export function buildSnapshot({ events, publicRepos, privateRepos, now, salt, headSha }) {
+export function buildSnapshot({
+	events,
+	publicRepos,
+	privateRepos,
+	contributions,
+	now,
+	salt,
+	headSha,
+}) {
 	if (privateRepos?.length && !salt) {
 		throw new Error(
 			'GITHUB_ACTIVITY_SALT is required when GITHUB_TOKEN fetched private repositories',
@@ -117,23 +163,23 @@ export function buildSnapshot({ events, publicRepos, privateRepos, now, salt, he
 
 	const repos = [];
 	for (const repo of publicRepos) {
-		const facts = repoFacts(repo, 'public', salt);
+		const contribution = contributions?.[repo.full_name];
 		const n = counts.get(repo.full_name) ?? 0;
-		if (n > 0 || (repo.pushed_at && Date.parse(repo.pushed_at) >= cutoff)) {
+		if (hasObservedSignal(n, contribution)) {
 			repos.push({
-				...facts,
-				activity: { events: n, windowDays: WINDOW_DAYS },
+				...repoFacts(repo, 'public', salt),
+				activity: activityBlock(n, contribution, WINDOW_DAYS),
 			});
 		}
 	}
 	const privateStatus = privateRepos ? 'ok' : 'unconfigured';
 	if (privateRepos) {
 		for (const repo of privateRepos) {
-			const pushed = repo.pushed_at ? Date.parse(repo.pushed_at) : 0;
-			if (pushed >= cutoff) {
+			const contribution = contributions?.[repo.full_name];
+			if (hasObservedSignal(0, contribution)) {
 				repos.push({
 					...repoFacts(repo, 'private', salt),
-					activity: { events: 0, windowDays: WINDOW_DAYS },
+					activity: activityBlock(0, contribution, WINDOW_DAYS),
 				});
 			}
 		}
@@ -152,6 +198,78 @@ export function buildSnapshot({ events, publicRepos, privateRepos, now, salt, he
 		repos,
 		feed,
 	};
+}
+
+/**
+ * Per-repo contribution counts via the Search API (Issue #967).
+ *
+ * Two `total_count` queries per repo — authored commits inside the
+ * window and authored PRs updated inside it — paced sequentially
+ * under the search rate limit (30 req/min authenticated, 10
+ * unauthenticated). A repo whose queries fail keeps `undefined`
+ * counts: the snapshot then carries events-only activity for it,
+ * which the reader treats as "contribution not measured" rather than
+ * zero. A rate-limit response aborts the remaining queries — the
+ * partial map is still truthful per repo.
+ *
+ * Private repos are queried by `full_name` exactly like public ones;
+ * the name travels only inside the request to GitHub, never into the
+ * snapshot.
+ */
+async function fetchContributions(repos, sinceDate, token) {
+	const out = {};
+	const delayMs = token ? 2_500 : 6_500;
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+	async function searchTotalCount(query) {
+		const res = await fetch(`${API}/search/${query.path}?q=${encodeURIComponent(query.q)}`, {
+			headers: {
+				accept: 'application/vnd.github+json',
+				'user-agent': UA,
+				...(token ? { authorization: `Bearer ${token}` } : {}),
+			},
+			signal: AbortSignal.timeout(15_000),
+		});
+		if (res.status === 403 || res.status === 429) {
+			const err = new Error(`github search rate limited -> ${res.status}`);
+			err.rateLimited = true;
+			throw err;
+		}
+		if (!res.ok) throw new Error(`github search -> ${res.status}`);
+		const body = await res.json();
+		return Number.isInteger(body.total_count) ? body.total_count : undefined;
+	}
+
+	for (const repo of repos) {
+		const fullName = repo?.full_name;
+		if (typeof fullName !== 'string' || fullName.length === 0) continue;
+		try {
+			const commits = await searchTotalCount({
+				path: 'commits',
+				q: `repo:${fullName} author:${OWNER} committer-date:>=${sinceDate}`,
+			});
+			await sleep(delayMs);
+			const prs = await searchTotalCount({
+				path: 'issues',
+				q: `repo:${fullName} type:pr author:${OWNER} updated:>=${sinceDate}`,
+			});
+			out[fullName] = {
+				...(commits !== undefined ? { commits } : {}),
+				...(prs !== undefined ? { prs } : {}),
+			};
+		} catch (err) {
+			if (err?.rateLimited) {
+				console.error(
+					'sync-github-activity: search rate limit hit — remaining repos keep unmeasured contributions',
+				);
+				break;
+			}
+			// A single repo's search failure leaves its counts absent;
+			// the snapshot stays truthful (events still counted).
+		}
+		await sleep(delayMs);
+	}
+	return out;
 }
 
 async function push(snapshot) {
@@ -216,11 +334,20 @@ async function main() {
 			: Promise.resolve(null),
 	]);
 
+	const now = new Date();
+	const sinceDate = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+	const contributions = await fetchContributions(
+		[...(publicRepos ?? []), ...(privateRepos ?? [])],
+		sinceDate,
+		token,
+	);
+
 	const snapshot = buildSnapshot({
 		events,
 		publicRepos,
 		privateRepos,
-		now: new Date(),
+		contributions,
+		now,
 		salt,
 		headSha: process.env.GITHUB_SHA || undefined,
 	});

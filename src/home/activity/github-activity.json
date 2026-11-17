@@ -1,15 +1,15 @@
 {
 	"schemaVersion": 1,
-	"generatedOn": "2026-11-16",
+	"generatedOn": "2026-11-17",
 	"windowDays": 30,
 	"sources": {
 		"public": {
 			"status": "ok",
-			"observedAt": "2026-11-16T13:33:58.758Z"
+			"observedAt": "2026-11-17T14:53:07.811Z"
 		},
 		"private": {
 			"status": "ok",
-			"observedAt": "2026-11-16T13:33:58.758Z"
+			"observedAt": "2026-11-17T14:53:07.811Z"
 		}
 	},
 	"repos": [
@@ -19,9 +19,11 @@
 			"name": "my-web-2026",
 			"repoFullName": "rebuildup/my-web-2026",
 			"htmlUrl": "https://github.com/rebuildup/my-web-2026",
-			"lastActiveAt": "2026-11-16T13:28:25Z",
+			"lastActiveAt": "2026-11-17T14:29:47Z",
 			"activity": {
-				"events": 1,
+				"events": 5,
+				"commits": 2621,
+				"prs": 300,
 				"windowDays": 30
 			}
 		},
@@ -31,21 +33,11 @@
 			"name": "FlashBeat",
 			"repoFullName": "rebuildup/FlashBeat",
 			"htmlUrl": "https://github.com/rebuildup/FlashBeat",
-			"lastActiveAt": "2026-11-16T12:30:26Z",
+			"lastActiveAt": "2026-11-17T14:26:33Z",
 			"activity": {
-				"events": 3,
-				"windowDays": 30
-			}
-		},
-		{
-			"id": "rebuildup/pc-setup",
-			"kind": "public",
-			"name": "pc-setup",
-			"repoFullName": "rebuildup/pc-setup",
-			"htmlUrl": "https://github.com/rebuildup/pc-setup",
-			"lastActiveAt": "2026-11-16T06:30:16Z",
-			"activity": {
-				"events": 0,
+				"events": 4,
+				"commits": 1638,
+				"prs": 407,
 				"windowDays": 30
 			}
 		},
@@ -55,9 +47,25 @@
 			"name": "project-init",
 			"repoFullName": "rebuildup/project-init",
 			"htmlUrl": "https://github.com/rebuildup/project-init",
-			"lastActiveAt": "2026-11-16T00:42:09Z",
+			"lastActiveAt": "2026-11-17T11:39:09Z",
 			"activity": {
 				"events": 0,
+				"commits": 298,
+				"prs": 34,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "rebuildup/pc-setup",
+			"kind": "public",
+			"name": "pc-setup",
+			"repoFullName": "rebuildup/pc-setup",
+			"htmlUrl": "https://github.com/rebuildup/pc-setup",
+			"lastActiveAt": "2026-11-17T07:55:46Z",
+			"activity": {
+				"events": 1,
+				"commits": 72,
+				"prs": 50,
 				"windowDays": 30
 			}
 		},
@@ -67,9 +75,11 @@
 			"name": "dotfiles",
 			"repoFullName": "rebuildup/dotfiles",
 			"htmlUrl": "https://github.com/rebuildup/dotfiles",
-			"lastActiveAt": "2026-11-14T15:44:20Z",
+			"lastActiveAt": "2026-11-17T03:48:07Z",
 			"activity": {
-				"events": 0,
+				"events": 1,
+				"commits": 201,
+				"prs": 49,
 				"windowDays": 30
 			}
 		},
@@ -82,6 +92,8 @@
 			"lastActiveAt": "2026-11-11T01:25:26Z",
 			"activity": {
 				"events": 0,
+				"commits": 0,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -94,6 +106,8 @@
 			"lastActiveAt": "2026-11-11T00:41:40Z",
 			"activity": {
 				"events": 0,
+				"commits": 21,
+				"prs": 34,
 				"windowDays": 30
 			}
 		},
@@ -106,6 +120,8 @@
 			"lastActiveAt": "2026-11-09T17:32:46Z",
 			"activity": {
 				"events": 0,
+				"commits": 5,
+				"prs": 4,
 				"windowDays": 30
 			}
 		},
@@ -118,6 +134,8 @@
 			"lastActiveAt": "2026-11-09T13:46:48Z",
 			"activity": {
 				"events": 0,
+				"commits": 218,
+				"prs": 51,
 				"windowDays": 30
 			}
 		},
@@ -130,6 +148,8 @@
 			"lastActiveAt": "2026-11-06T05:13:16Z",
 			"activity": {
 				"events": 0,
+				"commits": 3,
+				"prs": 3,
 				"windowDays": 30
 			}
 		},
@@ -142,6 +162,8 @@
 			"lastActiveAt": "2026-11-06T05:06:42Z",
 			"activity": {
 				"events": 0,
+				"commits": 0,
+				"prs": 3,
 				"windowDays": 30
 			}
 		},
@@ -154,6 +176,8 @@
 			"lastActiveAt": "2026-11-06T04:29:42Z",
 			"activity": {
 				"events": 0,
+				"commits": 2,
+				"prs": 3,
 				"windowDays": 30
 			}
 		},
@@ -166,6 +190,8 @@
 			"lastActiveAt": "2026-11-06T02:25:45Z",
 			"activity": {
 				"events": 0,
+				"commits": 1,
+				"prs": 2,
 				"windowDays": 30
 			}
 		},
@@ -178,6 +204,8 @@
 			"lastActiveAt": "2026-11-06T02:16:29Z",
 			"activity": {
 				"events": 0,
+				"commits": 0,
+				"prs": 3,
 				"windowDays": 30
 			}
 		},
@@ -190,6 +218,8 @@
 			"lastActiveAt": "2026-11-06T01:12:24Z",
 			"activity": {
 				"events": 0,
+				"commits": 2,
+				"prs": 2,
 				"windowDays": 30
 			}
 		},
@@ -202,6 +232,8 @@
 			"lastActiveAt": "2026-11-06T00:43:34Z",
 			"activity": {
 				"events": 0,
+				"commits": 2,
+				"prs": 2,
 				"windowDays": 30
 			}
 		},
@@ -214,6 +246,8 @@
 			"lastActiveAt": "2026-11-05T15:33:01Z",
 			"activity": {
 				"events": 0,
+				"commits": 4,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -226,6 +260,8 @@
 			"lastActiveAt": "2026-11-04T23:52:55Z",
 			"activity": {
 				"events": 0,
+				"commits": 27,
+				"prs": 5,
 				"windowDays": 30
 			}
 		},
@@ -238,6 +274,8 @@
 			"lastActiveAt": "2026-11-02T19:16:18Z",
 			"activity": {
 				"events": 0,
+				"commits": 6,
+				"prs": 3,
 				"windowDays": 30
 			}
 		},
@@ -250,6 +288,8 @@
 			"lastActiveAt": "2026-11-02T15:17:16Z",
 			"activity": {
 				"events": 0,
+				"commits": 2,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -262,6 +302,8 @@
 			"lastActiveAt": "2026-11-02T09:51:50Z",
 			"activity": {
 				"events": 0,
+				"commits": 2,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -274,6 +316,8 @@
 			"lastActiveAt": "2026-11-02T09:51:45Z",
 			"activity": {
 				"events": 0,
+				"commits": 3,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -286,6 +330,8 @@
 			"lastActiveAt": "2026-11-02T09:51:40Z",
 			"activity": {
 				"events": 0,
+				"commits": 4,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -298,6 +344,8 @@
 			"lastActiveAt": "2026-11-02T09:27:05Z",
 			"activity": {
 				"events": 0,
+				"commits": 3,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -310,6 +358,8 @@
 			"lastActiveAt": "2026-10-30T01:07:13Z",
 			"activity": {
 				"events": 0,
+				"commits": 0,
+				"prs": 9,
 				"windowDays": 30
 			}
 		},
@@ -322,18 +372,8 @@
 			"lastActiveAt": "2026-10-26T14:11:53Z",
 			"activity": {
 				"events": 0,
-				"windowDays": 30
-			}
-		},
-		{
-			"id": "rebuildup/GRI-2nd",
-			"kind": "public",
-			"name": "GRI-2nd",
-			"repoFullName": "rebuildup/GRI-2nd",
-			"htmlUrl": "https://github.com/rebuildup/GRI-2nd",
-			"lastActiveAt": "2026-10-20T10:37:13Z",
-			"activity": {
-				"events": 0,
+				"commits": 14,
+				"prs": 5,
 				"windowDays": 30
 			}
 		},
@@ -346,16 +386,8 @@
 			"lastActiveAt": "2026-10-18T12:11:52Z",
 			"activity": {
 				"events": 0,
-				"windowDays": 30
-			}
-		},
-		{
-			"id": "private-ea31e52c3599",
-			"kind": "private",
-			"name": "非公開プロジェクト",
-			"lastActiveAt": "2026-10-30T01:03:46Z",
-			"activity": {
-				"events": 0,
+				"commits": 21,
+				"prs": 6,
 				"windowDays": 30
 			}
 		},
@@ -366,6 +398,8 @@
 			"lastActiveAt": "2026-11-07T05:20:45Z",
 			"activity": {
 				"events": 0,
+				"commits": 518,
+				"prs": 98,
 				"windowDays": 30
 			}
 		},
@@ -376,6 +410,8 @@
 			"lastActiveAt": "2026-11-09T10:09:21Z",
 			"activity": {
 				"events": 0,
+				"commits": 310,
+				"prs": 41,
 				"windowDays": 30
 			}
 		},
@@ -383,9 +419,11 @@
 			"id": "private-b1e2746b06d8",
 			"kind": "private",
 			"name": "非公開プロジェクト",
-			"lastActiveAt": "2026-11-16T12:08:18Z",
+			"lastActiveAt": "2026-11-17T14:22:03Z",
 			"activity": {
 				"events": 0,
+				"commits": 652,
+				"prs": 276,
 				"windowDays": 30
 			}
 		},
@@ -396,6 +434,8 @@
 			"lastActiveAt": "2026-10-19T14:20:13Z",
 			"activity": {
 				"events": 0,
+				"commits": 5,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -406,6 +446,32 @@
 			"lastActiveAt": "2026-10-24T02:43:57Z",
 			"activity": {
 				"events": 0,
+				"commits": 15,
+				"prs": 5,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-d707440757c0",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-10-08T13:25:08Z",
+			"activity": {
+				"events": 0,
+				"commits": 0,
+				"prs": 1,
+				"windowDays": 30
+			}
+		},
+		{
+			"id": "private-06a5353d15cb",
+			"kind": "private",
+			"name": "非公開プロジェクト",
+			"lastActiveAt": "2026-03-03T19:35:51Z",
+			"activity": {
+				"events": 0,
+				"commits": 0,
+				"prs": 1,
 				"windowDays": 30
 			}
 		},
@@ -416,6 +482,8 @@
 			"lastActiveAt": "2026-11-11T12:56:22Z",
 			"activity": {
 				"events": 0,
+				"commits": 17,
+				"prs": 9,
 				"windowDays": 30
 			}
 		},
@@ -426,6 +494,8 @@
 			"lastActiveAt": "2026-11-12T16:44:19Z",
 			"activity": {
 				"events": 0,
+				"commits": 6,
+				"prs": 9,
 				"windowDays": 30
 			}
 		},
@@ -436,220 +506,222 @@
 			"lastActiveAt": "2026-11-12T08:16:03Z",
 			"activity": {
 				"events": 0,
+				"commits": 0,
+				"prs": 99,
 				"windowDays": 30
 			}
 		}
 	],
 	"feed": [
 		{
-			"id": "20270880360",
+			"id": "27446443332",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T13:31:36Z"
-		},
-		{
-			"id": "20270880017",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:31:38Z"
-		},
-		{
-			"id": "20270869139",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:31:22Z"
-		},
-		{
-			"id": "20270802473",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:30:36Z"
-		},
-		{
-			"id": "20270800130",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:30:36Z"
-		},
-		{
-			"id": "20270545442",
-			"kind": "public",
-			"repoId": "rebuildup/my-web-2026",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:27:50Z"
-		},
-		{
-			"id": "20270469125",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:26:57Z"
-		},
-		{
-			"id": "20270466259",
-			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:26:57Z"
-		},
-		{
-			"id": "20270413546",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T12:30:45Z"
-		},
-		{
-			"id": "27344349826",
-			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
+			"repoId": "tastile/tastile-cli",
 			"type": "DeleteEvent",
-			"at": "2026-11-14T08:20:42Z"
+			"at": "2026-11-17T04:14:15Z"
 		},
 		{
-			"id": "27344345004",
+			"id": "27446421433",
+			"kind": "public",
+			"repoId": "ido-bata/ae-a8n",
+			"type": "CreateEvent",
+			"at": "2026-11-16T04:17:54Z"
+		},
+		{
+			"id": "20403272757",
+			"kind": "public",
+			"repoId": "tastile/tastile-android",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:51:50Z"
+		},
+		{
+			"id": "20403182168",
+			"kind": "public",
+			"repoId": "tastile/tastile-android",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:50:49Z"
+		},
+		{
+			"id": "20403157273",
+			"kind": "public",
+			"repoId": "tastile/tastile-android",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:50:39Z"
+		},
+		{
+			"id": "20403066854",
+			"kind": "public",
+			"repoId": "ido-bata/ae-a8n",
+			"type": "IssuesEvent",
+			"at": "2026-11-17T14:49:48Z"
+		},
+		{
+			"id": "20403053397",
+			"kind": "public",
+			"repoId": "ido-bata/ae-a8n",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:49:35Z"
+		},
+		{
+			"id": "27446221171",
 			"kind": "public",
 			"repoId": "ido-bata/ae-test",
 			"type": "DeleteEvent",
-			"at": "2026-11-16T11:23:05Z"
+			"at": "2026-11-17T00:36:07Z"
 		},
 		{
-			"id": "27344315245",
+			"id": "27446218343",
 			"kind": "public",
-			"repoId": "rebuildup/FlashBeat",
-			"type": "DeleteEvent",
-			"at": "2026-11-14T08:20:04Z"
+			"repoId": "ido-bata/ae-test",
+			"type": "PushEvent",
+			"at": "2026-11-17T00:36:06Z"
 		},
 		{
-			"id": "20270141271",
-			"kind": "public",
-			"repoId": "ido-bata/ido-bata-server-bot",
-			"type": "PullRequestEvent",
-			"at": "2026-11-16T13:23:29Z"
-		},
-		{
-			"id": "20269472450",
+			"id": "27446216740",
 			"kind": "public",
 			"repoId": "ido-bata/ae-devtools",
-			"type": "IssueCommentEvent",
-			"at": "2026-11-16T12:26:07Z"
-		},
-		{
-			"id": "27343611497",
-			"kind": "public",
-			"repoId": "tastile/tastile-cli",
-			"type": "DeleteEvent",
-			"at": "2026-11-16T07:55:45Z"
-		},
-		{
-			"id": "27343607786",
-			"kind": "public",
-			"repoId": "tastile/tastile-cli",
 			"type": "PushEvent",
-			"at": "2026-11-16T07:55:43Z"
+			"at": "2026-11-16T04:15:22Z"
 		},
 		{
-			"id": "20268924130",
+			"id": "27446166417",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:28Z"
+			"repoId": "ido-bata/ae-test",
+			"type": "CreateEvent",
+			"at": "2026-11-17T00:35:24Z"
 		},
 		{
-			"id": "20268915678",
+			"id": "27446144501",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:25Z"
+			"repoId": "ido-bata/ae-devtools",
+			"type": "CreateEvent",
+			"at": "2026-11-17T00:16:02Z"
 		},
 		{
-			"id": "20268911141",
+			"id": "27446121345",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:20Z"
+			"repoId": "rebuildup/pc-setup",
+			"type": "CreateEvent",
+			"at": "2026-11-17T00:15:54Z"
 		},
 		{
-			"id": "20268907719",
+			"id": "27445986028",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:18Z"
+			"type": "PushEvent",
+			"at": "2026-11-17T14:29:17Z"
 		},
 		{
-			"id": "20268903193",
+			"id": "20402401602",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:17Z"
+			"repoId": "ido-bata/ae-a8n",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:42:37Z"
 		},
 		{
-			"id": "20268901504",
+			"id": "27445746550",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:16Z"
+			"repoId": "rebuildup/FlashBeat",
+			"type": "CreateEvent",
+			"at": "2026-11-17T04:07:13Z"
 		},
 		{
-			"id": "20268900062",
+			"id": "27445722736",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:12Z"
+			"type": "PushEvent",
+			"at": "2026-11-17T00:31:29Z"
 		},
 		{
-			"id": "20268899729",
+			"id": "20402083883",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
+			"repoId": "rebuildup/my-web-2026",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:11Z"
+			"at": "2026-11-17T14:39:15Z"
 		},
 		{
-			"id": "20268898315",
+			"id": "27445433395",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:10Z"
+			"repoId": "rebuildup/my-web-2026",
+			"type": "CreateEvent",
+			"at": "2026-11-16T04:03:17Z"
 		},
 		{
-			"id": "20268895818",
+			"id": "27445423882",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:08Z"
+			"type": "DeleteEvent",
+			"at": "2026-11-17T00:09:35Z"
 		},
 		{
-			"id": "20268886621",
+			"id": "20401596798",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:04Z"
+			"type": "IssueCommentEvent",
+			"at": "2026-11-17T12:38:09Z"
 		},
 		{
-			"id": "20268885401",
+			"id": "20401542241",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
+			"repoId": "rebuildup/my-web-2026",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:01Z"
+			"at": "2026-11-17T14:33:27Z"
 		},
 		{
-			"id": "20268885259",
+			"id": "20401523688",
 			"kind": "public",
-			"repoId": "ido-bata/ty-plus",
+			"repoId": "rebuildup/my-web-2026",
 			"type": "IssuesEvent",
-			"at": "2026-11-16T13:10:01Z"
+			"at": "2026-11-17T14:33:12Z"
 		},
 		{
-			"id": "20268865036",
+			"id": "20401498260",
+			"kind": "public",
+			"repoId": "rebuildup/my-web-2026",
+			"type": "IssuesEvent",
+			"at": "2026-11-17T14:32:59Z"
+		},
+		{
+			"id": "27444957463",
+			"kind": "public",
+			"repoId": "rebuildup/dotfiles",
+			"type": "DeleteEvent",
+			"at": "2026-11-17T00:04:42Z"
+		},
+		{
+			"id": "27444843080",
+			"kind": "public",
+			"repoId": "ido-bata/ae-a8n",
+			"type": "DeleteEvent",
+			"at": "2026-11-17T00:23:17Z"
+		},
+		{
+			"id": "20400974404",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:26:29Z"
+		},
+		{
+			"id": "20400922340",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "IssuesEvent",
+			"at": "2026-11-17T14:26:44Z"
+		},
+		{
+			"id": "20400677517",
+			"kind": "public",
+			"repoId": "rebuildup/FlashBeat",
+			"type": "PullRequestEvent",
+			"at": "2026-11-17T14:24:15Z"
+		},
+		{
+			"id": "27444575139",
 			"kind": "public",
 			"repoId": "ido-bata/ty-plus",
-			"type": "IssuesEvent",
-			"at": "2026-11-16T13:09:49Z"
+			"type": "PushEvent",
+			"at": "2026-11-17T00:20:38Z"
 		}
 	]
 }

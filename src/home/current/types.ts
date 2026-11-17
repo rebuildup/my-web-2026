@@ -90,6 +90,11 @@ export interface ProjectActivity {
 	readonly windowDays: number;
 	/** Commits in the project's whole history, when the source knows it. */
 	readonly commitsTotal?: number;
+	/**
+	 * Authored pull requests inside the same window, when the source
+	 * measures them (Issue #967). Absent means "not measured".
+	 */
+	readonly pullRequests?: number;
 }
 
 /** A project's place in the owner's attention. */

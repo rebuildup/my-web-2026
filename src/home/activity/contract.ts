@@ -49,8 +49,16 @@ export interface ActivityRepoFacts {
 	readonly lastActiveAt?: string;
 	/** Activity inside the counting window (see `windowDays`). */
 	readonly activity?: {
+		/** Public feed events observed for the repo in the window. */
 		readonly events: number;
+		/**
+		 * Authored commits measured by the contribution search
+		 * (Issue #967). Absent means "not measured" — never rendered
+		 * as zero.
+		 */
 		readonly commits?: number;
+		/** Authored pull requests updated inside the window. */
+		readonly prs?: number;
 		readonly windowDays: number;
 	};
 	/** Authored weight hint; absent = unsorted tail. */

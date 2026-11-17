@@ -46,6 +46,16 @@ export interface GuidePromotion {
 	readonly priority?: number;
 }
 
+/**
+ * The content class a facility belongs to. The value selects one of
+ * the four semantic category accents (`accent.category.*`), so the
+ * station node's colour MEANS something — it is the same
+ * classification the rest of the editorial system uses, not a
+ * decorative hue. Absent = neutral station (a utility destination
+ * like the contact window that belongs to no content class).
+ */
+export type GuideCategory = 'design' | 'code' | 'writing' | 'tool';
+
 export interface GuideEntry {
 	readonly id: string;
 	readonly kind: 'site' | 'external';
@@ -53,6 +63,7 @@ export interface GuideEntry {
 	readonly href: string;
 	readonly titleJa: string;
 	readonly summaryJa: string;
+	readonly category?: GuideCategory;
 	readonly children?: readonly GuideChild[];
 	/** Time-boxed emphasis; absent = permanent guide position only. */
 	readonly promotion?: GuidePromotion;
@@ -71,6 +82,7 @@ export const GUIDE_LEDGER = [
 		href: '/about',
 		titleJa: 'About — この人について',
 		summaryJa: '運営者の経歴・考え方・活動の背景。サイト全体の文脈を知りたいときの入口。',
+		category: 'writing',
 	},
 	{
 		id: 'portfolio',
@@ -78,6 +90,7 @@ export const GUIDE_LEDGER = [
 		href: '/portfolio',
 		titleJa: 'Portfolio — 作品',
 		summaryJa: '公開している制作物の一覧。個別の作品ページへはここから辿る。',
+		category: 'design',
 		children: [
 			{
 				id: 'portfolio-index',
@@ -93,6 +106,7 @@ export const GUIDE_LEDGER = [
 		href: '/projects/dotfiles',
 		titleJa: 'Dotfiles — 開発環境の設計図',
 		summaryJa: '日々の開発環境を構成する設定群の紹介。実際のリポジトリと同期して更新される。',
+		category: 'code',
 	},
 	{
 		id: 'tools',
@@ -100,6 +114,7 @@ export const GUIDE_LEDGER = [
 		href: '/tools',
 		titleJa: 'Tools — ブラウザで使える小物',
 		summaryJa: 'インストール不要のブラウザツール集。QR 生成・タイマー・変換器など。',
+		category: 'tool',
 	},
 	{
 		id: 'keyboard',
@@ -107,6 +122,7 @@ export const GUIDE_LEDGER = [
 		href: '/keyboard',
 		titleJa: 'Keyboard — キーボードレイアウト',
 		summaryJa: '現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。',
+		category: 'design',
 	},
 	{
 		id: 'contact',

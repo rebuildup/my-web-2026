@@ -1,59 +1,234 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { VisitTrail } from './VisitTrail';
+import type { GuideCategory, GuideEntry } from './ledger';
 import { GUIDE_LEDGER } from './ledger';
 import type { GuideRow } from './select';
 import { selectGuideRows } from './select';
 
 /**
- * Site guide — the "構内案内" section of the home page (Issue #930,
- * Epic #928).
+ * Site guide — the "現在地マップ" section of the home page
+ * (Issue #930, reworked for Issue #968, Epic #928).
  *
  * What it is
  * ----------
- * A station-directory-style index of the site's destinations: each
- * public facility is a same-level entry with a one-line orientation,
- * subordinate destinations expand in place, and a small set of
- * explicitly chosen external bases is marked as leaving the site.
- * The guide answers "what exists and how do I get there" — it never
- * copies the destination's own content.
+ * A wayfinding map, not a list: site facilities are stations on one
+ * route line. Each node carries TWO meaning channels so colour is
+ * never the only carrier (the same rule Issue #411 applied to the
+ * portfolio card): the fill is the facility's content class
+ * (`accent.category.*` — the semantic accent the editorial system
+ * uses for classification) and the silhouette is that class's shape
+ * (diamond / square / circle / triangle). A facility with no content
+ * class gets a neutral capsule; explicitly chosen external bases sit
+ * on a separate dashed spur as hollow rings — the spur visibly runs
+ * THROUGH them, which is exactly what "this destination leaves the
+ * site" means.
  *
- * Design rules (from the Epic)
- * ----------------------------
- *   - Meaningful structure only: the ordinal, the expansion state and
- *     the external marker carry the "current location" motif; there
- *     are no decorative routes, connectors or ambient animation.
+ * Design rules (from the Epic + Issue #968)
+ * ------------------------------------------
+ *   - Meaningful structure only: the route line, the node shape and
+ *     the hollow external marker carry the "current location" motif;
+ *     there are no decorative routes, connectors or ambient
+ *     animation.
+ *   - Semantic colour as identification: node fill =
+ *     `accent.category.<class>`; shape = the same class. Colour is
+ *     never the only carrier — every station also shows its title
+ *     and summary, and the legend under the route names every
+ *     shape/colour pair.
  *   - No-JS safe: expansion is a native `<details>`/`<summary>`, so
  *     the whole guide works with scripting disabled and every link is
  *     reachable by keyboard and screen reader without extra ARIA.
- *   - Promotion emphasis is a border + badge, not a reorder: the
- *     featured facility keeps its authored position.
+ *   - Promotion emphasis is a badge, not a reorder: the featured
+ *     facility keeps its authored position.
  *   - Colour stays inside the editorial system: monochrome ground,
  *     `border.strong` / `bg.accent` only for the featured state and
  *     link affordances — identical to the rest of the page.
  */
 
-const facilityListClassName = /*#__PURE__*/ css({
+/** The map grid: the site route on the left, the external spur on the right. */
+const guideMapClassName = /*#__PURE__*/ css({
+	display: 'grid',
+	gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 1.6fr) minmax(0, 1fr)' },
+	columnGap: { lg: '10' },
+	rowGap: '8',
+	alignItems: 'start',
+});
+
+const routeListClassName = /*#__PURE__*/ css({
 	display: 'flex',
 	flexDirection: 'column',
-	gap: '0',
 	margin: '0',
 	padding: '0',
 	listStyle: 'none',
 });
 
-const facilityItemClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
+/**
+ * One station row: a rail cell (the route line + the node) beside the
+ * content cell. The rail stretches the full row height so adjacent
+ * stations' line segments join into one continuous route.
+ */
+const stationClassName = /*#__PURE__*/ css({
+	display: 'grid',
+	gridTemplateColumns: '2rem minmax(0, 1fr)',
+	columnGap: '3',
 	paddingBlock: '5',
-	borderBottomWidth: '1px',
-	borderBottomStyle: 'solid',
-	borderBottomColor: 'border.subtle',
 	'&:first-child': { paddingBlockStart: '0' },
-	'&:last-child': { borderBottomWidth: '0', paddingBlockEnd: '0' },
+	'&:last-child': { paddingBlockEnd: '0' },
 });
+
+/** The rail cell: position context for the line and the node. */
+const railClassName = /*#__PURE__*/ css({
+	position: 'relative',
+	alignSelf: 'stretch',
+});
+
+/**
+ * The route line, drawn as a zero-width element whose inline-start
+ * border paints the 2 px segment. `top`/`bottom`/`height` variants
+ * trim the segment so the line starts at the first node and ends at
+ * the last node instead of overshooting the map.
+ */
+const lineBase = {
+	position: 'absolute',
+	insetInlineStart: 'calc(50% - 1px)',
+	width: '0',
+	borderInlineStartWidth: '2px',
+	borderInlineStartColor: 'border.subtle',
+} as const;
+
+const lineFullClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '0',
+	bottom: '0',
+	borderInlineStartStyle: 'solid',
+});
+
+const lineFromNodeClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '2rem',
+	bottom: '0',
+	borderInlineStartStyle: 'solid',
+});
+
+const lineToNodeClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '0',
+	height: '2rem',
+	borderInlineStartStyle: 'solid',
+});
+
+const lineFullExternalClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '0',
+	bottom: '0',
+	borderInlineStartStyle: 'dashed',
+});
+
+const lineFromNodeExternalClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '2rem',
+	bottom: '0',
+	borderInlineStartStyle: 'dashed',
+});
+
+const lineToNodeExternalClassName = /*#__PURE__*/ css({
+	...lineBase,
+	top: '0',
+	height: '2rem',
+	borderInlineStartStyle: 'dashed',
+});
+
+/**
+ * Station nodes. Each variant is a COMPLETE class (position + size +
+ * silhouette + fill) so no two css() declarations ever fight over
+ * the same property — Panda atomic classes do not guarantee override
+ * order, so composition-by-conflict is not an option here.
+ *
+ * Silhouette vocabulary (mirrors the StateMark category family):
+ *   design   → diamond   (rotated square)
+ *   code     → square
+ *   writing  → circle
+ *   tool     → triangle
+ *   neutral  → capsule   (a facility with no content class)
+ *   external → hollow ring on the dashed spur (off this map)
+ */
+const nodePosition = {
+	position: 'absolute',
+	top: '1.7rem',
+	insetInlineStart: '50%',
+} as const;
+
+const nodeDesignClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%) rotate(45deg)',
+	width: '8px',
+	height: '8px',
+	borderRadius: '1px',
+	backgroundColor: 'accent.category.design',
+});
+
+const nodeCodeClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%)',
+	width: '9px',
+	height: '9px',
+	borderRadius: '1px',
+	backgroundColor: 'accent.category.code',
+});
+
+const nodeWritingClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%)',
+	width: '10px',
+	height: '10px',
+	borderRadius: '50%',
+	backgroundColor: 'accent.category.writing',
+});
+
+const nodeToolClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%)',
+	width: '10px',
+	height: '10px',
+	clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
+	backgroundColor: 'accent.category.tool',
+});
+
+const nodeNeutralClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%)',
+	marginBlockStart: '3px',
+	width: '12px',
+	height: '5px',
+	borderRadius: '999px',
+	backgroundColor: 'border.strong',
+});
+
+const nodeExternalClassName = /*#__PURE__*/ css({
+	...nodePosition,
+	transform: 'translateX(-50%)',
+	width: '10px',
+	height: '10px',
+	borderRadius: '50%',
+	borderWidth: '2px',
+	borderStyle: 'solid',
+	borderColor: 'text.muted',
+	backgroundColor: 'transparent',
+});
+
+const NODE_CLASSNAMES: Record<GuideCategory, string> = {
+	design: nodeDesignClassName,
+	code: nodeCodeClassName,
+	writing: nodeWritingClassName,
+	tool: nodeToolClassName,
+};
+
+function nodeClassNameFor(entry: GuideEntry, external: boolean): string {
+	if (external) return nodeExternalClassName;
+	if (entry.category !== undefined) return NODE_CLASSNAMES[entry.category];
+	return nodeNeutralClassName;
+}
 
 const facilityLinkClassName = /*#__PURE__*/ css({
 	display: 'inline-flex',
@@ -73,16 +248,9 @@ const facilityLinkClassName = /*#__PURE__*/ css({
 	},
 });
 
-const ordinalClassName = /*#__PURE__*/ css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	fontWeight: '600',
-	letterSpacing: '0.04em',
-	color: 'text.muted',
-});
-
 const summaryClassName = /*#__PURE__*/ css({
 	margin: '0',
+	marginBlockStart: '1',
 	fontFamily: 'sans',
 	fontSize: 'md',
 	lineHeight: '1.6',
@@ -106,6 +274,7 @@ const featuredBadgeClassName = /*#__PURE__*/ css({
 
 const childrenClassName = /*#__PURE__*/ css({
 	margin: '0',
+	marginBlockStart: '2',
 	padding: '0',
 	listStyle: 'none',
 	display: 'flex',
@@ -173,6 +342,170 @@ const externalMarkClassName = /*#__PURE__*/ css({
 	color: 'text.muted',
 });
 
+const externalGroupClassName = /*#__PURE__*/ css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '4',
+});
+
+const externalHeadingClassName = /*#__PURE__*/ css({
+	margin: '0',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '700',
+	letterSpacing: '0.04em',
+	textTransform: 'uppercase',
+	color: 'text.muted',
+});
+
+/**
+ * The legend under the site route: every shape/colour pair the route
+ * uses, so the node is never the only carrier of meaning — a reader
+ * can always look the mark up. The external spur needs no legend
+ * entry: its group heading and hollow ring already say "off-site".
+ */
+const legendClassName = /*#__PURE__*/ css({
+	display: 'flex',
+	flexWrap: 'wrap',
+	alignItems: 'center',
+	gap: 'x3',
+	margin: '0',
+	padding: '0',
+	listStyle: 'none',
+	fontFamily: 'sans',
+	fontSize: 'xs',
+	fontWeight: '600',
+	letterSpacing: '0.02em',
+	color: 'text.muted',
+});
+
+const legendItemClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '1',
+});
+
+const legendDotBase = {
+	width: '8px',
+	height: '8px',
+	flexShrink: '0',
+} as const;
+
+const legendDotDesignClassName = /*#__PURE__*/ css({
+	...legendDotBase,
+	transform: 'rotate(45deg)',
+	borderRadius: '1px',
+	backgroundColor: 'accent.category.design',
+});
+
+const legendDotCodeClassName = /*#__PURE__*/ css({
+	...legendDotBase,
+	borderRadius: '1px',
+	backgroundColor: 'accent.category.code',
+});
+
+const legendDotWritingClassName = /*#__PURE__*/ css({
+	...legendDotBase,
+	borderRadius: '50%',
+	backgroundColor: 'accent.category.writing',
+});
+
+const legendDotToolClassName = /*#__PURE__*/ css({
+	...legendDotBase,
+	clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
+	backgroundColor: 'accent.category.tool',
+});
+
+const legendDotNeutralClassName = /*#__PURE__*/ css({
+	width: '10px',
+	height: '4px',
+	flexShrink: '0',
+	borderRadius: '999px',
+	backgroundColor: 'border.strong',
+});
+
+const CATEGORY_LEGEND: readonly { className: string; label: string }[] = [
+	{ className: legendDotDesignClassName, label: 'Design' },
+	{ className: legendDotCodeClassName, label: 'Code' },
+	{ className: legendDotWritingClassName, label: 'Writing' },
+	{ className: legendDotToolClassName, label: 'Tool' },
+	{ className: legendDotNeutralClassName, label: '窓口' },
+];
+
+/** Which trimmed line segment a station needs, by position in its list. */
+function lineClassNameFor(
+	position: { index: number; count: number },
+	external: boolean,
+): string | null {
+	const { index, count } = position;
+	if (index === 0 && index === count - 1) return null;
+	if (external) {
+		if (index === 0) return lineFromNodeExternalClassName;
+		if (index === count - 1) return lineToNodeExternalClassName;
+		return lineFullExternalClassName;
+	}
+	if (index === 0) return lineFromNodeClassName;
+	if (index === count - 1) return lineToNodeClassName;
+	return lineFullClassName;
+}
+
+function StationRow({
+	row,
+	index,
+	count,
+	external,
+}: {
+	row: GuideRow;
+	index: number;
+	count: number;
+	external: boolean;
+}) {
+	const { entry, featured } = row;
+	const lineClassName = lineClassNameFor({ index, count }, external);
+	return (
+		<li className={stationClassName}>
+			<span className={railClassName} aria-hidden="true">
+				{lineClassName ? <span className={lineClassName} /> : null}
+				<span className={nodeClassNameFor(entry, external)} />
+			</span>
+			<div>
+				<div
+					className={css({
+						display: 'flex',
+						flexWrap: 'wrap',
+						alignItems: 'baseline',
+						gap: '3',
+					})}
+				>
+					<a href={entry.href} className={facilityLinkClassName}>
+						<span>{entry.titleJa}</span>
+					</a>
+					{featured ? <span className={featuredBadgeClassName}>注目</span> : null}
+					{external ? <span className={externalMarkClassName}>外部 ↗</span> : null}
+				</div>
+				<p className={summaryClassName}>{entry.summaryJa}</p>
+				{entry.children && entry.children.length > 0 ? (
+					<details className={detailsClassName}>
+						<summary className={summaryToggleClassName}>
+							下の階層を見る ({entry.children.length})
+						</summary>
+						<ul className={childrenClassName}>
+							{entry.children.map((child) => (
+								<li key={child.id}>
+									<a href={child.href} className={childLinkClassName}>
+										<span className={childLabelClassName}>{child.labelJa}</span>
+										<span className={summaryClassName}>{child.summaryJa}</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</details>
+				) : null}
+			</div>
+		</li>
+	);
+}
+
 export interface GuideSectionProps {
 	/** Base date (`YYYY-MM-DD`) promotion windows are evaluated against. */
 	readonly today: string;
@@ -185,6 +518,8 @@ export interface GuideSectionProps {
  */
 export function GuideSection({ today }: GuideSectionProps) {
 	const rows = selectGuideRows(GUIDE_LEDGER, today);
+	const siteRows = rows.filter(({ entry }) => entry.kind === 'site');
+	const externalRows = rows.filter(({ entry }) => entry.kind === 'external');
 	return (
 		<section aria-labelledby="site-guide-heading">
 			<Container>
@@ -193,52 +528,48 @@ export function GuideSection({ today }: GuideSectionProps) {
 					eyebrow="Site guide"
 					title="サイト内案内"
 					titleEn="Site guide"
-					description="このサイトに何があり、どう辿るか。主要ページは同列の施設として、必要なときだけ下の階層まで開けます。"
+					description="このサイトに何があり、どう辿るか。駅の路線図のように、施設は同じ路線上の停車駅です。駅の形と色はその施設の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 					variant="spread"
 				>
-					<ul className={facilityListClassName}>
-						{rows.map(({ entry, featured }, index) => (
-							<li key={entry.id} className={facilityItemClassName}>
-								<div
-									className={css({
-										display: 'flex',
-										flexWrap: 'wrap',
-										alignItems: 'baseline',
-										gap: '3',
-									})}
-								>
-									<a href={entry.href} className={facilityLinkClassName}>
-										<span className={ordinalClassName} aria-hidden="true">
-											{String(index + 1).padStart(2, '0')}
-										</span>
-										<span>{entry.titleJa}</span>
-									</a>
-									{featured ? <span className={featuredBadgeClassName}>注目</span> : null}
-									{entry.kind === 'external' ? (
-										<span className={externalMarkClassName}>外部 ↗</span>
-									) : null}
-								</div>
-								<p className={summaryClassName}>{entry.summaryJa}</p>
-								{entry.children && entry.children.length > 0 ? (
-									<details className={detailsClassName}>
-										<summary className={summaryToggleClassName}>
-											下の階層を見る ({entry.children.length})
-										</summary>
-										<ul className={childrenClassName}>
-											{entry.children.map((child) => (
-												<li key={child.id}>
-													<a href={child.href} className={childLinkClassName}>
-														<span className={childLabelClassName}>{child.labelJa}</span>
-														<span className={summaryClassName}>{child.summaryJa}</span>
-													</a>
-												</li>
-											))}
-										</ul>
-									</details>
-								) : null}
-							</li>
-						))}
-					</ul>
+					<div className={guideMapClassName}>
+						<div>
+							<ol className={routeListClassName} aria-label="サイト内の施設">
+								{siteRows.map(({ entry, featured }, index) => (
+									<StationRow
+										key={entry.id}
+										row={{ entry, featured }}
+										index={index}
+										count={siteRows.length}
+										external={false}
+									/>
+								))}
+							</ol>
+							<ul className={cx(legendClassName, css({ marginBlockStart: '6' }))}>
+								{CATEGORY_LEGEND.map(({ className, label }) => (
+									<li key={label} className={legendItemClassName}>
+										<span className={className} aria-hidden="true" />
+										{label}
+									</li>
+								))}
+							</ul>
+						</div>
+						{externalRows.length > 0 ? (
+							<div className={externalGroupClassName}>
+								<h3 className={externalHeadingClassName}>サイト外の拠点</h3>
+								<ol className={routeListClassName} aria-label="サイト外の拠点">
+									{externalRows.map(({ entry, featured }, index) => (
+										<StationRow
+											key={entry.id}
+											row={{ entry, featured }}
+											index={index}
+											count={externalRows.length}
+											external
+										/>
+									))}
+								</ol>
+							</div>
+						) : null}
+					</div>
 					{/* Issue #936 — the visitor's own recently-visited
 					    destinations. Renders nothing on SSR, first visit
 					    or blocked storage; the guide above is complete

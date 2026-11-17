@@ -173,17 +173,24 @@ describe('publication is fail-closed', () => {
 
 	it('the published set covers every store the Issue named', () => {
 		// Access counter / reactions / forms / analytics events — the
-		// four the Issue lists. `admin-auth` and `contact-surface` are
-		// the form answer; dropping one silently would leave a store
-		// undocumented, so the list is asserted rather than derived.
+		// stores the Issue lists, plus the entries the owner approved
+		// for publication (portfolio embed, current-projects signature,
+		// visit trail, Discord presence, GitHub activity). Dropping one
+		// silently would leave a store undocumented, so the list is
+		// asserted rather than derived.
 		const published = getPublishedDataLifecycle().map((item) => item.id);
 		expect(published).toEqual([
 			'actor-cookie',
 			'reaction-rows',
 			'access-counter',
 			'analytics-events',
+			'portfolio-video-embed',
 			'admin-auth',
 			'contact-surface',
+			'current-projects-signature',
+			'visit-trail',
+			'discord-presence-snapshot',
+			'github-activity-snapshot',
 		]);
 	});
 

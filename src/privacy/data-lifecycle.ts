@@ -539,10 +539,10 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			'docs/verification/portfolio/video-facade.md (実測記録と 2026-11-06 の訂正)',
 		],
 		publication: {
-			status: 'pending',
+			status: 'approved',
 			note: {
-				ja: 'owner が公開 wording を承認するまで描画しない。事実はここに記録して失わない。',
-				en: 'Rendered nowhere until the owner approves the published wording. The fact is recorded here so it is not lost.',
+				ja: 'owner が公開 wording を承認したため公開する。',
+				en: 'Published after the owner approved the public wording.',
 			},
 		},
 	},
@@ -694,10 +694,10 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			'src/home/current/use-changed-projects.test.ts (署名に導出値を含めない規則)',
 		],
 		publication: {
-			status: 'pending',
+			status: 'approved',
 			note: {
-				ja: 'Issue #316 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。',
-				en: 'Added by Issue #316. No owner approval of public wording exists yet, so it renders nowhere.',
+				ja: 'Issue #316 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。',
+				en: 'Added by Issue #316. Published after the owner approved the public wording.',
 			},
 		},
 	},
@@ -744,10 +744,10 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			'src/home/guide/trail.test.ts (正規化・上限・重複・除外の規則)',
 		],
 		publication: {
-			status: 'pending',
+			status: 'approved',
 			note: {
-				ja: 'Issue #936 で追加した訪問者端末側の保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。案内セクション内の短い説明文は実装と一致する範囲で表示している。',
-				en: 'Added by Issue #936. No owner approval of public wording exists yet, so it renders nowhere; the short in-section note matches the implementation.',
+				ja: 'Issue #936 で追加した訪問者端末側の保存項目。owner が公開 wording を承認したため公開する。',
+				en: 'Added by Issue #936. Published after the owner approved the public wording.',
 			},
 		},
 	},
@@ -765,7 +765,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			kind: 'until-deleted',
 			statement: {
 				ja: '単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。',
-				en: 'A single row overwritten by each new snapshot. If the feed stops the row remains, and the public side fails closed to "unknown" via the `generatedAt` freshness check. Row deletion is a manual operator action.',
+				en: 'A single row overwritten by each new snapshot. If the feed stops the row remains, and the public side fails closed to “unknown” via the `generatedAt` freshness check. Row deletion is a manual operator action.',
 			},
 		},
 		deletion: {
@@ -795,10 +795,10 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			'scripts/sync-discord-presence.mjs (本人のみ追跡・他者プレゼンスを読まない)',
 		],
 		publication: {
-			status: 'pending',
+			status: 'approved',
 			note: {
-				ja: 'Issue #320 で追加した運営者本人のプレゼンス保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。',
-				en: 'Added by Issue #320. No owner approval of public wording exists yet, so it renders nowhere.',
+				ja: 'Issue #320 で追加した運営者本人のプレゼンス保存項目。owner が公開 wording を承認したため公開する。',
+				en: 'Added by Issue #320. Published after the owner approved the public wording.',
 			},
 		},
 	},
@@ -809,8 +809,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			en: 'GitHub activity snapshot (D1 `github_activity_snapshot`, single row)',
 		},
 		stores: {
-			ja: '運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。',
-			en: 'The latest GitHub activity snapshot for the operator only: public-repository names, URLs, recent-activity aggregates and feed items; private repositories appear solely as stable anonymous ids (`private-` followed by 12 lowercase hex digits) with aggregate counts (never real names, URLs, owners, branches, commit messages, issue text or hashes). No visitor identifier.',
+			ja: '運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。',
+			en: 'The latest GitHub activity snapshot for the operator only: public-repository names, URLs, recent-activity aggregates and feed items; private repositories appear solely as stable ids (`private-` followed by 12 lowercase hex digits; names are never published) with aggregate counts (never real names, URLs, owners, branches, commit messages, issue text or hashes). No visitor identifier.',
 		},
 		retention: {
 			kind: 'until-deleted',
@@ -835,21 +835,21 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			senders: [],
 		},
 		visibility: {
-			ja: 'ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの匿名 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。',
-			en: 'Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository anonymous ids / aggregates). API keys, tokens and private repository names are never published.',
+			ja: 'ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。',
+			en: 'Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.',
 		},
 		evidence: [
 			'migrations/0012_github_activity.sql (単一行テーブル)',
-			'src/http/activity/schema.ts (受理するフィールドの allowlist・private 匿名契約)',
+			'src/http/activity/schema.ts (受理するフィールドの allowlist・private 仮名契約)',
 			'src/http/activity/store.ts (upsert のみ・追記しない)',
 			'src/home/activity/live.ts (公開側の再検証と鮮度による選択)',
-			'scripts/sync-github-activity.mjs (匿名化はシリアライズ前・ソルト未設定は fail-closed)',
+			'scripts/sync-github-activity.mjs (仮名化はシリアライズ前・ソルト未設定は fail-closed)',
 		],
 		publication: {
-			status: 'pending',
+			status: 'approved',
 			note: {
-				ja: 'Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。公開文の承認はまだ受けていないため、レンダリングはしない。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。',
-				en: 'Added by Issues #316 / #319 / #932 for the D1-backed GitHub activity snapshot. No owner approval of public wording exists yet, so it renders nowhere; the existing committed-snapshot rendering is outside this entry.',
+				ja: 'Issues #316 / #319 / #932 で追加した GitHub アクティビティの D1 保存項目。owner が公開 wording を承認したため公開する。コミット済みスナップショット由来の既存表示はこの台帳の対象外です。',
+				en: 'Added by Issues #316 / #319 / #932 for the D1-backed GitHub activity snapshot. Published after the owner approved the public wording; the existing committed-snapshot rendering is outside this entry.',
 			},
 		},
 	},

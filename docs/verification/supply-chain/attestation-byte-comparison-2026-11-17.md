@@ -88,24 +88,23 @@ pnpm run artifact:bytes:check -- \
 | フィールド | 値 |
 | --- | --- |
 | `schema` | `my-web-2026/artifact-attestation/v1` |
-| `producer.run.id` | `43995834611` |
-| `producer.run.event` | `workflow_dispatch` |
-| `producer.run.branch` | `release-0-9-0` |
+| `source.repository` | `https://github.com/rebuildup/my-web-2026` |
 | `source.commit` | `ce1b69f3e59462617730eb37453e0673c0818bf0` |
+| `source.branch` | `release-0-9-0` |
 | `source.tree` | `clean` |
 | `project.name` / `project.version` | `my-web-2026` / `0.9.0` |
-| `toolchain.package_manager` | `pnpm` / `12.3.4` |
-| `toolchain.build` | `vite` / `7.3.6` |
-| `toolchain.runtime` | `@cloudflare/vite-plugin` / `1.56.0`、`wrangler` / `4.151.0` |
-| `toolchain.runner` | `ubuntu-24.04` |
-| `inputs.lockfile_digest` | `sha256:cf90030536e323a832efbc90c2c710a631b792dba4b3f052569eb718a03a4ac0`（923 resolved package version(s)） |
-| `inputs.cloudflare.bindings_source` | `wrangler.jsonc`（`base_development_data_source` / `remote_proxy_oauth` は frozen せず production 値のみ、Issue #581 / #606 / #613） |
-| `coverage` | `github-actions-production-build-output hashed; Cloudflare-deployed bytes NOT attested` |
-| `signature` | `none`（`unsigned`） |
-| `deploy.id` | `not provided` |
-| `artifact.count` / `artifact.total_bytes` | `498` / `31809485` |
-| `artifact.digest.algorithm` / `artifact.digest.value` | `sha-256` / `e7ae179524763b246259d220064fecd755a439d27ba60ecb93f8e90c6b8c5997` |
+| `dependencies.package_manager` | `pnpm@12.3.4` |
+| `dependencies.lockfile` | `pnpm-lock.yaml` sha256 `cf90030536e323a832efbc90c2c710a631b792dba4b3f052569eb718a03a4ac0`（923 resolved package version(s)） |
+| `dependencies.declared` | `package.json` の dependency ranges と一致（attestation check が検証済み） |
+| `subject.kind` / `subject.root` | `cloudflare-build-output` / `.cloudflare/output/v0` |
+| `subject.digest.algorithm` / `subject.digest.value` | `sha-256` / `e7ae179524763b246259d220064fecd755a439d27ba60ecb93f8e90c6b8c5997` |
+| `subject.file_count` / `subject.total_bytes` | `498` / `31809485` |
+| `cloudflare` | `provider: cloudflare-workers-builds`、`worker: my-web-2026`、`build_uuid: null`、`deploy_id: null` |
+| `coverage` | `github-actions-production-build-output hashed; Cloudflare-deployed bytes NOT attested`（`deployed_bytes_attested: false`） |
+| `signature` | `unsigned`（`status: unsigned`、algorithm / key_id / value すべて null） |
 
+manifest は run id / event を保持しない。対象 run（`43995834611`、
+`event=workflow_dispatch`）は artifact 名と `gh run list` の記録で特定した。
 bytes 照合の結果: `BYTES match`（498 files / 31,809,485 bytes）、`SECRETS clean`
 （167 text file scanned、331 skipped as non-text or oversized）。
 

@@ -2092,6 +2092,49 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-960",
+			"pr": 960,
+			"base": "release-0-9-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-17",
+			"decision": "pending",
+			"fingerprint": "sha256:5bd9859d49b7c62deecbd6689e452ed7dcb1354bb97b595572fb696cd7132be1",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "GitHub 活動セクション説明文 1 セグメントを修正。データソースを「コミット済みスナップショット」固定の表現から、D1 live / committed fallback の実際の選択機構に即した源流非依存の表現へ変更。観測日とソース状態の併記は維持。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/composer.tsx",
+					"before": "コミット済みスナップショットから観測した公開アクティビティ。観測日とソース状態を併記します。",
+					"after": "GitHub から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"text": "GitHub から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "intentional",
+					"note": "Issue #316/#319/#932 の D1 ingest 実装 (PR #957) で、公開側は D1 スナップショットとコミット済みフォールバックの新しい方を表示するようになった。旧文はコミット済みのみを源とする表現で実態とずれるため、「GitHub から観測して保存した」という源流非依存の表現に修正。D1 未接続時もコミット済み snapshot が観測・保存された値であるため嘘にならない。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/928",
+						"note": "Epic #928 の公開準備タスクの一部として Home 説明文を実態に整合。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "D1 ingest + live/fallback 選択を導入した変更。"
+					}
+				]
+			}
 		}
 	]
 }

@@ -963,7 +963,7 @@
 		{
 			"id": "github-activity-snapshot-stores",
 			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-<hmac12>` の安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-11-16",

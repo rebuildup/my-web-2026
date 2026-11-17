@@ -809,8 +809,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			en: 'GitHub activity snapshot (D1 `github_activity_snapshot`, single row)',
 		},
 		stores: {
-			ja: '運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-<hmac12>` の安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。',
-			en: 'The latest GitHub activity snapshot for the operator only: public-repository names, URLs, recent-activity aggregates and feed items; private repositories appear solely as stable `private-<hmac12>` anonymous ids with aggregate counts (never real names, URLs, owners, branches, commit messages, issue text or hashes). No visitor identifier.',
+			ja: '運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定匿名 ID と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。',
+			en: 'The latest GitHub activity snapshot for the operator only: public-repository names, URLs, recent-activity aggregates and feed items; private repositories appear solely as stable anonymous ids (`private-` followed by 12 lowercase hex digits) with aggregate counts (never real names, URLs, owners, branches, commit messages, issue text or hashes). No visitor identifier.',
 		},
 		retention: {
 			kind: 'until-deleted',

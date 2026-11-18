@@ -316,7 +316,7 @@ fingerprint は変わらない。
 | `docs/**` / `skills/**` / `AGENTS.md` / `README.md` の日本語 | contributor 向きの文書であり、visitor-facing copy ではない |
 | `scripts/**` / `test/**` の日本語 | 開発用 artefact の日本語であり、公開文面ではない |
 | `src/admin/**` / `src/routes/admin.*` | 認証の背後にある owner 専用 surface |
-| `*.stories.tsx` / `**/fixtures/**` / `src/routes/design-system/**` | サンプルとデモであり publish される copy ではない |
+| `*.stories.tsx` / `**/fixtures/**` / `**/fixtures.ts` / `src/routes/design-system/**` | サンプルとデモであり publish される copy ではない。`fixtures.ts` は `fixtures/` ディレクトリと同じくテスト用 fixture module であり、visitor が読む文面を持たない（例: `src/home/presence/fixtures.ts` は `reader.test.ts` のみが import する） |
 | 編集補助ツールの **採用判断** 自体 | gate は採点しない。gate が問うのは「判断が記録されたか」だけ |
 
 **この対象外リストは owner の copy decision である。** 内部文書も対象に入れたい
@@ -376,7 +376,7 @@ data / schema / 純ロジックが混在するため、**ファイル 1 個ず�
 | `src/legal/inventory.ts` | 記録の **schema reader**。`J` 系の finding は **Storybook サンプルの中だけ**に描画され、公開面には出ない |
 | `src/legal/inventory-table.ts` | Storybook の roster 射影。公開面に載ることはない |
 | `src/portfolio/notion/generated/**` | `scripts/sync-portfolio-notion.mjs` が owner 管理の Notion データソースから書き出す生成 projection。本文はこの repository で著されたものではなく、expression 単位の owner review record は存在できない（ingest のたびに gate が再オープンするため）。copy を黙って落とすのではない — `scripts/check-stale-content-review.mjs` は同じ本文を article source `notion-import` として宣言しており、そこでは `unobserved` として report され、reviewed とは決して扱われない |
-| `**/*.stories.tsx` / `**/fixtures/**` / `**/*.md` / `**/*.test.*` | サンプル・デモ・内部文書・テスト。publish される copy ではない |
+| `**/*.stories.tsx` / `**/fixtures/**` / `**/fixtures.ts` / `**/*.md` / `**/*.test.*` | サンプル・デモ・内部文書・テスト。publish される copy ではない。`**/fixtures.ts` は `**/fixtures/**` と同じ fixture の file 版で、テストデータ module を visitor copy として数えない |
 
 この表の除外は **宣言として残す** ガードである。上の 9 ファイルは
 `publicCopyFiles` でファイル単位に宣言しているため、現状はそもそも対象では

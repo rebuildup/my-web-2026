@@ -48,29 +48,14 @@
 			"match": "src/editorial/analytics/GoogleAnalytics.tsx"
 		},
 		{
-			"file": "src/editorial/structured-data/validate.ts",
-			"rule": "repo-path",
-			"match": "docs/appearance/structured-data/search-gallery"
-		},
-		{
 			"file": "src/home/current/providers.ts",
 			"rule": "repo-path",
 			"match": "scripts/sync-home-git-facts.mjs"
 		},
 		{
-			"file": "src/home/presence/fixtures.ts",
-			"rule": "repo-path",
-			"match": "src/home/presence/types.ts"
-		},
-		{
 			"file": "src/legal/contract.ts",
 			"rule": "repo-path",
 			"match": "quality/asset-license-publication-decision.json"
-		},
-		{
-			"file": "src/portfolio/schema.ts",
-			"rule": "repo-path",
-			"match": "scripts/check-i18n-policy.mjs"
 		},
 		{
 			"file": "src/portfolio/seed.ts",
@@ -286,11 +271,6 @@
 			"file": "src/privacy/data-lifecycle.ts",
 			"rule": "repo-path",
 			"match": "src/routes/admin.invitations_.accept.tsx"
-		},
-		{
-			"file": "src/routes/__root.tsx",
-			"rule": "repo-path",
-			"match": "src/editorial/semantic-tokens.ts"
 		},
 		{
 			"file": "src/tools/artifact-inventory.ts",

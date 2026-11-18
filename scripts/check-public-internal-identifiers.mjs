@@ -16,6 +16,22 @@
  * string literals and JSX text nodes; comments and code identifiers
  * are not copy.
  *
+ * Precision rules (Issue #994 follow-up):
+ *   - JS/TS comments never contribute candidates. `isCommentLine`
+ *     only recognises comment-ONLY lines, so a `//` trailing comment,
+ *     a JSX brace-wrapped block comment or a JSDoc block used to leak its text
+ *     into the scan. `stripJsComments` removes comments with a small
+ *     string/template-aware state machine before candidates are
+ *     extracted (it applies to .ts/.tsx/.js/.jsx only — JSON and MDX
+ *     have no line-comment syntax).
+ *   - URLs never contribute candidates. A repo-path-shaped segment
+ *     inside `https://…` is a URL path, not a repository reference
+ *     (the Google structured-data docs URL was the live false
+ *     positive). `findIdentifiers` blanks `http(s)://…` spans first.
+ *   - files named `fixtures.ts` are excluded at the surface
+ *     declaration: a fixture module is test data, not visitor copy
+ *     (the Discord presence fixtures are imported only by tests).
+ *
  * Exceptions are deliberate and reviewable: an entry in
  * `quality/public-internal-identifier-exceptions.json` suppresses a
  * finding ONLY when it names the same file + rule + matched text AND
@@ -97,15 +113,105 @@ export function textCandidates(line) {
 	return candidates;
 }
 
+const JS_FAMILY_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
+
+/**
+ * Remove JS/TS comments from one line, preserving string and template
+ * literal contents verbatim.
+ *
+ * `isCommentLine` only recognises lines that ARE comments; this is the
+ * line-level complement for the three comment forms that leak text
+ * into `textCandidates` today:
+ *
+ *   - trailing `// …` (a path mentioned in a line-end comment),
+ *   - JSX brace-wrapped block comments (block comments inside `{ }`),
+ *   - JSDoc blocks whose continuation lines do not start with `*`.
+ *
+ * `state` carries `{ block, template }` across lines: a block comment
+ * or a template literal may span lines, and a `'…'`/`"…"` string may
+ * not (an unterminated quote copies the rest of the line verbatim —
+ * the same fail-toward-detection posture `stringLiterals` documents).
+ * A `//` immediately after `:` is NOT a comment (it is the `//` of a
+ * URL such as `https://…` in JSX text). Regex literals are not
+ * recognised: a `/…//` sequence can truncate the line, which fails
+ * toward a missed finding rather than a wrong one.
+ */
+export function stripJsComments(line, state = { block: false, template: false }) {
+	let out = '';
+	let i = 0;
+	const text = String(line);
+	while (i < text.length) {
+		if (state.block) {
+			const end = text.indexOf('*/', i);
+			if (end === -1) return out;
+			state.block = false;
+			i = end + 2;
+			continue;
+		}
+		if (state.template) {
+			const ch = text[i];
+			out += ch;
+			if (ch === '\\' && i + 1 < text.length) {
+				out += text[i + 1];
+				i += 2;
+				continue;
+			}
+			if (ch === '`') state.template = false;
+			i += 1;
+			continue;
+		}
+		const ch = text[i];
+		const next = text[i + 1];
+		if (ch === '/' && next === '/' && text[i - 1] !== ':') return out;
+		if (ch === '/' && next === '*') {
+			state.block = true;
+			i += 2;
+			continue;
+		}
+		if (ch === '"' || ch === "'") {
+			let j = i + 1;
+			let closed = false;
+			while (j < text.length) {
+				if (text[j] === '\\') {
+					j += 2;
+					continue;
+				}
+				if (text[j] === ch) {
+					closed = true;
+					break;
+				}
+				j += 1;
+			}
+			if (!closed) return out + text.slice(i);
+			out += text.slice(i, j + 1);
+			i = j + 1;
+			continue;
+		}
+		if (ch === '`') {
+			state.template = true;
+			out += ch;
+			i += 1;
+			continue;
+		}
+		out += ch;
+		i += 1;
+	}
+	return out;
+}
+
+/** `http(s)://…` spans are URLs, never repository references. */
+const URL_PATTERN = /https?:\/\/\S+/g;
+
 /**
  * Find internal identifiers in one candidate text.
  * Pure — returns `{ rule, match }` pairs (match = offending substring).
  */
 export function findIdentifiers(text) {
 	const found = [];
+	const scanText = String(text).replace(URL_PATTERN, ' ');
 	for (const rule of RULES) {
 		rule.pattern.lastIndex = 0;
-		for (const match of String(text).matchAll(rule.pattern)) {
+		for (const match of scanText.matchAll(rule.pattern)) {
 			found.push({ rule: rule.id, match: match[0] });
 		}
 	}
@@ -120,8 +226,11 @@ export function findIdentifiers(text) {
 export function scanContent(path, content) {
 	const findings = [];
 	const lines = String(content).split(/\r?\n/);
+	const stripComments = JS_FAMILY_EXTENSIONS.has(extname(path));
+	const commentState = { block: false, template: false };
 	for (const [index, line] of lines.entries()) {
-		for (const candidate of textCandidates(line)) {
+		const code = stripComments ? stripJsComments(line, commentState) : line;
+		for (const candidate of textCandidates(code)) {
 			for (const hit of findIdentifiers(candidate)) {
 				findings.push({
 					file: path,

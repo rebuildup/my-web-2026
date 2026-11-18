@@ -168,6 +168,26 @@ describe('publicProjects', () => {
 		expect(project?.media).toHaveLength(1);
 		expect(project?.evidenceStatus).toBe('unreviewed');
 	});
+
+	// Issue #1008 / #813 — the snapshot's Role property carries the
+	// legacy facet-derived word for the migrated rows. A kind of work
+	// is not a recorded person role and must never reach `Role`.
+	it('suppresses a facet-kind label role to null', () => {
+		for (const role of ['Development', 'Video production', 'Design', 'Production']) {
+			const [project] = publicProjects(snapshot([record({ role })]));
+			expect(project?.role).toBeNull();
+		}
+	});
+
+	it('keeps a recorded role that is not a facet-kind label', () => {
+		const [project] = publicProjects(snapshot([record({ role: 'Tool developer' })]));
+		expect(project?.role).toBe('Tool developer');
+	});
+
+	it('maps an empty role to null, never to an empty string', () => {
+		const [project] = publicProjects(snapshot([record({ role: '' })]));
+		expect(project?.role).toBeNull();
+	});
 });
 
 describe('hasPublishedMediaKey', () => {

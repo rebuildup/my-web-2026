@@ -165,6 +165,16 @@ Issue #813（2026-11-02）。
 #811 の ingest と同じ変更で行う（§8）。それまでは型だけが状態を許し、実際に
 `null` を返す経路は無い。
 
+**CMS 投影側の guard（Issue #1008、2026-11-18）。** D1 行の `role` については
+「非 null ならそのまま出す」が従来の規則だったが、Notion snapshot の `Role`
+property は移行行に facet 由来語をそのまま持つ（`role_source` を持たない）。
+そのため `src/portfolio/notion/publish.ts#recordedRole` は、投影時に
+`src/portfolio/kind-labels.ts` の閉じたラベル集合に一致する値を `null` に
+落とす。これは「reader は由来を判別できない」という §4 の前提への、
+**値ベースの防御**であり、`role_source` が snapshot contract に入ったら
+そちらが正本になる。D1 列に facet 由来語が残っている場合は
+`scripts/verify-portfolio.mjs` の storage 検査が検出する。
+
 **R1〜R3 は書き込み側に課す規則であり、0.8.1 では適用されていない。** 適用
 されるのは #811 の ingest が `role_source` を導入し、`role` を nullable に
 してからである。それまでの実行時挙動は変わらない: D1 に非 null の値があれば

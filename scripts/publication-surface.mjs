@@ -615,9 +615,42 @@ export function extractExternalBoundaryPrefixes(source) {
 	return [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
 }
 
-/** Portfolio project slugs from the repo-controlled seed module. */
-export function extractPortfolioSeedSlugs(source) {
-	const slugs = [...stripComments(source).matchAll(/\bslug:\s*'([^']+)'/g)].map((m) => m[1]);
+/**
+ * Portfolio project slugs a production request can actually serve
+ * (Issue #834, decision O-4 / Issue #811): the committed projection of
+ * the Notion CMS source of truth
+ * (`src/portfolio/notion/generated/snapshot.json`), restricted to
+ * records the owner marked `published` + `public`. The local dev seed
+ * (`src/portfolio/seed.ts`) is NOT an input — its slugs are fixtures,
+ * not the published set.
+ *
+ * Fails closed: a snapshot that is unavailable or malformed cannot
+ * prove which URLs production serves, so the ledger build must stop
+ * rather than declare a smaller surface than reality.
+ */
+export function extractPortfolioPublishedSlugs(snapshot) {
+	if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+		throw new Error('portfolio snapshot is missing or not an object');
+	}
+	if (snapshot.availability !== 'public') {
+		throw new Error(
+			`portfolio snapshot availability is ${JSON.stringify(snapshot.availability)}; the published slug set cannot be derived`,
+		);
+	}
+	const records = snapshot.records;
+	if (!Array.isArray(records)) {
+		throw new Error('portfolio snapshot has no records array');
+	}
+	const slugs = records
+		.filter(
+			(record) =>
+				record &&
+				record.status === 'published' &&
+				record.visibility === 'public' &&
+				typeof record.slug === 'string' &&
+				record.slug.length > 0,
+		)
+		.map((record) => record.slug);
 	return [...new Set(slugs)].sort();
 }
 
@@ -731,7 +764,8 @@ export function assertRouteCoverage(routeFiles) {
  *                    `same_origin_static` Tool checkout
  *   - `toolSourcesMissing` Tool checkout paths that are not on disk
  *   - `origin`       canonical production origin
- *   - `portfolioSeedSource` text of the portfolio seed module
+ *   - `portfolioSnapshot` parsed Notion portfolio snapshot
+ *     (`src/portfolio/notion/generated/snapshot.json`)
  *   - `toolsManifest` parsed `src/tools/manifest.json`
  */
 export function buildSurface({
@@ -741,13 +775,13 @@ export function buildSurface({
 	toolSourceFiles = [],
 	toolSourcesMissing = [],
 	origin,
-	portfolioSeedSource,
+	portfolioSnapshot,
 	toolsManifest,
 	workerEntrySource = '',
 }) {
 	const firstPartyDomain = firstPartyDomainOf(origin);
 	const coverage = assertRouteCoverage(routeFiles);
-	const portfolioSlugs = extractPortfolioSeedSlugs(portfolioSeedSource);
+	const portfolioSlugs = extractPortfolioPublishedSlugs(portfolioSnapshot);
 	const toolSlugs = extractIntegratedToolSlugs(toolsManifest);
 
 	const surfaces = SURFACE_DECLARATIONS.map((declaration) => {

@@ -337,6 +337,19 @@ test('the mount detector reports a route and ignores the boundary’s own docume
 		"const app = new Hono();\n// '/integrations/*' is documented here\n",
 		'utf8',
 	);
+	// A declared-prefix DATA record (the Issue #841 mount ledger shape)
+	// lists '/integrations' as a string literal without registering a
+	// route — it must not be reported as a mount.
+	writeFileSync(
+		join(httpRoot, 'mount-ledger.ts'),
+		[
+			'export const RECORD = {',
+			"	prefix: '/integrations',",
+			"	probe: { path: '/integrations/status' },",
+			'};',
+		].join('\n'),
+		'utf8',
+	);
 
 	const found = findIntegrationMounts(root);
 	assert.equal(found.length, 1, 'only the file that registers a route is reported');

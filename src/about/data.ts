@@ -72,7 +72,7 @@ export const ABOUT_DATA: AboutData = {
 	// at load time — this list does not pin visibility itself.
 	experienceSlugs: ['aulymo', 'multi-slicer', 'my-web-2026'],
 	current: [
-		'my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about を順にこの release へ乗せている。',
+		'my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。',
 		'Tastile — scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development。',
 		'After Effects 向け script / plugin / extension の継続開発。配布と運用まで含む product として扱う。',
 		'AI coding agent / agent workflow の実運用と形式知化。project-init / design-skills として実験と文書を並行。',

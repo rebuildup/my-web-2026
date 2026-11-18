@@ -13,9 +13,9 @@
 | Publicly reachable surfaces | 12 |
 | Sitemap target URLs | 66 |
 | Publicly reachable URLs (surface + Static Assets) | 86 |
-| External hosts | 51 |
+| External hosts | 50 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
+| Approved transition | 2 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -218,9 +218,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Removed external hosts (0)
+### Removed external hosts (1)
 
-- (none)
+- ``
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -244,8 +244,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/cards/streak-card.js`, `src/vendor/github-readme-stats-fast/src/common/Card.js`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
-| `https://` | `` | external | `src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
@@ -259,9 +258,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://361do.booth.pm/items/6939869` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7758823` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7935112` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
-| `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts`, `src/vendor/github-readme-stats-fast/src/fetchers/stats.js` |
+| `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
@@ -597,7 +596,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
-| `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://twitch.tv/example` | `twitch.tv` | external | `src/home/presence/fixtures.ts` |
 | `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -792,5 +791,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/my-web-2026/releases
+- **WARN** `W003 external-url-removed` External URL removed: https://
+- **WARN** `W001 external-host-removed` External host no longer referenced: 
 

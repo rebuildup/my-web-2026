@@ -229,6 +229,22 @@ describe('approval composition', () => {
 		expect(await isApprovedMediaKey(db, OTHER_NOTION_KEY, (key) => key === NOTION_KEY)).toBe(false);
 		expect(db.seenSql).toHaveLength(0);
 	});
+
+	// Issue #997: `mergeCmsContent` can render a `portfolio/<slug>/…`
+	// key that has no D1 `portfolio_media` row. Approval is the union of
+	// the two publication records, so the snapshot answer alone is
+	// enough — and the D1 query is skipped entirely.
+	it('approves a legacy portfolio key the snapshot publishes, without a D1 row', async () => {
+		const db = fakeDb([]) as D1Database & { seenSql: string[] };
+		expect(await isApprovedMediaKey(db, APPROVED_KEY, (key) => key === APPROVED_KEY)).toBe(true);
+		expect(db.seenSql).toHaveLength(0);
+	});
+
+	it('still asks D1 when the snapshot does not publish the legacy key', async () => {
+		const db = fakeDb([APPROVED_KEY]) as D1Database & { seenSql: string[] };
+		expect(await isApprovedMediaKey(db, APPROVED_KEY, () => false)).toBe(true);
+		expect(db.seenSql.join('\n')).toContain('portfolio_media');
+	});
 });
 
 describe('CMS image delivery (Issue #889)', () => {

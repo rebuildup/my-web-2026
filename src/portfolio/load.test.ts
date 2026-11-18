@@ -271,6 +271,22 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 		expect(page.nextCursor).toBeNull();
 	});
 
+	it('list keeps paging past a page of non-matching rows (Issue #997)', async () => {
+		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
+		// `limit` rows that do NOT match fill the first SQL page; the only
+		// match sits on the next page. Before the fix the facet filter ran
+		// after `LIMIT limit+1`, so this returned an empty page with
+		// `nextCursor: null` — a silent end-of-list while matches existed.
+		for (let i = 0; i < 3; i += 1) {
+			await seedOne(`video${i}`, { facets: '["video"]', display_order: i });
+		}
+		await seedOne('dev-late', { facets: '["develop"]', display_order: 10 });
+
+		const page = await loader.listPortfolioProjects({ facets: ['develop'], limit: 3 });
+		expect(page.projects.map((p) => p.slug)).toEqual(['dev-late']);
+		expect(page.nextCursor).toBeNull();
+	});
+
 	it('list with multiple facet options (any-of)', async () => {
 		const loader = createD1PortfolioLoader(env, { cmsProjects: [] });
 		await seedOne('dev1', { facets: '["develop"]' });

@@ -186,13 +186,13 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 	// characters.
 	const urlSegments = channel.url.split('/');
 	const verifiedLabel = Number.isNaN(days)
-		? '検証日不明 / verified_at unparseable'
+		? '検証日を確認できません / verification date unavailable'
 		: days < 0
 			? // The gate in `filterActiveVerified` refuses to publish a future
 				// date, so this branch is defensive only: a row that reached the
 				// page with a negative day count is not "unparseable", it is
 				// dated ahead of now, and the label must not claim otherwise.
-				'検証日が未来 / verified_at is in the future'
+				'検証日が未来です / verification date is in the future'
 			: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<li

@@ -104,8 +104,8 @@ export type ChannelsFile = z.infer<typeof ChannelsFileSchema>;
  * Issue #832: the record is written when the operator checks a channel,
  * which they do on a JST calendar day. Anchoring the parse at UTC
  * midnight made a same-day verification read as 23:00 of the previous
- * day — the row rendered `days = -1`, which the UI then labelled
- * 「検証日不明 / verified_at unparseable」 even though the value was
+ * day — the row rendered `days = -1`, which the UI then labelled the
+ * date as unverifiable even though the value was
  * perfectly well-formed, and the fail-closed gate happily listed it.
  * Anchor at JST midnight instead: the day the operator wrote is the day
  * the platform means, and `days >= 0` again holds for a same-day check.

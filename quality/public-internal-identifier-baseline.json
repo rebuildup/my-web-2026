@@ -1,0 +1,656 @@
+{
+	"$comment": "Issue #837 baseline: internal-identifier findings present when the gate was introduced, awaiting owner triage. NOT approvals — a baselined finding is pending review, and a new finding outside this list fails the gate. Regenerate with --update-baseline in the same PR that changes the copy.",
+	"version": 1,
+	"findings": [
+		{
+			"file": "src/contact/channels.json",
+			"rule": "field-name",
+			"match": "verified_at"
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "issue-ref",
+			"match": "Issue #103"
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "issue-ref",
+			"match": "Issue #832"
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/personal/domain.md"
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/personal/owner.md"
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/verification/contact/channel-verification-2026-11-03.md."
+		},
+		{
+			"file": "src/contact/schema.ts",
+			"rule": "field-name",
+			"match": "verified_at"
+		},
+		{
+			"file": "src/editorial/error-states/contract.ts",
+			"rule": "repo-path",
+			"match": "docs/domain/integrations.md"
+		},
+		{
+			"file": "src/editorial/error-states/contract.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/GoogleAnalytics.tsx"
+		},
+		{
+			"file": "src/editorial/structured-data/validate.ts",
+			"rule": "repo-path",
+			"match": "docs/appearance/structured-data/search-gallery"
+		},
+		{
+			"file": "src/home/current/providers.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-home-git-facts.mjs"
+		},
+		{
+			"file": "src/home/presence/fixtures.ts",
+			"rule": "repo-path",
+			"match": "src/home/presence/types.ts"
+		},
+		{
+			"file": "src/home/status/health.ts",
+			"rule": "repo-path",
+			"match": "src/http/hono.ts"
+		},
+		{
+			"file": "src/legal/contract.ts",
+			"rule": "repo-path",
+			"match": "quality/asset-license-publication-decision.json"
+		},
+		{
+			"file": "src/portfolio/components/Markdown.tsx",
+			"rule": "repo-path",
+			"match": "docs/security.md"
+		},
+		{
+			"file": "src/portfolio/schema.ts",
+			"rule": "repo-path",
+			"match": "scripts/check-i18n-policy.mjs"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/cloudflare/"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/home/"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/http/"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/"
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "test/build/wrangler"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #316"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #320"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #910"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #936"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "docs/security/log-redaction.md"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "docs/verification/portfolio/video-facade.md"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-discord-presence.mjs"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-github-activity.mjs"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/admin/invitations/accept-view.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/admin/invitations/load.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/cloudflare/auth/better-auth.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/contact/channels.json"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/contact/page.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/AnalyticsConsent.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/GoogleAnalytics.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/access/load.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/activity/live.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/CurrentProjects.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/use-changed-projects.test.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/use-changed-projects.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/trail.test.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/trail.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/VisitTrail.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/VisitTrailRecorder.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/presence/reader.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/reactions/cookie.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/reactions/load.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/access-counter/counter.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/activity/schema.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/activity/store.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/presence/schema.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/presence/store.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/reactions/reactions.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/security-txt/policy.json"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/components/PortfolioVideoFacade.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/video-facade.ts"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/routes/__root.tsx"
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/routes/admin.invitations_.accept.tsx"
+		},
+		{
+			"file": "src/routes/__root.tsx",
+			"rule": "repo-path",
+			"match": "src/editorial/semantic-tokens.ts"
+		},
+		{
+			"file": "src/routes/tools.$slug.tsx",
+			"rule": "issue-ref",
+			"match": "Issue #465"
+		},
+		{
+			"file": "src/routes/tools.$slug.tsx",
+			"rule": "issue-ref",
+			"match": "Issue #498"
+		},
+		{
+			"file": "src/tools/artifact-inventory.ts",
+			"rule": "repo-path",
+			"match": "quality/tool-artifact-inventory.json"
+		},
+		{
+			"file": "src/tools/artifact-inventory.ts",
+			"rule": "repo-path",
+			"match": "src/tools/manifest.json"
+		},
+		{
+			"file": "src/tools/embed-policy.ts",
+			"rule": "issue-ref",
+			"match": "Issue #465"
+		},
+		{
+			"file": "src/tools/embed-privacy.ts",
+			"rule": "issue-ref",
+			"match": "Issue #498"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #5"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #6"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #8"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #81"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #825"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #896"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #9"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #10"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #3"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #4"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #5"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #6"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #7"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #8"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #88"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #9"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "release-ref",
+			"match": "release-0-1-0"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "docs/verification/tools/mic-level-host-activation.md."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/ae-expression"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/business-mail-block"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/code-type-p5"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/color-palette"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/fillgen"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/history-quiz"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/mic-level"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/pi-game"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/pomodoro"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/prototype"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/qr-generator"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/readmark"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/sequential-png-preview"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/svg2tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/text-counter"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "quality/tool-artifact-inventory.json."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/AvailableBlocks.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/ColorPaletteGenerator.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/ComposedBlocks.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/SVGInput.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/widgets/WidgetImageContent.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/widgets/WidgetMusicContent.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/youtube/youtube-player-utils.ts"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/gamesets/022_Login.ts"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/hooks/useSessionStorage.ts"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/main.tsx"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/reader/pdf/"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/tools/registry.ts"
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/ui/document-import.tsx"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "field-name",
+			"match": "disabled_reason"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #449"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #465"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #498"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #785"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "PR #914"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/embed-policy.md"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/embed-privacy.md"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/inventory.md"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/inventory.md."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "scripts/check-tools-manifest.mjs"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/routes/tools."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-policy.ts"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-policy.ts."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-privacy.ts"
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-privacy.ts."
+		}
+	]
+}

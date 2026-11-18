@@ -211,6 +211,13 @@ gates:
       # red only when a review is genuinely pending — which the owner
       # clears by re-reading the expressions and recording new dates.
       - 'pnpm run copy:stale:check' # owner review date for time-sensitive public copy (Issue #437)
+      # Issue #837 (O-8): public copy must not leak internal identifiers
+      # (repo paths, schema field names, internal Issue/PR refs, release
+      # branch names). Findings present at introduction live in
+      # quality/public-internal-identifier-baseline.json as
+      # pending-review — not approvals; deliberate cases need a
+      # confirmed entry in quality/public-internal-identifier-exceptions.json.
+      - 'pnpm run copy:internal-ids:check'
       # Issue #505: the committed publication snapshot must match the
       # surface the repository actually ships; a publicly reachable URL
       # may not disappear without a recorded transition.

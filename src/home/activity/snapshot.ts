@@ -137,8 +137,8 @@ const SAFE_DEFAULT_SUMMARY: Readonly<Record<ActivityRepoFacts['kind'], string>> 
  * #967). The snapshot still carries every repo with an observed
  * signal — the feed and the repo counts keep the full set — but the
  * project list is a RANKED selection, not an enumeration: listing
- * every repository GitHub ever saw was the v0.9.0 defect (37 detail
- * rows, mostly zero-activity noise).
+ * every repository GitHub ever saw was the pre-aggregation defect (37
+ * detail rows, mostly zero-activity noise).
  */
 export const MAX_GITHUB_PROJECT_RECORDS = 12;
 

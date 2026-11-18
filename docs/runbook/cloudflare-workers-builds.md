@@ -465,7 +465,7 @@ the one deliberate write in the file; it predates #500, it proves the
 part of the representative-route registry.
 
 Outbound traffic originates only at the canonical production origin in a
-production run; the pages themselves reference Google Fonts, GA4, and
+production run; the pages themselves reference GA4 and
 `media.rebuildup.dev`, and the smoke does not exercise or assert on any
 of them, so it never becomes a third-party availability contract. That is
 enforced, not trusted: an observation whose final (post-redirect) origin

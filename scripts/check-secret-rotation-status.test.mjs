@@ -278,7 +278,7 @@ describe('verdicts from recorded (status-only) data', () => {
 		const report = fixtureCase('unrecorded.json');
 		assert.equal(report.observed, false);
 		for (const row of report.rows) assert.equal(row.drift, DRIFT_STATUS.notObserved);
-		assert.equal(report.counts.advisory, 4);
+		assert.equal(report.counts.advisory, 6);
 	});
 
 	it('keeps an unexpected environment name advisory', () => {

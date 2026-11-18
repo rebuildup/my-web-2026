@@ -11,8 +11,8 @@
  *   - the cumulative layout shift (`layout-shift`, input-excluded, with
  *     the standard 5 s session window), so the swap-induced shift is
  *     visible as a number instead of a vibe
- *   - the webfont timeline itself: how many `fonts.gstatic.com` /
- *     `fonts.googleapis.com` requests were attempted and how many
+ *   - the webfont timeline itself: how many same-origin font-file
+ *     requests (`*.woff2` / `*.woff`) were attempted and how many
  *     actually completed (an aborted request still shows up in
  *     resource timing), their transfer size and duration, and the
  *     instant the first webfont face reported `loaded`
@@ -34,10 +34,10 @@
  * ------------------------------------------------------
  *   baseline   no throttling, font origin reachable when the host has
  *              network access (the report records whether it does)
- *   blocked    `fonts.googleapis.com` / `fonts.gstatic.com` aborted —
+ *   blocked    every same-origin font file aborted —
  *              the "network cut / font unavailable" condition that
  *              Issue #291's async-CSS pattern must stay readable under
- *   slow-font  CPU throttled x4 and every font-origin response delayed
+ *   slow-font  CPU throttled x4 and every font-file response delayed
  *              by `--font-delay-ms` (default 1500) — the FOUT window
  *
  * Reproducibility block
@@ -74,13 +74,14 @@ import { chromium } from '@playwright/test';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
 
-/** Hosts that carry the webfont pipeline. Blocking / delaying exactly
- *  these two is what makes "font unavailable" and "font slow"
- *  reproducible without touching any production surface. */
-export const FONT_ORIGINS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+/** Font-file URL test. Since Issue #876 the webfonts are self-hosted
+ *  (`@fontsource/*` slices bundled by Vite), so the whole font
+ *  pipeline is same-origin `*.woff2` / `*.woff` asset requests —
+ *  there is no longer a third-party font host to name. */
+export const FONT_FILE_URL = /\.(?:woff2?|otf|ttf|eot)(?:[?#].*)?$/i;
 
-/** Playwright route patterns for the two font hosts. */
-export const FONT_ORIGIN_PATTERNS = FONT_ORIGINS.map((host) => `https://${host}/**`);
+/** Playwright route patterns for the font files. */
+export const FONT_ORIGIN_PATTERNS = ['**/*.woff2', '**/*.woff'];
 
 /** Families whose load/swap behaviour the issue is about. */
 export const WEBFONT_FAMILIES = ['Noto Sans JP', 'Zen Kaku Gothic New'];
@@ -149,10 +150,9 @@ export function cumulativeLayoutShift(entries) {
 	};
 }
 
-/** Font-origin resource timing summary. `transferSize` is 0 for
- *  cross-origin responses without Timing-Allow-Origin, which is exactly
- *  what `fonts.gstatic.com` returns today — so the count and the
- *  durations are the honest signal and the byte total may be 0.
+/** Font-file resource timing summary. Same-origin font responses do
+ *  carry `transferSize`, so the byte total is real — the count and
+ *  durations remain the primary signal.
  *
  *  A request the route handler aborted still appears in resource timing:
  *  the entry keeps a non-zero `responseEnd` but `responseStart`,
@@ -160,7 +160,7 @@ export function cumulativeLayoutShift(entries) {
  *  empty. Attempted requests are therefore counted apart from completed
  *  ones, and only completed ones carry bytes and timings. */
 export function summarizeFontResources(resources) {
-	const attempted = resources.filter((r) => FONT_ORIGINS.some((host) => r.name?.includes(host)));
+	const attempted = resources.filter((r) => FONT_FILE_URL.test(r.name ?? ''));
 	const completed = attempted.filter(isCompletedRequest);
 	return {
 		requests: completed.length,
@@ -517,7 +517,7 @@ export function renderReportHtml(report) {
 			].join('');
 		return [
 			'<h2>before / after</h2>',
-			'<p class="note">The layout-shift table is the result column, and it is a <em>per-build</em> measurement: a row either wraps or it does not on the build that was measured. A row sitting within ~1% of its wrap threshold flips between builds — the <code>/</code> baseline has been measured on both sides of it — so one before/after pair is a measurement of two builds, not a distribution over repeated runs. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>. Read it together with the before-capture conditions above: a difference there makes this table a difference of conditions, not of builds.</p>',
+			'<p class="note">The layout-shift table is the result column, and it is a <em>per-build</em> measurement: a row either wraps or it does not on the build that was measured. A row sitting within ~1% of its wrap threshold flips between builds — the <code>/</code> baseline has been measured on both sides of it — so one before/after pair is a measurement of two builds, not a distribution over repeated runs. The context table is SINGLE-RUN timing against the font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>. Read it together with the before-capture conditions above: a difference there makes this table a difference of conditions, not of builds.</p>',
 			table(
 				'layout shift (single run, per build)',
 				aggregated.filter((a) => a.layoutShift),
@@ -689,7 +689,7 @@ export function renderReportHtml(report) {
 <body>
 <h1>font first-paint measurement (Issue #485)</h1>
 <p class="note">Measurement only — no threshold is enforced here. Budget + release gate: Issue #386.</p>
-${env.fontOriginReachable ? '' : '<p class="warn">the webfont pipeline is NOT fully reachable from this host (the stylesheet and the face it points at are both probed) — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The font origin is therefore aborted in EVERY scenario, so the page never waits on a third-party stylesheet that may never answer; the rows are all platform-fallback measurements and their swap timings are unavailable, not zero.</p>'}
+${env.fontOriginReachable ? '' : '<p class="warn">the webfont pipeline is NOT fully reachable from this host (the stylesheet and the face it points at are both probed) — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The font origin is therefore aborted in EVERY scenario, so the page never waits on a font origin that may never answer; the rows are all platform-fallback measurements and their swap timings are unavailable, not zero.</p>'}
 <h2>environment (reproduction conditions)</h2>
 <table><tbody>
 ${row('browser', `${env.browser.name} ${env.browser.version} (Playwright ${env.browser.playwright})`)}
@@ -710,7 +710,7 @@ ${report.argv?.length ? row('arguments', report.argv.map(shellQuote).join(' ')) 
 </tbody></table>
 ${beforeConditions}
 <h2>metrics</h2>
-<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a row whose font origin was aborted has no webfont face to swap to, so its swap instant does not exist. The <code>fallback</code> verdict is reported for every row that ran with the font origin aborted: the <code>blocked</code> scenario, and — when the pre-flight probe found the origin unusable — every other scenario too. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
+<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a row whose font origin was aborted has no webfont face to swap to, so its swap instant does not exist. The <code>fallback</code> verdict is reported for every row that ran with the font origin aborted: the <code>blocked</code> scenario, and — when the pre-flight probe found the origin unusable — every other scenario too. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the font file itself.</p>
 <table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font-origin reqs</th><th>font-origin reqs aborted</th><th>fallback</th><th>screenshot</th></tr></thead>
 <tbody>
 ${runs}
@@ -797,8 +797,9 @@ function collectorScript(families) {
 		}).observe({ type: 'resource', buffered: true });
 	} catch {}
 	// `document.fonts.ready` resolves when the *currently pending* loads
-	// settle — which is NOT the swap: before the Google stylesheet is
-	// parsed no @font-face exists, so it resolves almost immediately and
+	// settle — which is NOT the swap: before the stylesheet's
+	// @font-face rules are parsed no font face exists, so it resolves
+	// almost immediately and
 	// would report a meaningless "swap". The swap is instead polled from
 	// the FontFaceSet itself: the first instant a webfont face reports
 	// `loaded` is the instant `display=swap` actually replaced the
@@ -814,8 +815,9 @@ function collectorScript(families) {
 			) {
 				window.__fontFirstPaint.webFontSwapAt = now;
 				// The first loaded webfont face IS the swap. The
-				// remaining faces (614 of them once the Google sheet
-				// parses) carry no further information, and walking them
+				// remaining faces (hundreds once the unicode-range
+				// slices parse) carry no further information, and
+				// walking them
 				// every 50 ms is main-thread work inside the very window
 				// being measured.
 				clearInterval(window.__fontFirstPaint.fontPoll);
@@ -967,18 +969,32 @@ export function screenshotSrcUrl(fileName) {
 	return String(fileName).replaceAll(/[^A-Za-z0-9._~-]/gu, (c) => encodeURIComponent(c));
 }
 
-/** The face URL a Google Fonts stylesheet points at, or null. */
-export function fontFaceUrl(css) {
-	return css.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/)?.[1] ?? null;
+/** First stylesheet URL a document references, or null. */
+export function stylesheetHref(html) {
+	return (
+		html.match(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+\.css[^"']*)["']/i)?.[1] ??
+		html.match(/<link[^>]+href=["']([^"']+\.css[^"']*)["'][^>]+rel=["']stylesheet["']/i)?.[1] ??
+		null
+	);
 }
 
-const FONT_STYLESHEET =
-	'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap';
+/** The first font-file path a stylesheet references, or null.
+ *  The self-hosted `@fontsource` slices are served from `/fonts/`
+ *  (the `public/` dir — Vite leaves the root-relative `url(/fonts/…)`
+ *  untouched), but a future hashed `assets/` face would match the
+ *  same pattern. */
+export function fontAssetUrl(css) {
+	return (
+		css.match(
+			/url\(\s*['"]?(\/?[^'"()\s?#]+?\.(?:woff2?|otf|ttf|eot))(?:[?#][^'")]*)?['"]?\s*\)/i,
+		)?.[1] ?? null
+	);
+}
 
 /** Deadline for the reachability probe itself. The probe runs before the
  *  browser launches and carries no page-level timeout, so a network that
  *  accepts the connection and never finishes the response (a half-open
- *  connection to Google Fonts or a proxy in between) would stall the
+ *  connection or a proxy in between) would stall the
  *  whole measurement on Node's default fetch timeout instead of producing
  *  the report this script promises: "the origin is not usable, here is the
  *  measurement anyway". */
@@ -990,39 +1006,40 @@ export async function fetchWithDeadline(url, init = {}, timeoutMs = ORIGIN_PROBE
 }
 
 /**
- * Is the webfont pipeline actually usable from this host?
+ * Is the self-hosted webfont pipeline actually usable from this host?
  *
- * Both hosts are checked, not just the stylesheet one. A network that
- * lets `fonts.googleapis.com` through while blocking `fonts.gstatic.com`
- * answers "reachable" for the CSS alone, and then `baseline` and
- * `slow-font` would be recorded as real swap measurements while the page
- * is really running on the platform fallback — and the wait for a swap
- * would burn its whole budget on every run. So the probe follows the
- * stylesheet to the face it references and asks for that too.
+ * The chain is followed end to end: the document's stylesheet link,
+ * then the first font-file URL inside that stylesheet, then a HEAD on
+ * the font itself. A page that serves HTML but 404s its font slices
+ * would otherwise be recorded as "reachable" while `baseline` and
+ * `slow-font` silently measure the platform fallback — the same
+ * failure the old Google-Fonts probe guarded against.
  *
- * Both requests carry the probe deadline, so an origin that accepts the
- * connection and never answers is reported as unreachable instead of
- * hanging the measurement.
+ * Every request carries the probe deadline, so an origin that accepts
+ * the connection and never answers is reported as unreachable instead
+ * of hanging the measurement.
  */
-async function fontOriginReachable() {
+async function fontOriginReachable(baseUrl) {
 	try {
-		const css = await fetchWithDeadline(FONT_STYLESHEET, {
-			method: 'GET',
-			redirect: 'follow',
-		});
+		const doc = await fetchWithDeadline(`${baseUrl}/`, { redirect: 'follow' });
+		if (!doc.ok) return { reachable: false, status: `document HTTP ${doc.status}` };
+		const sheet = stylesheetHref(await doc.text());
+		if (!sheet) return { reachable: false, status: 'document exposed no stylesheet link' };
+		const sheetUrl = new URL(sheet, `${baseUrl}/`).toString();
+		const css = await fetchWithDeadline(sheetUrl, { redirect: 'follow' });
 		if (!css.ok) return { reachable: false, status: `stylesheet HTTP ${css.status}` };
-		const face = fontFaceUrl(await css.text());
-		if (!face) {
-			return { reachable: false, status: 'stylesheet exposed no fonts.gstatic.com face URL' };
+		const asset = fontAssetUrl(await css.text());
+		if (!asset) {
+			return { reachable: false, status: 'stylesheet exposed no font-file URL' };
 		}
-		const faceResponse = await fetchWithDeadline(face, {
+		const face = await fetchWithDeadline(new URL(asset, `${baseUrl}/`).toString(), {
 			method: 'HEAD',
 			redirect: 'follow',
 		});
-		if (!faceResponse.ok) return { reachable: false, status: `face HTTP ${faceResponse.status}` };
+		if (!face.ok) return { reachable: false, status: `font file HTTP ${face.status}` };
 		return {
 			reachable: true,
-			status: `stylesheet HTTP ${css.status} + face HTTP ${faceResponse.status}`,
+			status: `document + stylesheet HTTP ${css.status} + font file HTTP ${face.status}`,
 		};
 	} catch (error) {
 		const timedOut = error.name === 'TimeoutError' || error.name === 'AbortError';
@@ -1068,7 +1085,7 @@ async function main(argv) {
 		return 0;
 	}
 	const pkg = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
-	const origin = await fontOriginReachable();
+	const origin = await fontOriginReachable(options.baseUrl);
 	const outDir = resolve(repoRoot, options.outDir);
 	await mkdir(outDir, { recursive: true });
 
@@ -1420,9 +1437,7 @@ async function measureRun({
  *
  * `blocked` is the scenario that asks for it. `reachable: false` is the
  * pre-flight probe's verdict, and it has to abort in EVERY scenario:
- * the page's async stylesheet is `media="print"`, which does not block
- * rendering but does keep the document's `load` event pending, so an
- * origin that accepts the connection and never answers makes
+ * an origin that accepts the connection and never answers makes
  * `page.goto(..., { waitUntil: 'load' })` run into its 60 s timeout
  * before the bounded `document.fonts.ready` wait — the code path that
  * reports a swap as unavailable — is ever reached. The warning the

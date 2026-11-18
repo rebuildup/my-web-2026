@@ -40,6 +40,26 @@
 				"last_rotated_at": "2026-05-01",
 				"driver": "operator edit in the Infisical dashboard (docs/runbook/analytics.md)",
 				"runbook": "docs/runbook/analytics.md"
+			},
+			{
+				"name": "GITHUB_README_STATS_PAT_1",
+				"cadence": {
+					"kind": "event_driven",
+					"label": "on suspected compromise or as needed (fine-grained PAT, public-read scopes only; pair rotation: Infisical prod + Worker binding via cf deploy --secrets-file)"
+				},
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/github-readme-stats.md); there is no rotation script for an external PAT",
+				"runbook": "docs/runbook/github-readme-stats.md"
+			},
+			{
+				"name": "DISCORD_PRESENCE_USER_ID",
+				"cadence": {
+					"kind": "event_driven",
+					"label": "rare (account migration or leak-driven; semi-public snowflake managed from the Infisical dashboard like the GA measurement ID)"
+				},
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/discord-presence.md); there is no rotation script for a user id",
+				"runbook": "docs/runbook/discord-presence.md"
 			}
 		]
 	},

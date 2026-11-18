@@ -125,7 +125,7 @@ describe('the recorded production contract matches the repository', () => {
 			assert.equal(record().production.bindings[name].type, 'secret');
 			assert.equal(record().production.bindings[name].value, undefined);
 		}
-		assert.match(text, /secrets=3 \(names only\)/);
+		assert.match(text, /secrets=5 \(names only\)/);
 	});
 });
 

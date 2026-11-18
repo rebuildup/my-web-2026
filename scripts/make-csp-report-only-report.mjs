@@ -217,7 +217,7 @@ policy from Issue #448.</p>
 <table><tr><th>path</th><th>status</th><th>content-security-policy-report-only</th><th>enforcing CSP</th></tr>${workerRows}</table>
 <p>Origin inventory: <code>'self'</code> for TanStack Start, hydration, Panda CSS, favicon and the
 same-origin Tool iframe; <code>https://www.googletagmanager.com</code> for the GA4 loader;
-<code>https://fonts.googleapis.com</code> / <code>https://fonts.gstatic.com</code> for fonts;
+same-origin <code>/fonts/*.woff2</code> web fonts;
 GA4's <code>*.google-analytics.com</code> / <code>*.analytics.google.com</code> /
 <code>*.googletagmanager.com</code> for beacons; and the R2 media origin when
 <code>MEDIA_PUBLIC_BASE_URL</code> is configured. No unobserved origin, no <code>'unsafe-eval'</code>,

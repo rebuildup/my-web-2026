@@ -21,18 +21,14 @@
  *     is a separate document owned by that Tool; the host policy only
  *     decides that the frame may be loaded.
  *   `'unsafe-inline'` (script + style)
- *     The document shell emits two inline scripts (the GA4 bootstrap
- *     and the async font-stylesheet flip) and React emits inline
+ *     The document shell emits one inline script (the GA4 bootstrap;
+ *     the async font-stylesheet flip script was removed with the
+ *     Google Fonts stylesheet of Issue #876) and React emits inline
  *     `style` attributes. A nonce/hash migration is the condition for
  *     removing this token; pre-declaring a stricter policy would only
  *     hide that work behind expected reports.
  *   https://www.googletagmanager.com (script)
  *     The GA4 loader in `src/editorial/analytics/GoogleAnalytics.tsx`.
- *   https://fonts.googleapis.com (style)
- *     The Noto Sans JP / Zen Kaku Gothic New stylesheet linked from
- *     `src/routes/__root.tsx`.
- *   https://fonts.gstatic.com (font)
- *     The `@font-face` files that stylesheet references.
  *   https://*.google-analytics.com, https://*.googletagmanager.com
  *     GA4 beacons (image + fetch). The exact subdomain is chosen by
  *     Google at runtime (`region1.google-analytics.com` today), so the
@@ -66,12 +62,6 @@ export const CSP_REPORT_ONLY_HEADER = 'Content-Security-Policy-Report-Only';
 
 /** GA4's loader is a single host, unlike its runtime beacon subdomains. */
 const GA_LOADER_ORIGIN = 'https://www.googletagmanager.com';
-
-/** Google Fonts stylesheet host. */
-const FONT_STYLESHEET_ORIGIN = 'https://fonts.googleapis.com';
-
-/** Google Fonts binary host referenced by the stylesheet. */
-const FONT_FILE_ORIGIN = 'https://fonts.gstatic.com';
 
 /** GA4 image beacons. */
 const GA_IMAGE_ORIGINS = [
@@ -132,9 +122,9 @@ export function contentSecurityPolicyValue(options: ContentSecurityPolicyOptions
 	return [
 		"default-src 'self'",
 		`script-src 'self' 'unsafe-inline' ${GA_LOADER_ORIGIN}`,
-		`style-src 'self' 'unsafe-inline' ${FONT_STYLESHEET_ORIGIN}`,
+		`style-src 'self' 'unsafe-inline'`,
 		`img-src ${[...imgSrc].join(' ')}`,
-		`font-src 'self' ${FONT_FILE_ORIGIN}`,
+		"font-src 'self'",
 		`connect-src 'self' ${GA_CONNECT_ORIGINS.join(' ')}`,
 		"frame-src 'self'",
 		"object-src 'none'",

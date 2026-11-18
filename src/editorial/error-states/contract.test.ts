@@ -156,7 +156,8 @@ describe('published / withheld disclosure', () => {
 
 	it('records every outbound party an error-state document can still reach', () => {
 		const parties = ERROR_STATE_EXTERNAL_COMMUNICATIONS.map((row) => row.party);
-		expect(parties).toContain('Google Fonts');
+		// Same-origin since Issue #876 — no third-party font host remains.
+		expect(parties).not.toContain('Google Fonts');
 		expect(parties).toContain('Google Analytics 4');
 		expect(parties).toContain('third-party API');
 		for (const row of ERROR_STATE_EXTERNAL_COMMUNICATIONS) {

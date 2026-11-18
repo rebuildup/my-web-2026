@@ -1,7 +1,7 @@
 {
 	"schema": "asset-license-inventory.v1",
 	"issue": "#497",
-	"reviewedAt": "2026-10-20",
+	"reviewedAt": "2026-11-18",
 	"scope": "訪問者に Static Assets としてverbatimで配信されるファイル（public/**）と、ブラウザが第三者に取得させる参照資産。Tool の build 成果物（external/**）は Issue #466 の tools:artifact:check が、コード・依存・outbound を所有しているためこの記録の監査対象外。docs/** は訪問者に配信されない。",
 	"assets": [
 		{
@@ -39,8 +39,14 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "scripts/generate-app-icons.mjs" },
-				{ "kind": "repository-file", "path": "public/favicon.svg" }
+				{
+					"kind": "repository-file",
+					"path": "scripts/generate-app-icons.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "public/favicon.svg"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -73,7 +79,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "public/favicon.svg" }
+				{
+					"kind": "repository-file",
+					"path": "public/favicon.svg"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -106,7 +115,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "docs/decisions/0.6.3-app-icons-and-web-manifest.md" }
+				{
+					"kind": "repository-file",
+					"path": "docs/decisions/0.6.3-app-icons-and-web-manifest.md"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -139,7 +151,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "docs/security/security-headers.md" }
+				{
+					"kind": "repository-file",
+					"path": "docs/security/security-headers.md"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -175,7 +190,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "scripts/generate-image-fixtures.mjs" }
+				{
+					"kind": "repository-file",
+					"path": "scripts/generate-image-fixtures.mjs"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -208,7 +226,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "scripts/generate-og-fallback-card.mjs" }
+				{
+					"kind": "repository-file",
+					"path": "scripts/generate-og-fallback-card.mjs"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -244,7 +265,10 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "docs/verification/content/publication-surface.md" }
+				{
+					"kind": "repository-file",
+					"path": "docs/verification/content/publication-surface.md"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
@@ -344,7 +368,12 @@
 				"checkedOn": null,
 				"note": "大会資料の転載条件をこのリポジトリは確認していないため、公開可とは記録しない。"
 			},
-			"evidence": [{ "kind": "repository-file", "path": "public/share/procon2026/index.html" }],
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "public/share/procon2026/index.html"
+				}
+			],
 			"publication": "published",
 			"externalHosts": []
 		},
@@ -370,7 +399,12 @@
 				"checkedOn": null,
 				"note": "画像の出典がリポジトリに記録されていないため、公開可とは記録しない。"
 			},
-			"evidence": [{ "kind": "repository-file", "path": "public/share/procon2026/index.html" }],
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "public/share/procon2026/index.html"
+				}
+			],
 			"publication": "published",
 			"externalHosts": []
 		},
@@ -415,46 +449,62 @@
 					"path": "docs/verification/legal/pet-melty-rights-review.md",
 					"sha256": "c5a224f33d6fab2b6d1758d11ea0b77c47516649c80b07e977706afa76e03566"
 				},
-				{ "kind": "repository-file", "path": "docs/domain/pet-companion.md" },
-				{ "kind": "repository-file", "path": "scripts/build-pet-sprites.mjs" }
+				{
+					"kind": "repository-file",
+					"path": "docs/domain/pet-companion.md"
+				},
+				{
+					"kind": "repository-file",
+					"path": "scripts/build-pet-sprites.mjs"
+				}
 			],
 			"publication": "published",
 			"externalHosts": []
 		},
 		{
-			"id": "web-fonts-google",
+			"id": "web-fonts-selfhosted",
 			"kind": "font",
-			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New）",
-			"summary": "src/routes/__root.tsx が fonts.googleapis.com から stylesheet を取得し、ブラウザが fonts.gstatic.com からフォントファイルを取得する。このリポジトリはフォントファイルを同梱しない。",
-			"covers": [],
-			"publicPaths": [],
-			"origin": "third-party-referenced",
-			"rightsHolder": "Google（Noto プロジェクト / Zen Fonts）",
+			"title": "本文フォント（Noto Sans JP / Zen Kaku Gothic New、同梱 woff2）",
+			"summary": "src/styles.css の @font-face が /fonts/ から取得する woff2 サブセット 23 個。@fontsource/noto-sans-jp@5.3.1 と @fontsource/zen-kaku-gothic-new@5.3.1 の files/ から無改変でベンダーしたもので、unicode-range の分割は Google Fonts が配っていたものと同じ。各ウェイトについて japanese / latin / latin-ext / cyrillic（Noto は vietnamese も）のサブセットを同梱し、LICENSE ファイルに SIL Open Font License 1.1 全文と著作権表示を同梱している。Issue #876 で fonts.googleapis.com / fonts.gstatic.com への外部参照を廃止した。",
+			"covers": ["public/fonts/**"],
+			"publicPaths": ["/fonts/*.woff2", "/fonts/*-LICENSE.txt"],
+			"origin": "third-party-bundled",
+			"rightsHolder": "Google Inc.（Noto Sans JP）/ The Zen Project Authors（Zen Kaku Gothic New）",
 			"license": {
 				"spdx": "OFL-1.1",
-				"redistribution": "referenced",
-				"attributionRequired": false,
-				"attributionText": null,
-				"attributionDeliveredAt": null,
+				"redistribution": "bundled",
+				"attributionRequired": true,
+				"attributionText": "Noto Sans JP — Copyright Google Inc.\nZen Kaku Gothic New — Copyright 2022 The Zen Project Authors\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.",
+				"attributionDeliveredAt": "/fonts/noto-sans-jp-LICENSE.txt および /fonts/zen-kaku-gothic-new-LICENSE.txt（各ファミリーの LICENSE 全文を同梱）",
 				"conditions": [
-					"このリポジトリはフォントファイルを配布せず、stylesheets の参照のみを持つ。",
-					"宣言している SPDX 識別子は提供側の記載であり、このリポジトリはオフラインで検証していない。"
+					"同梱ファイルは @fontsource/* パッケージの配布物を改変せずそのままコピーしたもの。",
+					"SIL Open Font License 1.1 の全文と著作権表示は public/fonts/noto-sans-jp-LICENSE.txt と public/fonts/zen-kaku-gothic-new-LICENSE.txt に同梱し、/fonts/ 以下から公開される。",
+					"Reserved Font Name の改名・改変は行っていない（ファイル名は配布名を保持）。"
 				]
 			},
 			"verification": {
-				"method": "upstream-reference",
-				"checkedOn": "2026-10-19",
-				"note": "docs/verification/content/publication-surface.md §4.1 が同じ 2 ホストを外部通信として記録している。CSP (src/http/content-security-policy.ts) が font-src を宣言する。"
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-18",
+				"note": "public/fonts/ の 23 個の woff2 は node_modules/@fontsource/*/files/ の同名ファイルとバイト一致でコピーした（コピー後に sha256 を照合）。unicode-range は各パッケージのウェイト別 CSS が宣言するスライス集合の和集合から再構成し、名前付きサブセット（latin / latin-ext / cyrillic / vietnamese）の範囲はパッケージ CSS の宣言をそのまま使った。CSP は font-src 'self' のみを許可し、Google Fonts 由来の外部ホストは残っていない。"
 			},
 			"evidence": [
-				{ "kind": "external-reference", "url": "https://fonts.google.com/specimen/Noto+Sans+JP" },
 				{
-					"kind": "external-reference",
-					"url": "https://fonts.google.com/specimen/Zen+Kaku+Gothic+New"
+					"kind": "repository-file",
+					"path": "public/fonts/noto-sans-jp-LICENSE.txt",
+					"sha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3"
+				},
+				{
+					"kind": "repository-file",
+					"path": "public/fonts/zen-kaku-gothic-new-LICENSE.txt",
+					"sha256": "f985b5f317c6b25b73f86d0071c584f3159c0de6cf1126e6ef57ab04698b0592"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/styles.css"
 				}
 			],
 			"publication": "published",
-			"externalHosts": ["fonts.googleapis.com", "fonts.gstatic.com"]
+			"externalHosts": []
 		},
 		{
 			"id": "tool-webfont-typekit",
@@ -482,8 +532,14 @@
 				"note": "outbound host は quality/tool-artifact-inventory.json が prototype の記録として保持している（Issue #466）。"
 			},
 			"evidence": [
-				{ "kind": "external-reference", "url": "https://use.typekit.net/" },
-				{ "kind": "repository-file", "path": "quality/tool-artifact-inventory.json" }
+				{
+					"kind": "external-reference",
+					"url": "https://use.typekit.net/"
+				},
+				{
+					"kind": "repository-file",
+					"path": "quality/tool-artifact-inventory.json"
+				}
 			],
 			"publication": "published",
 			"externalHosts": ["use.typekit.net"],
@@ -536,8 +592,14 @@
 					"path": "LICENSE",
 					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
 				},
-				{ "kind": "repository-file", "path": "scripts/capture-tool-previews.mjs" },
-				{ "kind": "repository-file", "path": "src/tools/manifest.json" }
+				{
+					"kind": "repository-file",
+					"path": "scripts/capture-tool-previews.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/tools/manifest.json"
+				}
 			],
 			"publication": "published",
 			"ownerConfirmation": "unconfirmed",

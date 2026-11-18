@@ -13,13 +13,13 @@
 | 描画対象 | `src/i18n/pseudo-locale.ts` の stress 11 行。うち UI surface 描画は 5 行（`en-longform` / `en-negation-permission` / `de-compound` / `ja-mixed` / `he-rtl-acronym`） |
 | 膨張 | `expandPseudoText()` — 結合記号（U+0301 / U+0304）と幅を持つ U+00B7 のみを挿入する。書き換え・翻訳・機械的変換以外の編集は**しない** |
 | font stack | `src/editorial/tokens.ts` の `rawTokens.fonts.*` をそのまま CSS に展開。fixture 側は font を宣言しない |
-| webfont | `src/routes/__root.tsx` が読んでいる `fonts.googleapis.com/css2` の href を**抽出**して使う（script がリテラルを持たない）。実行時 `webfont loaded: true`（`Noto Sans JP` 372 face / `Zen Kaku Gothic New` 242 face が `status: loaded`、`document.fonts.check()` も true） |
+| webfont | `src/styles.css` の self-hosted `@font-face` を `scripts/_selfhosted-font-css.mjs` 経由で読み、`MY_WEB_FONT_BASE_URL`（既定は本番 origin）に rebase して report へ inline する（Issue #876。script は font のリテラルを持たない）。実行時 `webfont loaded: true` — ページが実際に使った weight の face が `status: loaded` であることを family ごとに確認する |
 | capture 手段 | `node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs`（= `pnpm run capture:pseudo-locale`） |
 | 実測 | headless Chromium / frame 幅 320 px。判定は「横方向 overflow が無い」「宣言した meaning token が**描画された見出し**に連続して残っている」「**ブラウザが描いた** isolate 数が宣言数と一致する」の 3 種 |
 | 実測 2 通り | 出荷済みの折り返し規則だけ（`src/styles.css` の body ルール + `SectionHeading`）と、それに fixture ローカルの `overflow-wrap: anywhere` を足したもの（§2.2） |
 | viewport / DPR | 1440 x 1000 / 1、`fullPage` 撮影 |
 | 生成物サイズ | 1280 x 3198 px、**291 kB** WebP（quality 80、budget 300 kB） |
-| 外部通信 | webfont の取得のみ（`fonts.googleapis.com` / `fonts.gstatic.com`）。fixture・判定・font stack に外部依存はない |
+| 外部通信 | webfont の取得は same-origin の `/fonts/*.woff2` のみ（Issue #876 で Google Fonts を廃止）。fixture・判定・font stack に外部依存はない |
 | 再現性 | 判定は決定的ながら **browser / platform に依存する実測**。CI の gate ではなく証跡である |
 
 Issue は `docs/verification/i18n/pseudo-locale-stress.png` を指定しているが、リポジトリの検証 artefact の規約

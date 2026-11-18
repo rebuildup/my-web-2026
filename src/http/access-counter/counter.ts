@@ -10,8 +10,10 @@ import { DEDUP_WINDOW_MS } from './schema';
  * atomicity guarantee is provided by the UNIQUE primary key on
  * `access_dedup (counter_key, principal, session_id)`:
  *
- *   1. DELETE the dedup row when it has expired. (The dedup PK
- *      matches at most one row; no-op when absent.)
+ *   1. DELETE every dedup row whose `expires_at` has passed. This is
+ *      what lets an expired triple's slot be re-claimed below, and it
+ *      is also the table's only purge: rows whose identifier never
+ *      returns are collected by the next recorded hit.
  *   2. INSERT a fresh dedup row keyed by the same triple.
  *      `meta.changes` is the canonical "did we get the slot"
  *      signal — SQLite atomically grants the slot via the UNIQUE
@@ -36,6 +38,16 @@ import { DEDUP_WINDOW_MS } from './schema';
  * The read path (`getCount`) is a plain SELECT filtered by both
  * `key` and `principal` — no concurrency hazard.
  *
+ * Expired-row bound: step 1 deletes EVERY expired dedup row, not just
+ * the triple being retried. A `(key, principal, session_id)` that
+ * never returns would otherwise keep its row forever and the table
+ * would grow without bound under session churn. The sweep is a plain
+ * indexed `expires_at <= now` delete — it also subsumes the old
+ * per-triple purge, because an expired row for this triple matches
+ * the same predicate. It stays lazy (no Cron trigger) and runs on
+ * every recorded hit, so the published retention sentence — "deleted
+ * on the next hit" — stays literally true.
+ *
  * Input / output types live in `./schema` so that home-side
  * consumers can `import type` the result shape without depending on
  * this implementation file — AGENTS.md §3 keeps `home/access`
@@ -46,14 +58,13 @@ export async function recordHit(db: D1Database, input: RecordHitInput): Promise<
 	const now = input.now ?? Date.now();
 	const expiresAt = now + DEDUP_WINDOW_MS;
 
-	// Step 1: drop expired dedup row (no-op when not present).
+	// Step 1: drop every expired dedup row. The predicate covers the
+	// triple being retried (which is what lets its slot be re-claimed)
+	// and every ghost row that never returns — without it, rows whose
+	// session id is never seen again accumulate without bound.
 	const purge = await db
-		.prepare(
-			`DELETE FROM access_dedup
-       WHERE counter_key = ?1 AND principal = ?2 AND session_id = ?3
-         AND expires_at <= ?4`,
-		)
-		.bind(input.key, input.principal, input.session_id, now)
+		.prepare('DELETE FROM access_dedup WHERE expires_at <= ?1')
+		.bind(now)
 		.run();
 	void purge;
 

@@ -1,0 +1,12 @@
+{
+	"$comment": "Expected MINIMUM item counts for the my-web-2026 planning board, counted out-of-band via the ChatGPT Miro connection on 2026-11 (board uXjVEZdqDp4=). These are floors, not exact totals: the board may have grown since the count, so an export fails only when it holds FEWER items of a kind than the source was observed to contain — that is the truncation / missing-item signal. Self-consistency between board.itemCounts and the arrays is checked separately and is NOT sufficient for completeness. The raw board export is private input and is never committed (see .gitignore); only derived, publicity-checked ledgers are published.",
+	"version": 1,
+	"boardId": "uXjVEZdqDp4=",
+	"countedAt": "2026-11",
+	"countedVia": "ChatGPT Miro connection (out-of-band read; the full export supply is still pending — Issue #741)",
+	"minimums": {
+		"stickies": 571,
+		"connectors": 583,
+		"frames": 1
+	}
+}

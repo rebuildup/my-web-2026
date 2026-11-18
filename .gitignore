@@ -89,3 +89,9 @@ external/
 .vscode/*
 !.vscode/settings.json
 .idea/
+
+# Issue #741: the raw Miro board export is private input (may contain
+# non-public information). It is supplied out-of-band and validated by
+# scripts/validate-miro-import.mjs; only derived, publicity-checked
+# ledgers are committed.
+quality/miro/board-export.json

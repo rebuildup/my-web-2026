@@ -150,7 +150,8 @@
 				"font-weight",
 				"line-gap-override",
 				"line-height",
-				"src"
+				"src",
+				"unicode-range"
 			],
 			"https://www.w3.org/TR/css-grid-2/": [
 				"grid",
@@ -428,6 +429,7 @@
 			"oklch",
 			"opacity",
 			"perspective",
+			"polygon",
 			"pow",
 			"radial-gradient",
 			"rect",

@@ -6,6 +6,8 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
+import { GitHubActivityCard } from './activity/GitHubActivityCard';
+import type { HomeGitHubActivity } from './activity/contract';
 import {
 	AdPortfolioNative,
 	AdPortfolioProduct,
@@ -29,7 +31,10 @@ import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
+import { GuideSection } from './guide/GuideSection';
 import { Hero } from './hero';
+import { PresenceCard } from './presence/PresenceCard';
+import type { DiscordPresenceCard } from './presence/types';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
 import type { DataSourceDescriptor } from './status/data-source';
@@ -73,6 +78,20 @@ export interface HomePageData {
 	 * when the portfolio read is unavailable or yields no covers.
 	 */
 	adProjects?: readonly HomeAdProject[];
+	/**
+	 * Issue #319 — the committed GitHub activity snapshot projected
+	 * for the status section. `null` means the snapshot could not be
+	 * read; the card renders its unavailable state.
+	 */
+	githubActivity?: HomeGitHubActivity | null;
+	/**
+	 * Issue #320 — the owner's Discord presence/activities/Rich Presence/
+	 * custom status card. Optional: the section degrades to "unavailable"
+	 * when the stored snapshot is missing, stale, or fails validation.
+	 * The snapshot is pushed by an operator-run script into D1; the
+	 * Worker never calls Discord at runtime.
+	 */
+	discordPresence?: DiscordPresenceCard;
 }
 
 export interface HomePageProps {
@@ -112,6 +131,18 @@ const subsectionTitleClassName = /*#__PURE__*/ css({
 	color: 'text.default',
 	textWrap: 'balance',
 });
+
+/**
+ * Issue #933 — the self-hosted GitHub Readme Stats card the status
+ * section's GitHub-activity block renders. The path is RELATIVE on
+ * purpose: the Worker serves the card itself under
+ * `/api/v1/github-readme-stats/` (`src/http/hono.ts`), so the home
+ * page and the image endpoint can never disagree about origin, and
+ * the old `github-readme-stats-fast.vercel.app` URL stays gone
+ * everywhere. `username=rebuildup` matches the owner's profile
+ * README (`gh api repos/rebuildup/rebuildup/readme`).
+ */
+const GITHUB_STATS_IMAGE_URL = '/api/v1/github-readme-stats/api?username=rebuildup';
 
 const subsectionDescriptionClassName = /*#__PURE__*/ css({
 	margin: '0',
@@ -284,6 +315,12 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					})}
 				>
 					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
+						{/* Issue #930 / Epic #928 — the site guide is the FIRST
+						    body section: a first-time visitor's primary
+						    question is "what exists here and how do I reach
+						    it". */}
+						<GuideSection today={data.observedAt.slice(0, 10)} />
+						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
 						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
 						<Container>
 							<div className={css({ marginBlock: '10' })}>
@@ -341,6 +378,36 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 											/>
 										</div>
 										<div>
+											<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+												GitHub の活動 / GitHub activity
+											</h3>
+											<p className={subsectionDescriptionClassName}>
+												GitHub
+												から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+											</p>
+											<GitHubActivityCard activity={data.githubActivity ?? null} />
+											{/* Issue #933 — the self-hosted stats card
+											    supplements the committed-activity feed
+											    with the same GitHub numbers the profile
+											    README advertises. It is decorative
+											    support: `lazy` + `async` because the
+											    block sits well below the fold, and a
+											    Japanese alt that names what the image
+											    shows rather than "image". */}
+											<img
+												src={GITHUB_STATS_IMAGE_URL}
+												alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+												loading="lazy"
+												decoding="async"
+												className={css({
+													display: 'block',
+													maxWidth: '100%',
+													height: 'auto',
+													marginBlockStart: '4',
+												})}
+											/>
+										</div>
+										<div>
 											<h3 id="reactions-heading" className={subsectionTitleClassName}>
 												みんなの反応 / Reactions
 											</h3>
@@ -358,6 +425,20 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 												各リクエストは短時間ウィンドウ内で重複加算されません。
 											</p>
 											<CounterTile data={data.counter} locale={locale} />
+										</div>
+										<div>
+											<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
+												Discord プレゼンス / Discord Presence
+											</h3>
+											{data.discordPresence && (
+												<PresenceCard
+													card={data.discordPresence}
+													locale={locale}
+													timeZone={timeZone}
+													chrome="body"
+													headingId="discord-presence-card-heading"
+												/>
+											)}
 										</div>
 									</div>
 								</SectionHeading>

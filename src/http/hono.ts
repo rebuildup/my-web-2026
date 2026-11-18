@@ -3,15 +3,18 @@ import packageJson from '../../package.json';
 import { productionWriteRefusal, resolveDataSource } from '../cloudflare/data-source';
 import { createAuditLogger } from '../logging/logger';
 import { accessCounterRouter } from './access-counter/router';
+import { activityRouter } from './activity/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { corsMiddleware } from './cors/middleware';
 import { publicErrorResponse } from './errors';
+import { githubReadmeStatsRouter } from './github-readme-stats/router';
 import { mediaRouter } from './media/router';
 import { sharedCacheIsolation } from './middleware/cache-policy';
 import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
+import { presenceRouter } from './presence/router';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 import { securityTxtRouter } from './security-txt/router';
 import { seoRouter } from './seo/router';
@@ -181,6 +184,9 @@ externalBoundary.route('/', securityTxtRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
+externalBoundary.route('/api/v1/github-readme-stats', githubReadmeStatsRouter);
+externalBoundary.route('/api/v1/presence', presenceRouter);
+externalBoundary.route('/api/v1/activity', activityRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

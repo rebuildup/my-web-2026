@@ -225,6 +225,8 @@ export default defineConfig({
 				[WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS]: bindings.secret(),
 				[WORKER_RUNTIME_SECRET.CONSUMER_API_KEY]: bindings.secret(),
 				[WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID]: bindings.secret(),
+				[WORKER_RUNTIME_SECRET.GITHUB_README_STATS_PAT_1]: bindings.secret(),
+				[WORKER_RUNTIME_SECRET.DISCORD_PRESENCE_USER_ID]: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
 				DB: bindings.d1({
 					name: D1_DATABASE_NAME,

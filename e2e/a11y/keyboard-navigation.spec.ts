@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { type Locator, type Page, expect, test } from '@playwright/test';
 
 /**
  * Keyboard-only navigation regression spec (Issue #394).
@@ -72,16 +72,33 @@ interface FocusStop {
 	order: number;
 }
 
-/** The maximum number of Tab stops one walk may record. */
-const MAX_TAB_STOPS = 60;
+/**
+ * The maximum number of Tab stops one walk may record.
+ *
+ * Epic #928 grew the home surface past the old 60-stop bound — the
+ * guide destinations, ~30 current-project links, the ad units and the
+ * status widgets are all keyboard stops now, so the walk budget is a
+ * safety bound, not the expected count.
+ */
+const MAX_TAB_STOPS = 300;
 
-/** The tags that count as a meaningful Tab stop. */
+/**
+ * The tags that count as a meaningful Tab stop.
+ *
+ * `DIV` is here for the design system's focusable scroll regions —
+ * the ad carousel and the table-code scrollers are `<div tabindex="0">`
+ * elements that MUST take the focus so arrow keys can scroll them
+ * (WCAG 2.2 SC 2.1.1). They are not links or buttons, but they are
+ * interactive controls for a keyboard user, and the per-stop name
+ * check below still refuses an unnamed one.
+ */
 const INTERACTIVE_TAGS = [
 	'A',
 	'AREA',
 	'AUDIO',
 	'BUTTON',
 	'DETAILS',
+	'DIV',
 	'IFRAME',
 	'INPUT',
 	'SELECT',
@@ -193,11 +210,17 @@ async function collectTabStops(
 		// The negative control's break: remove the element that holds
 		// the focus from the DOM, so the focus falls to the body and
 		// every later Tab restarts at the top of the document (a lost
-		// focus).
+		// focus). Removal alone is NOT enough: the browser keeps the
+		// sequential focus starting point and the next Tab continues
+		// from the removal position, so the walk still moves forward.
+		// Focusing the body is what a real lost focus looks like — the
+		// next Tab starts over at the first stop.
 		if (breakAfterStops !== undefined && stops.length === breakAfterStops) {
 			await page.evaluate(() => {
 				const element = document.activeElement;
 				if (element && element !== document.body) element.remove();
+				document.body.setAttribute('tabindex', '-1');
+				document.body.focus();
 			});
 		}
 	}

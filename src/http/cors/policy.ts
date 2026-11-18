@@ -16,7 +16,8 @@
  *     future "fix" that replaced the echo with `*` would silently
  *     re-open cross-site credential access.
  *   - `public-read` — unauthenticated, read-only, public data. Today
- *     `/api/v1/health` and `/api/v1/reaction-images/:id`. These get
+ *     `/api/v1/health`, `/api/v1/reaction-images/:id` and
+ *     `/api/v1/github-readme-stats/*`. These get
  *     `Access-Control-Allow-Origin: *` and **never**
  *     `Access-Control-Allow-Credentials`, because there is no secret
  *     behind them to protect.
@@ -119,6 +120,24 @@ export const CORS_ROUTES: readonly CorsRoute[] = Object.freeze([
 		methods: Object.freeze(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS']),
 	},
 	{
+		path: '/api/v1/presence',
+		klass: 'credentialed',
+		// `PUT /discord` — operator-side ingest of the owner's Discord
+		// presence snapshot (Issue #320). API-key credentialed like the
+		// other write surfaces; same-origin `Origin` evidence is already
+		// required by the CSRF guard.
+		methods: Object.freeze(['PUT', 'OPTIONS']),
+	},
+	{
+		path: '/api/v1/activity',
+		klass: 'credentialed',
+		// `PUT /github` — operator-side ingest of the GitHub activity
+		// snapshot (Issues #316 / #319 / #932). API-key credentialed
+		// like the other write surfaces; same-origin `Origin` evidence
+		// is already required by the CSRF guard.
+		methods: Object.freeze(['PUT', 'OPTIONS']),
+	},
+	{
 		path: '/api/v1/reaction-images',
 		klass: 'public-read',
 		// `GET /:id`, public by design (see `reactionsRouter`).
@@ -127,6 +146,13 @@ export const CORS_ROUTES: readonly CorsRoute[] = Object.freeze([
 	{
 		path: '/api/v1/health',
 		klass: 'public-read',
+		methods: Object.freeze(['GET', 'HEAD', 'OPTIONS']),
+	},
+	{
+		path: '/api/v1/github-readme-stats',
+		klass: 'public-read',
+		// Self-hosted GitHub stats card SVGs (Issue #933): unauthenticated,
+		// read-only, public GitHub data rendered to an image.
 		methods: Object.freeze(['GET', 'HEAD', 'OPTIONS']),
 	},
 	// `/api/v1/db/ping` and `/api/v1/media/ping` are deliberately

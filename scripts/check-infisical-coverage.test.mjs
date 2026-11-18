@@ -115,11 +115,13 @@ describe('check-infisical-coverage against the real contract', () => {
 });
 
 describe('the shared contract itself', () => {
-	it('exposes the three required runtime secret names', () => {
+	it('exposes the five required runtime secret names', () => {
 		assert.deepEqual(REQUIRED_RUNTIME_SECRETS, [
 			'BETTER_AUTH_SECRETS',
 			'MY_WEB_2026_CONSUMER_API_KEY',
 			'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+			'GITHUB_README_STATS_PAT_1',
+			'DISCORD_PRESENCE_USER_ID',
 		]);
 	});
 
@@ -129,6 +131,8 @@ describe('the shared contract itself', () => {
 		assert.equal(WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS, 'BETTER_AUTH_SECRETS');
 		assert.equal(WORKER_RUNTIME_SECRET.CONSUMER_API_KEY, 'MY_WEB_2026_CONSUMER_API_KEY');
 		assert.equal(WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID, 'GOOGLE_ANALYTICS_MEASUREMENT_ID');
+		assert.equal(WORKER_RUNTIME_SECRET.GITHUB_README_STATS_PAT_1, 'GITHUB_README_STATS_PAT_1');
+		assert.equal(WORKER_RUNTIME_SECRET.DISCORD_PRESENCE_USER_ID, 'DISCORD_PRESENCE_USER_ID');
 	});
 
 	it('keeps audit-only names disjoint from required', () => {

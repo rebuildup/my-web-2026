@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { HomeAdProject } from '../home/ads/placements';
+import { getDiscordPresence } from '../home/public';
 import {
 	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
@@ -9,6 +10,7 @@ import {
 	getCurrentProjects,
 	getHomeCounter,
 	getHomeDataSource,
+	getHomeGitHubActivity,
 	getHomeReactions,
 	getHomeSystemStatus,
 	recordHomeHit,
@@ -37,25 +39,43 @@ export const Route = createFileRoute('/')({
 		// never disagree about which day they describe (Issue #316).
 		const observedAt = new Date().toISOString();
 		const today = observedAt.slice(0, 10);
-		const [statuses, reactions, counter, dataSource, projects, portfolioProjects] =
-			await Promise.all([
-				getHomeSystemStatus(),
-				getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
-				getHomeCounter({ data: {} }),
-				// Issue #377 — which data source this runtime reads. The
-				// home renders an indicator for every mode except the
-				// deployed production Worker.
-				getHomeDataSource(),
-				getCurrentProjects({ data: { today } }),
-				// Issue #925 — the sponsored rail / carousel promote real
-				// portfolio work through the SAME public read the
-				// /portfolio index uses. A portfolio outage must not take
-				// the home page down with it: the ad surface degrades to
-				// its Tool-only roster.
-				listPortfolioProjects({ data: { limit: 6 } })
-					.then((page) => page.projects)
-					.catch(() => null),
-			]);
+		const [
+			statuses,
+			reactions,
+			counter,
+			dataSource,
+			projects,
+			portfolioProjects,
+			githubActivity,
+			discordPresence,
+		] = await Promise.all([
+			getHomeSystemStatus(),
+			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
+			getHomeCounter({ data: {} }),
+			// Issue #377 — which data source this runtime reads. The
+			// home renders an indicator for every mode except the
+			// deployed production Worker.
+			getHomeDataSource(),
+			getCurrentProjects({ data: { today } }),
+			// Issue #925 — the sponsored rail / carousel promote real
+			// portfolio work through the SAME public read the
+			// /portfolio index uses. A portfolio outage must not take
+			// the home page down with it: the ad surface degrades to
+			// its Tool-only roster.
+			listPortfolioProjects({ data: { limit: 6 } })
+				.then((page) => page.projects)
+				.catch(() => null),
+			// Issue #319 — the committed GitHub activity snapshot,
+			// projected for the status card. Same committed-data rule
+			// as the projects section: no runtime fetch.
+			getHomeGitHubActivity({ data: {} }).catch(() => null),
+			// Issue #320 — Discord presence card from the D1 snapshot
+			// the operator-side Gateway script pushes via
+			// PUT /api/v1/presence/discord. Degrades cleanly when the
+			// row is missing/stale/invalid. No runtime fetch to
+			// Discord from the Worker.
+			getDiscordPresence(),
+		]);
 		return {
 			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,
@@ -73,6 +93,7 @@ export const Route = createFileRoute('/')({
 			// *now*, and a claim that changes without a commit cannot be
 			// reviewed. There is no runtime fetch here.
 			projects,
+			githubActivity,
 			dataSource,
 			// Issue #925 — map the public portfolio rows into the narrow
 			// shape the ad placements consume. Projects without a
@@ -82,6 +103,9 @@ export const Route = createFileRoute('/')({
 				.map(toHomeAdProject)
 				.filter((project): project is HomeAdProject => project !== null)
 				.slice(0, 4),
+			// Issue #320 — Discord presence card from the D1 snapshot.
+			// Optional: degrades to unavailable when missing/stale.
+			discordPresence,
 		};
 	},
 	/**

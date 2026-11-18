@@ -139,6 +139,15 @@ export const FLOOR_DECLARATIONS = ['animation-duration', 'transition-duration', 
 /** Path fragments that are generated or framework-owned. */
 const SKIP_SEGMENTS = ['routeTree.gen.ts'];
 
+/**
+ * Path prefixes exempt from the scan. `src/vendor/` holds vendored
+ * third-party code (Issue #933 — github-readme-stats-fast) whose
+ * output is an SVG image document, not a page surface: its internal
+ * animation declarations are upstream-owned and outside the site's
+ * reduced-motion contract, which governs `src/**` UI surfaces.
+ */
+const SKIP_PREFIXES = ['src/vendor/'];
+
 /** File suffixes exempt from the scan (see the scope note above). */
 const EXEMPT_SUFFIXES = [
 	'.test.ts',
@@ -213,6 +222,7 @@ export const WCAG_MAPPING = [
 /** Whether a repo-relative path is scanned at all. */
 export function isScanned(scanPath) {
 	if (!scanPath.startsWith('src/')) return false;
+	if (SKIP_PREFIXES.some((prefix) => scanPath.startsWith(prefix))) return false;
 	if (SKIP_SEGMENTS.some((segment) => scanPath.endsWith(segment))) return false;
 	if (EXEMPT_SUFFIXES.some((suffix) => scanPath.endsWith(suffix))) return false;
 	return true;

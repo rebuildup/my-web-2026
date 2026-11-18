@@ -17,7 +17,7 @@ import {
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
 	fetchWithDeadline,
-	fontFaceUrl,
+	fontAssetUrl,
 	fontOriginPlan,
 	formatMetric,
 	isCompletedRequest,
@@ -64,11 +64,8 @@ function run(route, scenario, metrics, layoutShiftSources = []) {
 }
 
 describe('font-first-paint-measure — measurement contract constants', () => {
-	it('blocks both font hosts (googleapis serves the CSS, gstatic the faces)', () => {
-		assert.deepEqual(FONT_ORIGIN_PATTERNS, [
-			'https://fonts.googleapis.com/**',
-			'https://fonts.gstatic.com/**',
-		]);
+	it('intercepts the same-origin font files (self-hosted since #876)', () => {
+		assert.deepEqual(FONT_ORIGIN_PATTERNS, ['**/*.woff2', '**/*.woff']);
 	});
 
 	it('bounds the reachability probe itself, not only the page wait', async () => {
@@ -342,10 +339,10 @@ describe('font-first-paint-measure — cumulativeLayoutShift', () => {
 });
 
 describe('font-first-paint-measure — summarizeFontResources', () => {
-	it('counts only completed font-origin requests', () => {
+	it('counts only completed font-file requests', () => {
 		const result = summarizeFontResources([
 			{
-				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
+				name: 'http://127.0.0.1:3000/assets/noto-sans-jp-0-400-normal-DBpdCeh6.woff2',
 				startTime: 100,
 				duration: 120,
 				responseStart: 260,
@@ -353,7 +350,7 @@ describe('font-first-paint-measure — summarizeFontResources', () => {
 				transferSize: 149349,
 			},
 			{
-				name: 'https://fonts.gstatic.com/s/notosansjp/v36/x.woff2',
+				name: 'http://127.0.0.1:3000/assets/zen-kaku-gothic-new-2-700-normal-Ab1Cd2Ef.woff',
 				startTime: 400,
 				duration: 480,
 				responseStart: 560,
@@ -383,7 +380,7 @@ describe('font-first-paint-measure — summarizeFontResources', () => {
 		// alone would count a font that never arrived.
 		const result = summarizeFontResources([
 			{
-				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
+				name: 'http://127.0.0.1:3000/assets/noto-sans-jp-0-400-normal-DBpdCeh6.woff2',
 				startTime: 31,
 				duration: 14.5,
 				responseStart: 0,
@@ -401,9 +398,9 @@ describe('font-first-paint-measure — summarizeFontResources', () => {
 	});
 
 	it('does not trust responseStatus, which reads 0 for a delivered response too', () => {
-		// Measured in Chromium: a successful cross-origin response under
-		// route interception reports `responseStatus: 0` because the
-		// status is hidden without Timing-Allow-Origin.
+		// Measured in Chromium: a response whose status is hidden (no
+		// Timing-Allow-Origin on a cross-origin answer, or an
+		// intercepted route) reports `responseStatus: 0`.
 		assert.equal(isCompletedRequest({ responseStatus: 0, transferSize: 149349 }), true);
 		assert.equal(isCompletedRequest({ responseStatus: 0, responseEnd: 122 }), false);
 		assert.equal(isCompletedRequest({ responseStatus: 200, responseEnd: 0 }), false);
@@ -740,7 +737,7 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		// An unusable origin aborts every scenario, so the report is still
 		// produced and no row claims a webfont swap.
 		assert.match(html, /aborted in EVERY scenario/);
-		assert.match(html, /never waits on a third-party stylesheet/);
+		assert.match(html, /never waits on a font origin/);
 	});
 
 	it('states that this is a measurement and not a gate', () => {
@@ -865,16 +862,27 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.deepEqual(LAYOUT_SHIFT_METRICS, ['cls', 'clsEntries', 'worstShift']);
 	});
 
-	it('follows a Google stylesheet to the face it serves', () => {
-		// Reachability has to cover `fonts.gstatic.com` too: a network
-		// that lets the stylesheet through and blocks the face would
-		// otherwise be recorded as a real webfont swap.
+	it('extracts the same-origin font file a bundled stylesheet serves', () => {
+		// Reachability has to follow the document → stylesheet → font
+		// chain: a page that serves HTML but 404s its font slices would
+		// otherwise be recorded as reachable while every row measured
+		// the platform fallback.
 		assert.equal(
-			fontFaceUrl('@font-face{src:url(https://fonts.gstatic.com/s/notosansjp/v36/x.woff2)}'),
-			'https://fonts.gstatic.com/s/notosansjp/v36/x.woff2',
+			fontAssetUrl(
+				'@font-face{font-family:x;src:url(/fonts/noto-sans-jp-japanese-400.woff2) format("woff2")}',
+			),
+			'/fonts/noto-sans-jp-japanese-400.woff2',
 		);
-		assert.equal(fontFaceUrl('@font-face{src:url(/local/x.woff2)}'), null);
-		assert.equal(fontFaceUrl(''), null);
+		assert.equal(
+			fontAssetUrl(
+				'@font-face{font-family:x;src:url(/assets/noto-sans-jp-0-400-normal-DBpdCeh6.woff2) format("woff2")}',
+			),
+			'/assets/noto-sans-jp-0-400-normal-DBpdCeh6.woff2',
+		);
+		assert.equal(fontAssetUrl('@font-face{src:url(assets/x.woff)}'), 'assets/x.woff');
+		assert.equal(fontAssetUrl('@font-face{src:url(/local/x.woff2)}'), '/local/x.woff2');
+		assert.equal(fontAssetUrl('background:url(/img/a.png)'), null);
+		assert.equal(fontAssetUrl(''), null);
 	});
 
 	it('omits the comparison table when there is nothing to compare', () => {

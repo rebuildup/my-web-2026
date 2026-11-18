@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 import { DotfilesIntroductionPage, getDotfilesIntroduction } from '../projects';
 
 /**
@@ -17,8 +19,14 @@ import { DotfilesIntroductionPage, getDotfilesIntroduction } from '../projects';
  * `Date.now()` is evaluated here, once, so SSR and hydration agree
  * on the freshness state for the request.
  */
+export const DOTFILES_REACTIONS_TARGET = 'projects-dotfiles';
+
 export const Route = createFileRoute('/projects/dotfiles')({
-	loader: () => getDotfilesIntroduction(Date.now()),
+	loader: async () => {
+		const view = getDotfilesIntroduction(Date.now());
+		const reactions = await getHomeReactions({ data: { target: DOTFILES_REACTIONS_TARGET } });
+		return { view, reactions };
+	},
 	head: () => {
 		const title = 'dotfiles — rebuildup.dev';
 		const description =
@@ -42,13 +50,14 @@ export const Route = createFileRoute('/projects/dotfiles')({
 });
 
 function ProjectsDotfilesRoute() {
-	const view = Route.useLoaderData();
+	const { view, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
 			<DotfilesIntroductionPage view={view} />
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

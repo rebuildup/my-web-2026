@@ -575,17 +575,31 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   likewise delegates to `scripts/run-script-tests.mjs`, which
   discovers every `scripts/*.test.mjs` by convention — so adding a
   gate or a script test never edits a shared one-line chain.)
-- `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build:production` + per-route bundle budget
+- `pnpm run validate:integration` — **release-candidate**
+  verification (Issue #937). (`validate:fast` +
+  `build:production` + per-route bundle budget
   (`bundle:budget:check`, Issue #482) + default/production Wrangler
   dry-runs + `lint:ci` (actionlint 1.7.12, downloaded by
-  `scripts/lint-ci.mjs`) + `build-storybook`)
+  `scripts/lint-ci.mjs`) + `build-storybook` + artifact attestation)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
 
-Playwright E2E is a separate CI step on pushes to `main` / `release-*`
-and on PRs with the `ui-change` label; it is not part of the local
-`validate:release` command.
+Issue #937 split the CI triggers so heavy verification runs once per
+candidate instead of once per ticket merge:
+
+- **Ticket PR** (base `release-*` or a stacked numeric branch):
+  `validate:fast` on the merge ref, plus the CI-only advisory steps
+  (dependency advisory, issue-closure audit, SBOM). No production
+  build, no Storybook, no dry-run.
+- **`release-*` push**: `validate:fast` + `cf-typegen:check` only —
+  an integration event, not a new candidate.
+- **Candidate freeze**: `workflow_dispatch` on the frozen release
+  SHA runs the full `validate:integration` leg and produces the
+  attested bytes the release procedure consumes; the release PR
+  (`release-* → main`) and pushes to `main` run the same leg.
+- **Playwright E2E / viewport / compat**: the release PR, PRs
+  labelled `ui-change`, pushes to `main`, and `workflow_dispatch`.
+  They are not part of the local `validate:release` command.
 
 `validate:fast` also runs `install:scripts:check` (Issue #474): the
 dependency install-lifecycle audit that keeps

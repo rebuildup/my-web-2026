@@ -34,8 +34,8 @@ describe('contentSecurityPolicyValue', () => {
 
 	it('allows the measured TanStack UI, font and analytics origins', () => {
 		expect(value).toContain("script-src 'self' 'unsafe-inline' https://www.googletagmanager.com");
-		expect(value).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
-		expect(value).toContain("font-src 'self' https://fonts.gstatic.com");
+		expect(value).toContain("style-src 'self' 'unsafe-inline'");
+		expect(value).toContain("font-src 'self'");
 		expect(value).toContain('https://*.google-analytics.com');
 		expect(value).toContain('https://*.analytics.google.com');
 		expect(value).toContain('https://*.googletagmanager.com');
@@ -67,9 +67,9 @@ describe('contentSecurityPolicyValue', () => {
 		expect(value.split('; ')).toEqual([
 			"default-src 'self'",
 			"script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
-			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+			"style-src 'self' 'unsafe-inline'",
 			"img-src 'self' https://*.google-analytics.com https://*.googletagmanager.com",
-			"font-src 'self' https://fonts.gstatic.com",
+			"font-src 'self'",
 			"connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
 			"frame-src 'self'",
 			"object-src 'none'",

@@ -345,6 +345,7 @@
 			"/tools/text-counter"
 		],
 		"externalHosts": [
+			"",
 			"*.analytics.google.com",
 			"*.google-analytics.com",
 			"*.googletagmanager.com",
@@ -356,6 +357,7 @@
 			"example.com",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
+			"github-readme-stats-fast.vercel.app",
 			"github.com",
 			"host.invalid",
 			"json-schema.org",
@@ -368,6 +370,8 @@
 			"schema.org",
 			"script.google.com",
 			"scripts.sil.org",
+			"tiny.one",
+			"twitch.tv",
 			"twitter.com",
 			"use.typekit.net",
 			"via.placeholder.com",
@@ -410,6 +414,8 @@
 				"kind": "external",
 				"identifier": true,
 				"files": [
+					"public/fonts/noto-sans-jp-LICENSE.txt",
+					"public/fonts/zen-kaku-gothic-new-LICENSE.txt",
 					"public/share/procon2026/index.html"
 				]
 			},
@@ -471,7 +477,21 @@
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
-					"src/tools/manifest.json"
+					"src/tools/manifest.json",
+					"src/vendor/github-readme-stats-fast/common/Card.ts",
+					"src/vendor/github-readme-stats-fast/common/utils.ts",
+					"src/vendor/github-readme-stats-fast/src/cards/streak-card.js",
+					"src/vendor/github-readme-stats-fast/src/common/Card.js",
+					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+				]
+			},
+			{
+				"url": "https://",
+				"host": "",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js"
 				]
 			},
 			{
@@ -592,12 +612,32 @@
 				]
 			},
 			{
+				"url": "https://api.github.com/graphql",
+				"host": "api.github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/common/utils.ts",
+					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+				]
+			},
+			{
 				"url": "https://api.github.com/repos/rebuildup/my-web-2026",
 				"host": "api.github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/external-api/github.ts"
+				]
+			},
+			{
+				"url": "https://api.github.com/search/commits?q=author",
+				"host": "api.github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/fetchers/stats.ts",
+					"src/vendor/github-readme-stats-fast/src/fetchers/stats.js"
 				]
 			},
 			{
@@ -697,8 +737,6 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
 				]
 			},
@@ -712,24 +750,2092 @@
 				]
 			},
 			{
-				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
-				"host": "fonts.googleapis.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/routes/__root.tsx"
-				]
-			},
-			{
 				"url": "https://fonts.gstatic.com",
 				"host": "fonts.gstatic.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=aura_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ayu-mirage",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=bear",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue-green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blue_navy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=blueberry",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=buefy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=calm_pink",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_latte",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=catppuccin_mocha",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=chartreuse-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=city_lights",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=cobalt2",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=codeSTACKr",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=darcula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=date_night",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=default_repocard",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=discord_old_blurple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=dracula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=flag-india",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=github_dark_dimmed",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gotham",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=graywhite",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=great-gatsby",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=gruvbox_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=highcontrast",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=holi",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=jolly",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=kacho_ga",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=macos_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=maroongold",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=material-palenight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=merko",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=midnight-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=moltack",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=monokai",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=neon",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nightowl",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=noctis_minimus",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=nord",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ocean_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=omni",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=one_dark_pro",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=onedark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=outrun",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=panda",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=prussian",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=radical",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=react",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=rose_pine",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shades-of-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_blue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=shadow_red",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=slateorange",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=solarized-light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=swift",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=synthwave",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=tokyonight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=transparent",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vision-friendly-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=vue-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=yeblu",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=algolia",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ambient_gradient",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=apprentice",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=aura_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ayu-mirage",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=bear",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue-green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blue_navy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=blueberry",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=buefy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=calm_pink",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_latte",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=catppuccin_mocha",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=chartreuse-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=city_lights",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=cobalt2",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=codeSTACKr",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=darcula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=date_night",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=default_streakcard",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=discord_old_blurple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=dracula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=flag-india",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=github_dark_dimmed",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gotham",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=graywhite",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=great-gatsby",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=gruvbox_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=highcontrast",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=holi",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=jolly",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=kacho_ga",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=macos_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=maroongold",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=material-palenight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=merko",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=midnight-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=moltack",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=monokai",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=neon",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nightowl",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=noctis_minimus",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=nord",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=ocean_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=omni",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=one_dark_pro",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=onedark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=outrun",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=panda",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=prussian",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=radical",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=react",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=rose_pine",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shades-of-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_blue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=shadow_red",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=slateorange",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=solarized-light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=swift",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=synthwave",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=tokyonight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=transparent",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vision-friendly-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=vue-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api/streak?username=pranesh-2005&theme=yeblu",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=algolia",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ambient_gradient",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=apprentice",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=aura_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ayu-mirage",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=bear",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue-green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blue_navy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=blueberry",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=buefy",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=calm_pink",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_latte",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=catppuccin_mocha",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=chartreuse-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=city_lights",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=cobalt2",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=codeSTACKr",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=darcula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=date_night",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=default_repocard",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=discord_old_blurple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=dracula",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=flag-india",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=github_dark_dimmed",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gotham",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=graywhite",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=great-gatsby",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=gruvbox_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=highcontrast",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=holi",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=jolly",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=kacho_ga",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=macos_light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=maroongold",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=material-palenight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=merko",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=midnight-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=moltack",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=monokai",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=neon",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nightowl",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=noctis_minimus",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=nord",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=ocean_dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=omni",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=one_dark_pro",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=onedark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=outrun",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=panda",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=prussian",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=radical",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=react",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=rose_pine",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shades-of-purple",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_blue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_green",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=shadow_red",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=slateorange",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=solarized-light",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=swift",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=synthwave",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=tokyonight",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=transparent",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vision-friendly-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
+				]
+			},
+			{
+				"url": "https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true",
+				"host": "github-readme-stats-fast.vercel.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/themes/README.md"
 				]
 			},
 			{
@@ -742,13 +2848,41 @@
 				]
 			},
 			{
+				"url": "https://github.com/Pranesh-2005/github-readme-stats-fast",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/PROVENANCE.md"
+				]
+			},
+			{
+				"url": "https://github.com/Pranesh-2005/github-readme-stats-fast.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/PROVENANCE.md"
+				]
+			},
+			{
+				"url": "https://github.com/googlefonts/zen-kakugothic",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/fonts/zen-kaku-gothic-new-LICENSE.txt"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/about/data.ts",
-					"src/contact/channels.json"
+					"src/contact/channels.json",
+					"src/home/guide/ledger.ts"
 				]
 			},
 			{
@@ -829,6 +2963,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
@@ -865,6 +3000,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
@@ -878,11 +3014,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/ai-knowledge",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/atcoder-kit",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/design-skills",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -892,6 +3047,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/projects/DotfilesIntroductionPage.tsx",
 					"src/projects/snapshots/dotfiles.json"
 				]
@@ -1023,6 +3179,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/key-map-kanata",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/kosen-fes-2025",
 				"host": "github.com",
 				"kind": "external",
@@ -1056,6 +3221,7 @@
 				"identifier": false,
 				"files": [
 					"src/contact/channels.json",
+					"src/home/activity/github-activity.json",
 					"src/home/footer.tsx",
 					"src/portfolio/seed.ts"
 				]
@@ -1104,8 +3270,18 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/projects/DotfilesIntroductionPage.tsx",
 					"src/projects/snapshots/dotfiles.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/procon-2026",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1114,7 +3290,17 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/github-activity.json",
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/readmark",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1127,12 +3313,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-ae-expression",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-ae-expression.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-business-mail-block",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1145,12 +3349,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-code-type-p5",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-code-type-p5.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-color-palette",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1163,12 +3385,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-fillgen",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-fillgen.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-history-quiz",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1181,12 +3421,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-mic-level",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-mic-level.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-pi-game",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1199,12 +3457,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-pomodoro",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-pomodoro.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-qr-generator",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1217,12 +3493,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-sequential-png-preview",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-sequential-png-preview.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-svg2tsx",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1235,12 +3529,39 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/tool-text-counter",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/tool-text-counter.git",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/writing-skills",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -1473,6 +3794,25 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://tiny.one/readme-stats",
+				"host": "tiny.one",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/vendor/github-readme-stats-fast/common/utils.ts",
+					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+				]
+			},
+			{
+				"url": "https://twitch.tv/example",
+				"host": "twitch.tv",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/presence/fixtures.ts"
 				]
 			},
 			{
@@ -3192,13 +5532,34 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://github.com/googlefonts/zen-kakugothic"
+		],
+		"removedExternalUrls": [
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
+			"https://github.com/rebuildup/GRI-2nd"
+		],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/googlefonts/zen-kakugothic"
+			},
+			{
+				"code": "W003 external-url-removed",
+				"severity": "warn",
+				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap"
+			},
+			{
+				"code": "W003 external-url-removed",
+				"severity": "warn",
+				"message": "External URL removed: https://github.com/rebuildup/GRI-2nd"
+			}
+		]
 	}
 }

@@ -315,7 +315,7 @@ const CASES: readonly MatrixCase[] = [
 			method: 'DELETE',
 			path: '/api/v1/reactions',
 			headers: JSON_HEADERS,
-			body: JSON.stringify({ ...REACTION_BODY, target_key: 'never-put-page' }),
+			body: JSON.stringify({ ...REACTION_BODY, target_key: 'portfolio-list' }),
 		},
 		status: 200,
 	},

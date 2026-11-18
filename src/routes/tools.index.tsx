@@ -25,6 +25,8 @@ import {
 	TEXT_FIELDS_PATH,
 	TIMER_PATH,
 } from '../editorial/primitives/material-symbol-tool-paths';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 import { listAllTools } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
@@ -71,13 +73,18 @@ import type { ManifestTool } from '../tools/registry';
  * measured that the 1 px border is what made the old surfaces read as
  * "card grid" rather than editorial whitespace.
  */
+export const TOOLS_INDEX_REACTIONS_TARGET = 'tools-index';
+
 export const Route = createFileRoute('/tools/')({
-	loader: () => {
+	loader: async () => {
 		const all = listAllTools();
 		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
 		const available = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
 		const planned = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
-		return { available, planned };
+		const reactions = await getHomeReactions({
+			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
+		});
+		return { available, planned, reactions };
 	},
 	head: () => {
 		const title = 'Tools — my-web-2026';
@@ -282,7 +289,7 @@ const TOOL_PREVIEWS: Readonly<
 };
 
 function ToolsIndexRoute() {
-	const { available, planned } = Route.useLoaderData();
+	const { available, planned, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -399,6 +406,7 @@ function ToolsIndexRoute() {
 					</Container>
 				</section>
 			) : null}
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

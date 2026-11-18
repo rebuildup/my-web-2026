@@ -222,8 +222,10 @@ export const rawTokens = {
 		},
 	},
 	fonts: {
-		// Body / UI default. Noto Sans JP is loaded via Google Fonts
-		// (see src/routes/__root.tsx); the platform Japanese fallback
+		// Body / UI default. Noto Sans JP is self-hosted: the
+		// `@fontsource/*` woff2 subsets are vendored in `public/fonts/`
+		// and declared by `@font-face` in `src/styles.css` (Issue #876);
+		// the platform Japanese fallback
 		// chain keeps first paint legible if the webfont request stalls.
 		//
 		// The `… Fallback` entry is the metric-compatible face defined

@@ -186,7 +186,7 @@ const SCOPE_ITEMS: readonly { label: string; body: string }[] = [
 	},
 	{
 		label: '外部通信',
-		body: 'この画面と gate はネットワークを一切使わない。参照資産のホスト名（fonts.googleapis.com / fonts.gstatic.com / use.typekit.net）は記録から読むだけで、取得も表示もしない。URL のパスや資格情報は出力しない。',
+		body: 'この画面と gate はネットワークを一切使わない。参照資産のホスト名（記録が持つもの。現在は use.typekit.net のみ）は記録から読むだけで、取得も表示もしない。URL のパスや資格情報は出力しない。',
 	},
 ];
 
@@ -296,7 +296,7 @@ export const HeldAsset: Story = {
 
 /** A referenced font: nothing is redistributed, so the status is its own. */
 export const ReferencedFont: Story = {
-	args: { record: recordFor('web-fonts-google'), review: reviewFor('web-fonts-google') },
+	args: { record: recordFor('tool-webfont-typekit'), review: reviewFor('tool-webfont-typekit') },
 };
 
 /** The whole audit on one screen — this is what the capture photographs. */

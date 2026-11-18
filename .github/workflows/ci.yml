@@ -10,38 +10,65 @@ name: CI
 # THIS file. (The separate `storybook axe` job is untouched: it runs
 # unconditionally by its own documented decision.)
 #
-# Three named condition sets. GitHub's expression language has no
+# Named condition sets. GitHub's expression language has no
 # variables and this file uses no anchors, so each set is written out
 # in full at every use; the set name is the comment above the step.
 #
-#   full_validation  = pull_request (any base branch)
+#   release_validation = pull_request whose BASE is `main` (the
+#                        release PR — the candidate gate)
 #                      | workflow_dispatch
-#                      | push to main / release-*
+#                      | push to `main`
 #     → `pnpm run validate:integration` plus the CI-only steps
 #       (dependency advisory audit, issue-closure audit, SBOM).
-#       pull_request, workflow_dispatch and a main / release-* push
-#       run the SAME step set: a dispatch means "verify this branch
-#       tip exactly as a push to main / release-* would" and must
-#       never produce fewer checks or fewer artefacts than that push.
+#       A `release-*` PUSH deliberately does NOT run this set
+#       (Issue #937): the release branch is an integration line, and
+#       re-running the full suite on every ticket merge is the
+#       repeated heavy verification that policy removes. The
+#       comprehensive check happens ONCE per candidate SHA — freeze
+#       the candidate, then `workflow_dispatch` this workflow on the
+#       release branch, which produces the identical step set (and
+#       the identical attested bytes) for that SHA.
+#
+#   ticket_pr          = pull_request whose BASE is not `main`
+#                        (every ticket PR into `release-*` or a
+#                        stacked numeric branch)
+#     → `pnpm run validate:fast` — the change-scoped static analysis,
+#       typecheck, contract and local test chain — plus the same
+#       CI-only advisory steps. No production build, no Storybook,
+#       no dry-run: a ticket PR is verified by the merge-ref fast
+#       gate; heavy verification is deferred to the frozen candidate.
 #
 #   push_obligations = push to a numeric ticket branch
 #                      | workflow_dispatch
 #     → what a run owes through a push or a dispatch: cf-typegen
 #       check, a production Build Output, the attestation manifest
 #       and the byte upload. On a numeric ticket push the first two
-#       are delivered by the dedicated steps below (full_validation
+#       are delivered by the dedicated steps below (release_validation
 #       does not run there); on workflow_dispatch the identical
 #       obligations arrive through `validate:integration` (its last
 #       component generates the manifest) plus the cf-typegen and
 #       upload steps, so the dedicated pair is conditioned on
-#       `push_obligations && !(full_validation)` and never repeats a
+#       `push_obligations && !(release_validation)` and never repeats a
 #       build that already happened in the same run.
 #
-#   attested_bytes   = push (any branch) | workflow_dispatch
+#   attested_bytes   = push (any branch EXCEPT `release-*`) |
+#                      workflow_dispatch
 #     → `cf-typegen check` and
 #       `Upload Cloudflare Build Output (attested bytes)` share this
-#       event set: every push, exactly as before Issue #897, plus the
-#       manual dispatch.
+#       event set. Issue #937 narrows it: a `release-*` push no
+#       longer builds, so it no longer produces attested bytes — the
+#       freeze dispatch on the candidate SHA is the run that leaves
+#       the pair the release procedure consumes (docs/release.md
+#       step 9 reads the freeze run, not "the push run").
+#
+#   e2e               = pull_request whose BASE is `main` (the
+#                        release PR) or that carries the `ui-change`
+#                        label | push to `main` | workflow_dispatch
+#     → Playwright install + `pnpm run e2e`. Issue #937 removes the
+#       `release-*` push trigger: every ticket merge used to re-run
+#       the browser suite; the suite now runs once per candidate
+#       (release PR / freeze dispatch) or on demand for a labelled
+#       UI ticket.
 #
 # WHY THE SPLIT (measured 2026-11-04, release-0-8-1; methodology and
 # tables: docs/verification/quality/ci-execution-cost-2026-11-04.md):
@@ -237,8 +264,23 @@ jobs:
       # validation — the pull_request run on the tree that lands — and
       # docs/development.md only ever promised "every PR and every push
       # to `main` / `release-*`".
-      - if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+      # release_validation (Issue #937): the release PR (base `main`),
+      # workflow_dispatch (the candidate freeze), and push to `main`.
+      # A `release-*` push and a ticket PR do NOT run the heavy suite —
+      # see the ticket_pr step below and the header comment.
+      - if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: pnpm run validate:integration
+      # ticket_pr (Issue #937): every pull_request whose base is not
+      # `main` — ticket PRs into `release-*` and stacked numeric
+      # branches — runs the fast gate on the merge ref instead.
+      - if: github.event_name == 'pull_request' && github.base_ref != 'main'
+        run: pnpm run validate:fast
+      # release_push_fast (Issue #937): a push to `release-*` is an
+      # integration event, not a new candidate — it re-runs only the
+      # fast gate so a broken merge is caught cheaply. The frozen
+      # candidate is verified once by workflow_dispatch.
+      - if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release-')
+        run: pnpm run validate:fast
       # Dependency advisory gate (Issue #470). It reads the committed
       # lockfile through `pnpm audit --json` and evaluates the result
       # against the reviewed declaration in
@@ -269,7 +311,7 @@ jobs:
       # Issue #897 — full_validation: runs with the full suite, not on
       # a numeric ticket push (that change is verified by the PR leg).
       - name: Dependency advisory audit
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html
       # Issue closure audit (Issue #741). It asks GitHub which issues were
       # closed in the window and reports every closure the repository has
@@ -295,7 +337,7 @@ jobs:
       # Issue #897 — full_validation: runs with the full suite, not on
       # a numeric ticket push (that change is verified by the PR leg).
       - name: Issue closure audit
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: pnpm run issue:closure:audit
@@ -306,7 +348,7 @@ jobs:
       # full_validation part skips the upload on a ticket push, where
       # the audit never ran and the file does not exist (Issue #897).
       - name: Upload dependency advisory report
-        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dependency-advisory-report-${{ github.sha }}
@@ -323,10 +365,10 @@ jobs:
       # step — see docs/release.md and docs/runbook/sbom.md.
       # Issue #897 — full_validation for both SBOM steps.
       - name: Build SBOM
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: pnpm run sbom:build
       - name: Upload SBOM
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')))
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: sbom-${{ github.sha }}
@@ -355,10 +397,10 @@ jobs:
       # again would be a second `build:production` inside one run. The
       # obligation is still met — by the gate itself.
       - name: Build production artifact (ticket-push leg)
-        if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-'))) && !(github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-')
         run: pnpm run build:production
       - name: Generate artifact attestation manifest (ticket-push leg)
-        if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-'))) && !(github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))))
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-')
         run: pnpm run artifact:attestation:check
       # Issue #476 — the deployment artifact attestation manifest. It is
       # produced by `artifact:attestation:check` at the end of
@@ -373,12 +415,18 @@ jobs:
       # credential. See docs/security/supply-chain-artifact-attestation.md.
       #
       # Which pair is RELEASE evidence does not change: docs/release.md
-      # step 9 consumes the release branch's push run (the run whose
-      # `github.sha` is the release commit); a ticket-push pair is not
-      # release evidence, yet Issue #816's "leave the bytes for the
+      # step 9 consumes the freeze run's pair for the candidate SHA
+      # (phase A) and the `main` push run's pair for the merge commit
+      # the release tag names (phase B, §9.1); a ticket-push pair is
+      # not release evidence, yet Issue #816's "leave the bytes for the
       # pushed commit" obligation still applies to it — that is one of
       # the two obligations this job's ticket-push leg exists for.
       - name: Upload artifact attestation manifest
+        # Issue #937 — the manifest exists only where a build ran:
+        # the release PR / dispatch / main-push leg (validate:integration)
+        # and the numeric ticket-push leg. A ticket PR (validate:fast)
+        # and a `release-*` push produce none, so they skip the upload.
+        if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/heads/release-'))
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: artifact-attestation-${{ github.sha }}
@@ -412,10 +460,10 @@ jobs:
       # "verify this branch tip exactly as a push to main / release-*
       # would", so it must not run fewer suites than that push.
       - name: Install Playwright Chromium
-        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'pull_request' && (github.base_ref == 'main' || contains(github.event.pull_request.labels.*.name, 'ui-change'))) || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright E2E
-        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'pull_request' && (github.base_ref == 'main' || contains(github.event.pull_request.labels.*.name, 'ui-change'))) || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         run: pnpm run e2e
       - name: Upload Playwright report
         if: always()
@@ -440,7 +488,10 @@ jobs:
       # Issue #816 (owner decision, 2026-11-02): the byte comparison is
       # a MANDATORY release gate, so the bytes have to exist for the
       # commit under review — not only for main. The step therefore runs
-      # on every PUSH run, and the evidence is the pair this run
+      # on every push run that builds (Issue #937 excludes `release-*`
+      # pushes, which run `validate:fast` only; the freeze
+      # `workflow_dispatch` leaves the candidate pair instead), and the
+      # evidence is the pair this run
       # produced (`artifact-attestation-<sha>` + `cf-build-output-<sha>`,
       # same `github.sha`), which the operator compares with
       # `gh run download` and `pnpm run artifact:attestation:check` /
@@ -456,7 +507,10 @@ jobs:
       # same pair a push would leave; a dispatch is never allowed to
       # produce fewer artefacts than the push it stands in for.
       - name: Upload Cloudflare Build Output (attested bytes)
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        # Issue #937 — a `release-*` push builds nothing, so there are
+        # no attested bytes to retain; the freeze dispatch leaves the
+        # pair for the candidate SHA.
+        if: (github.event_name == 'push' && !startsWith(github.ref, 'refs/heads/release-')) || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cf-build-output-${{ github.sha }}

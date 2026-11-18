@@ -115,7 +115,7 @@ const KEY_PRINCIPALS: Record<string, string> = {
 
 /** One visitor, two API-key contexts — the "different auth context" axis. */
 const VISITOR_ACTOR = 'f'.repeat(32);
-const TARGET = 'cache-isolation-probe';
+const TARGET = 'home-page';
 const COUNTER_KEY = 'cache-isolation-counter';
 
 /** Bearer header for a local test key. */

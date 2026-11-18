@@ -88,7 +88,7 @@ gate され、sitemap にも外部 host 集合にも現れません。
 `src/**` と `public/**`、および統合済み Tool が持ち込む document から観測された host を、
 用途ごとに分けたものです。**新しい host の追加は `E004`（error）になります。**
 
-- **フォント**: `fonts.googleapis.com`（stylesheet）、`fonts.gstatic.com`（font files）
+- **フォント**: same-origin の `/fonts/*.woff2`（Issue #876 で self-host 化。第三者 host なし）
 - **計測**: `www.googletagmanager.com`（GA4 loader, `src/editorial/analytics/GoogleAnalytics.tsx`）。加えて
   CSP Report-Only の origin inventory（`src/http/content-security-policy.ts`, Issue #447）が
   `*.google-analytics.com` / `*.analytics.google.com` / `*.googletagmanager.com` を

@@ -6,17 +6,17 @@
  * `BETTER_AUTH_SECRET` / `MY_WEB_2026_CONSUMER_API_KEY` from its own
  * `process.env` (Infisical injects them into the immediate child of
  * `infisical run`), writes them to a tempdir secrets.json, then
- * spawns Wrangler deploy with a sanitized env that does NOT carry
- * runtime secrets or `INFISICAL_TOKEN`.
+ * spawns `cf deploy --prebuilt --secrets-file` with a sanitized env
+ * that does NOT carry runtime secrets or `INFISICAL_TOKEN`.
  *
  * The reason for the wrapper:
- *   - Wrangler reads secrets from `--secrets-file`, not `process.env`.
+ *   - `cf deploy` reads secrets from `--secrets-file`, not `process.env`.
  *   - We must not pass `INFISICAL_TOKEN` or any runtime secret to the
- *     db:migrate / wrangler child processes (process tree depth = 2).
+ *     db:migrate / cf child processes (process tree depth = 2).
  *
  * Args (forwarded by `deploy-with-secrets.mjs`):
  * (no --config: the Build Output itself is the production gate — Issue #247)
- *   --execute          actually run db:migrate + wrangler deploy
+ *   --execute          actually run db:migrate + cf deploy
  *                      (default: dry-run — write tempdir file then
  *                      rmSync it, no deploy side effect)
  *
@@ -25,7 +25,7 @@
  *   1  internal error (missing env, malformed args, etc.)
  *   2  tempdir / secrets.json write failure
  *   3  db:migrate failure
- *   4  wrangler deploy failure
+ *   4  cf deploy failure
  *   5  cleanup failure (the deploy itself succeeded; logged loudly)
  */
 import { execFileSync } from 'node:child_process';
@@ -50,7 +50,9 @@ const require = createRequire(import.meta.url);
  * Phase-specific 2-name contract (ADR-0015 §9). The deploy script's
  * required secrets list MUST match `wrangler.production.jsonc#secrets.required`
  * for the current phase. `check-infisical-coverage.mjs` enforces the
- * agreement.
+ * agreement. (The `wrangler.*.jsonc` files remain the config documents
+ * `cloudflare.config.ts` is diffed against; Cloudflare mutations
+ * themselves go through the official `cf` CLI only.)
  *
  * Phase 3+ (Initial migration 完了後 — Issue #89): versioned 2-name with
  * audit-only legacy separator.
@@ -67,7 +69,9 @@ const require = createRequire(import.meta.url);
  *
  * Issue #187 — `GOOGLE_ANALYTICS_MEASUREMENT_ID` joined the required
  * set when the var was migrated from `wrangler.jsonc#vars` to
- * `secrets.required` (operator flow documented in `docs/runbook/analytics.md`).
+ * `secrets.required` (historical: the var now lives in
+ * `cloudflare.config.ts` bindings; operator flow documented in
+ * `docs/runbook/analytics.md`).
  * The value is a public identifier (the `G-XXXXXXX` string), but the
  * operator wants to set / inspect it from the Infisical dashboard,
  * which is only possible for runtime secrets. The placeholder
@@ -108,25 +112,14 @@ function parseArgs(argv) {
 	return args;
 }
 
-/**
- * Validate that an --execute invocation targets the canonical
- * production config. Side effects (`db:migrate:production` + `wrangler
- * deploy`) are gated on the requested `--config` resolving to the
- * absolute path of the canonical `wrangler.production.jsonc` next to
- * this script. A basename-only check is insufficient because a
- * same-named config in another directory would otherwise bypass the
- * lockdown and run a production D1 migration under a non-canonical
- * config. Dev / preview configs (e.g. `wrangler.jsonc`) may only be
- * used in dry-run mode. ADR-0015 §4.
- */
-
 function printHelp() {
-	console.log(`Usage: run-deploy-inner.mjs --config=<path> [--execute]
+	console.log(`Usage: run-deploy-inner.mjs [--execute]
 
 Inner deploy script. Reads runtime secrets from process.env
 (Infisical injects them into the immediate child of 'infisical run'),
-writes a tempdir secrets.json, then spawns Wrangler deploy with a
-sanitized env (no runtime secrets, no INFISICAL_TOKEN).
+writes a tempdir secrets.json, then spawns 'cf deploy --prebuilt
+--secrets-file' with a sanitized env (no runtime secrets, no
+INFISICAL_TOKEN).
 
 This script is invoked by deploy-with-secrets.mjs, not by operators
 directly. The 'infisical run' parent owns the env discipline.`);
@@ -171,9 +164,9 @@ function buildSanitizedEnv() {
 
 const args = parseArgs(process.argv.slice(2));
 // Issue #247: the production gate is the Build Output that is about to
-// be shipped, not `--config=wrangler.production.jsonc`. Permission used
-// to come from a path convention; it now comes from the artifact
-// actually being deployed. This runs BEFORE collectSecrets and before
+// be shipped. Permission used to come from a config-path convention;
+// it now comes from the artifact actually being deployed. This runs
+// BEFORE collectSecrets and before
 // any D1 migration or Cloudflare call, so a bad artifact can never
 // half-deploy.
 let buildOutput = null;
@@ -215,8 +208,7 @@ try {
 	} else {
 		console.log('Deploying to production (cf prebuilt).');
 		// Issue #247: the production migration goes through the guarded
-		// D1 driver, so this is the last Wrangler execution in the
-		// canonical deploy path. The driver refuses unless the target is
+		// D1 driver (`cf d1`), which refuses unless the target is
 		// production AND the database id matches the canonical identity.
 		console.log('Applying pending production D1 migrations (cf, guarded)...');
 		applyMigrations({ target: 'production', execute: true, env: sanitizedEnv });

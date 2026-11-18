@@ -3,6 +3,7 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
 import { isAnalyticsMountPath } from '../editorial/analytics/consent';
+import { VisitTrailRecorder } from '../home/guide/VisitTrailRecorder';
 import '../styles.css';
 
 /**
@@ -122,41 +123,17 @@ export const Route = createRootRoute({
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title: 'my-web-2026' },
 		],
-		// Google Fonts: Noto Sans JP (body) + Zen Kaku Gothic New
-		// (display / heading, applied via the `heading` font token to
-		// h1/h2/h3 and large-size elements). Loaded with `display=swap`
-		// so first paint shows the platform Japanese fallback
-		// (`Hiragino Kaku Gothic ProN` / `system-ui`) while the webfont
-		// streams in. The two `preconnect`s cut the TLS handshake off
-		// the critical font path.
-		//
-		// Issue #291 — the font stylesheet used to be render-blocking and
-		// it was the first-paint gate for the whole page. Measured on the
-		// production build served by `vite preview`:
-		//   first-contentful-paint 356 ms with the request live,
-		//   first-contentful-paint  36 ms with `fonts.googleapis.com`
-		//   blocked outright.
-		// i.e. ~320 ms of the opening white interval was bought by a
-		// third-party CSS request (Google returns ~570 kB of expanded
-		// unicode-range rules for the Japanese faces).
-		//
-		// The fix is the standard async-CSS pattern: `media="print"` so the
-		// browser fetches the sheet without letting it block render, and a
-		// tiny parser-blocking `<script>` (below) that flips it back to
-		// `media="all"` the moment it lands so the font stack applies.
-		// `display=swap` is untouched — the swap window simply opens
-		// earlier instead of holding the whole page hostage.
-		//
-		// React cannot own the flip: an `onload` string attribute is
-		// dropped by `HeadContent`, and a React `onLoad` handler only
-		// attaches after hydration, by which time the `load` event has
-		// already fired. The inline script has neither problem and is the
-		// reason this is a script rather than a prop.
-		//
-		// Trade-off: with scripting disabled the sheet stays at
-		// `media="print"`, so a no-JS visitor reads the page in the
-		// platform fallback stack — the same face `display=swap` already
-		// shows for the first few hundred ms for everyone else.
+		// Webfonts are self-hosted (Issue #876): the woff2 subsets in
+		// `public/fonts/` are declared by `@font-face` rules in
+		// `src/styles.css` with the same unicode-range partitioning
+		// Google Fonts used to serve, so first paint still shows the
+		// platform Japanese fallback while the needed subsets stream
+		// in — but every request is now same-origin and
+		// the page no longer contacts `fonts.googleapis.com` /
+		// `fonts.gstatic.com` at all. There is deliberately no font
+		// `<link>` or flip script here anymore: the `@font-face` rules
+		// live inside the bundled stylesheet, which the browser already
+		// fetches for the page itself.
 		links: [
 			// Icon family (Issue #285 SVG favicon, Issue #504 PNG +
 			// Apple Touch Icon + Web App Manifest). `APP_ICON_LINKS`
@@ -181,73 +158,6 @@ export const Route = createRootRoute({
 			// every route (root, public pages, admin, and the 404
 			// pages).
 			...APP_ICON_LINKS,
-			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-			{
-				rel: 'preconnect',
-				href: 'https://fonts.gstatic.com',
-				// `crossOrigin` (camelCase) is the React prop name. The
-				// previous lowercase `crossorigin` was passed through as an
-				// unknown attribute and produced "Invalid DOM property
-				// `crossorigin`" plus a hydration attribute mismatch on
-				// every load (Issue #291).
-				crossOrigin: 'anonymous',
-			},
-			{
-				rel: 'stylesheet',
-				// `wght@400;600;700` — `600` is used widely for
-				// eyebrows / Badges / labels / admin table headers; if
-				// omitted the browser faux-bolds (or falls back to 700)
-				// and the typographic rhythm drifts. `500` is not used
-				// in the current type scale and is intentionally dropped from the axis
-				// to keep the stylesheet payload minimal.
-				href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap',
-				media: 'print',
-			},
-		],
-		scripts: [
-			{
-				// Applies the non-blocking font stylesheet above. Written to
-				// be order-independent with respect to the <link>: if the
-				// sheet is already parsed (`sheet` set) it flips immediately,
-				// otherwise it waits for `load`, and if this script runs
-				// before the <link> exists at all it retries — once at
-				// `DOMContentLoaded` while the document can still fire it,
-				// otherwise on a bounded `requestAnimationFrame` poll.
-				//
-				// Issue #488 — this script is the ONE element this ticket
-				// fixes. TanStack Router merges the root head into every
-				// route match, so a client-side navigation re-creates BOTH
-				// the `media="print"` <link> and this inline <script>; the
-				// browser re-executes the inline body each time. The
-				// previous revision ended with
-				//
-				//     if (!f()) document.addEventListener('DOMContentLoaded', f)
-				//
-				// so every route change that found no *pending* print link
-				// left one more listener on `document` — and after the
-				// first document load `DOMContentLoaded` can never fire
-				// again, so every one of them was permanently dead. The
-				// measurement in `docs/verification/perf/
-				// interaction-memory-profile.md` records it as +1 leaked
-				// `document` listener per route change, unbounded.
-				//
-				// The fix keeps the contract (flip whatever print-media
-				// stylesheet is currently in the document) and removes the
-				// unbounded part:
-				//
-				//   - the `DOMContentLoaded` fallback is registered ONLY
-				//     while `document.readyState === 'loading'`, i.e. only
-				//     while the event it waits for is still possible;
-				//   - after the document is interactive, a link that is not
-				//     in the DOM yet is resolved by a bounded rAF poll
-				//     (60 frames ≈ 1 s), which cannot accumulate because it
-				//     self-terminates and attaches no listener;
-				//   - the per-<link> `load` binding is `once` and guarded by
-				//     an expando, so re-running the script against the same
-				//     element cannot stack listeners.
-				children:
-					'(function(){var r=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}if(!l.__myWebFlip){l.__myWebFlip=1;l.addEventListener("load",function(){l.media="all"},{once:true})}return true};if(r())return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",r,{once:true});return}var n=0;var t=function(){if(r()||++n>60)return;requestAnimationFrame(t)};requestAnimationFrame(t)})();',
-			},
 		],
 	}),
 	loader: () => {
@@ -305,6 +215,11 @@ function RootComponent() {
 				    nothing before hydration, so it can never delay or
 				    change the page it sits on. */}
 				{!isAdminPath ? <AnalyticsConsentControl /> : null}
+				{/* Issue #936 — records public paths into the visitor's
+				    own localStorage trail. Public routes only, renders
+				    nothing, and every storage failure is swallowed in
+				    `recordVisit`. */}
+				{!isAdminPath ? <VisitTrailRecorder /> : null}
 			</body>
 		</html>
 	);

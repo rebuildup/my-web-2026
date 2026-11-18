@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Production deploy driver — Universal Auth + Wrangler + tempdir secrets file.
+ * Production deploy driver — Universal Auth + cf deploy + tempdir secrets file.
  *
  * ADR-0015 §4 deploy script. The deploy command replaces the
  * `wrangler deploy -c wrangler.production.jsonc` step of

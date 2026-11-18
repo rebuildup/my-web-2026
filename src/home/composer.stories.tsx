@@ -118,6 +118,40 @@ export const AllReachable: Story = {
 				last_hit: Date.parse('2026-09-17T15:02:16.985Z'),
 				enabled: true,
 			},
+			projects: [
+				{
+					id: 'my-web-2026',
+					name: 'my-web-2026',
+					statusJa: '個人 Web Platform の再構築。',
+				},
+			],
+			githubActivity: {
+				generatedOn: '2026-09-17',
+				windowDays: 30,
+				sources: {
+					public: { status: 'ok', observedAt: '2026-09-17T15:00:00.000Z' },
+					private: { status: 'ok', observedAt: '2026-09-17T15:00:00.000Z' },
+				},
+				feed: [
+					{
+						id: 'feed-1',
+						kind: 'public',
+						repoId: 'my-web-2026',
+						type: 'PushEvent',
+						at: '2026-09-17T14:30:00.000Z',
+					},
+				],
+				repoCount: { public: 3, private: 1 },
+			},
+			adProjects: [
+				{
+					slug: 'mic-level',
+					title: 'Mic Level',
+					summary: 'OBS と同じ目盛りでマイク音量を確認。',
+					coverUrl: '/media/portfolio/mic-level/cover.webp',
+					coverAlt: 'Mic Level の画面。',
+				},
+			],
 		},
 	},
 };
@@ -127,6 +161,23 @@ export const Degraded: Story = {
 		data: {
 			...AllReachable.args?.data,
 			statuses: degradedStatuses,
+		},
+	},
+};
+
+/**
+ * External snapshots unavailable (Issue #935): the committed GitHub
+ * activity snapshot could not be read (`null`) and the project roster
+ * is empty. The guide, projects section, ads, reactions and counter
+ * must stay fully operable while the activity card renders its honest
+ * unavailable state — no fabricated "online".
+ */
+export const SnapshotsUnavailable: Story = {
+	args: {
+		data: {
+			...AllReachable.args?.data,
+			projects: [],
+			githubActivity: null,
 		},
 	},
 };

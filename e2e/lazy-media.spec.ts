@@ -254,7 +254,7 @@ async function openContext(
 		deviceScaleFactor: 1,
 	});
 
-	// Third-party subresources (GA4, Google Fonts) are out of scope for
+	// Third-party subresources (GA4 and other third parties) are out of scope for
 	// this ticket, and leaving them in would make the numbers depend on
 	// someone else's uptime.
 	await context.route('**/*', (route) => {

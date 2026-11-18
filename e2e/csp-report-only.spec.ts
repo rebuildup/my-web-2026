@@ -122,8 +122,10 @@ test.describe('CSP Report-Only — browser observation (Issue #447)', () => {
 		const policy = response.headers()['content-security-policy-report-only'];
 		expect(policy).toBeTruthy();
 		expect(policy).toContain("script-src 'self' 'unsafe-inline' https://www.googletagmanager.com");
-		expect(policy).toContain('https://fonts.googleapis.com');
-		expect(policy).toContain('https://fonts.gstatic.com');
+		expect(policy).toContain("font-src 'self'");
+		// Issue #876 — self-hosted fonts; Google Fonts origins are gone.
+		expect(policy).not.toContain('fonts.googleapis.com');
+		expect(policy).not.toContain('fonts.gstatic.com');
 		expect(policy).toContain("frame-src 'self'");
 		expect(policy).not.toContain("'unsafe-eval'");
 		expect(policy).not.toContain('https://example.invalid');

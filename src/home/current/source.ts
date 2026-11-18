@@ -138,13 +138,21 @@ function isPublishableDateFact(fact: ProjectFact<string>, today: string): boolea
 }
 
 function isPublishableActivityFact(
-	fact: ProjectFact<{ commits: number; windowDays: number; commitsTotal?: number }>,
+	fact: ProjectFact<{
+		commits: number;
+		windowDays: number;
+		commitsTotal?: number;
+		pullRequests?: number;
+	}>,
 	today: string,
 ): boolean {
-	const { commits, windowDays, commitsTotal } = fact.value;
+	const { commits, windowDays, commitsTotal, pullRequests } = fact.value;
 	if (!Number.isInteger(commits) || commits < 0) return false;
 	if (!Number.isInteger(windowDays) || windowDays < 1) return false;
 	if (commitsTotal !== undefined && (!Number.isInteger(commitsTotal) || commitsTotal < 0)) {
+		return false;
+	}
+	if (pullRequests !== undefined && (!Number.isInteger(pullRequests) || pullRequests < 0)) {
 		return false;
 	}
 	return isObservedInTime(fact, today);
@@ -195,14 +203,18 @@ export function selectPublishedProjects(
 
 		const startedOn = record.startedOn;
 		const updatedOn = record.updatedOn;
-		// Both dates or neither: a duration needs a start and an end, and a
-		// lone date would be rendered as if it were the whole story.
-		if (Boolean(startedOn) !== Boolean(updatedOn)) continue;
+		// A start date needs an end date (a duration needs both), but a
+		// last-update date stands alone: "最終更新 2026-11-17" is a
+		// complete claim without a start (Issue #967 — GitHub-observed
+		// projects know when they last moved, not when they began).
+		if (startedOn && !updatedOn) continue;
 		if (startedOn && updatedOn) {
 			if (!isPublishableDateFact(startedOn, today)) continue;
 			if (!isPublishableDateFact(updatedOn, today)) continue;
 			// The start can never follow the last update.
 			if (compareIsoDates(startedOn.value, updatedOn.value) > 0) continue;
+		} else if (updatedOn && !isPublishableDateFact(updatedOn, today)) {
+			continue;
 		}
 
 		const weight = selectWeight(record.weight, today);
@@ -212,7 +224,8 @@ export function selectPublishedProjects(
 			id,
 			name,
 			statusJa,
-			...(startedOn && updatedOn ? { startedOn, updatedOn } : {}),
+			...(startedOn ? { startedOn } : {}),
+			...(updatedOn ? { updatedOn } : {}),
 			...(weight ? { weight } : {}),
 			...(link ? { link } : {}),
 		});

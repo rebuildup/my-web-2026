@@ -103,6 +103,11 @@
 	"vars": {
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page"
+		// Issue #320 — `DISCORD_PRESENCE_USER_ID` is a runtime SECRET
+		// (Infisical-managed, Issue #320 follow-up), not a var: the
+		// owner snowflake never lives in committed config. While the
+		// secret is unset the presence card fails closed to
+		// unavailable — see docs/runbook/discord-presence.md.
 	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).
 	// `simple` is the only rate-limit configuration shape supported by
@@ -165,7 +170,9 @@
 		"required": [
 			"BETTER_AUTH_SECRETS",
 			"MY_WEB_2026_CONSUMER_API_KEY",
-			"GOOGLE_ANALYTICS_MEASUREMENT_ID"
+			"GOOGLE_ANALYTICS_MEASUREMENT_ID",
+			"GITHUB_README_STATS_PAT_1",
+			"DISCORD_PRESENCE_USER_ID"
 		]
 	}
 	// Production-only configuration lives in the companion file

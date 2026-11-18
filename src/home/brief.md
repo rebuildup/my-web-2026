@@ -577,3 +577,73 @@ next to the element that uses it:
 - Digit grouping does **not** differ today: `en` / `ja` / `ko` all
   render "1,234,567". Recorded as an observation, not an assumption —
   `src/home/format.test.ts` asserts it.
+
+## Site-guide amendment (Issue #929 / Epic #928)
+
+> Supersedes two earlier statements for the TOP PAGE ONLY: "Not an
+> application workspace — no nested routes are reachable from the top"
+> and "Header global navigation is deferred." Epic #928 makes `GET /`
+> a station-directory-style entrance: the guide section
+> (`src/home/guide/`) publishes the site's destinations as "facilities"
+> with one level of subordinate destinations, plus a small set of
+> explicitly chosen external bases. The guide data is a typed,
+> hand-edited ledger (`ledger.ts`) validated against the generated
+> route tree — it is NOT a URL-tree projection and NOT a CMS.
+> Time-boxed promotions emphasise at most one entry inside their
+> window and never remove permanent entries. The guide's visual
+> language and its component live in `src/home/guide/` (Issue #930);
+> this amendment records only the direction change. Other pages keep
+> their existing navigation; nothing here propagates.
+
+## Information-priority & ad-coexistence amendment (Issues #928 / #931 / #935)
+
+> Records the composed top-page order and the standing decision that
+> the advertising surface stays an independent interruption. Owned by
+> Epic #928; #931 and #935 verify the composition against it.
+
+### Reading order
+
+The shipped order is the contract, top to bottom:
+
+1. **Site guide** (`src/home/guide/`) — what exists and how to reach
+   it. First read, first operable.
+2. **Current projects** (`src/home/current/`) — what is being worked
+   on now, from the committed roster + git facts.
+3. **Capabilities** — the longer-term surface map.
+4. **Advertising interruptions** — the #925 surface, placed between
+   and beside the editorial blocks (leaderboard link card, carousel,
+   video, playable, display rects, and the sponsored aside rail).
+5. **Site status & participation** — one `サイトの状態` section whose
+   `h3` subsections carry the meaningful states: platform health
+   (`StatusTiles`), GitHub activity (`GitHubActivityCard`, committed
+   snapshot), reactions (`ReactionsWidget`), access counter
+   (`CounterTile`), and Discord presence (`PresenceCard`, D1 snapshot
+   fed by the operator-side Gateway script — Issue #320).
+6. **Contact / footer** — participation paths and identity.
+
+### Advertising stays independent (#931)
+
+- Ad units keep their own disclosure labels (`広告` / `スポンサー広告`
+  / `PR` / `プレイアブル広告`) and `Sponsored` rail landmark; they are
+  never re-styled into guide or status cards and never borrow the
+  site's meaning-accent system.
+- Placement count, position and screen share may be re-balanced for
+  readability, but the interruption relationship — real ad formats
+  breaking into the editorial flow — is the design, not a defect to
+  remove.
+- Ads promote only real published content (portfolio-backed projects
+  or the Tool roster); no inflated numbers, unimplemented features or
+  unreachable destinations.
+
+### Status composition by meaning (#935)
+
+- Each `h3` subsection answers a different visitor question:
+  *is the site up*, *what is being worked on* (GitHub activity),
+  *how do I react*, *how many visits*, *is the operator around*
+  (Discord presence).
+- Optional data sources degrade honestly: a missing or stale
+  snapshot renders the card's unavailable state; it never blocks the
+  guide, projects, reactions or counter, and never fabricates
+  "online".
+- No causal claims between unrelated sources (e.g. Discord activity
+  and a specific commit are not linked).

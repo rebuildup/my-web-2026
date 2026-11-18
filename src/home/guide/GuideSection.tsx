@@ -1,6 +1,7 @@
 import { css, cx } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { CATEGORY_SILHOUETTE_CLIP_PATH } from '../../editorial/primitives/StateMark';
 import { VisitTrail } from './VisitTrail';
 import type { GuideCategory, GuideEntry } from './ledger';
 import { GUIDE_LEDGER } from './ledger';
@@ -18,8 +19,11 @@ import { selectGuideRows } from './select';
  * never the only carrier (the same rule Issue #411 applied to the
  * portfolio card): the fill is the facility's content class
  * (`accent.category.*` — the semantic accent the editorial system
- * uses for classification) and the silhouette is that class's shape
- * (diamond / square / circle / triangle). A facility with no content
+ * uses for classification) and the silhouette is that class's shape —
+ * the SAME clip-paths `StateMark` draws for the category kinds
+ * (diamond / square / stacked bars / chevron), imported from
+ * `CATEGORY_SILHOUETTE_CLIP_PATH` so the guide and the portfolio card
+ * can never drift into two vocabularies. A facility with no content
  * class gets a neutral capsule; explicitly chosen external bases sit
  * on a separate dashed spur as hollow rings — the spur visibly runs
  * THROUGH them, which is exactly what "this destination leaves the
@@ -32,10 +36,10 @@ import { selectGuideRows } from './select';
  *     there are no decorative routes, connectors or ambient
  *     animation.
  *   - Semantic colour as identification: node fill =
- *     `accent.category.<class>`; shape = the same class. Colour is
- *     never the only carrier — every station also shows its title
- *     and summary, and the legend under the route names every
- *     shape/colour pair.
+ *     `accent.category.<class>`; shape = the same class, drawn with
+ *     the shared `StateMark` clip-paths. Colour is never the only
+ *     carrier — every station also shows its title and summary, and
+ *     the legend under the route names every shape/colour pair.
  *   - No-JS safe: expansion is a native `<details>`/`<summary>`, so
  *     the whole guide works with scripting disabled and every link is
  *     reachable by keyboard and screen reader without extra ARIA.
@@ -145,11 +149,13 @@ const lineToNodeExternalClassName = /*#__PURE__*/ css({
  * the same property — Panda atomic classes do not guarantee override
  * order, so composition-by-conflict is not an option here.
  *
- * Silhouette vocabulary (mirrors the StateMark category family):
- *   design   → diamond   (rotated square)
- *   code     → square
- *   writing  → circle
- *   tool     → triangle
+ * Silhouette vocabulary — the SAME shapes `StateMark` draws for the
+ * category family (diamond / square / stacked bars / chevron), applied
+ * through `CATEGORY_SILHOUETTE_CLIP_PATH` as an inline `clipPath`:
+ *   design   → diamond   (StateMark clip polygon)
+ *   code     → square    (no clip — the element's own box)
+ *   writing  → stacked bars (StateMark clip polygon)
+ *   tool     → chevron   (StateMark clip polygon)
  *   neutral  → capsule   (a facility with no content class)
  *   external → hollow ring on the dashed spur (off this map)
  */
@@ -157,47 +163,40 @@ const nodePosition = {
 	position: 'absolute',
 	top: '1.7rem',
 	insetInlineStart: '50%',
+	transform: 'translateX(-50%)',
+} as const;
+
+const nodeBox = {
+	width: '10px',
+	height: '10px',
 } as const;
 
 const nodeDesignClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%) rotate(45deg)',
-	width: '8px',
-	height: '8px',
-	borderRadius: '1px',
+	...nodeBox,
 	backgroundColor: 'accent.category.design',
 });
 
 const nodeCodeClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%)',
-	width: '9px',
-	height: '9px',
-	borderRadius: '1px',
+	...nodeBox,
 	backgroundColor: 'accent.category.code',
 });
 
 const nodeWritingClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%)',
-	width: '10px',
-	height: '10px',
-	borderRadius: '50%',
+	...nodeBox,
 	backgroundColor: 'accent.category.writing',
 });
 
 const nodeToolClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%)',
-	width: '10px',
-	height: '10px',
-	clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
+	...nodeBox,
 	backgroundColor: 'accent.category.tool',
 });
 
 const nodeNeutralClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%)',
 	marginBlockStart: '3px',
 	width: '12px',
 	height: '5px',
@@ -207,9 +206,7 @@ const nodeNeutralClassName = /*#__PURE__*/ css({
 
 const nodeExternalClassName = /*#__PURE__*/ css({
 	...nodePosition,
-	transform: 'translateX(-50%)',
-	width: '10px',
-	height: '10px',
+	...nodeBox,
 	borderRadius: '50%',
 	borderWidth: '2px',
 	borderStyle: 'solid',
@@ -224,10 +221,24 @@ const NODE_CLASSNAMES: Record<GuideCategory, string> = {
 	tool: nodeToolClassName,
 };
 
-function nodeClassNameFor(entry: GuideEntry, external: boolean): string {
-	if (external) return nodeExternalClassName;
-	if (entry.category !== undefined) return NODE_CLASSNAMES[entry.category];
-	return nodeNeutralClassName;
+/**
+ * The node's class plus its silhouette. The clip-path is inline for
+ * the same reason `StateMark` sets its own inline: the polygons are
+ * silhouette geometry owned by the primitive's contract, not design
+ * tokens. `null` (the code square) needs no clip at all.
+ */
+function nodeFor(
+	entry: GuideEntry,
+	external: boolean,
+): { className: string; clipPath: string | undefined } {
+	if (external) return { className: nodeExternalClassName, clipPath: undefined };
+	if (entry.category !== undefined) {
+		return {
+			className: NODE_CLASSNAMES[entry.category],
+			clipPath: CATEGORY_SILHOUETTE_CLIP_PATH[entry.category] ?? undefined,
+		};
+	}
+	return { className: nodeNeutralClassName, clipPath: undefined };
 }
 
 const facilityLinkClassName = /*#__PURE__*/ css({
@@ -462,11 +473,15 @@ function StationRow({
 }) {
 	const { entry, featured } = row;
 	const lineClassName = lineClassNameFor({ index, count }, external);
+	const node = nodeFor(entry, external);
 	return (
 		<li className={stationClassName}>
 			<span className={railClassName} aria-hidden="true">
 				{lineClassName ? <span className={lineClassName} /> : null}
-				<span className={nodeClassNameFor(entry, external)} />
+				<span
+					className={node.className}
+					style={node.clipPath ? { clipPath: node.clipPath } : undefined}
+				/>
 			</span>
 			<div>
 				<div

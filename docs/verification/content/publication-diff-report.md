@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 32 |
 | External hosts | 51 |
 | First-party hosts | 0 |
-| Approved transition | 3 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -685,7 +685,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/googlefonts/zen-kakugothic
-- **WARN** `W003 external-url-removed` External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/GRI-2nd
+_No findings._
 

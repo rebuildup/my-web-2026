@@ -3654,7 +3654,8 @@
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/portfolio/components/Markdown.tsx",
 					"src/portfolio/markdown.notion.ts",
-					"src/routes/index.tsx"
+					"src/routes/index.tsx",
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -5532,34 +5533,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://github.com/googlefonts/zen-kakugothic"
-		],
-		"removedExternalUrls": [
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
-			"https://github.com/rebuildup/GRI-2nd"
-		],
+		"addedExternalUrls": [],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/googlefonts/zen-kakugothic"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://github.com/rebuildup/GRI-2nd"
-			}
-		]
+		"findings": []
 	}
 }

@@ -3,11 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { DataLifecycleEntry } from '../privacy/data-lifecycle';
 import {
-	DELETION_REQUEST_CHANNEL,
+	PUBLIC_DELETION_REQUEST_CHANNEL,
 	findUnsupportedClaims,
-	getPublishedDataLifecycle,
+	getPublishedPublicDataLifecycle,
+	toPublicDataLifecycleEntry,
 } from '../privacy/data-lifecycle';
 import { PrivacyNotice } from './privacy-notice';
+import type { PrivacyNoticeData } from './privacy/load';
 
 /**
  * The notice that reaches a visitor (Issue #496).
@@ -18,8 +20,13 @@ import { PrivacyNotice } from './privacy-notice';
  * document (`test/integration/data-lifecycle.test.ts`) is the other
  * half of the same contract.
  */
-function renderNotice(): string {
-	return renderToStaticMarkup(<PrivacyNotice />);
+const NOTICE_DATA: PrivacyNoticeData = {
+	entries: getPublishedPublicDataLifecycle(),
+	deletionRequestChannel: PUBLIC_DELETION_REQUEST_CHANNEL,
+};
+
+function renderNotice(data: PrivacyNoticeData = NOTICE_DATA): string {
+	return renderToStaticMarkup(<PrivacyNotice {...data} />);
 }
 
 /**
@@ -53,12 +60,12 @@ const PENDING_ENTRY: DataLifecycleEntry = {
 describe('PrivacyNotice', () => {
 	it('renders every published entry, keyed by its registry id', () => {
 		const html = renderNotice();
-		for (const entry of getPublishedDataLifecycle()) {
+		for (const entry of NOTICE_DATA.entries) {
 			expect(html).toContain(`data-lifecycle-id="${entry.id}"`);
 			expect(html).toContain(entry.label.ja);
 			expect(html).toContain(entry.label.en);
 		}
-		expect(html).toContain(DELETION_REQUEST_CHANNEL.statement.ja);
+		expect(html).toContain(PUBLIC_DELETION_REQUEST_CHANNEL.statement.ja);
 	});
 
 	it('names stored fields, retention, deletion, transfer and visibility per entry', () => {
@@ -83,7 +90,7 @@ describe('PrivacyNotice', () => {
 		expect(html).toContain('送信者:');
 		expect(html).toContain('このプラットフォームのコード');
 		expect(html).toContain('GA4 自身の自動収集');
-		for (const entry of getPublishedDataLifecycle()) {
+		for (const entry of NOTICE_DATA.entries) {
 			for (const sender of entry.transfer.senders) {
 				expect(html).toContain(sender.label.ja);
 				expect(html).toContain(sender.statement.ja);
@@ -95,22 +102,33 @@ describe('PrivacyNotice', () => {
 		expect(findUnsupportedClaims(renderNotice())).toEqual([]);
 	});
 
-	it('renders a pending entry nowhere', () => {
-		// Fail-closed publication, observed on the rendered surface.
-		// The fixture really contains a `pending` entry, so this
-		// assertion can fail — the shipped registry publishes
-		// everything it declares, which would make an assertion over
-		// the registry alone vacuous.
-		const entries = [...getPublishedDataLifecycle(), PENDING_ENTRY];
-		const html = renderToStaticMarkup(<PrivacyNotice entries={entries} />);
-		expect(html).not.toContain('data-lifecycle-id="pending-entry"');
-		expect(html).not.toContain('保留中のエントリ');
-		expect(html).not.toContain('Pending entry');
-		expect(html).not.toContain('保留中の保存項目');
-		// The approved entries of the same set still render, so the
-		// assertion above is about the filter and not about an empty
-		// document.
-		expect(html).toContain('data-lifecycle-id="actor-cookie"');
+	it('the public projection carries rendered fields only (Issue #1009)', () => {
+		// The component no longer filters — publication is decided at
+		// the boundary (`getPublishedPublicDataLifecycle`, which runs
+		// `filterPublishedEntries`; its pending-fixture coverage lives
+		// in `data-lifecycle.test.ts`). What the component contract
+		// now guarantees is that nothing beyond the projected shape
+		// can reach the markup: no `evidence`, no `publication`, no
+		// classification fields.
+		for (const entry of NOTICE_DATA.entries) {
+			expect(Object.keys(entry).sort()).toEqual(
+				['deletion', 'id', 'label', 'retention', 'stores', 'transfer', 'visibility'].sort(),
+			);
+		}
+	});
+
+	it('renders exactly the entries it is given', () => {
+		// Boundary contract: whatever the loader projects is what a
+		// visitor sees. A pending entry cannot arrive here because the
+		// projection never emits one — asserted on the projection in
+		// `data-lifecycle.test.ts`.
+		const projected = toPublicDataLifecycleEntry(PENDING_ENTRY);
+		const html = renderNotice({
+			entries: [...NOTICE_DATA.entries, projected],
+			deletionRequestChannel: NOTICE_DATA.deletionRequestChannel,
+		});
+		expect(html).toContain('data-lifecycle-id="pending-entry"');
+		expect(html).toContain('actor-cookie');
 	});
 
 	it('tags every English passage and no Japanese one', () => {
@@ -124,11 +142,11 @@ describe('PrivacyNotice', () => {
 		// summary (1) + deletion-window statement (1) + per entry
 		// (label + 5 statements = 6) + per sender (label + statement
 		// = 2, Issue #662).
-		const senderCount = getPublishedDataLifecycle().reduce(
+		const senderCount = NOTICE_DATA.entries.reduce(
 			(total, entry) => total + entry.transfer.senders.length,
 			0,
 		);
-		expect(englishTags).toHaveLength(2 + getPublishedDataLifecycle().length * 6 + senderCount * 2);
+		expect(englishTags).toHaveLength(2 + NOTICE_DATA.entries.length * 6 + senderCount * 2);
 	});
 
 	it('is a native disclosure: no script and no custom control', () => {

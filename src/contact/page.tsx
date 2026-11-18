@@ -2,8 +2,8 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
 import type { PublicContactChannel } from './public';
-import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './schema';
 
 export interface ContactPageProps {
 	channels: readonly PublicContactChannel[];

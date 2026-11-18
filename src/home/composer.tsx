@@ -35,6 +35,7 @@ import { GuideSection } from './guide/GuideSection';
 import { Hero } from './hero';
 import { PresenceCard } from './presence/PresenceCard';
 import type { DiscordPresenceCard } from './presence/types';
+import type { PrivacyNoticeData } from './privacy/load';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
 import type { DataSourceDescriptor } from './status/data-source';
@@ -92,6 +93,12 @@ export interface HomePageData {
 	 * Worker never calls Discord at runtime.
 	 */
 	discordPresence?: DiscordPresenceCard;
+	/**
+	 * Issue #1009 — the published data-lifecycle wording for the
+	 * footer notice, projected server-side. Optional only so story
+	 * fixtures stay small; the route always supplies it.
+	 */
+	privacyNotice?: PrivacyNoticeData;
 }
 
 export interface HomePageProps {
@@ -539,7 +546,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</aside>
 				</div>
 			</main>
-			<Footer />
+			<Footer privacyNotice={data.privacyNotice} />
 			<PetCompanion />
 		</div>
 	);

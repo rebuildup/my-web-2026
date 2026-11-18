@@ -1,6 +1,7 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { PrivacyNotice } from './privacy-notice';
+import type { PrivacyNoticeData } from './privacy/load';
 import { PACKAGE_VERSION } from './version';
 
 /**
@@ -26,7 +27,17 @@ import { PACKAGE_VERSION } from './version';
  * bottom bookend to the Hero mark at the top. Per-element
  * `marginBlockStart` carries the proximity rule within each column.
  */
-export function Footer() {
+export interface FooterProps {
+	/**
+	 * The projected lifecycle wording (Issue #1009). Optional so
+	 * story fixtures stay small; the `/` route always supplies it.
+	 * Absent means the notice renders nothing — an under-claim,
+	 * never an over-claim.
+	 */
+	privacyNotice?: PrivacyNoticeData;
+}
+
+export function Footer({ privacyNotice }: FooterProps) {
 	return (
 		<footer
 			className={css({
@@ -192,7 +203,7 @@ export function Footer() {
 						</ul>
 					</div>
 				</div>
-				<PrivacyNotice />
+				{privacyNotice ? <PrivacyNotice {...privacyNotice} /> : null}
 			</Container>
 		</footer>
 	);

@@ -1,10 +1,5 @@
 import { css } from '../../styled-system/css';
-import type { DataLifecycleEntry } from '../privacy/data-lifecycle';
-import {
-	DELETION_REQUEST_CHANNEL,
-	filterPublishedEntries,
-	getPublishedDataLifecycle,
-} from '../privacy/data-lifecycle';
+import type { BilingualText, PublicDataLifecycleEntry } from '../privacy/data-lifecycle';
 
 /**
  * The public data / retention notice (Issue #496).
@@ -53,13 +48,13 @@ export interface PrivacyNoticeProps {
 	 * passes a fixture with a `pending` entry and asserts it is
 	 * absent from the markup.
 	 */
-	readonly entries?: readonly DataLifecycleEntry[];
+	readonly entries: readonly PublicDataLifecycleEntry[];
+	/** The deletion-request statement, projected with the entries (Issue #1009). */
+	readonly deletionRequestChannel: { readonly statement: BilingualText };
 }
 
-export function PrivacyNotice({ entries = getPublishedDataLifecycle() }: PrivacyNoticeProps) {
-	// The component filters, not just the registry: the fail-closed
-	// rule then holds for whatever set it is handed.
-	const published = filterPublishedEntries(entries);
+export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNoticeProps) {
+	const published = entries;
 	return (
 		<details
 			className={css({
@@ -93,8 +88,8 @@ export function PrivacyNotice({ entries = getPublishedDataLifecycle() }: Privacy
 					marginBlockStart: '4',
 				})}
 			>
-				{DELETION_REQUEST_CHANNEL.statement.ja}
-				<span lang="en"> {DELETION_REQUEST_CHANNEL.statement.en}</span>
+				{deletionRequestChannel.statement.ja}
+				<span lang="en"> {deletionRequestChannel.statement.en}</span>
 			</p>
 			<dl
 				className={css({

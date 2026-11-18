@@ -309,3 +309,41 @@ test('an allowlisted owner that imports a file belonging to no owner passes', as
 
 	assert.deepEqual(checkArchitecture(root), []);
 });
+
+test('a file outside the allowlist that imports cloudflare:workers fails (Issue #1000)', async (t) => {
+	const root = await makeFixture('my-web-arch-workers-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/home/new-surface/load.ts',
+		["import { env } from 'cloudflare:workers';", 'export const load = () => env;'].join('\n'),
+	);
+
+	const errors = checkArchitecture(root);
+
+	assert.equal(errors.length, 1, `expected exactly one violation, got: ${JSON.stringify(errors)}`);
+	assert.match(errors[0], /cloudflare:workers env access is not in the declared allowlist/);
+	assert.match(errors[0], /src\/home\/new-surface\/load\.ts/);
+});
+
+test('a dynamic cloudflare:workers import outside the allowlist fails too', async (t) => {
+	const root = await makeFixture('my-web-arch-workers-dynamic-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/portfolio/new-loader.ts',
+		[
+			'export async function load() {',
+			"  const { env } = await import('cloudflare:workers');",
+			'  return env;',
+			'}',
+		].join('\n'),
+	);
+
+	const errors = checkArchitecture(root);
+
+	assert.equal(errors.length, 1, `expected exactly one violation, got: ${JSON.stringify(errors)}`);
+	assert.match(errors[0], /cloudflare:workers env access is not in the declared allowlist/);
+});

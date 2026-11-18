@@ -242,4 +242,18 @@ describe('compareProjects', () => {
 			'notion:a',
 		]);
 	});
+
+	it('orders the id tiebreak by code unit, matching SQLite BINARY', () => {
+		// Issue #998: `localeCompare(…, 'en')` sorts case-insensitively at
+		// the primary level, so 'notion:a' beat 'notion:A'. SQLite's
+		// `id ASC` is a byte comparison where 'A' (0x41) precedes 'a'
+		// (0x61). The merged ordering must agree with the SQL cursor
+		// predicate or a page boundary can skip or repeat a row.
+		const lower = { pinned: false, displayOrder: 0, updatedAt: 5, id: 'notion:a' };
+		const upper = { pinned: false, displayOrder: 0, updatedAt: 5, id: 'notion:A' };
+		expect([lower, upper].sort(compareProjects).map((entry) => entry.id)).toEqual([
+			'notion:A',
+			'notion:a',
+		]);
+	});
 });

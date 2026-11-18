@@ -223,5 +223,14 @@ export function compareProjects(left: Orderable, right: Orderable): number {
 		const difference = (b[index] as number) - (a[index] as number);
 		if (difference !== 0) return difference;
 	}
-	return String(a[3]).localeCompare(String(b[3]), 'en');
+	// Issue #998: the tiebreak must agree with the SQL `id ASC` the D1
+	// cursor predicate uses — SQLite BINARY is a byte (code-point)
+	// comparison, while `localeCompare` applies locale collation that
+	// can order punctuation and case differently. A disagreement here
+	// would let the merged ordering skip or repeat a row across a page
+	// boundary. Code-unit `<`/`>` is the same order for UTF-8 text.
+	const leftId = String(a[3]);
+	const rightId = String(b[3]);
+	if (leftId === rightId) return 0;
+	return leftId < rightId ? -1 : 1;
 }

@@ -3413,6 +3413,70 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1016",
+			"pr": 1016,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:95796a0e171eb7f7cbee6f77c5926e8d6f9d0cc450ec6de302cef2ec18f2ef5e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "公開日本語 copy 3 セグメントを実測した移行状態に整合。(1) / の meta description から「public preview」「構築しています」の未実測表現を除去し、公開済み範囲（Portfolio / about）と移行中範囲（content / activity）を分離。(2) /portfolio 空状態から「my-web-2025 から取り込み中」の完了済み工程の記述を除去。(3) /about Current の「順に乗せている」を統合済み/移行中の実測へ修正。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/data.ts",
+					"before": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about を順にこの release へ乗せている。",
+					"after": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。",
+					"text": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。",
+					"verdict": "intentional",
+					"note": "Issue #838 の実測（docs/verification/copy/migration-state-measurement-2026-11-18.md）に基づく事実整合の修正。portfolio / about の統合完了と content / activity の移行継続を分離した表現へ。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/EmptyState.tsx",
+					"before": "my-web-2025 から project データを取り込み中のため、まだ表示できる entry はありません。順次公開予定なので、進捗は下記の Releases ページから確認できます。",
+					"after": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+					"text": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+					"verdict": "intentional",
+					"note": "同上。my-web-2025 からの import は完了済み（verify-portfolio で 60 件公開を実測）のため、進行中を装う記述を除去し、確認先を実在の公開面へ修正。stale-content-review にも agent-recorded/unconfirmed の記録を追加済み。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/index.tsx",
+					"before": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio / content / activity を段階的に移行中です。この 2026 edition は移行途中の public preview です。",
+					"after": "開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。",
+					"text": "開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。",
+					"verdict": "intentional",
+					"note": "同上。edition は公開運用中のため「public preview」「構築しています」を除去し、公開済み/移行中の範囲を実測どおりに分離。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
+						"note": "移行状態の実測と copy 修正の Issue。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1016",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/copy/migration-state-measurement-2026-11-18.md",
+						"note": "公開状態の実測記録。"
+					}
+				]
+			}
 		}
 	]
 }

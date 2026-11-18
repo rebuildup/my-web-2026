@@ -56,7 +56,7 @@ export function PortfolioEmptyState({
 			<SectionHeading
 				eyebrow="Status"
 				title="ポートフォリオ準備中"
-				description="my-web-2025 から project データを取り込み中のため、まだ表示できる entry はありません。順次公開予定なので、進捗は下記の Releases ページから確認できます。"
+				description="公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。"
 			/>
 			<a
 				href={statusHref}

@@ -143,7 +143,7 @@ export const Route = createFileRoute('/')({
 	head: () => {
 		const title = 'my-web-2026 — rebuildup.dev';
 		const description =
-			'開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio / content / activity を段階的に移行中です。この 2026 edition は移行途中の public preview です。';
+			'開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。';
 		const url = 'https://rebuildup.dev/';
 		return {
 			meta: [

@@ -16,7 +16,8 @@ import { SiteMark } from './mark';
  * Invariants kept (e2e/smoke.spec.ts, e2e/about.spec.ts):
  *   - exactly one `<h1>` on the page, accessible name `my-web-2026`
  *   - the section stays `aria-labelledby="hero-title"`
- *   - one visible `/about` link inside the section
+ *   - one visible `/about` link and one visible `/portfolio` link
+ *     inside the section (the Issue #500 one-click contract)
  */
 export function Hero() {
 	return (
@@ -76,7 +77,7 @@ export function Hero() {
 				>
 					完成していないから、毎日更新されている。開発・制作・活動の記録と、公開中のツール、移行中の制作物をこのページに集約しています。
 				</p>
-				<div className={css({ marginBlockStart: '6' })}>
+				<div className={css({ marginBlockStart: '6', display: 'flex', gap: '6' })}>
 					<a
 						href="/about"
 						data-testid="home-hero-about"
@@ -97,6 +98,27 @@ export function Hero() {
 						})}
 					>
 						About me
+					</a>
+					<a
+						href="/portfolio"
+						data-testid="home-hero-portfolio"
+						className={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							fontWeight: '600',
+							color: 'text.default',
+							textDecoration: 'underline',
+							textUnderlineOffset: '4px',
+							_focusVisible: {
+								outline: '2px solid {colors.border.focus}',
+								outlineOffset: '2px',
+							},
+						})}
+					>
+						Portfolio
 					</a>
 				</div>
 			</Container>

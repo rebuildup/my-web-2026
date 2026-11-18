@@ -14,7 +14,7 @@
 *何が公開されているか* はコードの流派ではなく **契約** であり、放置すると次の
 2 種類の事故が静かに起きます。
 
-1. **意図しない公開面の縮小** — route / portfolio seed / tool manifest の変更で、
+1. **意図しない公開面の縮小** — route / portfolio snapshot / tool manifest の変更で、
    訪問者が辿れなくなった URL がレビューで気付けられない。
 2. **非公開データの混入** — 今まで公開していなかった surface が public に上げる、
    あるいは credential 入り URL や loopback URL が shipped source に混ざる。
@@ -30,7 +30,7 @@
 | route surface の分類（public / internal） | `scripts/publication-surface.mjs` の `SURFACE_DECLARATIONS` | route file との網羅性を検査し、漏れた route file は `E005` |
 | sitemap 対象 URL | 同宣言の `sitemap: true` | 宣言表の出力であり、sitemap.xml の実体ではない。**正本は生成器**（`src/http/seo/sitemap.ts`）で、宣言表は `scripts/check-sitemap-ledger-agreement.mjs`（Issue #734）が突き合わせる |
 | **公開到達可能 URL 全体**（sitemap 対象 + sitemap 外の public surface + 静的ページ） | 宣言の `classification: 'public'` の URL 展開 + `public/**` の HTML | **これが比較対象**。減ると `E001`（Issue の「review 必要」状態） |
-| portfolio の公開 URL | `src/portfolio/seed.ts` の slug | seed は `visibility: 'public'` / `status: 'published'` で投入される契約（`migrations/0007_portfolio.sql` の DEFAULT と `scripts/seed-portfolio.mjs`） |
+| portfolio の公開 URL | `src/portfolio/notion/generated/snapshot.json` の `published` + `public` レコードの slug（Issue #834 — CMS 正本のコミット済み投影。local seed `src/portfolio/seed.ts` は入力にしない） | `portfolio:ledger:check` が宣言 URL と生成可能集合の一致を gate する |
 | tools の公開 URL | `src/tools/manifest.json` の `delivery.kind ∈ {same_origin_static, external_exception}` | `host_disabled` / `not_integrable_yet` は `/tools` 上で "Coming soon" になるだけで、リンク先 URL を持たない |
 | Static Assets が直接配信する公開ページ | `public/**` の `.html` | `public/index.html` は `/`、`public/<dir>/index.html` は `/<dir>/`、その他はそのままの path。削除は `E001` |
 | 外部 HTTP boundary | `src/server.ts` の `EXTERNAL_BOUNDARY_PREFIXES` | sitemap 対象外だが機械的な公開面。**prefix の増減も差分**（減ると `E012`、増えると `W005`） |
@@ -45,7 +45,7 @@
 ### 3.1 sitemap 対象（12 URL）
 
 - `/`, `/about`, `/contact`, `/design-system`
-- `/portfolio` と、portfolio seed 由来の `/portfolio/<slug>`
+- `/portfolio` と、canonical snapshot 由来の `/portfolio/<slug>`
 - `/tools`
 
 所属の**正本は sitemap 生成器**（`src/http/seo/sitemap.ts`）です。生成器は自前の

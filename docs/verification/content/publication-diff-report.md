@@ -11,8 +11,8 @@
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
-| Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 32 |
+| Sitemap target URLs | 66 |
+| Publicly reachable URLs (surface + Static Assets) | 86 |
 | External hosts | 51 |
 | First-party hosts | 0 |
 | Approved transition | no delta (first record, or unchanged surface) |
@@ -25,12 +25,66 @@
 - `/contact`
 - `/design-system`
 - `/portfolio`
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
+- `/portfolio/alice`
+- `/portfolio/aulymo-v01`
+- `/portfolio/aulymo-v02`
+- `/portfolio/aulymo-v03`
+- `/portfolio/bansankai`
+- `/portfolio/baramoji`
+- `/portfolio/blue-white-design`
+- `/portfolio/border`
+- `/portfolio/cclub-brochure-2024`
+- `/portfolio/cclub-brochure-2025`
+- `/portfolio/ch4nge`
+- `/portfolio/code-type`
+- `/portfolio/design-001`
+- `/portfolio/dounika`
+- `/portfolio/flashbeat`
+- `/portfolio/flashbeat-bgm`
+- `/portfolio/flashbeat-op`
+- `/portfolio/foldlayers`
+- `/portfolio/homura`
+- `/portfolio/hurahu`
+- `/portfolio/icon-tegaki-anime`
+- `/portfolio/isogasii-demo`
+- `/portfolio/isogasii-editor`
+- `/portfolio/kaben`
+- `/portfolio/kakumei`
+- `/portfolio/kosen-fes-2025`
+- `/portfolio/kosen-fes2025-ending`
+- `/portfolio/kosen-procon-pv`
+- `/portfolio/lhaplus`
+- `/portfolio/liteglow`
+- `/portfolio/m5-clock`
+- `/portfolio/mawaru`
+- `/portfolio/meikai`
+- `/portfolio/moumoku`
+- `/portfolio/multislicer`
+- `/portfolio/my-first-blender`
+- `/portfolio/my-sns-icon`
+- `/portfolio/my-web-2025`
+- `/portfolio/netu`
+- `/portfolio/nulloto`
+- `/portfolio/oneself`
+- `/portfolio/ooame`
+- `/portfolio/pomodoroom`
+- `/portfolio/propose`
+- `/portfolio/prototype`
+- `/portfolio/prototype-brochure`
+- `/portfolio/red-black-design`
+- `/portfolio/reel-2024`
+- `/portfolio/reel-2025`
+- `/portfolio/rgbdelay`
+- `/portfolio/seishun`
+- `/portfolio/sep-color`
+- `/portfolio/shinkansen`
+- `/portfolio/stretch-v01`
+- `/portfolio/stretch-v02`
+- `/portfolio/tegaki-anime`
+- `/portfolio/tokimeki`
+- `/portfolio/ugoita`
+- `/portfolio/usoto`
+- `/portfolio/yukikate`
 - `/tools`
 
 ## Publicly reachable URLs (the compared surface)
@@ -47,12 +101,66 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/design-system`
 - `/keyboard`
 - `/portfolio`
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
+- `/portfolio/alice`
+- `/portfolio/aulymo-v01`
+- `/portfolio/aulymo-v02`
+- `/portfolio/aulymo-v03`
+- `/portfolio/bansankai`
+- `/portfolio/baramoji`
+- `/portfolio/blue-white-design`
+- `/portfolio/border`
+- `/portfolio/cclub-brochure-2024`
+- `/portfolio/cclub-brochure-2025`
+- `/portfolio/ch4nge`
+- `/portfolio/code-type`
+- `/portfolio/design-001`
+- `/portfolio/dounika`
+- `/portfolio/flashbeat`
+- `/portfolio/flashbeat-bgm`
+- `/portfolio/flashbeat-op`
+- `/portfolio/foldlayers`
+- `/portfolio/homura`
+- `/portfolio/hurahu`
+- `/portfolio/icon-tegaki-anime`
+- `/portfolio/isogasii-demo`
+- `/portfolio/isogasii-editor`
+- `/portfolio/kaben`
+- `/portfolio/kakumei`
+- `/portfolio/kosen-fes-2025`
+- `/portfolio/kosen-fes2025-ending`
+- `/portfolio/kosen-procon-pv`
+- `/portfolio/lhaplus`
+- `/portfolio/liteglow`
+- `/portfolio/m5-clock`
+- `/portfolio/mawaru`
+- `/portfolio/meikai`
+- `/portfolio/moumoku`
+- `/portfolio/multislicer`
+- `/portfolio/my-first-blender`
+- `/portfolio/my-sns-icon`
+- `/portfolio/my-web-2025`
+- `/portfolio/netu`
+- `/portfolio/nulloto`
+- `/portfolio/oneself`
+- `/portfolio/ooame`
+- `/portfolio/pomodoroom`
+- `/portfolio/propose`
+- `/portfolio/prototype`
+- `/portfolio/prototype-brochure`
+- `/portfolio/red-black-design`
+- `/portfolio/reel-2024`
+- `/portfolio/reel-2025`
+- `/portfolio/rgbdelay`
+- `/portfolio/seishun`
+- `/portfolio/sep-color`
+- `/portfolio/shinkansen`
+- `/portfolio/stretch-v01`
+- `/portfolio/stretch-v02`
+- `/portfolio/tegaki-anime`
+- `/portfolio/tokimeki`
+- `/portfolio/ugoita`
+- `/portfolio/usoto`
+- `/portfolio/yukikate`
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`

@@ -215,6 +215,11 @@ gates:
       # surface the repository actually ships; a publicly reachable URL
       # may not disappear without a recorded transition.
       - 'pnpm run publication:check'
+      # Issue #834: the declared /portfolio/<slug> ledger URLs must be
+      # producible from the canonical published set (committed Notion
+      # snapshot projection) — a declared URL production cannot serve,
+      # or a producible slug the ledger misses, fails here.
+      - 'pnpm run portfolio:ledger:check'
       # Issue #734: the publication ledger and the sitemap generator
       # answer the same question — "which paths belong in the sitemap?"
       # — independently, and nothing compared them. They drifted

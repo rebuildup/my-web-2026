@@ -14,9 +14,7 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": [
-		"ja"
-	],
+	"locales": ["ja"],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -1166,11 +1164,11 @@
 					{
 						"type": "issue",
 						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
-						"note": "Issue #838 measured the migration state and replaced the stale '取り込み中' wording; this record covers the replacement expression and awaits owner confirmation like every agent-recorded row."
+						"note": "Issue #838 measured the migration state and replaced the stale import-in-progress wording; this record covers the replacement expression and awaits owner confirmation like every agent-recorded row."
 					}
 				]
 			},
-			"note": "Empty-state description of /portfolio (src/portfolio/components/EmptyState.tsx). The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact — no published works yet — per the Issue #838 measurement record (docs/verification/copy/migration-state-measurement-2026-11-18.md)."
+			"note": "Empty-state description of /portfolio. The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact per docs/verification/copy/migration-state-measurement-2026-11-18.md."
 		}
 	]
 }

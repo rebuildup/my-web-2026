@@ -30,6 +30,7 @@
 		"**/*.test.tsx",
 		"**/*.md",
 		"**/fixtures/**",
+		"**/fixtures.ts",
 		"src/projects/snapshots/**",
 		"src/portfolio/notion/generated/**",
 		"src/routes/admin.*",

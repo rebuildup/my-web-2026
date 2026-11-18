@@ -66,13 +66,6 @@
 			"rationale": "ERROR_STATE_WITHHELD_INFO policy strings and evidence fields consumed by tests/validators; not rendered copy."
 		},
 		{
-			"file": "src/editorial/structured-data/validate.ts",
-			"rule": "repo-path",
-			"match": "docs/appearance/structured-data/search-gallery",
-			"classification": "detector-artifact",
-			"rationale": "repo-path rule matched the path component of an external google.com URL, not a repository path."
-		},
-		{
 			"file": "src/home/current/providers.ts",
 			"rule": "repo-path",
 			"match": "scripts/sync-home-git-facts.mjs",
@@ -80,25 +73,11 @@
 			"rationale": "ProjectFact#evidence stripped from $_TSR payload by toPublicRecord (PR#1013); module server-only via dynamic import."
 		},
 		{
-			"file": "src/home/presence/fixtures.ts",
-			"rule": "repo-path",
-			"match": "src/home/presence/types.ts",
-			"classification": "detector-artifact",
-			"rationale": "Test fixture imported only by reader.test.ts; never ships to production bundle or public surface."
-		},
-		{
 			"file": "src/legal/contract.ts",
 			"rule": "repo-path",
 			"match": "quality/asset-license-publication-decision.json",
 			"classification": "internal-error",
 			"rationale": "Asset-license review finding() diagnostic for the operator review record; not public page copy."
-		},
-		{
-			"file": "src/portfolio/schema.ts",
-			"rule": "repo-path",
-			"match": "scripts/check-i18n-policy.mjs",
-			"classification": "detector-artifact",
-			"rationale": "Trailing // comment mentioning the i18n-policy script; isCommentLine only skips full-line comments."
 		},
 		{
 			"file": "src/portfolio/seed.ts",
@@ -402,25 +381,18 @@
 			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
 		},
 		{
-			"file": "src/routes/__root.tsx",
-			"rule": "repo-path",
-			"match": "src/editorial/semantic-tokens.ts",
-			"classification": "detector-artifact",
-			"rationale": "Multi-line JSX comment {/* */} not recognised by line-based isCommentLine."
-		},
-		{
 			"file": "src/tools/artifact-inventory.ts",
 			"rule": "repo-path",
 			"match": "quality/tool-artifact-inventory.json",
-			"classification": "detector-artifact",
-			"rationale": "JSDoc block comment continuation lines not recognised by line-based isCommentLine."
+			"classification": "internal-error",
+			"rationale": "Operator-facing throw/diagnostic message strings (e.g. license-review findings) name the inventory/manifest files; after the detector precision fix (comment stripping) the JSDoc occurrences no longer produce findings, so the surviving detection is the real internal-error string literal — not a comment artifact."
 		},
 		{
 			"file": "src/tools/artifact-inventory.ts",
 			"rule": "repo-path",
 			"match": "src/tools/manifest.json",
-			"classification": "detector-artifact",
-			"rationale": "JSDoc block comment continuation lines not recognised by line-based isCommentLine."
+			"classification": "internal-error",
+			"rationale": "Operator-facing throw/diagnostic message strings (e.g. license-review findings) name the inventory/manifest files; after the detector precision fix (comment stripping) the JSDoc occurrences no longer produce findings, so the surviving detection is the real internal-error string literal — not a comment artifact."
 		},
 		{
 			"file": "src/tools/embed-policy.ts",

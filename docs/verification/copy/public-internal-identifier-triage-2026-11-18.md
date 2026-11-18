@@ -185,3 +185,48 @@ seed.ts の 6 entry を例外承認すれば exceptions ledger へ移行し、
 baseline から除去できる。検出器の誤検出（detector-artifact 6 件）
 は分類で管理するが、コメント認識・外部 URL 判定の改善で
 baseline 自体を縮小する余地は残る。
+
+## 追補: 検出器精度改善（同日・別 PR）
+
+`detector-artifact` と分類した 6 entry のうち 4 件は検出器側の
+欠陥だったため、分類記録で済ませず検出器自体を修正した
+（`scripts/check-public-internal-identifiers.mjs`）:
+
+- `src/editorial/structured-data/validate.ts` — 外部 URL
+  （`developers.google.com/search/docs/…`）内の `docs/` パスを
+  repo-path と誤検出。`findIdentifiers` が `http(s)://…` span を
+  走査前に除去するようになった。
+- `src/portfolio/schema.ts` — 行末 `//` コメント内の script 名を
+  検出。`isCommentLine` は行全体がコメントの場合しか除外しない
+  ため、文字列・テンプレートを考慮した `stripJsComments` を
+  `.ts/.tsx/.js/.jsx` に適用した。
+- `src/routes/__root.tsx` — JSX コメント内の言及を検出。
+  同上の block comment 追跡で解消。
+- `src/home/presence/fixtures.ts` — `reader.test.ts` のみが import
+  するテスト fixture が `src/home/**` glob に拾われていた。
+  `copy-editorial-surfaces.json` の `excludeGlobs` に
+  `fixtures.ts`（file 版）を追加した（根拠は
+  `docs/runbook/copy-editorial-approval.md` §6.1.2）。
+
+残る `src/tools/artifact-inventory.ts` の 2 entry は、JSDoc 内の
+言及だけでなく throw message の文字列リテラルにも同一パスが
+存在するため検出自体は正当 — 分類を `detector-artifact` から
+`internal-error`（operator 向け診断メッセージ）へ修正した。
+
+機械可読な対応表 `quality/public-internal-identifier-triage.json`
+も同じ変更を反映し、baseline との bijection を保つ。
+
+### 改善後の baseline（121 entry）
+
+| 分類 | 件数 |
+| --- | --- |
+| `operator-metadata` | 63 |
+| `non-rendered-field` | 46 |
+| `internal-error` | 6 |
+| `intentional-public`（owner 確認待ち） | 6 |
+| `detector-artifact` | 0 |
+| **計** | **121** |
+
+非描画系（operator-metadata + non-rendered-field + internal-error）
+は **115 entry**、seed.ts の意図的公開候補が **6 entry**。
+baseline は `--update-baseline` で再生成済み。

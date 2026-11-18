@@ -20,6 +20,7 @@ import {
 	findIdentifiers,
 	loadExceptions,
 	scanContent,
+	stripJsComments,
 	textCandidates,
 	toBaselineEntries,
 } from './check-public-internal-identifiers.mjs';
@@ -50,6 +51,96 @@ describe('findIdentifiers', () => {
 
 	it('returns nothing for ordinary copy', () => {
 		assert.deepEqual(findIdentifiers('お問い合わせは GitHub まで。'), []);
+	});
+
+	it('ignores repo-path-shaped segments inside URLs', () => {
+		assert.deepEqual(
+			findIdentifiers(
+				'https://developers.google.com/search/docs/appearance/structured-data/search-gallery',
+			),
+			[],
+		);
+		// A real repo path next to a URL is still a finding.
+		assert.deepEqual(findIdentifiers('see https://example.com and src/contact/channels.json'), [
+			{ rule: 'repo-path', match: 'src/contact/channels.json' },
+		]);
+	});
+});
+
+describe('stripJsComments', () => {
+	it('drops a trailing line comment but keeps the code', () => {
+		const state = { block: false, template: false };
+		assert.equal(
+			stripJsComments("import x from './y.ts'; // scripts/check-i18n-policy.mjs loads this", state),
+			"import x from './y.ts'; ",
+		);
+	});
+
+	it('keeps // inside strings and after a colon (URLs)', () => {
+		const state = { block: false, template: false };
+		assert.equal(
+			stripJsComments('const u = "https://example.com"; // real comment', state),
+			'const u = "https://example.com"; ',
+		);
+	});
+
+	it('drops JSX brace-wrapped block comments', () => {
+		const state = { block: false, template: false };
+		assert.equal(
+			stripJsComments('<p>{/* see src/editorial/semantic-tokens.ts */}text</p>', state),
+			'<p>{}text</p>',
+		);
+	});
+
+	it('tracks block comments and template literals across lines', () => {
+		const state = { block: false, template: false };
+		assert.equal(stripJsComments('/**', state), '');
+		assert.equal(stripJsComments(' * src/tools/manifest.json note', state), '');
+		assert.equal(stripJsComments('continued note line', state), '');
+		assert.equal(stripJsComments(' */ const a = 1;', state), ' const a = 1;');
+		assert.equal(stripJsComments('const t = `line one', state), 'const t = `line one');
+		assert.equal(
+			stripJsComments('// not a comment inside template', state),
+			'// not a comment inside template',
+		);
+		assert.equal(stripJsComments('line two`;', state), 'line two`;');
+		assert.equal(
+			stripJsComments('const s = "still code"; // trailing', state),
+			'const s = "still code"; ',
+		);
+	});
+});
+
+describe('scanContent comment precision', () => {
+	it('does not report identifiers that only appear in comments', () => {
+		const findings = scanContent(
+			'src/x/page.tsx',
+			[
+				'const ok = 1; // see scripts/check-i18n-policy.mjs',
+				'/**',
+				' * mentions quality/tool-artifact-inventory.json',
+				' */',
+				'<p>{/* src/editorial/semantic-tokens.ts */}ok</p>',
+			].join('\n'),
+		);
+		assert.equal(findings.length, 0);
+	});
+
+	it('still reports identifiers inside real string literals next to comments', () => {
+		const findings = scanContent(
+			'src/x/page.tsx',
+			'const s = "編集は src/contact/channels.json で"; // note',
+		);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].match, 'src/contact/channels.json');
+	});
+
+	it('does not strip comments in JSON files', () => {
+		const findings = scanContent(
+			'src/x/data.json',
+			'{ "note": "path src/contact/channels.json // tail" }',
+		);
+		assert.equal(findings.length, 1);
 	});
 });
 

@@ -62,10 +62,7 @@ export async function recordHit(db: D1Database, input: RecordHitInput): Promise<
 	// triple being retried (which is what lets its slot be re-claimed)
 	// and every ghost row that never returns — without it, rows whose
 	// session id is never seen again accumulate without bound.
-	const purge = await db
-		.prepare('DELETE FROM access_dedup WHERE expires_at <= ?1')
-		.bind(now)
-		.run();
+	const purge = await db.prepare('DELETE FROM access_dedup WHERE expires_at <= ?1').bind(now).run();
 	void purge;
 
 	// Step 2: try to claim the dedup slot.

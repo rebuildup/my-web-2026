@@ -3589,6 +3589,54 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1031",
+			"pr": 1031,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:f856cfcae5c520b47f11dae4c20867db7be4b7db0c5ca04225cafcf734ec2057",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "privacy registry の access-counter retention 文を実装変更に追従。旧文「失効行の削除は同じリクエスト識別子の再訪時にしか実行されず…再訪のない行はデータベースに残ります」は per-triple purge のみだった旧実装の記述で、全失効行 sweep 導入後は不正確になった。新文は「次にアクセスが記録された時点で識別子を問わずすべて削除」「Cron なしのためアクセス途絶中は残り得る」を述べる。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "重複排除行は記録から 60 分で失効します。ただし失効行の削除は同じリクエスト識別子の再訪時にしか実行されず、このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がありません。したがって再訪のない行はデータベースに残ります。集計行は手動削除されるまで残ります。",
+					"after": "重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。",
+					"text": "重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。",
+					"verdict": "intentional",
+					"note": "counter.ts の step1 を per-triple purge から全失効行 sweep に変更した実装追従。旧文は「同じ識別子の再訪時にしか削除しない」「再訪のない行は残る」と述べており新実装では偽になるため、事実に合わせて修正。Cron 非搭載・無アクセス時の残存可能性は引き続き明記。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/998",
+						"note": "access_dedup 無制限増大の suspicion 項目を含む棚卸し Issue。本 PR の実装対象。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1031",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/privacy/data-lifecycle.ts",
+						"note": "変更対象の retention 文を持つ registry エントリ。"
+					}
+				]
+			}
 		}
 	]
 }

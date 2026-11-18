@@ -521,6 +521,11 @@ export async function request<T = unknown>(
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
+			// workerd's fetch sends no User-Agent; api.github.com rejects
+			// such requests with a plain-text 403 that is not JSON, which
+			// surfaced as a misleading per-request error card instead of
+			// statistics. Same convention as src/http/outbound-fetch.ts.
+			'User-Agent': 'my-web-2026 (+https://rebuildup.dev)',
 			Authorization: `bearer ${token}`,
 			...headers,
 		},

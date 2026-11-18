@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -1146,6 +1148,29 @@
 				]
 			},
 			"note": "Same entry, en visibility sentence (name-hidden ids). Same checks as the ja record."
+		},
+		{
+			"id": "portfolio-empty-state-description",
+			"path": "src/portfolio/components/EmptyState.tsx",
+			"expression": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
+						"note": "Issue #838 measured the migration state and replaced the stale '取り込み中' wording; this record covers the replacement expression and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Empty-state description of /portfolio (src/portfolio/components/EmptyState.tsx). The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact — no published works yet — per the Issue #838 measurement record (docs/verification/copy/migration-state-measurement-2026-11-18.md)."
 		}
 	]
 }

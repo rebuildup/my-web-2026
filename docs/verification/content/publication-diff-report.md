@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 86 |
 | External hosts | 51 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -551,7 +551,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
-| `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
@@ -793,5 +792,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/my-web-2026/releases
 

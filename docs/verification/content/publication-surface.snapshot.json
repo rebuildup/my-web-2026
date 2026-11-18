@@ -3418,15 +3418,6 @@
 				]
 			},
 			{
-				"url": "https://github.com/rebuildup/my-web-2026/releases",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/components/EmptyState.tsx"
-				]
-			},
-			{
 				"url": "https://github.com/rebuildup/pc-setup",
 				"host": "github.com",
 				"kind": "external",
@@ -5696,12 +5687,20 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
-		"removedExternalUrls": [],
+		"removedExternalUrls": [
+			"https://github.com/rebuildup/my-web-2026/releases"
+		],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W003 external-url-removed",
+				"severity": "warn",
+				"message": "External URL removed: https://github.com/rebuildup/my-web-2026/releases"
+			}
+		]
 	}
 }

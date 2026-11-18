@@ -1,6 +1,17 @@
 import { createServerFn } from '@tanstack/react-start';
 import type { PublicContactChannel } from './public';
 
+/** What the `/contact` loader returns (Issue #833). */
+export interface ContactChannelsPayload {
+	readonly channels: readonly PublicContactChannel[];
+	/**
+	 * Active channels whose records cannot confirm verification
+	 * (`unknown` audit). Lets the page distinguish "no channels
+	 * exist" from "channels exist but none are confirmable".
+	 */
+	readonly unverifiableCount: number;
+}
+
 /**
  * The `/contact` channel list, resolved server-side (Issue #1009).
  *
@@ -16,8 +27,11 @@ import type { PublicContactChannel } from './public';
  * the handler.
  */
 export const getContactChannels = createServerFn({ method: 'GET' }).handler(
-	async (): Promise<readonly PublicContactChannel[]> => {
-		const { getVisiblePublicChannels } = await import('./public');
-		return getVisiblePublicChannels();
+	async (): Promise<ContactChannelsPayload> => {
+		const { getUnauditableChannelCount, getVisiblePublicChannels } = await import('./public');
+		return {
+			channels: getVisiblePublicChannels(),
+			unverifiableCount: getUnauditableChannelCount(),
+		};
 	},
 );

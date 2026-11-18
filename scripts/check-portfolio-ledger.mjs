@@ -49,9 +49,7 @@ export function evaluatePortfolioLedger({ declared, producible }) {
 	}
 	for (const slug of producible) {
 		if (!declaredSet.has(slug)) {
-			violations.push(
-				`producible /portfolio/${slug} is missing from the publication ledger`,
-			);
+			violations.push(`producible /portfolio/${slug} is missing from the publication ledger`);
 		}
 	}
 	return violations;

@@ -1,16 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-	declaredPortfolioSlugs,
-	evaluatePortfolioLedger,
-} from './check-portfolio-ledger.mjs';
+import { declaredPortfolioSlugs, evaluatePortfolioLedger } from './check-portfolio-ledger.mjs';
 
 describe('check-portfolio-ledger (Issue #834)', () => {
 	it('passes when declared and producible slug sets agree', () => {
-		assert.deepEqual(
-			evaluatePortfolioLedger({ declared: ['a', 'b'], producible: ['a', 'b'] }),
-			[],
-		);
+		assert.deepEqual(evaluatePortfolioLedger({ declared: ['a', 'b'], producible: ['a', 'b'] }), []);
 	});
 
 	it('negative control: a declared slug the canonical set cannot produce fails', () => {

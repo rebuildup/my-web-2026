@@ -63,7 +63,6 @@ function snapshotFixture(slugs) {
 	};
 }
 
-
 describe('publication-surface — canonical origin derivation', () => {
 	it('reads the origin out of the constant that already owns it', () => {
 		const source = [

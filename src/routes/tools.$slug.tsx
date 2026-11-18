@@ -174,7 +174,7 @@ export const Route = createFileRoute('/tools/$slug')({
 					{ title: `${loaderData.tool.display_name} — blocked — my-web-2026 Tools` },
 					{
 						name: 'description',
-						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy (Issue #465) or the third-party contact contract (Issue #498).`,
+						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy or the third-party contact contract.`,
 					},
 					{ name: 'robots', content: 'noindex' },
 				],

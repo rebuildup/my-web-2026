@@ -67,6 +67,6 @@ export function getExternalBoundaryHealth(): ExternalBoundaryHealth {
 	return {
 		id: 'external-boundary',
 		health: 'ok',
-		detail: '/api/v1/* wired through src/http/hono.ts',
+		detail: 'external HTTP boundary endpoints mounted',
 	};
 }

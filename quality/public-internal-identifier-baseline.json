@@ -63,19 +63,9 @@
 			"match": "src/home/presence/types.ts"
 		},
 		{
-			"file": "src/home/status/health.ts",
-			"rule": "repo-path",
-			"match": "src/http/hono.ts"
-		},
-		{
 			"file": "src/legal/contract.ts",
 			"rule": "repo-path",
 			"match": "quality/asset-license-publication-decision.json"
-		},
-		{
-			"file": "src/portfolio/components/Markdown.tsx",
-			"rule": "repo-path",
-			"match": "docs/security.md"
 		},
 		{
 			"file": "src/portfolio/schema.ts",
@@ -301,16 +291,6 @@
 			"file": "src/routes/__root.tsx",
 			"rule": "repo-path",
 			"match": "src/editorial/semantic-tokens.ts"
-		},
-		{
-			"file": "src/routes/tools.$slug.tsx",
-			"rule": "issue-ref",
-			"match": "Issue #465"
-		},
-		{
-			"file": "src/routes/tools.$slug.tsx",
-			"rule": "issue-ref",
-			"match": "Issue #498"
 		},
 		{
 			"file": "src/tools/artifact-inventory.ts",

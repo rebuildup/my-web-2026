@@ -61,7 +61,7 @@ const services: readonly SystemService[] = [
 ];
 
 const statuses: readonly SystemServiceStatus[] = [
-	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'external-boundary', health: 'ok', detail: 'external HTTP boundary endpoints mounted' },
 	{ id: 'd1', health: 'degraded', detail: 'empty result set' },
 ];
 

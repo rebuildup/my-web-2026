@@ -55,7 +55,7 @@ export type ExternalFailureReason =
  * message can reach a visitor only through a code change.
  */
 export const EXTERNAL_FAILURE_LABEL: Readonly<Record<ExternalFailureReason, string>> = {
-	timeout: '応答时间内.timeout',
+	timeout: '応答時間内.timeout',
 	network: '接続不可.network',
 	'rate-limited': '回数制限.rate limited',
 	'not-found': '該当なし.not found',

@@ -687,6 +687,76 @@ describe('portfolio — CMS merge (Issue #765)', () => {
 			expect(project?.motivationMd).toBe('D1 body.');
 		});
 
+		// Issue #1008 — role and links are authoring fields too: the CMS
+		// record of the same slug fills them under the same
+		// "non-empty wins, empty never erases" rule as the sections.
+		it('fills an empty D1 role from a recorded CMS role', async () => {
+			await seedOne('cms-one', { display_order: 5 });
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [cmsProject({ role: 'Tool developer' })],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.role).toBe('Tool developer');
+		});
+
+		it('lets a recorded CMS role win over the stored one (authoring SoT)', async () => {
+			const id = await seedOne('cms-one', { display_order: 5 });
+			await env.DB.prepare('UPDATE portfolio_project SET role = ?1 WHERE id = ?2')
+				.bind('Stale role', id)
+				.run();
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [cmsProject({ role: 'Tool developer' })],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.role).toBe('Tool developer');
+		});
+
+		it('keeps the D1 role when the CMS record has none', async () => {
+			const id = await seedOne('cms-one', { display_order: 5 });
+			await env.DB.prepare('UPDATE portfolio_project SET role = ?1 WHERE id = ?2')
+				.bind('Tool developer', id)
+				.run();
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [cmsProject({ role: null })],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.role).toBe('Tool developer');
+		});
+
+		it('fills empty D1 links from the CMS record', async () => {
+			await seedOne('cms-one', { display_order: 5 });
+			const loader = createD1PortfolioLoader(env, {
+				cmsProjects: [
+					cmsProject({
+						links: [
+							{
+								id: 'repo:0',
+								kind: 'repo',
+								label: 'source',
+								url: 'https://example.com/repo',
+								displayOrder: 0,
+							},
+						],
+					}),
+				],
+			});
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.links.map((link) => link.url)).toEqual(['https://example.com/repo']);
+		});
+
+		it('does not erase stored D1 links with an empty CMS link list', async () => {
+			const id = await seedOne('cms-one', { display_order: 5 });
+			const now = Date.now();
+			await env.DB.prepare(
+				'INSERT INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)',
+			)
+				.bind('l1', id, 'repo', 'source', 'https://example.com/d1', 0, now)
+				.run();
+			const loader = createD1PortfolioLoader(env, { cmsProjects: [cmsProject()] });
+			const project = await loader.loadPortfolioProject('cms-one');
+			expect(project?.links.map((link) => link.url)).toEqual(['https://example.com/d1']);
+		});
+
 		it('unions media: CMS-only keys join, shared keys are not duplicated', async () => {
 			const id = await seedOne('cms-one', { display_order: 5 });
 			const now = Date.now();

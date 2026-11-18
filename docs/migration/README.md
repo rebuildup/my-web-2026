@@ -65,7 +65,7 @@ with `visibility = 'draft'` and the public loader never surfaces it.
    - re-run the classifier; the migration reflects the new state
 4. Run `scripts/migrate-portfolio-from-2025.mjs --dry-run` to inspect the SQL surface.
 5. Run `scripts/migrate-portfolio-from-2025.mjs --apply --target=local` to apply.
-6. Run `scripts/verify-portfolio.mjs` to confirm the AC: public rows have `media_count >= 1`, `title / summary / role / period / ≥1 link`.
+6. Run `scripts/verify-portfolio.mjs` to confirm the AC. Since Issue #1008 it verifies TWO contracts separately: the D1 storage contract (identity fields present, no facet-kind label in `role`) and the merged public contract (the same `mergeCmsAuthoring` the Worker runs — title / summary / period / legal role / ≥1 link / ≥1 media). Link/media absences are reported as content gaps, not hidden; `--strict-content` fails on them.
 
 ## Public publication gate
 

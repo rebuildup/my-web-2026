@@ -1,3 +1,4 @@
+import { isFacetKindLabel } from '../kind-labels.ts';
 import type { PortfolioFacet, PortfolioLink, PortfolioMedia, PortfolioProject } from '../schema';
 import type { NotionMedia, NotionRecord, ReadSnapshot } from './contract';
 
@@ -94,6 +95,24 @@ function toLink(link: NotionRecord['links'][number]): PortfolioLink {
 }
 
 /**
+ * The role a public surface may print, or `null` (Issue #813, #1008).
+ *
+ * The snapshot's `Role` property carries whatever the authoring side
+ * holds, and for the migrated rows that is the legacy facet-derived
+ * word (`Video production`, `Development`, …) — a kind of work, not a
+ * recorded person role. `isFacetKindLabel` is the reader-side guard:
+ * the snapshot contract has no `role_source` column, so provenance
+ * cannot be checked directly and the closed label set is the check.
+ * `''` maps to `null` for the same reason the D1 row mapping does:
+ * "no role is recorded" is a state, not an empty string.
+ */
+function recordedRole(record: NotionRecord): string | null {
+	const role = record.role;
+	if (role === '' || isFacetKindLabel(role)) return null;
+	return role;
+}
+
+/**
  * Project a record into the shape the public pages already render.
  *
  * `updatedAt` is Notion's `last_edited_time`, not the ingest instant: the
@@ -115,7 +134,7 @@ export function toProject(record: NotionRecord): PortfolioProject | null {
 		slug: record.slug,
 		title: record.title,
 		summary: record.summary,
-		role: record.role,
+		role: recordedRole(record),
 		periodStart: record.periodStart,
 		periodEnd: record.periodEnd,
 		periodLabel: record.periodLabel,

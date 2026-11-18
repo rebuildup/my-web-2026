@@ -3362,6 +3362,57 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1006",
+			"pr": 1006,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:5a1c22496efd61545b322081135699179f1811e88ee28df686f0377b3962859e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "公開日本語 copy 2 セグメントから内部識別子を除去。(1) YouTube 埋め込みの外部送信文から内部 Issue 参照「Issue #910」を除去し日付と owner 決定の事実のみ残す。(2) contact 掲載先の公開範囲文からリポジトリパス「src/contact/channels.json」を除去し「公開済みのリンクだけ」という公開者向け事実のみにする。意味は維持。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定（Issue #910）で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"after": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"text": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"verdict": "intentional",
+					"note": "Issue #994 の内部識別子 gate が baseline に残していた live leak を実測で確認し修正。括弧内の内部 Issue 参照のみ除去し、取得タイミングと対象ページの事実は不変。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "掲載先は `src/contact/channels.json` で、所有者は公開済みのリンクのみです。",
+					"after": "掲載先は公開済みのリンクだけです。",
+					"text": "掲載先は公開済みのリンクだけです。",
+					"verdict": "intentional",
+					"note": "同上。リポジトリパスの言及を除去。『公開済みリンクのみ掲載』という公開者向けの事実は保持。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1005",
+						"note": "#994 baseline の実測検証で発見した live leak の修正。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1006",
+						"note": "本修正を含む PR。"
+					}
+				]
+			}
 		}
 	]
 }

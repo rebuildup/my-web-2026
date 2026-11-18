@@ -120,7 +120,7 @@ export const SURFACE_DECLARATIONS = [
 		sitemap: true,
 		files: ['src/routes/portfolio/$slug.tsx'],
 		reason:
-			'Per-project detail. Expands from the repo-controlled portfolio seed slugs; the loader serves `visibility = public` rows only.',
+			'Per-project detail. Expands from the published+public slugs of the committed Notion portfolio snapshot unioned with the D1 rows the loader serves; the loader serves `visibility = public` rows only.',
 	},
 	{
 		id: '/tools/',

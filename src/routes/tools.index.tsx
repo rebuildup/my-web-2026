@@ -27,8 +27,8 @@ import {
 } from '../editorial/primitives/material-symbol-tool-paths';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
-import { listAllTools } from '../tools/registry';
-import type { ManifestTool } from '../tools/registry';
+import { listToolIndexEntries } from '../tools/public';
+import type { ToolIndexEntry } from '../tools/public';
 
 /**
  * `/tools` — the Tool Registry index (Issues #195, #300, #785).
@@ -77,10 +77,10 @@ export const TOOLS_INDEX_REACTIONS_TARGET = 'tools-index';
 
 export const Route = createFileRoute('/tools/')({
 	loader: async () => {
-		const all = listAllTools();
-		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
-		const available = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
-		const planned = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
+		// Issue #1005: the manifest read lives behind the server
+		// boundary (`src/tools/public.ts`) — the client bundle and the
+		// hydration payload only ever see `ToolIndexEntry` card fields.
+		const { available, planned } = await listToolIndexEntries();
 		const reactions = await getHomeReactions({
 			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
 		});
@@ -601,7 +601,7 @@ const plannedDescription = css({
 	lineHeight: '1.6',
 });
 
-function ToolCard({ tool }: { tool: ManifestTool }) {
+function ToolCard({ tool }: { tool: ToolIndexEntry }) {
 	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	const preview = TOOL_PREVIEWS[tool.slug];
 	// No `data-tool-state` on an OPEN card: the attribute is the disabled
@@ -652,7 +652,7 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 	);
 }
 
-function PlannedToolItem({ tool }: { tool: ManifestTool }) {
+function PlannedToolItem({ tool }: { tool: ToolIndexEntry }) {
 	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	return (
 		<li data-tool-slug={tool.slug} data-tool-state="host_disabled" className={plannedItem}>

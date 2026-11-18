@@ -501,8 +501,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		transfer: {
 			target: 'youtube-embed',
 			statement: {
-				ja: '動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定（Issue #910）で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。',
-				en: 'When a portfolio detail page whose project carries a validated video link is loaded, the browser fetches the player from `youtube-nocookie.com`. The 2026-11-05 owner decision (Issue #910) removed the click-to-load gate, so this fetch happens at page load. A page without a video requests nothing.',
+				ja: '動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。',
+				en: 'When a portfolio detail page whose project carries a validated video link is loaded, the browser fetches the player from `youtube-nocookie.com`. The 2026-11-05 owner decision removed the click-to-load gate, so this fetch happens at page load. A page without a video requests nothing.',
 			},
 			senders: [
 				{
@@ -636,8 +636,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			senders: [],
 		},
 		visibility: {
-			ja: '掲載先は `src/contact/channels.json` で、所有者は公開済みのリンクのみです。',
-			en: 'The listed targets come from `src/contact/channels.json`, which contains only already-published links.',
+			ja: '掲載先は公開済みのリンクだけです。',
+			en: 'The listed targets are already-published links only.',
 		},
 		evidence: [
 			'src/contact/page.tsx (フォーム要素なし)',

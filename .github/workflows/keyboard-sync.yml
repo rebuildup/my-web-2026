@@ -19,12 +19,15 @@ name: Keyboard layout sync
 # ------------------------------------------
 # `main` is the released source state and only release PRs update it
 # (AGENTS.md §6). The workflow therefore opens (or updates) a PR
-# against the active release branch, configured as
-# `vars.KEYBOARD_SYNC_BASE_REF` at sprint cut — the same pattern the
-# `Project introduction sync` workflow uses. The workflow never merges,
-# tags, deploys or publishes; those remain human gates. If the variable
-# is unset the job stops with a status-only message rather than
-# guessing a base.
+# against the active release branch. The base is resolved by
+# `scripts/resolve-release-base.mjs`: the highest `release-x-y-z`
+# head on origin, with `vars.KEYBOARD_SYNC_BASE_REF` kept only as an
+# explicit transition override — the base follows the release
+# lifecycle with no per-sprint variable to maintain (Issue #719).
+# The workflow never merges,
+# tags, deploys or publishes; those remain human gates. If no release
+# branch exists and no override is set, the resolver stops with a
+# status-only error rather than guessing a base.
 #
 # What it reads
 # -------------
@@ -75,13 +78,17 @@ jobs:
       - name: resolve release base
         id: base
         env:
-          BASE_REF: ${{ vars.KEYBOARD_SYNC_BASE_REF }}
+          # Explicit override for release transitions where two
+          # release-x-y-z branches coexist. Normally unset: the
+          # resolver derives the highest semver release branch on
+          # origin, so the base follows the release lifecycle without
+          # a hand-edited repo variable (Issue #719 — both
+          # *_SYNC_BASE_REF vars rotted and failed every scheduled
+          # run until someone noticed).
+          SYNC_BASE_REF: ${{ vars.KEYBOARD_SYNC_BASE_REF }}
         run: |
-          if [ -z "$BASE_REF" ]; then
-            echo "::error::vars.KEYBOARD_SYNC_BASE_REF is unset; set it to the active release-x-y-z branch."
-            exit 1
-          fi
-          echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          base=$(node scripts/resolve-release-base.mjs)
+          echo "ref=$base" >> "$GITHUB_OUTPUT"
       - name: check out the sync branch
         env:
           BASE_REF: ${{ steps.base.outputs.ref }}
@@ -141,5 +148,8 @@ jobs:
             echo "::notice::updated existing pull request #$existing"
             exit 0
           fi
-          gh pr create --base "$base" --head "$branch" \
-            --title "$(jq -r .title .tmp/pr-plan.json)" --body "$(jq -r .body .tmp/pr-plan.json)"
+          if ! gh pr create --base "$base" --head "$branch" \
+            --title "$(jq -r .title .tmp/pr-plan.json)" --body "$(jq -r .body .tmp/pr-plan.json)"; then
+            echo "::error::PR creation failed. If the error is 'not permitted to create or approve pull requests', enable Settings → Actions → General → Workflow permissions → 'Allow GitHub Actions to create and approve pull requests' (Issue #719). The sync branch $branch is already pushed; re-run after fixing the setting or open the PR by hand."
+            exit 1
+          fi

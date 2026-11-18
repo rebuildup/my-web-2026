@@ -28,7 +28,6 @@ import {
 	CONSTANTS,
 	CustomError,
 	MissingParamError,
-	clampValue,
 	getGithubToken,
 	parseArray,
 	parseBoolean,
@@ -163,7 +162,6 @@ githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 		text_bold,
 		bg_color,
 		theme,
-		cache_seconds,
 		exclude_repo,
 		custom_title,
 		locale,
@@ -221,14 +219,13 @@ githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 			),
 		);
 
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.CARD_CACHE_SECONDS), 10),
-			CONSTANTS.TWELVE_HOURS,
-			CONSTANTS.TWO_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
+		// Caller-supplied `cache_seconds` is deliberately ignored (the
+		// streak route documents the same rule): any embed could otherwise
+		// pin a stale card in CDN caches for days. `CACHE_SECONDS` remains
+		// the operator-side override.
+		const cacheSeconds = env.CACHE_SECONDS
+			? Number.parseInt(env.CACHE_SECONDS, 10) || CONSTANTS.CARD_CACHE_SECONDS
+			: CONSTANTS.CARD_CACHE_SECONDS;
 
 		c.header(
 			'Cache-Control',
@@ -330,7 +327,6 @@ githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 		text_color,
 		bg_color,
 		theme,
-		cache_seconds,
 		layout,
 		langs_count,
 		exclude_repo,
@@ -386,15 +382,6 @@ githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 				env,
 			),
 		);
-
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.TOP_LANGS_CACHE_SECONDS), 10),
-			CONSTANTS.TWO_DAY,
-			CONSTANTS.TEN_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
 
 		c.header(
 			'Cache-Control',
@@ -558,7 +545,6 @@ githubReadmeStatsRouter.get('/api/pin/', rateLimitRead, async (c) => {
 		bg_color,
 		theme,
 		show_owner,
-		cache_seconds,
 		locale,
 		border_radius,
 		border_color,
@@ -598,15 +584,6 @@ githubReadmeStatsRouter.get('/api/pin/', rateLimitRead, async (c) => {
 		}
 		const dataKey = `pin:${username}/${repo}`;
 		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', env));
-
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.PIN_CARD_CACHE_SECONDS), 10),
-			CONSTANTS.ONE_DAY,
-			CONSTANTS.TEN_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
 
 		c.header(
 			'Cache-Control',

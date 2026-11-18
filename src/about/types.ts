@@ -36,6 +36,16 @@ export interface AboutIdentity {
 	readonly role: string;
 	readonly lead: string;
 	readonly secondary: string | null;
+	/**
+	 * Latin-script name parts for the `profile:first_name` /
+	 * `profile:last_name` Open Graph meta (Issue #1000). `name` is a
+	 * bilingual display string and cannot be split reliably, so the
+	 * route derives the meta from these fields and omits it entirely
+	 * when they are absent — a snapshot change can never leave a stale
+	 * literal behind.
+	 */
+	readonly firstName?: string;
+	readonly lastName?: string;
 }
 
 /**

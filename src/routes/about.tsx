@@ -86,8 +86,16 @@ export const Route = createFileRoute('/about')({
 			{ title },
 			{ name: 'description', content: description },
 			...card.meta,
-			{ property: 'profile:first_name', content: 'Yusuke' },
-			{ property: 'profile:last_name', content: 'Kimura' },
+			// Issue #1000: the name parts come from the identity record,
+			// not literals — a snapshot change must not leave a stale
+			// `profile:*` name behind. Both are emitted only when the
+			// record carries them.
+			...(identity?.firstName
+				? [{ property: 'profile:first_name', content: identity.firstName }]
+				: []),
+			...(identity?.lastName
+				? [{ property: 'profile:last_name', content: identity.lastName }]
+				: []),
 			{ property: 'profile:username', content: identity?.handle ?? 'samuido' },
 		];
 		if (role) meta.push({ property: 'profile:role', content: role });

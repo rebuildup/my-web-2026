@@ -1,0 +1,360 @@
+{
+	"version": 1,
+	"hashAlgorithm": {
+		"algorithm": "sha256",
+		"scope": "skill directory",
+		"definition": "sha256 over, for every regular file under the skill directory (recursive, excluding .git/ and node_modules/) in ascending order of the lower-cased relative path: the relative path (with '/' separators) followed by the raw file bytes."
+	},
+	"skills": {
+		"accessibility-audit": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/accessibility-audit/SKILL.md",
+			"computedHash": "e23653bdb68e3e867e4cd4159846df8683279393ddbff0f6f846e41e5966f8a7"
+		},
+		"agent-delivery-estimation": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/agent-delivery-estimation/SKILL.md",
+			"computedHash": "af0f7f2cbdfb4f320dffe2bf7283a0e03e63f0406a0d616f018dd6cc868817d2"
+		},
+		"agent-recovery": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/agent-recovery/SKILL.md",
+			"computedHash": "af5ebbf366bb27880fd63b4ef1b87d6cdd42d7f4aacece76726118ba3af6e52f"
+		},
+		"cf-cli": {
+			"source": "cloudflare/skills",
+			"ref": "cbf893b954222276bf1af57e5f23379231e0efb9",
+			"sourceType": "github",
+			"skillPath": "skills/cf-cli/SKILL.md",
+			"computedHash": "439ebbec66d43c5bf28dea7468625c118c136cb810e09a8ef8dcc33184a990b3"
+		},
+		"code-naming": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/code-naming/SKILL.md",
+			"computedHash": "c3710b56a5bb4c916457aeeef092ad6a648c7c395377889e97ccd8e545911615"
+		},
+		"cognitive-accessibility": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/cognitive-accessibility/SKILL.md",
+			"computedHash": "3a4c5bfa64ae09694658ef526138cfc53dc2368e4e22cc7517914e043cd41a34"
+		},
+		"color-system": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/color-system/SKILL.md",
+			"computedHash": "e472816781a66c00c97da3c50673a2b47eb71fafb69093f7977453331a4d3bff"
+		},
+		"content-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/content-design/SKILL.md",
+			"computedHash": "7e9bb6085607212074c142bc5cc247fbd8dc808d7ccf7497cf978a6f2f098382"
+		},
+		"correctness-assurance": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/correctness-assurance/SKILL.md",
+			"computedHash": "7cf4969d12213263adc93ab3d76c6fba42e6c7c06046056d83ba0df9dafe11fa"
+		},
+		"dark-mode-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/dark-mode-design/SKILL.md",
+			"computedHash": "49659161593ec35a2976ec80a571d5ace59e38097420ab49cb3e503d74517989"
+		},
+		"design-intent": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/design-intent/SKILL.md",
+			"computedHash": "be320cf1e515d2b3701853439de09505228dde59854fda64b8497f308806cdc2"
+		},
+		"design-refinement": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/design-refinement/SKILL.md",
+			"computedHash": "cbcd546dd3665ebe70ec5f02cbb2f807cf06f8e1089406dedea530f07ac86914"
+		},
+		"diagnosing-bugs": {
+			"source": "mattpocock/skills",
+			"ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+			"computedHash": "ede7254edbd22fcab97a0941511f7d440d8f9a249348fea97c50987ad5501674"
+		},
+		"diagram-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/diagram-design/SKILL.md",
+			"computedHash": "b3f332db6174dbb4c1722efb227e0f06b8516b45c08b17c4b8552b4c50916f92"
+		},
+		"document-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/document-design/SKILL.md",
+			"computedHash": "6a1090b839f91bfc8bddffe50c0accc81dfa0557361a1cdb71e488e779b1151d"
+		},
+		"engineering-decisions": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/engineering-decisions/SKILL.md",
+			"computedHash": "6f20fc9b2b20f9701f7103adf3c54226b6678cfb62e4d1128e85f694e8161e23"
+		},
+		"form-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/form-design/SKILL.md",
+			"computedHash": "7eb1ff66ebb111a59788b40e962b0c2364c31228259f93fe2a0146945ebb7e65"
+		},
+		"github-delivery": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/github-delivery/SKILL.md",
+			"computedHash": "fe81062ca2716d282614edc0257d218c32286a50049ef04bc162cb8fe0ce33c9"
+		},
+		"herdr-runtime": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/herdr-runtime/SKILL.md",
+			"computedHash": "0e001925055b4c9f1e66cf449f00b47a733c174ac258eac3f2aff2910ec7670d"
+		},
+		"high-contrast-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/high-contrast-design/SKILL.md",
+			"computedHash": "9800d70c8f7dfa10ecf2305f6213478534a90dc9862b3750f1cee3466e49fb2e"
+		},
+		"iconography-system": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/iconography-system/SKILL.md",
+			"computedHash": "6dfe6fb7bc1b71a8d60023885124db102e7daf4f26d7c50a0c2eadde729645c8"
+		},
+		"inclusive-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/inclusive-design/SKILL.md",
+			"computedHash": "76d04ea316605a7fc68ea891bffae04bd4e9e27301b58c25dcfd1f406d561562"
+		},
+		"interaction-discipline": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/interaction-discipline/SKILL.md",
+			"computedHash": "437b1e19f03634ca6937b39283a74d4814a4ee70d911508fb7cbe6fe8f32e9d3"
+		},
+		"interaction-states": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/interaction-states/SKILL.md",
+			"computedHash": "bf6a14392e1f763c3d843d7ff079f7f259eca84ddb534600d144abab90fbaaf1"
+		},
+		"keyboard-interface": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/keyboard-interface/SKILL.md",
+			"computedHash": "bc9bc0f5e0ccd8c91b56deb77d87f24454c087dcd2dcdb9f8bb9ae947b9e82dd"
+		},
+		"layout-system": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/layout-system/SKILL.md",
+			"computedHash": "264bbddcc7c18dfc2be51de0ac62c11470b2633fc3c98f5120591b8a693a0c8a"
+		},
+		"motion-audit": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/motion-audit/SKILL.md",
+			"computedHash": "8dc07380244ada4b8f494badb5c3b86c57e83c0a5e385d37b34b8d78eacc2aac"
+		},
+		"motion-implement": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/motion-implement/SKILL.md",
+			"computedHash": "90aa8d74fe6829e20450a474b4d034092496f216a8b1881b4d3629e52ee3adae"
+		},
+		"motion-review": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/motion-review/SKILL.md",
+			"computedHash": "dc557636db0d02336aa11927bf35c0be3ff1b22d7aeddbf1222c6fb40470f905"
+		},
+		"motion-system": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/motion-system/SKILL.md",
+			"computedHash": "d07a971cd04248c5178526f66760085c35066b85076bf2c919153bc54f7a692d"
+		},
+		"navigation-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/navigation-design/SKILL.md",
+			"computedHash": "5dd1fbe335d32351a47ca1ff439a8023970049de57f3dfb93f44260c4a57f521"
+		},
+		"onboarding": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/onboarding/SKILL.md",
+			"computedHash": "9df8226961f3ce224c900791b785771dd76b6f46fca26f0f25e36490b16a2ae5"
+		},
+		"parallel-orchestration": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/parallel-orchestration/SKILL.md",
+			"computedHash": "54d4d7a572ef70d1338bf19b4f499b35bb01c759f135300f352c8712eecde06b"
+		},
+		"policy-evaluation": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/policy-evaluation/SKILL.md",
+			"computedHash": "50bcd987b360bff3e4864a0ca9c227b4f5b2fca47444e487a4428f95ef7ef98a"
+		},
+		"quality-gate": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/quality-gate/SKILL.md",
+			"computedHash": "24891979677445657b590a6b319c5df47380bbc2d0dac2bdaee16c0437486da7"
+		},
+		"responsive-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/responsive-design/SKILL.md",
+			"computedHash": "8f3ec29b8d2a62c397e89b85ff01c046825e1345d1a651b27a1151e85247c4ab"
+		},
+		"sandbox-runtime": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/sandbox-runtime/SKILL.md",
+			"computedHash": "c9f611cd4f5feb96fb92daf6c5007989bc719d7f1dbaba0b2019e75839587fb1"
+		},
+		"secrets-management": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/secrets-management/SKILL.md",
+			"computedHash": "0503990897791cf757262598082f3ecfd45996f21c37837cb5300b41c4ea038d"
+		},
+		"security-audit": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/security-audit/SKILL.md",
+			"computedHash": "cf392461db4a22248f7968de0801df5ffa5605f42f7f5ffe9bb12e001801d1b0"
+		},
+		"security-maintenance": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/security-maintenance/SKILL.md",
+			"computedHash": "e17934113a433328b82102f06b8222793c04a420849d3f1e5a303a34e2dcb35d"
+		},
+		"skill-authoring": {
+			"source": "rebuildup/writing-skills",
+			"ref": "b0f1398a3d9288d04d8f18b55fa068851525bd49",
+			"sourceType": "github",
+			"skillPath": "skills/skill-authoring/SKILL.md",
+			"computedHash": "2c1e406f4e91d6348fd46b42c57f4bd3f5e7ff289de4549dd72bc5152c66e731"
+		},
+		"skill-selection": {
+			"source": "rebuildup/project-init",
+			"ref": "v0.9.0",
+			"sourceType": "github",
+			"skillPath": "skills/skill-selection/SKILL.md",
+			"computedHash": "73a9d08b47c182c469f7115f08e7a6590e57e3401fa60ef26205eb8e66d223d4"
+		},
+		"table-design": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/table-design/SKILL.md",
+			"computedHash": "8a8641e0ff2193f6d1f61f4b770c732ce7a70fd4715851bbb2dbad71a79608b2"
+		},
+		"tdd": {
+			"source": "mattpocock/skills",
+			"ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+			"sourceType": "github",
+			"skillPath": "skills/engineering/tdd/SKILL.md",
+			"computedHash": "daf55026f456af104a72fa43247f7bcec89e5127316dc5b1b8d675d6a9d8ce94"
+		},
+		"token-audit": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/token-audit/SKILL.md",
+			"computedHash": "44ab2d06b44499d15a22fee61a4bf81dbc6cd24f7d76889a484889157d4889d2"
+		},
+		"touch-interface": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/touch-interface/SKILL.md",
+			"computedHash": "df19b00349682aed007ae8ba9a0d0026909c654f72506d87d7a325dc95e97db3"
+		},
+		"typesetting": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.3.0",
+			"sourceType": "github",
+			"skillPath": "skills/typesetting/SKILL.md",
+			"computedHash": "fec513d57d87be47168cf5d738a4130bd4aeafc25c14cc24bce3ab7f6b55cd10"
+		},
+		"workers-best-practices": {
+			"source": "cloudflare/skills",
+			"ref": "cbf893b954222276bf1af57e5f23379231e0efb9",
+			"sourceType": "github",
+			"skillPath": "skills/workers-best-practices/SKILL.md",
+			"computedHash": "afc1b560659bcbbf043741e04a865b99e7d5b094bf62573d6188a8b26de235ab"
+		},
+		"worktree-workflow": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/worktree-workflow/SKILL.md",
+			"computedHash": "e6508c428ea36505c090f439e4dd4c5198dedc22c153350ba941fd0684cadb69"
+		},
+		"writing-discipline": {
+			"source": "rebuildup/project-init",
+			"ref": "0.1.1",
+			"sourceType": "github",
+			"skillPath": "skills/writing-discipline/SKILL.md",
+			"computedHash": "66d9caea0c3a9c17d40c7e3fe45c9c08fdf8dcc3ae51fb65f47a9dffa63fa08f"
+		}
+	}
+}

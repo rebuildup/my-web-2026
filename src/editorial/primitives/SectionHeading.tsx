@@ -115,7 +115,7 @@ export interface SectionHeadingProps {
 	 *   top.
 	 *
 	 * The split is part of the 12-column grid system documented in
-	 * `src/home/brief.md`. Spread sections reserve one column for
+	 * `docs/visual/home-design-brief.md` (historical design input, Issue #843). Spread sections reserve one column for
 	 * the heading cluster so the heading sits on its own visual
 	 * axis; the right column carries the section body.
 	 */

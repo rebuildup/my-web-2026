@@ -471,5 +471,5 @@ row 4 を「hover or playful jump」と定義しており、app.asar の実装�
 - 権利記録: [`docs/verification/legal/pet-melty-rights-review.md`](../verification/legal/pet-melty-rights-review.md)
 - 権利契約: `src/legal/contract.ts`（Issue #497）
 - reduced motion 契約: `src/editorial/reduced-motion.ts`（Issue #403）
-- Home の設計方向: [`src/home/brief.md`](../../src/home/brief.md)
+- Home の設計方向（履歴資料）: [`docs/visual/home-design-brief.md`](../visual/home-design-brief.md)
 - 権利 gate の監査範囲: Issue #780

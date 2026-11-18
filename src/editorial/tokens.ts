@@ -260,7 +260,8 @@ export const rawTokens = {
 		'3xl': { value: '2.5rem' }, // 40 — section h2 (mid display)
 		// Display tier. On the home surface the consumer is the Footer `04`
 		// decoration only — the Hero h1 renders the identity mark since
-		// Issue #287. See src/home/brief.md (Issue #31) for the rationale.
+		// Issue #287. See docs/visual/home-design-brief.md (Issue #31, historical
+		// record per Issue #843) for the rationale.
 		'4xl': { value: '4rem' }, // 64 — super display (home: Footer `04`)
 	},
 	radii: {

@@ -442,51 +442,59 @@ async function listPortfolioProjectsImpl(
 	const limit = clampLimit(opts.limit);
 
 	const cursor = decodeCursorOrNull(opts.cursor);
-	// Build a parameterised SQL with the public-only filter
-	// always on. SQLite caps the host-parameter count at 999 —
-	// well below any realistic facet / cursor cardinality, so we
-	// inline the placeholders directly.
-	//
-	// Stable ordering: `pinned DESC, display_order ASC, updated_at
-	// DESC, id ASC`. `id` is the final tiebreaker; without it,
-	// two rows that share every other key would be returned in
-	// arbitrary order across pages (and could be skipped or
-	// duplicated). This is the contract that `Issue #77 UI` will
-	// rely on for cursor-paged navigation.
-	const cursorPredicate = cursor
-		? ` AND (
-			pinned < ? OR
-			(pinned = ? AND display_order > ?) OR
-			(pinned = ? AND display_order = ? AND updated_at < ?) OR
-			(pinned = ? AND display_order = ? AND updated_at = ? AND id > ?)
-		)`
-		: '';
+	const facetFilter = opts.facets && opts.facets.length > 0 ? opts.facets : null;
 	// Fetch limit+1 so we can detect "has next page" without a
 	// separate COUNT query.
 	const fetchLimit = limit + 1;
-	// The statement text is passed inline on purpose. `scripts/check-d1-sql-binding.mjs`
-	// only reads the literal argument of `prepare()`, so assembling this into a
-	// `const sql` first would hide the `${cursorPredicate}` interpolation from the gate
-	// and make its `SQL_STRUCTURE_ALLOWLIST` entry dead configuration. Inline, the gate
-	// sees the interpolation and holds it to the reason recorded there.
-	// See `docs/security.md#d1-parameter-binding-issue-452`.
-	const stmt = db.prepare(`
-		SELECT * FROM portfolio_project
-		WHERE status = 'published' AND visibility = 'public'${cursorPredicate}
-		ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
-		LIMIT ?
-	`);
-	const binds: Array<string | number> = [];
-	if (cursor) binds.push(...cursorBinds(cursor));
-	binds.push(fetchLimit);
-	// Issue #765 — the cross-source slug rule. The narrow `slug` projection
-	// is issued only when the CMS actually contributes rows, and it runs
-	// concurrently with the page query, so the merge costs no extra round
-	// trip. Without it the merged list would carry a slug that D1 already
-	// owns: `loadPortfolioProject` answers with the D1 row, so two cards
-	// would point at one URL.
-	const [result, d1SlugResult] = await Promise.all([
-		stmt.bind(...binds).all<PortfolioProjectRow>(),
+
+	// Issue #997: facet filtering happens in JS after the SQL LIMIT
+	// (facets live in a JSON TEXT column), so a page made only of
+	// non-matching rows used to produce `projects: []` with
+	// `nextCursor: null` — the caller read it as the end of the list
+	// while matching rows still existed on later pages. When a facet
+	// filter is active we scan forward in `limit + 1` windows until
+	// `limit` matching rows are collected or the table is exhausted,
+	// bounded by MAX_FACET_SCAN_PAGES so a pathological filter cannot
+	// turn one request into an unbounded scan. The cursor for the
+	// NEXT request still comes from the last RETURNED row
+	// (`encodeCursor` below), so rows the scan looked at but did not
+	// return are never skipped.
+	const MAX_FACET_SCAN_PAGES = 10;
+
+	const fetchProjectPage = async (after: PortfolioCursor | null) => {
+		// The statement text is passed inline on purpose.
+		// `scripts/check-d1-sql-binding.mjs` only reads the literal
+		// argument of `prepare()`, so assembling this into a `const sql`
+		// first would hide the `${cursorPredicate}` interpolation from
+		// the gate. See `docs/security.md#d1-parameter-binding-issue-452`.
+		const cursorPredicate = after
+			? ` AND (
+				pinned < ? OR
+				(pinned = ? AND display_order > ?) OR
+				(pinned = ? AND display_order = ? AND updated_at < ?) OR
+				(pinned = ? AND display_order = ? AND updated_at = ? AND id > ?)
+			)`
+			: '';
+		const stmt = db.prepare(`
+			SELECT * FROM portfolio_project
+			WHERE status = 'published' AND visibility = 'public'${cursorPredicate}
+			ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
+			LIMIT ?
+		`);
+		const binds: Array<string | number> = after ? [...cursorBinds(after)] : [];
+		binds.push(fetchLimit);
+		const page = await stmt.bind(...binds).all<PortfolioProjectRow>();
+		return page.results ?? [];
+	};
+
+	// Issue #765 — the cross-source slug rule. The narrow `slug`
+	// projection is issued only when the CMS actually contributes rows,
+	// and it runs concurrently with the page query, so the merge costs
+	// no extra round trip. Without it the merged list would carry a
+	// slug that D1 already owns: `loadPortfolioProject` answers with
+	// the D1 row, so two cards would point at one URL.
+	const [firstPage, d1SlugResult] = await Promise.all([
+		fetchProjectPage(cursor),
 		cms.length > 0
 			? db
 					.prepare(
@@ -496,16 +504,40 @@ async function listPortfolioProjectsImpl(
 					.all<Pick<PortfolioProjectRow, 'slug'>>()
 			: Promise.resolve(null),
 	]);
-	const rawRows = result.results ?? [];
 	const d1Slugs = new Set((d1SlugResult?.results ?? []).map((row) => row.slug));
 
-	const pageRows = rawRows.length > limit ? rawRows.slice(0, limit) : rawRows;
-	const hasMore = rawRows.length > limit;
-
-	const facetFilter = opts.facets && opts.facets.length > 0 ? opts.facets : null;
-	const filteredRows = facetFilter
-		? pageRows.filter((row) => intersectsAny(row.facets, facetFilter))
-		: pageRows;
+	let filteredRows: PortfolioProjectRow[];
+	let hasMore: boolean;
+	if (!facetFilter) {
+		filteredRows = firstPage.length > limit ? firstPage.slice(0, limit) : firstPage;
+		hasMore = firstPage.length > limit;
+	} else {
+		filteredRows = [];
+		hasMore = false;
+		let after: PortfolioCursor | null = cursor;
+		let pages = firstPage;
+		for (let scan = 0; scan < MAX_FACET_SCAN_PAGES; scan += 1) {
+			const pageRows = pages.length > limit ? pages.slice(0, limit) : pages;
+			const pageHasMore = pages.length > limit;
+			filteredRows.push(...pageRows.filter((row) => intersectsAny(row.facets, facetFilter)));
+			const lastScanned = pageRows[pageRows.length - 1];
+			if (!pageHasMore || lastScanned === undefined) {
+				hasMore = false;
+				break;
+			}
+			// Unscanned rows remain, so a next page may exist — whether or
+			// not this scan already found `limit` matches.
+			hasMore = true;
+			if (filteredRows.length >= limit) break;
+			after = {
+				p: lastScanned.pinned,
+				d: lastScanned.display_order,
+				u: lastScanned.updated_at,
+				i: lastScanned.id,
+			};
+			pages = await fetchProjectPage(after);
+		}
+	}
 
 	// N+1 BOUNDARY (Issue #491). Links and media are fetched for the
 	// WHOLE page in two batched statements, then grouped in memory.

@@ -122,7 +122,14 @@ export async function isApprovedMediaKey(
 	isNotionApproved: NotionApprovalCheck = isPublishedNotionMediaKey,
 ): Promise<boolean> {
 	if (key.startsWith('portfolio/notion/')) return isNotionApproved(key);
-	if (key.startsWith('portfolio/')) return isPublishedPortfolioMediaKey(db, key);
+	// Issue #997: `mergeCmsContent` lets a published CMS record render a
+	// `portfolio/<slug>/…` key that has no D1 `portfolio_media` row, so
+	// the D1 join alone would 404 an image the page already decided is
+	// public. Approval is the UNION of the two publication records —
+	// the same union the page composes.
+	if (key.startsWith('portfolio/')) {
+		return isNotionApproved(key) || isPublishedPortfolioMediaKey(db, key);
+	}
 	if (key.startsWith('reactions/')) return isPublicReactionImageKey(db, key);
 	return false;
 }

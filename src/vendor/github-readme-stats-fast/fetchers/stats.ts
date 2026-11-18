@@ -258,6 +258,9 @@ const totalCommitsFetcher = async (
 				Accept: 'application/vnd.github.cloak-preview',
 				Authorization: `token ${token}`,
 			},
+			// Issue #996: bound the upstream call; the retryer multiplies
+			// whatever an unbounded fetch allows.
+			signal: AbortSignal.timeout(15_000),
 		});
 		return {
 			data: await response.json(),

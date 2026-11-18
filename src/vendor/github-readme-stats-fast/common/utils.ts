@@ -10,10 +10,11 @@
  * - Removed `dotenv`, `emoji-name-map`, `word-wrap` dependencies
  * - Added TypeScript types
  * - `request()` now uses native fetch to GitHub GraphQL API
- * - `logger` uses console but respects NODE_ENV=test
+ * - `logger` routes through src/logging (Issue #996), silent in tests
  */
 
 import { themes } from '../themes/index.ts';
+import { createAuditLogger } from '../../../logging/logger';
 
 const TRY_AGAIN_LATER = 'Please try again later';
 
@@ -371,10 +372,26 @@ export function wrapTextMultiline(text: string, width = 59, maxLines = 3): strin
 }
 
 const noop = () => {};
+
+/**
+ * Issue #996: `console` is owned by `src/logging/logger.ts` — the only
+ * module allowed to touch it in `src/**`. The previous `console`
+ * fallback let upstream GraphQL error payloads reach the Worker log
+ * stream outside the redaction contract, and the literal-`console.`
+ * gate could not see the alias. Diagnostics now go through the audit
+ * logger, which redacts before emitting; test mode stays silent.
+ */
+const vendorAudit = createAuditLogger('github-readme-stats');
+
+const UPSTREAM_TIMEOUT_MS = 15_000;
+
 export const logger =
 	typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
 		? { log: noop, error: noop }
-		: console;
+		: {
+				log: (detail: unknown) => vendorAudit.audit('vendor-info', { detail }),
+				error: (detail: unknown) => vendorAudit.audit('vendor-error', { detail }),
+			};
 
 const MIN = 60;
 const HOUR = 60 * MIN;
@@ -530,6 +547,9 @@ export async function request<T = unknown>(
 			...headers,
 		},
 		body: JSON.stringify(data),
+		// Issue #996: a hung GitHub connection must not hold the Worker
+		// request open — the retryer multiplies whatever this allows.
+		signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
 	});
 
 	const responseData = (await response.json()) as {

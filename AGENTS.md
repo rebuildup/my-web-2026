@@ -151,6 +151,11 @@ http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+vendor/github-readme-stats-fast -> logging (Issue #996 — the vendored
+             upstream `logger` alias used to be `console`, which put
+             GraphQL error payloads on the Worker log stream outside
+             the redaction contract; diagnostics now go through the
+             audit logger, silent under NODE_ENV=test)
 server -> logging (Issue #481 — the Worker entry feeds every
              Worker-generated response to the request anomaly monitor,
              and the detection event's only shipped sink is the

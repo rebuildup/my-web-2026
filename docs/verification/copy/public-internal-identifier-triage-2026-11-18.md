@@ -162,14 +162,26 @@ JSDoc コメント内の参照。コメントは copy ではないが、
 
 - **実際に公開到達していたもの**: PR #1012（4 件）・PR #1013（2 件）・
   PR #1014（2 件の client bundle 経路）で全て修正済み。
-- **技術的に公開不能と証明できるもの**: 上記 `non-rendered-field` /
-  `operator-metadata` / `internal-error` / `detector-artifact` の
-  計 **124 entry**。公開投影・serverFn 境界・artifact marker 走査で
+- **技術的に公開不能と証明できるもの**: `non-rendered-field` 46 +
+  `operator-metadata` 63 + `internal-error` 4 + `detector-artifact` 6
+  = **119 entry**。公開投影・serverFn 境界・artifact marker 走査で
   到達経路が断たれていることを実測確認済み。
+- **owner 承認が必要なもの**: `src/portfolio/seed.ts` の 6 entry
+  （`intentional-public`）。119 + 6 = 125 で baseline 全件を網羅。
+
+## 機械検証
+
+entry 単位の分類は `quality/public-internal-identifier-triage.json`
+に 1:1 で記録し、`test/integration/public-internal-identifier-
+triage.test.ts` が baseline との全単射・既知クラス・rationale 非空・
+`intentional-public` の file 限定を CI で検証する。分類漏れ・重複・
+stale entry・件数不一致はこのテストで fail する。
 - **owner 承認が必要なもの**: `src/portfolio/seed.ts` の 6 entry のみ
   （意図的技術説明として公開するか、一般化するか）。
 
 baseline の 125 entry は「説明のない検出例外」ではなく、上記の
 分類根拠に基づく pending-review 状態として維持する。owner が
 seed.ts の 6 entry を例外承認すれば exceptions ledger へ移行し、
-baseline から除去できる。
+baseline から除去できる。検出器の誤検出（detector-artifact 6 件）
+は分類で管理するが、コメント認識・外部 URL 判定の改善で
+baseline 自体を縮小する余地は残る。

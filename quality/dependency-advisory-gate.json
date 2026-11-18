@@ -12,5 +12,15 @@
 		"note": "The npm registry advisory endpoint answers from the lockfile's resolved name@version set. No node_modules, credential or environment value is read."
 	},
 	"note": "Blocking severities are declared here, not in code, so a policy change is a reviewable one-line diff. `enforcement: block` (Issue #645) fails the build on any blocking finding that no approved exception covers, and still fails closed on unavailable advisory data; the escalation path and the exception procedure are described in docs/runbook/dependency-advisories.md section 6.",
-	"exceptions": []
+	"exceptions": [
+		{
+			"advisoryId": "GHSA-fc5q-39xc-vjpf",
+			"package": "picomatch",
+			"severity": "high",
+			"reason": "No patched release is published (first_patched_version is null), so there is nothing to upgrade to; every installed instance (2.3.2 / 4.0.4 / 4.0.7) reaches picomatch only through dev-only @pandacss/* build tooling (micromatch / fast-glob), and picomatch is absent from the Worker runtime bundle and the shipped client bundle, so the single-branch repeated-extglob ReDoS has no production path. Retire this record when a patched picomatch is published, when the dependency path changes, or when the dependency is dropped.",
+			"approvedBy": "repository owner (Issue #985)",
+			"trackingIssue": 985,
+			"expiresOn": "2026-12-31"
+		}
+	]
 }

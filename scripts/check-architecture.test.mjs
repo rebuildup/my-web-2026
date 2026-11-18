@@ -174,6 +174,46 @@ test('the type-only edge accepts a type import and rejects a value import', asyn
 	assert.match(errors[0], /home may only import types from http/);
 });
 
+test('a re-export from a forbidden owner fails — export-from is an edge (Issue #1000)', async (t) => {
+	const root = await makeFixture('my-web-arch-reexport-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/http/boundary.ts',
+		'export const BOUNDARY_VALUE = 1;\nexport type BoundaryType = { ok: boolean };\n',
+	);
+	// A value re-export is a runtime edge, exactly like a value import.
+	await writeFixtureFile(
+		root,
+		'src/home/barrel.ts',
+		"export { BOUNDARY_VALUE } from '../http/boundary';\n",
+	);
+
+	const errors = checkArchitecture(root);
+
+	assert.equal(errors.length, 1, `expected exactly one violation, got: ${JSON.stringify(errors)}`);
+	assert.match(errors[0], /home may only import types from http/);
+});
+
+test('a type-only re-export across the type-only edge passes', async (t) => {
+	const root = await makeFixture('my-web-arch-type-reexport-');
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	await writeFixtureFile(
+		root,
+		'src/http/boundary.ts',
+		'export type BoundaryType = { ok: boolean };\n',
+	);
+	await writeFixtureFile(
+		root,
+		'src/home/barrel.ts',
+		"export type { BoundaryType } from '../http/boundary';\n",
+	);
+
+	assert.deepEqual(checkArchitecture(root), []);
+});
+
 test('a legacy classifier root is reported', async (t) => {
 	const root = await makeFixture('my-web-arch-legacy-');
 	t.after(() => rm(root, { recursive: true, force: true }));

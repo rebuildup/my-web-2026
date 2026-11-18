@@ -41,6 +41,23 @@
  * Playwright fails the run. A broken bootstrap can never present as a
  * green E2E — the specs would have nothing to talk to.
  *
+ * Known limitation — media rendering is NOT verifiable here
+ * ---------------------------------------------------------
+ * `pnpm preview` serves the PRODUCTION build, whose
+ * `worker.config.json` carries
+ * `MEDIA_PUBLIC_BASE_URL=https://rebuildup.dev/media`. Every
+ * `<img src>` the preview renders is therefore an absolute
+ * production URL, so the browser fetches bytes from production —
+ * never from the local R2 this bootstrap just seeded (Issue #903,
+ * measured in `docs/verification/design/903-portfolio-media-rendering.md`).
+ * A preview-based visual check proves layout and copy; it proves
+ * NOTHING about media rendering. Media rendering is verified on the
+ * dev harness (`pnpm dev`, where `MY_WEB_2026_DATA_SOURCE` selects
+ * the relative `/media` base) — see the same document for the
+ * measured comparison. Whether preview should gain a same-origin
+ * media path is an owner decision; until then this limitation is
+ * the contract, not a bug to patch around.
+ *
  * Usage
  * -----
  *     node scripts/e2e-local-bootstrap.mjs [--port=3000] [-- <server cmd>…]

@@ -1106,6 +1106,71 @@ export function getPublishedDataLifecycle(): readonly DataLifecycleEntry[] {
 }
 
 /**
+ * The entry shape the public notice may carry (Issue #1009).
+ *
+ * `DataLifecycleEntry` mixes rendered wording with operator
+ * provenance — `evidence` repository pointers, `publication.note`,
+ * and the classification fields (`retention.kind`,
+ * `deletion.channel`, `transfer.target`) the component never reads.
+ * The registry module must stay server-side; this projection is the
+ * only shape allowed across the client boundary, so `pending`
+ * entries and every non-rendered field are absent by construction.
+ */
+export interface PublicDataLifecycleEntry {
+	readonly id: string;
+	readonly label: BilingualText;
+	readonly stores: BilingualText;
+	readonly retention: { readonly statement: BilingualText };
+	readonly deletion: { readonly statement: BilingualText };
+	readonly transfer: {
+		readonly statement: BilingualText;
+		readonly senders: readonly {
+			readonly sender: DataSenderKind;
+			readonly label: BilingualText;
+			readonly statement: BilingualText;
+		}[];
+	};
+	readonly visibility: BilingualText;
+}
+
+/** Project one registry entry to its public shape. */
+export function toPublicDataLifecycleEntry(entry: DataLifecycleEntry): PublicDataLifecycleEntry {
+	return {
+		id: entry.id,
+		label: entry.label,
+		stores: entry.stores,
+		retention: { statement: entry.retention.statement },
+		deletion: { statement: entry.deletion.statement },
+		transfer: {
+			statement: entry.transfer.statement,
+			senders: entry.transfer.senders.map((sender) => ({
+				sender: sender.sender,
+				label: sender.label,
+				statement: sender.statement,
+			})),
+		},
+		visibility: entry.visibility,
+	};
+}
+
+/**
+ * The published entries, projected for the client (Issue #1009).
+ * This is what the `/` loader hands to the page — the registry
+ * itself never crosses the boundary.
+ */
+export function getPublishedPublicDataLifecycle(): readonly PublicDataLifecycleEntry[] {
+	return filterPublishedEntries(DATA_LIFECYCLE_ENTRIES).map(toPublicDataLifecycleEntry);
+}
+
+/**
+ * The deletion-channel statement, projected for the client. `status`
+ * is operator bookkeeping and stays behind the boundary.
+ */
+export const PUBLIC_DELETION_REQUEST_CHANNEL = {
+	statement: DELETION_REQUEST_CHANNEL.statement,
+} as const;
+
+/**
  * The JA/EN sentences of every published entry, concatenated — the exact
  * surface a claim check has to pass. Both locales are included because a
  * claim is a claim in either language.

@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { HomeAdProject } from '../home/ads/placements';
+import { getPrivacyNoticeData } from '../home/privacy/load';
 import { getDiscordPresence } from '../home/public';
 import {
 	CAPABILITIES,
@@ -48,6 +49,7 @@ export const Route = createFileRoute('/')({
 			portfolioProjects,
 			githubActivity,
 			discordPresence,
+			privacyNotice,
 		] = await Promise.all([
 			getHomeSystemStatus(),
 			getHomeReactions({ data: { target: HOME_REACTIONS_TARGET } }),
@@ -75,6 +77,10 @@ export const Route = createFileRoute('/')({
 			// row is missing/stale/invalid. No runtime fetch to
 			// Discord from the Worker.
 			getDiscordPresence(),
+			// Issue #1009 — the published lifecycle wording, projected
+			// server-side so the registry (pending entries, evidence
+			// pointers) never enters the client bundle.
+			getPrivacyNoticeData(),
 		]);
 		return {
 			capabilities: CAPABILITIES,
@@ -106,6 +112,7 @@ export const Route = createFileRoute('/')({
 			// Issue #320 — Discord presence card from the D1 snapshot.
 			// Optional: degrades to unavailable when missing/stale.
 			discordPresence,
+			privacyNotice,
 		};
 	},
 	/**

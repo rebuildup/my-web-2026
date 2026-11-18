@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ContactPage } from './page';
 import { RAW_CHANNELS, getVisibleChannels } from './public';
-import type { Channel } from './schema';
+import type { PublicContactChannel } from './public';
 
 /**
  * The two states a visitor can receive from `/contact` (Issue #832).
@@ -16,23 +16,20 @@ import type { Channel } from './schema';
  * instruction text on a public surface.
  */
 
-const NOW = Date.UTC(2026, 10, 3, 0, 0, 0);
-
-const CHANNEL: Channel = {
+const CHANNEL: PublicContactChannel = {
 	id: 'example',
 	label: 'Example',
 	labelEn: 'Example',
 	purpose: 'technical',
 	url: 'https://example.com/',
-	verified_at: '2026-11-03',
-	active: true,
+	verifiedDaysAgo: 0,
 };
 
 /** Internal identifiers that must never reach a visitor. */
 const INTERNAL_FRAGMENTS = ['src/contact', 'channels.json', 'verified_at', 'active: true'];
 
 describe('/contact empty state', () => {
-	const html = renderToStaticMarkup(<ContactPage channels={[]} now={NOW} empty />);
+	const html = renderToStaticMarkup(<ContactPage channels={[]} empty />);
 
 	it('renders the empty marker', () => {
 		expect(html).toContain('data-testid="contact-empty"');
@@ -50,7 +47,7 @@ describe('/contact empty state', () => {
 });
 
 describe('/contact populated state', () => {
-	const html = renderToStaticMarkup(<ContactPage channels={[CHANNEL]} now={NOW} empty={false} />);
+	const html = renderToStaticMarkup(<ContactPage channels={[CHANNEL]} empty={false} />);
 
 	it('renders the channel row with a safe external link', () => {
 		expect(html).toContain('data-channel-id="example"');

@@ -2,12 +2,11 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import type { Channel } from './schema';
-import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA, daysSinceVerified } from './schema';
+import type { PublicContactChannel } from './public';
+import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './schema';
 
 export interface ContactPageProps {
-	channels: readonly Channel[];
-	now: number;
+	channels: readonly PublicContactChannel[];
 	/**
 	 * When true the page renders the empty-state message instead
 	 * of a list. Driven by the loader, not the data — the data
@@ -35,7 +34,7 @@ export interface ContactPageProps {
  *
  * No JS interactivity. The page is fully static SSR.
  */
-export function ContactPage({ channels, now, empty }: ContactPageProps) {
+export function ContactPage({ channels, empty }: ContactPageProps) {
 	return (
 		<>
 			<a
@@ -140,7 +139,7 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 							description="各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
 							variant="default"
 						/>
-						{empty ? <EmptyState /> : <ChannelList channels={channels} now={now} />}
+						{empty ? <EmptyState /> : <ChannelList channels={channels} />}
 					</Container>
 				</section>
 			</main>
@@ -148,13 +147,7 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 	);
 }
 
-function ChannelList({
-	channels,
-	now,
-}: {
-	channels: readonly Channel[];
-	now: number;
-}) {
+function ChannelList({ channels }: { channels: readonly PublicContactChannel[] }) {
 	return (
 		<ul
 			data-testid="contact-channels"
@@ -168,14 +161,14 @@ function ChannelList({
 			})}
 		>
 			{channels.map((ch) => (
-				<ChannelRow key={ch.id} channel={ch} now={now} />
+				<ChannelRow key={ch.id} channel={ch} />
 			))}
 		</ul>
 	);
 }
 
-function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
-	const days = daysSinceVerified(channel, now);
+function ChannelRow({ channel }: { channel: PublicContactChannel }) {
+	const days = channel.verifiedDaysAgo;
 	// Issue #300: `word-break: break-all` tore long links mid-segment
 	// (「my-web-2/**026**」 on a 375px line — a three-character orphan).
 	// A `<wbr>` after each "/" gives the line breaker a path-segment

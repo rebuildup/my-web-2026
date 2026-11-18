@@ -77,6 +77,17 @@ pre-main verification。`validate:integration` に加え、Cloudflare type gener
 
 local agent と GitHub Actions は同じ entry points を使い、workflow YAML に隠れた別ルールを作らない。
 
+### Release candidate freeze
+
+`release-x-y-z` への統合が収束したら、候補 SHA を freeze して包括 QA を行う。
+
+1. 候補 SHA で `pnpm run validate:release` を実行する（credential 不要）。
+2. credential を要する本番実測は operator が実行する。agent は credential を持たず、実行も報告もしない:
+   - `node scripts/verify-portfolio.mjs --target=production`（Issue #1008 — D1 storage 契約と merge 後 public 契約を分離して検証。link / media の欠落は content gap として slug 付きで報告され、`--strict-content` で失敗化できる）
+   - `prod-smoke` workflow の結果確認
+3. freeze QA の結果を `docs/verification/` に記録し、候補 SHA とともに owner へ提示する。
+4. `release-* → main` の統合は owner の明示承認があるまで実行しない（AGENTS.md §6）。
+
 ## Browser E2E
 
 Playwright E2E は release / UI change に応じて CI で実行する。

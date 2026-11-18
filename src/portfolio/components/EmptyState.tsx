@@ -16,10 +16,13 @@ import { SectionHeading } from '../../editorial/primitives/SectionHeading';
  *   - `SectionHeading` (default variant) carries the heading
  *     cluster so the heading rhythm matches other portfolio
  *     surfaces.
- *   - One secondary action: an external link to the GitHub
- *     Releases page so visitors can track when content lands.
- *     The link opens in a new tab with
- *     `rel="noopener noreferrer"`.
+ *   - One secondary action: a link to the surface where the
+ *     publication progress actually lives — the home page's
+ *     現在地 section (Issue #835: GitHub Releases is site update
+ *     history, not work progress, so it is not the default).
+ *     External overrides open in a new tab with
+ *     `rel="noopener noreferrer"`; the internal default navigates
+ *     in place.
  *
  * Placement:
  *   The route (`src/routes/portfolio/index.tsx` →
@@ -31,7 +34,8 @@ import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 export interface PortfolioEmptyStateProps {
 	/**
 	 * Override the URL the secondary action links to. Defaults
-	 * to the GitHub Releases page for `rebuildup/my-web-2026`.
+	 * to `/` — the home page's 現在地 section is the public
+	 * surface that shows publication progress (Issue #835).
 	 * Kept overridable so the loader / route can route to a
 	 * different public status surface without touching the
 	 * component itself.
@@ -39,11 +43,13 @@ export interface PortfolioEmptyStateProps {
 	statusHref?: string;
 }
 
-const DEFAULT_STATUS_HREF = 'https://github.com/rebuildup/my-web-2026/releases';
+const DEFAULT_STATUS_HREF = '/';
+const EXTERNAL_HREF = /^https?:\/\//;
 
 export function PortfolioEmptyState({
 	statusHref = DEFAULT_STATUS_HREF,
 }: PortfolioEmptyStateProps = {}) {
+	const external = EXTERNAL_HREF.test(statusHref);
 	return (
 		<div
 			className={css({
@@ -60,8 +66,8 @@ export function PortfolioEmptyState({
 			/>
 			<a
 				href={statusHref}
-				rel="noopener noreferrer"
-				target="_blank"
+				rel={external ? 'noopener noreferrer' : undefined}
+				target={external ? '_blank' : undefined}
 				className={css({
 					display: 'inline-flex',
 					alignItems: 'center',

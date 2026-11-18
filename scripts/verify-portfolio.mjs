@@ -93,7 +93,7 @@ if (target !== 'local' && target !== 'production') {
 // imports), which is why the verifier cannot drift from the runtime.
 const { publicProjects } = await import('../src/portfolio/notion/publish.ts');
 const { mergeCmsAuthoring } = await import('../src/portfolio/cms-merge.ts');
-const { isFacetKindLabel } = await import('../src/portfolio/kind-labels.ts');
+const { isFacetDerivedRole } = await import('../src/portfolio/kind-labels.ts');
 
 const snapshotDocument = JSON.parse(
 	readFileSync(resolve(root, 'src/portfolio/notion/generated/snapshot.json'), 'utf8'),
@@ -242,7 +242,7 @@ check('storage: public rows carry identity fields (title/summary/period_start)',
 
 check('storage: no public row stores a facet-kind label as role (Issue #813)', (failures) => {
 	for (const row of storage) {
-		if (row.role && isFacetKindLabel(row.role)) {
+		if (row.role && isFacetDerivedRole(row.role)) {
 			failures.push(
 				`${row.slug}: role "${row.role}" is a facet-derived kind label, not a recorded role`,
 			);
@@ -265,7 +265,7 @@ check('public: merged view carries identity fields', (failures) => {
 
 check('public: a printed role is never a facet-kind label', (failures) => {
 	for (const project of publicView) {
-		if (project.role && isFacetKindLabel(project.role)) {
+		if (project.role && isFacetDerivedRole(project.role)) {
 			failures.push(`${project.slug}: merged role "${project.role}" is a facet-derived kind label`);
 		}
 	}

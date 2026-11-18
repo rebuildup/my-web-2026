@@ -21,9 +21,10 @@ import type { PortfolioFacet } from './schema';
  *
  * Keeping the kind out of the column is the WRITE path's job (Issue
  * #811: `role_source` plus a nullable `role`). The reader cannot tell
- * where a stored value came from, so a non-null value is printed
- * as-is. Until #811 lands, a facet-derived value already in D1 would
- * still print under `Role`.
+ * where a stored value came from, so the surfaces apply the
+ * reader-side guard in `kind-labels.ts`: the closed set of words the
+ * migration derived from `facets` is never printed under `Role`,
+ * whether or not the row carries provenance.
  *
  * The reasoning, the measurements and the three-state data contract
  * live in `docs/domain/portfolio-vocabulary.md`.

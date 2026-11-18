@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioProject } from '../schema';
 import { FACET_LABEL } from '../vocabulary';
 import { PortfolioMediaFigure } from './PortfolioMedia';
@@ -104,15 +105,18 @@ export function ProjectCard({ project }: ProjectCardProps) {
 	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
 	// The `Role` row exists only when a role is actually recorded
 	// (Issue #813). A kind of work does not belong in this column — the
-	// eyebrow word and the facet pills already carry it — but this
-	// component cannot tell where a stored value came from, so it
-	// prints a non-null value as it is. Keeping the kind out of the
-	// column is the write path's job (Issue #811); until that lands, a
-	// facet-derived value already stored would still print here. An
+	// eyebrow word and the facet pills already carry it. The stored
+	// string cannot say where it came from, so the surface applies the
+	// reader-side guard (`isFacetDerivedRole`): the closed set of words
+	// the legacy migration derived from `facets` is never a person's
+	// role, whether or not the row carries `role_source` provenance.
+	// The write path nulls those words going forward (Issue #811 /
+	// `cms-merge.ts`); this guard covers rows stored before it. An
 	// empty `<dd>` would be a row that claims something while saying
 	// nothing, so it is dropped. The printed string is the stored
 	// string, byte-exact.
-	const hasRole = project.role !== null && project.role.trim() !== '';
+	const hasRole =
+		project.role !== null && project.role.trim() !== '' && !isFacetDerivedRole(project.role);
 	// Issue #767 — the `Period` row follows the same rule as `Role`:
 	// `periodLabel` is nullable in the schema, and an empty `<dd>` is a
 	// row that claims a fact while saying nothing. The seed writes a

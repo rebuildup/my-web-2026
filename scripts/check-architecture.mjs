@@ -217,8 +217,10 @@ function resolveInternalImport(fromFile, specifier, srcDirectory) {
  * Static ES imports with their runtime/type-only character.
  */
 function importStatements(source) {
-	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
 	const stmts = [];
+	// `import … from '…'` / `import '…'` / `import type …` — the
+	// original pattern, kept verbatim.
+	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
 	for (const match of source.matchAll(re)) {
 		const full = match[0].slice(match[0].indexOf('import')).replace(/\s+/g, ' ').trimStart();
 		const head = full.slice('import'.length).trimStart();
@@ -226,6 +228,20 @@ function importStatements(source) {
 			full,
 			isTypeOnly: head.startsWith('type '),
 			specifier: match[1],
+		});
+	}
+	// Issue #1000: `export { … } from '…'` / `export type { … } from '…'`
+	// / `export * from '…'` are dependency edges too — a barrel that
+	// re-exports a forbidden owner is the same violation as importing
+	// it, and the gate used to be blind to the whole form. The pattern
+	// requires a brace-list or `*` before `from`, so `export const x =
+	// '…'` and string literals containing the word `from` cannot match.
+	const reExport = /(?:^|\n)\s*export\s+(type\s+)?(?:\{[^}]*\}|\*)\s+from\s*["']([^"']+)["']/g;
+	for (const match of source.matchAll(reExport)) {
+		stmts.push({
+			full: match[0].replace(/\s+/g, ' ').trimStart(),
+			isTypeOnly: match[1] !== undefined,
+			specifier: match[2],
 		});
 	}
 	return stmts;

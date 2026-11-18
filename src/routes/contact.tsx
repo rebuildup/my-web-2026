@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ContactPage } from '../contact/page';
-import { getVisibleChannels } from '../contact/public';
+import { getVisiblePublicChannels } from '../contact/public';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
@@ -23,7 +23,7 @@ import { ReactionsWidget } from '../home/reactions/widget';
  *
  * The data layer (`src/contact/public.ts`) is the sole place that
  * reads `channels.json` and runs the gate. The route only calls
- * `getVisibleChannels(now)` once and passes the result through the
+ * `getVisiblePublicChannels(now)` once and passes the projected
  * loader.
  *
  * Chrome convention (Issue #199). The `<PublicNav />`,
@@ -36,9 +36,9 @@ export const CONTACT_REACTIONS_TARGET = 'contact-page';
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
 		const now = Date.now();
-		const channels = getVisibleChannels(now);
+		const channels = getVisiblePublicChannels(now);
 		const reactions = await getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } });
-		return { channels, now, empty: channels.length === 0, reactions };
+		return { channels, empty: channels.length === 0, reactions };
 	},
 	head: () => {
 		const title = 'Contact — rebuildup.dev';
@@ -62,13 +62,13 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactRoute() {
-	const { channels, now, empty, reactions } = Route.useLoaderData();
+	const { channels, empty, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<ContactPage channels={channels} now={now} empty={empty} />
+			<ContactPage channels={channels} empty={empty} />
 			<ReactionsWidget data={reactions} />
 		</>
 	);

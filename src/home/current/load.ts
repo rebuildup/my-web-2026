@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import type { CurrentProjectRecord } from './types';
+import type { CurrentProjectRecord, ProjectFact } from './types';
 
 /**
  * The current-projects records for a base date (Issue #316).
@@ -40,5 +40,37 @@ export const getCurrentProjects = createServerFn({ method: 'GET' })
 		const { activityProjectRecords } = await import('../activity/snapshot');
 		const snapshot = await readPreferredGitHubActivitySnapshot();
 		const githubProjects = snapshot ? activityProjectRecords(snapshot) : null;
-		return currentProjectsLoader.loadCurrentProjects(data.today, githubProjects);
+		const records = await currentProjectsLoader.loadCurrentProjects(data.today, githubProjects);
+		return records.map(toPublicRecord);
 	});
+
+/**
+ * Public projection of one current-projects record (Issue #1009).
+ *
+ * `ProjectFact#evidence` is operator provenance — the commit SHA or the
+ * sync script that produced the fact. Nothing renders it, but the
+ * server function serialises the whole record into the `$_TSR`
+ * hydration payload, so it would reach every visitor's browser. The
+ * public surface keeps `value` / `source` / `observedOn` and drops
+ * `evidence` here, at the boundary, rather than relying on every
+ * future consumer to remember.
+ */
+function toPublicRecord(record: CurrentProjectRecord): CurrentProjectRecord {
+	const strip = <T>(fact: ProjectFact<T> | undefined): ProjectFact<T> | undefined =>
+		fact === undefined
+			? undefined
+			: { value: fact.value, source: fact.source, observedOn: fact.observedOn };
+	return {
+		...record,
+		startedOn: strip(record.startedOn),
+		updatedOn: strip(record.updatedOn),
+		weight:
+			record.weight === undefined
+				? undefined
+				: {
+						...record.weight,
+						activity: strip(record.weight.activity),
+						level: strip(record.weight.level),
+					},
+	};
+}

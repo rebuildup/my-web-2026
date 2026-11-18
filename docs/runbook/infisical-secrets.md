@@ -302,7 +302,11 @@ to confirm Tier 1 / Tier 3 name parity after any deploy.
 The originating incident (Issue #139, 2026-09-28) was an
 `infisical secrets --env=dev --path=/` invocation whose plaintext
 output was rendered into agent transcript, exposing four production
-credentials. The same anti-pattern includes (non-exhaustive):
+credentials. The identical anti-pattern recurred on 2026-11-18
+(Issue #984) via `infisical secrets --env=dev --path=/ --plain`;
+`pnpm run infisical:names` now exists so a name inventory never
+requires the raw command. The same anti-pattern includes
+(non-exhaustive):
 
 - `infisical secrets list ...` / `infisical secrets --env=...
   --path=...` / `infisical secrets get <name> --plain` (real value
@@ -329,6 +333,10 @@ values:
 - `scripts/reconcile-prod-auth-secret.mjs --verify`
 - `scripts/check-cf-secrets.mjs --execute`
 - `scripts/check-infisical-coverage.mjs` (static, no values)
+- `pnpm run infisical:names -- --env=<env> --path=<path>` (Issue #984)
+  — the safe replacement when only the NAME inventory is needed.
+  It parses `infisical secrets --plain` output in-process and prints
+  names only; values never reach stdout, even on child failure.
 
 **Secret value comparison via dedicated script (status-only output)
 is NOT a debugging shortcut.** It is the canonical verification

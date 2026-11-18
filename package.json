@@ -67,6 +67,7 @@
 		"infisical:check:cf": "node scripts/check-cf-secrets.mjs",
 		"infisical:check:coverage": "node scripts/check-infisical-coverage.mjs",
 		"infisical:deploy": "node scripts/deploy-with-secrets.mjs",
+		"infisical:names": "node scripts/infisical-names.mjs",
 		"infisical:reconcile:prod-auth": "node scripts/reconcile-prod-auth-secret.mjs",
 		"infisical:seed": "node scripts/infisical-seed.mjs",
 		"infisical:verify": "node scripts/infisical-verify.mjs",

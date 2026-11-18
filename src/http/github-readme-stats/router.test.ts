@@ -9,6 +9,9 @@ const mockEnv = {
 	GITHUB_TOKEN: 'ghp_test_token_12345',
 	GITHUB_README_STATS_PAT_1: 'ghp_pat_token_1',
 	GITHUB_README_STATS_PAT_2: 'ghp_pat_token_2',
+	// Issue #996: the routes now sit behind rateLimitRead; the unit env
+	// supplies an always-allow limiter so handler behaviour stays under test.
+	RATE_LIMIT_READ: { limit: async () => ({ success: true }) },
 };
 
 const mockFetch = vi.fn();
@@ -378,6 +381,18 @@ describe('GitHub Readme Stats Router', () => {
 			expect(body).not.toMatch(/at\s+\w+\s*\(/); // "at functionName ("
 			expect(body).not.toContain('.js:');
 			expect(body).not.toContain('stack');
+		});
+
+		it('collapses a non-authored error message to the fixed fallback (Issue #996)', async () => {
+			mockFetch.mockRejectedValue(new Error('ECONNRESET internal-worker-detail'));
+			// Unique username: microCache/svgCache are in-memory, so a
+			// reused login could serve an earlier test's cached card.
+			const req = createMockRequest('/api', { username: 'err-leak-996' });
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const body = await res.text();
+			expect(body).not.toContain('ECONNRESET');
+			expect(body).not.toContain('internal-worker-detail');
+			expect(body).toContain('Something went wrong');
 		});
 	});
 

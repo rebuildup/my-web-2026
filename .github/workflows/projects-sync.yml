@@ -16,11 +16,13 @@ name: Project introduction sync
 # ------------------------------------------
 # `main` is the released source state and only release PRs update it
 # (AGENTS.md §6). The workflow therefore opens (or updates) a PR
-# against the active release branch, configured as
-# `vars.PROJECTS_SYNC_BASE_REF` at sprint cut. The workflow never
-# merges, tags, deploys or publishes; those remain human gates. If the
-# variable is unset the job stops with a status-only message rather
-# than guessing a base.
+# against the active release branch. The base is resolved by
+# `scripts/resolve-release-base.mjs` (highest `release-x-y-z` head on
+# origin; `vars.PROJECTS_SYNC_BASE_REF` is only a transition
+# override). The workflow never merges, tags, deploys or publishes;
+# those remain human gates. If no release branch exists and no
+# override is set, the resolver stops with a status-only error
+# rather than guessing a base.
 #
 # What it reads
 # -------------
@@ -62,13 +64,17 @@ jobs:
       - name: resolve release base
         id: base
         env:
-          BASE_REF: ${{ vars.PROJECTS_SYNC_BASE_REF }}
+          # Explicit override for release transitions where two
+          # release-x-y-z branches coexist. Normally unset: the
+          # resolver derives the highest semver release branch on
+          # origin, so the base follows the release lifecycle without
+          # a hand-edited repo variable (Issue #719 — the previous
+          # vars.PROJECTS_SYNC_BASE_REF pointed at a deleted
+          # release-0-8-0 and failed every scheduled run).
+          SYNC_BASE_REF: ${{ vars.PROJECTS_SYNC_BASE_REF }}
         run: |
-          if [ -z "$BASE_REF" ]; then
-            echo "::error::vars.PROJECTS_SYNC_BASE_REF is unset; set it to the active release-x-y-z branch."
-            exit 1
-          fi
-          echo "ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          base=$(node scripts/resolve-release-base.mjs)
+          echo "ref=$base" >> "$GITHUB_OUTPUT"
       - name: check out the release base
         env:
           BASE_REF: ${{ steps.base.outputs.ref }}
@@ -134,5 +140,8 @@ jobs:
 
           Refs #621
           BODY
-          gh pr create --base "$BASE_REF" --head "$BRANCH" \
-            --title 'chore(projects): dotfiles 紹介 snapshot を更新' --body-file "$body"
+          if ! gh pr create --base "$BASE_REF" --head "$BRANCH" \
+            --title 'chore(projects): dotfiles 紹介 snapshot を更新' --body-file "$body"; then
+            echo "::error::PR creation failed. If the error is 'not permitted to create or approve pull requests', enable Settings → Actions → General → Workflow permissions → 'Allow GitHub Actions to create and approve pull requests' (Issue #719). The sync branch $BRANCH is already pushed; re-run after fixing the setting or open the PR by hand."
+            exit 1
+          fi

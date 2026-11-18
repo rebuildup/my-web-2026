@@ -117,8 +117,10 @@ README 構成変更として説明する。未知の理由は「状態を確認�
   「その sha のままであること」を要求する。push が拒否されたときは snapshot は
   **公開されない**（committed snapshot は変わらないので `/projects/dotfiles` は
   stale のまま残る）。次回の成功まで「最新」とは表示しない。
-- 同期 PR の base は repository variable `PROJECTS_SYNC_BASE_REF`（sprint cut 時に
-  active な `release-x-y-z` を設定する）。未設定なら workflow は base を推測せず停止する。
+- 同期 PR の base は `scripts/resolve-release-base.mjs` が解決する
+  （origin 上の最大 semver `release-x-y-z`。`PROJECTS_SYNC_BASE_REF`
+  は移行期の明示 override のみ — Issue #719）。release branch が
+  無く override も無ければ workflow は base を推測せず停止する。
 - workflow は merge / tag / release / deploy を行わない。PR の merge は人間の gate（AGENTS.md §6）。
 
 ## 6. Sanitization / publication boundary
@@ -182,7 +184,7 @@ README 全文を stdout に流さない。
 | `projects:check` が digest mismatch | `pnpm run projects:sync` で再生成する。手で JSON を編集しない |
 | allowlist の section が欠けた | 上流 README の見出しを確認し、allowlist の更新を別 ticket で行う |
 | `unavailable` が続く | 上流の公開状態を確認する。復旧すれば次回同期で `public` に戻る |
-| GitHub Actions が base 未設定で停止 | `PROJECTS_SYNC_BASE_REF` を active release branch に設定する |
+| 同期 workflow が base を解決できず停止 | origin に `release-x-y-z` branch があるか確認。移行期の併存時は `PROJECTS_SYNC_BASE_REF` を明示設定する（通常は resolver が自動解決 — Issue #719） |
 
 ## 8. Ownership
 

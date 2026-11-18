@@ -94,7 +94,7 @@ webhook / 常時接続の lifecycle を持たないため、obligation 内の
 | スケジュール | 毎日 04:41 UTC（`cron: '41 4 * * *'`） |
 | 手動実行 | 同ページの `workflow_dispatch`（Run workflow） |
 | 対象ブランチ | `keyboard-layout-sync`（自動作成・更新） |
-| PR の base | 変数 `vars.KEYBOARD_SYNC_BASE_REF` が指すブランチ |
+| PR の base | `scripts/resolve-release-base.mjs` が解決（origin 上の最大 semver `release-x-y-z`。`vars.KEYBOARD_SYNC_BASE_REF` は移行期の明示 override のみ） |
 
 - 実行履歴は **リポジトリの Actions タブ** → `Keyboard layout sync` の
   run 一覧で確認できる。定期実行は `schedule` トリガーとして実行され、
@@ -102,11 +102,23 @@ webhook / 常時接続の lifecycle を持たないため、obligation 内の
 - 分を `41` にしているのは、0 分ちょうどは全リポジトリの定期 job が
   queued される混雑する時刻のため（`Project introduction sync` と同じ
   理由）。
-- **`vars.KEYBOARD_SYNC_BASE_REF` が未設定の場合、job は status-only の
-  メッセージを出して停止する（base を推測しない）。** この変数は
-  sprint cut 時に owner が active な `release-x-y-z` ブランチへ設定する
-  ものとする。`Project introduction sync` の
-  `vars.PROJECTS_SYNC_BASE_REF` と同じ運用である。
+- **PR の base は `scripts/resolve-release-base.mjs` が解決する。**
+  origin 上の `release-x-y-z` head のうち semver 最大を選ぶため、
+  release branch の切り替えに追随し、sprint ごとの変数更新は不要
+  （Issue #719: 旧 `vars.*_SYNC_BASE_REF` は未設定・削除済み
+  ブランチ指しの両方で腐り、schedule が連日失敗した）。
+  2 つの release branch が併存する移行期だけ、owner が
+  `vars.KEYBOARD_SYNC_BASE_REF` に base を明示できる。
+  `Project introduction sync` も同じ resolver を使う。
+- **PR 作成には repo 設定が必要。** `Settings → Actions → General →
+  Workflow permissions → Allow GitHub Actions to create and approve
+  pull requests` が有効でないと、sync と PR 計画までは成功するが
+  `gh pr create` が `createPullRequest` 権限エラーで失敗する
+  （2026-11-18 実測）。この設定は REST API に公開されておらず
+  owner が UI で有効化する。代替案（GitHub App / fine-grained PAT
+  を secret に置く方式）は権限の最小化という点で同等以上だが、
+  secret の発行・rotation・監査が増えるため、まず repo 設定の
+  有効化を推奨する（Issue #719 の比較記録参照）。
 - workflow は **merge / tag / deploy / publish を行わない**。做出的 PR は
   必ず 사람이 merge する（§7）。
 
@@ -209,7 +221,8 @@ human gate は残す。
   | --- | --- |
   | 取得または検証が失敗 | その run が **失敗（red）** になる。Actions タブ → `Keyboard layout sync` で確認できる |
   | upstream が変化していない | run は **成功（green）**。ログに `keyboard-sync: unchanged` が残る。commit も PR も出ない |
-  | base 変数が未設定 | run が **失敗（red）**。ログに `vars.KEYBOARD_SYNC_BASE_REF is unset` が出る |
+  | release branch が存在しない | run が **失敗（red）**。ログに `no release-x-y-z branch found` が出る（base を推測しない） |
+  | PR 作成権限が無い | sync と commit までは成功し、PR 作成 step が **失敗（red）**。ログに `createPullRequest` 権限エラーが出る（§3.1 参照） |
 
 ### 5.2 復旧の担当
 
@@ -253,8 +266,9 @@ GitHub は匿名クライアントに対して private repository を 404 で返
 
 ## 7. PR review の担当
 
-- 自動作成される PR の base は `vars.KEYBOARD_SYNC_BASE_REF`、
-  head は `keyboard-layout-sync`。
+- 自動作成される PR の base は `scripts/resolve-release-base.mjs`
+  の解決結果（最大 semver の `release-x-y-z`）、head は
+  `keyboard-layout-sync`。
 - **merge は人間（owner）が行う。** workflow は merge / approve /
   tag / deploy / publish のいずれも行わない（AGENTS.md §6）。
 - PR 本文には変更ファイル、取得の境界（token なし・redirect 禁止・

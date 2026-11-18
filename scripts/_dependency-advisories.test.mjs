@@ -147,7 +147,10 @@ describe('parseGateDeclaration — the reviewed declaration', () => {
 		for (const record of repositoryGate.exceptions) {
 			assert.ok(record.reason.length > 0, `${record.advisoryId} needs a reason`);
 			assert.ok(record.approvedBy.length > 0, `${record.advisoryId} needs an approver`);
-			assert.ok(Number.isInteger(record.trackingIssue), `${record.advisoryId} needs a tracking Issue`);
+			assert.ok(
+				Number.isInteger(record.trackingIssue),
+				`${record.advisoryId} needs a tracking Issue`,
+			);
 		}
 	});
 

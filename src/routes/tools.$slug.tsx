@@ -7,15 +7,14 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
 	ToolHostMessageDeclaration,
 } from '../tools/embed-policy';
-import { evaluateEmbedPrivacy, toPrivacySubject } from '../tools/embed-privacy';
 import type { EmbedPrivacyViolation } from '../tools/embed-privacy';
-import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
+import type { BlockedToolView, DisabledToolView } from '../tools/public';
+import { loadToolPage } from '../tools/public';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
 
 /**
@@ -127,96 +126,17 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * declaration (today: every Tool), an unexpected message from the
  * frame reaches no host code at all.
  */
-/**
- * The only manifest fields a `host_disabled` page may serialize into its
- * hydration payload (Issue #836).
- *
- * The loader used to return the whole `ManifestTool`, so the SSR document
- * carried `delivery.disabled_reason`, `build.command`, `source` and
- * `notes` in `$_TSR` even after the visible field was removed. TanStack
- * serializes loader data by default; the boundary therefore has to be
- * drawn on the data, not on the JSX.
- */
-interface DisabledToolView {
-	readonly slug: string;
-	readonly display_name: string;
-	readonly description_ja: string;
-}
-
-/**
- * The only manifest fields a `blocked` page may serialize (Issue #994):
- * the placeholder names the Tool and lists violation codes — nothing
- * else from the entry may reach `$_TSR`.
- */
-interface BlockedToolView {
-	readonly slug: string;
-	readonly display_name: string;
-}
-
-/**
- * The only manifest fields an `embeddable` page may serialize
- * (Issue #994): identity plus the RESOLVED frame `src` and the
- * optional host-message contract. `delivery.privacy`, `source`,
- * `build`, `notes`, `classification` and `license` are operator data
- * and stay server-side — the iframe attributes they would feed are
- * already flattened into `PublicToolSummary`.
- */
-interface EmbeddableToolView {
-	readonly slug: string;
-	readonly display_name: string;
-	readonly src: string;
-	readonly host_message?: ToolHostMessageDeclaration;
-}
-
 export const Route = createFileRoute('/tools/$slug')({
-	loader: ({ params }) => {
-		// Display-case tolerance (see module docstring). The manifest
-		// schema is lowercase-only, so this is purely a URL-input
-		// concession — the canonical slug remains lowercase. It is NOT
-		// routed through `classifySlugCandidate`; that gap is the open
-		// owner decision recorded in ADR-0017 §6.4.
-		const slug = params.slug.toLowerCase();
-		const tool = getTool(slug);
-		if (!tool) throw notFound();
-
-		// Issue #465: policy first. A blocked entry never reaches the
-		// public-surface lookup, so the iframe cannot be rendered even
-		// if the Tool is listed as embeddable.
-		const violations = evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery));
-		// Issue #498: the third-party contact contract runs over the same
-		// entry and fails closed the same way. An embeddable Tool with no
-		// `delivery.privacy`, an undeclared external frame origin, or a
-		// declared origin with no purpose gets no iframe at all.
-		const privacy = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
-		const publicTool = getPublicTool(slug);
-		if (violations.length > 0 || privacy.violations.length > 0) {
-			const view: BlockedToolView = {
-				slug: tool.slug,
-				display_name: tool.display_name,
-			};
-			return { state: 'blocked' as const, tool: view, violations, privacy };
-		}
-		if (publicTool) {
-			const view: EmbeddableToolView = {
-				slug: tool.slug,
-				display_name: tool.display_name,
-				src: resolveToolEntryHtml(tool),
-				host_message:
-					tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message,
-			};
-			return { state: 'embeddable' as const, tool: view, public: publicTool };
-		}
-		if (tool.delivery.kind === 'host_disabled') {
-			const view: DisabledToolView = {
-				slug: tool.slug,
-				display_name: tool.display_name,
-				description_ja: tool.description_ja,
-			};
-			return { state: 'disabled' as const, tool: view };
-		}
-		// Any other delivery.kind we don't yet support at /tools/<slug>.
-		// Today that is `not_integrable_yet`; fall through to notFound.
-		throw notFound();
+	loader: async ({ params }) => {
+		// Issue #1005/#1009: the whole state machine — slug tolerance,
+		// embed-policy evaluation, the third-party contact contract and
+		// every view projection — runs inside `loadToolPage`, a
+		// `createServerFn` boundary in `src/tools/public.ts`. The
+		// manifest never enters the client bundle, and the hydration
+		// payload carries only the fields each state renders.
+		const data = await loadToolPage({ data: { slug: params.slug } });
+		if (data.state === 'missing') throw notFound();
+		return data;
 	},
 	head: ({ loaderData }) => {
 		// TanStack calls `head()` server-side even when the loader
@@ -426,7 +346,7 @@ function ToolRoute() {
 			<BlockedPlaceholder
 				tool={loaderData.tool}
 				violations={loaderData.violations}
-				privacyViolations={loaderData.privacy.violations}
+				privacyViolations={loaderData.privacyViolations}
 			/>
 		);
 	}

@@ -27,30 +27,8 @@ import {
 } from '../editorial/primitives/material-symbol-tool-paths';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
-import { listAllTools } from '../tools/registry';
-import type { ManifestTool } from '../tools/registry';
-
-/**
- * The only manifest fields the index cards may serialize into the
- * hydration payload (same boundary rule as `tools.$slug.tsx`,
- * Issue #836/#994): `source`, `build`, `notes`, `classification`,
- * `license` and `delivery` are operator data — repo paths, pinned
- * SHAs, build commands and internal references — and must not reach
- * `$_TSR`. The loader projects each entry before returning it.
- */
-interface ToolIndexEntry {
-	readonly slug: string;
-	readonly display_name: string;
-	readonly description_ja: string;
-}
-
-function toIndexEntry(tool: ManifestTool): ToolIndexEntry {
-	return {
-		slug: tool.slug,
-		display_name: tool.display_name,
-		description_ja: tool.description_ja,
-	};
-}
+import { listToolIndexEntries } from '../tools/public';
+import type { ToolIndexEntry } from '../tools/public';
 
 /**
  * `/tools` — the Tool Registry index (Issues #195, #300, #785).
@@ -99,16 +77,10 @@ export const TOOLS_INDEX_REACTIONS_TARGET = 'tools-index';
 
 export const Route = createFileRoute('/tools/')({
 	loader: async () => {
-		const all = listAllTools();
-		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
-		const available = all
-			.filter((t) => t.delivery.kind !== 'host_disabled')
-			.sort(bySlug)
-			.map(toIndexEntry);
-		const planned = all
-			.filter((t) => t.delivery.kind === 'host_disabled')
-			.sort(bySlug)
-			.map(toIndexEntry);
+		// Issue #1005: the manifest read lives behind the server
+		// boundary (`src/tools/public.ts`) — the client bundle and the
+		// hydration payload only ever see `ToolIndexEntry` card fields.
+		const { available, planned } = await listToolIndexEntries();
 		const reactions = await getHomeReactions({
 			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
 		});

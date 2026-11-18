@@ -332,6 +332,8 @@
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react": "^5.0.0",
+		"ajv": "^8.20.0",
+		"ajv-formats": "^3.0.1",
 		"axe-core": "^4.14.0",
 		"cf": "1.0.0-beta.12",
 		"cross-env": "^7.0.3",

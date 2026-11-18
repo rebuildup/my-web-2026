@@ -14,34 +14,29 @@
 			"id": "s1",
 			"kind": "sticky",
 			"text": "idea A",
-			"position": {
-				"x": 0,
-				"y": 0
-			},
+			"position": { "x": 0, "y": 0 },
 			"parentFrameId": "f1"
 		},
 		{
 			"id": "s2",
 			"kind": "sticky",
 			"text": "idea B",
-			"position": {
-				"x": 10,
-				"y": 0
-			},
+			"position": { "x": 10, "y": 0 },
 			"parentFrameId": null
 		}
 	],
 	"connectors": [
 		{
 			"id": "c1",
-			"startItemId": "s1",
-			"endItemId": "missing"
+			"startRefId": "s1",
+			"endRefId": "missing"
 		}
 	],
 	"frames": [
 		{
 			"id": "f1",
-			"title": "frame"
+			"title": "frame",
+			"position": { "x": 0, "y": 0 }
 		}
 	]
 }

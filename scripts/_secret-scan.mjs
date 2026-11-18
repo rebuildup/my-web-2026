@@ -326,6 +326,14 @@ export const ALLOWLIST = Object.freeze([
 			'in the repository carries the shape, and it is issued by no environment.',
 	},
 	{
+		path: 'scripts/run-deploy-inner.test.mjs',
+		detector: 'github-token',
+		reason:
+			'The deploy-inner env fixture for GITHUB_README_STATS_PAT_1 (Issue #969). The value is a ' +
+			'synthetic github_pat_TEST placeholder written into a temp secrets.json; it is issued by ' +
+			'no GitHub account and grants nothing.',
+	},
+	{
 		path: 'src/http/github-readme-stats/router.test.ts',
 		detector: 'secret-assignment',
 		reason:

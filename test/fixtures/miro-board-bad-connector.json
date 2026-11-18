@@ -1,0 +1,47 @@
+{
+	"board": {
+		"id": "uXjVEZdqDp4=",
+		"title": "my-web planning",
+		"itemCounts": {
+			"stickies": 2,
+			"connectors": 1,
+			"frames": 1
+		}
+	},
+	"exportedAt": "2026-11-18T00:00:00Z",
+	"items": [
+		{
+			"id": "s1",
+			"kind": "sticky",
+			"text": "idea A",
+			"position": {
+				"x": 0,
+				"y": 0
+			},
+			"parentFrameId": "f1"
+		},
+		{
+			"id": "s2",
+			"kind": "sticky",
+			"text": "idea B",
+			"position": {
+				"x": 10,
+				"y": 0
+			},
+			"parentFrameId": null
+		}
+	],
+	"connectors": [
+		{
+			"id": "c1",
+			"startItemId": "s1",
+			"endItemId": "missing"
+		}
+	],
+	"frames": [
+		{
+			"id": "f1",
+			"title": "frame"
+		}
+	]
+}

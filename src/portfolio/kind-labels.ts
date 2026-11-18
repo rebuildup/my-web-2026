@@ -39,6 +39,6 @@ const KIND_LABELS: ReadonlySet<string> = new Set(Object.values(FACET_KIND_LABEL)
  * rows carried a derived word for a DIFFERENT facet than `facets[0]`
  * and are just as much not-roles (portfolio-vocabulary.md §2.4).
  */
-export function isFacetKindLabel(role: string): boolean {
+export function isFacetDerivedRole(role: string): boolean {
 	return KIND_LABELS.has(role);
 }

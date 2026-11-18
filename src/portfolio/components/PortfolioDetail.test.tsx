@@ -68,6 +68,20 @@ describe('PortfolioDetail — the role row (Issue #813)', () => {
 		expect(html).not.toContain('>Kind</dt>');
 	});
 
+	it('drops the role row for a stored facet-kind word', () => {
+		// Rows written before the write-path guard can still carry a
+		// kind-of-work word in `role` (the loader carries no
+		// `role_source`). The surface applies the closed label set, so
+		// none of the derived words may print under `Role`.
+		for (const role of ['Development', 'Video production', 'Design', 'Production']) {
+			const html = renderToStaticMarkup(
+				<PortfolioDetail project={project({ role })} adjacent={adjacent} />,
+			);
+			expect(html).not.toContain('>Role</dt>');
+			expect(html).not.toContain(role);
+		}
+	});
+
 	it('leaves no empty value cell behind when no role is recorded', () => {
 		for (const role of [null, '']) {
 			const html = renderToStaticMarkup(

@@ -85,9 +85,17 @@ Issue #813（2026-11-02）。
 - loader（`src/portfolio/schema.ts`）に `role_source` が無いので、値の由来を
   実行時に区別できない。
 
-したがって **非 null の値は、override の値でも sentinel でも、そのまま
-`Role` として描画される**。台帳の 64 件が持つ facet 由来の値が D1 に入れば、
-それも `Role` として描画される。0.8.1 はこの描画を変えない（§8）。
+したがって loader が運べるのは文字列だけで、値の由来は実行時に区別
+できない。そこで公開面は 2 段で防ぐ。
+
+- **書き込み側**（#811 / `cms-merge.ts` / `notion/publish.ts`）は
+  `role_source: "facet-derived"` の行に `role = NULL`（D1 上は空文字）を
+  書き、facet 由来の語を列に入れない。
+- **読み取り側**（`src/portfolio/kind-labels.ts` の `isFacetDerivedRole`）は
+  移行が facet から導出した語の閉集合
+  （`Development` / `Video production` / `Design` / `Production`）を
+  `Role` として印刷しない。ガード適用前に保存された行をカバーする。
+
 「公開面に出ていない」のは、published な行が無いためであって、直したから
 ではない。
 

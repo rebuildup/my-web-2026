@@ -507,7 +507,6 @@
 			"/tools/text-counter"
 		],
 		"externalHosts": [
-			"",
 			"*.analytics.google.com",
 			"*.google-analytics.com",
 			"*.googletagmanager.com",
@@ -641,19 +640,7 @@
 					"src/home/mark.tsx",
 					"src/tools/manifest.json",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/cards/streak-card.js",
-					"src/vendor/github-readme-stats-fast/src/common/Card.js",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
-				]
-			},
-			{
-				"url": "https://",
-				"host": "",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -779,8 +766,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -798,8 +784,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/fetchers/stats.ts",
-					"src/vendor/github-readme-stats-fast/src/fetchers/stats.js"
+					"src/vendor/github-readme-stats-fast/fetchers/stats.ts"
 				]
 			},
 			{
@@ -3956,8 +3941,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -5688,10 +5672,12 @@
 		"removedPublicUrls": [],
 		"addedExternalUrls": [],
 		"removedExternalUrls": [
-			"https://github.com/rebuildup/my-web-2026/releases"
+			"https://"
 		],
 		"addedExternalHosts": [],
-		"removedExternalHosts": [],
+		"removedExternalHosts": [
+			""
+		],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
@@ -5699,7 +5685,12 @@
 			{
 				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL removed: https://github.com/rebuildup/my-web-2026/releases"
+				"message": "External URL removed: https://"
+			},
+			{
+				"code": "W001 external-host-removed",
+				"severity": "warn",
+				"message": "External host no longer referenced: "
 			}
 		]
 	}

@@ -16,7 +16,6 @@ import type {
 import { evaluateEmbedPrivacy, toPrivacySubject } from '../tools/embed-privacy';
 import type { EmbedPrivacyViolation } from '../tools/embed-privacy';
 import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
-import type { ManifestTool } from '../tools/registry';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
 
 /**
@@ -144,6 +143,31 @@ interface DisabledToolView {
 	readonly description_ja: string;
 }
 
+/**
+ * The only manifest fields a `blocked` page may serialize (Issue #994):
+ * the placeholder names the Tool and lists violation codes — nothing
+ * else from the entry may reach `$_TSR`.
+ */
+interface BlockedToolView {
+	readonly slug: string;
+	readonly display_name: string;
+}
+
+/**
+ * The only manifest fields an `embeddable` page may serialize
+ * (Issue #994): identity plus the RESOLVED frame `src` and the
+ * optional host-message contract. `delivery.privacy`, `source`,
+ * `build`, `notes`, `classification` and `license` are operator data
+ * and stay server-side — the iframe attributes they would feed are
+ * already flattened into `PublicToolSummary`.
+ */
+interface EmbeddableToolView {
+	readonly slug: string;
+	readonly display_name: string;
+	readonly src: string;
+	readonly host_message?: ToolHostMessageDeclaration;
+}
+
 export const Route = createFileRoute('/tools/$slug')({
 	loader: ({ params }) => {
 		// Display-case tolerance (see module docstring). The manifest
@@ -166,9 +190,22 @@ export const Route = createFileRoute('/tools/$slug')({
 		const privacy = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
 		const publicTool = getPublicTool(slug);
 		if (violations.length > 0 || privacy.violations.length > 0) {
-			return { state: 'blocked' as const, tool, violations, privacy };
+			const view: BlockedToolView = {
+				slug: tool.slug,
+				display_name: tool.display_name,
+			};
+			return { state: 'blocked' as const, tool: view, violations, privacy };
 		}
-		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
+		if (publicTool) {
+			const view: EmbeddableToolView = {
+				slug: tool.slug,
+				display_name: tool.display_name,
+				src: resolveToolEntryHtml(tool),
+				host_message:
+					tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message,
+			};
+			return { state: 'embeddable' as const, tool: view, public: publicTool };
+		}
 		if (tool.delivery.kind === 'host_disabled') {
 			const view: DisabledToolView = {
 				slug: tool.slug,
@@ -396,17 +433,18 @@ function ToolRoute() {
 	const { tool, public: summary } = loaderData;
 	return (
 		// Owner decision (PR #914): no consent gate — the iframe mounts
-		// directly. `src` comes from `resolveToolEntryHtml`, the same
-		// function the embed-policy verifier uses, so the rendered frame
-		// can never point somewhere the policy did not see.
+		// directly. `src` was resolved in the loader by
+		// `resolveToolEntryHtml`, the same function the embed-policy
+		// verifier uses, so the rendered frame can never point
+		// somewhere the policy did not see.
 		<ToolEmbedShell
 			slug={tool.slug}
 			displayName={tool.display_name}
-			src={resolveToolEntryHtml(tool)}
+			src={tool.src}
 			sandbox={summary.iframe.sandbox}
 			referrerPolicy={summary.iframe.referrer_policy}
 			allow={summary.iframe.allow}
-			hostMessage={tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message}
+			hostMessage={tool.host_message}
 		/>
 	);
 }
@@ -549,7 +587,7 @@ function BlockedPlaceholder({
 	violations,
 	privacyViolations,
 }: {
-	tool: ManifestTool;
+	tool: BlockedToolView;
 	violations: readonly EmbedViolation[];
 	privacyViolations: readonly EmbedPrivacyViolation[];
 }) {

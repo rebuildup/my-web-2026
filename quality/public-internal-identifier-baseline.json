@@ -125,11 +125,6 @@
 		{
 			"file": "src/privacy/data-lifecycle.ts",
 			"rule": "issue-ref",
-			"match": "Issue #910"
-		},
-		{
-			"file": "src/privacy/data-lifecycle.ts",
-			"rule": "issue-ref",
 			"match": "Issue #936"
 		},
 		{

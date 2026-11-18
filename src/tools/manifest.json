@@ -6,7 +6,7 @@
 			"slug": "prototype",
 			"display_name": "ProtoType",
 			"description_ja": "タイピングゲーム。gsap・three.js・pixi.js を使った演出つきで、Tool Registry の最初の統合例として公開しています。",
-			"description": "ProtoType: a heavy Vite SPA showcase (gsap + three.js + pixi.js + recharts) used as the Tool Registry pilot for Issue #81.",
+			"description": "ProtoType: a heavy Vite SPA showcase (gsap + three.js + pixi.js + recharts) used as the Tool Registry pilot.",
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/ProtoType.git",
 				"submodule_path": "external/prototype",

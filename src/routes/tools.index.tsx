@@ -31,6 +31,28 @@ import { listAllTools } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
 /**
+ * The only manifest fields the index cards may serialize into the
+ * hydration payload (same boundary rule as `tools.$slug.tsx`,
+ * Issue #836/#994): `source`, `build`, `notes`, `classification`,
+ * `license` and `delivery` are operator data — repo paths, pinned
+ * SHAs, build commands and internal references — and must not reach
+ * `$_TSR`. The loader projects each entry before returning it.
+ */
+interface ToolIndexEntry {
+	readonly slug: string;
+	readonly display_name: string;
+	readonly description_ja: string;
+}
+
+function toIndexEntry(tool: ManifestTool): ToolIndexEntry {
+	return {
+		slug: tool.slug,
+		display_name: tool.display_name,
+		description_ja: tool.description_ja,
+	};
+}
+
+/**
  * `/tools` — the Tool Registry index (Issues #195, #300, #785).
  *
  * Issue #195 (2026-09-29) flipped the show-all policy: the index lists
@@ -79,8 +101,14 @@ export const Route = createFileRoute('/tools/')({
 	loader: async () => {
 		const all = listAllTools();
 		const bySlug = (a: ManifestTool, b: ManifestTool) => a.slug.localeCompare(b.slug);
-		const available = all.filter((t) => t.delivery.kind !== 'host_disabled').sort(bySlug);
-		const planned = all.filter((t) => t.delivery.kind === 'host_disabled').sort(bySlug);
+		const available = all
+			.filter((t) => t.delivery.kind !== 'host_disabled')
+			.sort(bySlug)
+			.map(toIndexEntry);
+		const planned = all
+			.filter((t) => t.delivery.kind === 'host_disabled')
+			.sort(bySlug)
+			.map(toIndexEntry);
 		const reactions = await getHomeReactions({
 			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
 		});
@@ -601,7 +629,7 @@ const plannedDescription = css({
 	lineHeight: '1.6',
 });
 
-function ToolCard({ tool }: { tool: ManifestTool }) {
+function ToolCard({ tool }: { tool: ToolIndexEntry }) {
 	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	const preview = TOOL_PREVIEWS[tool.slug];
 	// No `data-tool-state` on an OPEN card: the attribute is the disabled
@@ -652,7 +680,7 @@ function ToolCard({ tool }: { tool: ManifestTool }) {
 	);
 }
 
-function PlannedToolItem({ tool }: { tool: ManifestTool }) {
+function PlannedToolItem({ tool }: { tool: ToolIndexEntry }) {
 	const icon = TOOL_ICONS[tool.slug] ?? FALLBACK_TOOL_ICON;
 	return (
 		<li data-tool-slug={tool.slug} data-tool-state="host_disabled" className={plannedItem}>

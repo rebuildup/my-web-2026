@@ -1,0 +1,881 @@
+{
+	"$comment": "Per-finding classification for quality/public-internal-identifier-baseline.json (Issue #994). One entry per baseline finding, keyed by file+rule+match — the check at test/integration/public-internal-identifier-triage.test.ts asserts a bijection with the baseline so a stale or missing classification fails CI.",
+	"version": 1,
+	"classifications": [
+		{
+			"file": "src/contact/channels.json",
+			"rule": "field-name",
+			"match": "verified_at",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "issue-ref",
+			"match": "Issue #103",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "issue-ref",
+			"match": "Issue #832",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/personal/domain.md",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/personal/owner.md",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/channels.json",
+			"rule": "repo-path",
+			"match": "docs/verification/contact/channel-verification-2026-11-03.md.",
+			"classification": "non-rendered-field",
+			"rationale": "$comment/$note/verified_at live in $-metadata stripped by ChannelsFileSchema or in fields removed by PublicContactChannel projection (PR#1013); schema module excluded from client graph via labels.ts split (PR#1014)."
+		},
+		{
+			"file": "src/contact/schema.ts",
+			"rule": "field-name",
+			"match": "verified_at",
+			"classification": "internal-error",
+			"rationale": "Zod validation message thrown at module evaluation on malformed channels.json; internal error, not visitor copy."
+		},
+		{
+			"file": "src/editorial/error-states/contract.ts",
+			"rule": "repo-path",
+			"match": "docs/domain/integrations.md",
+			"classification": "non-rendered-field",
+			"rationale": "ERROR_STATE_WITHHELD_INFO policy strings and evidence fields consumed by tests/validators; not rendered copy."
+		},
+		{
+			"file": "src/editorial/error-states/contract.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/GoogleAnalytics.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "ERROR_STATE_WITHHELD_INFO policy strings and evidence fields consumed by tests/validators; not rendered copy."
+		},
+		{
+			"file": "src/editorial/structured-data/validate.ts",
+			"rule": "repo-path",
+			"match": "docs/appearance/structured-data/search-gallery",
+			"classification": "detector-artifact",
+			"rationale": "repo-path rule matched the path component of an external google.com URL, not a repository path."
+		},
+		{
+			"file": "src/home/current/providers.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-home-git-facts.mjs",
+			"classification": "non-rendered-field",
+			"rationale": "ProjectFact#evidence stripped from $_TSR payload by toPublicRecord (PR#1013); module server-only via dynamic import."
+		},
+		{
+			"file": "src/home/presence/fixtures.ts",
+			"rule": "repo-path",
+			"match": "src/home/presence/types.ts",
+			"classification": "detector-artifact",
+			"rationale": "Test fixture imported only by reader.test.ts; never ships to production bundle or public surface."
+		},
+		{
+			"file": "src/legal/contract.ts",
+			"rule": "repo-path",
+			"match": "quality/asset-license-publication-decision.json",
+			"classification": "internal-error",
+			"rationale": "Asset-license review finding() diagnostic for the operator review record; not public page copy."
+		},
+		{
+			"file": "src/portfolio/schema.ts",
+			"rule": "repo-path",
+			"match": "scripts/check-i18n-policy.mjs",
+			"classification": "detector-artifact",
+			"rationale": "Trailing // comment mentioning the i18n-policy script; isCommentLine only skips full-line comments."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/cloudflare/",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/home/",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/http/",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/portfolio/seed.ts",
+			"rule": "repo-path",
+			"match": "test/build/wrangler",
+			"classification": "intentional-public",
+			"rationale": "Public portfolio copy describing this repository's own architecture; candidate for owner-approved technical explanation per Issue #837 O-8."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #316",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #320",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "issue-ref",
+			"match": "Issue #936",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "docs/security/log-redaction.md",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "docs/verification/portfolio/video-facade.md",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-discord-presence.mjs",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "scripts/sync-github-activity.mjs",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/admin/invitations/accept-view.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/admin/invitations/load.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/cloudflare/auth/better-auth.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/contact/channels.json",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/contact/page.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/AnalyticsConsent.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/editorial/analytics/GoogleAnalytics.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/access/load.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/activity/live.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/CurrentProjects.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/use-changed-projects.test.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/current/use-changed-projects.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/trail.test.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/trail.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/VisitTrail.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/guide/VisitTrailRecorder.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/presence/reader.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/reactions/cookie.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/home/reactions/load.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/access-counter/counter.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/activity/schema.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/activity/store.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/presence/schema.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/presence/store.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/reactions/reactions.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/http/security-txt/policy.json",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/components/PortfolioVideoFacade.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/portfolio/video-facade.ts",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/routes/__root.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/privacy/data-lifecycle.ts",
+			"rule": "repo-path",
+			"match": "src/routes/admin.invitations_.accept.tsx",
+			"classification": "non-rendered-field",
+			"rationale": "evidence[] provenance and publication.note are never rendered (PrivacyNotice reads label/stores/retention/deletion/transfer/senders/visibility only). Registry excluded from client bundle via PublicDataLifecycleEntry projection + getPrivacyNoticeData serverFn (PR#1014)."
+		},
+		{
+			"file": "src/routes/__root.tsx",
+			"rule": "repo-path",
+			"match": "src/editorial/semantic-tokens.ts",
+			"classification": "detector-artifact",
+			"rationale": "Multi-line JSX comment {/* */} not recognised by line-based isCommentLine."
+		},
+		{
+			"file": "src/tools/artifact-inventory.ts",
+			"rule": "repo-path",
+			"match": "quality/tool-artifact-inventory.json",
+			"classification": "detector-artifact",
+			"rationale": "JSDoc block comment continuation lines not recognised by line-based isCommentLine."
+		},
+		{
+			"file": "src/tools/artifact-inventory.ts",
+			"rule": "repo-path",
+			"match": "src/tools/manifest.json",
+			"classification": "detector-artifact",
+			"rationale": "JSDoc block comment continuation lines not recognised by line-based isCommentLine."
+		},
+		{
+			"file": "src/tools/embed-policy.ts",
+			"rule": "issue-ref",
+			"match": "Issue #465",
+			"classification": "internal-error",
+			"rationale": "Manifest validation throw message citing Issue #465; operator-facing error, not rendered."
+		},
+		{
+			"file": "src/tools/embed-privacy.ts",
+			"rule": "issue-ref",
+			"match": "Issue #498",
+			"classification": "internal-error",
+			"rationale": "Manifest validation throw message citing Issue #498; operator-facing error, not rendered."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #5",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #6",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #8",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #81",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #825",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #896",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "Issue #9",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #10",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #3",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #4",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #5",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #6",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #7",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #8",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #88",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "issue-ref",
+			"match": "PR #9",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "release-ref",
+			"match": "release-0-1-0",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "docs/verification/tools/mic-level-host-activation.md.",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/ae-expression",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/business-mail-block",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/code-type-p5",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/color-palette",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/fillgen",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/history-quiz",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/mic-level",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/pi-game",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/pomodoro",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/prototype",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/qr-generator",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/readmark",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/sequential-png-preview",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/svg2tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "external/text-counter",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "quality/tool-artifact-inventory.json.",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/AvailableBlocks.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/ColorPaletteGenerator.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/ComposedBlocks.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/SVGInput.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/widgets/WidgetImageContent.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/widgets/WidgetMusicContent.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/components/youtube/youtube-player-utils.ts",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/gamesets/022_Login.ts",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/hooks/useSessionStorage.ts",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/main.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/reader/pdf/",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/tools/registry.ts",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.json",
+			"rule": "repo-path",
+			"match": "src/ui/document-import.tsx",
+			"classification": "operator-metadata",
+			"rationale": "Tool manifest operator fields (canonical_repo/submodule_path/pinned_sha/build/delivery/notes/privacy.basis/Issue refs). Removed by toSummary() public projection; verified absent from $_TSR payload (PR#1013) and client chunks (PR#1014)."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "field-name",
+			"match": "disabled_reason",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #449",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #465",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #498",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "Issue #785",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "issue-ref",
+			"match": "PR #914",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/embed-policy.md",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/embed-privacy.md",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/inventory.md",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "docs/tools/inventory.md.",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "scripts/check-tools-manifest.mjs",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/routes/tools.",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-policy.ts",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-policy.ts.",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-privacy.ts",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/tools/manifest.schema.json",
+			"rule": "repo-path",
+			"match": "src/tools/embed-privacy.ts.",
+			"classification": "operator-metadata",
+			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		}
+	]
+}

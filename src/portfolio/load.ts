@@ -519,9 +519,7 @@ async function listPortfolioProjectsImpl(
 		for (let scan = 0; scan < MAX_FACET_SCAN_PAGES; scan += 1) {
 			const pageRows = pages.length > limit ? pages.slice(0, limit) : pages;
 			const pageHasMore = pages.length > limit;
-			filteredRows.push(
-				...pageRows.filter((row) => intersectsAny(row.facets, facetFilter)),
-			);
+			filteredRows.push(...pageRows.filter((row) => intersectsAny(row.facets, facetFilter)));
 			const lastScanned = pageRows[pageRows.length - 1];
 			if (!pageHasMore || lastScanned === undefined) {
 				hasMore = false;

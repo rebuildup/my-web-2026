@@ -38,6 +38,8 @@ export const ABOUT_DATA: AboutData = {
 	identity: {
 		name: '木村友亮 / Yusuke Kimura',
 		handle: 'samuido',
+		firstName: 'Yusuke',
+		lastName: 'Kimura',
 		role: '宇部高専 制御情報工学科 本科4年 / developer & creator',
 		lead: 'ソフトウェアと映像・デザインを行き来しながら、作ったものを公開・運用まで持っていく developer / creator。',
 		secondary:

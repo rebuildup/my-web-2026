@@ -51,10 +51,14 @@ export const Route = createFileRoute('/portfolio/')({
 	loaderDeps: ({ search }) => ({ facets: search.facets }),
 	loader: async ({ deps }) => {
 		const activeFacets = parseFacets(deps.facets);
-		const page = await listPortfolioProjects({
-			data: { facets: activeFacets.length > 0 ? activeFacets : undefined },
-		});
-		const reactions = await getHomeReactions({ data: { target: PORTFOLIO_REACTIONS_TARGET } });
+		// Issue #1000: the two reads are independent — awaiting them in
+		// sequence added a full server-fn round trip to every list load.
+		const [page, reactions] = await Promise.all([
+			listPortfolioProjects({
+				data: { facets: activeFacets.length > 0 ? activeFacets : undefined },
+			}),
+			getHomeReactions({ data: { target: PORTFOLIO_REACTIONS_TARGET } }),
+		]);
 		return { initialPage: page, activeFacets, reactions };
 	},
 	head: ({ loaderData }) => {
@@ -90,6 +94,17 @@ export const Route = createFileRoute('/portfolio/')({
 });
 
 function PortfolioRoute() {
+	const { activeFacets } = Route.useLoaderData();
+	// Issue #1000: `extra` / `cursor` are client-side pagination state
+	// for ONE facet query. When the facet set changes the loader
+	// returns a new first page, but React keeps the component mounted
+	// — without a remount the previous filter's loaded pages and
+	// cursor would render under the new filter. Keying the view on
+	// the facet set resets that state exactly when the query changes.
+	return <PortfolioFacetView key={activeFacets.join(',')} />;
+}
+
+function PortfolioFacetView() {
 	const { initialPage, activeFacets, reactions } = Route.useLoaderData();
 	const [extra, setExtra] = useState<PortfolioProject[]>([]);
 	const [cursor, setCursor] = useState<string | null>(initialPage.nextCursor);

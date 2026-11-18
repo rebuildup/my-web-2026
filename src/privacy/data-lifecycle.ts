@@ -331,8 +331,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		retention: {
 			kind: 'windowed',
 			statement: {
-				ja: '重複排除行は記録から 60 分で失効します。ただし失効行の削除は同じリクエスト識別子の再訪時にしか実行されず、このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がありません。したがって再訪のない行はデータベースに残ります。集計行は手動削除されるまで残ります。',
-				en: 'A dedup row expires 60 minutes after it is written. Expired rows are only deleted when the same request identifier returns, and this platform ships no scheduled purge job (no Cron trigger is declared in `wrangler.jsonc`). A row whose visitor never returns therefore stays in the database. Aggregate rows stay until deleted by hand.',
+				ja: '重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。',
+				en: 'A dedup row expires 60 minutes after it is written. Expired rows are all deleted the next time any hit is recorded, whatever the request identifier. This platform ships no scheduled purge job (no Cron trigger is declared in `wrangler.jsonc`), so expired rows can persist while no traffic arrives. Aggregate rows stay until deleted by hand.',
 			},
 		},
 		deletion: {

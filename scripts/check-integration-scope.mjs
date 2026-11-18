@@ -147,12 +147,22 @@ export function parseIntegrationRoster(markdown) {
  * so the boundary's own documentation cannot be mistaken for a mount).
  * The runtime side of the same claim is `boundary.test.ts`.
  *
+ * The pattern requires a route-REGISTRATION call shape
+ * (`.<method>('/integrations…`) rather than any string literal: the
+ * external-boundary mount record (`src/http/external-boundary-mounts.ts`,
+ * Issue #841) legitimately lists `/integrations` as declared-but-unmounted
+ * data, and a bare string match cannot tell that record apart from a
+ * real mount. Registering under the prefix always goes through a Hono
+ * method (`route` / `use` / `on` / verb helpers), so the call shape is
+ * the stable signal.
+ *
  * @returns {string[]} repo-relative files that register such a route.
  */
 export function findIntegrationMounts(root) {
 	const httpRoot = join(root, 'src/http');
 	if (!existsSync(httpRoot)) return [];
-	const pattern = /['"`]\/integrations(?:\/|['"`])/;
+	const pattern =
+		/\.(?:route|use|on|all|mount|get|post|put|patch|delete|options|head)\(\s*['"`]\/integrations(?:\/|\*|['"`])/;
 	return collectSourceFiles(httpRoot)
 		.filter((path) => !/\.(test|spec)\.tsx?$/.test(path))
 		.filter((path) => pattern.test(stripComments(readFileSync(path, 'utf8'))))

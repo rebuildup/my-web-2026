@@ -366,5 +366,10 @@ export const confirmStepUp = createServerFn({ method: 'POST' })
 	.validator(ConfirmStepUpInput)
 	.handler(async ({ data }): Promise<ConfirmStepUpOutcome> => {
 		const session = await requireAdmin();
+		// Issue #998: the step-up record is a durable write; it must
+		// obey the same production-readonly refusal as the admin CRUD
+		// paths (Issue #377).
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:auth:step-up');
 		return confirmStepUpOutcome(env.DB, session, getRequestHeaders(), data);
 	});

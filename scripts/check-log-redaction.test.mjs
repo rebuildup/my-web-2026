@@ -99,6 +99,38 @@ describe('check-log-redaction.mjs — runtime console gate', () => {
 		assert.equal((result.stderr.match(/runtime-console/g) ?? []).length, 3);
 	});
 
+	it('flags a console alias binding, not only a direct call (Issue #996)', () => {
+		// The vendored github-readme-stats `logger = … : console` wrote
+		// upstream GraphQL payloads past the method pattern. The
+		// binding itself is the violation.
+		const result = runGate({
+			...BASELINE,
+			'src/vendor/example/common/utils.ts':
+				'const noop = () => {};\nexport const logger =\n\tprocess.env.NODE_ENV === "test" ? { log: noop } : console;\n',
+		});
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /runtime-console-alias/);
+	});
+
+	it('flags a declared console alias too', () => {
+		const result = runGate({
+			...BASELINE,
+			'src/home/status/panel.tsx':
+				'const out = console;\nexport const P = () => {\n\tout.log("x");\n\treturn null;\n};\n',
+		});
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /runtime-console-alias/);
+	});
+
+	it('does NOT flag a console comparison or a console method call', () => {
+		const result = runGate({
+			...BASELINE,
+			'src/http/hono.ts':
+				'export function f(x: unknown) {\n\tif (x === console) return 1;\n\treturn 0;\n}\n',
+		});
+		assert.equal(result.status, 0);
+	});
+
 	it('exempts test files, which assert ON console output', () => {
 		const result = runGate({
 			...BASELINE,

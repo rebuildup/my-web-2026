@@ -171,8 +171,11 @@ stub adapter の外へ出ない。本番 D1 / R2 / Infisical / Cloudflare API �
 - **gate の静的解析は限定**: 2 つの half とも「テキストを読む」判定で
   ある。operator script 側は「secret 名の値を読む表現」を検出する静的
   ルールであり、値が別名 (`const v = secret`) に入った場合は検出しない。
-  runtime 側は `console.method(` の直接呼び出ししか一致しないので、
-  `console['error'](x)` / `const c = console; c.error(x)` のような
+  runtime 側は `console.method(` の直接呼び出しに加え、`console` を
+  名前へ束縛する式（`= console` / `: console`。Issue #996 で追加）
+  も検出する。`const c = console; c.error(x)` のような alias 経由の
+  呼び出し自体は依然として一致しないが、束縛の時点で fail するため
+  この迂回経路は塞がっている。`console['error'](x)` のような
   computed な呼び出しは検出しない (検出できたとしても
   `src/logging/logger.ts` 1 ファイルのみ除外)。実行時の保証は marker
   ベースの `node --test` (stub / fake 入力) が担う。

@@ -621,10 +621,11 @@ not in workflow YAML, and the same verdict is reproducible locally with
 point is an open decision recorded in
 [`quality/profile.yaml`](quality/profile.yaml). The declaration runs
 `enforcement: block` (Issue #645), so that CI step fails the build on
-any `critical` / `high` advisory that no approved exception covers; the
-exception ledger is empty (the `braces` record was retired in Issue
-#704 when the advisory was withdrawn upstream), so every `critical` /
-`high` finding blocks, and an expired record would block again.
+any `critical` / `high` advisory that no approved exception covers. The
+ledger currently holds one owner-approved exception
+(`GHSA-fc5q-39xc-vjpf` / `picomatch`, Issue #985, expires 2026-12-31 —
+no patched release exists and every affected path is dev-only Panda
+build tooling); an expired or out-of-scope record blocks again.
 Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 

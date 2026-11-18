@@ -432,6 +432,44 @@ describe('GitHub Readme Stats Router', () => {
 			expect(cacheControl).toMatch(/stale-while-revalidate=\d+/);
 		});
 
+		it('ignores caller-supplied cache_seconds on the stats card', async () => {
+			mockFetch.mockResolvedValue(
+				createGraphQLMock({
+					user: {
+						name: 'Test',
+						login: 'test',
+						contributionsCollection: {
+							totalCommitContributions: 10,
+							totalPullRequestReviewContributions: 5,
+						},
+						repositoriesContributedTo: { totalCount: 1 },
+						pullRequests: { totalCount: 2 },
+						mergedPullRequests: { totalCount: 1 },
+						openIssues: { totalCount: 0 },
+						closedIssues: { totalCount: 0 },
+						followers: { totalCount: 10 },
+						repositoryDiscussions: { totalCount: 0 },
+						repositoryDiscussionComments: { totalCount: 0 },
+						repositories: {
+							totalCount: 5,
+							nodes: [{ name: 'repo1', stargazerCount: 1 }],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				}),
+			);
+
+			const req = createMockRequest('/api', {
+				username: 'cache-seconds-ign',
+				cache_seconds: '172800',
+			});
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const cacheControl = res.headers.get('Cache-Control');
+			expect(cacheControl).toContain('max-age=86400');
+			expect(cacheControl).toContain('s-maxage=86400');
+			expect(cacheControl).not.toContain('172800');
+		});
+
 		it('sets 1 hour cache for streak card', async () => {
 			const envWithoutCacheSeconds = createMockEnv({ CACHE_SECONDS: undefined });
 			mockFetch.mockResolvedValueOnce(

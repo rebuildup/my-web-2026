@@ -330,7 +330,7 @@ describe('check-copy-editorial-approval — the public copy surfaces', () => {
 			'src/routes/admin.login.tsx',
 			'src/home/composer.stories.tsx',
 			'src/home/hero.test.tsx',
-			'src/home/brief.md',
+			'src/home/design-notes.md',
 			'src/portfolio/fixtures/markdown/technical-article.md',
 			'src/routes/design-system/DesignSystemPage.tsx',
 		]) {
@@ -341,7 +341,7 @@ describe('check-copy-editorial-approval — the public copy surfaces', () => {
 	it('matches globs the way the declaration uses them', () => {
 		assert.ok(matchesGlob('src/home/**', 'src/home/status/tiles.tsx'));
 		assert.ok(matchesGlob('src/routes/**', 'src/routes/portfolio/index.tsx'));
-		assert.ok(matchesGlob('**/*.md', 'src/home/brief.md'));
+		assert.ok(matchesGlob('**/*.md', 'src/home/design-notes.md'));
 		assert.ok(matchesGlob('src/routes/admin.*', 'src/routes/admin.login.tsx'));
 		assert.ok(!matchesGlob('src/routes/admin.*', 'src/routes/index.tsx'));
 		assert.ok(!matchesGlob('src/home/**', 'src/portfolio/seed.ts'));

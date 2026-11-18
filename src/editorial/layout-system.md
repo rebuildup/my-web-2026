@@ -130,7 +130,7 @@ section        →  paddingBlock (rhythm, §3.3) + optional full-bleed
 
 ### 3.3 Spacing rhythm
 
-One rhythm for every page (`src/home/brief.md` golden-ratio scale;
+One rhythm for every page (`docs/visual/home-design-brief.md` golden-ratio scale;
 tokens are the authority, not pixel literals):
 
 | Beat | `paddingBlock` (base / lg) | px @375 / @1280 |
@@ -151,7 +151,7 @@ step between them is always readable as structure.
 | Role | Size | line-height / tracking | Note |
 | --- | --- | --- | --- |
 | Page `h1` (hero) | `3xl / 4xl` (40 / 64) | `1.15 / 1.05`, `-0.03em` | one display voice per page |
-| Section `h2` (both `SectionHeading` variants) | `2xl` (32) | `1.15`, `-0.025em` | Issue #300: the title span is 306.67 px wide, and a 10-character Japanese phrase at 40 px needs 312 px — it cannot resolve at any phrase boundary. 2xl fits every current JP title with margin, and unifies the `default`/`spread` variants which previously rendered 24/32 vs 32/40 for the same heading level. Supersedes `brief.md` §4's `2xl/3xl` for the title-span h2. |
+| Section `h2` (both `SectionHeading` variants) | `2xl` (32) | `1.15`, `-0.025em` | Issue #300: the title span is 306.67 px wide, and a 10-character Japanese phrase at 40 px needs 312 px — it cannot resolve at any phrase boundary. 2xl fits every current JP title with margin, and unifies the `default`/`spread` variants which previously rendered 24/32 vs 32/40 for the same heading level. Supersedes the Issue #21 brief's §4 `2xl/3xl` for the title-span h2 (the brief now lives at `docs/visual/home-design-brief.md` as a historical record, Issue #843). |
 | Card / row `h3`-tier title | `xl` (24) | — | one tier under the section title |
 | Description | `md` (16), line-height `1.6` | — | capped at 640 px in the `default` variant; constrained by the title span in `spread` |
 

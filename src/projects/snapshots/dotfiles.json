@@ -5,18 +5,18 @@
 		"owner": "rebuildup",
 		"repo": "dotfiles",
 		"ref": "main",
-		"commitSha": "237af590cca2afe48ccd47ff3f81538d2297899c",
-		"committedAt": "2026-10-19T14:24:36.000Z",
+		"commitSha": "3265658d21a9632a8f32f72260d89c9edf3f6fa1",
+		"committedAt": "2026-11-18T10:14:13.000Z",
 		"readmePath": "README.md",
-		"readmeBlobSha": "61b16651099890ee38bb6c28b76471c689acde7c",
+		"readmeBlobSha": "bbd369d11a9b78cc51b8d09bb21048303fea08bb",
 		"canonicalUrl": "https://github.com/rebuildup/dotfiles",
-		"readmeUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md"
+		"readmeUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md"
 	},
 	"availability": "public",
 	"unavailable": null,
-	"verifiedAt": "2026-10-20T02:20:44.835Z",
-	"appliedAt": "2026-10-20T02:20:44.835Z",
-	"contentDigest": "sha256:a5ff0d1dc498c828f0f4c5d3aea0601bd63eba207b092ff5f750224e6ad5d007",
+	"verifiedAt": "2026-11-18T13:41:11.797Z",
+	"appliedAt": "2026-11-18T13:41:11.797Z",
+	"contentDigest": "sha256:19f4e8669875430bd4bcb42f2bd93034d78189aea1f7be614dcb54c20a102500",
 	"introduction": {
 		"title": "dotfiles",
 		"lead": [
@@ -36,7 +36,7 @@
 				"id": "principles",
 				"heading": "Principles",
 				"anchor": "principles",
-				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md#principles",
 				"summary": null,
 				"points": [
 					[
@@ -76,19 +76,27 @@
 				"id": "layout",
 				"heading": "Layout",
 				"anchor": "layout",
-				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md#layout",
 				"summary": null,
 				"points": [],
-				"structure": [".infisical.json", "config", "agents", "home", "script", "docs", "AGENTS.md"]
+				"structure": [
+					".infisical.json",
+					"config",
+					"agents",
+					"home",
+					"script",
+					"docs",
+					"AGENTS.md"
+				]
 			},
 			{
 				"id": "agent-launcher",
 				"heading": "Agent launcher (agent)",
 				"anchor": "agent-launcher-agent",
-				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md#agent-launcher-agent",
 				"summary": [
 					{
-						"text": "The native claude command keeps the official Claude Code login and is never wrapped, aliased or overridden. Routes to other API providers (OpenRouter, DeepSeek, MiniMax, OpenCode Zen) are explicit and opt-in through the unified agent launcher: one declarative config (config/agents.toml), one thin Bun/TypeScript implementation (script/agent.ts, linked to ~/.local/bin/agent by script/link; PowerShell entry script/agent.ps1 on Windows) that reads the TOML with Bun.TOML.parse(), builds a filtered process-scoped environment through the existing Infisical wrapper (script/with-secrets, or…"
+						"text": "The native claude command keeps the official Claude Code login and is never wrapped, aliased or overridden. Routes to other API providers (OpenRouter, DeepSeek, MiniMax, OpenCode Zen, Logfare) are explicit and opt-in through the unified agent launcher: one declarative config (config/agents.toml), one thin Bun/TypeScript implementation (script/agent.ts, linked to ~/.local/bin/agent by script/link; PowerShell entry script/agent.ps1 on Windows) that reads the TOML with Bun.TOML.parse(), builds a filtered process-scoped environment through the existing Infisical wrapper (script/with-secrets, or…"
 					}
 				],
 				"points": [],
@@ -98,7 +106,7 @@
 				"id": "agent-configuration",
 				"heading": "Agent configuration",
 				"anchor": "agent-configuration",
-				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md#agent-configuration",
 				"summary": [
 					{
 						"text": "Global Claude Code, Codex, and OpenCode repositories are pinned as sibling submodules under agents/. A fresh clone does not need --recurse-submodules: script/bootstrap authenticates GitHub, stores the GitHub credential helper in a machine-local Git config file, links the stable global Git config, then initializes the exact commits recorded by the parent repository."
@@ -111,13 +119,13 @@
 				"id": "decisions-and-research",
 				"heading": "Decisions and research",
 				"anchor": "decisions-and-research",
-				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/README.md#decisions-and-research",
 				"summary": null,
 				"points": [
 					[
 						{
 							"text": "ADR-0001",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0001.md"
 						},
 						{
 							"text": "— plain symlink home-mirror deployment"
@@ -126,7 +134,7 @@
 					[
 						{
 							"text": "ADR-0002",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0002.md"
 						},
 						{
 							"text": "— minimal common-first configuration and pc-setup boundary"
@@ -135,7 +143,7 @@
 					[
 						{
 							"text": "ADR-0003",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0003.md"
 						},
 						{
 							"text": "— superseded SOPS + age design"
@@ -144,7 +152,7 @@
 					[
 						{
 							"text": "ADR-0004",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0004.md"
 						},
 						{
 							"text": "— Infisical secret source of truth"
@@ -153,7 +161,7 @@
 					[
 						{
 							"text": "ADR-0005",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0005.md"
 						},
 						{
 							"text": "— sibling agent-config submodules and shared portable assets"
@@ -162,7 +170,7 @@
 					[
 						{
 							"text": "ADR-0006",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0006.md"
 						},
 						{
 							"text": "— self-hosted Infisical control plane"
@@ -171,7 +179,7 @@
 					[
 						{
 							"text": "ADR-0007",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0007.md"
 						},
 						{
 							"text": "— WSL Infisical file-vault / bounded runtime validation"
@@ -180,7 +188,7 @@
 					[
 						{
 							"text": "ADR-0008",
-							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md"
+							"href": "https://github.com/rebuildup/dotfiles/blob/3265658d21a9632a8f32f72260d89c9edf3f6fa1/docs/adr/ADR-0008.md"
 						},
 						{
 							"text": "— provider-neutral Claude common configuration / isolated providers"

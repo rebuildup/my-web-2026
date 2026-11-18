@@ -79,6 +79,11 @@ export const getCurrentSession = createServerFn({ method: 'GET' }).handler(
 export const signOutCurrentSession = createServerFn({ method: 'POST' }).handler(
 	async (): Promise<void> => {
 		const headers = getRequestHeaders();
+		// Issue #998: sign-out invalidates a session row — a durable
+		// write, so it takes the same production-readonly refusal.
+		const { env } = await import('cloudflare:workers');
+		const { assertAdminWriteAllowed } = await import('../read-only');
+		await assertAdminWriteAllowed(env, 'admin:auth:sign-out');
 		const { auth } = await import('../../cloudflare/auth/better-auth');
 		await auth.api.signOut({ headers });
 	},

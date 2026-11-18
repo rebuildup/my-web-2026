@@ -562,23 +562,15 @@ describe('seo-head-contract: route discovery against the real src/routes', () =>
 
 describe('seo-head-contract: the inline webfont flip script (Issue #488)', () => {
 	/**
-	 * The script body `src/routes/__root.tsx` ships, read from the file
-	 * rather than duplicated here, so this case cannot pass against a
-	 * copy that drifted from the one the Worker renders.
+	 * The script body the root route shipped until Issue #876
+	 * self-hosted the fonts, frozen verbatim. It is a fixture rather
+	 * than a file read on purpose: `__root.tsx` no longer ships any
+	 * flip script, and the contract stays so the pattern cannot
+	 * silently regress into an unbounded-listener shape.
 	 */
-	const shippedFlipScript = () => {
-		const source = readFileSync(ROOT_ROUTE_FILE, 'utf8');
-		const line = source
-			.split('\n')
-			.find((candidate) => candidate.includes('querySelector(') && candidate.includes('media='));
-		assert.ok(line, `no inline flip script found in ${ROOT_ROUTE_FILE}`);
-		return line
-			.trim()
-			.replace(/^children:\s*/, '')
-			.replace(/^'/, '')
-			.replace(/',$/, '')
-			.replace(/\\'/g, "'");
-	};
+	const SHIPPED_FLIP_SCRIPT =
+		'(function(){var r=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}if(!l.__myWebFlip){l.__myWebFlip=1;l.addEventListener("load",function(){l.media="all"},{once:true})}return true};if(r())return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",r,{once:true});return}var n=0;var t=function(){if(r()||++n>60)return;requestAnimationFrame(t)};requestAnimationFrame(t)})();';
+	const shippedFlipScript = () => SHIPPED_FLIP_SCRIPT;
 
 	/** The pre-#488 body, verbatim: the leak this contract exists for. */
 	const LEAKY_SCRIPT =
@@ -597,7 +589,7 @@ describe('seo-head-contract: the inline webfont flip script (Issue #488)', () =>
 		assert.deepEqual(parseInlineScriptSources('<head><script src="/app.js"></script></head>'), []);
 	});
 
-	it('accepts the script the root route ships today', () => {
+	it('accepts the bounded script the root route shipped before #876', () => {
 		const findings = evaluateFlipScriptContract([shippedFlipScript()], { path: '/' });
 		assert.deepEqual(
 			findings.map((finding) => finding.rule),

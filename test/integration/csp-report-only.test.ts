@@ -38,8 +38,11 @@ describe('CSP Report-Only — presence (Issue #447)', () => {
 		expect(policy).not.toBeNull();
 		expect(policy).toContain("default-src 'self'");
 		expect(policy).toContain('https://www.googletagmanager.com');
-		expect(policy).toContain('https://fonts.googleapis.com');
-		expect(policy).toContain('https://fonts.gstatic.com');
+		expect(policy).toContain("font-src 'self'");
+		// Issue #876 — fonts are self-hosted; no Google Fonts origin may
+		// remain anywhere in the policy.
+		expect(policy).not.toContain('fonts.googleapis.com');
+		expect(policy).not.toContain('fonts.gstatic.com');
 		expect(policy).toContain("frame-src 'self'");
 		// The enforcing policy remains the separate #448 header.
 		expect(headers.get(ENFORCING)).toBe(SELF_FRAME);

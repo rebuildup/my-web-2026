@@ -38,9 +38,11 @@ const HOST_ORIGIN = 'https://rebuildup.dev';
 
 /**
  * An embed-free host page, used as the control for the chrome baseline.
- * `/contact` carries the same site chrome as a Tool route (GA4 loader +
- * Google Fonts) and frames nothing, so any third-party URL a Tool route
- * adds beyond this set was added by the embed.
+ * `/contact` carries the same site chrome as a Tool route and frames
+ * nothing, so any third-party URL a Tool route adds beyond this set
+ * was added by the embed. Since Issue #876 self-hosted the webfonts,
+ * the chrome baseline is expected to be empty in SSR markup (GA4
+ * mounts only after consent).
  */
 const CONTROL_PATH = '/contact';
 
@@ -73,12 +75,14 @@ function thirdPartyUrls(html: string): string[] {
 describe('embed privacy — the documents visitors receive (Issue #498)', () => {
 	it('adds no third-party request the host chrome did not already make', async () => {
 		const control = await htmlOf(CONTROL_PATH);
-		// Non-vacuity: the baseline is not empty, so the subset
-		// assertion below compares against real chrome requests instead
-		// of passing on an empty set.
+		// Issue #876 — the webfonts are self-hosted and GA4 mounts only
+		// after consent, so SSR chrome references no third-party origin
+		// at all except the plain GitHub link in the footer chrome —
+		// a navigation href, not a subresource fetch. The subset
+		// assertion below therefore requires every
+		// Tool host document to be just as clean.
 		const chrome = thirdPartyUrls(control.html);
-		expect(chrome.length).toBeGreaterThan(0);
-		expect(chrome.some((url) => url.includes('fonts.googleapis.com'))).toBe(true);
+		expect(chrome).toEqual(['https://github.com/rebuildup/my-web-2026']);
 
 		for (const tool of embeddableTools()) {
 			const { status, html } = await htmlOf(`/tools/${tool.slug}`);
@@ -92,20 +96,16 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 		}
 	});
 
-	it('never requests an origin the embed declared, outside the host chrome origins', async () => {
-		// Overlap with the chrome origins is allowed — the host loads
-		// Google Fonts on every page by owner decision (Issue #171 /
-		// #447). What this Issue governs is the EMBED's own requests, so
-		// the two services the Tool artefact would have pulled on load
-		// (Typekit, Apps Script) must not appear in the host markup.
+	it('never requests an origin the embed declared', async () => {
+		// What this Issue governs is the EMBED's own requests: the
+		// services the Tool artefact would pull on load (Typekit,
+		// Apps Script, its own Google Fonts) must not appear in the
+		// host markup.
 		for (const tool of embeddableTools()) {
 			const { html } = await htmlOf(`/tools/${tool.slug}`);
 			const contacts = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery)).contacts;
-			const offending = thirdPartyUrls(html).filter(
-				(url) =>
-					!url.includes('fonts.googleapis.com') &&
-					!url.includes('fonts.gstatic.com') &&
-					contacts.some((origin) => url.startsWith(origin)),
+			const offending = thirdPartyUrls(html).filter((url) =>
+				contacts.some((origin) => url.startsWith(origin)),
 			);
 			expect(offending, `${tool.slug} requests an embed-declared origin`).toEqual([]);
 		}

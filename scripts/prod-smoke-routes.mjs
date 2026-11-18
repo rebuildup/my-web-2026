@@ -57,7 +57,7 @@
  *     contract against the local build). No navigation is hardcoded to
  *     production, so an offline run cannot resolve the production
  *     hostname.
- *     The pages themselves reference Google Fonts, GA4, and
+ *     The pages themselves reference GA4 and
  *     `media.rebuildup.dev`; the smoke does not exercise those and does
  *     not assert on them, so this registry never becomes a third-party
  *     availability contract.

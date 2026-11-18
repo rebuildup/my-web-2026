@@ -101,7 +101,8 @@ function modelWith(rows = [auditRow()], samples = [sample()], limits = ['Not a t
 			sans: '"Noto Sans JP", sans-serif',
 			mono: 'monospace',
 		},
-		fontHref: 'https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New',
+		fontCss:
+			'@font-face { font-family: "Zen Kaku Gothic New"; src: url(https://rebuildup.dev/fonts/zen-kaku-gothic-new-latin-400.woff2); }',
 		limits,
 	});
 }
@@ -110,7 +111,7 @@ test('the report prints the shipped font stacks, not a restated font', () => {
 	const model = modelWith();
 	const html = renderReportHtml(model);
 	assert.match(html, /--font-heading: "Zen Kaku Gothic New", sans-serif;/);
-	assert.match(html, /fonts\.googleapis\.com\/css2\?family=Zen\+Kaku\+Gothic\+New/);
+	assert.match(html, /zen-kaku-gothic-new-latin-400\.woff2/);
 });
 
 test('the report escapes fixture data so a row cannot rewrite the artefact', () => {

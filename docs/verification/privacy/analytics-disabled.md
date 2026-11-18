@@ -123,15 +123,13 @@ client 側 7 files / 51 tests passed。`validate:fast` は `pnpm run test`
 
 | 相手 | 通信 | 起動条件 | 可読性に必要か |
 | --- | --- | --- | --- |
-| Google Fonts | stylesheet + font file | 全公開ページ、**同意の有無に関係なく** | 不要（platform font で読める） |
 | Google Analytics 4 | `gtag.js` + collect | **`granted` が解決した document のみ** | 不要 |
 | 第三者 API | 無し | — | — |
 
-同意前に残る第三者通信は Google Fonts だけである（`src/routes/__root.tsx`
-の非同期 stylesheet）。これは計測ではなく表示用フォントの取得であり、
-IP は Google に渡る。同意 UI の文言は「解析」についてのみ述べており、
-フォント取得を計測と同じ同意の対象とは扱っていない。この整理を
-変えるか（セルフホスト化を含む）は §8 #2 の未決事項である。
+同意前に残る第三者通信は無い。かつて同意の有無に関係なく取得されて
+いた Google Fonts の stylesheet / font file は、Issue #876 で
+`public/fonts/` の same-origin `@font-face` に置き換わり、第三者への
+送信は発生しない。
 
 ## 8. 残存リスク / 未決事項
 
@@ -139,9 +137,9 @@ IP は Google に渡る。同意 UI の文言は「解析」についてのみ�
    タグが無いことは request-level で固定しているが、「granted の
    document で必ず 1 回だけ page_view が送られる」ことはブラウザ実行を
    伴うため、`test:client`（gate 外）と runbook の手順で確認する。
-2. **Google Fonts は同意前に取得される**（§7）。計測ではないが第三者
-   通信であり、セルフホスト化・`font-display` 方針と合わせて owner が
-   判断する。本 Issue では挙動を変えず、事実として記録する。
+2. ~~Google Fonts は同意前に取得される~~ → **解決済み（Issue #876）**。
+   フォントは `public/fonts/` の same-origin 配信に置き換わり、同意前の
+   第三者通信は 0 件になった。
 3. **`test:client` は `validate:fast` / CI に載っていない**。GA4 の
    停止・再許可は DOM と `localStorage` を必要とするため workerd pool
    では検証できず、gate へ足すかは quality profile の変更（別 decision）。

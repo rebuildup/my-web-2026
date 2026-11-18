@@ -76,13 +76,12 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 
 | 相手 | 通信 | 起動側 | 可読性に必要か | 根拠 |
 | --- | --- | --- | --- | --- |
-| Google Fonts | stylesheet + font file | browser | **不要** | `src/routes/__root.tsx`（`media="print"` の非同期 CSS + inline flip） |
 | Google Analytics 4 | measurement script + page_view | browser | **不要** | `src/editorial/analytics/GoogleAnalytics.tsx`（ID は任意） |
 | 第三者 API | **無し** | — | — | `docs/domain/integrations.md`（Current state: promoted なし） |
 
 SSR render 失敗時の standalone fallback document（§5.1）は、外部 stylesheet も analytics script も読み込まない（inline CSS と素の anchor のみ）。したがって第三者をすべて block した環境でも同じ内容が読める。
 
-第三者をすべて block しても、failure メッセージはプラットフォームのフォントで読める。上表 3 行は `contract.ts#ERROR_STATE_EXTERNAL_COMMUNICATIONS` で宣言し、テストが「すべて `requiredForMessage: false`」「server 起点の行は 0 件」を固定する。
+第三者をすべて block しても、failure メッセージはプラットフォームのフォントで読める。上表 2 行は `contract.ts#ERROR_STATE_EXTERNAL_COMMUNICATIONS` で宣言し、テストが「すべて `requiredForMessage: false`」「server 起点の行は 0 件」を固定する。
 
 ### 公開面と platform binding の依存表
 

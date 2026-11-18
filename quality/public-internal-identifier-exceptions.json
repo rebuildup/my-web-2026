@@ -1,0 +1,5 @@
+{
+	"$comment": "Issue #837 (O-8) exception ledger for check-public-internal-identifiers.mjs. An entry suppresses a finding ONLY when file + rule + match align AND ownerConfirmation is \"confirmed\" with a reason (>= 20 chars) and an ownerReference. Unconfirmed entries never suppress — they are reported so a pending owner decision cannot pass silently. Adding an entry is an owner copy decision, not a mechanical one.",
+	"version": 1,
+	"exceptions": []
+}

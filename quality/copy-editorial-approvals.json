@@ -3477,6 +3477,118 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1020",
+			"pr": 1020,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:826a29e7d8a180f76e0bee60d2af5547ced3cac675c74f5ad49799129629fafd",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #833 の監査/表示分離に伴う /contact の公開日本語 copy。(1) SectionHeading description を「30 日以内に再検証されたものだけ掲載」から監査モデルの説明へ修正（due channel は掲載継続するため旧記述は不正確）。(2) due 行に「要再検証」注記を追加。(3) audit-due notice を追加。(4) 空状態を「0 件」と「確認不能」の 2 バリアントに分離。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/contact/page.tsx",
+					"before": "各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。",
+					"after": "各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。",
+					"text": "各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。",
+					"verdict": "intentional",
+					"note": "旧「30 日以内のみ掲載」は due channel の掲載継続で事実と矛盾するため監査モデルの説明へ修正。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "${days} 日前に最終確認・要再検証 / last verified ${days} day${days === 1 ? '' : 's'} ago — re-verification due",
+					"text": "${days} 日前に最終確認・要再検証 / last verified ${days} day${days === 1 ? '' : 's'} ago — re-verification due",
+					"verdict": "intentional",
+					"note": "audit=due 行専用の注記。日付経過だけで経路を消さない要件どおり。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"after": "検証日を確認できません / verification date unavailable",
+					"text": "検証日を確認できません / verification date unavailable",
+					"verdict": "equivalent",
+					"note": "分岐順の入れ替えに伴う対応付けの変化。両文言とも存続。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "検証日が未来です / verification date is in the future",
+					"text": "検証日が未来です / verification date is in the future",
+					"verdict": "equivalent",
+					"note": "三項演算子の並べ替えによる移動。文言不変。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"text": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"verdict": "equivalent",
+					"note": "fresh 行の従来表記。due 分岐追加で位置が変わっただけ。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "最終確認から時間が経過した channel があります。",
+					"text": "最終確認から時間が経過した channel があります。",
+					"verdict": "intentional",
+					"note": "audit-due notice の前半。due channel 存在時のみ表示。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "経路の実在は確認済みですが、最新の状態は未確認です。",
+					"text": "経路の実在は確認済みですが、最新の状態は未確認です。",
+					"verdict": "intentional",
+					"note": "audit-due notice の後半。訪問者向けの不明表示。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+					"text": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+					"verdict": "intentional",
+					"note": "unverifiable 空状態バリアント。「0 件」と「確認不能」を区別する要件どおり。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
+					"text": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
+					"verdict": "equivalent",
+					"note": "従来の空状態文言。unverifiable=false 側に存続。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "表示有効性と監査鮮度の分離を求める Issue。本 PR の実装対象。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1020",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/runbook/contact-channel-reverification.md",
+						"note": "再検証運用の runbook（実装の一部）。"
+					}
+				]
+			}
 		}
 	]
 }

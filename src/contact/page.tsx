@@ -10,9 +10,15 @@ export interface ContactPageProps {
 	/**
 	 * When true the page renders the empty-state message instead
 	 * of a list. Driven by the loader, not the data — the data
-	 * path always passes through the fail-closed gate first.
+	 * path always passes through the display-validity gate first.
 	 */
 	empty: boolean;
+	/**
+	 * Active channels whose records cannot confirm verification
+	 * (Issue #833). Distinguishes "no channels exist" from
+	 * "channels exist but none are confirmable" in the empty state.
+	 */
+	unverifiableCount: number;
 }
 
 /**
@@ -34,7 +40,7 @@ export interface ContactPageProps {
  *
  * No JS interactivity. The page is fully static SSR.
  */
-export function ContactPage({ channels, empty }: ContactPageProps) {
+export function ContactPage({ channels, empty, unverifiableCount }: ContactPageProps) {
 	return (
 		<>
 			<a
@@ -136,10 +142,17 @@ export function ContactPage({ channels, empty }: ContactPageProps) {
 							id="channels-heading"
 							eyebrow="01 — Channels"
 							title="現在利用可能な channel"
-							description="各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。"
+							description="各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。"
 							variant="default"
 						/>
-						{empty ? <EmptyState /> : <ChannelList channels={channels} />}
+						{empty ? (
+							<EmptyState unverifiable={unverifiableCount > 0} />
+						) : (
+							<>
+								{channels.some((ch) => ch.audit === 'due') ? <AuditDueNotice /> : null}
+								<ChannelList channels={channels} />
+							</>
+						)}
 					</Container>
 				</section>
 			</main>
@@ -178,15 +191,20 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 	// the URL — selecting the rendered link yields no invisible
 	// characters.
 	const urlSegments = channel.url.split('/');
-	const verifiedLabel = Number.isNaN(days)
-		? '検証日を確認できません / verification date unavailable'
-		: days < 0
-			? // The gate in `filterActiveVerified` refuses to publish a future
-				// date, so this branch is defensive only: a row that reached the
-				// page with a negative day count is not "unparseable", it is
-				// dated ahead of now, and the label must not claim otherwise.
-				'検証日が未来です / verification date is in the future'
-			: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
+	const verifiedLabel =
+		channel.audit === 'due'
+			? // Issue #833: a `due` channel was verified to exist but its
+				// audit window has elapsed. It stays listed — date age alone
+				// must not remove a real route — with an explicit
+				// re-verification note instead of a freshness claim.
+				`${days} 日前に最終確認・要再検証 / last verified ${days} day${days === 1 ? '' : 's'} ago — re-verification due`
+			: Number.isNaN(days)
+				? '検証日を確認できません / verification date unavailable'
+				: days < 0
+					? // Defensive only: `auditChannelState` reports a future
+						// date as `unknown`, which never reaches the page.
+						'検証日が未来です / verification date is in the future'
+					: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<li
 			data-channel-id={channel.id}
@@ -311,10 +329,36 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 	);
 }
 
-function EmptyState() {
+function AuditDueNotice() {
+	return (
+		<p
+			data-testid="contact-audit-due"
+			className={css({
+				margin: '0',
+				marginBlockEnd: '6',
+				padding: '3',
+				borderRadius: 'md',
+				borderWidth: '1px',
+				borderColor: 'border.subtle',
+				borderStyle: 'solid',
+				backgroundColor: 'bg.surface',
+				fontFamily: 'sans',
+				fontSize: 'md',
+				lineHeight: '1.6',
+				color: 'text.muted',
+			})}
+		>
+			最終確認から時間が経過した channel があります。
+			経路の実在は確認済みですが、最新の状態は未確認です。
+		</p>
+	);
+}
+
+function EmptyState({ unverifiable }: { unverifiable: boolean }) {
 	return (
 		<div
 			data-testid="contact-empty"
+			data-empty-reason={unverifiable ? 'unverifiable' : 'none'}
 			className={css({
 				paddingBlock: '12',
 				paddingInline: '6',
@@ -330,7 +374,9 @@ function EmptyState() {
 			})}
 		>
 			<p lang="ja" className={css({ margin: '0' })}>
-				現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。
+				{unverifiable
+					? '現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。'
+					: '現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。'}
 			</p>
 		</div>
 	);

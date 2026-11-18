@@ -1,39 +1,45 @@
 import { describe, expect, it } from 'vitest';
 import {
+	AUDIT_WINDOW_DAYS,
 	ChannelsFileSchema,
-	FRESHNESS_WINDOW_DAYS,
-	FRESHNESS_WINDOW_MS,
 	PurposeSchema,
+	auditChannelState,
+	countUnauditableChannels,
 	daysSinceVerified,
-	filterActiveVerified,
+	selectDisplayableChannels,
 } from './schema';
+import type { Channel } from './schema';
 
 /**
- * Unit tests for the `/contact` channel filter (Issue #103).
+ * Unit tests for the `/contact` channel selection (Issues #103, #833).
  *
- * The filter is the fail-closed gate: a channel is only returned
- * when it is `active: true` AND `verified_at` falls inside the
- * freshness window measured from `now`. We pin `now` so the
- * boundary cases are stable across runs.
+ * Issue #833 split the old single freshness gate into two contracts:
+ *
+ *   - DISPLAY validity — `active: true` plus a parseable, non-future
+ *     `verified_at`. Only this decides whether a channel is listed.
+ *   - AUDIT freshness — `auditChannelState` classifies the record as
+ *     `fresh` / `due` / `unknown`. `due` stays listed with a
+ *     re-verification note; `unknown` cannot confirm the channel was
+ *     ever verified and is dropped (fail-closed).
+ *
+ * We pin `now` so the boundary cases are stable across runs.
  *
  * Coverage:
  *   1. Inactive channels are always dropped.
- *   2. Channels with no recent verified_at are dropped.
- *   3. Channels with verified_at == now - 1 day are kept.
- *   4. Channels with verified_at < now - window are dropped.
- *   5. A `verified_at` dated in the future is DROPPED (Issue #832).
- *      The value is an authored JST calendar day; a date ahead of the
- *      request time is a wrong record, and presenting it as verified
- *      would be the same fail-open the gate exists to prevent.
+ *   2. Channels past the audit window STAY listed as `due` — date
+ *      age alone must not remove a verified route (Issue #833).
+ *   3. Channels inside the audit window are `fresh`.
+ *   4. `verified_at` == now - 1 day is `fresh`.
+ *   5. A `verified_at` dated in the future is `unknown` → dropped.
  *   5a. The day is read as JST, so a channel verified "today" in JST
- *      is still listed during the 9 hours when UTC is on the previous
- *      day. Parsing at UTC midnight made that row render `days = -1`
- *      and the UI label it "unparseable".
+ *      is still `fresh` during the 9 hours when UTC is on the
+ *      previous day.
  *   6. Ordering is stable: most-recently verified first, then id
  *      ascending on tie.
- *   7. Malformed verified_at values drop the channel (fail-closed).
- *   8. PurposeSchema rejects unknown purposes.
- *   9. The JSON shape contract: id regex / url format / verified_at
+ *   7. Malformed verified_at → `unknown` → dropped (fail-closed).
+ *   8. countUnauditableChannels counts only ACTIVE unknown records.
+ *   9. PurposeSchema rejects unknown purposes.
+ *  10. The JSON shape contract: id regex / url format / verified_at
  *      date format.
  */
 
@@ -41,259 +47,128 @@ import {
 const NOW = Date.UTC(2026, 8, 27, 12, 0, 0); // 2026-09-27T12:00:00Z
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-describe('filterActiveVerified', () => {
+function channel(overrides: Partial<Channel> = {}): Channel {
+	return {
+		id: 'x',
+		label: 'X',
+		labelEn: 'X',
+		purpose: 'technical',
+		url: 'https://example.com',
+		verified_at: '2026-09-27',
+		active: true,
+		...overrides,
+	};
+}
+
+function daysAgo(n: number): string {
+	return new Date(NOW - n * ONE_DAY_MS).toISOString().slice(0, 10);
+}
+
+describe('selectDisplayableChannels', () => {
 	it('drops inactive channels regardless of verified_at', () => {
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'x',
-					label: 'X',
-					labelEn: 'X',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: '2026-09-27',
-					active: false,
-				},
-			],
-			NOW,
-		);
+		const out = selectDisplayableChannels([channel({ active: false })], NOW);
 		expect(out).toHaveLength(0);
 	});
 
-	it('drops channels whose verified_at is older than the freshness window', () => {
-		const stale = new Date(NOW - (FRESHNESS_WINDOW_DAYS + 1) * ONE_DAY_MS)
-			.toISOString()
-			.slice(0, 10);
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'x',
-					label: 'X',
-					labelEn: 'X',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: stale,
-					active: true,
-				},
-			],
-			NOW,
-		);
-		expect(out).toHaveLength(0);
-	});
-
-	it('keeps channels whose verified_at is inside the freshness window', () => {
-		const recent = new Date(NOW - 5 * ONE_DAY_MS).toISOString().slice(0, 10);
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'x',
-					label: 'X',
-					labelEn: 'X',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: recent,
-					active: true,
-				},
-			],
+	it('keeps channels past the audit window as `due` — age alone never removes a verified route', () => {
+		const out = selectDisplayableChannels(
+			[channel({ verified_at: daysAgo(AUDIT_WINDOW_DAYS + 1) })],
 			NOW,
 		);
 		expect(out).toHaveLength(1);
-		expect(out[0].id).toBe('x');
+		expect(out[0].audit).toBe('due');
+	});
+
+	it('keeps channels whose verified_at is inside the audit window as `fresh`', () => {
+		const out = selectDisplayableChannels([channel({ verified_at: daysAgo(5) })], NOW);
+		expect(out).toHaveLength(1);
+		expect(out[0].audit).toBe('fresh');
+		expect(out[0].channel.id).toBe('x');
 	});
 
 	it('keeps channels verified just inside the window', () => {
-		// 29 days ago — clearly inside the 30-day window.
-		const justInside = new Date(NOW - (FRESHNESS_WINDOW_DAYS - 1) * ONE_DAY_MS)
-			.toISOString()
-			.slice(0, 10);
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'inside',
-					label: 'I',
-					labelEn: 'I',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: justInside,
-					active: true,
-				},
-			],
+		const out = selectDisplayableChannels(
+			[channel({ verified_at: daysAgo(AUDIT_WINDOW_DAYS - 1) })],
 			NOW,
 		);
 		expect(out).toHaveLength(1);
+		expect(out[0].audit).toBe('fresh');
 	});
 
 	it('keeps a same-day JST verification while UTC is still on the previous day', () => {
 		// 2026-09-28T00:30+09:00 == 2026-09-27T15:30Z. The record says
 		// 2026-09-28; a UTC-anchored parse would place it 8.5 hours AHEAD
-		// of `now` and the row rendered as "unparseable" instead of "today".
+		// of `now` and the row would read `unknown` instead of "today".
 		const now = Date.UTC(2026, 8, 27, 15, 30, 0);
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'jst-today',
-					label: 'J',
-					labelEn: 'J',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: '2026-09-28',
-					active: true,
-				},
-			],
-			now,
-		);
+		const out = selectDisplayableChannels([channel({ verified_at: '2026-09-28' })], now);
 		expect(out).toHaveLength(1);
-		expect(daysSinceVerified(out[0], now)).toBe(0);
+		expect(out[0].audit).toBe('fresh');
+		expect(out[0].verifiedDaysAgo).toBe(0);
 	});
 
-	it('drops a channel dated in the future', () => {
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'future',
-					label: 'F',
-					labelEn: 'F',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: '2026-12-31',
-					active: true,
-				},
-			],
-			NOW,
-		);
+	it('drops a channel dated in the future — the record cannot confirm verification', () => {
+		const out = selectDisplayableChannels([channel({ verified_at: '2026-12-31' })], NOW);
 		expect(out).toHaveLength(0);
 	});
 
 	it('drops channels with unparseable verified_at', () => {
-		const out = filterActiveVerified(
-			[
-				{
-					id: 'x',
-					label: 'X',
-					labelEn: 'X',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: 'not-a-date',
-					active: true,
-				},
-			],
-			NOW,
-		);
+		const out = selectDisplayableChannels([channel({ verified_at: 'not-a-date' })], NOW);
 		expect(out).toHaveLength(0);
 	});
 
 	it('orders results by verified_at desc, then id asc', () => {
-		const old = new Date(NOW - 20 * ONE_DAY_MS).toISOString().slice(0, 10);
-		const newer = new Date(NOW - 5 * ONE_DAY_MS).toISOString().slice(0, 10);
-		const newest = new Date(NOW - 1 * ONE_DAY_MS).toISOString().slice(0, 10);
-		const out = filterActiveVerified(
+		const out = selectDisplayableChannels(
 			[
-				{
-					id: 'aaa',
-					label: 'A',
-					labelEn: 'A',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: old,
-					active: true,
-				},
-				{
-					id: 'ccc',
-					label: 'C',
-					labelEn: 'C',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: newest,
-					active: true,
-				},
-				{
-					id: 'bbb',
-					label: 'B',
-					labelEn: 'B',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: newer,
-					active: true,
-				},
+				channel({ id: 'aaa', verified_at: daysAgo(20) }),
+				channel({ id: 'ccc', verified_at: daysAgo(1) }),
+				channel({ id: 'bbb', verified_at: daysAgo(5) }),
 			],
 			NOW,
 		);
-		expect(out.map((c) => c.id)).toEqual(['ccc', 'bbb', 'aaa']);
+		expect(out.map((c) => c.channel.id)).toEqual(['ccc', 'bbb', 'aaa']);
 	});
 
-	it('honours a custom window when supplied', () => {
-		const ten = new Date(NOW - 10 * ONE_DAY_MS).toISOString().slice(0, 10);
-		// Default 30d keeps it.
-		expect(
-			filterActiveVerified(
-				[
-					{
-						id: 'x',
-						label: 'X',
-						labelEn: 'X',
-						purpose: 'technical',
-						url: 'https://example.com',
-						verified_at: ten,
-						active: true,
-					},
-				],
-				NOW,
-			).length,
-		).toBe(1);
-		// 5d window drops it.
-		expect(
-			filterActiveVerified(
-				[
-					{
-						id: 'x',
-						label: 'X',
-						labelEn: 'X',
-						purpose: 'technical',
-						url: 'https://example.com',
-						verified_at: ten,
-						active: true,
-					},
-				],
-				NOW,
-				5 * ONE_DAY_MS,
-			).length,
-		).toBe(0);
+	it('honours a custom audit window when supplied', () => {
+		const ten = daysAgo(10);
+		// Default 30d window: `fresh`.
+		expect(selectDisplayableChannels([channel({ verified_at: ten })], NOW)[0].audit).toBe('fresh');
+		// 5d window: still LISTED, now `due` — the window moved the
+		// audit verdict, not the visibility.
+		const out = selectDisplayableChannels([channel({ verified_at: ten })], NOW, 5 * ONE_DAY_MS);
+		expect(out).toHaveLength(1);
+		expect(out[0].audit).toBe('due');
+	});
+});
+
+describe('auditChannelState', () => {
+	it('classifies fresh / due / unknown independently of display', () => {
+		expect(auditChannelState(channel({ verified_at: daysAgo(1) }), NOW)).toBe('fresh');
+		expect(auditChannelState(channel({ verified_at: daysAgo(45) }), NOW)).toBe('due');
+		expect(auditChannelState(channel({ verified_at: 'garbage' }), NOW)).toBe('unknown');
+		expect(auditChannelState(channel({ verified_at: '2027-01-01' }), NOW)).toBe('unknown');
+	});
+});
+
+describe('countUnauditableChannels', () => {
+	it('counts only ACTIVE channels whose audit state is unknown', () => {
+		const input = [
+			channel({ id: 'bad-active', verified_at: 'garbage' }),
+			channel({ id: 'future-active', verified_at: '2027-01-01' }),
+			channel({ id: 'bad-inactive', verified_at: 'garbage', active: false }),
+			channel({ id: 'ok', verified_at: daysAgo(3) }),
+			channel({ id: 'due-ok', verified_at: daysAgo(60) }),
+		];
+		expect(countUnauditableChannels(input, NOW)).toBe(2);
 	});
 });
 
 describe('daysSinceVerified', () => {
 	it('returns integer days from now', () => {
-		const five = new Date(NOW - 5 * ONE_DAY_MS).toISOString().slice(0, 10);
-		expect(
-			daysSinceVerified(
-				{
-					id: 'x',
-					label: 'X',
-					labelEn: 'X',
-					purpose: 'technical',
-					url: 'https://example.com',
-					verified_at: five,
-					active: true,
-				},
-				NOW,
-			),
-		).toBe(5);
+		expect(daysSinceVerified(channel({ verified_at: daysAgo(5) }), NOW)).toBe(5);
 	});
 
 	it('returns NaN on unparseable date', () => {
-		const v = daysSinceVerified(
-			{
-				id: 'x',
-				label: 'X',
-				labelEn: 'X',
-				purpose: 'technical',
-				url: 'https://example.com',
-				verified_at: 'oops',
-				active: true,
-			},
-			NOW,
-		);
-		expect(Number.isNaN(v)).toBe(true);
+		expect(Number.isNaN(daysSinceVerified(channel({ verified_at: 'oops' }), NOW))).toBe(true);
 	});
 });
 

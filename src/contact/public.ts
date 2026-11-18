@@ -1,11 +1,13 @@
 import channelsJson from './channels.json' with { type: 'json' };
 import {
+	AUDIT_WINDOW_MS,
+	type AuditedChannel,
 	type Channel,
 	ChannelsFileSchema,
-	FRESHNESS_WINDOW_MS,
+	type DisplayableAuditState,
 	type Purpose,
-	daysSinceVerified,
-	filterActiveVerified,
+	countUnauditableChannels,
+	selectDisplayableChannels,
 } from './schema';
 
 /**
@@ -26,6 +28,12 @@ export interface PublicContactChannel {
 	readonly purpose: Purpose;
 	readonly url: string;
 	readonly verifiedDaysAgo: number;
+	/**
+	 * Audit freshness (Issue #833): `fresh` inside the audit window,
+	 * `due` past it. `due` rows stay listed with a re-verification
+	 * note — date age alone never removes a verified channel.
+	 */
+	readonly audit: DisplayableAuditState;
 }
 
 /**
@@ -59,11 +67,14 @@ export const RAW_CHANNELS: readonly Channel[] = parsed.data.channels;
 /**
  * Resolve the channels that should be displayed RIGHT NOW.
  *
- * Fail-closed: an unverified / inactive channel is dropped before
- * the page ever sees it.
+ * Display validity and audit freshness are separate contracts
+ * (Issue #833): `active` channels with a confirmable `verified_at`
+ * are listed even when the audit window has elapsed (`due`); only
+ * inactive channels and records that cannot confirm verification
+ * (`unknown`) are excluded.
  */
-export function getVisibleChannels(now: number = Date.now()): Channel[] {
-	return filterActiveVerified(RAW_CHANNELS, now, FRESHNESS_WINDOW_MS);
+export function getVisibleChannels(now: number = Date.now()): AuditedChannel[] {
+	return selectDisplayableChannels(RAW_CHANNELS, now, AUDIT_WINDOW_MS);
 }
 
 /**
@@ -71,12 +82,23 @@ export function getVisibleChannels(now: number = Date.now()): Channel[] {
  * channel shape the `/contact` loader may return (Issue #1009).
  */
 export function getVisiblePublicChannels(now: number = Date.now()): PublicContactChannel[] {
-	return getVisibleChannels(now).map((channel) => ({
+	return getVisibleChannels(now).map(({ channel, audit, verifiedDaysAgo }) => ({
 		id: channel.id,
 		label: channel.label,
 		labelEn: channel.labelEn,
 		purpose: channel.purpose,
 		url: channel.url,
-		verifiedDaysAgo: daysSinceVerified(channel, now),
+		verifiedDaysAgo,
+		audit,
 	}));
+}
+
+/**
+ * Active channels whose records cannot confirm verification
+ * (`unknown` audit). The page uses this count to distinguish
+ * "no channels exist" from "channels exist but none are
+ * confirmable" in its empty state (Issue #833).
+ */
+export function getUnauditableChannelCount(now: number = Date.now()): number {
+	return countUnauditableChannels(RAW_CHANNELS, now);
 }

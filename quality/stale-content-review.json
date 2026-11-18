@@ -778,6 +778,52 @@
 			"note": "Empty state of `/contact`. True while every channel in src/contact/channels.json is retired; the sentence makes no claim about why. (src/contact/page.tsx:330)"
 		},
 		{
+			"id": "contact-audit-due-notice",
+			"path": "src/contact/page.tsx",
+			"expression": "経路の実在は確認済みですが、最新の状態は未確認です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
+		},
+		{
+			"id": "contact-empty-unverifiable",
+			"path": "src/contact/page.tsx",
+			"expression": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
+					}
+				]
+			},
+			"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
+		},
+		{
 			"id": "home-contact-cta-832",
 			"path": "src/home/composer.tsx",
 			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",

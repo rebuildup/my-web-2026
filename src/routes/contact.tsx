@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ContactPage } from '../contact/page';
 import { getContactChannels } from '../contact/load';
+import { ContactPage } from '../contact/page';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
@@ -35,9 +35,14 @@ export const CONTACT_REACTIONS_TARGET = 'contact-page';
 
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
-		const channels = await getContactChannels();
+		const { channels, unverifiableCount } = await getContactChannels();
 		const reactions = await getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } });
-		return { channels, empty: channels.length === 0, reactions };
+		return {
+			channels,
+			empty: channels.length === 0,
+			unverifiableCount,
+			reactions,
+		};
 	},
 	head: () => {
 		const title = 'Contact — rebuildup.dev';
@@ -61,13 +66,13 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactRoute() {
-	const { channels, empty, reactions } = Route.useLoaderData();
+	const { channels, empty, unverifiableCount, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<ContactPage channels={channels} empty={empty} />
+			<ContactPage channels={channels} empty={empty} unverifiableCount={unverifiableCount} />
 			<ReactionsWidget data={reactions} />
 		</>
 	);

@@ -141,6 +141,7 @@
 		"projects:sync": "node scripts/sync-project-introductions.mjs --source dotfiles",
 		"projects:check": "node scripts/check-project-introductions.mjs",
 		"miro:validate": "node scripts/validate-miro-import.mjs",
+		"contact:freshness:check": "node scripts/check-contact-freshness.mjs",
 		"current:facts:sync": "node scripts/sync-home-git-facts.mjs",
 		"current:facts:check": "node scripts/check-home-git-facts.mjs",
 		"publication:redaction:check": "node scripts/check-publication-redaction.mjs",

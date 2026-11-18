@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 86 |
 | External hosts | 51 |
 | First-party hosts | 0 |
-| Approved transition | 66 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -206,77 +206,13 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (60)
+### Added public URLs (0)
 
-- `/portfolio/alice`
-- `/portfolio/aulymo-v01`
-- `/portfolio/aulymo-v02`
-- `/portfolio/aulymo-v03`
-- `/portfolio/bansankai`
-- `/portfolio/baramoji`
-- `/portfolio/blue-white-design`
-- `/portfolio/border`
-- `/portfolio/cclub-brochure-2024`
-- `/portfolio/cclub-brochure-2025`
-- `/portfolio/ch4nge`
-- `/portfolio/code-type`
-- `/portfolio/design-001`
-- `/portfolio/dounika`
-- `/portfolio/flashbeat`
-- `/portfolio/flashbeat-bgm`
-- `/portfolio/flashbeat-op`
-- `/portfolio/foldlayers`
-- `/portfolio/homura`
-- `/portfolio/hurahu`
-- `/portfolio/icon-tegaki-anime`
-- `/portfolio/isogasii-demo`
-- `/portfolio/isogasii-editor`
-- `/portfolio/kaben`
-- `/portfolio/kakumei`
-- `/portfolio/kosen-fes-2025`
-- `/portfolio/kosen-fes2025-ending`
-- `/portfolio/kosen-procon-pv`
-- `/portfolio/lhaplus`
-- `/portfolio/liteglow`
-- `/portfolio/m5-clock`
-- `/portfolio/mawaru`
-- `/portfolio/meikai`
-- `/portfolio/moumoku`
-- `/portfolio/multislicer`
-- `/portfolio/my-first-blender`
-- `/portfolio/my-sns-icon`
-- `/portfolio/my-web-2025`
-- `/portfolio/netu`
-- `/portfolio/nulloto`
-- `/portfolio/oneself`
-- `/portfolio/ooame`
-- `/portfolio/pomodoroom`
-- `/portfolio/propose`
-- `/portfolio/prototype`
-- `/portfolio/prototype-brochure`
-- `/portfolio/red-black-design`
-- `/portfolio/reel-2024`
-- `/portfolio/reel-2025`
-- `/portfolio/rgbdelay`
-- `/portfolio/seishun`
-- `/portfolio/sep-color`
-- `/portfolio/shinkansen`
-- `/portfolio/stretch-v01`
-- `/portfolio/stretch-v02`
-- `/portfolio/tegaki-anime`
-- `/portfolio/tokimeki`
-- `/portfolio/ugoita`
-- `/portfolio/usoto`
-- `/portfolio/yukikate`
+- (none)
 
-### Removed public URLs (6)
+### Removed public URLs (0)
 
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
+- (none)
 
 ### Added external hosts (0)
 
@@ -857,70 +793,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/aulymo disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/multi-slicer disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/my-web-2026 disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/project-init disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/sciencearts-optim-internship-2026 disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **ERROR** `E001 removed-public-url` Public URL /portfolio/tastile disappeared from the published surface. If that is intentional, re-record the surface with `pnpm run publication:write` and say so in the PR body.
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/alice
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/aulymo-v01
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/aulymo-v02
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/aulymo-v03
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/bansankai
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/baramoji
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/blue-white-design
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/border
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/cclub-brochure-2024
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/cclub-brochure-2025
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ch4nge
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/code-type
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/design-001
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/dounika
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/flashbeat
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/flashbeat-bgm
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/flashbeat-op
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/foldlayers
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/homura
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/hurahu
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/icon-tegaki-anime
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/isogasii-demo
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/isogasii-editor
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/kaben
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/kakumei
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/kosen-fes-2025
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/kosen-fes2025-ending
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/kosen-procon-pv
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/lhaplus
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/liteglow
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/m5-clock
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/mawaru
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/meikai
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/moumoku
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/multislicer
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/my-first-blender
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/my-sns-icon
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/my-web-2025
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/netu
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/nulloto
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/oneself
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ooame
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/pomodoroom
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/propose
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/prototype
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/prototype-brochure
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/red-black-design
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/reel-2024
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/reel-2025
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/rgbdelay
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/seishun
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/sep-color
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/shinkansen
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/stretch-v01
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/stretch-v02
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/tegaki-anime
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/tokimeki
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ugoita
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/usoto
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/yukikate
+_No findings._
 

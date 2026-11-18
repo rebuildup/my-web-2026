@@ -130,15 +130,25 @@ describe('parseGateDeclaration — the reviewed declaration', () => {
 		assert.equal(repositoryGate.dataUnavailable, 'fail');
 	});
 
-	it('ships no exception record, so every blocking finding blocks', () => {
-		// The committed gate is `block` and its exception ledger is empty:
-		// the one record it carried (`braces`, GHSA-vfj7-8cjw-p6xm) was
-		// retired on 2026-10-28 because the advisory was withdrawn
-		// upstream and the registry no longer reports it (Issue #704).
-		// An empty ledger is the strictest state — nothing is tolerated —
-		// and a new record may only be written with an owner approval, an
-		// expiry and a tracking Issue.
-		assert.equal(repositoryGate.exceptions.length, 0);
+	it('carries only owner-approved exception records with grounds, approver, tracking and expiry', () => {
+		// A record may only be written with an owner approval, an expiry
+		// and a tracking Issue. The ledger is pinned here so adding,
+		// widening or silently extending an exception is a reviewable
+		// test diff, not a quiet JSON edit. History: the `braces` record
+		// (GHSA-vfj7-8cjw-p6xm) was retired 2026-10-28 when the advisory
+		// was withdrawn upstream (Issue #704); the `picomatch` record
+		// (GHSA-fc5q-39xc-vjpf, Issue #985) is the current approval —
+		// no patched release exists and every install path is dev-only
+		// @pandacss build tooling.
+		assert.deepEqual(
+			repositoryGate.exceptions.map((e) => [e.advisoryId, e.package, e.expiresOn]),
+			[['GHSA-fc5q-39xc-vjpf', 'picomatch', '2026-12-31']],
+		);
+		for (const record of repositoryGate.exceptions) {
+			assert.ok(record.reason.length > 0, `${record.advisoryId} needs a reason`);
+			assert.ok(record.approvedBy.length > 0, `${record.advisoryId} needs an approver`);
+			assert.ok(Number.isInteger(record.trackingIssue), `${record.advisoryId} needs a tracking Issue`);
+		}
 	});
 
 	it('rejects an unknown key, which would otherwise silently empty the blocking set', () => {

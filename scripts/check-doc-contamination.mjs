@@ -5,7 +5,7 @@
  *
  * Why this gate exists
  * --------------------
- * During the v0.10.0 freeze, three committed verification documents
+ * During the a recent release freeze, three committed verification documents
  * picked up agent tool-call serialisation fragments at EOF (bracket-
  * pipe control envelopes and bare serialisation tokens naming message
  * boundaries / model switches / tool invocations). `tail`-based
@@ -58,7 +58,7 @@ export const CONTAMINATION_MARKERS = [
 	'<' + '|' + 'end' + '_message',
 	'<' + '|' + 'message' + '_model',
 	'<' + '|' + 'content' + '_invoke',
-	// bare serialisation tokens seen in the v0.10.0 incident
+	// bare serialisation tokens seen in the incident
 	'end' + '_message',
 	'message' + '_model',
 	'content' + '_invoke_tool_json',

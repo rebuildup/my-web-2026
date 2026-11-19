@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 /**
  * `check-doc-contamination.mjs` unit tests (Issue #1038).
  *
- * The gate exists because v0.10.0 shipped three committed documents
+ * The gate exists because a shipped release carried three committed documents
  * with tool-serialisation fragments concatenated at EOF — invisible
  * to `tail` and to rendered review. The tests therefore cover BOTH
  * halves: the marker scanner itself, and the end-to-end "a committed

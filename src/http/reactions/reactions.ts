@@ -185,9 +185,12 @@ export async function reactionImageReferenced(db: D1Database, imageId: string): 
  * on every row in one (or a few chunked) query instead of one
  * query per image.
  *
- * Ids are chunked below SQLite's bind-parameter limit; `DISTINCT
- * value` collapses to the same set the per-image EXISTS check
- * would produce.
+ * The id list is bound as ONE JSON array and expanded with
+ * `json_each` — no placeholder interpolation reaches the statement
+ * text (the D1 SQL-binding gate in `scripts/check-d1-sql-binding.mjs`
+ * forbids it), and chunks stay well under the bound-value size
+ * limit. `DISTINCT value` collapses to the same set the per-image
+ * EXISTS check would produce.
  */
 export async function referencedImageIds(
 	db: D1Database,
@@ -197,13 +200,13 @@ export async function referencedImageIds(
 	const CHUNK = 90;
 	for (let i = 0; i < imageIds.length; i += CHUNK) {
 		const chunk = imageIds.slice(i, i + CHUNK);
-		const placeholders = chunk.map(() => '?').join(',');
 		const rows = await db
 			.prepare(
 				`SELECT DISTINCT value FROM reactions
-       WHERE kind = 'image' AND value IN (${placeholders})`,
+       WHERE kind = 'image'
+         AND value IN (SELECT value FROM json_each(?1))`,
 			)
-			.bind(...chunk)
+			.bind(JSON.stringify(chunk))
 			.all<{ value: string }>();
 		for (const row of rows.results ?? []) referenced.add(row.value);
 	}

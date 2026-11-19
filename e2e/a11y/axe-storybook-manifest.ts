@@ -321,6 +321,13 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 		note: 'Asset licence review — the publication-rights surface.',
 	},
 	{
+		file: 'src/portfolio/components/PortfolioCaseStudy.stories.tsx',
+		title: 'portfolio/CaseStudy',
+		exports: ['Default', 'Sparse', 'Empty'],
+		expect: 'pass',
+		note: 'Portfolio case study — the Issue #519 claim-class element (確定事実 / 当時の推測 / 現在の評価).',
+	},
+	{
 		file: 'src/portfolio/components/Markdown.stories.tsx',
 		title: 'portfolio/Markdown',
 		exports: ['SupportedSyntax', 'HostileInput', 'EmptyBody'],

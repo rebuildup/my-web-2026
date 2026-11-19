@@ -1381,6 +1381,29 @@
 				]
 			},
 			"note": "Status line of the /commission intake notice. It states the parked state the approved /about narrative already publishes; it must change in the same PR that un-parks the mode."
+		},
+		{
+			"id": "portfolio-case-study-current-evaluation-label",
+			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+			"expression": "現在の評価",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/519",
+						"note": "Issue #519 requires the case-study element to separate 確定事実 / 当時の推測 / 現在の評価; this record covers the third class label and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Claim-class label of the portfolio case-study element (src/portfolio/components/PortfolioCaseStudy.tsx). It names the third epistemic class the Issue #519 element must distinguish; it is a fixed vocabulary word, not a live status claim — re-check only if the class vocabulary changes."
 		}
 	]
 }

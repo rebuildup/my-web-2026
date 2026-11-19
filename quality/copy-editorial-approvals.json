@@ -3887,6 +3887,102 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1060",
+			"pr": 1060,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-19",
+			"decision": "pending",
+			"fingerprint": "sha256:e1854fcca8906336670bcad15877542d1a1e601f596bbb506bfefa35f2696e1e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #519 のケーススタディ要素が追加する公開日本語 copy。claim class ラベル 3 件（確定事実 / 当時の推測 / 現在の評価）とその説明文、凡例見出し「読み方 / How to read」。いずれも Issue が名指しする区分語であり、新規の時制主張・権限主張を含まない短い名詞句。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "確定事実",
+					"text": "確定事実",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 1 つ目の class ラベル。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "記録・実測・公開物で確認できる事実。",
+					"text": "記録・実測・公開物で確認できる事実。",
+					"verdict": "intentional",
+					"note": "確定事実 class の凡例説明。Issue #519 の区分要件に対応する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "当時の推測",
+					"text": "当時の推測",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 2 つ目の class ラベル。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "制作当時の見積もりや推定。実績ではない。",
+					"text": "制作当時の見積もりや推定。実績ではない。",
+					"verdict": "intentional",
+					"note": "当時の推測 class の凡例説明。「実績ではない」と明示し、推定を事実と誤読させない否定を含む。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "現在の評価",
+					"text": "現在の評価",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 3 つ目の class ラベル。時制を含むため quality/stale-content-review.json に agent-recorded / unconfirmed の記録を別途追加済み。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "公開時点の評価。時間とともに変わりうる。",
+					"text": "公開時点の評価。時間とともに変わりうる。",
+					"verdict": "intentional",
+					"note": "現在の評価 class の凡例説明。減衰する主張であることを明示する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "<p className={legendLabelClassName}>読み方 / How to read</p>",
+					"text": "読み方 / How to read",
+					"verdict": "intentional",
+					"note": "凡例ブロックの見出し。日英併記で既存 surface の語彙（JA / EN 併記）に揃えた。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/519",
+						"note": "本 PR の実装対象。完了条件「確定事実・当時の推測・現在の評価を分ける」が class ラベルの語彙を規定する。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1060",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/portfolio/components/PortfolioCaseStudy.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					}
+				]
+			}
 		}
 	]
 }

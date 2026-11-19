@@ -1,9 +1,11 @@
 import { css } from '../../../styled-system/css';
-import type { HomeGitHubActivity } from './contract';
+import type { HomeGitHubActivity, HomeGitHubActivityRepoMeasure } from './contract';
+import { githubEventTypeLabelJa } from './event-labels';
 
 /**
  * GitHub activity card — the "GitHub の今" block of the home status
- * area (Issue #319, Epic #928).
+ * area (Issue #319, Epic #928; measured-aggregate surface per
+ * Issue #967).
  *
  * Honest-state rules
  * ------------------
@@ -15,8 +17,12 @@ import type { HomeGitHubActivity } from './contract';
  *   - Private-source state is reported as a COUNT-FREE status word
  *     (未接続 / 観測中) — anonymous project rows live in the projects
  *     section, not here.
- *   - Feed items link only to public repo URLs carried by the
- *     snapshot; nothing is fabricated when the feed is empty.
+ *   - The measured block lists only repos whose contribution search
+ *     RAN (`topRepos` is empty otherwise) — "not measured" renders
+ *     as absence, never as a zero.
+ *   - Feed items show the Japanese event-type label and link to the
+ *     public repository URL the snapshot carries; nothing is
+ *     fabricated when the feed is empty or a repo URL is unknown.
  */
 
 const listClassName = /*#__PURE__*/ css({
@@ -47,11 +53,36 @@ const monoClassName = /*#__PURE__*/ css({
 	fontSize: 'xs',
 });
 
+const linkClassName = /*#__PURE__*/ css({
+	color: 'text.accent',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '600',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	_hover: { textDecorationThickness: '2px' },
+});
+
+const sectionLabelClassName = /*#__PURE__*/ css({
+	margin: '0',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: 'medium',
+	color: 'text.default',
+});
+
 const SOURCE_STATUS_LABELS: Readonly<Record<string, string>> = {
 	ok: '観測中',
 	unconfigured: '未接続',
 	failed: '取得失敗',
 };
+
+function measureSummary(measure: HomeGitHubActivityRepoMeasure): string {
+	const parts = [`コミット ${measure.commits} 件`];
+	if (measure.pullRequests !== undefined) parts.push(`PR ${measure.pullRequests} 件`);
+	return parts.join(' ・ ');
+}
 
 export interface GitHubActivityCardProps {
 	readonly activity: HomeGitHubActivity | null;
@@ -77,6 +108,32 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 				<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}
 				日のイベント
 			</p>
+			{activity.topRepos.length > 0 ? (
+				<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<p className={sectionLabelClassName}>
+						期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件
+					</p>
+					<ul className={listClassName}>
+						{activity.topRepos.map((repo) => (
+							<li key={repo.id} className={itemClassName}>
+								{repo.href ? (
+									<a
+										href={repo.href}
+										rel="noopener noreferrer"
+										target="_blank"
+										className={linkClassName}
+									>
+										{repo.name}
+									</a>
+								) : (
+									<span>{repo.name}</span>
+								)}
+								<span className={mutedClassName}>{measureSummary(repo)}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			) : null}
 			{activity.feed.length === 0 ? (
 				<p className={mutedClassName}>直近の公開イベントはありません。</p>
 			) : (
@@ -84,8 +141,19 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 					{activity.feed.slice(0, 8).map((item) => (
 						<li key={item.id} className={itemClassName}>
 							<span className={monoClassName}>{item.at.slice(0, 10)}</span>
-							<span>{item.type}</span>
-							<span className={mutedClassName}>{item.repoId}</span>
+							<span>{githubEventTypeLabelJa(item.type)}</span>
+							{item.href ? (
+								<a
+									href={item.href}
+									rel="noopener noreferrer"
+									target="_blank"
+									className={linkClassName}
+								>
+									{item.repoId}
+								</a>
+							) : (
+								<span className={mutedClassName}>{item.repoId}</span>
+							)}
 						</li>
 					))}
 				</ul>

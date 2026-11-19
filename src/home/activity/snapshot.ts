@@ -24,6 +24,7 @@ import type {
 	ActivityRepoFacts,
 	GitHubActivitySnapshot,
 	HomeGitHubActivity,
+	HomeGitHubActivityRepoMeasure,
 } from './contract';
 import { ACTIVITY_OVERRIDES } from './overrides';
 
@@ -244,22 +245,76 @@ export function activityProjectRecords(
 }
 
 /**
- * The public projection for the status card (#319). Private feed
- * items and private repo counts describe ONLY the anonymous ids —
- * counts are publishable aggregates, identities are not.
+ * How many measured repos the card lists (#967). The card is a
+ * summary surface, not the ranked project list — five rows carry
+ * the "where the measured work is" signal without re-enumerating
+ * the snapshot.
+ */
+export const MAX_ACTIVITY_TOP_REPOS = 5;
+
+function measureScore(measure: HomeGitHubActivityRepoMeasure): number {
+	return measure.commits + (measure.pullRequests ?? 0);
+}
+
+function compareMeasures(
+	a: HomeGitHubActivityRepoMeasure,
+	b: HomeGitHubActivityRepoMeasure,
+): number {
+	const byScore = measureScore(b) - measureScore(a);
+	if (byScore !== 0) return byScore;
+	const byCommits = b.commits - a.commits;
+	if (byCommits !== 0) return byCommits;
+	if (a.id === b.id) return 0;
+	return a.id < b.id ? -1 : 1;
+}
+
+/**
+ * The public projection for the status card (#319 / #967).
+ *
+ * Private feed items and private repo counts describe ONLY the
+ * anonymous ids — counts are publishable aggregates, identities are
+ * not. Feed items gain `href` from the PUBLIC repo's `htmlUrl` the
+ * snapshot already carries (the feed schema has no per-event URL, so
+ * the link opens the repository the event belongs to — never a
+ * fabricated event permalink). `topRepos` carries the measured
+ * authored commits / PRs per public repo, ranked by contribution —
+ * the semantic aggregate the card leads with.
  */
 export function publicGitHubActivity(snapshot: GitHubActivitySnapshot): HomeGitHubActivity {
-	const publicRepos = snapshot.repos.filter(
-		(r) => r.kind === 'public' && !ACTIVITY_OVERRIDES[r.id]?.exclude,
-	);
-	const privateRepos = snapshot.repos.filter(
-		(r) => r.kind === 'private' && !ACTIVITY_OVERRIDES[r.id]?.exclude,
-	);
+	const visibleRepos = snapshot.repos.filter((r) => !ACTIVITY_OVERRIDES[r.id]?.exclude);
+	const publicRepos = visibleRepos.filter((r) => r.kind === 'public');
+	const privateRepos = visibleRepos.filter((r) => r.kind === 'private');
+	const urlByRepoId = new Map<string, string>();
+	for (const repo of publicRepos) {
+		if (repo.htmlUrl) urlByRepoId.set(repo.id, repo.htmlUrl);
+	}
+	const feed = snapshot.feed
+		.filter((item) => item.kind === 'public')
+		.map((item) => {
+			const href = urlByRepoId.get(item.repoId);
+			return href ? { ...item, href } : { ...item };
+		});
+	const topRepos = publicRepos
+		.filter((repo) => repo.activity?.commits !== undefined)
+		.map((repo): HomeGitHubActivityRepoMeasure => {
+			const activity = repo.activity;
+			return {
+				id: repo.id,
+				name: repo.name,
+				...(repo.htmlUrl ? { href: repo.htmlUrl } : {}),
+				commits: activity?.commits ?? 0,
+				...(activity?.prs !== undefined ? { pullRequests: activity.prs } : {}),
+				windowDays: activity?.windowDays ?? snapshot.windowDays,
+			};
+		})
+		.sort(compareMeasures)
+		.slice(0, MAX_ACTIVITY_TOP_REPOS);
 	return {
 		generatedOn: snapshot.generatedOn,
 		windowDays: snapshot.windowDays,
 		sources: snapshot.sources,
-		feed: snapshot.feed.filter((item) => item.kind === 'public'),
+		feed,
+		topRepos,
 		repoCount: { public: publicRepos.length, private: privateRepos.length },
 	};
 }

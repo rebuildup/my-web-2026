@@ -96,12 +96,44 @@ export interface GitHubActivitySnapshot {
 	readonly feed: readonly ActivityFeedItem[];
 }
 
+/**
+ * A feed item projected for the status card (#319): the public feed
+ * entry plus the repository URL it belongs to when the snapshot
+ * carries one. The link target is always a public repo `htmlUrl` —
+ * never a private identity, never a fabricated event URL.
+ */
+export interface HomeGitHubActivityFeedItem extends ActivityFeedItem {
+	readonly href?: string;
+}
+
+/**
+ * One public repository's MEASURED contribution inside the window
+ * (#967): authored commits / PRs from the contribution search, not
+ * the feed event count. Only repos whose measurement ran appear —
+ * "not measured" is absent, never zero.
+ */
+export interface HomeGitHubActivityRepoMeasure {
+	readonly id: string;
+	readonly name: string;
+	readonly href?: string;
+	readonly commits: number;
+	readonly pullRequests?: number;
+	readonly windowDays: number;
+}
+
 /** The public projection the status card renders (#319). */
 export interface HomeGitHubActivity {
 	readonly generatedOn: string;
 	readonly windowDays: number;
 	readonly sources: GitHubActivitySnapshot['sources'];
 	/** Public-repo feed items only — private items never leave the snapshot. */
-	readonly feed: readonly ActivityFeedItem[];
+	readonly feed: readonly HomeGitHubActivityFeedItem[];
+	/**
+	 * The top public repos by measured contribution (#967) — the
+	 * semantic aggregate the card surfaces INSTEAD of asking the
+	 * reader to decode a raw event enumeration. Empty when no public
+	 * repo was measured; the card then renders no claims, not zeros.
+	 */
+	readonly topRepos: readonly HomeGitHubActivityRepoMeasure[];
 	readonly repoCount: { readonly public: number; readonly private: number };
 }

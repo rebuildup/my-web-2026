@@ -128,7 +128,7 @@ function recordedRole(record: NotionRecord): string | null {
  * public list cannot carry, and `isPublicRecord` is the only gate.
  */
 export function toProject(record: NotionRecord): PortfolioProject | null {
-	if (record.status !== 'published') return null;
+	if (!isPublicRecord(record)) return null;
 	return {
 		id: `notion:${record.pageId}`,
 		slug: record.slug,

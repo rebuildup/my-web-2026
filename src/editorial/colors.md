@@ -91,6 +91,22 @@ same ratio on the DOM (`data-contrast`) as verification, not as the
 decision. The plate shows both steps side by side so the rule is
 stated rather than implied.
 
+**Fields as information surfaces (Issue #968, owner directive
+2026-11-19).** The HOME site guide
+(`src/home/guide/GuideSection.tsx`) is the first surface that spends
+the field step as AREAS rather than as an exception: each station's
+content cell is a flat `accent.field.<class>` panel whose ink is
+`mono.ink.onColour`, so the colour field itself carries the
+classification / grouping / off-site relationship instead of a small
+mark alone. The rule this does NOT change: a field is still only for
+the three approved families — `tool` has no field step (its 500 step
+cannot carry the 4.5:1 text ratio), so a `tool` station keeps its
+mark-only treatment on `mono.surface.sunken`, and the off-site spur
+uses `mono.surface.inverse` because "leaves the site" is a structural
+statement, not a classification hue. Colour still never carries
+meaning alone: every panel also shows its title and summary text,
+and the node mark + legend keep their shape/colour pairing.
+
 ## Monochrome layer — the ground the colour sits on (Issue #764)
 
 The owner's decision (2026-11-02) is the direction the name carries:

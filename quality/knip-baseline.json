@@ -86,7 +86,6 @@
 		"files src/i18n/index.ts",
 		"files src/portfolio/index.ts",
 		"files src/routes/design-system/index.ts",
-		"files src/tools/public.ts",
 		"types src/about/components/index.ts AboutPageProps",
 		"types src/about/structured-data.ts AboutPageDataFitsProjection",
 		"types src/admin/public.ts AdminDashboardProps",

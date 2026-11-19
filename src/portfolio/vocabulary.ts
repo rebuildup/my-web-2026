@@ -1,4 +1,4 @@
-import type { PortfolioFacet } from './schema';
+import type { PortfolioFacet, PortfolioLink } from './schema';
 
 /**
  * The words the portfolio surfaces print for a facet.
@@ -49,3 +49,21 @@ export const FACET_LABEL_JA = {
 	design: 'デザイン',
 	other: 'その他',
 } as const satisfies Record<PortfolioFacet, string>;
+
+/**
+ * The visible word for a link kind (Issue #1048).
+ *
+ * `PortfolioDetail`'s §07 list and the `develop` exhibition view both
+ * print these labels, so the table lives here beside the facet words
+ * rather than in the detail component where the view could not reach
+ * it without pulling the whole page surface into its module graph.
+ */
+export const LINK_LABEL = {
+	repo: 'Repository',
+	demo: 'Demo',
+	release: 'Release',
+	article: 'Article',
+	shop: 'Shop',
+	video: 'Video',
+	other: 'Link',
+} as const satisfies Record<PortfolioLink['kind'], string>;

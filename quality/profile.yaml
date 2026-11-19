@@ -85,6 +85,12 @@ gates:
       # script may not print a secret-named value. Without this, a new
       # log call site silently opts out of redaction.
       - 'pnpm run log:redaction:check'
+      # Issue #1038: committed-text contamination gate. Agent
+      # tool-serialisation fragments concatenated at EOF once shipped
+      # inside three v0.10.0 verification documents; `tail` missed them
+      # because no newline preceded the bytes. Scans every tracked
+      # text file for the marker set in scripts/check-doc-contamination.mjs.
+      - 'pnpm run docs:contamination:check'
       # Issue #422: structured-data route coverage — every
       # visitor-facing route declares which schema.org types it emits.
       - 'pnpm run structured-data:check'

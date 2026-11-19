@@ -181,6 +181,7 @@
 		"capture:a11y-keyboard-nav": "node scripts/capture-a11y-keyboard-nav.mjs",
 		"verify:compat-screenshot": "node scripts/make-compat-matrix-report.mjs",
 		"log:redaction:check": "node scripts/check-log-redaction.mjs",
+		"docs:contamination:check": "node scripts/check-doc-contamination.mjs",
 		"storybook:ownership:check": "node scripts/check-storybook-ownership.mjs",
 		"security:embed:check": "node scripts/check-frame-ancestors-policy.mjs",
 		"verify:frame-ancestors-screenshot": "node scripts/make-frame-ancestors-report.mjs",

@@ -117,7 +117,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": ["#63", "AGENTS.md", "#647"],
+			"evidence": [
+				"#63",
+				"AGENTS.md",
+				"#647"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -202,7 +206,10 @@
 			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
-			"evidence": ["issue #254 comments (2026-10-05, 2026-10-08)", "scripts/_d1.mjs"],
+			"evidence": [
+				"issue #254 comments (2026-10-05, 2026-10-08)",
+				"scripts/_d1.mjs"
+			],
 			"decision": {
 				"kind": "owner",
 				"reason": "製品欠陥ではなくローカル node_modules 解決差であると調査で特定され、判定・workaround が記録済み。コード変更なしで閉じられる事案。"
@@ -1221,7 +1228,10 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json", "docs/verification/tools/ ディレクトリが存在しない"],
+			"evidence": [
+				"src/tools/manifest.json",
+				"docs/verification/tools/ ディレクトリが存在しない"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -1432,7 +1442,12 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": ["src/contact/channels.json", "src/contact/page.tsx", "stories.tsx", "#380"],
+			"evidence": [
+				"src/contact/channels.json",
+				"src/contact/page.tsx",
+				"stories.tsx",
+				"#380"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2300,20 +2315,24 @@
 			"title": "feat(portfolio): 設計判断と試行錯誤を記録する作品ケーススタディ要素",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/portfolio/components/ にケーススタディ element は存在しない (EmptyState / FacetFilter / Markdown / PortfolioDetail / PortfolioList / PortfolioMedia / ProjectCard のみ)",
-				"docs/verification/vision/growth-case-study-preview.md",
-				"git grep -ln \"ケーススタディ\\|case study\" -- src/ → 該当の portfolio 実装なし"
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.stories.tsx",
+				"src/portfolio/fixtures/case-study.ts",
+				"docs/verification/portfolio/decision-case-study.png",
+				"docs/verification/portfolio/decision-case-study.md",
+				"scripts/capture-portfolio-case-study.mjs",
+				"#1060"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "「成長/思い出」の文書化 (Issue #528 周辺) は別途実装済みだが、Portfolio のケーススタディ要素は未実装。",
-			"missing": "作品 1 件について目的・選択肢・決定・検証結果を示す case study 表示、確定事実/当時の推測/現在の評価の区別、Storybook での独立描画、docs/verification/portfolio/decision-case-study.png 相当の証跡。"
+			"action": "closed",
+			"note": "2026-10-31 sweep で未実装として reopen された後、PR #1060 で Issue のスコープどおり単独 fixture/Storybook/文書 preview として実装（confirmed と period-estimate の型分離、未公開素材不使用、axe manifest 登録、version literal 違反も修正済み）。2026-11-19 に受入条件を照合して close。/portfolio/[slug] への mount は D1 schema と公開承認済みコピーが前提の別作業であり本 Issue の完了条件外。",
+			"missing": null
 		},
 		{
 			"issue": 520,
@@ -2390,7 +2409,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/personal/domain.md", "361do-name-meanings.md", "#521"],
+			"evidence": [
+				"docs/personal/domain.md",
+				"361do-name-meanings.md",
+				"#521"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2404,23 +2427,26 @@
 			"title": "feat(identity): 名前・ハンドルの対応を説明する独立表示コンポーネント",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"AboutPage.tsx",
-				"index.ts",
-				"home/hero.tsx",
-				"home/footer.tsx",
-				"home/mark.tsx",
-				"No cross-referenced PR exists for this issue"
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/personal/handle-map/HandleMap.stories.tsx",
+				"src/personal/handle-map/HandleMap.preview.ts",
+				"docs/verification/identity/handle-map-story.png",
+				"docs/verification/identity/handle-map-story.md",
+				"docs/personal/handle-map.md",
+				"scripts/capture-handle-map.mjs",
+				"scripts/check-handle-map-preview-parity.test.mjs",
+				"#1061"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "同一 Bala 群の #516/#520/#528 は preview 付きで実装済みなのに、この一件だけ成果物が残っていない。",
-			"missing": "各名前がどの側面を指すかを示す legend コンポーネントと Storybook、未公開アカウントをリンクにしない制約の実装。"
+			"action": "closed",
+			"note": "2026-10-31 sweep で未実装として reopen された後、PR #1061 で Issue のスコープどおり表示位置未確定の独立コンポーネントとして実装（公開承認済み名称のみ、非公開アカウントのリンク創作なし、preview parity test 付き）。2026-11-19 に受入条件を照合して close。",
+			"missing": null
 		},
 		{
 			"issue": 525,
@@ -2519,7 +2545,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/influences/tech-interests.md", "#528", "docs/personal/knowledge-model.md"],
+			"evidence": [
+				"docs/influences/tech-interests.md",
+				"#528",
+				"docs/personal/knowledge-model.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2693,7 +2723,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["src/cloudflare/d1-backup.ts", "src/cloudflare/d1-numeric.test.ts", "#705"],
+			"evidence": [
+				"src/cloudflare/d1-backup.ts",
+				"src/cloudflare/d1-numeric.test.ts",
+				"#705"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2842,7 +2876,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#731", "skills/herdr-runtime/SKILL.md", "AGENTS.md"],
+			"evidence": [
+				"#731",
+				"skills/herdr-runtime/SKILL.md",
+				"AGENTS.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3213,7 +3251,11 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#789", ".mcp.json", "docs/runbook/notion-mcp.md"],
+			"evidence": [
+				"#789",
+				".mcp.json",
+				"docs/runbook/notion-mcp.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3229,7 +3271,10 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#846", "src/tools/manifest.json"],
+			"evidence": [
+				"#846",
+				"src/tools/manifest.json"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",

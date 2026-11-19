@@ -36,6 +36,14 @@ export interface PortfolioListProps {
 	initialPage: PortfolioListPage;
 	activeFacets: readonly PortfolioFacet[];
 	/**
+	 * The facet set the catalogue query actually ran with — the
+	 * visitor's explicit `?facets=` or, when absent, the view's
+	 * implied scope (Issue #1048). The empty-state branch reads this
+	 * rather than `activeFacets` so a view-scoped empty result is
+	 * reported as "no matching projects", not as an empty catalogue.
+	 */
+	queryFacets: readonly PortfolioFacet[];
+	/**
 	 * Exhibition mode (Issue #1048). `all` keeps the card grid this
 	 * component shipped with; `develop` / `video` / `design` render
 	 * the same filtered project set through the predecessor's three
@@ -53,6 +61,7 @@ export interface PortfolioListProps {
 export function PortfolioList({
 	initialPage,
 	activeFacets,
+	queryFacets,
 	view = DEFAULT_PORTFOLIO_VIEW,
 	hasMore,
 	busy,
@@ -138,7 +147,7 @@ export function PortfolioList({
 				>
 					<Container>
 						{allProjects.length === 0 ? (
-							activeFacets.length > 0 ? (
+							queryFacets.length > 0 ? (
 								<output
 									className={css({
 										display: 'flex',

@@ -53,8 +53,9 @@ export function FacetFilter({ value }: FacetFilterProps) {
 		else next.add(facet);
 		// Preserve canonical order to keep URLs stable for caching.
 		const ordered = PORTFOLIO_FACETS.filter((f) => next.has(f));
-		// Issue #1048: `?view=` is orthogonal to the facet query — the
-		// exhibition mode must survive a facet toggle (and `ViewSwitcher`
+		// Issue #1048: `?view=` supplies the catalogue's default facet
+		// scope when no explicit facets are chosen, so the exhibition
+		// mode must survive a facet toggle (and `ViewSwitcher`
 		// preserves `?facets=` the same way in return).
 		const nextSearch: { facets?: string; view?: string } = {};
 		if (ordered.length > 0) nextSearch.facets = ordered.join(',');

@@ -8,16 +8,17 @@ import { FACET_LABEL } from '../vocabulary';
  * ViewSwitcher — URL-synced exhibition-mode toggle (Issue #1048).
  *
  * The active view lives in the URL's `?view=` search param, the same
- * pattern `FacetFilter` established for `?facets=`: the route loader
- * does not refetch on a view change (the view is presentation, not
- * query), so state stays canonical without a server round trip.
+ * pattern `FacetFilter` established for `?facets=`. A named view also
+ * implies a default facet scope for the catalogue query (the
+ * predecessor's galleries were category-scoped pages — Issue #1048),
+ * so a view change DOES rerun the loader; an explicit `?facets=`
+ * selection overrides the implied scope.
  *
  * Param contract:
  *   - `all` is the DEFAULT and is written as an absent param, so the
  *     canonical `/portfolio` URL stays clean;
- *   - switching views PRESERVES `?facets=` verbatim — the two params
- *     are orthogonal (facets filter the catalogue, the view decides
- *     how the filtered set is exhibited);
+ *   - switching views PRESERVES `?facets=` verbatim — an explicit
+ *     facet selection is the visitor's override of the view's scope;
  *   - `FacetFilter` preserves `?view=` the same way in return.
  *
  * Labels reuse `FACET_LABEL` for the three facet-named views so the
@@ -48,8 +49,9 @@ export function ViewSwitcher({ value }: ViewSwitcherProps) {
 	const active = parsePortfolioView(value);
 
 	const onSelect = (view: PortfolioView) => () => {
-		// Preserve the facet filter verbatim; the view is presentation,
-		// not query, so it must not disturb the catalogue selection.
+		// Preserve the facet filter verbatim: an explicit `?facets=`
+		// selection overrides the view's implied catalogue scope, so
+		// the switcher must not disturb it.
 		const nextSearch: { facets?: string; view?: string } = {};
 		if (typeof search.facets === 'string' && search.facets.length > 0) {
 			nextSearch.facets = search.facets;

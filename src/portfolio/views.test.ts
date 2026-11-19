@@ -5,6 +5,7 @@ import {
 	WIDE_TILE_ASPECT_RATIO,
 	designTileFrameRatio,
 	designTileSpan,
+	effectivePortfolioFacets,
 	hasPeriodLabel,
 	hasRecordedRole,
 	mediaAspectRatio,
@@ -98,6 +99,25 @@ describe('parsePortfolioView', () => {
 		expect(parsePortfolioView('develop')).toBe('develop');
 		expect(parsePortfolioView('video')).toBe('video');
 		expect(parsePortfolioView('design')).toBe('design');
+	});
+});
+
+describe('effectivePortfolioFacets', () => {
+	it('imposes each named view its predecessor gallery scope', () => {
+		expect(effectivePortfolioFacets('develop', [])).toEqual(['develop']);
+		expect(effectivePortfolioFacets('video', [])).toEqual(['video']);
+		// `video&design` listed video OR design OR both — reproduced
+		// as the any-of facet set {design, video}.
+		expect(effectivePortfolioFacets('design', [])).toEqual(['design', 'video']);
+	});
+
+	it('leaves `all` unrestricted when no facets are chosen', () => {
+		expect(effectivePortfolioFacets('all', [])).toEqual([]);
+	});
+
+	it('lets an explicit facet selection replace the implied scope', () => {
+		expect(effectivePortfolioFacets('video', ['design'])).toEqual(['design']);
+		expect(effectivePortfolioFacets('all', ['other'])).toEqual(['other']);
 	});
 });
 

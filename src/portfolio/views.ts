@@ -1,5 +1,5 @@
 import { isFacetDerivedRole } from './kind-labels';
-import type { PortfolioMedia, PortfolioProject } from './schema';
+import type { PortfolioFacet, PortfolioMedia, PortfolioProject } from './schema';
 import { type PortfolioVideo, selectPortfolioVideo } from './video-facade';
 
 /**
@@ -18,11 +18,13 @@ import { type PortfolioVideo, selectPortfolioVideo } from './video-facade';
  *
  *   1. **Which view is showing** — a visitor choice carried by the
  *      `?view=` search param (`all` | `develop` | `video` | `design`).
- *      It is ORTHOGONAL to `?facets=`: facets filter the catalogue,
- *      the view decides how the filtered set is exhibited. No project
- *      "belongs" to a view, so no schema field was added — the
- *      predecessor's per-category pages are reproduced as
- *      presentations of the same rows.
+ *      The predecessor's gallery routes were category-scoped pages
+ *      (`/portfolio/gallery/video` listed only video works), so a
+ *      view also supplies the catalogue's DEFAULT facet scope
+ *      (`PORTFOLIO_VIEW_FACET_SCOPE`). An explicit `?facets=` query
+ *      always wins over that implied scope — facets remain the
+ *      visitor's override, and no schema field was added because no
+ *      project "belongs" to a view beyond its facets.
  *
  *   2. **How one project renders inside a view** — derived from data
  *      the schema already carries, never stored twice:
@@ -56,6 +58,49 @@ export function parsePortfolioView(raw: string | undefined | null): PortfolioVie
 	return (PORTFOLIO_VIEWS as readonly string[]).includes(raw)
 		? (raw as PortfolioView)
 		: DEFAULT_PORTFOLIO_VIEW;
+}
+
+/**
+ * The facet scope each view implies when the visitor has not chosen
+ * one explicitly — the 2026 form of the predecessor's per-category
+ * gallery routes:
+ *
+ *   - `develop` listed only `develop`-tagged works;
+ *   - `video` listed only `video`-tagged works (design-only excluded);
+ *   - `video&design` listed works tagged `video` OR `design` OR
+ *     `video&design` — reproduced here as the any-of facet set
+ *     `{design, video}` (a 2026 project may carry both facets, which
+ *     is the successor of the predecessor's combined tag);
+ *   - `all` listed every categorised work and excluded untagged rows.
+ *     The 2026 `other` facet is an explicit categorisation rather
+ *     than "untagged", so `all` keeps it: an empty scope means the
+ *     view imposes no facet restriction of its own.
+ *
+ * `effectivePortfolioFacets` applies the override rule: a non-empty
+ * `?facets=` selection replaces the implied scope entirely, so
+ * `?view=video&facets=design` asks for design works in the video
+ * presentation — unusual, but it is what the visitor literally
+ * requested and the empty-state copy can say so honestly.
+ */
+export const PORTFOLIO_VIEW_FACET_SCOPE: Record<PortfolioView, readonly PortfolioFacet[]> = {
+	all: [],
+	develop: ['develop'],
+	video: ['video'],
+	design: ['design', 'video'],
+};
+
+/**
+ * The facet filter the catalogue query should use for this view:
+ * the visitor's explicit `?facets=` when present, otherwise the
+ * view's implied scope. Returns `[]` when nothing restricts the
+ * catalogue (view `all`, no facets) — callers map that to the
+ * query's "no facet filter" form.
+ */
+export function effectivePortfolioFacets(
+	view: PortfolioView,
+	activeFacets: readonly PortfolioFacet[],
+): readonly PortfolioFacet[] {
+	return activeFacets.length > 0 ? activeFacets : PORTFOLIO_VIEW_FACET_SCOPE[view];
 }
 
 /**

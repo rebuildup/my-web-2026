@@ -2,6 +2,7 @@
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resolveDevelopmentDataSource } from '../../cloudflare.config';
+import { acceptInvitationImpl } from '../../src/admin/invitations/accept';
 import { assertAdminWriteAllowed } from '../../src/admin/read-only';
 import {
 	DATA_SOURCE,
@@ -225,6 +226,33 @@ describe('production-readonly write refusal', () => {
 			assertAdminWriteAllowed(PRODUCTION_READONLY_ENV, 'admin:keys:create'),
 		).rejects.toThrowError('production_readonly_write_refused');
 		await expect(assertAdminWriteAllowed(LOCAL_ENV, 'admin:keys:create')).resolves.toBeUndefined();
+	});
+
+	it('refuses the unauthenticated invitation-accept write end to end (Issue #998)', async () => {
+		// `acceptInvitation` is the one admin write path that needs no
+		// session at all: it creates a `user` row and consumes the
+		// invitation token. The guard lives INSIDE `acceptInvitationImpl`
+		// (not only in the `createServerFn` wrapper), so this exercises
+		// the real production path. The env binding is flipped for the
+		// duration of the call and restored afterwards.
+		const mutableEnv = env as unknown as Record<string, string | undefined>;
+		const previous = mutableEnv[DATA_SOURCE_ENV_VAR];
+		mutableEnv[DATA_SOURCE_ENV_VAR] = DATA_SOURCE.PRODUCTION_READONLY;
+		try {
+			await expect(
+				acceptInvitationImpl({
+					token: 'refused-token-aaaaaaaaaaaaaaaa',
+					name: 'Refused User',
+					password: 'long-enough-password',
+				}),
+			).rejects.toThrowError('production_readonly_write_refused');
+		} finally {
+			if (previous === undefined) {
+				delete mutableEnv[DATA_SOURCE_ENV_VAR];
+			} else {
+				mutableEnv[DATA_SOURCE_ENV_VAR] = previous;
+			}
+		}
 	});
 });
 

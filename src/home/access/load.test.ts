@@ -1,6 +1,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '../../../test/helpers/better-auth';
+import { resolveHomeDataSource } from '../status/data-source';
 import { getHomeCounterImpl, recordHomeHitImpl } from './load';
 
 /**
@@ -199,6 +200,29 @@ describe('home access counter — server-fn impls', () => {
 		);
 		expect(result).toEqual({ ok: false, reason: 'rate_limited' });
 		expect(fetcher).toHaveBeenCalledOnce();
+	});
+
+	it('recordHomeHitImpl refuses the write while the data source is read-only (Issue #998)', async () => {
+		// The production-readonly development mode binds the PRODUCTION
+		// D1: a page-view hit recorded here would increment the
+		// production counter. The impl must refuse BEFORE the upstream
+		// self-call, and the refusal is a returned reason — not a throw —
+		// so the home surface can render "counting paused" honestly.
+		const dataSource = await resolveHomeDataSource({
+			MY_WEB_2026_DATA_SOURCE: 'production-readonly',
+		});
+		expect(dataSource.write_policy).toBe('read-only');
+		const fetcher = vi.fn();
+		const result = await recordHomeHitImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+			{},
+			{ session_id: 's1' },
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+			dataSource,
+		);
+		expect(result).toEqual({ ok: false, reason: 'production_readonly' });
+		expect(fetcher).not.toHaveBeenCalled();
 	});
 
 	it('getHomeCounterImpl: uses an injected fetcher (no SELF.fetch)', async () => {

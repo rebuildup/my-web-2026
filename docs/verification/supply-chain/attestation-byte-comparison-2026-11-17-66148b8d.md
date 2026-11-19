@@ -139,14 +139,3 @@ manifest と SBOM を添付する。
 
 Phase B PASS により `docs/release.md` §9.1 の tag 対象検証は完了し、
 GitHub Release の公開条件を満たす。
-EOF
-cd /tmp/r090b && git add docs/verification/supply-chain/attestation-byte-comparison-2026-11-17-66148b8d.md && git -c user.name="Devin" -c user.email="158243242+devin-ai-integration[bot]@users.noreply.github.com" commit -m "docs(release): record Phase B attestation and byte comparison for v0.9.0
-
-Merge-commit main push run 44090425346 artifacts verified against
-tag v0.9.0: attestation PASS (source.commit 66148b8d, tag target
-match, digest sha256 efb2c67e identical to the Phase A candidate)
-and byte comparison PASS (BYTES match, SECRETS clean).
-
-Generated with [Devin](https://devin.ai)
-
-Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>" && git push origin HEAD:main 2>&1 | tail -5

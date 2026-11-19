@@ -169,17 +169,3 @@ docs commit となり manifest の `source.commit`（`8d62960a`）と一致し�
 
 いずれも merge 前に copy / privacy / stale registry が変わった場合は
 再検証が必要であり、本記録はその変化をカバーしない。
-EOF
-cd /tmp/r090b && git add docs/verification/supply-chain/attestation-byte-comparison-2026-11-17-8d62960a.md && git -c user.name="Devin" -c user.email="158243242+devin-ai-integration[bot]@users.noreply.github.com" commit -m "$(cat <<'EOF'
-docs(release): record Phase A attestation and byte comparison for 8d62960a
-
-Freeze run 44081774235 (workflow_dispatch, success): attestation
-PASS (498 files / 31,810,006 bytes, aggregate sha256 efb2c67e…) and
-byte comparison PASS (BYTES match, SECRETS clean) for the v0.9.0
-release candidate after the owner-approved privacy/copy changes.
-
-Generated with [Devin](https://devin.ai)
-
-Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
-EOF
-)" && git push origin HEAD:release-0-9-0 2>&1 | tail -3 && git rev-parse HEAD

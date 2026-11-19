@@ -87,6 +87,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run lint:check',
 	'pnpm run architecture:check',
 	'pnpm run log:redaction:check',
+	// Issue #1038: the committed-text contamination gate, declared in
+	// `quality/profile.yaml` right after the log-redaction gate — both
+	// are cheap static sweeps over the repository's own text.
+	'pnpm run docs:contamination:check',
 	'pnpm run structured-data:check',
 	// Issue #621: the offline project-introduction contract reads the
 	// committed snapshot the same way the structured-data gate reads its

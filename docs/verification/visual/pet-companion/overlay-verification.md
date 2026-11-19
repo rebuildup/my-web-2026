@@ -105,12 +105,12 @@ PNG は中間ファイルとしてのみ存在し、commit しない。
 | `z-index` | 30 |
 | `transform` を祖先に持つか | 無し（`fixed` がビューポート基準であることを確認） |
 | `aria-hidden` | `true`。内部のフォーカス可能要素は **0** |
-| 到着の挨拶 | 1.2 s 後に `idle-rest` へ戻る |
+| 到着の挨拶 | 1.2 s 後に `idle` へ戻る |
 | ポインタ接近 | `look-left` + 1.0 倍 |
 | ドラッグ | `running-left` + `petRun` |
 | スクロール 600 px | `look-down` |
 | 再読み込み | 936, 504 に復元 |
-| reduced motion | `idle-rest` / 0.62 倍のまま、入力に対して不変 |
+| reduced motion | `idle` / 0.62 倍のまま、入力に対して不変 |
 | 同意トグルとの重なり | 修正前 24 px → 修正後 **0 px**（1440 × 900） |
 | focus compensation | `--pet-overlay-offset: 176px` を mount 時に publish、unmount で削除。`styles.css` の `:root { scroll-padding }` と `body { padding-bottom }` が `max()` で消費（`scripts/check-a11y-focus-visible.mjs` が PASS） |
 | console error | 0 |

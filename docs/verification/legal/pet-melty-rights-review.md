@@ -58,10 +58,16 @@ agent の分析ではない。第三者がこの申告を検証した記録は�
 
 | ファイル | 寸法 | バイト | sha256 |
 | --- | --- | ---: | --- |
-| `public/pets/melty/idle-rest.webp` | 192 × 208（1 フレーム） | 4,568 | `c23a6880f255fe2bdf2c271e96f3e2b064e1dd4460fbdeb24582b7397efc956f` |
+| `public/pets/melty/idle.webp` | 1152 × 208（6 フレーム、Issue #1044 で待機ループ化） | 25,662 | `d7940679d313f17dca60bd97a2c521b5ae5af00ac9e4d0ed111e2b7aa39273c0` |
 | `public/pets/melty/waving.webp` | 768 × 208（4 フレーム） | 15,644 | `3b345de39791bebc15e499f012da3d77c7b978946496a1ec68e44f35bdd401df` |
+| `public/pets/melty/running-right.webp` | 1536 × 208（8 フレーム） | 26,750 | `d790329f67de54f6cc4a39b50d46256b29d4ba061660804dd66a116c562e6099` |
+| `public/pets/melty/running-left.webp` | 1536 × 208（8 フレーム） | 23,824 | `464c285ecd5fcfc236b5c6899ba8b7433dc9d980d2f9af6495ab21dd147017bd` |
+| `public/pets/melty/look-up.webp` | 192 × 208（1 フレーム） | 4,024 | `709991fcb38c68910d2d540e3c7f0db13934d747f85349d974fb6b96053ff5fb` |
+| `public/pets/melty/look-right.webp` | 192 × 208（1 フレーム） | 3,792 | `485308f99a1ff953d71171bc49455e8a5d04022bf30448149d05bdc759832de6` |
+| `public/pets/melty/look-down.webp` | 192 × 208（1 フレーム） | 3,784 | `4a63179cf53bea7560d126b8b49fb18ec728d034bf81924efd3946fbdb0ce42a` |
+| `public/pets/melty/look-left.webp` | 192 × 208（1 フレーム） | 3,704 | `81f0ba2e28d2bd4db198fa8dfc81038e7fba176e533380f55a5af642c0bdda1e` |
 
-アトラスそのものは**リポジトリに入れていない**。2 フレームのために
+アトラスそのものは**リポジトリに入れていない**。出荷する数フレームのために
 1.5 MB を git 履歴と公開ツリーに置く代償が大きいため、代わりに
 sha256 で固定し、生成スクリプトが**その digest と一致しないアトラスを拒否する**。
 再生成の再現性は「記録された digest と一致すること」で担保する。
@@ -73,9 +79,9 @@ sha256 で固定し、生成スクリプトが**その digest と一致しない
   "id": "pet-melty-sprites",
   "kind": "artwork",
   "title": "Melty — 相棒キャラクターのスプライト（Web 配信用ストリップ）",
-  "summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから 2 ファイルを導出する。",
+  "summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから idle の 6 フレームストリップ、waving の 4 フレームストリップ、ドラッグ用 running の 8 フレームストリップ、look 方向の静止セル 4 種を導出する。",
   "covers": ["public/pets/melty/**"],
-  "publicPaths": ["/pets/melty/idle-rest.webp", "/pets/melty/waving.webp"],
+  "publicPaths": ["/pets/melty/idle.webp", "/pets/melty/waving.webp", "/pets/melty/running-right.webp", "/pets/melty/running-left.webp", "/pets/melty/look-up.webp", "/pets/melty/look-right.webp", "/pets/melty/look-down.webp", "/pets/melty/look-left.webp"],
   "origin": "repository-authored",
   "rightsHolder": "rebuildup",
   "license": {

@@ -87,6 +87,16 @@ export default defineConfig({
 					from: { transform: 'translateX(0)' },
 					to: { transform: 'translateX(-87.5%)' },
 				},
+				// Issue #1044 — the resting idle loop
+				// (`idle.webp`, `src/editorial/pet/PetSprite.tsx`). Six
+				// 96 px frames in a 576 px strip: -83.3333 % is five
+				// frame widths, so `steps(6, jump-none)` lands on each
+				// frame once and the infinite loop returns to the
+				// breathing frame.
+				petIdle: {
+					from: { transform: 'translateX(0)' },
+					to: { transform: 'translateX(-83.3333%)' },
+				},
 				// Issue #925 — the home ad units. The entrance variants
 				// animate transform / clip-path only, never opacity: an
 				// opacity fade leaves every descendant blended toward

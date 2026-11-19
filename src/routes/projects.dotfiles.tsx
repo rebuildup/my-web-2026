@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
 import { DotfilesIntroductionPage, getDotfilesIntroduction } from '../projects';
@@ -24,8 +26,13 @@ export const DOTFILES_REACTIONS_TARGET = 'projects-dotfiles';
 export const Route = createFileRoute('/projects/dotfiles')({
 	loader: async () => {
 		const view = getDotfilesIntroduction(Date.now());
-		const reactions = await getHomeReactions({ data: { target: DOTFILES_REACTIONS_TARGET } });
-		return { view, reactions };
+		const [reactions, privacyNotice] = await Promise.all([
+			getHomeReactions({ data: { target: DOTFILES_REACTIONS_TARGET } }),
+			// Issue #370 — compact data-notice pointer for the reaction
+			// surface below (see `src/routes/about.tsx`).
+			getCompactPrivacyNotice(),
+		]);
+		return { view, reactions, privacyNotice };
 	},
 	head: () => {
 		const title = 'dotfiles — rebuildup.dev';
@@ -50,7 +57,7 @@ export const Route = createFileRoute('/projects/dotfiles')({
 });
 
 function ProjectsDotfilesRoute() {
-	const { view, reactions } = Route.useLoaderData();
+	const { view, reactions, privacyNotice } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -58,6 +65,7 @@ function ProjectsDotfilesRoute() {
 			<BreadcrumbJsonLd />
 			<DotfilesIntroductionPage view={view} />
 			<ReactionsWidget data={reactions} />
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }

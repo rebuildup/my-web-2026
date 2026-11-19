@@ -30,3 +30,22 @@ export const getPrivacyNoticeData = createServerFn({ method: 'GET' }).handler(
 		};
 	},
 );
+
+/**
+ * The compact pointer copy for the non-home reaction surfaces
+ * (Issue #370). Same boundary rule as `getPrivacyNoticeData`: the
+ * registry stays out of the client graph, so the value import is
+ * deferred into the handler and the routes receive only the two
+ * bilingual strings the one-line notice renders.
+ */
+export interface CompactPrivacyNoticeData {
+	readonly statement: BilingualText;
+	readonly linkLabel: BilingualText;
+}
+
+export const getCompactPrivacyNotice = createServerFn({ method: 'GET' }).handler(
+	async (): Promise<CompactPrivacyNoticeData> => {
+		const { PUBLIC_COMPACT_DATA_NOTICE } = await import('../../privacy/data-lifecycle');
+		return PUBLIC_COMPACT_DATA_NOTICE;
+	},
+);

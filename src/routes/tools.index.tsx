@@ -25,6 +25,8 @@ import {
 	TEXT_FIELDS_PATH,
 	TIMER_PATH,
 } from '../editorial/primitives/material-symbol-tool-paths';
+import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
 import { listToolIndexEntries } from '../tools/public';
@@ -81,10 +83,15 @@ export const Route = createFileRoute('/tools/')({
 		// boundary (`src/tools/public.ts`) — the client bundle and the
 		// hydration payload only ever see `ToolIndexEntry` card fields.
 		const { available, planned } = await listToolIndexEntries();
-		const reactions = await getHomeReactions({
-			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
-		});
-		return { available, planned, reactions };
+		const [reactions, privacyNotice] = await Promise.all([
+			getHomeReactions({
+				data: { target: TOOLS_INDEX_REACTIONS_TARGET },
+			}),
+			// Issue #370 — compact data-notice pointer for the reaction
+			// surface below (see `src/routes/about.tsx`).
+			getCompactPrivacyNotice(),
+		]);
+		return { available, planned, reactions, privacyNotice };
 	},
 	head: () => {
 		const title = 'Tools — my-web-2026';
@@ -289,7 +296,7 @@ const TOOL_PREVIEWS: Readonly<
 };
 
 function ToolsIndexRoute() {
-	const { available, planned, reactions } = Route.useLoaderData();
+	const { available, planned, reactions, privacyNotice } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -407,6 +414,7 @@ function ToolsIndexRoute() {
 				</section>
 			) : null}
 			<ReactionsWidget data={reactions} />
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }

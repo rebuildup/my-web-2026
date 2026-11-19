@@ -212,6 +212,51 @@ export const DELETION_REQUEST_CHANNEL = {
 	},
 } as const;
 
+/**
+ * The compact pointer rendered on every public page that mounts the
+ * reactions widget but is NOT the home footer (Issue #370).
+ *
+ * The home footer carries the full `<details>` registry through
+ * `PrivacyNotice`; every other reaction surface (`/about`,
+ * `/contact`, `/portfolio`, `/projects/dotfiles`, `/tools`) issues the
+ * same `mw_actor_id` cookie and writes the same `reactions` rows, so
+ * each of them renders this one-line pointer instead of duplicating
+ * the registry. The wording lives here — not in the component — for
+ * the same reason every other published sentence does: the privacy
+ * obligation owns what the public surface may claim, and the contract
+ * test can fail when the claim and the code diverge.
+ *
+ * What the sentence may and may not say
+ * ------------------------------------
+ *   - The cookie is issued by a reaction WRITE (`PUT`/`DELETE`
+ *     `/api/v1/reactions`), not by the page load — `getHomeReactions`
+ *     (GET) never sets `Set-Cookie`. The sentence therefore says
+ *     「記録・解除すると」, never 「このページを開くと」.
+ *   - The analytics clause is consent-gated (`AnalyticsGate`,
+ *     Issue #495): the sentence says 「同意後は」, never an unqualified
+ *     "this page sends analytics".
+ *   - It names no retention number and no deletion channel — those
+ *     are the registry entries' job, and restating them here would
+ *     create a second source that can drift.
+ */
+export const PUBLIC_COMPACT_DATA_NOTICE = {
+	statement: {
+		ja: 'このページのリアクションを記録・解除すると、訪問者識別子 Cookie（`mw_actor_id`）が発行され、同じ値がデータベースのリアクション行に保存されます。同意後は閲覧解析（Google Analytics 4）にもページ情報が送信されます。保存項目・保持期間・削除方法は「データと保持期間」の通知に記載しています。',
+		en: 'Recording or removing a reaction on this page issues the visitor-identifier cookie `mw_actor_id`, and the same value is stored in the reaction row in the database. After consent, page information is also sent to web analytics (Google Analytics 4). What is stored, how long it is kept and how it is deleted is described in the “Data and retention” notice.',
+	},
+	/**
+	 * The label of the link into the home footer notice. It restates
+	 * the `<summary>` wording of `PrivacyNotice`
+	 * (`src/home/privacy-notice.tsx`) — kept as data here so the
+	 * pointer and its target cannot drift into naming two different
+	 * notices.
+	 */
+	linkLabel: {
+		ja: 'データと保持期間',
+		en: 'Data and retention',
+	},
+} as const;
+
 export const DATA_LIFECYCLE_ENTRIES = [
 	{
 		id: 'actor-cookie',

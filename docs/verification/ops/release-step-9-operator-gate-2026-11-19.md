@@ -120,3 +120,102 @@ operator が 2 つの半分を実行したら、本ファイル末尾に v0.8.1 
 形式（実行日時・status-only 出力・「主張しないこと」の更新）で結果を追記する。
 その後 `quality/profile.yaml#r2_media_key_set_audit` の decision 記録と
 合わせて、release report の step 9 判定を確定する。
+
+---
+
+# 実行記録（2026-11-19 追記）
+
+上記引き継ぎ手順を operator 権限のある環境（本機の Infisical CLI 認証済み
+セッション）で実行した。実行日時: 2026-11-19 14:07-14:08 JST。
+**値は一切出力・記録していない**（status-only 契約）。
+
+## 実行結果サマリ
+
+| 半分 | 検査 | verdict | 状態 |
+| --- | --- | --- | --- |
+| A | R2 key-set audit（production read-only） | `OK` | **PASS** |
+| B-1 | Infisical prod 契約観測（`check-cf-secrets --execute`） | `all checks OK` | **PASS** |
+| B-2 | secret 名 parity 分類（`secrets:status:check --observation`） | `OK`（drift_failures=0 / overdue=0 / advisory=6） | **PASS** |
+| B-3 | Cloudflare live Worker binding 観測（Tier 3） | - | **SKIP**（`CLOUDFLARE_API_TOKEN` 未供給。script 自身が skip を宣言。緑とは読み替えない） |
+
+## A. R2 key-set audit
+
+```text
+$ infisical run --projectId=<prod> --env=prod -- node scripts/check-r2-media-key-set.mjs --target=production
+[r2-key-set] source=production target=production bucket=my-web-2026
+[r2-key-set] verdict=OK
+[r2-key-set] reason=-
+[r2-key-set] keys_total=133 keys_inside_allowlist=133 keys_outside_allowlist=0
+[r2-key-set] allowlist_prefixes=2 prefix_source=src/cloudflare/media-visibility.ts
+[r2-key-set] pages_walked=1 enumeration=complete
+[r2-key-set] diff=none
+[r2-key-set] printed=verdict,counts,reason-codes only (no object key, no key fragment, no credential)
+```
+
+exit 0。allowlist 外 key は 0、enumeration complete。v0.8.1 実測（119 keys）
+から 133 keys へ増加しているが、すべて allowlist 内。
+
+## B-1. Infisical 契約観測
+
+```text
+$ INFISICAL_TOKEN=<CLI access token> node scripts/check-cf-secrets.mjs --execute --environment=prod
+[check-cf-secrets] environment=prod
+[check-cf-secrets] deploy-time secret bindings=["BETTER_AUTH_SECRETS","DISCORD_PRESENCE_USER_ID","GITHUB_README_STATS_PAT_1","GOOGLE_ANALYTICS_MEASUREMENT_ID","MY_WEB_2026_CONSUMER_API_KEY"] (from Build Output, mode=production)
+[OK] Infisical runtime contract
+  extra:   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_API_TOKEN, CLOUDFLARE_R2_API_TOKEN, RELEASE_SMOKE_ADMIN_EMAIL, RELEASE_SMOKE_ADMIN_PASSWORD
+[OK] Build Output binding contract
+[NOTE] Tier 3 (live Worker) skipped: CLOUDFLARE_API_TOKEN not set.
+[execute] all checks OK
+```
+
+transcript は `.tmp/cf-secrets-prod.txt` に保存（名前のみ、値を含まない）。
+`extra` の 5 名は operator 用 credential で契約の外側にある想定内の観測。
+
+## B-2. secret 名 parity 分類
+
+```text
+$ node scripts/check-secret-rotation-status.mjs --observation=.tmp/cf-secrets-prod.txt
+[secret-status] verdict=OK reason=-
+[secret-status] counts rows=11 required=5 audit_only=1 drift_failures=0 overdue=0 advisory=6
+```
+
+- `drift=MATCH` は runtime_required 5 名（BETTER_AUTH_SECRETS /
+  DISCORD_PRESENCE_USER_ID / GITHUB_README_STATS_PAT_1 /
+  GOOGLE_ANALYTICS_MEASUREMENT_ID / MY_WEB_2026_CONSUMER_API_KEY）。
+- advisory 6 件: `UNRECORDED`（BETTER_AUTH_SECRETS の rotation 日付が
+  ledger に無い）+ `UNEXPECTED` 5 件（operator 用 credential が環境に存在
+  するが契約は binding を要求しない）。いずれも失敗ではない。
+
+## 補足検証: verify-portfolio --target=production（#1008 現状確認）
+
+step 9 の範囲外だが、#1008 の release 判定材料として同じ credential 経路で
+read-only 実測した。
+
+```text
+$ infisical run --projectId=<prod> --env=prod -- node scripts/verify-portfolio.mjs --target=production
+[verify] 11/11 checks passed, 0 failure(s), 44 content gap(s)
+```
+
+storage 契約・public 契約ともに全項目 PASS。残る 44 content gap は
+原本（legacy 台帳）にも素材が無い slug の link / media 欠落で、
+`--strict-content` 指定時のみ失敗化する authoring 上の欠損。
+PR #1011 の merge 契約修正は production データ上で有効。
+
+## この実行記録が主張しないこと
+
+| 主張しない | 理由 |
+| --- | --- |
+| secret の value が正しい・安全 | value は一度も読んでいない。名前 parity と key 集合のみ |
+| #984 の露出 credential がローテーション済み | ledger の `last_rotated_at` は全行 null で、rotation 実施の記録がない。owner 専権操作が未実施 |
+| #1008 の content gap が解消した | verify-portfolio は 11/11 checks PASS だが 44 content gap が残る（原本に素材が無い slug。owner の Notion 加筆待ち） |
+| Cloudflare live Worker の binding 名が一致する | Tier 3 は `CLOUDFLARE_API_TOKEN` 未供給で SKIP |
+| release が shipped した | step 9 は手順の 1 工程。merge / tag / Release 公開は owner ゲート |
+
+## 実行時の注意
+
+- `infisical user get token --silent` は CLI 0.45.8 で token に加え
+  `TTL:` 行を stdout に出す。`check-cf-secrets.mjs` の `Authorization`
+  header に混入すると `Invalid character in header content` で失敗するため、
+  JWT 部分のみを抽出して渡した。
+- `pnpm run <script> -- --flag` の `--` 透過問題を避けるため、いずれも
+  `node scripts/…` を直接実行した。

@@ -119,4 +119,4 @@ script が動くが、v0.8.1 記録 §3 のとおり環境によっては pnpm �
 operator が 2 つの半分を実行したら、本ファイル末尾に v0.8.1 記録と同じ
 形式（実行日時・status-only 出力・「主張しないこと」の更新）で結果を追記する。
 その後 `quality/profile.yaml#r2_media_key_set_audit` の decision 記録と
-合わせて、release report の step 9 判定を確定する。<|end_message|><|message_model|>exec<|content_invoke_tool_json|>{
+合わせて、release report の step 9 判定を確定する。

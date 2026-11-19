@@ -161,4 +161,4 @@ readiness の主張を含まない。
 関連: [docs/release.md](../../release.md) §9.1、
 [Issue #448](https://github.com/rebuildup/my-web-2026/issues/448)、
 [ADR-0035](../../adr/ADR-0035-artifact-attestation.md)、
-[v0.9.0 Phase A 記録](./attestation-byte-comparison-2026-11-17-bf755716.md)<|end_message|><|message_model|>exec<|content_invoke_tool_json|>{
+[v0.9.0 Phase A 記録](./attestation-byte-comparison-2026-11-17-bf755716.md)

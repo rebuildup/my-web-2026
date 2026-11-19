@@ -73,7 +73,7 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 			data-testid="github-activity-card"
 		>
 			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'md', color: 'text.muted' })}>
-				公開ソース: {publicState} / 非公開ソース（名称非表示）: {privateState} ・ 観測日{' '}
+				公開ソース: {publicState} / 非公開ソース: {privateState} ・ 観測日{' '}
 				<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}
 				日のイベント
 			</p>
@@ -91,7 +91,7 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 				</ul>
 			)}
 			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-				観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開（名称非表示）{' '}
+				観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開リポジトリ{' '}
 				{activity.repoCount.private} 件
 			</p>
 		</div>

@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 88 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | 31 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 1 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -210,29 +210,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (2)
+### Added public URLs (0)
 
-- `/commission`
-- `/links`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (12)
+### Added external hosts (0)
 
-- `atcoder.jp`
-- `bsky.app`
-- `ch.tetr.io`
-- `discord.gg`
-- `gitty-code.com`
-- `note.com`
-- `osu.ppy.sh`
-- `qiita.com`
-- `www.duolingo.com`
-- `www.linkedin.com`
-- `www.wantedly.com`
-- `zenn.dev`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -562,11 +550,12 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/example-repo` | `github.com` | external | `src/home/composer.stories.tsx` |
 | `https://github.com/rebuildup/key-map-kanata` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
@@ -823,35 +812,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host atcoder.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host bsky.app appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host ch.tetr.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host discord.gg appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host gitty-code.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host note.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host osu.ppy.sh appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host qiita.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.duolingo.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.linkedin.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.wantedly.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host zenn.dev appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://atcoder.jp/users/rebuildup
-- **WARN** `W002 external-url-added` External URL added: https://bsky.app/profile/361do.bsky.social
-- **WARN** `W002 external-url-added` External URL added: https://ch.tetr.io/u/samuido
-- **WARN** `W002 external-url-added` External URL added: https://discord.gg/qmCGSBmc28
-- **WARN** `W002 external-url-added` External URL added: https://gitty-code.com/user/rebuildup
-- **WARN** `W002 external-url-added` External URL added: https://note.com/alert_toad4443
-- **WARN** `W002 external-url-added` External URL added: https://osu.ppy.sh/users/36986836
-- **WARN** `W002 external-url-added` External URL added: https://qiita.com/samuido
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/commission
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/links
-- **WARN** `W002 external-url-added` External URL added: https://www.duolingo.com/profile/samuido
-- **WARN** `W002 external-url-added` External URL added: https://www.linkedin.com/in/yusuke-kimura-835055398
-- **WARN** `W002 external-url-added` External URL added: https://www.wantedly.com/id/rebuildup
-- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@361do_sleep
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep
-- **WARN** `W002 external-url-added` External URL added: https://zenn.dev/361do_sleep
-- **WARN** `W004 public-url-added` Public URL added: /commission
-- **WARN** `W004 public-url-added` Public URL added: /links
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/example-repo
 

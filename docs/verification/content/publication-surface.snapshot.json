@@ -3405,6 +3405,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/example-repo",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/composer.stories.tsx"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/key-map-kanata",
 				"host": "github.com",
 				"kind": "external",
@@ -3449,6 +3458,7 @@
 					"src/about/career.ts",
 					"src/contact/channels.json",
 					"src/home/activity/github-activity.json",
+					"src/home/composer.stories.tsx",
 					"src/home/footer.tsx",
 					"src/portfolio/seed.ts"
 				]
@@ -5877,204 +5887,22 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/commission",
-			"/links"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://atcoder.jp/users/rebuildup",
-			"https://bsky.app/profile/361do.bsky.social",
-			"https://ch.tetr.io/u/samuido",
-			"https://discord.gg/qmCGSBmc28",
-			"https://gitty-code.com/user/rebuildup",
-			"https://note.com/alert_toad4443",
-			"https://osu.ppy.sh/users/36986836",
-			"https://qiita.com/samuido",
-			"https://rebuildup.dev/commission",
-			"https://rebuildup.dev/links",
-			"https://www.duolingo.com/profile/samuido",
-			"https://www.linkedin.com/in/yusuke-kimura-835055398",
-			"https://www.wantedly.com/id/rebuildup",
-			"https://www.youtube.com/@361do_sleep",
-			"https://x.com/361do_design",
-			"https://x.com/361do_sleep",
-			"https://zenn.dev/361do_sleep"
+			"https://github.com/rebuildup/example-repo"
 		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"atcoder.jp",
-			"bsky.app",
-			"ch.tetr.io",
-			"discord.gg",
-			"gitty-code.com",
-			"note.com",
-			"osu.ppy.sh",
-			"qiita.com",
-			"www.duolingo.com",
-			"www.linkedin.com",
-			"www.wantedly.com",
-			"zenn.dev"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host atcoder.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host bsky.app appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host ch.tetr.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host discord.gg appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host gitty-code.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host note.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host osu.ppy.sh appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host qiita.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host www.duolingo.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host www.linkedin.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host www.wantedly.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host zenn.dev appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://atcoder.jp/users/rebuildup"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://bsky.app/profile/361do.bsky.social"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://ch.tetr.io/u/samuido"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://discord.gg/qmCGSBmc28"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://gitty-code.com/user/rebuildup"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://note.com/alert_toad4443"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://osu.ppy.sh/users/36986836"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://qiita.com/samuido"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/commission"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/links"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.duolingo.com/profile/samuido"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.linkedin.com/in/yusuke-kimura-835055398"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.wantedly.com/id/rebuildup"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.youtube.com/@361do_sleep"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://x.com/361do_design"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://x.com/361do_sleep"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://zenn.dev/361do_sleep"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /commission"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /links"
+				"message": "External URL added: https://github.com/rebuildup/example-repo"
 			}
 		]
 	}

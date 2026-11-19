@@ -88,6 +88,8 @@ and pinned by `wrangler*.jsonc#secrets.required` and
 | `BETTER_AUTH_SECRET` | Infisical `prod` (audit-trail / recovery only) | Infisical `dev` (random seed) | Better Auth legacy single-form signing material. **Phase 3+ audit-only semantics**: NOT in `wrangler*.jsonc#secrets.required`, NOT in `REQUIRED_RUNTIME_SECRETS`, never written to `secrets.json` by `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`. Stripped from sanitized child env. | Repository owner (operator gate) | Only as part of `BETTER_AUTH_SECRETS` envelope rotation | **Tier 1 (runtime)** — audit-only Phase 3+ |
 | `MY_WEB_2026_CONSUMER_API_KEY` | Infisical `prod` | Infisical `dev` (random seed, no D1 row depends on it) | Home self-consumption consumer API key (ADR-0011). Bound to Worker `env.MY_WEB_2026_CONSUMER_API_KEY`. Pairs with D1 `apikey` row `name='home-self-consumption'` (`UNIQUE(apikey.key)` enforces SHA-256 hash uniqueness). | Repository owner (operator gate) | On suspected compromise or as needed | **Tier 1 (runtime)** — required Phase 1+ |
 | `GOOGLE_ANALYTICS_MEASUREMENT_ID` | Infisical `prod` (placeholder `G-PLACEHOLDER000` seeded at #187 merge; operator replaces with real `G-XXXXXXX` BEFORE cutting traffic) | Infisical `dev` (placeholder seeded; operator may replace if dev GA property exists) | GA4 measurement ID (Issue #171, Issue #187). Bound to Worker `env.GOOGLE_ANALYTICS_MEASUREMENT_ID`. Public identifier; the var→secret move in Issue #187 is operator-ergonomic (Infisical dashboard editability), NOT a security containment change. Operator gate: replace prod placeholder with real `G-XXXXXXX` before production traffic — see `docs/runbook/analytics.md` and the canonical sequence step in `docs/runbook/cloudflare-workers-builds.md`. | Repository owner (operator gate) | Rare (property migration / leak-driven) | **Tier 1 (runtime)** — required Issue #187+ |
+| `GITHUB_README_STATS_PAT_1` | Infisical `prod` (operator seeds the fine-grained PAT; deploy is blocked until seeded — Issue #969) | Infisical `dev` (same name for local stats cards) | Fine-grained GitHub PAT for the self-hosted Readme Stats image endpoints (Issue #933, Issue #969). Public-read scopes ONLY — never a `repo`-scoped token on the public Worker. The router scans `GITHUB_README_STATS_PAT_*`; `PAT_2..10` may be added without a contract change. Seeded ONLY via Infisical — there is no `wrangler secret put` path (local/remote divergence). See `docs/runbook/github-readme-stats.md`. | Repository owner (operator gate) | On suspected compromise or as needed | **Tier 1 (runtime)** — required Issue #969+ |
+| `DISCORD_PRESENCE_USER_ID` | Infisical `prod` (operator sets the owner snowflake; deploy is blocked until seeded — Issue #320) | Infisical `dev` (optional; unset fails closed) | Owner Discord snowflake the presence card may claim (Issue #320). Semi-public (visible to mutual guild members) but managed from the Infisical dashboard like the GA measurement ID — the value never lives in committed config. The ingest feed must publish the same `userId` or the public reader refuses the snapshot. See `docs/runbook/discord-presence.md`. | Repository owner (operator gate) | Rare (account migration / leak-driven) | **Tier 1 (runtime)** — required Issue #320+ |
 
 The **Cadence** column is the source of the machine-readable rotation
 policy in [`quality/secret-rotation-ledger.json`](../../quality/secret-rotation-ledger.json)
@@ -115,9 +117,9 @@ HTTPS POST body and never echoes them to stdout/log.
 
 | Contract source | Names |
 | --- | --- |
-| `wrangler.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
-| `wrangler.production.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
-| `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
+| `wrangler.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID`, `GITHUB_README_STATS_PAT_1`, `DISCORD_PRESENCE_USER_ID` |
+| `wrangler.production.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID`, `GITHUB_README_STATS_PAT_1`, `DISCORD_PRESENCE_USER_ID` |
+| `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID`, `GITHUB_README_STATS_PAT_1`, `DISCORD_PRESENCE_USER_ID` |
 | `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` | `BETTER_AUTH_SECRET` |
 
 These three static sources MUST agree. The agreement is enforced
@@ -300,7 +302,11 @@ to confirm Tier 1 / Tier 3 name parity after any deploy.
 The originating incident (Issue #139, 2026-09-28) was an
 `infisical secrets --env=dev --path=/` invocation whose plaintext
 output was rendered into agent transcript, exposing four production
-credentials. The same anti-pattern includes (non-exhaustive):
+credentials. The identical anti-pattern recurred on 2026-11-18
+(Issue #984) via `infisical secrets --env=dev --path=/ --plain`;
+`pnpm run infisical:names` now exists so a name inventory never
+requires the raw command. The same anti-pattern includes
+(non-exhaustive):
 
 - `infisical secrets list ...` / `infisical secrets --env=...
   --path=...` / `infisical secrets get <name> --plain` (real value
@@ -327,6 +333,10 @@ values:
 - `scripts/reconcile-prod-auth-secret.mjs --verify`
 - `scripts/check-cf-secrets.mjs --execute`
 - `scripts/check-infisical-coverage.mjs` (static, no values)
+- `pnpm run infisical:names -- --env=<env> --path=<path>` (Issue #984)
+  — the safe replacement when only the NAME inventory is needed.
+  It parses `infisical secrets --plain` output in-process and prints
+  names only; values never reach stdout, even on child failure.
 
 **Secret value comparison via dedicated script (status-only output)
 is NOT a debugging shortcut.** It is the canonical verification

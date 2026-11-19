@@ -167,6 +167,37 @@ function isTestFile(path, srcDirectory) {
  */
 const typeOnlyEdges = [{ from: 'home', to: 'http' }];
 
+/**
+ * Issue #1000: `cloudflare:workers` is the Worker `env` surface — the
+ * one module every binding read goes through. The dependency rules
+ * above govern owner-to-owner edges and cannot see it, because the
+ * specifier names no owner directory. Until the duplicated env-shape
+ * declarations are aggregated into one contract (tracked on the
+ * Issue), this allowlist is the ratchet: a file that starts reading
+ * `env` must be added here deliberately, so env access cannot spread
+ * silently. Entries are repo-relative `src/` paths; test files are
+ * exempt for the same reason leaf tests are.
+ */
+const cloudflareWorkersAccessAllowlist = new Set([
+	'src/about/public.ts',
+	'src/admin/auth/load.ts',
+	'src/admin/auth/step-up.ts',
+	'src/admin/emoji-catalog/load.ts',
+	'src/admin/images/load.ts',
+	'src/admin/invitations/accept.ts',
+	'src/admin/invitations/load.ts',
+	'src/admin/keys/load.ts',
+	'src/cloudflare/auth/better-auth.ts',
+	'src/cloudflare/health.ts',
+	'src/home/access/load.ts',
+	'src/home/activity/live.ts',
+	'src/home/presence/load.ts',
+	'src/home/reactions/load.ts',
+	'src/home/status/data-source.ts',
+	'src/portfolio/public.ts',
+	'src/routes/__root.tsx',
+]);
+
 function sourceFiles(directory) {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(directory, entry.name);
@@ -217,8 +248,10 @@ function resolveInternalImport(fromFile, specifier, srcDirectory) {
  * Static ES imports with their runtime/type-only character.
  */
 function importStatements(source) {
-	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
 	const stmts = [];
+	// `import … from '…'` / `import '…'` / `import type …` — the
+	// original pattern, kept verbatim.
+	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
 	for (const match of source.matchAll(re)) {
 		const full = match[0].slice(match[0].indexOf('import')).replace(/\s+/g, ' ').trimStart();
 		const head = full.slice('import'.length).trimStart();
@@ -226,6 +259,20 @@ function importStatements(source) {
 			full,
 			isTypeOnly: head.startsWith('type '),
 			specifier: match[1],
+		});
+	}
+	// Issue #1000: `export { … } from '…'` / `export type { … } from '…'`
+	// / `export * from '…'` are dependency edges too — a barrel that
+	// re-exports a forbidden owner is the same violation as importing
+	// it, and the gate used to be blind to the whole form. The pattern
+	// requires a brace-list or `*` before `from`, so `export const x =
+	// '…'` and string literals containing the word `from` cannot match.
+	const reExport = /(?:^|\n)\s*export\s+(type\s+)?(?:\{[^}]*\}|\*)\s+from\s*["']([^"']+)["']/g;
+	for (const match of source.matchAll(reExport)) {
+		stmts.push({
+			full: match[0].replace(/\s+/g, ' ').trimStart(),
+			isTypeOnly: match[1] !== undefined,
+			specifier: match[2],
 		});
 	}
 	return stmts;
@@ -464,6 +511,25 @@ export function checkArchitecture(repoRoot) {
 				`${relative(repoRoot, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,
 			);
 		}
+	}
+
+	// Issue #1000: pin every file allowed to reach the Worker `env`
+	// surface. Static, side-effect and dynamic imports all count —
+	// `await import('cloudflare:workers')` is the pattern the loaders
+	// use to keep the specifier out of client bundles.
+	for (const file of sourceFiles(sourceRoot)) {
+		if (isTestFile(file, sourceRoot)) continue;
+		const source = readFileSync(file, 'utf8');
+		const specifiers = [
+			...importStatements(source).map((stmt) => stmt.specifier),
+			...runtimeImportSpecifiers(source),
+		];
+		if (!specifiers.includes('cloudflare:workers')) continue;
+		const rel = relative(repoRoot, file).split(sep).join('/');
+		if (cloudflareWorkersAccessAllowlist.has(rel)) continue;
+		errors.push(
+			`${rel}: cloudflare:workers env access is not in the declared allowlist — add the file deliberately or route the read through the owning contract (Issue #1000)`,
+		);
 	}
 
 	// Tool-boundary rules (ADR-0006 §2 / §3), enforced in two passes:

@@ -11,7 +11,7 @@ import {
 	diffSurfaces,
 	extractExternalBoundaryPrefixes,
 	extractIntegratedToolSlugs,
-	extractPortfolioSeedSlugs,
+	extractPortfolioPublishedSlugs,
 	extractUrlLiterals,
 	firstPartyDomainOf,
 	invariantFindings,
@@ -47,6 +47,21 @@ const CTX = { origin: ORIGIN, firstPartyDomain: firstPartyDomainOf(ORIGIN) };
 const routeFiles = SURFACE_DECLARATIONS.flatMap((declaration) => declaration.files).sort();
 
 const sourceFixture = (text, path = 'src/fixture.ts') => [{ path, text }];
+
+function snapshotFixture(slugs) {
+	return {
+		schema: 'portfolio-notion-snapshot.v1',
+		availability: 'public',
+		unavailableReason: null,
+		records: slugs.map((slug, i) => ({
+			pageId: `page-${i}`,
+			slug,
+			title: slug,
+			status: 'published',
+			visibility: 'public',
+		})),
+	};
+}
 
 describe('publication-surface — canonical origin derivation', () => {
 	it('reads the origin out of the constant that already owns it', () => {
@@ -212,14 +227,23 @@ describe('publication-surface — URL normalisation and classification', () => {
 });
 
 describe('publication-surface — dynamic expansion inputs', () => {
-	it('extracts seed slugs from quoted entries only', () => {
-		const source = [
-			'export interface PortfolioSeedEntry {',
-			'\tslug: string;',
-			'}',
-			"export const PORTFOLIO_SEED = [{ slug: 'beta' }, { slug: 'alpha' }, { slug: 'beta' }];",
-		].join('\n');
-		assert.deepEqual(extractPortfolioSeedSlugs(source), ['alpha', 'beta']);
+	it('extracts only published+public slugs from the Notion snapshot', () => {
+		const snapshot = snapshotFixture(['beta', 'alpha', 'beta']);
+		snapshot.records[2].status = 'draft';
+		snapshot.records.push({ slug: 'hidden', status: 'published', visibility: 'private' });
+		assert.deepEqual(extractPortfolioPublishedSlugs(snapshot), ['alpha', 'beta']);
+	});
+
+	it('fails closed when the snapshot cannot prove the published set', () => {
+		assert.throws(() => extractPortfolioPublishedSlugs(null), /missing or not an object/);
+		assert.throws(
+			() => extractPortfolioPublishedSlugs({ availability: 'unavailable', records: [] }),
+			/unavailable/,
+		);
+		assert.throws(
+			() => extractPortfolioPublishedSlugs({ availability: 'public' }),
+			/no records array/,
+		);
 	});
 
 	it('expands only tools with an embeddable delivery kind', () => {
@@ -323,7 +347,7 @@ describe('publication-surface — surface construction', () => {
 			{ path: 'external/live/index.html', text: '<link href="https://fonts.test/css" />' },
 		],
 		origin: ORIGIN,
-		portfolioSeedSource: "export const PORTFOLIO_SEED = [{ slug: 'alpha' }, { slug: 'beta' }];",
+		portfolioSnapshot: snapshotFixture(['alpha', 'beta']),
 		toolsManifest: {
 			tools: [
 				{ slug: 'live', delivery: { kind: 'same_origin_static' } },
@@ -404,7 +428,7 @@ describe('publication-surface — unauditable Tool checkout', () => {
 			routeFiles,
 			sourceFiles: [],
 			origin: ORIGIN,
-			portfolioSeedSource: 'const PORTFOLIO_SEED = [];',
+			portfolioSnapshot: snapshotFixture([]),
 			toolsManifest: { tools: [] },
 			toolSourcesMissing: ['external/live'],
 		});
@@ -421,7 +445,7 @@ describe('publication-surface — invariant findings', () => {
 			routeFiles,
 			sourceFiles: sourceFixture(urls.map((url) => `const u = "${url}";`).join('\n')),
 			origin: ORIGIN,
-			portfolioSeedSource: 'const PORTFOLIO_SEED = [];',
+			portfolioSnapshot: snapshotFixture([]),
 			toolsManifest: { tools: [] },
 		});
 
@@ -449,7 +473,7 @@ describe('publication-surface — invariant findings', () => {
 			routeFiles: [...routeFiles, 'src/routes/undeclared.tsx'],
 			sourceFiles: [],
 			origin: ORIGIN,
-			portfolioSeedSource: 'const PORTFOLIO_SEED = [];',
+			portfolioSnapshot: snapshotFixture([]),
 			toolsManifest: { tools: [] },
 		});
 		assert.ok(invariantFindings(surface).some((f) => f.code === 'E005 undeclared-route-file'));
@@ -637,7 +661,7 @@ describe('publication-surface — snapshot + report determinism', () => {
 		routeFiles,
 		sourceFiles: sourceFixture('const u = "https://cdn.test/a.js";'),
 		origin: ORIGIN,
-		portfolioSeedSource: "const PORTFOLIO_SEED = [{ slug: 'alpha' }];",
+		portfolioSnapshot: snapshotFixture(['alpha']),
 		toolsManifest: { tools: [{ slug: 'live', delivery: { kind: 'same_origin_static' } }] },
 		workerEntrySource: "const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1'] as const;",
 	});
@@ -703,9 +727,7 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 				'src/big.ts',
 			),
 			origin: ORIGIN,
-			portfolioSeedSource: `export const PORTFOLIO_SEED = [${many
-				.map((entry) => `{ slug: '${entry.slug}' }`)
-				.join(',')}];`,
+			portfolioSnapshot: snapshotFixture(many.map((entry) => entry.slug)),
 			toolsManifest: {
 				tools: many.map((entry) => ({ ...entry, delivery: { kind: 'same_origin_static' } })),
 			},

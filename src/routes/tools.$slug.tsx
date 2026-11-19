@@ -7,16 +7,14 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
 	ToolHostMessageDeclaration,
 } from '../tools/embed-policy';
-import { evaluateEmbedPrivacy, toPrivacySubject } from '../tools/embed-privacy';
 import type { EmbedPrivacyViolation } from '../tools/embed-privacy';
-import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
-import type { ManifestTool } from '../tools/registry';
+import type { BlockedToolView, DisabledToolView } from '../tools/public';
+import { loadToolPage } from '../tools/public';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
 
 /**
@@ -128,58 +126,17 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * declaration (today: every Tool), an unexpected message from the
  * frame reaches no host code at all.
  */
-/**
- * The only manifest fields a `host_disabled` page may serialize into its
- * hydration payload (Issue #836).
- *
- * The loader used to return the whole `ManifestTool`, so the SSR document
- * carried `delivery.disabled_reason`, `build.command`, `source` and
- * `notes` in `$_TSR` even after the visible field was removed. TanStack
- * serializes loader data by default; the boundary therefore has to be
- * drawn on the data, not on the JSX.
- */
-interface DisabledToolView {
-	readonly slug: string;
-	readonly display_name: string;
-	readonly description_ja: string;
-}
-
 export const Route = createFileRoute('/tools/$slug')({
-	loader: ({ params }) => {
-		// Display-case tolerance (see module docstring). The manifest
-		// schema is lowercase-only, so this is purely a URL-input
-		// concession — the canonical slug remains lowercase. It is NOT
-		// routed through `classifySlugCandidate`; that gap is the open
-		// owner decision recorded in ADR-0017 §6.4.
-		const slug = params.slug.toLowerCase();
-		const tool = getTool(slug);
-		if (!tool) throw notFound();
-
-		// Issue #465: policy first. A blocked entry never reaches the
-		// public-surface lookup, so the iframe cannot be rendered even
-		// if the Tool is listed as embeddable.
-		const violations = evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery));
-		// Issue #498: the third-party contact contract runs over the same
-		// entry and fails closed the same way. An embeddable Tool with no
-		// `delivery.privacy`, an undeclared external frame origin, or a
-		// declared origin with no purpose gets no iframe at all.
-		const privacy = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
-		const publicTool = getPublicTool(slug);
-		if (violations.length > 0 || privacy.violations.length > 0) {
-			return { state: 'blocked' as const, tool, violations, privacy };
-		}
-		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
-		if (tool.delivery.kind === 'host_disabled') {
-			const view: DisabledToolView = {
-				slug: tool.slug,
-				display_name: tool.display_name,
-				description_ja: tool.description_ja,
-			};
-			return { state: 'disabled' as const, tool: view };
-		}
-		// Any other delivery.kind we don't yet support at /tools/<slug>.
-		// Today that is `not_integrable_yet`; fall through to notFound.
-		throw notFound();
+	loader: async ({ params }) => {
+		// Issue #1005/#1009: the whole state machine — slug tolerance,
+		// embed-policy evaluation, the third-party contact contract and
+		// every view projection — runs inside `loadToolPage`, a
+		// `createServerFn` boundary in `src/tools/public.ts`. The
+		// manifest never enters the client bundle, and the hydration
+		// payload carries only the fields each state renders.
+		const data = await loadToolPage({ data: { slug: params.slug } });
+		if (data.state === 'missing') throw notFound();
+		return data;
 	},
 	head: ({ loaderData }) => {
 		// TanStack calls `head()` server-side even when the loader
@@ -217,7 +174,7 @@ export const Route = createFileRoute('/tools/$slug')({
 					{ title: `${loaderData.tool.display_name} — blocked — my-web-2026 Tools` },
 					{
 						name: 'description',
-						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy (Issue #465) or the third-party contact contract (Issue #498).`,
+						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy or the third-party contact contract.`,
 					},
 					{ name: 'robots', content: 'noindex' },
 				],
@@ -389,24 +346,25 @@ function ToolRoute() {
 			<BlockedPlaceholder
 				tool={loaderData.tool}
 				violations={loaderData.violations}
-				privacyViolations={loaderData.privacy.violations}
+				privacyViolations={loaderData.privacyViolations}
 			/>
 		);
 	}
 	const { tool, public: summary } = loaderData;
 	return (
 		// Owner decision (PR #914): no consent gate — the iframe mounts
-		// directly. `src` comes from `resolveToolEntryHtml`, the same
-		// function the embed-policy verifier uses, so the rendered frame
-		// can never point somewhere the policy did not see.
+		// directly. `src` was resolved in the loader by
+		// `resolveToolEntryHtml`, the same function the embed-policy
+		// verifier uses, so the rendered frame can never point
+		// somewhere the policy did not see.
 		<ToolEmbedShell
 			slug={tool.slug}
 			displayName={tool.display_name}
-			src={resolveToolEntryHtml(tool)}
+			src={tool.src}
 			sandbox={summary.iframe.sandbox}
 			referrerPolicy={summary.iframe.referrer_policy}
 			allow={summary.iframe.allow}
-			hostMessage={tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message}
+			hostMessage={tool.host_message}
 		/>
 	);
 }
@@ -549,7 +507,7 @@ function BlockedPlaceholder({
 	violations,
 	privacyViolations,
 }: {
-	tool: ManifestTool;
+	tool: BlockedToolView;
 	violations: readonly EmbedViolation[];
 	privacyViolations: readonly EmbedPrivacyViolation[];
 }) {

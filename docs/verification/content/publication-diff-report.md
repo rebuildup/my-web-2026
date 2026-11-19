@@ -11,9 +11,9 @@
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 19 |
 | Publicly reachable surfaces | 12 |
-| Sitemap target URLs | 12 |
-| Publicly reachable URLs (surface + Static Assets) | 32 |
-| External hosts | 51 |
+| Sitemap target URLs | 66 |
+| Publicly reachable URLs (surface + Static Assets) | 86 |
+| External hosts | 50 |
 | First-party hosts | 0 |
 | Approved transition | 2 finding(s) |
 | Verdict of the approved transition | **review** |
@@ -25,12 +25,66 @@
 - `/contact`
 - `/design-system`
 - `/portfolio`
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
+- `/portfolio/alice`
+- `/portfolio/aulymo-v01`
+- `/portfolio/aulymo-v02`
+- `/portfolio/aulymo-v03`
+- `/portfolio/bansankai`
+- `/portfolio/baramoji`
+- `/portfolio/blue-white-design`
+- `/portfolio/border`
+- `/portfolio/cclub-brochure-2024`
+- `/portfolio/cclub-brochure-2025`
+- `/portfolio/ch4nge`
+- `/portfolio/code-type`
+- `/portfolio/design-001`
+- `/portfolio/dounika`
+- `/portfolio/flashbeat`
+- `/portfolio/flashbeat-bgm`
+- `/portfolio/flashbeat-op`
+- `/portfolio/foldlayers`
+- `/portfolio/homura`
+- `/portfolio/hurahu`
+- `/portfolio/icon-tegaki-anime`
+- `/portfolio/isogasii-demo`
+- `/portfolio/isogasii-editor`
+- `/portfolio/kaben`
+- `/portfolio/kakumei`
+- `/portfolio/kosen-fes-2025`
+- `/portfolio/kosen-fes2025-ending`
+- `/portfolio/kosen-procon-pv`
+- `/portfolio/lhaplus`
+- `/portfolio/liteglow`
+- `/portfolio/m5-clock`
+- `/portfolio/mawaru`
+- `/portfolio/meikai`
+- `/portfolio/moumoku`
+- `/portfolio/multislicer`
+- `/portfolio/my-first-blender`
+- `/portfolio/my-sns-icon`
+- `/portfolio/my-web-2025`
+- `/portfolio/netu`
+- `/portfolio/nulloto`
+- `/portfolio/oneself`
+- `/portfolio/ooame`
+- `/portfolio/pomodoroom`
+- `/portfolio/propose`
+- `/portfolio/prototype`
+- `/portfolio/prototype-brochure`
+- `/portfolio/red-black-design`
+- `/portfolio/reel-2024`
+- `/portfolio/reel-2025`
+- `/portfolio/rgbdelay`
+- `/portfolio/seishun`
+- `/portfolio/sep-color`
+- `/portfolio/shinkansen`
+- `/portfolio/stretch-v01`
+- `/portfolio/stretch-v02`
+- `/portfolio/tegaki-anime`
+- `/portfolio/tokimeki`
+- `/portfolio/ugoita`
+- `/portfolio/usoto`
+- `/portfolio/yukikate`
 - `/tools`
 
 ## Publicly reachable URLs (the compared surface)
@@ -47,12 +101,66 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/design-system`
 - `/keyboard`
 - `/portfolio`
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
+- `/portfolio/alice`
+- `/portfolio/aulymo-v01`
+- `/portfolio/aulymo-v02`
+- `/portfolio/aulymo-v03`
+- `/portfolio/bansankai`
+- `/portfolio/baramoji`
+- `/portfolio/blue-white-design`
+- `/portfolio/border`
+- `/portfolio/cclub-brochure-2024`
+- `/portfolio/cclub-brochure-2025`
+- `/portfolio/ch4nge`
+- `/portfolio/code-type`
+- `/portfolio/design-001`
+- `/portfolio/dounika`
+- `/portfolio/flashbeat`
+- `/portfolio/flashbeat-bgm`
+- `/portfolio/flashbeat-op`
+- `/portfolio/foldlayers`
+- `/portfolio/homura`
+- `/portfolio/hurahu`
+- `/portfolio/icon-tegaki-anime`
+- `/portfolio/isogasii-demo`
+- `/portfolio/isogasii-editor`
+- `/portfolio/kaben`
+- `/portfolio/kakumei`
+- `/portfolio/kosen-fes-2025`
+- `/portfolio/kosen-fes2025-ending`
+- `/portfolio/kosen-procon-pv`
+- `/portfolio/lhaplus`
+- `/portfolio/liteglow`
+- `/portfolio/m5-clock`
+- `/portfolio/mawaru`
+- `/portfolio/meikai`
+- `/portfolio/moumoku`
+- `/portfolio/multislicer`
+- `/portfolio/my-first-blender`
+- `/portfolio/my-sns-icon`
+- `/portfolio/my-web-2025`
+- `/portfolio/netu`
+- `/portfolio/nulloto`
+- `/portfolio/oneself`
+- `/portfolio/ooame`
+- `/portfolio/pomodoroom`
+- `/portfolio/propose`
+- `/portfolio/prototype`
+- `/portfolio/prototype-brochure`
+- `/portfolio/red-black-design`
+- `/portfolio/reel-2024`
+- `/portfolio/reel-2025`
+- `/portfolio/rgbdelay`
+- `/portfolio/seishun`
+- `/portfolio/sep-color`
+- `/portfolio/shinkansen`
+- `/portfolio/stretch-v01`
+- `/portfolio/stretch-v02`
+- `/portfolio/tegaki-anime`
+- `/portfolio/tokimeki`
+- `/portfolio/ugoita`
+- `/portfolio/usoto`
+- `/portfolio/yukikate`
 - `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
@@ -110,9 +218,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Removed external hosts (0)
+### Removed external hosts (1)
 
-- (none)
+- ``
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -130,14 +238,13 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | URL | Host | Role | Files |
 | --- | --- | --- | --- |
 | `http://json-schema.org/draft-07/schema#` | `json-schema.org` | external / identifier | `src/tools/manifest.schema.json` |
-| `http://scripts.sil.org/OFL` | `scripts.sil.org` | external / identifier | `public/share/procon2026/index.html` |
+| `http://scripts.sil.org/OFL` | `scripts.sil.org` | external / identifier | `public/fonts/noto-sans-jp-LICENSE.txt`, `public/fonts/zen-kaku-gothic-new-LICENSE.txt`, `public/share/procon2026/index.html` |
 | `http://www.apache.org/licenses` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/cards/streak-card.js`, `src/vendor/github-readme-stats-fast/src/common/Card.js`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
-| `https://` | `` | external | `src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
@@ -151,9 +258,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://361do.booth.pm/items/6939869` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7758823` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/7935112` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
-| `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts`, `src/vendor/github-readme-stats-fast/src/fetchers/stats.js` |
+| `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
@@ -164,10 +271,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
-| `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/manifest.json` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
@@ -402,6 +508,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
+| `https://github.com/googlefonts/zen-kakugothic` | `github.com` | external | `public/fonts/zen-kaku-gothic-new-LICENSE.txt` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -412,7 +519,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/CodeType/_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/CodeType_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/FlashBeat` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/GRI-2nd` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/LiteGlow` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/M5/_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -444,7 +550,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
-| `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
@@ -491,7 +596,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
-| `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts`, `src/vendor/github-readme-stats-fast/src/common/utils.js` |
+| `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://twitch.tv/example` | `twitch.tv` | external | `src/home/presence/fixtures.ts` |
 | `https://twitter.com/361do_design/status/1905290284763857355` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/361do_design/status/1905491397169611125` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -686,6 +791,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
-- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
+- **WARN** `W003 external-url-removed` External URL removed: https://
+- **WARN** `W001 external-host-removed` External host no longer referenced: 
 

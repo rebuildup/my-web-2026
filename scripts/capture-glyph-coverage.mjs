@@ -14,7 +14,7 @@
  * 1. Renders the fr / de / pt / ru heading fixture
  *    (`src/i18n/glyphs.fixture.ts`) as a self-contained HTML report, using
  *    the SHIPPED font stack read from `src/editorial/tokens.ts` and the
- *    webfont stylesheet href read from `src/routes/__root.tsx`. Neither is
+ *    self-hosted `@font-face` rules read from `src/styles.css`. Neither is
  *    restated here: a report that declared its own font would be measuring a
  *    second, fictional product.
  * 2. Loads that report in headless Chromium, force-loads the webfont faces,
@@ -61,9 +61,10 @@
  * make the artefact worthless.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadSelfHostedFontCss } from './_selfhosted-font-css.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_HTML = resolve(REPO_ROOT, '.tmp/glyph-coverage.html');
@@ -89,21 +90,18 @@ const { describeCodePoint, findNonAscii } = await import('../src/i18n/unicode.ts
 const { rawTokens } = await import('../src/editorial/tokens.ts');
 
 /**
- * The webfont stylesheet the PRODUCT loads, read out of `__root.tsx`.
- *
- * The product loads it asynchronously (`media="print"` + an inline flip
- * script, Issue #291); a static report has no hydration to wait for, so it
- * loads the same href directly. Same URL, same faces.
+ * The self-hosted `@font-face` rules the PRODUCT ships, read out of
+ * `src/styles.css` by `_selfhosted-font-css.mjs`. A static report opened
+ * from `file://` cannot resolve the product's root-relative `/fonts/`
+ * URLs, so the helper rewrites them onto an absolute origin
+ * (`MY_WEB_FONT_BASE_URL`, default the canonical production origin).
+ * Same rules, same faces — never restated here.
  */
-const rootSource = await readFile(resolve(REPO_ROOT, 'src/routes/__root.tsx'), 'utf8');
-const fontHrefMatch = rootSource.match(/href: '(https:\/\/fonts\.googleapis\.com\/css2[^']*)'/);
-if (!fontHrefMatch) {
-	throw new Error(
-		'capture-glyph-coverage: no fonts.googleapis.com stylesheet href in src/routes/__root.tsx. ' +
-			'Update this script rather than letting the report measure a font the product does not ship.',
-	);
-}
-const FONT_HREF = fontHrefMatch[1];
+const {
+	css: FONT_CSS,
+	baseUrl: FONT_BASE_URL,
+	ruleCount: FONT_FACE_RULES,
+} = await loadSelfHostedFontCss();
 
 const FONT_STACKS = {
 	heading: rawTokens.fonts.heading.value,
@@ -208,9 +206,11 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <title>Issue #432 — diacritics / combining marks / Cyrillic in headings</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="${escapeHtml(FONT_HREF)}" />
+<style>
+/* Self-hosted webfont faces — the @font-face rules src/styles.css ships,
+   asset URLs rebased onto ${FONT_BASE_URL} for this file:// report. */
+${FONT_CSS}
+</style>
 <style>
 	:root {
 		--font-heading: ${FONT_STACKS.heading};
@@ -287,8 +287,8 @@ const html = `<!doctype html>
 		Every heading below is a synthetic fixture from <code>src/i18n/glyphs.fixture.ts</code> —
 		written to exercise a character class, not to publish anything. The rows are rendered with the
 		<strong>product's</strong> font stack, read from <code>src/editorial/tokens.ts</code>
-		(<code>${escapeHtml(HEADING_FAMILY)}</code> for headings), and the webfont stylesheet is the
-		href <code>src/routes/__root.tsx</code> loads. Locale is opt-in per row through its own
+		(<code>${escapeHtml(HEADING_FAMILY)}</code> for headings), and the webfont faces are the
+		self-hosted <code>@font-face</code> rules <code>src/styles.css</code> ships. Locale is opt-in per row through its own
 		<code>lang</code>; nothing here negotiates a locale from the visitor.
 	</p>
 	<div id="banner" class="banner">Measuring…</div>
@@ -570,7 +570,7 @@ const clipboardVerdict = clipboardAvailable
 const clipboardSummary = `Copy/paste round trip over the rendered rows — DOM selection preserved the code points: ${selectionMatchesFixture ? 'yes' : 'NO'}; system clipboard preserved them: ${clipboardVerdict}${clipboardLineBreaks ? ` (${clipboardLineBreaks} line separator(s) added by the platform's plain-text serialisation, no code point changed)` : ''}`;
 
 const bannerText = !webfontLoaded
-	? 'Webfont NOT loaded in this run (fonts.googleapis.com unreachable or blocked). Every column ' +
+	? 'Webfont NOT loaded in this run (self-hosted font origin unreachable or blocked). Every column ' +
 		'below reports the PLATFORM FALLBACK measurement only; the webfont verdicts are unavailable ' +
 		'and must not be read as coverage evidence.'
 	: `Webfont loaded: ${probe.faces.heading.ready}/${probe.faces.heading.total} "${HEADING_FAMILY}" faces, ` +
@@ -647,7 +647,9 @@ await writeFile(
 			issue: '#432',
 			viewport: VIEWPORT,
 			fontStack: FONT_STACKS,
-			fontHref: FONT_HREF,
+			fontSource: 'self-hosted @font-face (src/styles.css)',
+			fontBaseUrl: FONT_BASE_URL,
+			fontFaceRules: FONT_FACE_RULES,
 			webfontLoaded,
 			missing: missing.map((row) => row.hex),
 			missingByTier: {

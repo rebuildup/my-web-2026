@@ -122,8 +122,10 @@ describe('this repository', () => {
 		assert.equal(String(pkg.scripts.test), 'vitest run && node scripts/run-script-tests.mjs');
 	});
 
-	it('refuses `--list` from the `test` lifecycle', () => {
-		assert.equal(runScriptTestsMain(['--list'], { lifecycleEvent: 'test' }), 2);
+	it('refuses `--list` from the `test` lifecycle', async () => {
+		// `main` is async since Issue #1007 (the suite runs with bounded
+		// concurrency), so the refusal is a resolved value, not a throw.
+		assert.equal(await runScriptTestsMain(['--list'], { lifecycleEvent: 'test' }), 2);
 	});
 
 	it('lists exactly the files the runner would execute', () => {

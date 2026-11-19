@@ -126,7 +126,13 @@ const EXPECTED_FAST_PLAN = [
 	// public copy. It runs right after the copy locale contract, so a
 	// review-pending finding is read next to the other copy findings.
 	'pnpm run copy:stale:check',
+	// Issue #837 (O-8): the internal-identifier gate runs with the other
+	// copy gates — a leak finding is read next to the copy findings.
+	'pnpm run copy:internal-ids:check',
 	'pnpm run publication:check',
+	// Issue #834: the portfolio slug ledger must match the canonical
+	// published set — runs with the publication gates it extends.
+	'pnpm run portfolio:ledger:check',
 	// Issue #734: the sitemap-membership cross-check runs right after the
 	// publication ledger it compares against the sitemap generator, so a
 	// disagreement is read next to the ledger finding it belongs to.

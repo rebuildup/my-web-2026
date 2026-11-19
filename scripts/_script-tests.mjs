@@ -16,11 +16,13 @@
  * Two things stay deliberate rather than accidental:
  *
  * 1. **Per-file process isolation.** Each file runs in its own
- *    `node --test <file>` child, one file at a time, stopping at the
- *    first failure with that failure's exit code — the semantics of the
- *    `&&` chain this replaces. Files therefore cannot share module
- *    state, and a crash in one cannot take the rest of the suite with
- *    it.
+ *    `node --test <file>` child, so files cannot share module state
+ *    and a crash in one cannot take the rest of the suite with it.
+ *    Issue #1007 runs the children with bounded concurrency (each
+ *    with a private `TMPDIR`): scheduling stops after the first
+ *    failure and the reported failure is the earliest in sorted
+ *    order, which preserves the `&&` chain's determinism without
+ *    its serial cost.
  * 2. **Type stripping is always on.** A few files import TypeScript
  *    source directly (`scripts/check-content-links.test.mjs` and
  *    friends). The flag is passed to every file rather than to a

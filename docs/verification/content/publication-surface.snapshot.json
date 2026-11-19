@@ -230,14 +230,68 @@
 					"src/routes/portfolio/$slug.tsx"
 				],
 				"urls": [
-					"/portfolio/aulymo",
-					"/portfolio/multi-slicer",
-					"/portfolio/my-web-2026",
-					"/portfolio/project-init",
-					"/portfolio/sciencearts-optim-internship-2026",
-					"/portfolio/tastile"
+					"/portfolio/alice",
+					"/portfolio/aulymo-v01",
+					"/portfolio/aulymo-v02",
+					"/portfolio/aulymo-v03",
+					"/portfolio/bansankai",
+					"/portfolio/baramoji",
+					"/portfolio/blue-white-design",
+					"/portfolio/border",
+					"/portfolio/cclub-brochure-2024",
+					"/portfolio/cclub-brochure-2025",
+					"/portfolio/ch4nge",
+					"/portfolio/code-type",
+					"/portfolio/design-001",
+					"/portfolio/dounika",
+					"/portfolio/flashbeat",
+					"/portfolio/flashbeat-bgm",
+					"/portfolio/flashbeat-op",
+					"/portfolio/foldlayers",
+					"/portfolio/homura",
+					"/portfolio/hurahu",
+					"/portfolio/icon-tegaki-anime",
+					"/portfolio/isogasii-demo",
+					"/portfolio/isogasii-editor",
+					"/portfolio/kaben",
+					"/portfolio/kakumei",
+					"/portfolio/kosen-fes-2025",
+					"/portfolio/kosen-fes2025-ending",
+					"/portfolio/kosen-procon-pv",
+					"/portfolio/lhaplus",
+					"/portfolio/liteglow",
+					"/portfolio/m5-clock",
+					"/portfolio/mawaru",
+					"/portfolio/meikai",
+					"/portfolio/moumoku",
+					"/portfolio/multislicer",
+					"/portfolio/my-first-blender",
+					"/portfolio/my-sns-icon",
+					"/portfolio/my-web-2025",
+					"/portfolio/netu",
+					"/portfolio/nulloto",
+					"/portfolio/oneself",
+					"/portfolio/ooame",
+					"/portfolio/pomodoroom",
+					"/portfolio/propose",
+					"/portfolio/prototype",
+					"/portfolio/prototype-brochure",
+					"/portfolio/red-black-design",
+					"/portfolio/reel-2024",
+					"/portfolio/reel-2025",
+					"/portfolio/rgbdelay",
+					"/portfolio/seishun",
+					"/portfolio/sep-color",
+					"/portfolio/shinkansen",
+					"/portfolio/stretch-v01",
+					"/portfolio/stretch-v02",
+					"/portfolio/tegaki-anime",
+					"/portfolio/tokimeki",
+					"/portfolio/ugoita",
+					"/portfolio/usoto",
+					"/portfolio/yukikate"
 				],
-				"reason": "Per-project detail. Expands from the repo-controlled portfolio seed slugs; the loader serves `visibility = public` rows only."
+				"reason": "Per-project detail. Expands from the published+public slugs of the committed Notion portfolio snapshot unioned with the D1 rows the loader serves; the loader serves `visibility = public` rows only."
 			},
 			{
 				"id": "/projects/dotfiles",
@@ -302,12 +356,66 @@
 			"/contact",
 			"/design-system",
 			"/portfolio",
-			"/portfolio/aulymo",
-			"/portfolio/multi-slicer",
-			"/portfolio/my-web-2026",
-			"/portfolio/project-init",
-			"/portfolio/sciencearts-optim-internship-2026",
-			"/portfolio/tastile",
+			"/portfolio/alice",
+			"/portfolio/aulymo-v01",
+			"/portfolio/aulymo-v02",
+			"/portfolio/aulymo-v03",
+			"/portfolio/bansankai",
+			"/portfolio/baramoji",
+			"/portfolio/blue-white-design",
+			"/portfolio/border",
+			"/portfolio/cclub-brochure-2024",
+			"/portfolio/cclub-brochure-2025",
+			"/portfolio/ch4nge",
+			"/portfolio/code-type",
+			"/portfolio/design-001",
+			"/portfolio/dounika",
+			"/portfolio/flashbeat",
+			"/portfolio/flashbeat-bgm",
+			"/portfolio/flashbeat-op",
+			"/portfolio/foldlayers",
+			"/portfolio/homura",
+			"/portfolio/hurahu",
+			"/portfolio/icon-tegaki-anime",
+			"/portfolio/isogasii-demo",
+			"/portfolio/isogasii-editor",
+			"/portfolio/kaben",
+			"/portfolio/kakumei",
+			"/portfolio/kosen-fes-2025",
+			"/portfolio/kosen-fes2025-ending",
+			"/portfolio/kosen-procon-pv",
+			"/portfolio/lhaplus",
+			"/portfolio/liteglow",
+			"/portfolio/m5-clock",
+			"/portfolio/mawaru",
+			"/portfolio/meikai",
+			"/portfolio/moumoku",
+			"/portfolio/multislicer",
+			"/portfolio/my-first-blender",
+			"/portfolio/my-sns-icon",
+			"/portfolio/my-web-2025",
+			"/portfolio/netu",
+			"/portfolio/nulloto",
+			"/portfolio/oneself",
+			"/portfolio/ooame",
+			"/portfolio/pomodoroom",
+			"/portfolio/propose",
+			"/portfolio/prototype",
+			"/portfolio/prototype-brochure",
+			"/portfolio/red-black-design",
+			"/portfolio/reel-2024",
+			"/portfolio/reel-2025",
+			"/portfolio/rgbdelay",
+			"/portfolio/seishun",
+			"/portfolio/sep-color",
+			"/portfolio/shinkansen",
+			"/portfolio/stretch-v01",
+			"/portfolio/stretch-v02",
+			"/portfolio/tegaki-anime",
+			"/portfolio/tokimeki",
+			"/portfolio/ugoita",
+			"/portfolio/usoto",
+			"/portfolio/yukikate",
 			"/tools"
 		],
 		"publicUrls": [
@@ -319,12 +427,66 @@
 			"/design-system",
 			"/keyboard",
 			"/portfolio",
-			"/portfolio/aulymo",
-			"/portfolio/multi-slicer",
-			"/portfolio/my-web-2026",
-			"/portfolio/project-init",
-			"/portfolio/sciencearts-optim-internship-2026",
-			"/portfolio/tastile",
+			"/portfolio/alice",
+			"/portfolio/aulymo-v01",
+			"/portfolio/aulymo-v02",
+			"/portfolio/aulymo-v03",
+			"/portfolio/bansankai",
+			"/portfolio/baramoji",
+			"/portfolio/blue-white-design",
+			"/portfolio/border",
+			"/portfolio/cclub-brochure-2024",
+			"/portfolio/cclub-brochure-2025",
+			"/portfolio/ch4nge",
+			"/portfolio/code-type",
+			"/portfolio/design-001",
+			"/portfolio/dounika",
+			"/portfolio/flashbeat",
+			"/portfolio/flashbeat-bgm",
+			"/portfolio/flashbeat-op",
+			"/portfolio/foldlayers",
+			"/portfolio/homura",
+			"/portfolio/hurahu",
+			"/portfolio/icon-tegaki-anime",
+			"/portfolio/isogasii-demo",
+			"/portfolio/isogasii-editor",
+			"/portfolio/kaben",
+			"/portfolio/kakumei",
+			"/portfolio/kosen-fes-2025",
+			"/portfolio/kosen-fes2025-ending",
+			"/portfolio/kosen-procon-pv",
+			"/portfolio/lhaplus",
+			"/portfolio/liteglow",
+			"/portfolio/m5-clock",
+			"/portfolio/mawaru",
+			"/portfolio/meikai",
+			"/portfolio/moumoku",
+			"/portfolio/multislicer",
+			"/portfolio/my-first-blender",
+			"/portfolio/my-sns-icon",
+			"/portfolio/my-web-2025",
+			"/portfolio/netu",
+			"/portfolio/nulloto",
+			"/portfolio/oneself",
+			"/portfolio/ooame",
+			"/portfolio/pomodoroom",
+			"/portfolio/propose",
+			"/portfolio/prototype",
+			"/portfolio/prototype-brochure",
+			"/portfolio/red-black-design",
+			"/portfolio/reel-2024",
+			"/portfolio/reel-2025",
+			"/portfolio/rgbdelay",
+			"/portfolio/seishun",
+			"/portfolio/sep-color",
+			"/portfolio/shinkansen",
+			"/portfolio/stretch-v01",
+			"/portfolio/stretch-v02",
+			"/portfolio/tegaki-anime",
+			"/portfolio/tokimeki",
+			"/portfolio/ugoita",
+			"/portfolio/usoto",
+			"/portfolio/yukikate",
 			"/projects/dotfiles",
 			"/share/procon2026/",
 			"/tools",
@@ -345,7 +507,6 @@
 			"/tools/text-counter"
 		],
 		"externalHosts": [
-			"",
 			"*.analytics.google.com",
 			"*.google-analytics.com",
 			"*.googletagmanager.com",
@@ -414,6 +575,8 @@
 				"kind": "external",
 				"identifier": true,
 				"files": [
+					"public/fonts/noto-sans-jp-LICENSE.txt",
+					"public/fonts/zen-kaku-gothic-new-LICENSE.txt",
 					"public/share/procon2026/index.html"
 				]
 			},
@@ -477,19 +640,7 @@
 					"src/home/mark.tsx",
 					"src/tools/manifest.json",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/cards/streak-card.js",
-					"src/vendor/github-readme-stats-fast/src/common/Card.js",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
-				]
-			},
-			{
-				"url": "https://",
-				"host": "",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/vendor/github-readme-stats-fast/src/fetchers/wakatime.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -615,8 +766,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -634,8 +784,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/fetchers/stats.ts",
-					"src/vendor/github-readme-stats-fast/src/fetchers/stats.js"
+					"src/vendor/github-readme-stats-fast/fetchers/stats.ts"
 				]
 			},
 			{
@@ -735,8 +884,6 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
 				]
 			},
@@ -750,23 +897,12 @@
 				]
 			},
 			{
-				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
-				"host": "fonts.googleapis.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/routes/__root.tsx"
-				]
-			},
-			{
 				"url": "https://fonts.gstatic.com",
 				"host": "fonts.gstatic.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
-					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx",
 					"src/tools/manifest.json"
 				]
 			},
@@ -2877,6 +3013,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/googlefonts/zen-kakugothic",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/fonts/zen-kaku-gothic-new-LICENSE.txt"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup",
 				"host": "github.com",
 				"kind": "external",
@@ -2967,15 +3112,6 @@
 				"files": [
 					"src/home/activity/github-activity.json",
 					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://github.com/rebuildup/GRI-2nd",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -3264,15 +3400,6 @@
 				"files": [
 					"src/home/status/incidents.ts",
 					"src/home/status/tiles.stories.tsx"
-				]
-			},
-			{
-				"url": "https://github.com/rebuildup/my-web-2026/releases",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/components/EmptyState.tsx"
 				]
 			},
 			{
@@ -3665,7 +3792,8 @@
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/portfolio/components/Markdown.tsx",
 					"src/portfolio/markdown.notion.ts",
-					"src/routes/index.tsx"
+					"src/routes/index.tsx",
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -3813,8 +3941,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/vendor/github-readme-stats-fast/common/utils.ts",
-					"src/vendor/github-readme-stats-fast/src/common/utils.js"
+					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
 			},
 			{
@@ -5543,26 +5670,27 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+		"addedExternalUrls": [],
+		"removedExternalUrls": [
+			"https://"
 		],
-		"removedExternalUrls": [],
 		"addedExternalHosts": [],
-		"removedExternalHosts": [],
+		"removedExternalHosts": [
+			""
+		],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: http://www.w3.org/1999/xlink"
+				"message": "External URL removed: https://"
 			},
 			{
-				"code": "W002 external-url-added",
+				"code": "W001 external-host-removed",
 				"severity": "warn",
-				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+				"message": "External host no longer referenced: "
 			}
 		]
 	}

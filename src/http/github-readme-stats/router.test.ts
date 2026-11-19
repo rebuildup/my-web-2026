@@ -9,6 +9,9 @@ const mockEnv = {
 	GITHUB_TOKEN: 'ghp_test_token_12345',
 	GITHUB_README_STATS_PAT_1: 'ghp_pat_token_1',
 	GITHUB_README_STATS_PAT_2: 'ghp_pat_token_2',
+	// Issue #996: the routes now sit behind rateLimitRead; the unit env
+	// supplies an always-allow limiter so handler behaviour stays under test.
+	RATE_LIMIT_READ: { limit: async () => ({ success: true }) },
 };
 
 const mockFetch = vi.fn();
@@ -379,6 +382,18 @@ describe('GitHub Readme Stats Router', () => {
 			expect(body).not.toContain('.js:');
 			expect(body).not.toContain('stack');
 		});
+
+		it('collapses a non-authored error message to the fixed fallback (Issue #996)', async () => {
+			mockFetch.mockRejectedValue(new Error('ECONNRESET internal-worker-detail'));
+			// Unique username: microCache/svgCache are in-memory, so a
+			// reused login could serve an earlier test's cached card.
+			const req = createMockRequest('/api', { username: 'err-leak-996' });
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const body = await res.text();
+			expect(body).not.toContain('ECONNRESET');
+			expect(body).not.toContain('internal-worker-detail');
+			expect(body).toContain('Something went wrong');
+		});
 	});
 
 	describe('Cache behavior', () => {
@@ -415,6 +430,44 @@ describe('GitHub Readme Stats Router', () => {
 			expect(cacheControl).toMatch(/max-age=\d+/);
 			expect(cacheControl).toMatch(/s-maxage=\d+/);
 			expect(cacheControl).toMatch(/stale-while-revalidate=\d+/);
+		});
+
+		it('ignores caller-supplied cache_seconds on the stats card', async () => {
+			mockFetch.mockResolvedValue(
+				createGraphQLMock({
+					user: {
+						name: 'Test',
+						login: 'test',
+						contributionsCollection: {
+							totalCommitContributions: 10,
+							totalPullRequestReviewContributions: 5,
+						},
+						repositoriesContributedTo: { totalCount: 1 },
+						pullRequests: { totalCount: 2 },
+						mergedPullRequests: { totalCount: 1 },
+						openIssues: { totalCount: 0 },
+						closedIssues: { totalCount: 0 },
+						followers: { totalCount: 10 },
+						repositoryDiscussions: { totalCount: 0 },
+						repositoryDiscussionComments: { totalCount: 0 },
+						repositories: {
+							totalCount: 5,
+							nodes: [{ name: 'repo1', stargazerCount: 1 }],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				}),
+			);
+
+			const req = createMockRequest('/api', {
+				username: 'cache-seconds-ign',
+				cache_seconds: '172800',
+			});
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			const cacheControl = res.headers.get('Cache-Control');
+			expect(cacheControl).toContain('max-age=86400');
+			expect(cacheControl).toContain('s-maxage=86400');
+			expect(cacheControl).not.toContain('172800');
 		});
 
 		it('sets 1 hour cache for streak card', async () => {

@@ -45,23 +45,21 @@ per route and scenario:
   `loaded` (`document.fonts.ready` is deliberately not used — it resolves
   before the stylesheet is parsed, so it reports a swap that never
   happened),
-- `fonts.googleapis.com` / `fonts.gstatic.com` resource timing, split into
+- `/fonts/*.woff2` resource timing, split into
   requests that **delivered** a response and requests that were **aborted**
   (the blocked scenario aborts them on purpose, and Chromium keeps the
   entry either way),
 - whether the webfont pipeline is usable **from this host at all**: the
-  probe fetches the Google stylesheet, follows it to the `gstatic` face
-  it references and asks for that too. Checking only the stylesheet host
-  would report a run as a real webfont swap on a network that serves the
-  CSS and blocks the font file, which is precisely the state in which no
-  swap can ever be observed. When the probe says the origin is unusable,
-  **every** scenario aborts it, not only `blocked`: the page's async
-  stylesheet is `media="print"`, so it never blocks rendering but it does
-  hold the document's `load` event, and an origin that accepts the
-  connection and never answers would otherwise make the navigation run
-  into its timeout before the bounded `document.fonts.ready` wait — i.e.
-  the platform-fallback report the warning promises would never be
-  written,
+  probe fetches the document's stylesheet, follows it to the same-origin
+  font file it references and asks for that too (HEAD). Checking only the
+  stylesheet would report a run as a real webfont swap on a network that
+  serves the CSS and blocks the font file, which is precisely the state
+  in which no swap can ever be observed. When the probe says the origin
+  is unusable, **every** scenario aborts it, not only `blocked`: an
+  origin that accepts the connection and never answers would otherwise
+  make the navigation run into its timeout before the bounded
+  `document.fonts.ready` wait — i.e. the platform-fallback report the
+  warning promises would never be written,
 - layout-shift **sources** — the element and rect pairs that moved, for
   this capture and for the before capture passed with `--compare`,
 - a fallback-readability verdict over real text probes in the blocked
@@ -85,7 +83,7 @@ improvement.
 | Scenario | Condition | Question it answers |
 | --- | --- | --- |
 | `baseline` | no throttling, font origin reachable (the report records when it is not) | what does a first visit cost when the font arrives |
-| `blocked` | `fonts.googleapis.com` + `fonts.gstatic.com` aborted | is there still readable text when the font origin is unreachable — the condition Issue #291's async-CSS pattern must survive |
+| `blocked` | every `/fonts/*.woff2` request aborted | is there still readable text when the font origin is unreachable — the condition Issue #291's async-CSS pattern must survive |
 | `slow-font` | CPU throttled x4, every font-origin response delayed 1500 ms | how long the FOUT window lasts and what it moves |
 
 The settle window opens **when the swap lands**, not at a fixed offset:
@@ -374,10 +372,10 @@ Making it CI-reproducible needs an owner decision, not a script change:
 2. serve a pinned font from the repository instead of `local()`, or
 3. run the measurement on a macOS runner.
 
-All three also assume the runner can reach `fonts.googleapis.com` /
-`fonts.gstatic.com`; the report probes both hosts and says so per run,
-but a runner without egress turns `baseline` and `slow-font` into
-"platform fallback, no swap" rows.
+All three also assume the runner can reach the same-origin font
+assets; the report probes the document → stylesheet → font-file chain and
+says so per run, but a runner without egress turns `baseline` and
+`slow-font` into "platform fallback, no swap" rows.
 
 ### Known limits
 
@@ -391,11 +389,10 @@ but a runner without egress turns `baseline` and `slow-font` into
   platforms keep today's behaviour via the chain fallback; a
   platform-specific override would need its own measurement.
 - In Chromium the faces the CSS font loader fetches do not appear in the
-  resource buffer at all, so the counted font-origin request is the
-  Google Fonts stylesheet. `fonts.gstatic.com` sends no
-  `Timing-Allow-Origin` either, so its responses would carry neither
-  bytes nor a response start; the report counts them as not delivered
-  rather than guessing.
+  resource buffer at all, so the counted font-origin requests are the
+  same-origin `/fonts/*.woff2` files the stylesheet points at; being
+  first-party they need no `Timing-Allow-Origin` for the report to read
+  their timing.
 - The before capture was taken with the pre-fix `src/styles.css` and
   `src/editorial/tokens.ts` in a dirty working tree (that is what
   measuring the old build means), so it records `dirty: true`. The after
@@ -639,7 +636,7 @@ markup」しか見ないので、hydration の後に client コードが挿入�
 - browser: Playwright 同梱 Chromium
 - network: CDP `Network.emulateNetworkConditions` = Fast 4G（9 Mbit/s / 150 ms RTT）
 - CPU: CDP `Emulation.setCPUThrottlingRate` = ×4
-- third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
+- third-party: GA4 は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
 - 画像の source SHA は **30b4a66**（tracked tree clean）。その後に積まれた

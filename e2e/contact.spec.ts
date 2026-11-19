@@ -17,7 +17,9 @@ import { PAGE_CONTENT_SECTIONS } from '../scripts/prod-smoke-routes.mjs';
  * controlled). The local webServer / production origin both read
  * the same JSON, so the contract holds in both modes. This spec
  * does NOT seed any state — it relies on whatever the bundled
- * channels.json produces after the freshness gate.
+ * channels.json produces after the display-validity gate (Issue
+ * #833: audit-due channels stay listed; only inactive or
+ * unverifiable records are excluded).
  *
  * Local D1 / R2 / Channels are not required for this spec to run.
  */
@@ -81,13 +83,16 @@ test.describe('/contact page composition', () => {
 
 		// Issue #832 — the shipped channel list must actually reach the
 		// public page. Before this assertion the spec returned early on the
-		// empty branch, so a stale `verified_at` (every channel filtered out
-		// by the freshness gate) passed CI while /contact rendered nothing.
-		// A red here means the release needs its channels re-verified, not
-		// that this assertion is too strict.
+		// empty branch, so every channel being filtered out passed CI
+		// while /contact rendered nothing. Issue #833 narrowed what
+		// "filtered out" means: audit-due channels now STAY listed with a
+		// re-verification note, so a red here means every active channel
+		// is inactive or unverifiable — a record problem, not a stale
+		// date. A red here means the release needs its channels
+		// re-verified, not that this assertion is too strict.
 		expect(
 			populated,
-			'no channel reached the public /contact page: every active channel is outside the 30-day freshness window (src/contact/channels.json#verified_at)',
+			'no channel reached the public /contact page: every active channel is unverifiable (src/contact/channels.json#verified_at)',
 		).toBe(true);
 		expect(emptyRendered).toBe(false);
 

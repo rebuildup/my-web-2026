@@ -2,7 +2,7 @@
 	"case": "unrecorded — 観測も rotation 日付も無い（リポジトリが今日持つ状態）",
 	"note": "このリポジトリが実際に持つ状態。観測ファイルは無く、ledger の last_rotated_at は null。gate はこれを「一致」と読まない — 各行が NOT_OBSERVED と UNRECORDED を advisory として出す。運用承認は別問題（known decision）。",
 	"now": "2026-10-19",
-	"expect": { "verdict": "OK", "exit_code": 0, "advisory": 4, "drift_failures": 0, "overdue": 0 },
+	"expect": { "verdict": "OK", "exit_code": 0, "advisory": 6, "drift_failures": 0, "overdue": 0 },
 	"ledger": {
 		"version": 1,
 		"policy": "fixture ledger (Issue #477)",
@@ -34,6 +34,26 @@
 				"last_rotated_at": null,
 				"driver": "operator edit in the Infisical dashboard (docs/runbook/analytics.md)",
 				"runbook": "docs/runbook/analytics.md"
+			},
+			{
+				"name": "GITHUB_README_STATS_PAT_1",
+				"cadence": {
+					"kind": "event_driven",
+					"label": "on suspected compromise or as needed (fine-grained PAT, public-read scopes only; pair rotation: Infisical prod + Worker binding via cf deploy --secrets-file)"
+				},
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/github-readme-stats.md); there is no rotation script for an external PAT",
+				"runbook": "docs/runbook/github-readme-stats.md"
+			},
+			{
+				"name": "DISCORD_PRESENCE_USER_ID",
+				"cadence": {
+					"kind": "event_driven",
+					"label": "rare (account migration or leak-driven; semi-public snowflake managed from the Infisical dashboard like the GA measurement ID)"
+				},
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/discord-presence.md); there is no rotation script for a user id",
+				"runbook": "docs/runbook/discord-presence.md"
 			}
 		]
 	},

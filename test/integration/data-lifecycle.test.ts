@@ -28,8 +28,8 @@ import { applyPortfolioSchema } from './fixtures/portfolio-d1';
  *      JSON surfaces may carry that id, the row id, or the value. The
  *      aggregate the widget shows must stay a count.
  *   3. **Retention.** The published numbers are observed, not just
- *      restated: the dedup window really expires (lazily, on the same
- *      request id's next hit — no purge job ships), a burst from one
+ *      restated: the dedup window really expires (lazily, on the next
+ *      recorded hit — no purge job ships), a burst from one
  *      session counts once, distinct sessions each leave a row whose
  *      expiry is `now + DEDUP_WINDOW_MS`, and a reaction row survives
  *      until the same visitor deletes it.
@@ -326,7 +326,7 @@ describe('retention is observed, not asserted from the wording', () => {
 		expect(count.count).toBe(26);
 	});
 
-	it('an expired row is deleted when the same session id returns, and only then', async () => {
+	it('an expired row is re-armed when its session returns, and the sweep collects the rest', async () => {
 		// The wording says deletion is lazy, so this is the observation
 		// that earns the word "lazy": the row is still there before the
 		// return, gone after it.
@@ -358,15 +358,17 @@ describe('retention is observed, not asserted from the wording', () => {
 			.first<{ n: number }>();
 		expect(n?.n).toBe(1);
 
-		// The rows nobody came back to are still there. This is the
-		// honest cost of shipping no purge job, and it is why the
-		// published retention sentence names the gap.
+		// Every other expired row — the ones nobody came back to — is
+		// collected by the same sweep. What remains is the re-armed row
+		// alone: the published sentence now says deletion runs on the
+		// next recorded hit whatever the identifier, and this is the
+		// observation that keeps it honest.
 		const orphans = await env.DB.prepare(
 			'SELECT COUNT(*) AS n FROM access_dedup WHERE counter_key = ?1 AND principal = ?2',
 		)
 			.bind(COUNTER_KEY, PRINCIPAL)
 			.first<{ n: number }>();
-		expect(orphans?.n).toBe(26);
+		expect(orphans?.n).toBe(1);
 	});
 
 	it('a reaction row survives until the same visitor deletes it', async () => {

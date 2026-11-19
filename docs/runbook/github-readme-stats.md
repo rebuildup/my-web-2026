@@ -36,21 +36,27 @@ the cards read public profile data; do NOT reuse a `repo`-scoped
 token on the public Worker):
 
 ```sh
-# interim binding (persists across deploys — deploys preserve
-# existing Worker secrets and only rewrite secrets.required names)
-wrangler secret put GITHUB_README_STATS_PAT_1 --name <worker-name>
-
-# preferred long-term path (contract-managed):
+# contract-managed path (the ONLY supported path — Issue #969):
 #   1. owner creates the fine-grained PAT
 #   2. seed Infisical prod + dev as GITHUB_README_STATS_PAT_1
-#   3. add the name to secrets.required (wrangler.jsonc,
-#      wrangler.production.jsonc, _cloudflare-contract.mjs,
-#      quality/secret-rotation-ledger.json) — a separate ticket,
-#      because making it required blocks deploys until seeded
+#      (infisical secrets set --env=prod --path=/ GITHUB_README_STATS_PAT_1)
+#   3. the name is already in secrets.required
+#      (wrangler.jsonc, wrangler.production.jsonc,
+#      _cloudflare-contract.mjs, quality/secret-rotation-ledger.json)
+#   4. the next `cf deploy --prebuilt --secrets-file` binds it
 ```
 
-For local dev, add the same name to `.dev.vars` (gitignored) or to
-the Infisical `dev` env — `pnpm dev` injects the dev env.
+There is deliberately NO `wrangler secret put` / `cf workers secrets`
+interim path: a secret bound outside the Infisical → deploy pipeline
+would diverge between local development and the deployed Worker, and
+the next deploy would not know how to reproduce it. If the PAT is
+seeded only in Infisical `prod`, `check-cf-secrets` Tier 1 passes and
+`run-deploy-inner.mjs` writes it into the deploy secrets file.
+
+For local dev, seed the same name in the Infisical `dev` env —
+`pnpm dev` injects it. Do NOT copy the value into `.dev.vars` or any
+other local file: the Infisical env is the single source so the local
+and deployed paths cannot diverge.
 
 ## Verification
 

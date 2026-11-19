@@ -484,31 +484,17 @@ describe('public-route <head> metadata (Issue #418)', () => {
 	});
 });
 
-describe('root <head> inline flip script: no unbounded document listener (Issue #488)', () => {
-	// TanStack Router merges the root head into EVERY route match, so
-	// this inline script is re-created — and re-executed by the
-	// browser — on every client-side navigation. The pre-#488 revision
-	// ended with
-	//
-	//     if (!f()) document.addEventListener('DOMContentLoaded', f)
-	//
-	// which left one permanently dead `document` listener per route
-	// change (`DOMContentLoaded` cannot fire again after the first
-	// document load), i.e. +1 leaked listener per navigation,
-	// unbounded. `docs/verification/perf/interaction-memory-profile.md`
-	// records the measurement.
-	//
-	// That measurement is a browser run and is deliberately NOT wired
-	// into any `validate:*` chain, so the SHAPE of the fix is pinned
-	// here instead, on the document the Worker actually renders. This
-	// is the same split #487 used for lazy media: a deterministic
-	// contract in `validate:fast`, the browser measurement beside it.
-	//
-	// Two routes, because the failure is a MERGE behaviour: `/` (the
-	// root head alone) and a child route (`/about`), where the root
-	// script has to survive the merge with the route's own head tags.
+describe('root <head>: no webfont flip script, no Google Fonts (Issue #876)', () => {
+	// The `media="print"` flip script existed only to async-load the
+	// Google Fonts stylesheet (Issues #291 / #488). Issue #876
+	// self-hosted the fonts into `public/fonts/`, so the whole
+	// mechanism — the third-party stylesheet link, the two
+	// `preconnect`s, and the inline flip body — is gone. What remains
+	// pinned here is the ABSENCE: the document the Worker renders must
+	// not re-grow any of it on any route, and the #488 evaluator stays
+	// as the regression check should the pattern ever return.
 
-	const FLIP_PROBE_ROUTES = ['/', '/about'];
+	const FONT_PROBE_ROUTES = ['/', '/about'];
 
 	const rawDocuments = new Map<string, Promise<string>>();
 
@@ -522,15 +508,20 @@ describe('root <head> inline flip script: no unbounded document listener (Issue 
 		return pending;
 	}
 
-	it('ships an inline flip script that satisfies the Issue #488 contract', async () => {
-		for (const path of FLIP_PROBE_ROUTES) {
-			const sources = parseInlineScriptSources(await documentHtml(path));
-			expect(sources.length, `${path} ships no inline <head> script`).toBeGreaterThan(0);
-			const findings = evaluateFlipScriptContract(sources, { path });
-			expect(
-				findings.map((finding) => `${finding.rule}: ${finding.message}`),
-				`${path} inline flip script contract`,
-			).toEqual([]);
+	it('ships no Google Fonts reference and no print-media flip script', async () => {
+		for (const path of FONT_PROBE_ROUTES) {
+			const html = await documentHtml(path);
+			expect(html, `${path} still links fonts.googleapis.com`).not.toContain(
+				'fonts.googleapis.com',
+			);
+			expect(html, `${path} still preconnects fonts.gstatic.com`).not.toContain(
+				'fonts.gstatic.com',
+			);
+			const sources = parseInlineScriptSources(html);
+			const flipScripts = sources.filter((source) =>
+				/\[media\s*=\s*\\?["']print\\?["']\]/.test(source),
+			);
+			expect(flipScripts, `${path} ships a media="print" flip script`).toEqual([]);
 		}
 	});
 

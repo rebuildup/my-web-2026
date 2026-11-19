@@ -165,7 +165,7 @@ describe('degraded with a value (non-destructive fallback)', () => {
 	it('states the reason, both failure and observation instants', () => {
 		const html = render(degradedWithValue());
 		expect(html).toContain('data-testid="external-read-failure"');
-		expect(html).toContain('応答时间内');
+		expect(html).toContain('応答時間内');
 		expect(html).toContain('observed at 2026-10-18 00:00:00 UTC');
 		expect(html).toContain('failed at 2026-10-18 00:01:00 UTC');
 		expect(html).toContain('前回の値を表示中');

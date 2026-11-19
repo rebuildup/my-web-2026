@@ -61,7 +61,7 @@ export const REPORT_RELATIVE_PATH = 'docs/verification/content/publication-diff-
 
 const ORIGIN_SOURCE_RELATIVE_PATH = 'src/editorial/nav/route-labels.ts';
 const WORKER_ENTRY_RELATIVE_PATH = 'src/server.ts';
-const PORTFOLIO_SEED_RELATIVE_PATH = 'src/portfolio/seed.ts';
+const PORTFOLIO_SNAPSHOT_RELATIVE_PATH = 'src/portfolio/notion/generated/snapshot.json';
 const TOOLS_MANIFEST_RELATIVE_PATH = 'src/tools/manifest.json';
 
 function walk(dir, onFile) {
@@ -173,7 +173,9 @@ export function readCurrentSurface() {
 		origin: canonicalOriginFromSource(
 			readFileSync(join(repoRoot, ORIGIN_SOURCE_RELATIVE_PATH), 'utf8'),
 		),
-		portfolioSeedSource: readFileSync(join(repoRoot, PORTFOLIO_SEED_RELATIVE_PATH), 'utf8'),
+		portfolioSnapshot: JSON.parse(
+			readFileSync(join(repoRoot, PORTFOLIO_SNAPSHOT_RELATIVE_PATH), 'utf8'),
+		),
 		toolsManifest,
 		workerEntrySource: readFileSync(join(repoRoot, WORKER_ENTRY_RELATIVE_PATH), 'utf8'),
 	});

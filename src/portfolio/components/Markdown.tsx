@@ -52,7 +52,7 @@ export const DEFAULT_SITE_ORIGIN = 'https://rebuildup.dev';
  * browser might render it as a link.
  */
 const BLOCKED_LINK_TITLE =
-	'This link was refused by the Markdown renderer (see docs/security.md). Its target is shown as inert text, not as a clickable URL.';
+	'This link was refused by the Markdown renderer. Its target is shown as inert text, not as a clickable URL.';
 
 /**
  * Refused-link styling. Deliberately NOT anchor-like: no colour that

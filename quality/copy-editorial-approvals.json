@@ -3362,6 +3362,281 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1006",
+			"pr": 1006,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:5a1c22496efd61545b322081135699179f1811e88ee28df686f0377b3962859e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "公開日本語 copy 2 セグメントから内部識別子を除去。(1) YouTube 埋め込みの外部送信文から内部 Issue 参照「Issue #910」を除去し日付と owner 決定の事実のみ残す。(2) contact 掲載先の公開範囲文からリポジトリパス「src/contact/channels.json」を除去し「公開済みのリンクだけ」という公開者向け事実のみにする。意味は維持。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定（Issue #910）で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"after": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"text": "動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。",
+					"verdict": "intentional",
+					"note": "Issue #994 の内部識別子 gate が baseline に残していた live leak を実測で確認し修正。括弧内の内部 Issue 参照のみ除去し、取得タイミングと対象ページの事実は不変。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "掲載先は `src/contact/channels.json` で、所有者は公開済みのリンクのみです。",
+					"after": "掲載先は公開済みのリンクだけです。",
+					"text": "掲載先は公開済みのリンクだけです。",
+					"verdict": "intentional",
+					"note": "同上。リポジトリパスの言及を除去。『公開済みリンクのみ掲載』という公開者向けの事実は保持。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1005",
+						"note": "#994 baseline の実測検証で発見した live leak の修正。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1006",
+						"note": "本修正を含む PR。"
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-1016",
+			"pr": 1016,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:95796a0e171eb7f7cbee6f77c5926e8d6f9d0cc450ec6de302cef2ec18f2ef5e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "公開日本語 copy 3 セグメントを実測した移行状態に整合。(1) / の meta description から「public preview」「構築しています」の未実測表現を除去し、公開済み範囲（Portfolio / about）と移行中範囲（content / activity）を分離。(2) /portfolio 空状態から「my-web-2025 から取り込み中」の完了済み工程の記述を除去。(3) /about Current の「順に乗せている」を統合済み/移行中の実測へ修正。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/data.ts",
+					"before": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about を順にこの release へ乗せている。",
+					"after": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。",
+					"text": "my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。",
+					"verdict": "intentional",
+					"note": "Issue #838 の実測（docs/verification/copy/migration-state-measurement-2026-11-18.md）に基づく事実整合の修正。portfolio / about の統合完了と content / activity の移行継続を分離した表現へ。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/EmptyState.tsx",
+					"before": "my-web-2025 から project データを取り込み中のため、まだ表示できる entry はありません。順次公開予定なので、進捗は下記の Releases ページから確認できます。",
+					"after": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+					"text": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+					"verdict": "intentional",
+					"note": "同上。my-web-2025 からの import は完了済み（verify-portfolio で 60 件公開を実測）のため、進行中を装う記述を除去し、確認先を実在の公開面へ修正。stale-content-review にも agent-recorded/unconfirmed の記録を追加済み。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/index.tsx",
+					"before": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio / content / activity を段階的に移行中です。この 2026 edition は移行途中の public preview です。",
+					"after": "開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。",
+					"text": "開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。",
+					"verdict": "intentional",
+					"note": "同上。edition は公開運用中のため「public preview」「構築しています」を除去し、公開済み/移行中の範囲を実測どおりに分離。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
+						"note": "移行状態の実測と copy 修正の Issue。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1016",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/copy/migration-state-measurement-2026-11-18.md",
+						"note": "公開状態の実測記録。"
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-1020",
+			"pr": 1020,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:826a29e7d8a180f76e0bee60d2af5547ced3cac675c74f5ad49799129629fafd",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #833 の監査/表示分離に伴う /contact の公開日本語 copy。(1) SectionHeading description を「30 日以内に再検証されたものだけ掲載」から監査モデルの説明へ修正（due channel は掲載継続するため旧記述は不正確）。(2) due 行に「要再検証」注記を追加。(3) audit-due notice を追加。(4) 空状態を「0 件」と「確認不能」の 2 バリアントに分離。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/contact/page.tsx",
+					"before": "各 channel には用途を明示しています。Channel は 30 日以内に deploy-time で再検証されたものだけを掲載しています。",
+					"after": "各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。",
+					"text": "各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。",
+					"verdict": "intentional",
+					"note": "旧「30 日以内のみ掲載」は due channel の掲載継続で事実と矛盾するため監査モデルの説明へ修正。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "${days} 日前に最終確認・要再検証 / last verified ${days} day${days === 1 ? '' : 's'} ago — re-verification due",
+					"text": "${days} 日前に最終確認・要再検証 / last verified ${days} day${days === 1 ? '' : 's'} ago — re-verification due",
+					"verdict": "intentional",
+					"note": "audit=due 行専用の注記。日付経過だけで経路を消さない要件どおり。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"after": "検証日を確認できません / verification date unavailable",
+					"text": "検証日を確認できません / verification date unavailable",
+					"verdict": "equivalent",
+					"note": "分岐順の入れ替えに伴う対応付けの変化。両文言とも存続。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "検証日が未来です / verification date is in the future",
+					"text": "検証日が未来です / verification date is in the future",
+					"verdict": "equivalent",
+					"note": "三項演算子の並べ替えによる移動。文言不変。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"text": "${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago",
+					"verdict": "equivalent",
+					"note": "fresh 行の従来表記。due 分岐追加で位置が変わっただけ。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "最終確認から時間が経過した channel があります。",
+					"text": "最終確認から時間が経過した channel があります。",
+					"verdict": "intentional",
+					"note": "audit-due notice の前半。due channel 存在時のみ表示。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "経路の実在は確認済みですが、最新の状態は未確認です。",
+					"text": "経路の実在は確認済みですが、最新の状態は未確認です。",
+					"verdict": "intentional",
+					"note": "audit-due notice の後半。訪問者向けの不明表示。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+					"text": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+					"verdict": "intentional",
+					"note": "unverifiable 空状態バリアント。「0 件」と「確認不能」を区別する要件どおり。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/contact/page.tsx",
+					"before": null,
+					"after": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
+					"text": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
+					"verdict": "equivalent",
+					"note": "従来の空状態文言。unverifiable=false 側に存続。Issue #833 の監査/表示分離に伴う変更。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "表示有効性と監査鮮度の分離を求める Issue。本 PR の実装対象。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1020",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/runbook/contact-channel-reverification.md",
+						"note": "再検証運用の runbook（実装の一部）。"
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-1031",
+			"pr": 1031,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:f856cfcae5c520b47f11dae4c20867db7be4b7db0c5ca04225cafcf734ec2057",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "privacy registry の access-counter retention 文を実装変更に追従。旧文「失効行の削除は同じリクエスト識別子の再訪時にしか実行されず…再訪のない行はデータベースに残ります」は per-triple purge のみだった旧実装の記述で、全失効行 sweep 導入後は不正確になった。新文は「次にアクセスが記録された時点で識別子を問わずすべて削除」「Cron なしのためアクセス途絶中は残り得る」を述べる。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/privacy/data-lifecycle.ts",
+					"before": "重複排除行は記録から 60 分で失効します。ただし失効行の削除は同じリクエスト識別子の再訪時にしか実行されず、このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がありません。したがって再訪のない行はデータベースに残ります。集計行は手動削除されるまで残ります。",
+					"after": "重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。",
+					"text": "重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。",
+					"verdict": "intentional",
+					"note": "counter.ts の step1 を per-triple purge から全失効行 sweep に変更した実装追従。旧文は「同じ識別子の再訪時にしか削除しない」「再訪のない行は残る」と述べており新実装では偽になるため、事実に合わせて修正。Cron 非搭載・無アクセス時の残存可能性は引き続き明記。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/998",
+						"note": "access_dedup 無制限増大の suspicion 項目を含む棚卸し Issue。本 PR の実装対象。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1031",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/privacy/data-lifecycle.ts",
+						"note": "変更対象の retention 文を持つ registry エントリ。"
+					}
+				]
+			}
 		}
 	]
 }

@@ -222,8 +222,11 @@ export const rawTokens = {
 		},
 	},
 	fonts: {
-		// Body / UI default. Noto Sans JP is loaded via Google Fonts
-		// (see src/routes/__root.tsx); the platform Japanese fallback
+		// Body / UI default. Noto Sans JP is self-hosted: the
+		// `@fontsource/*` woff2 subsets are vendored in `public/fonts/`
+		// and declared by `@font-face` in `public/fonts/fonts.css`
+		// (Issue #876);
+		// the platform Japanese fallback
 		// chain keeps first paint legible if the webfont request stalls.
 		//
 		// The `… Fallback` entry is the metric-compatible face defined
@@ -258,7 +261,8 @@ export const rawTokens = {
 		'3xl': { value: '2.5rem' }, // 40 — section h2 (mid display)
 		// Display tier. On the home surface the consumer is the Footer `04`
 		// decoration only — the Hero h1 renders the identity mark since
-		// Issue #287. See src/home/brief.md (Issue #31) for the rationale.
+		// Issue #287. See docs/visual/home-design-brief.md (Issue #31, historical
+		// record per Issue #843) for the rationale.
 		'4xl': { value: '4rem' }, // 64 — super display (home: Footer `04`)
 	},
 	radii: {

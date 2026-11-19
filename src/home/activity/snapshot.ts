@@ -70,6 +70,7 @@ function validRepo(value: unknown): value is ActivityRepoFacts {
 		if (!Number.isInteger(a.events) || (a.events as number) < 0) return false;
 		if (a.commits !== undefined && (!Number.isInteger(a.commits) || (a.commits as number) < 0))
 			return false;
+		if (a.prs !== undefined && (!Number.isInteger(a.prs) || (a.prs as number) < 0)) return false;
 		if (!Number.isInteger(a.windowDays) || (a.windowDays as number) < 1) return false;
 	}
 	return true;
@@ -132,25 +133,81 @@ const SAFE_DEFAULT_SUMMARY: Readonly<Record<ActivityRepoFacts['kind'], string>> 
 };
 
 /**
- * Project the snapshot into current-project records (#316/#932).
+ * How many GitHub-observed projects the section publishes (Issue
+ * #967). The snapshot still carries every repo with an observed
+ * signal — the feed and the repo counts keep the full set — but the
+ * project list is a RANKED selection, not an enumeration: listing
+ * every repository GitHub ever saw was the pre-aggregation defect (37
+ * detail rows, mostly zero-activity noise).
+ */
+export const MAX_GITHUB_PROJECT_RECORDS = 12;
+
+/** The day part of an ISO instant, or `undefined` when unusable. */
+function isoDay(value: string | undefined): string | undefined {
+	if (!value) return undefined;
+	const day = value.slice(0, 10);
+	return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined;
+}
+
+/**
+ * Rank GitHub-observed records for publication: measured contribution
+ * first (commits + PRs inside the window), then recency, then id so
+ * the order is total and deterministic.
+ */
+function contributionScore(record: CurrentProjectRecord): number {
+	const activity = record.weight?.activity?.value;
+	if (!activity) return -1;
+	return activity.commits + (activity.pullRequests ?? 0);
+}
+
+function compareGithubRecords(a: CurrentProjectRecord, b: CurrentProjectRecord): number {
+	const byScore = contributionScore(b) - contributionScore(a);
+	if (byScore !== 0) return byScore;
+	const aDay = a.updatedOn?.value ?? '';
+	const bDay = b.updatedOn?.value ?? '';
+	if (aDay !== bDay) return aDay < bDay ? 1 : -1;
+	if (a.id === b.id) return 0;
+	return a.id < b.id ? -1 : 1;
+}
+
+/**
+ * Project the snapshot into current-project records (#316/#932/#967).
  *
  * Every record's measured facts are stamped `github` with the
  * snapshot's `generatedOn` as `observedOn`, so the document can tell
  * a GitHub measurement from a git one or a memory. Private records
  * carry NO link — there is no publishable URL for them.
+ *
+ * The activity fact reports the MEASURED contribution (`commits`,
+ * `pullRequests`) — never the feed `events` count, which measures
+ * something else (Issue #967). A repo whose contribution search did
+ * not run publishes no activity claim at all rather than a
+ * mislabeled one.
  */
 export function activityProjectRecords(
 	snapshot: GitHubActivitySnapshot,
 ): readonly CurrentProjectRecord[] {
+	const observedOn = snapshot.generatedOn;
+	const evidence = `github-activity @ ${snapshot.headSha ?? snapshot.generatedOn}`;
 	const records: CurrentProjectRecord[] = [];
 	for (const raw of snapshot.repos) {
 		const repo = applyOverride(raw);
 		if (!repo) continue;
-		const observedOn = snapshot.generatedOn;
+		const updatedDay = isoDay(repo.lastActiveAt);
 		const record: CurrentProjectRecord = {
 			id: `gh-${repo.id}`,
 			name: repo.name,
 			statusJa: repo.summaryJa ?? SAFE_DEFAULT_SUMMARY[repo.kind],
+			...(updatedDay
+				? {
+						updatedOn: {
+							value: updatedDay,
+							source: 'github' as const,
+							observedOn,
+							evidence,
+						},
+					}
+				: {}),
 			weight: {
 				...(repo.weightLevel
 					? {
@@ -162,16 +219,17 @@ export function activityProjectRecords(
 							},
 						}
 					: {}),
-				...(repo.activity
+				...(repo.activity && repo.activity.commits !== undefined
 					? {
 							activity: {
 								value: {
-									commits: repo.activity.events,
+									commits: repo.activity.commits,
 									windowDays: repo.activity.windowDays,
+									...(repo.activity.prs !== undefined ? { pullRequests: repo.activity.prs } : {}),
 								},
 								source: 'github' as const,
 								observedOn,
-								evidence: `github-activity @ ${snapshot.headSha ?? snapshot.generatedOn}`,
+								evidence,
 							},
 						}
 					: {}),
@@ -182,7 +240,7 @@ export function activityProjectRecords(
 		};
 		records.push(record);
 	}
-	return records;
+	return records.sort(compareGithubRecords).slice(0, MAX_GITHUB_PROJECT_RECORDS);
 }
 
 /**

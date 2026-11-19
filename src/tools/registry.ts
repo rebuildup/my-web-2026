@@ -1,6 +1,6 @@
 import { resolveToolFrameSrc } from './embed-policy';
 import type { ToolHostMessageDeclaration, ToolIframeDeclaration } from './embed-policy';
-import type { ToolPrivacyDeclaration } from './embed-privacy';
+import type { ToolPrivacyDeclaration, ToolPrivacyPurpose } from './embed-privacy';
 import manifestJson from './manifest.json' with { type: 'json' };
 
 /**
@@ -208,7 +208,10 @@ export interface PublicToolSummary {
 	 * for an embeddable Tool — the route blocks the frame rather than
 	 * rendering one behind a notice that would be empty.
 	 */
-	readonly privacy?: ToolPrivacyDeclaration;
+	readonly privacy?: {
+		readonly third_party_origins: readonly string[];
+		readonly purpose?: ToolPrivacyPurpose;
+	};
 }
 
 /**
@@ -376,12 +379,32 @@ function toSummary(tool: ManifestTool): PublicToolSummary {
 	return {
 		slug: tool.slug,
 		display_name: tool.display_name,
-		description: tool.description ?? tool.notes ?? '',
+		description: tool.description ?? tool.description_ja,
 		classification: tool.classification,
 		license: tool.license,
 		entry_html: resolveToolEntryHtml(tool),
 		iframe: declared ?? { referrer_policy: '' },
-		privacy: tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.privacy,
+		privacy:
+			tool.delivery.kind === 'host_disabled'
+				? undefined
+				: projectPublicPrivacy(tool.delivery.privacy),
+	};
+}
+
+/**
+ * The visitor-facing half of `delivery.privacy` (Issue #994): the
+ * declared third-party origins and their bilingual purpose. `basis`
+ * is review metadata — it names pinned commits and repo paths a
+ * visitor cannot act on — so it never crosses into the serialized
+ * summary even though the manifest keeps it for reviewers.
+ */
+function projectPublicPrivacy(
+	privacy: ToolPrivacyDeclaration | undefined,
+): PublicToolSummary['privacy'] {
+	if (!privacy) return undefined;
+	return {
+		third_party_origins: privacy.third_party_origins,
+		purpose: privacy.purpose,
 	};
 }
 

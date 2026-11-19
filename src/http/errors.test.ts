@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
-import { publicErrorResponse } from './errors';
+import { dispatchInternalErrorResponse, publicErrorResponse } from './errors';
 import {
 	generateRequestId,
 	isAcceptedRequestId,
@@ -254,5 +254,35 @@ describe('publicErrorResponse (Issue #457)', () => {
 
 	it('generates request ids in the same format the middleware uses', () => {
 		expect(generateRequestId()).toMatch(/^[0-9a-f]{32}$/);
+	});
+});
+
+describe('dispatchInternalErrorResponse (Issue #995)', () => {
+	it('answers the documented 500 envelope without a Hono context', async () => {
+		const res = dispatchInternalErrorResponse('a'.repeat(32));
+		expect(res.status).toBe(500);
+		expect(res.headers.get('content-type')).toMatch(/^application\/json\b/);
+		const body = JSON.parse(await res.text()) as {
+			error: string;
+			message: string;
+			request_id: string;
+		};
+		expect(body).toEqual({
+			error: 'internal_error',
+			message: expect.stringContaining('could not be completed'),
+			request_id: 'a'.repeat(32),
+		});
+	});
+
+	it('publishes the minted id in the body and the X-Request-Id header', () => {
+		const res = dispatchInternalErrorResponse(generateRequestId());
+		expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f]{32}$/);
+	});
+
+	it('carries no internal detail — the only input is the correlation id', async () => {
+		const res = dispatchInternalErrorResponse(generateRequestId());
+		const text = await res.text();
+		expect(text).not.toContain('Error');
+		expect(text).not.toContain('stack');
 	});
 });

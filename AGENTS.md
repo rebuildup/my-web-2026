@@ -151,6 +151,11 @@ http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+vendor/github-readme-stats-fast -> logging (Issue #996 — the vendored
+             upstream `logger` alias used to be `console`, which put
+             GraphQL error payloads on the Worker log stream outside
+             the redaction contract; diagnostics now go through the
+             audit logger, silent under NODE_ENV=test)
 server -> logging (Issue #481 — the Worker entry feeds every
              Worker-generated response to the request anomaly monitor,
              and the detection event's only shipped sink is the
@@ -621,10 +626,11 @@ not in workflow YAML, and the same verdict is reproducible locally with
 point is an open decision recorded in
 [`quality/profile.yaml`](quality/profile.yaml). The declaration runs
 `enforcement: block` (Issue #645), so that CI step fails the build on
-any `critical` / `high` advisory that no approved exception covers; the
-exception ledger is empty (the `braces` record was retired in Issue
-#704 when the advisory was withdrawn upstream), so every `critical` /
-`high` finding blocks, and an expired record would block again.
+any `critical` / `high` advisory that no approved exception covers. The
+ledger currently holds one owner-approved exception
+(`GHSA-fc5q-39xc-vjpf` / `picomatch`, Issue #985, expires 2026-12-31 —
+no patched release exists and every affected path is dev-only Panda
+build tooling); an expired or out-of-scope record blocks again.
 Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
@@ -815,20 +821,37 @@ Read a Skill only when the task actually requires it.
 
 ### Vendoring — do not sync mechanically (Issue #647)
 
-`skills/` holds **manual vendored copies**. There is no
-`skills-lock.json` and no hash gate, and each vendored skill is a
-single `SKILL.md` — upstream `references/` directories were never
-imported. The vendored set has two upstreams:
+`skills/` holds **manual vendored copies** tracked by
+[`skills-lock.json`](skills-lock.json). The lock records each skill's
+upstream `source` / `ref` / `skillPath` and the local directory hash;
+it is provenance and drift evidence, not permission to sync
+mechanically. Vendored skills keep the upstream support files they
+ship: design skills keep `references/`, and `cf-cli`,
+`workers-best-practices`, `diagnosing-bugs`, `tdd`, and
+`security-audit` keep `references/` / `scripts/` / schema files.
+Upstreams:
 
-- `rebuildup/project-init` — delivery / quality / runtime skills.
-  Last reconciled against **0.1.1**; upstream has since moved to
-  `release-0-6-0` (`52d3e64`). (`writing-discipline` is itself vendored
-  by project-init from the writing-skills upstream.) One exception:
-  `herdr-runtime` is vendored from the **PR #135 head** (`48fb2f6`,
-  240 lines) — newer than upstream's merged `origin/main` (`0be0fcb`,
-  234 lines); see the fork table.
-- `rebuildup/design-skills` — design skills. Last reconciled against
-  **0.3.0** (`release-0-3-0`).
+- `rebuildup/project-init` — delivery / quality / runtime / agent
+  environment skills. Current-generation skills are pinned to
+  **v0.9.0** (`bb017a7`); deliberately pinned or forked variants keep
+  their older `0.1.1` / PR-head provenance (see the fork table).
+  `writing-discipline` remains the project-init `0.1.1` vendored copy.
+- `rebuildup/design-skills` — design skills, pinned to **v0.3.0**
+  (`e1b64c4`).
+- `rebuildup/writing-skills` — `skill-authoring`, pinned to
+  `release-0-4-0` (`b0f1398`).
+- `cloudflare/skills` — `cf-cli`, `workers-best-practices`, pinned to
+  `cbf893b`.
+- `mattpocock/skills` — `diagnosing-bugs`, `tdd`, pinned to `5863806`.
+
+This repository keeps `AGENTS.md` + `docs/adr/` as its agent contract
+and decision history. It does **not** copy project-init's
+`constitution/` / `organization/` tree: those upstream ADR numbers
+collide with this repository's own `docs/adr/ADR-0001`…`ADR-0020`, and
+the upstream release profile's Linear planning / autonomous ticket
+landing defaults conflict with §6–§7. The equivalent guarantees are
+recorded locally in ADR-0007 / ADR-0008 / ADR-0015 and the fork table
+below; see ADR-0021 for the materialization decision.
 
 **Running `npx skills update` (or `bunx skills update`) over the whole
 directory is forbidden.** The following are **intentionally forked**,
@@ -842,17 +865,23 @@ canonical link:
 | `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
 | `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
 | `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
+| `agent-recovery`, `onboarding`, `sandbox-runtime`, `writing-discipline` | Pinned to project-init `0.1.1`. Current `v0.9.0` text assumes autonomous Ready-ticket landing and project-init `organization/` / upstream ADR-0019/0020 vocabulary; adopting it verbatim would conflict with §6 merge authorization and this repository's own ADR numbering. Re-sync requires a local adaptation pass, not a blanket copy. |
 | `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
 | `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
 | `herdr-runtime` | Vendored verbatim from upstream project-init **PR #135 head** (`48fb2f6`, 240 lines), which is **newer than upstream's merged `origin/main`** (`0be0fcb`, 234 lines). The merged release has **no** `## Provider-scoped launch and bounded layout` section, so a blanket sync would **delete** the rules that say `herdr agent start --kind` does not replace the dotfiles `agent <harness> <provider>` launcher, that an existing terminal must not be commandeered and that a layout grants no authority. The local file adds one `## Local adaptation (my-web-2026)` section (this repository's canonical state / authority reading) and is otherwise byte-identical to the upstream PR head. |
 
-Upstream skills this repository **does not vendor**: `linear-release-control`
-(explicitly declined — it conflicts with §7's GitHub-Projects SoT),
-`orca-frontend` (explicitly declined),
-`secrets-management`, `skill-selection`, `security-audit`,
-`agent-delivery-estimation`, `correctness-assurance`, `idea-discovery`.
-Re-evaluation candidates from Issue #647: `skill-selection`,
-`secrets-management`, and the `interaction-discipline` YAML quoting fix.
+Upstream project-init skills this repository still does **not**
+vendor: `linear-release-control` (explicitly declined — it conflicts
+with §7's GitHub-Projects SoT), `orca-frontend` (explicitly declined),
+`idea-discovery`, and `supervisor-boundary` (no dedicated non-authoring
+Supervisor profile is selected). `secrets-management`,
+`skill-selection`, `security-audit`, `agent-delivery-estimation`,
+`correctness-assurance`, `code-naming`, `cf-cli`,
+`workers-best-practices`, `diagnosing-bugs`, `tdd`, and
+`skill-authoring` were evaluated and adopted on 2026-11-16; the
+`interaction-discipline` YAML quoting fix and the
+`security-maintenance` → `security-audit` handoff were taken in the
+same pass.
 
 To take an upstream change, diff it first, land it as its own ticket,
 and re-check the §3 / §6 / §7 invariants it touches. The update command
@@ -868,25 +897,36 @@ copy and diff it into `skills/<name>/` by hand. Clone the upstream into
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR
 - `skills/onboarding/SKILL.md` — fresh contributor / fresh agent
+- `skills/agent-delivery-estimation/SKILL.md` — release / roadmap forecasting
+- `skills/skill-selection/SKILL.md` — project-init / external Skill selection
 
 ### Quality / evaluation
 - `skills/quality-gate/SKILL.md` — quality profile + change-risk
 - `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
+- `skills/correctness-assurance/SKILL.md` — invariant → minimal guarantee mapping
 - `skills/security-maintenance/SKILL.md` — framework advisory workflow
+- `skills/security-audit/SKILL.md` — proactive unknown-defect exploration
+- `skills/secrets-management/SKILL.md` — Infisical secret lifecycle
 
 ### Engineering / design
 - `skills/engineering-decisions/SKILL.md` — decision precedence
 - `skills/design-refinement/SKILL.md` — pre-implementation design refinement
+- `skills/code-naming/SKILL.md` — symbol / file / directory naming
+- `skills/diagnosing-bugs/SKILL.md` — tight feedback-loop debugging
+- `skills/tdd/SKILL.md` — red → green test-first slices
 
 ### Runtime / recovery
 - `skills/herdr-runtime/SKILL.md` — Herdr as an optional Supervisor / session runtime
 - `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
 - `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery
+- `skills/cf-cli/SKILL.md` — Cloudflare `cf` CLI surface
+- `skills/workers-best-practices/SKILL.md` — Workers runtime/config review
 
 ### Communication
 - `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
 - `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
+- `skills/skill-authoring/SKILL.md` — creating / updating Agent Skills
 
 ### Design (general-purpose)
 

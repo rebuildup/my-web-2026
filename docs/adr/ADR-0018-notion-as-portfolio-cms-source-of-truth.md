@@ -1,7 +1,9 @@
 # ADR-0018 — Notion を portfolio の CMS SoT とし、build-time で snapshot を取り込む
 
 - Status: **Accepted**（owner 決定 2026-11-01） / **Amended 2026-11-02**（Issue #814 —
-  「同期」ではなく「単発の書き込み + サイトは読み取りのみ」）
+  「同期」ではなく「単発の書き込み + サイトは読み取りのみ」） /
+  **Amended 2026-11-18**（Issue #1008 — §2.11a: merge が供給する authoring
+  項目に role / links を追加。production D1 変更は含まない）
 - Date: 2026-11-01
 - Accepted on: 2026-11-01 — owner が「Accepted を選ぶ」と決定（総合監督経由で伝達）
 - Owner instruction: `.tmp/supervisor/portfolio/OWNER-2026-11-01.md`（build-time のみ /
@@ -353,6 +355,34 @@ owner 発言（この決定を記録したセッション内）:
    リンクを落とす変更は入れない（§2.3 の「沈黙して落とさない」）。
 
 実行記録: `docs/verification/portfolio/notion-media-write-2026-11-04.md`。
+
+### 2.11a 追記（2026-11-18、Issue #1008）— merge が供給する authoring 項目の確定
+
+#913 の merge は「6 セクション本文 + media union」だけを CMS から供給し、
+`role` と `links` は D1 のままだった。#1008 の実測で、D1 の `role` 空欄
+（約 50 行）と link 未整備（約 10 行）が #78 受入契約との不整合として
+顕在化した。両者を分けて裁定した。
+
+| 項目 | 裁定 | 理由 |
+| --- | --- | --- |
+| `role` | **merge 対象に追加**（CMS の非空値が勝つ）。ただし投影は `publish.ts#recordedRole` が facet 由来ラベル（`kind-labels.ts`）を `null` に落としてから行う | §2.11 の「authoring は Notion」を role にも適用する。snapshot の Role property は移行行に facet 由来語（`Video production` 等）を持つため、無条件 merge は Issue #813 違反になる。reader 側 guard で recorded role のみが通る |
+| `links` | **merge 対象に追加**（CMS の非空 list が勝つ。空は既存値を消さない） | Notion の link/bookmark block は authoring 内容であり、D1 側は同一ソースの移行コピーにすぎない。D1 が空で CMS が持つ slug を救う。両方空の 13 slug は**どの store にも存在しない** — 補完不能であり、owner の Notion 加筆待ち |
+| `media` | 変更なし（union 維持） | 34 slug は legacy 台帳でも `legacyMediaRows=0` — 原本に素材が無い。merge では補えない |
+
+merge の実装は `src/portfolio/cms-merge.ts` の `mergeCmsAuthoring` に
+集約し、`load.ts` と operator 検証 `scripts/verify-portfolio.mjs` が
+**同一コード**を実行する（ルールの二重実装を作らない）。検証側は
+「D1 格納データの契約」（storage）と「merge 後の公開データの契約」
+（public）を分けて報告する。`role` 空は #813 により合法状態であり、
+link / media の欠落は公開ゲートではなく content gap として slug 付きで
+毎回報告する（`--strict-content` で失敗化可能）。
+
+**production D1 への書き込みは本決定に含まない。** role の D1 空欄は
+「記録された role が無い」状態として #813 が正当と認めたものであり、
+link / media の欠落は格納データの欠陥ではなく authoring ソースの不在
+である。D1 修復が必要になるのは storage 契約違反（例: facet 由来語が
+`role` 列に残る行）が検出された場合だけで、その際は dry-run / 差分 /
+ロールバックを伴う migration と owner 承認を別途要する。
 
 ## 3. Comparison — 取得境界の候補
 

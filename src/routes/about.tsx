@@ -7,6 +7,8 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../editorial/social-card';
 import { PersonJsonLd } from '../editorial/structured-data';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 
 /**
  * `/about` — single page route (Issue #102, Issue #199).
@@ -49,12 +51,18 @@ import { PersonJsonLd } from '../editorial/structured-data';
  *   - `src/about/structured-data.ts` — the approved projection
  *   - `src/portfolio/load.ts` — DI seam that supplies experience
  */
+export const ABOUT_REACTIONS_TARGET = 'about-page';
+
 export const Route = createFileRoute('/about')({
 	loader: async () => {
-		return loadAboutPage({ data: undefined });
+		const [data, reactions] = await Promise.all([
+			loadAboutPage({ data: undefined }),
+			getHomeReactions({ data: { target: ABOUT_REACTIONS_TARGET } }),
+		]);
+		return { data, reactions };
 	},
 	head: ({ loaderData }) => {
-		const data = loaderData;
+		const data = loaderData?.data;
 		const identity = data?.identity;
 		const name = identity?.name ?? 'About';
 		const role = identity?.role ?? '';
@@ -78,8 +86,16 @@ export const Route = createFileRoute('/about')({
 			{ title },
 			{ name: 'description', content: description },
 			...card.meta,
-			{ property: 'profile:first_name', content: 'Yusuke' },
-			{ property: 'profile:last_name', content: 'Kimura' },
+			// Issue #1000: the name parts come from the identity record,
+			// not literals — a snapshot change must not leave a stale
+			// `profile:*` name behind. Both are emitted only when the
+			// record carries them.
+			...(identity?.firstName
+				? [{ property: 'profile:first_name', content: identity.firstName }]
+				: []),
+			...(identity?.lastName
+				? [{ property: 'profile:last_name', content: identity.lastName }]
+				: []),
 			{ property: 'profile:username', content: identity?.handle ?? 'samuido' },
 		];
 		if (role) meta.push({ property: 'profile:role', content: role });
@@ -92,7 +108,7 @@ export const Route = createFileRoute('/about')({
 });
 
 function AboutRoute() {
-	const data = Route.useLoaderData();
+	const { data, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -100,6 +116,7 @@ function AboutRoute() {
 			<BreadcrumbJsonLd />
 			<PersonJsonLd facts={personFactsFromAbout(data)} />
 			<AboutPage data={data} />
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

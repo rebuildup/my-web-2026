@@ -111,7 +111,7 @@ function smokeOrigin(baseURL: string | undefined): string {
  *
  * The representative-route contract promises that the smoke exercises the
  * canonical origin only. Checking the final top-level URL is not enough:
- * pages also load subresources (Google Fonts, GA4, third-party images), and
+ * pages also load subresources (GA4, third-party images), and
  * those requests would both violate the boundary and pollute production
  * analytics. Installing this before the first navigation makes the boundary
  * executable instead of prose.

@@ -64,6 +64,12 @@ export async function acceptInvitationImpl(
 	data: z.infer<typeof AcceptInvitationInput>,
 ): Promise<AcceptInvitationResult> {
 	const { env } = await import('cloudflare:workers');
+	// Issue #998: accepting an invitation writes a real user row and
+	// consumes the token — the one admin write path that needs no
+	// session at all, so it is the worst case for the #377
+	// production-readonly guard to miss.
+	const { assertAdminWriteAllowed } = await import('../read-only');
+	await assertAdminWriteAllowed(env, 'admin:invitations:accept');
 	const { auth } = await import('../../cloudflare/auth/better-auth');
 	const tokenHash = await sha256Hex(data.token);
 	const now = Date.now();

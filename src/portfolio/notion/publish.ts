@@ -1,3 +1,4 @@
+import { isFacetDerivedRole } from '../kind-labels.ts';
 import type { PortfolioFacet, PortfolioLink, PortfolioMedia, PortfolioProject } from '../schema';
 import type { NotionMedia, NotionRecord, ReadSnapshot } from './contract';
 
@@ -94,6 +95,24 @@ function toLink(link: NotionRecord['links'][number]): PortfolioLink {
 }
 
 /**
+ * The role a public surface may print, or `null` (Issue #813, #1008).
+ *
+ * The snapshot's `Role` property carries whatever the authoring side
+ * holds, and for the migrated rows that is the legacy facet-derived
+ * word (`Video production`, `Development`, …) — a kind of work, not a
+ * recorded person role. `isFacetDerivedRole` is the reader-side guard:
+ * the snapshot contract has no `role_source` column, so provenance
+ * cannot be checked directly and the closed label set is the check.
+ * `''` maps to `null` for the same reason the D1 row mapping does:
+ * "no role is recorded" is a state, not an empty string.
+ */
+function recordedRole(record: NotionRecord): string | null {
+	const role = record.role;
+	if (role === '' || isFacetDerivedRole(role)) return null;
+	return role;
+}
+
+/**
  * Project a record into the shape the public pages already render.
  *
  * `updatedAt` is Notion's `last_edited_time`, not the ingest instant: the
@@ -109,13 +128,13 @@ function toLink(link: NotionRecord['links'][number]): PortfolioLink {
  * public list cannot carry, and `isPublicRecord` is the only gate.
  */
 export function toProject(record: NotionRecord): PortfolioProject | null {
-	if (record.status !== 'published') return null;
+	if (!isPublicRecord(record)) return null;
 	return {
 		id: `notion:${record.pageId}`,
 		slug: record.slug,
 		title: record.title,
 		summary: record.summary,
-		role: record.role,
+		role: recordedRole(record),
 		periodStart: record.periodStart,
 		periodEnd: record.periodEnd,
 		periodLabel: record.periodLabel,
@@ -128,7 +147,9 @@ export function toProject(record: NotionRecord): PortfolioProject | null {
 		facets: record.facets as readonly PortfolioFacet[],
 		technologies: record.technologies,
 		visibility: record.visibility,
-		status: record.status,
+		// `isPublicRecord` already proved status === 'published';
+		// state the narrowed value literally rather than casting.
+		status: 'published',
 		evidenceStatus: recordEvidenceStatus(record),
 		pinned: record.pinned,
 		displayOrder: record.displayOrder,
@@ -204,5 +225,14 @@ export function compareProjects(left: Orderable, right: Orderable): number {
 		const difference = (b[index] as number) - (a[index] as number);
 		if (difference !== 0) return difference;
 	}
-	return String(a[3]).localeCompare(String(b[3]), 'en');
+	// Issue #998: the tiebreak must agree with the SQL `id ASC` the D1
+	// cursor predicate uses — SQLite BINARY is a byte (code-point)
+	// comparison, while `localeCompare` applies locale collation that
+	// can order punctuation and case differently. A disagreement here
+	// would let the merged ordering skip or repeat a row across a page
+	// boundary. Code-unit `<`/`>` is the same order for UTF-8 text.
+	const leftId = String(a[3]);
+	const rightId = String(b[3]);
+	if (leftId === rightId) return 0;
+	return leftId < rightId ? -1 : 1;
 }

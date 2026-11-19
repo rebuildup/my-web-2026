@@ -11,9 +11,10 @@
  * (`generatedAt` vs `MAX_AGE_MS`) degrade a stopped feed to the
  * unavailable state instead of showing a stale "online".
  *
- * `env.DISCORD_PRESENCE_USER_ID` (wrangler var, non-secret) pins the
- * expected owner snowflake; while it is unset the card stays
- * unavailable — fail closed, never guess.
+ * `env.DISCORD_PRESENCE_USER_ID` (runtime secret binding, Infisical
+ * managed like the GA measurement ID) pins the expected owner
+ * snowflake; while it is unset the card stays unavailable — fail
+ * closed, never guess.
  */
 
 import { createServerFn } from '@tanstack/react-start';

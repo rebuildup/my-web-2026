@@ -14,7 +14,9 @@
  * Why it lives under `src/home/`
  * ------------------------------
  * It is a *feature-local* adapter, not a platform-wide i18n layer.
- * `src/home/brief.md` still records full i18n as deferred, and
+ * `docs/visual/home-design-brief.md` (the Issue #21 design input,
+ * kept as a historical record per Issue #843) still records full i18n
+ * as deferred, and
  * AGENTS.md §3 forbids promoting a local implementation into a
  * cross-cutting abstraction before a second obligation needs it
  * (`portfolio`, `admin`, `about` each render their own quantities).

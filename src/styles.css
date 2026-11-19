@@ -4,6 +4,22 @@
  * Imported once at the root of the app. Keep this file minimal — token/recipe
  * definitions live in panda.config.ts and per-feature styling modules.
  *
+ * Webfonts (Issue #876): Noto Sans JP (body) and Zen Kaku Gothic New
+ * (heading) are self-hosted. The woff2 subsets are vendored
+ * unmodified from the `@fontsource/*` packages into `public/fonts/`
+ * (SIL OFL 1.1 — each family ships its LICENSE next to the files),
+ * and the `@font-face` rules for the woff2 subsets live in
+ * `public/fonts/fonts.css` (linked from `src/routes/__root.tsx`),
+ * outside this bundle so the declarations stay out of the per-route
+ * initial CSS budget (`scripts/check-bundle-budget.mjs`). They keep
+ * the same unicode-range partitioning the Google Fonts stylesheet
+ * used to serve, so the browser still downloads only the subsets that
+ * contain glyphs the page actually renders — but every byte now comes
+ * from this origin. `font-display: swap` is unchanged, and the
+ * metric-compatible fallback faces below are unchanged. Zen Kaku
+ * Gothic New has no 600 instance upstream (Google Fonts serves only
+ * 400/700 for it), so only the weights that exist are declared.
+ *
  * Heading font scoping: any `<h1>`, `<h2>`, `<h3>` uses the
  * `heading` font family regardless of the surrounding Panda
  * `fontFamily` token. Components that render heading-tier

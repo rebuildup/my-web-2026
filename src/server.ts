@@ -5,12 +5,17 @@
 // CSRF middleware active; do NOT define a custom `startInstance` here.
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
-import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
+import {
+	createSsrFailureResponse,
+	settleSsrDocumentResponse,
+} from './editorial/error-states/ssr-fallback';
 import { isAdminPath } from './http/admin-path';
 import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
+import { dispatchInternalErrorResponse } from './http/errors';
 import { externalBoundary } from './http/hono';
 import { classifySurface, createAnomalyMonitor } from './http/middleware/anomaly-monitor';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
+import { generateRequestId } from './http/middleware/request-id';
 import { applySecurityHeaders } from './http/security-headers';
 import { createAuditLogger } from './logging/logger';
 import { toolRouteSecurityPolicy } from './tools/registry';
@@ -591,12 +596,34 @@ function observeRequestAnomaly(pathname: string, status: number): void {
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		const response = matchesExternalBoundary(url.pathname)
-			? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
-			: applyHtmlCachePolicy(
-					request,
-					await settleSsrDocumentResponse(request, await handler.fetch(request)),
-				);
+		// Issue #995: the dispatch is the one place a throw used to escape
+		// every contract — the runtime answered a bare 500 with none of the
+		// security headers below and no anomaly record. The catch converts
+		// any dispatch-level throw into a defined 500 that still flows
+		// through the same observation and header choke points, so a
+		// failure can never be quieter than a success.
+		let response: Response;
+		try {
+			response = matchesExternalBoundary(url.pathname)
+				? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
+				: applyHtmlCachePolicy(
+						request,
+						await settleSsrDocumentResponse(request, await handler.fetch(request)),
+					);
+		} catch (error) {
+			// Status-only record: the error NAME is a class label, never a
+			// message — messages can carry binding names or upstream detail.
+			anomalyAuditLogger.audit('dispatch-failure', {
+				errorName: error instanceof Error ? error.name : 'unknown',
+			});
+			// The fallback answers in the failed surface's own contract:
+			// the external boundary gets the documented JSON envelope
+			// (`src/http/errors.ts`), every other path gets the #501
+			// failure document — never the runtime's bare text 500.
+			response = matchesExternalBoundary(url.pathname)
+				? dispatchInternalErrorResponse(generateRequestId())
+				: createSsrFailureResponse(request);
+		}
 		observeRequestAnomaly(url.pathname, response.status);
 		// Issue #449: security headers are applied AFTER the dispatch so
 		// one choke point covers every Worker-generated response — SSR

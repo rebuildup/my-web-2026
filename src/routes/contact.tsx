@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { getContactChannels } from '../contact/load';
 import { ContactPage } from '../contact/page';
-import { getVisibleChannels } from '../contact/public';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { getHomeReactions } from '../home/public';
+import { ReactionsWidget } from '../home/reactions/widget';
 
 /**
  * `/contact` route (Issue #103, Issue #199).
@@ -21,7 +23,7 @@ import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
  *
  * The data layer (`src/contact/public.ts`) is the sole place that
  * reads `channels.json` and runs the gate. The route only calls
- * `getVisibleChannels(now)` once and passes the result through the
+ * `getContactChannels()` once and passes the projected
  * loader.
  *
  * Chrome convention (Issue #199). The `<PublicNav />`,
@@ -29,11 +31,18 @@ import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
  * imported and rendered here explicitly rather than mounted at the
  * `__root` level — see `src/routes/about.tsx` for the rationale.
  */
+export const CONTACT_REACTIONS_TARGET = 'contact-page';
+
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
-		const now = Date.now();
-		const channels = getVisibleChannels(now);
-		return { channels, now, empty: channels.length === 0 };
+		const { channels, unverifiableCount } = await getContactChannels();
+		const reactions = await getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } });
+		return {
+			channels,
+			empty: channels.length === 0,
+			unverifiableCount,
+			reactions,
+		};
 	},
 	head: () => {
 		const title = 'Contact — rebuildup.dev';
@@ -57,13 +66,14 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactRoute() {
-	const { channels, now, empty } = Route.useLoaderData();
+	const { channels, empty, unverifiableCount, reactions } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<ContactPage channels={channels} now={now} empty={empty} />
+			<ContactPage channels={channels} empty={empty} unverifiableCount={unverifiableCount} />
+			<ReactionsWidget data={reactions} />
 		</>
 	);
 }

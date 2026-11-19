@@ -12,12 +12,12 @@
 | --- | --- |
 | 描画対象 | `src/i18n/glyphs.fixture.ts` の 16 行（`accent` / `combining` / `ligature` / `cyrillic` / `typography` の各 focus） |
 | font stack | `src/editorial/tokens.ts` の `rawTokens.fonts.heading.value` / `.sans.value` をそのまま CSS に展開。fixture 側は tier 名しか宣言していない |
-| webfont | `src/routes/__root.tsx` が読んでいる `fonts.googleapis.com/css2` の href を**抽出**して使う（script がリテラルを持たない） |
+| webfont | `src/styles.css` の self-hosted `@font-face` を `scripts/_selfhosted-font-css.mjs` 経由で読み、`MY_WEB_FONT_BASE_URL`（既定は本番 origin）に rebase して report へ inline する（Issue #876。script は font のリテラルを持たない） |
 | capture 手段 | `node --experimental-strip-types scripts/capture-glyph-coverage.mjs`（= `pnpm run capture:glyph-coverage`） |
 | 実測 | headless Chromium / 48px canvas 描画。`.notdef` 判定は **tier ごと**、webfont / fallback 判定は §2.2 |
 | viewport / DPR | 1600 x 1000 / 1、`fullPage` 撮影 |
 | 生成物サイズ | 1440 x 4018 px、**280 kB** WebP（quality 76、budget 300 kB） |
-| 外部通信 | webfont の取得のみ（`fonts.googleapis.com` / `fonts.gstatic.com`）。判定・fixture・font stack に外部依存はない |
+| 外部通信 | webfont の取得は same-origin の `/fonts/*.woff2` のみ（Issue #876 で Google Fonts を廃止）。判定・fixture・font stack に外部依存はない |
 | 再現性 | 判定は決定的ながら **browser / platform に依存する実測**。CI の gate ではなく証跡である |
 
 Issue は `docs/verification/i18n/diacritic-cyrillic-font.png` を指定しているが、リポジトリの検証 artefact の規約

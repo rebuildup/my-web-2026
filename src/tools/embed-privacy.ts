@@ -48,8 +48,8 @@
  * Deliberately out of scope (owner decisions, not this module's call):
  *
  *   - **Host-document analytics.** Every SSR page — including
- *     `/tools/<slug>` — mounts GA4 (`src/editorial/analytics/`) and
- *     Google Fonts in the site chrome. That is a deliberate host-level
+ *     `/tools/<slug>` — mounts GA4 (`src/editorial/analytics/`)
+ *     in the site chrome (web fonts are same-origin since Issue #876). That is a deliberate host-level
  *     product decision (Issue #171 / #447), not an embed-induced
  *     contact, and changing it belongs to a different Issue.
  *   - **What the artifact does once mounted.** The host declares

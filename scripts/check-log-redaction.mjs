@@ -39,9 +39,13 @@
  *     scope: the gate is about obligations this repository owns.
  *
  * Known limits (documented in `docs/security/log-redaction.md`):
- * this is a static read of the text, so a computed call
- * (`console['error'](x)`, `const c = console; c.error(x)`) does not
- * match. Type checking and review remain the backstop for those.
+ * this is a static read of the text. A computed call
+ * (`console['error'](x)`) and calls THROUGH an alias
+ * (`const c = console; c.error(x)`) do not match the method pattern —
+ * but the alias BINDING (`= console` / `: console`) is itself a
+ * violation since Issue #996, so the evasion path the audit found is
+ * closed at the source. Type checking and review remain the
+ * backstop for the rest.
  *
  * Exit codes: 0 = clean, 1 = at least one violation, 2 = bad input.
  */
@@ -61,6 +65,21 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 
 /** Console methods a runtime log call may use. */
 const CONSOLE_METHOD_PATTERN = /\bconsole\s*\.\s*([A-Za-z]+)\s*\(/g;
+
+/**
+ * `console` bound to a name — `const logger = console`,
+ * `logger = cond ? audit : console`, `{ logger: console }`.
+ *
+ * Issue #996: the vendored github-readme-stats logger aliased
+ * `console` behind a local name, so `logger.error(...)` wrote
+ * upstream GraphQL payloads to the Worker log stream while
+ * `CONSOLE_METHOD_PATTERN` saw nothing. The alias is the evasion;
+ * detecting the BINDING (not the later `logger.error(` call, which
+ * is indistinguishable from a legitimate logger) is what the gate
+ * can prove statically. `=` / `:` contexts only — a bare `console`
+ * comparison (`a === console`) is not an alias.
+ */
+const CONSOLE_ALIAS_PATTERN = /(?<![=!<>])=(?!=)\s*console\b(?!\s*\.)|:\s*console\b(?!\s*\.)/g;
 
 /** Output sinks an operator script may print to. */
 const OUTPUT_SINK_PATTERN =
@@ -358,6 +377,16 @@ function checkRuntimeLogs() {
 				line: lineOf(source, match.index),
 				rule: 'runtime-console',
 				detail: `console.${match[1]} bypasses src/logging (use createAuditLogger)`,
+			});
+		}
+		CONSOLE_ALIAS_PATTERN.lastIndex = 0;
+		for (const match of source.matchAll(CONSOLE_ALIAS_PATTERN)) {
+			violations.push({
+				file,
+				line: lineOf(source, match.index),
+				rule: 'runtime-console-alias',
+				detail:
+					'`console` bound to a name aliases the log sink past this gate (use createAuditLogger)',
 			});
 		}
 	}

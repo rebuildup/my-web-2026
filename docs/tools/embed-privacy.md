@@ -41,9 +41,9 @@ published.
 Out of scope, deliberately, because they belong to other owners:
 
 - **The host document's own third-party surface.** Every page —
-  including `/tools/<slug>` — mounts GA4 and Google Fonts in the site
+  including `/tools/<slug>` — mounts GA4 in the site
   chrome (Issue #171 mounted GA4; Issue #447 measured the origin
-  inventory). That is a deliberate product decision and a larger
+  inventory; web fonts have been same-origin since Issue #876). That is a deliberate product decision and a larger
   surface than the embed's. This contract does not change it.
 - **Outbound third-party API reads.** `src/external-api/**` (Issue
   #499) owns those, and it is not wired to a route.

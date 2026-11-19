@@ -36,6 +36,7 @@ const ActivityCounts = z
 	.object({
 		events: z.number().int().min(0).max(100_000),
 		commits: z.number().int().min(0).max(100_000).optional(),
+		prs: z.number().int().min(0).max(100_000).optional(),
 		windowDays: z.number().int().min(1).max(365),
 	})
 	.strict();

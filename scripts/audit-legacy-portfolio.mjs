@@ -58,6 +58,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FACET_KIND_LABEL } from '../src/portfolio/kind-labels.ts';
 
 const EXIT = { OK: 0, DRIFT: 1, INPUT: 2, UNREADABLE: 3 };
 
@@ -210,14 +211,13 @@ export function readNotionPages(path) {
  * does not make. The display label for the same field is checked separately
  * — see `docs/migration/portfolio-2025-migration-run-2026-11-01.md`.
  *
- * This table is the only place a facet becomes text. Do not copy it.
+ * The table itself lives in `src/portfolio/kind-labels.ts` — the ONE
+ * place a facet becomes this text (Issue #1008 moved it there so the
+ * public projection can recognise the derived word without importing
+ * operator tooling). `LEGACY_FACET_ROLES` stays as the ledger's name
+ * for the same object.
  */
-export const LEGACY_FACET_ROLES = Object.freeze({
-	develop: 'Development',
-	video: 'Video production',
-	design: 'Design',
-	other: 'Production',
-});
+export const LEGACY_FACET_ROLES = FACET_KIND_LABEL;
 
 /**
  * Decisions the migration depends on but does not own. Recorded in the

@@ -46,9 +46,10 @@
  * --------------------------
  * An error state initiates NO network request of its own. The only
  * outbound traffic a failing document makes is what the shared
- * document shell already makes (async Google Fonts stylesheet, GA4
- * measurement script), and neither is required for the message to be
- * readable — see `ERROR_STATE_EXTERNAL_COMMUNICATIONS`, which records
+ * document shell already makes (the consent-gated GA4 measurement
+ * script; web fonts are same-origin assets since Issue #876), and it is
+ * not required for the message to be readable — see
+ * `ERROR_STATE_EXTERNAL_COMMUNICATIONS`, which records
  * the parties, the channel and the evidence file for each.
  *
  * Which failure maps to which kind
@@ -354,13 +355,6 @@ export const ERROR_STATE_EXTERNAL_COMMUNICATIONS: readonly {
 	requiredForMessage: boolean;
 	evidence: string;
 }[] = [
-	{
-		party: 'Google Fonts',
-		channel: 'stylesheet + font files (Noto Sans JP / Zen Kaku Gothic New)',
-		initiatedBy: 'browser',
-		requiredForMessage: false,
-		evidence: 'src/routes/__root.tsx (async stylesheet, media="print" + inline flip script)',
-	},
 	{
 		party: 'Google Analytics 4',
 		channel: 'measurement script + page_view beacon',

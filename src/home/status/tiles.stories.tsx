@@ -52,13 +52,13 @@ const services: readonly SystemService[] = [
 ];
 
 const allOk: readonly SystemServiceStatus[] = [
-	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'external-boundary', health: 'ok', detail: 'external HTTP boundary endpoints mounted' },
 	{ id: 'd1', health: 'ok', detail: 'SELECT 1 returned 1' },
 	{ id: 'r2', health: 'ok', detail: 'bucket reachable, probe key absent' },
 ];
 
 const mixedHealth: readonly SystemServiceStatus[] = [
-	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'external-boundary', health: 'ok', detail: 'external HTTP boundary endpoints mounted' },
 	{ id: 'd1', health: 'degraded', detail: 'empty result set' },
 	{ id: 'r2', health: 'unreachable' },
 ];
@@ -212,13 +212,13 @@ const SAMPLE_INCIDENT: KnownIncident = {
 
 /** No entry for `r2`: the service was not observed at all. */
 const publishedSurfaceStatuses: readonly SystemServiceStatus[] = [
-	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'external-boundary', health: 'ok', detail: 'external HTTP boundary endpoints mounted' },
 	{ id: 'd1', health: 'degraded', detail: 'empty result set' },
 ];
 
 /** A failed read still reads as a failure, next to an absent one. */
 const failureSurfaceStatuses: readonly SystemServiceStatus[] = [
-	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'external-boundary', health: 'ok', detail: 'external HTTP boundary endpoints mounted' },
 	{ id: 'd1', health: 'unreachable' },
 ];
 

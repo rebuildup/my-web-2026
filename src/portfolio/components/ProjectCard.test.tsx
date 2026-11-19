@@ -162,10 +162,10 @@ describe('ProjectCard category cue (Issue #411)', () => {
  * eyebrow because the derivation order and the display order differ.
  *
  * The component only sees a stored string, so these cases pin the
- * PUBLIC CONTRACT, not a live path: D1 declares `role` NOT NULL and
- * the loader carries no `role_source`, so no row can be `null` today.
- * The state below arrives with Issue #811's ingest, which makes the
- * column nullable and writes no kind of work into it.
+ * PUBLIC CONTRACT in two layers: `role: null` is the state Issue #811's
+ * ingest writes (the column is NOT NULL today, so no live row can be
+ * null yet), and a stored facet-kind word is covered by the surface's
+ * `isFacetDerivedRole` guard for rows written before that ingest ran.
  */
 
 /** How many times `needle` occurs in `haystack`. */
@@ -196,6 +196,18 @@ describe('ProjectCard — the role row (Issue #813)', () => {
 		// Neither the derived value nor a kind-of-work label appears.
 		expect(html).not.toContain('Video production');
 		expect(html).not.toContain('>Kind</dt>');
+	});
+
+	it('drops the role row for a stored facet-kind word', () => {
+		// Rows written before the write-path guard can still carry a
+		// kind-of-work word in `role` (the loader carries no
+		// `role_source`). The surface applies the closed label set, so
+		// none of the derived words may print under `Role`.
+		for (const role of ['Development', 'Video production', 'Design', 'Production']) {
+			const html = renderToStaticMarkup(<ProjectCard project={project(['develop'], { role })} />);
+			expect(html).not.toContain('>Role</dt>');
+			expect(html).not.toContain(role);
+		}
 	});
 
 	it('leaves no empty value cell behind when no role is recorded', () => {

@@ -128,6 +128,33 @@ describe('access counter — recordHit', () => {
 		expect(r2.count).toBe(2);
 	});
 
+	it('the expired sweep removes dedup rows for triples that never return', async () => {
+		// Step 1 deletes every expired row, not just the triple being
+		// retried — a ghost session's row would otherwise live forever.
+		// The sweep is what bounds `access_dedup` under session churn.
+		await env.DB.prepare(
+			`INSERT INTO access_dedup (counter_key, principal, session_id, expires_at)
+       VALUES ('ghost-key', 'keyA', 'ghost-session', 500),
+              ('ghost-key', 'keyA', 'live-session', ?1)`,
+		)
+			.bind(2_000_000_000_000)
+			.run();
+
+		// A `now` far beyond any prior sweep keeps the trigger deterministic
+		// regardless of module state left by earlier tests.
+		await recordHit(env.DB, {
+			key: 'home-page',
+			principal: 'keyA',
+			session_id: 'sweeper',
+			now: 1_000_000_000_000,
+		});
+
+		const rows = await env.DB.prepare(
+			`SELECT session_id FROM access_dedup WHERE counter_key = 'ghost-key'`,
+		).all<{ session_id: string }>();
+		expect(rows.results.map((r) => r.session_id)).toEqual(['live-session']);
+	});
+
 	it('concurrent hits with different session_ids both land as increments', async () => {
 		// 8 concurrent hits with distinct session_ids — the dedup UNIQUE
 		// PK serialises them. D1's batch support is per-statement; the

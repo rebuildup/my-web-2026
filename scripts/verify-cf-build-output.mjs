@@ -89,6 +89,45 @@ function main() {
 		);
 	}
 
+	// 5. Client chunks carry no internal data markers (Issue #1009).
+	//    Route modules are isomorphic: a top-level data import in a
+	//    route file lands in the client bundle even when the loader
+	//    never returns it. The markers below are field names / file
+	//    names that only exist in operator data — channels.json
+	//    provenance, the Tool manifest internals, the contact schema,
+	//    lifecycle-registry evidence. Their presence in a client chunk
+	//    means an internal record shipped to every visitor's browser.
+	//    The server bundle (`bundle/`) is NOT scanned: it legitimately
+	//    contains every module.
+	const FORBIDDEN_CLIENT_MARKERS = [
+		'$note',
+		'canonical_repo',
+		'submodule_path',
+		'pinned_sha',
+		'artifact_path',
+		'disabled_reason',
+		'verified_at',
+		'sync-home-git-facts',
+		'docs/personal/',
+	];
+	const clientChunksDir = join(ASSETS_DIR, 'assets');
+	if (existsSync(clientChunksDir)) {
+		const offenders = [];
+		for (const entry of readdirSync(clientChunksDir)) {
+			if (!entry.endsWith('.js')) continue;
+			const content = readFileSync(join(clientChunksDir, entry), 'utf8');
+			for (const marker of FORBIDDEN_CLIENT_MARKERS) {
+				if (content.includes(marker)) offenders.push(`${entry}: ${marker}`);
+			}
+		}
+		if (offenders.length > 0) {
+			fail(
+				`Client chunks contain internal data markers — an operator record reached the browser bundle:\n${offenders.join('\n')}`,
+			);
+		}
+		console.log('[verify-cf-build-output] Client chunks: no internal data markers');
+	}
+
 	console.log(
 		`[verify-cf-build-output] OK — mode=${mode}, assets=${countFiles(ASSETS_DIR)} file(s), bundle present`,
 	);

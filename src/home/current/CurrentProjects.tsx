@@ -1,8 +1,8 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
-import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import {
 	CURRENT_LOCATION_CHANGE_MOTION,
 	usePrefersReducedMotion,
@@ -268,7 +268,8 @@ function metaRows(project: CurrentProjectRecord, today: string): MetaRow[] {
 	}
 	const activity = project.weight?.activity;
 	if (activity) {
-		const { commits, windowDays, commitsTotal } = activity.value;
+		const { commits, windowDays, commitsTotal, pullRequests } = activity.value;
+		const prs = pullRequests === undefined ? '' : ` / PR ${formatCount(pullRequests)}`;
 		const total = commitsTotal === undefined ? '' : ` / 累計 ${formatCount(commitsTotal)}`;
 		rows.push({
 			label: `直近 ${windowDays} 日`,
@@ -276,7 +277,7 @@ function metaRows(project: CurrentProjectRecord, today: string): MetaRow[] {
 			// up to today, so that day is printed with the number. A snapshot
 			// that has aged says "（2026-11-01 時点）" instead of quietly
 			// claiming the last 30 days of the reader's calendar.
-			value: `${formatCount(commits)} commits${total}（${activity.observedOn} 時点）`,
+			value: `${formatCount(commits)} commits${prs}${total}（${activity.observedOn} 時点）`,
 			source: activity.source,
 		});
 	}

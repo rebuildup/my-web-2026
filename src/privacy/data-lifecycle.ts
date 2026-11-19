@@ -331,8 +331,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		retention: {
 			kind: 'windowed',
 			statement: {
-				ja: '重複排除行は記録から 60 分で失効します。ただし失効行の削除は同じリクエスト識別子の再訪時にしか実行されず、このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がありません。したがって再訪のない行はデータベースに残ります。集計行は手動削除されるまで残ります。',
-				en: 'A dedup row expires 60 minutes after it is written. Expired rows are only deleted when the same request identifier returns, and this platform ships no scheduled purge job (no Cron trigger is declared in `wrangler.jsonc`). A row whose visitor never returns therefore stays in the database. Aggregate rows stay until deleted by hand.',
+				ja: '重複排除行は記録から 60 分で失効します。失効行は次にアクセスが記録された時点で、識別子を問わずすべて削除されます。このプラットフォームには定期削除ジョブ（`wrangler.jsonc` に Cron 宣言なし）がないため、アクセスが途絶えた期間は失効行がデータベースに残ることがあります。集計行は手動削除されるまで残ります。',
+				en: 'A dedup row expires 60 minutes after it is written. Expired rows are all deleted the next time any hit is recorded, whatever the request identifier. This platform ships no scheduled purge job (no Cron trigger is declared in `wrangler.jsonc`), so expired rows can persist while no traffic arrives. Aggregate rows stay until deleted by hand.',
 			},
 		},
 		deletion: {
@@ -501,8 +501,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		transfer: {
 			target: 'youtube-embed',
 			statement: {
-				ja: '動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定（Issue #910）で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。',
-				en: 'When a portfolio detail page whose project carries a validated video link is loaded, the browser fetches the player from `youtube-nocookie.com`. The 2026-11-05 owner decision (Issue #910) removed the click-to-load gate, so this fetch happens at page load. A page without a video requests nothing.',
+				ja: '動画リンクを持つプロジェクトのポートフォリオ詳細ページを読み込むと、ブラウザは `youtube-nocookie.com` からプレイヤーを取得します。2026-11-05 の owner 決定で押してから読み込む方式は撤去されたため、この取得はページ読み込み時に発生します。動画のないページでは何も要求しません。',
+				en: 'When a portfolio detail page whose project carries a validated video link is loaded, the browser fetches the player from `youtube-nocookie.com`. The 2026-11-05 owner decision removed the click-to-load gate, so this fetch happens at page load. A page without a video requests nothing.',
 			},
 			senders: [
 				{
@@ -636,8 +636,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			senders: [],
 		},
 		visibility: {
-			ja: '掲載先は `src/contact/channels.json` で、所有者は公開済みのリンクのみです。',
-			en: 'The listed targets come from `src/contact/channels.json`, which contains only already-published links.',
+			ja: '掲載先は公開済みのリンクだけです。',
+			en: 'The listed targets are already-published links only.',
 		},
 		evidence: [
 			'src/contact/page.tsx (フォーム要素なし)',
@@ -1104,6 +1104,71 @@ export function filterPublishedEntries(
 export function getPublishedDataLifecycle(): readonly DataLifecycleEntry[] {
 	return filterPublishedEntries(DATA_LIFECYCLE_ENTRIES);
 }
+
+/**
+ * The entry shape the public notice may carry (Issue #1009).
+ *
+ * `DataLifecycleEntry` mixes rendered wording with operator
+ * provenance — `evidence` repository pointers, `publication.note`,
+ * and the classification fields (`retention.kind`,
+ * `deletion.channel`, `transfer.target`) the component never reads.
+ * The registry module must stay server-side; this projection is the
+ * only shape allowed across the client boundary, so `pending`
+ * entries and every non-rendered field are absent by construction.
+ */
+export interface PublicDataLifecycleEntry {
+	readonly id: string;
+	readonly label: BilingualText;
+	readonly stores: BilingualText;
+	readonly retention: { readonly statement: BilingualText };
+	readonly deletion: { readonly statement: BilingualText };
+	readonly transfer: {
+		readonly statement: BilingualText;
+		readonly senders: readonly {
+			readonly sender: DataSenderKind;
+			readonly label: BilingualText;
+			readonly statement: BilingualText;
+		}[];
+	};
+	readonly visibility: BilingualText;
+}
+
+/** Project one registry entry to its public shape. */
+export function toPublicDataLifecycleEntry(entry: DataLifecycleEntry): PublicDataLifecycleEntry {
+	return {
+		id: entry.id,
+		label: entry.label,
+		stores: entry.stores,
+		retention: { statement: entry.retention.statement },
+		deletion: { statement: entry.deletion.statement },
+		transfer: {
+			statement: entry.transfer.statement,
+			senders: entry.transfer.senders.map((sender) => ({
+				sender: sender.sender,
+				label: sender.label,
+				statement: sender.statement,
+			})),
+		},
+		visibility: entry.visibility,
+	};
+}
+
+/**
+ * The published entries, projected for the client (Issue #1009).
+ * This is what the `/` loader hands to the page — the registry
+ * itself never crosses the boundary.
+ */
+export function getPublishedPublicDataLifecycle(): readonly PublicDataLifecycleEntry[] {
+	return filterPublishedEntries(DATA_LIFECYCLE_ENTRIES).map(toPublicDataLifecycleEntry);
+}
+
+/**
+ * The deletion-channel statement, projected for the client. `status`
+ * is operator bookkeeping and stays behind the boundary.
+ */
+export const PUBLIC_DELETION_REQUEST_CHANNEL = {
+	statement: DELETION_REQUEST_CHANNEL.statement,
+} as const;
 
 /**
  * The JA/EN sentences of every published entry, concatenated — the exact

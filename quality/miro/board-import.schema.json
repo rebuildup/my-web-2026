@@ -1,0 +1,114 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://rebuildup.dev/schemas/miro-board-import.json",
+	"title": "Miro board import contract (Issue #741)",
+	"description": "The handoff format for the my-web-2026 planning board (board uXjVEZdqDp4=, source-observed minimums 571 stickies / 583 connectors / 1 frame — see quality/miro/source-counts.json). This contract preserves the source's meaning: item id, text, position, parent frame, and connector endpoints are kept verbatim so the Issue cross-reference table can be generated without re-reading the board. Connectors are NOT assumed to be dependencies; stickies are NOT assumed to be approved work. Classification (implemented / partial / planned / deferred / rejected / unassessed / private) is a separate ledger decision recorded per item, never inferred from board geometry alone. The raw export is private input: it is gitignored and never committed; only derived, publicity-checked ledgers are published.",
+	"type": "object",
+	"required": ["board", "exportedAt", "items", "connectors", "frames"],
+	"additionalProperties": false,
+	"properties": {
+		"board": {
+			"type": "object",
+			"required": ["id", "title", "itemCounts"],
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "Miro board id, e.g. uXjVEZdqDp4="
+				},
+				"title": { "type": "string" },
+				"itemCounts": {
+					"type": "object",
+					"required": ["stickies", "connectors", "frames"],
+					"additionalProperties": false,
+					"properties": {
+						"stickies": { "type": "integer", "minimum": 0 },
+						"connectors": { "type": "integer", "minimum": 0 },
+						"frames": { "type": "integer", "minimum": 0 }
+					}
+				}
+			}
+		},
+		"exportedAt": { "type": "string", "format": "date-time" },
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "kind", "text", "position"],
+				"additionalProperties": false,
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Stable Miro item id — the cross-reference key"
+					},
+					"kind": { "enum": ["sticky", "text", "shape", "image", "embed", "card"] },
+					"text": {
+						"type": "string",
+						"description": "Item text verbatim; may be empty for non-text items"
+					},
+					"position": {
+						"type": "object",
+						"required": ["x", "y"],
+						"additionalProperties": false,
+						"properties": {
+							"x": { "type": "number" },
+							"y": { "type": "number" }
+						}
+					},
+					"parentFrameId": {
+						"type": ["string", "null"],
+						"description": "Frame the item sits in, if any"
+					},
+					"color": { "type": "string" },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"modifiedAt": { "type": "string", "format": "date-time" }
+				}
+			}
+		},
+		"connectors": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "startRefId", "endRefId"],
+				"additionalProperties": false,
+				"properties": {
+					"id": { "type": "string" },
+					"startRefId": {
+						"type": "string",
+						"description": "Id of the board item or frame the connector starts at"
+					},
+					"endRefId": {
+						"type": "string",
+						"description": "Id of the board item or frame the connector ends at"
+					},
+					"startSide": { "enum": ["left", "right", "top", "bottom"] },
+					"endSide": { "enum": ["left", "right", "top", "bottom"] },
+					"caption": { "type": "string" }
+				}
+			},
+			"description": "Connector endpoints reference item or frame ids (Miro treats frames as connectable items). A connector records adjacency on the board; it is NOT a dependency, priority, or approval signal."
+		},
+		"frames": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "title", "position"],
+				"additionalProperties": false,
+				"properties": {
+					"id": { "type": "string" },
+					"title": { "type": "string" },
+					"position": {
+						"type": "object",
+						"required": ["x", "y"],
+						"additionalProperties": false,
+						"properties": {
+							"x": { "type": "number" },
+							"y": { "type": "number" }
+						}
+					},
+					"description": { "type": "string" }
+				}
+			}
+		}
+	}
+}

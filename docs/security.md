@@ -659,11 +659,9 @@ mode, so it is not repeated there.
 
 | Origin | Directive | Source of the measurement |
 | --- | --- | --- |
-| `'self'` | `default-src`, `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src` | TanStack Start SSR document and hydration bundle, Panda CSS, favicon, server functions, and the same-origin Tool iframe |
-| `'unsafe-inline'` | `script-src`, `style-src` | Two inline document scripts (GA4 bootstrap, async font-stylesheet flip) and React inline `style` attributes |
+| `'self'` | `default-src`, `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src` | TanStack Start SSR document and hydration bundle, Panda CSS, favicon, self-hosted web fonts (`/fonts/*.woff2`), server functions, and the same-origin Tool iframe |
+| `'unsafe-inline'` | `script-src`, `style-src` | One inline document script (GA4 bootstrap) and React inline `style` attributes |
 | `https://www.googletagmanager.com` | `script-src` | GA4 loader in `src/editorial/analytics/GoogleAnalytics.tsx` |
-| `https://fonts.googleapis.com` | `style-src` | Font stylesheet linked from `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `font-src` | The `@font-face` binaries that stylesheet references |
 | `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
 | `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the Worker media route (`/media/<key>`); the value is read from `env`, never hard-coded |
 

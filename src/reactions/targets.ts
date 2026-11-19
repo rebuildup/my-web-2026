@@ -40,6 +40,26 @@ export const REACTION_TARGETS: readonly ReactionTarget[] = [
 		label: 'Portfolio list',
 		enabled: true,
 	},
+	{
+		key: 'about-page',
+		label: 'About page',
+		enabled: true,
+	},
+	{
+		key: 'contact-page',
+		label: 'Contact page',
+		enabled: true,
+	},
+	{
+		key: 'projects-dotfiles',
+		label: 'dotfiles introduction',
+		enabled: true,
+	},
+	{
+		key: 'tools-index',
+		label: 'Tools index',
+		enabled: true,
+	},
 ] as const;
 
 /** Fast lookup by key. */

@@ -27,7 +27,7 @@ import { svgCacheGetOrSet } from '../../vendor/github-readme-stats-fast/common/s
 import {
 	CONSTANTS,
 	CustomError,
-	clampValue,
+	MissingParamError,
 	getGithubToken,
 	parseArray,
 	parseBoolean,
@@ -38,6 +38,7 @@ import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
 import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
 import { isLocaleAvailable } from '../../vendor/github-readme-stats-fast/translations.ts';
+import { rateLimitRead } from '../middleware/rate-limit';
 
 // Module scope so token rotation survives across requests on a warm instance
 let tokenIndex = 0;
@@ -73,6 +74,26 @@ const PER_REQUEST_ERROR_TYPES = new Set([CustomError.USER_NOT_FOUND]);
 
 function isServiceUnavailable(err: unknown): boolean {
 	return err instanceof CustomError && !PER_REQUEST_ERROR_TYPES.has(err.type);
+}
+
+/**
+ * Issue #996: only a CustomError's message is authored copy safe to
+ * render into the public SVG. Any other throw (fetch internals, D1,
+ * vendor bugs) carries an implementation message that must not reach
+ * a public document, so it collapses to the fixed fallback.
+ */
+function publicErrorMessage(err: unknown): string {
+	// CustomError and MissingParamError carry authored messages meant for
+	// the card; every other throw is an internal failure whose message
+	// must not reach a public document.
+	if (
+		(err instanceof CustomError || err instanceof MissingParamError) &&
+		typeof err.message === 'string' &&
+		err.message.length > 0
+	) {
+		return err.message;
+	}
+	return 'Something went wrong';
 }
 
 type CardThemeParams = {
@@ -123,7 +144,7 @@ export const githubReadmeStatsRouter = new Hono<{
 }>();
 
 // Stats card: /api/github-readme-stats/api
-githubReadmeStatsRouter.get('/api', async (c) => {
+githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
 	const {
 		username,
 		hide,
@@ -141,7 +162,6 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		text_bold,
 		bg_color,
 		theme,
-		cache_seconds,
 		exclude_repo,
 		custom_title,
 		locale,
@@ -199,14 +219,13 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 			),
 		);
 
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.CARD_CACHE_SECONDS), 10),
-			CONSTANTS.TWELVE_HOURS,
-			CONSTANTS.TWO_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
+		// Caller-supplied `cache_seconds` is deliberately ignored (the
+		// streak route documents the same rule): any embed could otherwise
+		// pin a stale card in CDN caches for days. `CACHE_SECONDS` remains
+		// the operator-side override.
+		const cacheSeconds = env.CACHE_SECONDS
+			? Number.parseInt(env.CACHE_SECONDS, 10) || CONSTANTS.CARD_CACHE_SECONDS
+			: CONSTANTS.CARD_CACHE_SECONDS;
 
 		c.header(
 			'Cache-Control',
@@ -282,7 +301,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 		const error = err as Error;
 		return c.body(
 			renderError(
-				error.message || 'Something went wrong',
+				publicErrorMessage(err),
 				(error as { secondaryMessage?: string }).secondaryMessage,
 				{
 					title_color,
@@ -297,7 +316,7 @@ githubReadmeStatsRouter.get('/api', async (c) => {
 });
 
 // Top languages card: /api/github-readme-stats/api/top-langs/
-githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
+githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
 	const {
 		username,
 		hide,
@@ -308,7 +327,6 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 		text_color,
 		bg_color,
 		theme,
-		cache_seconds,
 		layout,
 		langs_count,
 		exclude_repo,
@@ -364,15 +382,6 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 				env,
 			),
 		);
-
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.TOP_LANGS_CACHE_SECONDS), 10),
-			CONSTANTS.TWO_DAY,
-			CONSTANTS.TEN_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
 
 		c.header(
 			'Cache-Control',
@@ -432,7 +441,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 		const error = err as Error;
 		return c.body(
 			renderError(
-				error.message || 'Something went wrong',
+				publicErrorMessage(err),
 				(error as { secondaryMessage?: string }).secondaryMessage,
 				{
 					title_color,
@@ -447,7 +456,7 @@ githubReadmeStatsRouter.get('/api/top-langs/', async (c) => {
 });
 
 // Streak card: /api/github-readme-stats/api/streak
-githubReadmeStatsRouter.get('/api/streak', async (c) => {
+githubReadmeStatsRouter.get('/api/streak', rateLimitRead, async (c) => {
 	const { username, theme, hide_border, title_color, text_color, bg_color, border_color } =
 		c.req.query();
 
@@ -510,7 +519,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 		const error = err as Error;
 		return c.body(
 			renderError(
-				error.message || 'Something went wrong',
+				publicErrorMessage(err),
 				(error as { secondaryMessage?: string }).secondaryMessage,
 				{
 					title_color,
@@ -525,7 +534,7 @@ githubReadmeStatsRouter.get('/api/streak', async (c) => {
 });
 
 // Pin card: /api/github-readme-stats/api/pin/
-githubReadmeStatsRouter.get('/api/pin/', async (c) => {
+githubReadmeStatsRouter.get('/api/pin/', rateLimitRead, async (c) => {
 	const {
 		username,
 		repo,
@@ -536,7 +545,6 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 		bg_color,
 		theme,
 		show_owner,
-		cache_seconds,
 		locale,
 		border_radius,
 		border_color,
@@ -576,15 +584,6 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 		}
 		const dataKey = `pin:${username}/${repo}`;
 		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', env));
-
-		let cacheSeconds = clampValue(
-			Number.parseInt(cache_seconds || String(CONSTANTS.PIN_CARD_CACHE_SECONDS), 10),
-			CONSTANTS.ONE_DAY,
-			CONSTANTS.TEN_DAY,
-		);
-		cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || cacheSeconds
-			: cacheSeconds;
 
 		c.header(
 			'Cache-Control',
@@ -631,13 +630,17 @@ githubReadmeStatsRouter.get('/api/pin/', async (c) => {
 		);
 		const error = err as Error;
 		return c.body(
-			renderError(error.message, (error as { secondaryMessage?: string }).secondaryMessage, {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
+			renderError(
+				publicErrorMessage(err),
+				(error as { secondaryMessage?: string }).secondaryMessage,
+				{
+					title_color,
+					text_color,
+					bg_color,
+					border_color,
+					theme,
+				},
+			),
 		);
 	}
 });

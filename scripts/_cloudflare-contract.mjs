@@ -54,6 +54,22 @@ export const WORKER_RUNTIME_SECRET = Object.freeze({
 	 * traffic — see `docs/runbook/analytics.md`.
 	 */
 	GA_MEASUREMENT_ID: 'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+	/**
+	 * Fine-grained GitHub PAT for the self-hosted Readme Stats cards
+	 * (Issue #969). Public-read scopes only — the cards read public
+	 * profile data, so a `repo`-scoped token must never sit on the
+	 * public Worker. The router scans `GITHUB_README_STATS_PAT_*`, so
+	 * `PAT_2..10` can be added later without a contract change; only
+	 * the first slot is required.
+	 */
+	GITHUB_README_STATS_PAT_1: 'GITHUB_README_STATS_PAT_1',
+	/**
+	 * Owner Discord snowflake the presence card may claim (Issue #320).
+	 * Semi-public (visible to mutual guild members) but operator-managed
+	 * from the Infisical dashboard like the GA measurement ID, so the
+	 * value never lives in committed config.
+	 */
+	DISCORD_PRESENCE_USER_ID: 'DISCORD_PRESENCE_USER_ID',
 });
 
 /**
@@ -72,6 +88,8 @@ export const REQUIRED_RUNTIME_SECRETS = Object.freeze([
 	WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS,
 	WORKER_RUNTIME_SECRET.CONSUMER_API_KEY,
 	WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID,
+	WORKER_RUNTIME_SECRET.GITHUB_README_STATS_PAT_1,
+	WORKER_RUNTIME_SECRET.DISCORD_PRESENCE_USER_ID,
 ]);
 
 /**

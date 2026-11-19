@@ -16,8 +16,8 @@
  *    it with the SAME functions `src/i18n/pseudo-locale.test.ts`
  *    asserts on, so the picture cannot be greener than the gate.
  * 2. Renders a self-contained HTML report with the SHIPPED font stacks
- *    read from `src/editorial/tokens.ts` and the webfont href read from
- *    `src/routes/__root.tsx`. Neither is restated here: a report that
+ *    read from `src/editorial/tokens.ts` and the self-hosted `@font-face` rules read from
+ *    `src/styles.css`. Neither is restated here: a report that
  *    declared its own font would be measuring a second, fictional
  *    product.
  * 3. Loads that report in headless Chromium at the narrowest supported
@@ -78,9 +78,10 @@
  * because the breaking recipe is not this script's to choose.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadSelfHostedFontCss } from './_selfhosted-font-css.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_HTML = resolve(REPO_ROOT, '.tmp/pseudo-locale-stress.html');
@@ -109,15 +110,15 @@ const escapeHtml = (value) =>
  * @param {readonly any[]} input.samples every stress row, in table order
  * @param {readonly string[]} input.surfaceIds rows a surface is drawn for
  * @param {Record<string, string>} input.fonts shipped font stacks by role
- * @param {string} input.fontHref webfont stylesheet the product loads
+ * @param {string} input.fontCss self-hosted @font-face CSS the product ships
  * @param {readonly string[]} input.limits what the fixture does NOT prove
  */
-export function buildReportModel({ audit, samples, surfaceIds, fonts, fontHref, limits }) {
+export function buildReportModel({ audit, samples, surfaceIds, fonts, fontCss, limits }) {
 	const surfaces = surfaceIds.map((id) => samples.find((row) => row.id === id)).filter(Boolean);
 	const byId = new Map(audit.samples.map((row) => [row.id, row]));
 	return {
 		fonts,
-		fontHref,
+		fontCss,
 		limits,
 		audit,
 		surfaces,
@@ -191,9 +192,11 @@ export function renderReportHtml(model) {
 <head>
 <meta charset="utf-8" />
 <title>Issue #429 — pseudo-localisation stress</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="${escapeHtml(model.fontHref)}" />
+<style>
+/* Self-hosted webfont faces — the @font-face rules src/styles.css ships,
+   asset URLs rebased onto an absolute origin for this file:// report. */
+${model.fontCss}
+</style>
 <style>
 	:root {
 		--font-heading: ${fonts.heading};
@@ -478,18 +481,14 @@ async function main() {
 	const { rawTokens } = await import('../src/editorial/tokens.ts');
 
 	/**
-	 * The webfont stylesheet the PRODUCT loads, read out of `__root.tsx`.
-	 * A report that named its own font would be measuring a second,
-	 * fictional product.
+	 * The self-hosted `@font-face` rules the PRODUCT ships, read out of
+	 * `src/styles.css` by `_selfhosted-font-css.mjs`. A static report opened
+	 * from `file://` cannot resolve the product's root-relative `/fonts/`
+	 * URLs, so the helper rewrites them onto an absolute origin
+	 * (`MY_WEB_FONT_BASE_URL`, default the canonical production origin).
+	 * Same rules, same faces — never restated here.
 	 */
-	const rootSource = await readFile(resolve(REPO_ROOT, 'src/routes/__root.tsx'), 'utf8');
-	const fontHrefMatch = rootSource.match(/href: '(https:\/\/fonts\.googleapis\.com\/css2[^']*)'/);
-	if (!fontHrefMatch) {
-		throw new Error(
-			'capture-pseudo-locale-stress: no fonts.googleapis.com stylesheet href in src/routes/__root.tsx. ' +
-				'Update this script rather than letting the report measure a font the product does not ship.',
-		);
-	}
+	const { css: FONT_CSS, families: WEBFONT_FAMILIES } = await loadSelfHostedFontCss();
 
 	const fonts = {
 		heading: rawTokens.fonts.heading.value,
@@ -517,7 +516,7 @@ async function main() {
 		samples,
 		surfaceIds: pseudo.PSEUDO_SURFACE_SAMPLE_IDS,
 		fonts,
-		fontHref: fontHrefMatch[1],
+		fontCss: FONT_CSS,
 		limits: pseudo.PSEUDO_LOCALE_LIMITS,
 	});
 
@@ -536,18 +535,12 @@ async function main() {
 	};
 	let webfontLoaded = false;
 	/**
-	 * The families the PRODUCT's webfont stylesheet declares — parsed
-	 * out of the href read from `__root.tsx`, not restated here. A
-	 * stack entry the stylesheet does not serve (the mono role falls
-	 * back to a local face) is not a webfont claim this run can make.
+	 * The families the PRODUCT's self-hosted stylesheet declares — read
+	 * out of `src/styles.css` by the helper, not restated here. A stack
+	 * entry the stylesheet does not serve (the mono role falls back to a
+	 * local face) is not a webfont claim this run can make.
 	 */
-	const webfontFamilies = [
-		...new Set(
-			[...fontHrefMatch[1].matchAll(/family=([^&:]+)/g)].map(([, raw]) =>
-				decodeURIComponent(raw.replace(/\+/g, ' ')),
-			),
-		),
-	];
+	const webfontFamilies = WEBFONT_FAMILIES;
 	try {
 		await page.goto(`file://${OUT_HTML}`, { waitUntil: 'load' });
 		// `document.fonts.status` is `'loaded'` even when the stylesheet
@@ -557,18 +550,43 @@ async function main() {
 		// stylesheet contribute a real face for each family it declared,
 		// and is that face usable for the text on screen?
 		const webfontFacts = await page.evaluate(async (families) => {
-			await document.fonts.ready;
 			const plain = (value) => value.replace(/['"]/g, '').trim().toLowerCase();
-			return families.map((family) => {
-				const faces = [...document.fonts].filter((face) => plain(face.family) === plain(family));
-				return {
-					family,
-					faces: faces.length,
-					loaded:
-						faces.some((face) => face.status === 'loaded') &&
-						document.fonts.check(`1em "${family}"`),
-				};
-			});
+			const factsFor = () =>
+				families.map((family) => {
+					const faces = [...document.fonts].filter((face) => plain(face.family) === plain(family));
+					// A family is "loaded" when at least one of its faces
+					// reached status 'loaded' AND that face can render
+					// text. The check has to name the face's own weight:
+					// the self-hosted slices are static instances, so a
+					// family the page only ever sets at 700 never loads
+					// its 400 faces — and a bare `1em "family"` query
+					// (weight normal) would then read false forever even
+					// though the shipped stack resolved. The Google
+					// stylesheet this replaced served variable faces
+					// whose weight range covered the query, which is why
+					// the old check passed.
+					const usable = faces.filter((face) => face.status === 'loaded');
+					return {
+						family,
+						faces: faces.length,
+						loaded: usable.some((face) => document.fonts.check(`${face.weight} 1em "${family}"`)),
+					};
+				});
+			// document.fonts.ready resolves when the loads pending *right
+			// now* settle — a face the layout has not requested yet is not
+			// pending, so a single await can read "unloaded" for a font
+			// that is merely late (the self-hosted slices are same-origin
+			// and start fetching as soon as the stylesheet parses). Poll
+			// the question itself, bounded, so a genuinely missing face
+			// still fails instead of hanging the capture.
+			const deadline = Date.now() + 8000;
+			let facts = factsFor();
+			while (!facts.every((fact) => fact.loaded) && Date.now() < deadline) {
+				await document.fonts.ready;
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				facts = factsFor();
+			}
+			return facts;
 		}, webfontFamilies);
 		webfontLoaded = webfontFacts.length > 0 && webfontFacts.every((fact) => fact.loaded);
 
@@ -680,7 +698,7 @@ async function main() {
 				if (fontBanner) {
 					const missing = families.filter((fact) => !fact.loaded).map((fact) => fact.family);
 					fontBanner.textContent = webfont
-						? `webfont: the shipped fonts.googleapis.com stack resolved in this browser (${families
+						? `webfont: the shipped self-hosted font stack resolved in this browser (${families
 								.map((fact) => fact.family)
 								.join(', ')})`
 						: `webfont UNAVAILABLE: ${missing.join(', ')} did not load, so this run measured the platform fallback only`;

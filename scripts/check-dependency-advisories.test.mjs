@@ -464,17 +464,21 @@ describe('check-dependency-advisories — the committed declaration stays valid'
 		assert.match(stdout, /gate declaration:\s+quality\/dependency-advisory-gate\.json/);
 	});
 
-	it('keeps the shipped exception ledger empty', () => {
+	it('keeps the shipped exception ledger to owner-approved records only', () => {
 		// An exception is a decision, so it has to name what it accepts,
 		// who accepted it, when it stops accepting it, and where the
 		// follow-up is tracked — a record without an expiry or a tracking
 		// Issue is not reviewable and the declaration parser rejects it.
-		// The shipped ledger carries no record at all: the `braces`
-		// advisory it used to except was withdrawn upstream and the
-		// registry no longer reports it (Issue #704), so nothing is
-		// tolerated and every blocking finding blocks.
+		// The ledger is pinned so a new record is a reviewable test diff:
+		// the `braces` advisory (Issue #704) was withdrawn upstream; the
+		// `picomatch` record (GHSA-fc5q-39xc-vjpf, Issue #985) is the
+		// current owner approval — no patched release exists and every
+		// install path is dev-only @pandacss build tooling.
 		const raw = JSON.parse(readFileSync(REPOSITORY_GATE, 'utf8'));
-		assert.deepEqual(raw.exceptions, []);
+		assert.deepEqual(
+			raw.exceptions.map((e) => [e.advisoryId, e.package, e.expiresOn]),
+			[['GHSA-fc5q-39xc-vjpf', 'picomatch', '2026-12-31']],
+		);
 	});
 
 	it('fails closed on the committed declaration when the advisory data cannot be read', () => {

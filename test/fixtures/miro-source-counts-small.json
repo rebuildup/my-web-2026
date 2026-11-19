@@ -1,0 +1,12 @@
+{
+	"$comment": "Test-only source-counts file: small floors so the synthetic fixtures can exercise the completeness check without standing up a 571-sticky export.",
+	"version": 1,
+	"boardId": "uXjVEZdqDp4=",
+	"countedAt": "2026-11-18",
+	"countedVia": "synthetic fixture",
+	"minimums": {
+		"stickies": 2,
+		"connectors": 1,
+		"frames": 1
+	}
+}

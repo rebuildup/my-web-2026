@@ -496,8 +496,8 @@ async function measureAtWidth(context, baseUrl, width) {
 			{ cause: error },
 		);
 	}
-	// The shipped page loads Noto Sans JP / Zen Kaku Gothic New from
-	// Google Fonts; measuring before they land would measure a fallback.
+	// The shipped page self-hosts Noto Sans JP / Zen Kaku Gothic New
+	// under /fonts/; measuring before they land would measure a fallback.
 	await page.evaluate(() => document.fonts.ready);
 	const samples = await page.evaluate(collectSamplesInPage);
 	return { page, samples };

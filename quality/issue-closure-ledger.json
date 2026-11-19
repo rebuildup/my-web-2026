@@ -117,11 +117,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": [
-				"#63",
-				"AGENTS.md",
-				"#647"
-			],
+			"evidence": ["#63", "AGENTS.md", "#647"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -206,10 +202,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
-			"evidence": [
-				"issue #254 comments (2026-10-05, 2026-10-08)",
-				"scripts/_d1.mjs"
-			],
+			"evidence": ["issue #254 comments (2026-10-05, 2026-10-08)", "scripts/_d1.mjs"],
 			"decision": {
 				"kind": "owner",
 				"reason": "製品欠陥ではなくローカル node_modules 解決差であると調査で特定され、判定・workaround が記録済み。コード変更なしで閉じられる事案。"
@@ -1228,10 +1221,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": [
-				"src/tools/manifest.json",
-				"docs/verification/tools/ ディレクトリが存在しない"
-			],
+			"evidence": ["src/tools/manifest.json", "docs/verification/tools/ ディレクトリが存在しない"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -1442,12 +1432,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": [
-				"src/contact/channels.json",
-				"src/contact/page.tsx",
-				"stories.tsx",
-				"#380"
-			],
+			"evidence": ["src/contact/channels.json", "src/contact/page.tsx", "stories.tsx", "#380"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2409,11 +2394,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": [
-				"docs/personal/domain.md",
-				"361do-name-meanings.md",
-				"#521"
-			],
+			"evidence": ["docs/personal/domain.md", "361do-name-meanings.md", "#521"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2545,11 +2526,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": [
-				"docs/influences/tech-interests.md",
-				"#528",
-				"docs/personal/knowledge-model.md"
-			],
+			"evidence": ["docs/influences/tech-interests.md", "#528", "docs/personal/knowledge-model.md"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2723,11 +2700,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": [
-				"src/cloudflare/d1-backup.ts",
-				"src/cloudflare/d1-numeric.test.ts",
-				"#705"
-			],
+			"evidence": ["src/cloudflare/d1-backup.ts", "src/cloudflare/d1-numeric.test.ts", "#705"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2876,11 +2849,7 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": [
-				"#731",
-				"skills/herdr-runtime/SKILL.md",
-				"AGENTS.md"
-			],
+			"evidence": ["#731", "skills/herdr-runtime/SKILL.md", "AGENTS.md"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3251,11 +3220,7 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": [
-				"#789",
-				".mcp.json",
-				"docs/runbook/notion-mcp.md"
-			],
+			"evidence": ["#789", ".mcp.json", "docs/runbook/notion-mcp.md"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3271,10 +3236,7 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": [
-				"#846",
-				"src/tools/manifest.json"
-			],
+			"evidence": ["#846", "src/tools/manifest.json"],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",

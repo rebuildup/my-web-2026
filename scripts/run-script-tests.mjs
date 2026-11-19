@@ -35,13 +35,27 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverScriptTests, testFileArgv } from './_script-tests.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * Write a whole line to fd 1 synchronously.
+ *
+ * `--list` emits ~220 lines and then `main` returns into
+ * `process.exit(code)`. `process.stdout.write` queues asynchronously
+ * when stdout is a pipe, and `process.exit` discards whatever is still
+ * queued — CI saw the listing cut off mid-alphabet
+ * (`check-test-wiring.test.mjs` "lists exactly the files the runner
+ * would execute"). `writeSync` cannot be truncated.
+ */
+function writeLine(text) {
+	writeSync(process.stdout.fd, `${text}\n`);
+}
 
 /**
  * Run the discovered files in order, stopping at the first failure.
@@ -220,12 +234,12 @@ export async function main(argv, { lifecycleEvent = process.env.npm_lifecycle_ev
 	}
 
 	if (rest.includes('--list')) {
-		for (const file of files) process.stdout.write(`${file}\n`);
+		for (const file of files) writeLine(file);
 		return 0;
 	}
 
 	const status = jobs <= 1 ? runScriptTests(files) : await runScriptTestsParallel(files, { jobs });
-	if (status === 0) process.stdout.write(`\nscript tests OK — ${files.length} file(s)\n`);
+	if (status === 0) writeLine(`script tests OK — ${files.length} file(s)`);
 	return status;
 }
 

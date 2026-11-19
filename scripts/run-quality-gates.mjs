@@ -36,6 +36,10 @@
  *   exit code, exactly like the shell chain;
  * - a step's stdout / stderr are inherited, so nothing is buffered,
  *   swallowed or reordered;
+ * - Issue #1007 adds one measurement line per step (`  (Nms)` after a
+ *   green step, the elapsed time inside the failure line), so the CI
+ *   log finally carries the per-component breakdown the serial plan
+ *   never recorded. It changes no gate, order or exit code;
  * - no secret value is read (AGENTS.md section 4): this script reads
  *   `quality/profile.yaml` and `package.json`, and runs commands.
  *
@@ -92,7 +96,14 @@ export function buildPlan(gateName, { profileText, packageJsonText } = {}) {
 export function runPlan(plan, { cwd = repoRoot, stream = process.stdout } = {}) {
 	for (const [index, command] of plan.entries()) {
 		stream.write(`\n[${index + 1}/${plan.length}] ${command}\n`);
+		// Issue #1007: per-component duration. The serial plan had no
+		// timing at all, so "which gate dominates validate:fast" could
+		// only be guessed. One line per step lands in the CI log next
+		// to the step's own output; the parallelisation work that
+		// follows is ordered by this measurement, not by intuition.
+		const startedAt = Date.now();
 		const result = spawnSync(command, { cwd, shell: true, stdio: 'inherit' });
+		const elapsedMs = Date.now() - startedAt;
 		if (result.error) {
 			process.stderr.write(`cannot run "${command}": ${result.error.message}\n`);
 			return 2;
@@ -106,10 +117,11 @@ export function runPlan(plan, { cwd = repoRoot, stream = process.stdout } = {}) 
 			const reason =
 				result.status === null ? `signal ${result.signal}` : `exit code ${result.status}`;
 			process.stderr.write(
-				`\n${command} failed at step ${index + 1}/${plan.length} with ${reason}\n`,
+				`\n${command} failed at step ${index + 1}/${plan.length} with ${reason} (${elapsedMs}ms)\n`,
 			);
 			return exitCode;
 		}
+		stream.write(`  (${elapsedMs}ms)\n`);
 	}
 	return 0;
 }

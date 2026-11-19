@@ -1,18 +1,21 @@
 // Self-hosted font CSS for capture scripts (Issue #876).
 //
-// The shipped `@font-face` rules live in `src/styles.css` and reference
-// root-relative `/fonts/*.woff2` assets in `public/fonts/`. Capture
-// reports are rendered to a file and opened with `file://`, where a
-// root-relative URL resolves to nothing, so this helper rewrites each
-// asset URL onto an absolute origin before the rules are inlined into
-// the report. The default base is the canonical production origin —
-// the same bytes the deployed Worker serves — and
-// `MY_WEB_FONT_BASE_URL` overrides it (e.g. a local `vite dev` origin
-// while the fonts are still being verified before release).
+// The shipped `@font-face` rules live in `public/fonts/fonts.css` and
+// reference root-relative `/fonts/*.woff2` assets in `public/fonts/`.
+// They are kept out of the bundled `src/styles.css` so the declarations
+// stay outside the per-route initial CSS budget
+// (`scripts/check-bundle-budget.mjs`). Capture reports are rendered to
+// a file and opened with `file://`, where a root-relative URL resolves
+// to nothing, so this helper rewrites each asset URL onto an absolute
+// origin before the rules are inlined into the report. The default
+// base is the canonical production origin — the same bytes the
+// deployed Worker serves — and `MY_WEB_FONT_BASE_URL` overrides it
+// (e.g. a local `vite dev` origin while the fonts are still being
+// verified before release).
 //
-// The rules are read from `src/styles.css`, never restated here: a
-// report that declared its own faces would measure a font the product
-// does not ship.
+// The rules are read from `public/fonts/fonts.css`, never restated
+// here: a report that declared its own faces would measure a font the
+// product does not ship.
 
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -27,17 +30,17 @@ const FONT_FACE_BLOCK = /@font-face\s*\{[^}]*\}/g;
 /**
  * @returns {Promise<{ css: string, families: string[], baseUrl: string, ruleCount: number }>}
  *   `css` is every self-hosted `@font-face` block from
- *   `src/styles.css` with asset URLs rewritten to the absolute base;
+ *   `public/fonts/fonts.css` with asset URLs rewritten to the absolute base;
  *   `families` is the deduplicated set of declared `font-family`
  *   names; `ruleCount` is how many blocks were found.
  */
 export async function loadSelfHostedFontCss() {
-	const styles = await readFile(resolve(REPO_ROOT, 'src/styles.css'), 'utf8');
+	const styles = await readFile(resolve(REPO_ROOT, 'public/fonts/fonts.css'), 'utf8');
 	const blocks = styles.match(FONT_FACE_BLOCK) ?? [];
 	const selfHosted = blocks.filter((block) => block.includes('url(/fonts/'));
 	if (selfHosted.length === 0) {
 		throw new Error(
-			'_selfhosted-font-css: no self-hosted @font-face rules (url(/fonts/…)) in src/styles.css. ' +
+			'_selfhosted-font-css: no self-hosted @font-face rules (url(/fonts/…)) in public/fonts/fonts.css. ' +
 				'Update this helper rather than letting the report measure a font the product does not ship.',
 		);
 	}

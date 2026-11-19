@@ -9,14 +9,14 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 19 |
-| Publicly reachable surfaces | 12 |
+| Declared surfaces | 21 |
+| Publicly reachable surfaces | 14 |
 | Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 86 |
-| External hosts | 50 |
+| Publicly reachable URLs (surface + Static Assets) | 88 |
+| External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | 31 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -97,9 +97,11 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/about`
 - `/admin/invitations/accept`
 - `/admin/login`
+- `/commission`
 - `/contact`
 - `/design-system`
 - `/keyboard`
+- `/links`
 - `/portfolio`
 - `/portfolio/alice`
 - `/portfolio/aulymo-v01`
@@ -195,9 +197,11 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/admin/invitations/accept` | `/admin/invitations/accept` | public | no | `src/routes/admin.invitations_.accept.tsx` |
 | `/admin/keys` | `/admin/keys` | internal | no | `src/routes/admin.keys.tsx` |
 | `/admin/login` | `/admin/login` | public | no | `src/routes/admin.login.tsx` |
+| `/commission` | `/commission` | public | no | `src/routes/commission.tsx` |
 | `/contact` | `/contact` | public | yes | `src/routes/contact.tsx` |
 | `/design-system` | `/design-system` | public | yes | `src/routes/design-system.tsx` |
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
+| `/links` | `/links` | public | no | `src/routes/links.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
@@ -206,17 +210,29 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (2)
 
-- (none)
+- `/commission`
+- `/links`
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (12)
 
-- (none)
+- `atcoder.jp`
+- `bsky.app`
+- `ch.tetr.io`
+- `discord.gg`
+- `gitty-code.com`
+- `note.com`
+- `osu.ppy.sh`
+- `qiita.com`
+- `www.duolingo.com`
+- `www.linkedin.com`
+- `www.wantedly.com`
+- `zenn.dev`
 
 ### Removed external hosts (0)
 
@@ -261,12 +277,16 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts` |
+| `https://atcoder.jp/users/rebuildup` | `atcoder.jp` | external | `src/about/links.ts` |
+| `https://bsky.app/profile/361do.bsky.social` | `bsky.app` | external | `src/about/links.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://ch.tetr.io/u/samuido` | `ch.tetr.io` | external | `src/about/links.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
+| `https://discord.gg/qmCGSBmc28` | `discord.gg` | external | `src/about/links.ts` |
 | `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
@@ -509,7 +529,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/googlefonts/zen-kakugothic` | `github.com` | external | `public/fonts/zen-kaku-gothic-new-LICENSE.txt` |
-| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
+| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/about/links.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -583,9 +603,13 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/writing-skills` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://gitty-code.com/user/rebuildup` | `gitty-code.com` | external | `src/about/links.ts` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
+| `https://note.com/alert_toad4443` | `note.com` | external | `src/about/links.ts` |
+| `https://osu.ppy.sh/users/36986836` | `osu.ppy.sh` | external | `src/about/links.ts` |
 | `https://pomodoro.yusuke-kim.com` | `pomodoro.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://prototype.yusuke-kim.com` | `prototype.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://qiita.com/samuido` | `qiita.com` | external | `src/about/links.ts` |
 | `https://raw.githubusercontent.com` | `raw.githubusercontent.com` | external | `src/keyboard/load.ts` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
@@ -593,7 +617,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://rebuildup.github.io` | `rebuildup.github.io` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
-| `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
+| `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts`, `src/about/links.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
 | `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
@@ -609,9 +633,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
+| `https://www.duolingo.com/profile/samuido` | `www.duolingo.com` | external | `src/about/links.ts` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com` | `www.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
+| `https://www.linkedin.com/in/yusuke-kimura-835055398` | `www.linkedin.com` | external | `src/about/links.ts` |
 | `https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf` | `www.maff.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000148322.html` | `www.mhlw.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf` | `www.mlit.go.jp` | external | `public/share/procon2026/index.html` |
@@ -622,9 +648,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.tiktok.com/@harutoiizawa/video/7421877342030597384` | `www.tiktok.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
+| `https://www.wantedly.com/id/rebuildup` | `www.wantedly.com` | external | `src/about/links.ts` |
 | `https://www.youtube-nocookie.com/embed` | `www.youtube-nocookie.com` | external | `src/portfolio/video-facade.ts` |
 | `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@361do_sleep` | `www.youtube.com` | external | `src/about/links.ts` |
 | `https://www.youtube.com/@darupoi_` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/@hiyori_hiyoko` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/@snzkuo` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -706,12 +734,14 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/361do/_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do/_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do/_sleep/status/1955248758243070349` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design` | `x.com` | external | `src/about/links.ts` |
 | `https://x.com/361do_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/2079195581831156023?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep` | `x.com` | external | `src/about/links.ts` |
 | `https://x.com/361do_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1815006753144381874` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1832734742124609779` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -742,7 +772,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/morpho/_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/morpho_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/piyopiyo2424V` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
+| `https://x.com/samuido` | `x.com` | external | `src/about/data.ts`, `src/about/links.ts` |
 | `https://x.com/scalegif` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/snzkuo` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/susuyo_soot` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -789,9 +819,39 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://youtube.com/shorts/rq2WlOQa9zE` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 | `https://yusuke-kim.com/about` | `yusuke-kim.com` | external | `src/about/career.ts`, `src/about/skills.ts` |
+| `https://zenn.dev/361do_sleep` | `zenn.dev` | external | `src/about/links.ts` |
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
-- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
+- **ERROR** `E004 external-host-added` New external host atcoder.jp appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host bsky.app appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host ch.tetr.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host discord.gg appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host gitty-code.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host note.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host osu.ppy.sh appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host qiita.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host www.duolingo.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host www.linkedin.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host www.wantedly.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host zenn.dev appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://atcoder.jp/users/rebuildup
+- **WARN** `W002 external-url-added` External URL added: https://bsky.app/profile/361do.bsky.social
+- **WARN** `W002 external-url-added` External URL added: https://ch.tetr.io/u/samuido
+- **WARN** `W002 external-url-added` External URL added: https://discord.gg/qmCGSBmc28
+- **WARN** `W002 external-url-added` External URL added: https://gitty-code.com/user/rebuildup
+- **WARN** `W002 external-url-added` External URL added: https://note.com/alert_toad4443
+- **WARN** `W002 external-url-added` External URL added: https://osu.ppy.sh/users/36986836
+- **WARN** `W002 external-url-added` External URL added: https://qiita.com/samuido
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/commission
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/links
+- **WARN** `W002 external-url-added` External URL added: https://www.duolingo.com/profile/samuido
+- **WARN** `W002 external-url-added` External URL added: https://www.linkedin.com/in/yusuke-kimura-835055398
+- **WARN** `W002 external-url-added` External URL added: https://www.wantedly.com/id/rebuildup
+- **WARN** `W002 external-url-added` External URL added: https://www.youtube.com/@361do_sleep
+- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design
+- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep
+- **WARN** `W002 external-url-added` External URL added: https://zenn.dev/361do_sleep
+- **WARN** `W004 public-url-added` Public URL added: /commission
+- **WARN** `W004 public-url-added` Public URL added: /links
 

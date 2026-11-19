@@ -156,6 +156,70 @@
 			}
 		},
 		{
+			"source": "src/routes/links.tsx",
+			"path": "/links",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/links.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/links.spec.ts"]
+				},
+				"a11y": {
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/commission.tsx",
+			"path": "/commission",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/commission.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/commission.spec.ts"]
+				},
+				"a11y": {
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
 			"source": "src/routes/projects.dotfiles.tsx",
 			"path": "/projects/dotfiles",
 			"audience": "public",

@@ -32,7 +32,10 @@ export interface ContactPageProps {
  *   - Hero: <h1> + lede explaining the fail-closed contract
  *   - SectionHeading (eyebrow / title / description)
  *   - Channel list (or empty-state if filtered to zero)
- *   - No pricing / commission / shop affordance — explicitly absent
+ *   - No pricing / shop affordance — explicitly absent. The
+ *     commission-intake surface is informational only and lives at
+ *     `/commission` (Issue #390); this page links to it for the
+ *     intake status and keeps listing verified channels.
  *
  * Each channel row carries: label / label-en / purpose label
  * (用途) / verified-relative date / external link with safe
@@ -124,9 +127,11 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 							maxWidth: '640px',
 						})}
 					>
-						価格・制作依頼 (commission)
-						のお問い合わせは、現時点ではこのページでは受け付けていません。 公開されている channel
-						経由でお問い合わせください。
+						制作依頼の受付状況は
+						<a href="/commission" className={css({ color: 'text.accent' })}>
+							/commission
+						</a>
+						を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
 					</p>
 				</Container>
 			</section>

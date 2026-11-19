@@ -33,6 +33,20 @@
 			"why": "the only form surface; label/for and button/input attributes live here."
 		},
 		{
+			"route_id": "/links",
+			"path": "/links",
+			"source": "src/routes/links.tsx",
+			"mode": "render",
+			"why": "public verified external-link inventory (Issue #390); grouped link rows with external-link attributes."
+		},
+		{
+			"route_id": "/commission",
+			"path": "/commission",
+			"source": "src/routes/commission.tsx",
+			"mode": "render",
+			"why": "public commission-intake status page (Issue #390); status notice plus service / process / requirements sections."
+		},
+		{
 			"route_id": "/projects/dotfiles",
 			"path": "/projects/dotfiles",
 			"source": "src/routes/projects.dotfiles.tsx",

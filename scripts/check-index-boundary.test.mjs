@@ -67,6 +67,8 @@ const FIXTURE_ROUTES = [
 	['/contact', './routes/contact'],
 	['/design-system', './routes/design-system'],
 	['/keyboard', './routes/keyboard'],
+	['/links', './routes/links'],
+	['/commission', './routes/commission'],
 	['/portfolio/', './routes/portfolio/index'],
 	['/portfolio/$slug', './routes/portfolio/$slug'],
 	['/projects/dotfiles', './routes/projects.dotfiles'],

@@ -9,6 +9,8 @@
 export { loadAbout, type AboutLoader, type AboutEnv } from './load';
 export { loadAboutPage } from './public';
 export { ABOUT_DATA } from './data';
+export { ABOUT_LINKS, ABOUT_LINK_GROUPS } from './links';
+export type { AboutLink, AboutLinkGroup } from './links';
 export type {
 	AboutData,
 	AboutPageData,
@@ -16,5 +18,5 @@ export type {
 	AboutInterest,
 	AboutExternalHandle,
 } from './types';
-export { AboutPage } from './components';
+export { AboutPage, LinksPage } from './components';
 export type { AboutPageProps } from './components';

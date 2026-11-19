@@ -70,6 +70,18 @@
 		"ogUrl": "https://rebuildup.dev/",
 		"twitterCard": "summary"
 	},
+	"/links": {
+		"ogType": "website",
+		"ogTitle": "リンク集 / Links — rebuildup.dev",
+		"ogDescription": "公開している外部アカウントとサイト内ページの一覧。連絡先は /contact の verified channel を参照。",
+		"ogUrl": "https://rebuildup.dev/links"
+	},
+	"/commission": {
+		"ogType": "website",
+		"ogTitle": "制作依頼 / Commission — rebuildup.dev",
+		"ogDescription": "Web 開発・アプリケーション開発・映像制作の依頼案内。受付状況と依頼時に必要な情報を掲載しています。",
+		"ogUrl": "https://rebuildup.dev/commission"
+	},
 	"/contact": {
 		"ogType": "website",
 		"ogTitle": "Contact — rebuildup.dev",

@@ -191,6 +191,25 @@ const ROUTE_INTENT = [
 		reason: 'Public contact channels.',
 	},
 	{
+		paths: ['/links'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public verified external-link inventory (Issue #390). Indexable and linked from /about, ' +
+			'but not a public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
+		paths: ['/commission'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public commission-intake status and request-content page (Issue #390). Indexable and ' +
+			'linked from /about, /contact and /links, but not a public-nav destination and therefore ' +
+			'not listed in the sitemap.',
+	},
+	{
 		paths: ['/projects/dotfiles'],
 		zone: 'public',
 		crawl: 'allow',

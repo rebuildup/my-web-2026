@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { expect, test } from '@playwright/test';
 import { AUDITED_ROUTES, AXE_TAGS, SKIPPED_ROUTES } from './axe-manifest';
 
 /**
@@ -56,9 +56,9 @@ import { AUDITED_ROUTES, AXE_TAGS, SKIPPED_ROUTES } from './axe-manifest';
  * the ledger's evidence path, and `quality/route-coverage.json`
  * cross-checks that the two agree):
  *
- *   "/"  "/about"  "/keyboard"  "/contact"  "/portfolio"
- *   "/portfolio/my-web-2026"  "/projects/dotfiles"  "/tools"
- *   "/design-system"  "/admin/login"
+ *   "/"  "/about"  "/keyboard"  "/links"  "/commission"  "/contact"
+ *   "/portfolio"  "/portfolio/my-web-2026"  "/projects/dotfiles"
+ *   "/tools"  "/design-system"  "/admin/login"
  *
  * Where the scan runs
  * -------------------

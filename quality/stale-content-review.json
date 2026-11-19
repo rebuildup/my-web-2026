@@ -1358,6 +1358,29 @@
 				]
 			},
 			"note": "Usage-group label splitting the skills list into current vs past. Fixed vocabulary; re-check when the toolchain changes."
+		},
+		{
+			"id": "commission-intake-paused-status",
+			"path": "src/contact/commission-page.tsx",
+			"expression": "現在、制作依頼の受付は休止しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/390",
+						"note": "Issue #390 restores the commission surface; the paused wording is bound to the approved parked fact in src/about/data.ts (future.parked: 依頼制の制作 mode は現時点では parked). The record awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Status line of the /commission intake notice. It states the parked state the approved /about narrative already publishes; it must change in the same PR that un-parks the mode."
 		}
 	]
 }

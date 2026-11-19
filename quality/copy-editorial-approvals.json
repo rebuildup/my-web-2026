@@ -3643,7 +3643,7 @@
 			"pr": 1053,
 			"base": "release-0-10-0",
 			"reviewer": null,
-			"reviewedAt": "2026-11-18",
+			"reviewedAt": "2026-11-19",
 			"decision": "pending",
 			"fingerprint": "sha256:f5cd94fd2227dace69d8136e06f32a57438b585ff5599e6a4f5e649bdf72ada7",
 			"proposal": {

@@ -139,6 +139,17 @@ export const AllReachable: Story = {
 						repoId: 'my-web-2026',
 						type: 'PushEvent',
 						at: '2026-09-17T14:30:00.000Z',
+						href: 'https://github.com/rebuildup/my-web-2026',
+					},
+				],
+				topRepos: [
+					{
+						id: 'rebuildup/example-repo',
+						name: 'example-repo',
+						href: 'https://github.com/rebuildup/example-repo',
+						commits: 128,
+						pullRequests: 14,
+						windowDays: 30,
 					},
 				],
 				repoCount: { public: 3, private: 1 },

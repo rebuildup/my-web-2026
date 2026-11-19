@@ -146,4 +146,81 @@ describe('publicGitHubActivity', () => {
 		expect(pub.repoCount).toEqual({ public: 1, private: 1 });
 		expect(JSON.stringify(pub)).not.toContain('secret');
 	});
+
+	it('links a public feed item to the repo htmlUrl the snapshot carries (#319)', () => {
+		const pub = publicGitHubActivity(base);
+		expect(pub.feed[0]?.href).toBe('https://github.com/rebuildup/public-a');
+	});
+
+	it('leaves href absent when the feed repo has no publishable URL', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			repos: [
+				{
+					id: 'rebuildup/no-url',
+					kind: 'public',
+					name: 'no-url',
+					activity: { events: 1, commits: 1, windowDays: 30 },
+				},
+			],
+			feed: [
+				{
+					id: '9',
+					kind: 'public',
+					repoId: 'rebuildup/no-url',
+					type: 'PushEvent',
+					at: '2026-11-15T10:00:00Z',
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBeUndefined();
+	});
+
+	it('projects measured commits/PRs ranked by contribution, capped (#967)', () => {
+		const repos = Array.from({ length: 8 }, (_, i) => ({
+			id: `rebuildup/r${i}`,
+			kind: 'public' as const,
+			name: `r${i}`,
+			repoFullName: `rebuildup/r${i}`,
+			htmlUrl: `https://github.com/rebuildup/r${i}`,
+			activity: {
+				events: 0,
+				commits: i,
+				...(i % 2 === 0 ? { prs: 2 } : {}),
+				windowDays: 30,
+			},
+		}));
+		const snapshot: GitHubActivitySnapshot = { ...base, repos, feed: [] };
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.topRepos).toHaveLength(5);
+		// r7 (7 commits) vs r6 (6 commits + 2 PRs = 8): score wins.
+		expect(pub.topRepos[0]?.id).toBe('rebuildup/r6');
+		expect(pub.topRepos[0]?.commits).toBe(6);
+		expect(pub.topRepos[0]?.pullRequests).toBe(2);
+		expect(pub.topRepos[0]?.href).toBe('https://github.com/rebuildup/r6');
+	});
+
+	it('omits repos whose contribution was not measured — absence, not zero', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			repos: [
+				{
+					id: 'rebuildup/unmeasured',
+					kind: 'public',
+					name: 'unmeasured',
+					activity: { events: 2, windowDays: 30 },
+				},
+				{
+					id: 'private-0123456789ab',
+					kind: 'private',
+					name: '非公開プロジェクト',
+					activity: { events: 1, windowDays: 30 },
+				},
+			],
+			feed: [],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.topRepos).toHaveLength(0);
+	});
 });

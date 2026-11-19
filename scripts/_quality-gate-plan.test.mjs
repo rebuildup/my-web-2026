@@ -5,6 +5,11 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	isParallelSafeComponent,
+	pnpmRunScriptOf,
+	segmentPlan,
+} from './_quality-gate-parallel.mjs';
+import {
 	GATE_NAMES,
 	PROFILE_RELATIVE_PATH,
 	parseGateProfile,
@@ -13,7 +18,16 @@ import {
 	scriptNamesOf,
 	validateGateComponents,
 } from './_quality-gate-plan.mjs';
-import { buildPlan, main, runPlan, successLine } from './run-quality-gates.mjs';
+import {
+	DEFAULT_GATE_JOBS,
+	JOBS_ENV_VAR,
+	buildPlan,
+	main,
+	parseJobs,
+	runParallelSegment,
+	runPlan,
+	successLine,
+} from './run-quality-gates.mjs';
 
 /**
  * Fixture coverage for the declared quality-gate plan (Issue #566).
@@ -220,11 +234,187 @@ const EXPECTED_FAST_PLAN = [
 ];
 
 describe('runPlan', () => {
-	it('reports a signal-killed step as 128 + signal, like the old shell chain', () => {
+	it('reports a signal-killed step as 128 + signal, like the old shell chain', async () => {
 		const output = [];
-		const code = runPlan(['kill -TERM $$'], { stream: { write: (line) => output.push(line) } });
+		const code = await runPlan(['kill -TERM $$'], {
+			stream: { write: (line) => output.push(line) },
+		});
 		assert.equal(code, 143, 'SIGTERM is 15, so the shell chain exited 143');
 		assert.match(output.join(''), /\[1\/1\] kill -TERM \$\$/);
+	});
+
+	it('keeps the serial path byte-identical when jobs is 1', async () => {
+		const output = [];
+		// `pnpm run version:check` is parallel-safe, so jobs=1 is the
+		// only way this plan proves the serial fallback still runs it
+		// through spawnSync with inherited output.
+		const code = await runPlan(['pnpm run version:check'], {
+			jobs: 1,
+			stream: { write: (line) => output.push(line) },
+		});
+		assert.equal(code, 0);
+		assert.match(output.join(''), /\[1\/1\] pnpm run version:check/);
+		assert.match(output.join(''), /\(\d+ms\)/);
+	});
+});
+
+describe('the parallel-safe allowlist (Issue #1007)', () => {
+	it('accepts exactly a bare `pnpm run <script>` with an audited script', () => {
+		assert.equal(pnpmRunScriptOf('pnpm run format:check'), 'format:check');
+		assert.equal(isParallelSafeComponent('pnpm run format:check'), true);
+		assert.equal(isParallelSafeComponent('pnpm run test'), true);
+	});
+
+	it('rejects arguments, other commands and unaudited scripts', () => {
+		// A trailing argument can turn a read-only check into a writer
+		// (`-- --report out.html`), so only the bare invocation counts.
+		for (const component of [
+			'pnpm run format:check -- --fix',
+			'pnpm run not:a:real:script',
+			'node scripts/check-architecture.mjs',
+			'pnpm run build:production',
+			'pnpm exec biome format .',
+		]) {
+			assert.equal(isParallelSafeComponent(component), false, component);
+		}
+	});
+
+	it('groups consecutive safe components and isolates the rest', () => {
+		const plan = [
+			'pnpm run format:check',
+			'pnpm run lint:check',
+			'pnpm run build:production',
+			'node scripts/check-release-assets.mjs',
+			'pnpm run typecheck',
+		];
+		assert.deepEqual(segmentPlan(plan), [
+			{
+				parallel: true,
+				items: [
+					{ index: 0, command: 'pnpm run format:check' },
+					{ index: 1, command: 'pnpm run lint:check' },
+				],
+			},
+			{ parallel: false, items: [{ index: 2, command: 'pnpm run build:production' }] },
+			{
+				parallel: false,
+				items: [{ index: 3, command: 'node scripts/check-release-assets.mjs' }],
+			},
+			{ parallel: true, items: [{ index: 4, command: 'pnpm run typecheck' }] },
+		]);
+	});
+
+	it('keeps every current fast component parallel-safe, so a new gate is a conscious decision', () => {
+		// The allowlist is the audit record. If a new `gates.fast`
+		// component lands without an allowlist entry it still RUNS —
+		// serially — but this pin forces the reviewer to make the
+		// safety call explicit instead of letting the allowlist drift.
+		const { plan } = buildPlan('fast');
+		for (const command of plan) {
+			assert.equal(
+				isParallelSafeComponent(command),
+				true,
+				`${command} is not in PARALLEL_SAFE_SCRIPTS — audit it and extend scripts/_quality-gate-parallel.mjs`,
+			);
+		}
+	});
+});
+
+describe('runParallelSegment', () => {
+	const echo = (tag) => `node -e "console.log('${tag}')"`;
+
+	it('runs gates concurrently and flushes output in plan order', async () => {
+		const output = [];
+		const items = [
+			{ index: 0, command: echo('first') },
+			{ index: 1, command: 'node -e "setTimeout(() => console.log(\'slow-second\'), 150)"' },
+			{ index: 2, command: echo('third') },
+		];
+		const code = await runParallelSegment(items, 3, {
+			jobs: 3,
+			stream: { write: (line) => output.push(line) },
+		});
+		assert.equal(code, 0);
+		const text = output.join('');
+		// Deterministic plan-order flush even though "third" finished
+		// before the delayed "slow-second".
+		assert.ok(text.indexOf('[1/3]') < text.indexOf('[2/3]'));
+		assert.ok(text.indexOf('[2/3]') < text.indexOf('[3/3]'));
+		assert.match(text, /first/);
+		assert.match(text, /slow-second/);
+		assert.match(text, /third/);
+		assert.equal((text.match(/\(\d+ms\)/g) ?? []).length, 3);
+	});
+
+	it('stops scheduling after a failure and reports the lowest plan index', async () => {
+		const output = [];
+		const items = [
+			{ index: 0, command: 'node -e "process.exit(3)"' },
+			{ index: 1, command: echo('never-scheduled') },
+			{ index: 2, command: 'node -e "process.exit(7)"' },
+		];
+		// jobs=1 inside the segment: the first failure must prevent the
+		// remaining items from ever spawning.
+		const code = await runParallelSegment(items, 3, {
+			jobs: 1,
+			stream: { write: (line) => output.push(line) },
+		});
+		assert.equal(code, 3, 'the failing step’s own exit code propagates');
+		const text = output.join('');
+		assert.match(text, /\[1\/3\]/);
+		assert.doesNotMatch(text, /\[2\/3\]/, 'later steps must not run after a failure');
+		assert.doesNotMatch(text, /never-scheduled/);
+	});
+
+	it('reports the lowest-index failure when several gates fail', async () => {
+		const items = [
+			{ index: 0, command: 'node -e "setTimeout(() => process.exit(5), 120)"' },
+			{ index: 1, command: 'node -e "process.exit(9)"' },
+		];
+		// jobs=2: both run; index 1 fails first chronologically but the
+		// reported failure must still be the lowest plan index (0).
+		const code = await runParallelSegment(items, 2, {
+			jobs: 2,
+			stream: { write: () => {} },
+		});
+		assert.equal(code, 5);
+	});
+});
+
+describe('jobs resolution', () => {
+	it('parses --jobs N, --jobs=N, the env var and the default', () => {
+		assert.deepEqual(parseJobs(['fast', '--jobs', '2'], {}), {
+			jobs: 2,
+			rest: ['fast'],
+		});
+		assert.deepEqual(parseJobs(['fast', '--jobs=3'], {}), {
+			jobs: 3,
+			rest: ['fast'],
+		});
+		assert.deepEqual(parseJobs(['fast'], { [JOBS_ENV_VAR]: '6' }), {
+			jobs: 6,
+			rest: ['fast'],
+		});
+		// An explicit flag beats the environment.
+		assert.deepEqual(parseJobs(['fast', '--jobs=2'], { [JOBS_ENV_VAR]: '6' }), {
+			jobs: 2,
+			rest: ['fast'],
+		});
+		const fallback = parseJobs(['fast'], {});
+		assert.deepEqual(fallback.rest, ['fast']);
+		assert.ok(fallback.jobs >= 1 && fallback.jobs <= DEFAULT_GATE_JOBS);
+	});
+
+	it('rejects invalid job counts as usage errors', async () => {
+		for (const argv of [
+			['fast', '--jobs'],
+			['fast', '--jobs', '0'],
+			['fast', '--jobs=-2'],
+			['fast', '--jobs=abc'],
+		]) {
+			assert.equal(await main(argv, { env: {} }), 2, argv.join(' '));
+		}
+		assert.equal(await main(['fast'], { env: { [JOBS_ENV_VAR]: 'nope' } }), 2);
 	});
 });
 
@@ -461,17 +651,21 @@ describe('the repository plan', () => {
 		assert.deepEqual(scriptNamesOf({}), []);
 	});
 
-	it('refuses usage errors and never lets --list replace a gate run', () => {
-		assert.equal(main(['smoke']), 2, 'an unknown gate is a usage error');
-		assert.equal(main(['fast', '--nope']), 2, 'an unknown option is a usage error');
+	it('refuses usage errors and never lets --list replace a gate run', async () => {
+		assert.equal(await main(['smoke'], { env: {} }), 2, 'an unknown gate is a usage error');
 		assert.equal(
-			main(['fast', '--list'], { lifecycleEvent: undefined }),
+			await main(['fast', '--nope'], { env: {} }),
+			2,
+			'an unknown option is a usage error',
+		);
+		assert.equal(
+			await main(['fast', '--list'], { lifecycleEvent: undefined, env: {} }),
 			0,
 			'a direct diagnostic listing succeeds',
 		);
 		for (const lifecycleEvent of ['validate:fast', 'validate:integration', 'validate:release']) {
 			assert.equal(
-				main(['fast', '--list'], { lifecycleEvent }),
+				await main(['fast', '--list'], { lifecycleEvent, env: {} }),
 				2,
 				`${lifecycleEvent} must run the plan, never print it`,
 			);

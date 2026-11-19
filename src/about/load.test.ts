@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadAbout } from './load';
 import { ABOUT_DATA } from './data';
+import { loadAbout } from './load';
 
 /**
  * About loader integration tests (Issue #102).

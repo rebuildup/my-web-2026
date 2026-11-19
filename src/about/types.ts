@@ -20,6 +20,8 @@
  */
 
 import type { PortfolioProject } from '../portfolio/schema';
+import type { CareerEntry } from './career';
+import type { SkillEntry } from './skills';
 
 /**
  * Identity cluster — name, current handle, current role, and the
@@ -101,7 +103,9 @@ export interface AboutData {
 export interface AboutPageData {
 	readonly identity: AboutIdentity;
 	readonly interests: readonly AboutInterest[];
+	readonly skills: readonly SkillEntry[];
 	readonly experience: readonly PortfolioProject[];
+	readonly career: readonly CareerEntry[];
 	readonly current: readonly string[];
 	readonly future: {
 		readonly active: readonly string[];

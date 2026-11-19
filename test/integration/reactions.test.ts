@@ -9,6 +9,7 @@ import {
 	listReactionsByTarget,
 	putReaction,
 	reactionImageReferenced,
+	referencedImageIds,
 } from '../../src/http/reactions/reactions';
 import { reactionsRouter } from '../../src/http/reactions/router';
 
@@ -314,6 +315,68 @@ describe('putReaction — image reference validation', () => {
 describe('reactionImageReferenced', () => {
 	it('returns false when no reaction references the image', async () => {
 		expect(await reactionImageReferenced(D1(), 'img-unused')).toBe(false);
+	});
+});
+
+describe('referencedImageIds', () => {
+	const IMG_A = '00000000-0000-0000-0000-0000000000a1';
+	const IMG_B = '00000000-0000-0000-0000-0000000000b2';
+
+	beforeEach(async () => {
+		for (const id of [IMG_A, IMG_B]) {
+			await D1()
+				.prepare(
+					`INSERT INTO reaction_images (id, content_hash, content_type, size, r2_key, uploaded_by, uploaded_at)
+           VALUES (?1, ?2, 'image/png', 1, ?3, 'test', 1)`,
+				)
+				.bind(id, `hash-${id.slice(-2)}`, `reactions/${id}.png`)
+				.run();
+		}
+	});
+
+	it('returns only the image ids referenced by kind=image reactions', async () => {
+		await putReaction(D1(), {
+			target_key: 't',
+			actor_id: 'a',
+			principal: 'p',
+			kind: 'image',
+			value: IMG_A,
+		});
+		// An emoji reaction whose value textually equals IMG_B must
+		// NOT mark IMG_B as referenced — the kind filter is the
+		// contract.
+		await putReaction(D1(), {
+			target_key: 't',
+			actor_id: 'b',
+			principal: 'p',
+			kind: 'emoji',
+			value: IMG_B,
+		});
+		const referenced = await referencedImageIds(D1(), [IMG_A, IMG_B, 'img-unused']);
+		expect(referenced.has(IMG_A)).toBe(true);
+		expect(referenced.has(IMG_B)).toBe(false);
+		expect(referenced.has('img-unused')).toBe(false);
+	});
+
+	it('returns an empty set for an empty id list and for no reactions', async () => {
+		expect((await referencedImageIds(D1(), [])).size).toBe(0);
+		expect((await referencedImageIds(D1(), [IMG_A])).size).toBe(0);
+	});
+
+	it('matches the per-image EXISTS check across many ids', async () => {
+		await putReaction(D1(), {
+			target_key: 't',
+			actor_id: 'a',
+			principal: 'p',
+			kind: 'image',
+			value: IMG_B,
+		});
+		const ids = Array.from({ length: 120 }, (_, i) => `img-${i}`);
+		ids.push(IMG_A, IMG_B);
+		const referenced = await referencedImageIds(D1(), ids);
+		for (const id of ids) {
+			expect(referenced.has(id)).toBe(await reactionImageReferenced(D1(), id));
+		}
 	});
 });
 

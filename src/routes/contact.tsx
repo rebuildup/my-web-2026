@@ -4,6 +4,8 @@ import { ContactPage } from '../contact/page';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
 
@@ -36,12 +38,18 @@ export const CONTACT_REACTIONS_TARGET = 'contact-page';
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
 		const { channels, unverifiableCount } = await getContactChannels();
-		const reactions = await getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } });
+		const [reactions, privacyNotice] = await Promise.all([
+			getHomeReactions({ data: { target: CONTACT_REACTIONS_TARGET } }),
+			// Issue #370 — compact data-notice pointer for the reaction
+			// surface below (see `src/routes/about.tsx`).
+			getCompactPrivacyNotice(),
+		]);
 		return {
 			channels,
 			empty: channels.length === 0,
 			unverifiableCount,
 			reactions,
+			privacyNotice,
 		};
 	},
 	head: () => {
@@ -66,7 +74,7 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactRoute() {
-	const { channels, empty, unverifiableCount, reactions } = Route.useLoaderData();
+	const { channels, empty, unverifiableCount, reactions, privacyNotice } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -74,6 +82,7 @@ function ContactRoute() {
 			<BreadcrumbJsonLd />
 			<ContactPage channels={channels} empty={empty} unverifiableCount={unverifiableCount} />
 			<ReactionsWidget data={reactions} />
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }

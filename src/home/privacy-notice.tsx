@@ -21,6 +21,11 @@ import type { BilingualText, PublicDataLifecycleEntry } from '../privacy/data-li
  * fact one click away on every page, including the ones that need
  * explaining rather than scrolling past.
  *
+ * Issue #370 — the `<details>` carries `id="data-notice"` so the
+ * compact one-line pointer the other reaction surfaces render
+ * (`PrivacyNoticeCompact`) can link to `/#data-notice` and land on
+ * this notice.
+ *
  * Fail-closed publication
  * -----------------------
  * Only entries with `publication.status === 'approved'` render
@@ -57,6 +62,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 	const published = entries;
 	return (
 		<details
+			id="data-notice"
 			className={css({
 				marginBlockStart: '10',
 				paddingBlockStart: '6',

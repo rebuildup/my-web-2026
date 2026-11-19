@@ -6,6 +6,8 @@ import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../../editorial/social-card';
+import { PrivacyNoticeCompact } from '../../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../../home/privacy/load';
 import { HOME_REACTIONS_TARGET, getHomeReactions } from '../../home/public';
 import { ReactionsWidget } from '../../home/reactions/widget';
 import { PortfolioList } from '../../portfolio/components';
@@ -68,13 +70,16 @@ export const Route = createFileRoute('/portfolio/')({
 		const queryFacets = effectivePortfolioFacets(view, activeFacets);
 		// Issue #1000: the two reads are independent — awaiting them in
 		// sequence added a full server-fn round trip to every list load.
-		const [page, reactions] = await Promise.all([
+		const [page, reactions, privacyNotice] = await Promise.all([
 			listPortfolioProjects({
 				data: { facets: queryFacets.length > 0 ? [...queryFacets] : undefined },
 			}),
 			getHomeReactions({ data: { target: PORTFOLIO_REACTIONS_TARGET } }),
+			// Issue #370 — compact data-notice pointer for the reaction
+			// surface on this page (see `src/routes/about.tsx`).
+			getCompactPrivacyNotice(),
 		]);
-		return { initialPage: page, activeFacets, queryFacets, reactions };
+		return { initialPage: page, activeFacets, queryFacets, reactions, privacyNotice };
 	},
 	head: ({ loaderData }) => {
 		const title = 'Portfolio — rebuildup.dev';
@@ -120,7 +125,8 @@ function PortfolioRoute() {
 }
 
 function PortfolioFacetView() {
-	const { initialPage, activeFacets, queryFacets, reactions } = Route.useLoaderData();
+	const { initialPage, activeFacets, queryFacets, reactions, privacyNotice } =
+		Route.useLoaderData();
 	// Issue #1048: the exhibition view is presentation layered on the
 	// catalogue query the loader already ran for the effective facet
 	// set — it is read from the validated search params here rather
@@ -173,6 +179,10 @@ function PortfolioFacetView() {
 				extra={extra}
 				onLoadMore={onLoadMore}
 			/>
+			{/* Issue #370 — the widget sits above the list on this
+			    route, so the notice goes at the foot of the page
+			    instead, where the reader finishes. */}
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }

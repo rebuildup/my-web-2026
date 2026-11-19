@@ -155,6 +155,9 @@ describe('PrivacyNotice', () => {
 		// notice and would have to be announced as such.
 		const html = renderNotice();
 		expect(html.startsWith('<details')).toBe(true);
+		// Issue #370 — the compact pointers on the other reaction
+		// surfaces link to `/#data-notice`; the anchor has to exist.
+		expect(html).toContain('id="data-notice"');
 		expect(html).toContain('<summary');
 		expect(html).not.toContain('<script');
 		expect(html).not.toContain('aria-expanded');

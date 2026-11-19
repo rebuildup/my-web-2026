@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 88 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -555,7 +555,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
@@ -812,5 +812,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

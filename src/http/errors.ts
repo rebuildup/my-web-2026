@@ -171,3 +171,31 @@ export function publicErrorResponse(
 	};
 	return c.json(body, options.status);
 }
+
+/**
+ * The dispatch-level failure body (Issue #995).
+ *
+ * `publicErrorResponse` needs a Hono context, which the Worker
+ * entrypoint does not have when the throw happened BEFORE the
+ * boundary middleware ran (or inside `externalBoundary.fetch`
+ * itself). This builder produces the same `PublicErrorBody` shape
+ * from a minted correlation id alone, so a dispatch-level 500 on an
+ * external-boundary path answers with the documented envelope
+ * instead of the runtime's bare text response. The id is always
+ * Worker-minted here — there is no client header to echo — so the
+ * `X-Request-Id` header and the body field agree by construction.
+ */
+export function dispatchInternalErrorResponse(requestId: string): Response {
+	const body: PublicErrorBody = {
+		error: 'internal_error',
+		message: PUBLIC_MESSAGES.internal_error,
+		request_id: requestId,
+	};
+	return new Response(JSON.stringify(body), {
+		status: 500,
+		headers: {
+			'content-type': 'application/json; charset=utf-8',
+			'X-Request-Id': requestId,
+		},
+	});
+}

@@ -5,12 +5,17 @@
 // CSRF middleware active; do NOT define a custom `startInstance` here.
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
-import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
+import {
+	createSsrFailureResponse,
+	settleSsrDocumentResponse,
+} from './editorial/error-states/ssr-fallback';
 import { isAdminPath } from './http/admin-path';
 import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
+import { dispatchInternalErrorResponse } from './http/errors';
 import { externalBoundary } from './http/hono';
 import { classifySurface, createAnomalyMonitor } from './http/middleware/anomaly-monitor';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
+import { generateRequestId } from './http/middleware/request-id';
 import { applySecurityHeaders } from './http/security-headers';
 import { createAuditLogger } from './logging/logger';
 import { toolRouteSecurityPolicy } from './tools/registry';
@@ -611,10 +616,13 @@ export default {
 			anomalyAuditLogger.audit('dispatch-failure', {
 				errorName: error instanceof Error ? error.name : 'unknown',
 			});
-			response = new Response('Internal Server Error', {
-				status: 500,
-				headers: { 'content-type': 'text/plain; charset=utf-8' },
-			});
+			// The fallback answers in the failed surface's own contract:
+			// the external boundary gets the documented JSON envelope
+			// (`src/http/errors.ts`), every other path gets the #501
+			// failure document — never the runtime's bare text 500.
+			response = matchesExternalBoundary(url.pathname)
+				? dispatchInternalErrorResponse(generateRequestId())
+				: createSsrFailureResponse(request);
 		}
 		observeRequestAnomaly(url.pathname, response.status);
 		// Issue #449: security headers are applied AFTER the dispatch so

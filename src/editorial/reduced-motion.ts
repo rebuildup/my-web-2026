@@ -123,6 +123,20 @@ export const PET_REACTION_MOTION = 'pet-reaction';
 export const AD_REVEAL_MOTION = 'ad-reveal';
 
 /**
+ * The `data-motion` value the melting-face motif's drip bob uses
+ * (Issue #522, `src/personal/melting-face/MeltingFace.tsx`).
+ *
+ * The motif's placeholder mark carries one slow decorative drip
+ * animation; the head, the eyes, the mouth and the alt text are the
+ * resting document and are identical in both modes. Under reduced
+ * motion the component emits no `animation-name` at all, so the
+ * reduced frame IS the resting frame — the same contract as
+ * `PET_REACTION_MOTION`, including the stylesheet backstop for markup
+ * produced without a client preference read.
+ */
+export const MELTING_FACE_MOTION = 'melting-face';
+
+/**
  * The `data-motion` value the in-creative attention pulses use
  * (Issue #925): the video spot's play affordance and the playable
  * unit's TRY IT badge breathe once per cycle to pull the eye the way

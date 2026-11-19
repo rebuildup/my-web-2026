@@ -414,3 +414,20 @@
 		animation: none !important;
 	}
 }
+
+/*
+ * Layer 2, the melting-face motif's drip bob (Issue #522,
+ * `animationName: meltingFaceDrip` in
+ * `src/personal/melting-face/MeltingFace.tsx`). The drip group is the
+ * only animated part; the resting frame — head, eyes, mouth, alt text
+ * — is identical in both modes, so the opt-out removes decoration,
+ * never information. The component branch already emits no
+ * `animation-name` when the preference is on; this selector is the
+ * stylesheet half of the same decision, paired with the contract
+ * constant `MELTING_FACE_MOTION`.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="melting-face"]) [data-motion-part="drip"] {
+		animation: none !important;
+	}
+}

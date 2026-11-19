@@ -3464,6 +3464,7 @@
 					"src/home/activity/github-activity.json",
 					"src/home/composer.stories.tsx",
 					"src/home/footer.tsx",
+					"src/personal/manifesto/Manifesto.preview.ts",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -3988,6 +3989,7 @@
 				"identifier": false,
 				"files": [
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
+					"src/personal/manifesto/Manifesto.preview.ts",
 					"src/routes/portfolio/$slug.tsx",
 					"src/routes/portfolio/index.tsx"
 				]
@@ -5902,13 +5904,27 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: http://www.w3.org/1999/xlink"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+			}
+		]
 	}
 }

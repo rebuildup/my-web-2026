@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -1243,6 +1245,121 @@
 				]
 			},
 			"note": "The time-sensitive claim is the current student status in the hero secondary paragraph (src/home/hero.tsx, the JSX text node that biome wraps across two lines, so the recorded expression is the first wrapped fragment). Checked against docs/personal/domain.md §1 (宇部工業高等専門学校 制御情報工学科 本科4年, 卒業予定 2028-03) and the predecessor site history (my-web-2025 /tmp source, 宇部高専 在学中). The status decays at graduation, which is exactly what this registry exists to catch; owner confirmation is still pending."
+		},
+		{
+			"id": "career-state-current-date-label",
+			"path": "src/about/career.ts",
+			"expression": "現在",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/389",
+						"note": "Issue #389 migrated the legacy history timeline; this record covers the new committed data file and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "dateLabel of the current Temporal State entry (kosen-enrolled-current). It names the open period of enrollment, not a metric; it stays true until the state is closed by a graduation record."
+		},
+		{
+			"id": "career-state-current-verification-note-v2",
+			"path": "src/about/career.ts",
+			"expression": "公開済みの about identity と同一の現在状態。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/389",
+						"note": "Issue #389 migrated the legacy history timeline; this record covers the new committed data file and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Internal verification note on the enrollment state entry. It is not rendered publicly (CareerTimeline renders only the status badge); it asserts the entry restates the same current state as the published about identity."
+		},
+		{
+			"id": "career-timeline-kind-state-label",
+			"path": "src/about/components/CareerTimeline.tsx",
+			"expression": "現在の状態",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/389",
+						"note": "Issue #389 migrated the legacy history timeline; this record covers the new component label and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Kind badge label for Temporal State entries. Fixed vocabulary (event/state/planned), not a time-sensitive claim."
+		},
+		{
+			"id": "skills-unity-past-summary",
+			"path": "src/about/skills.ts",
+			"expression": "U-16 プログラミングコンテスト向けのゲーム制作で使用。現在の制作 toolchain には含まれない。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/391",
+						"note": "Issue #391 rebuilt the skills list as evidence-linked items; this record covers the new committed data file and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Summary of the past-use Unity entry. The claim is that Unity is not in the current toolchain; it must be revisited if Unity work resumes."
+		},
+		{
+			"id": "skills-usage-current-label",
+			"path": "src/about/skills.ts",
+			"expression": "現在使用",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/391",
+						"note": "Issue #391 rebuilt the skills list as evidence-linked items; this record covers the new usage-group label and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Usage-group label splitting the skills list into current vs past. Fixed vocabulary; re-check when the toolchain changes."
 		}
 	]
 }

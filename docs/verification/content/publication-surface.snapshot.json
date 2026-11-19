@@ -3367,6 +3367,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/about/career.ts",
 					"src/contact/channels.json",
 					"src/home/activity/github-activity.json",
 					"src/home/footer.tsx",
@@ -5664,33 +5665,42 @@
 				"files": [
 					"src/contact/channels.json"
 				]
+			},
+			{
+				"url": "https://yusuke-kim.com/about",
+				"host": "yusuke-kim.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/career.ts",
+					"src/about/skills.ts"
+				]
 			}
 		]
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"https://"
+		"addedExternalUrls": [
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
-		"removedExternalHosts": [
-			""
-		],
+		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://"
+				"message": "External URL added: http://www.w3.org/1999/xlink"
 			},
 			{
-				"code": "W001 external-host-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External host no longer referenced: "
+				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 			}
 		]
 	}

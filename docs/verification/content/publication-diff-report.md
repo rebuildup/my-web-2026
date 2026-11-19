@@ -218,9 +218,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Removed external hosts (1)
+### Removed external hosts (0)
 
-- ``
+- (none)
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -546,7 +546,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
@@ -788,9 +788,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://youtube.com/shorts/o9GxF_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtube.com/shorts/rq2WlOQa9zE` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
+| `https://yusuke-kim.com/about` | `yusuke-kim.com` | external | `src/about/career.ts`, `src/about/skills.ts` |
 
 ## Findings in the approved transition
 
-- **WARN** `W003 external-url-removed` External URL removed: https://
-- **WARN** `W001 external-host-removed` External host no longer referenced: 
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

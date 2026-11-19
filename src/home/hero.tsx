@@ -60,7 +60,8 @@ export function Hero() {
 					})}
 					data-testid="home-hero-lead"
 				>
-					個人の Web プラットフォームを、毎日作り直している。
+					木村友亮 / samuido です。ソフトウェアを作りながら、映像やデザインも作る developer /
+					creator。
 				</p>
 				<p
 					lang="ja"
@@ -75,7 +76,9 @@ export function Hero() {
 						textWrap: 'pretty',
 					})}
 				>
-					完成していないから、毎日更新されている。開発・制作・活動の記録と、公開中のツール、移行中の制作物をこのページに集約しています。
+					After Effects 向けのツールを BOOTH で配布し、高専祭の公式サイトを作り、MV
+					などの映像制作も受けてきた。今は宇部高専 制御情報工学科の4年生として、Web
+					アプリを中心に制作を続けている。
 				</p>
 				<div className={css({ marginBlockStart: '6', display: 'flex', gap: '6' })}>
 					<a

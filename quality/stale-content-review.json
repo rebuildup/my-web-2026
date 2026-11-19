@@ -1215,6 +1215,34 @@
 				]
 			},
 			"note": "Empty-state description of /portfolio. The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact per docs/verification/copy/migration-state-measurement-2026-11-18.md."
+		},
+		{
+			"id": "home-hero-secondary-current-status",
+			"path": "src/home/hero.tsx",
+			"expression": "などの映像制作も受けてきた。今は宇部高専 制御情報工学科の4年生として、Web",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "01605e347e16d7e4e8bbb342c7fd0978a63834ce",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/388",
+						"note": "the Issue tracking the About self-introduction migration this hero copy belongs to"
+					}
+				]
+			},
+			"note": "The time-sensitive claim is the current student status in the hero secondary paragraph (src/home/hero.tsx, the JSX text node that biome wraps across two lines, so the recorded expression is the first wrapped fragment). Checked against docs/personal/domain.md §1 (宇部工業高等専門学校 制御情報工学科 本科4年, 卒業予定 2028-03) and the predecessor site history (my-web-2025 /tmp source, 宇部高専 在学中). The status decays at graduation, which is exactly what this registry exists to catch; owner confirmation is still pending."
 		}
 	]
 }

@@ -2300,20 +2300,24 @@
 			"title": "feat(portfolio): 設計判断と試行錯誤を記録する作品ケーススタディ要素",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/portfolio/components/ にケーススタディ element は存在しない (EmptyState / FacetFilter / Markdown / PortfolioDetail / PortfolioList / PortfolioMedia / ProjectCard のみ)",
-				"docs/verification/vision/growth-case-study-preview.md",
-				"git grep -ln \"ケーススタディ\\|case study\" -- src/ → 該当の portfolio 実装なし"
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.stories.tsx",
+				"src/portfolio/fixtures/case-study.ts",
+				"docs/verification/portfolio/decision-case-study.png",
+				"docs/verification/portfolio/decision-case-study.md",
+				"scripts/capture-portfolio-case-study.mjs",
+				"#1060"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "「成長/思い出」の文書化 (Issue #528 周辺) は別途実装済みだが、Portfolio のケーススタディ要素は未実装。",
-			"missing": "作品 1 件について目的・選択肢・決定・検証結果を示す case study 表示、確定事実/当時の推測/現在の評価の区別、Storybook での独立描画、docs/verification/portfolio/decision-case-study.png 相当の証跡。"
+			"action": "closed",
+			"note": "2026-10-31 sweep で未実装として reopen された後、PR #1060 で Issue のスコープどおり単独 fixture/Storybook/文書 preview として実装（confirmed と period-estimate の型分離、未公開素材不使用、axe manifest 登録、version literal 違反も修正済み）。2026-11-19 に受入条件を照合して close。/portfolio/[slug] への mount は D1 schema と公開承認済みコピーが前提の別作業であり本 Issue の完了条件外。",
+			"missing": null
 		},
 		{
 			"issue": 520,
@@ -2404,23 +2408,26 @@
 			"title": "feat(identity): 名前・ハンドルの対応を説明する独立表示コンポーネント",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"AboutPage.tsx",
-				"index.ts",
-				"home/hero.tsx",
-				"home/footer.tsx",
-				"home/mark.tsx",
-				"No cross-referenced PR exists for this issue"
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/personal/handle-map/HandleMap.stories.tsx",
+				"src/personal/handle-map/HandleMap.preview.ts",
+				"docs/verification/identity/handle-map-story.png",
+				"docs/verification/identity/handle-map-story.md",
+				"docs/personal/handle-map.md",
+				"scripts/capture-handle-map.mjs",
+				"scripts/check-handle-map-preview-parity.test.mjs",
+				"#1061"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "同一 Bala 群の #516/#520/#528 は preview 付きで実装済みなのに、この一件だけ成果物が残っていない。",
-			"missing": "各名前がどの側面を指すかを示す legend コンポーネントと Storybook、未公開アカウントをリンクにしない制約の実装。"
+			"action": "closed",
+			"note": "2026-10-31 sweep で未実装として reopen された後、PR #1061 で Issue のスコープどおり表示位置未確定の独立コンポーネントとして実装（公開承認済み名称のみ、非公開アカウントのリンク創作なし、preview parity test 付き）。2026-11-19 に受入条件を照合して close。",
+			"missing": null
 		},
 		{
 			"issue": 525,

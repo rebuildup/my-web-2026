@@ -3907,6 +3907,75 @@
 			"action": "closed",
 			"note": "記事案と LP 案の 2 容れ物を同一データで比較する単独 preview を src/personal obligation 内に実装。Miro の価値を独立した問い 2 件として保持し、典拠は公開記録（ADR-0017・my-web-2026 基盤再構築）のみ。狭幅 480px/広幅 1440px で 4 枚撮影、誤読・秘匿情報チェックを verification doc に記録。route 未接続・公開配置は保留。",
 			"missing": "公開 route への配置判断、各問いへの回答（#512/#514 の領域）、公開昇格時の copy editorial approval。"
+		},
+		{
+			"issue": 1044,
+			"title": "fix(home): Melty の待機状態が静止フレーム1枚のままで「生きている」挙動になっていない",
+			"closedAt": "2026-11-19",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/editorial/pet/PetSprite.tsx",
+				"scripts/build-pet-sprites.mjs",
+				"public/pet/idle.webp",
+				"docs/domain/pet-companion.md",
+				"docs/verification/legal/pet-melty-rights-review.md",
+				"quality/asset-license-inventory.json",
+				"#1046"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "idle ポーズがアトラス row 0 のフレーム 0 のみを切り出した静止 WebP だった欠陥を特定し、6 フレームストリップ（1152x208）へ再生成。PetSprite に petIdle 3000ms steps(6) ループを追加し reduced-motion では静止を維持。権利 inventory・domain 文書・検証記録を同期。",
+			"missing": null
+		},
+		{
+			"issue": 1045,
+			"title": "fix(copy): 非公開プロジェクトの匿名化ルール説明が公開文言に露出している",
+			"closedAt": "2026-11-19",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/home/activity/snapshot.ts",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"#1047"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "「（名称・URL は非表示）」「非公開ソース（名称非表示）」等の内部ルール説明を公開文言から除去し、観測事実のみを述べる形に修正。公開日本語コピーの変更のため copy editorial approval は pending 記録（owner 承認ではない）。",
+			"missing": "公開コピーの owner editorial approval（pending 記録済み、技術的 CI は通過）。"
+		},
+		{
+			"issue": 1048,
+			"title": "feat(portfolio): 旧サイトの3展示方式（Develop / Video / Video & Design）を2026版へ復元する",
+			"closedAt": "2026-11-19",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/portfolio/views.ts",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/DesignView.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx",
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/routes/portfolio/index.tsx",
+				"#1050"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "my-web-2025 の /portfolio/gallery/{develop,video,video&design,all} に対応する 3 展示方式を ?view= クエリで実装。facet scope を旧ギャラリーの意味論へ対応付け、pagination の facet scan を bounded に拡張（#997 系）。本番 ?view=all/develop/video/design 全て 200・実メディア 127 URL 全件 200・60 slug 全件 200・YouTube facade（youtube-nocookie iframe）を実測確認。",
+			"missing": "2025 版との pixel 級の視覚差分の網羅的比較は RC 包括 QA で実施。"
 		}
 	]
 }

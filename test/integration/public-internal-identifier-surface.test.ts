@@ -1,7 +1,9 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
+import routeCoverage from '../../quality/route-coverage.json';
 import { findIdentifiers } from '../../scripts/check-public-internal-identifiers.mjs';
+import toolsManifest from '../../src/tools/manifest.json';
 import {
 	applyPortfolioSchema,
 	clearPortfolioTables,
@@ -26,26 +28,44 @@ import { applyReactionsSchema } from './fixtures/reactions-d1';
  *
  * `/admin/**` is absent: it sits behind the auth boundary and its
  * content is owner-approved by definition (same scope rule as
- * `privacy-projection.test.ts`).
+ * `privacy-projection.test.ts`). The one exception is
+ * `/admin/login`, which `quality/route-coverage.json` declares
+ * `audience: public` — it is scanned like any other public document.
  *
- * The route list below must name every public route file under
- * `src/routes/**`; a new public route without a row here is a
- * coverage hole.
+ * The scanned set is DERIVED, not hand-listed: static public routes
+ * come from `quality/route-coverage.json` (the same roster
+ * `routes:quality:check` keeps honest against the route tree), and
+ * `/tools/<slug>` is expanded over every slug in
+ * `src/tools/manifest.json` — a `host_disabled` or `blocked` Tool
+ * still serializes loader state into `$_TSR`, which is exactly the
+ * #836 / #994 defect class. A coverage test below fails when a
+ * public route exists that this suite does not fetch.
  */
 const PUBLIC_FIXTURE_SLUG = 'identifier-fixture-public';
 
+interface CoverageRoute {
+	readonly audience?: string;
+	readonly addressable?: boolean;
+	readonly path?: string;
+}
+
+const PUBLIC_ROUTES = (routeCoverage.routes as readonly CoverageRoute[]).filter(
+	(route) => route.audience === 'public' && route.addressable === true,
+);
+
+/** Concrete documents fetched for each dynamic (`$param`) public route. */
+const DYNAMIC_ROUTE_SAMPLES: Readonly<Record<string, readonly string[]>> = {
+	'/portfolio/$slug': [`/portfolio/${PUBLIC_FIXTURE_SLUG}`],
+	'/tools/$slug': toolsManifest.tools.map((tool) => `/tools/${tool.slug}`),
+};
+
+const STATIC_PUBLIC_PATHS = PUBLIC_ROUTES.filter(
+	(route) => typeof route.path === 'string' && !route.path.includes('$'),
+).map((route) => route.path as string);
+
 const PUBLIC_SSR_PATHS = [
-	'/',
-	'/about',
-	'/contact',
-	'/portfolio',
-	`/portfolio/${PUBLIC_FIXTURE_SLUG}`,
-	'/tools',
-	'/tools/text-counter',
-	'/tools/prototype',
-	'/design-system',
-	'/keyboard',
-	'/projects/dotfiles',
+	...STATIC_PUBLIC_PATHS,
+	...Object.values(DYNAMIC_ROUTE_SAMPLES).flat(),
 ] as const;
 
 /**
@@ -136,6 +156,24 @@ describe('public surface — no internal identifiers reach rendered bytes', () =
 			'<html><body><p>Tools, portfolio, keyboard layouts and contact.</p><a href="/portfolio">Works</a></body></html>',
 		);
 		expect(hits).toEqual([]);
+	});
+
+	it('coverage: every public addressable route in the roster is fetched', () => {
+		const fetched = new Set<string>(PUBLIC_SSR_PATHS);
+		for (const route of PUBLIC_ROUTES) {
+			const path = route.path as string;
+			if (!path.includes('$')) {
+				expect(fetched.has(path), `public route ${path} has no scanned document`).toBe(true);
+				continue;
+			}
+			const samples = DYNAMIC_ROUTE_SAMPLES[path];
+			expect(samples, `dynamic public route ${path} declares no scanned sample`).toBeDefined();
+			for (const sample of samples ?? []) {
+				expect(fetched.has(sample), `dynamic route ${path} sample ${sample} is not fetched`).toBe(
+					true,
+				);
+			}
+		}
 	});
 
 	for (const path of PUBLIC_SSR_PATHS) {

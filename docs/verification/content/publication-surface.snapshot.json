@@ -835,7 +835,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -844,7 +845,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -3108,7 +3110,8 @@
 					"src/about/data.ts",
 					"src/about/links.ts",
 					"src/contact/channels.json",
-					"src/home/guide/ledger.ts"
+					"src/home/guide/ledger.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -3853,7 +3856,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4059,7 +4063,8 @@
 				"identifier": false,
 				"files": [
 					"src/about/data.ts",
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4241,7 +4246,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4377,7 +4383,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5115,7 +5122,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5178,7 +5186,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5458,7 +5467,8 @@
 				"identifier": false,
 				"files": [
 					"src/about/data.ts",
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5863,7 +5873,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/contact/channels.json"
+					"src/contact/channels.json",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5882,7 +5893,8 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/links.ts"
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			}
 		]

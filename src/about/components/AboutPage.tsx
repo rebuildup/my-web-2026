@@ -7,7 +7,11 @@ import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
+import type { CareerEntry } from '../career';
+import type { SkillEntry } from '../skills';
 import type { AboutPageData } from '../types';
+import { CareerTimeline } from './CareerTimeline';
+import { SkillsList } from './SkillsList';
 
 /**
  * AboutPage — `/about` route surface (presentation only).
@@ -16,9 +20,11 @@ import type { AboutPageData } from '../types';
  *   - Hero: identity (name + handle + role)
  *   - 01 — Identity      (name / handle / role cluster as data)
  *   - 02 — Interests     (the throughlines that connect portfolio items)
- *   - 03 — Experience    (curated narrative subset of /portfolio)
- *   - 04 — Current       (today)
- *   - 05 — Future        (active vs parked)
+ *   - 03 — Skills        (evidence-linked toolchain, current vs past)
+ *   - 04 — Experience    (curated narrative subset of /portfolio)
+ *   - 05 — Career        (verified history timeline, Issue #389)
+ *   - 06 — Current       (today)
+ *   - 07 — Future        (active vs parked)
  *   - Footer             (finds-me-elsewhere external handles)
  *
  * The companion character (Issue #274) is not a section and owns no
@@ -116,7 +122,8 @@ const skipLinkStyle = css({
 });
 
 export function AboutPage({ data }: AboutPageProps) {
-	const { identity, interests, experience, current, future, externalHandles } = data;
+	const { identity, interests, skills, experience, career, current, future, externalHandles } =
+		data;
 	return (
 		// Issue #767 — the fixed companion occupies the bottom-right
 		// corner; the page reserves that corridor so its text never
@@ -129,7 +136,9 @@ export function AboutPage({ data }: AboutPageProps) {
 			<main id="about-main">
 				<IdentitySection identity={identity} />
 				<InterestsSection interests={interests} />
+				<SkillsSection skills={skills} />
 				<ExperienceSection projects={experience} />
+				<CareerSection entries={career} />
 				<CurrentSection items={current} />
 				<FutureSection active={future.active} parked={future.parked} />
 			</main>
@@ -151,7 +160,15 @@ export function AboutPage({ data }: AboutPageProps) {
  * character in the text layer any more (the rail itself is
  * `aria-hidden`, so the sequence stays a visual cue).
  */
-const NARRATIVE_ORDER = ['identity', 'interests', 'experience', 'current', 'future'] as const;
+const NARRATIVE_ORDER = [
+	'identity',
+	'interests',
+	'skills',
+	'experience',
+	'career',
+	'current',
+	'future',
+] as const;
 
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
@@ -428,6 +445,28 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 }
 
 /* -------------------------------------------------------------------------- */
+/* Skills section                                                             */
+/* -------------------------------------------------------------------------- */
+
+function SkillsSection({ skills }: { skills: readonly SkillEntry[] }) {
+	return (
+		<section aria-labelledby="about-section-skills" className={sectionStyle}>
+			<Container>
+				<SectionHeading
+					id="about-section-skills"
+					eyebrow="03 — Skills"
+					title="技術 / Skills"
+					description="制作記録で裏付けられた技術だけを掲載。習熟度の数値化はしません。"
+					variant="spread"
+				>
+					<SkillsList skills={skills} />
+				</SectionHeading>
+			</Container>
+		</section>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Experience section                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -437,7 +476,7 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 			<Container>
 				<SectionHeading
 					id="about-section-experience"
-					eyebrow="03 — Experience"
+					eyebrow="04 — Experience"
 					title="経験 / Selected work"
 					description="公開作品の中から語り順で選んだ subset。canonical list は /portfolio 側。"
 					variant="spread"
@@ -629,6 +668,28 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Career section                                                             */
+/* -------------------------------------------------------------------------- */
+
+function CareerSection({ entries }: { entries: readonly CareerEntry[] }) {
+	return (
+		<section aria-labelledby="about-section-career" className={sectionStyle}>
+			<Container>
+				<SectionHeading
+					id="about-section-career"
+					eyebrow="05 — Career"
+					title="経歴 / History"
+					description="旧サイトの年表を出典つきで再構成し、確認済みの項目だけを掲載しています。"
+					variant="spread"
+				>
+					<CareerTimeline entries={entries} />
+				</SectionHeading>
+			</Container>
+		</section>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Current section                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -638,7 +699,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 			<Container>
 				<SectionHeading
 					id="about-section-current"
-					eyebrow="04 — Current"
+					eyebrow="06 — Current"
 					title="現在 / Today"
 					description="今、時間を割いていること。半年程度の freshness を想定。"
 					variant="spread"
@@ -704,7 +765,7 @@ function FutureSection({
 			<Container>
 				<SectionHeading
 					id="about-section-future"
-					eyebrow="05 — Future"
+					eyebrow="07 — Future"
 					title="今後 / Active & parked"
 					description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
 					variant="spread"
@@ -840,7 +901,7 @@ function ExternalHandlesFooter({
 								textTransform: 'uppercase',
 							})}
 						>
-							06 — Finds me elsewhere
+							08 — Finds me elsewhere
 						</span>
 						<h2
 							id="about-footer-heading"

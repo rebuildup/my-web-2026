@@ -2,6 +2,7 @@ import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '../../../test/helpers/better-auth';
 import type { AdminSession } from '../../admin/auth/load';
+import { resolveHomeDataSource } from '../status/data-source';
 import {
 	HOME_REACTIONS_TARGET,
 	addHomeReactionImpl,
@@ -671,6 +672,66 @@ describe('home reactions — server-fn impls', () => {
 		);
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
 		expect(fetcher).not.toHaveBeenCalled();
+	});
+
+	// Issue #998 contract: while the runtime is bound to production
+	// data (read-only), BOTH reaction mutations must refuse before any
+	// write — the upstream PUT/DELETE AND the visitor auto-register
+	// `INSERT INTO reaction_emoji_catalog` that `addHomeReactionImpl`
+	// performs directly against D1.
+	describe('production-readonly write refusal (Issue #998)', () => {
+		it('addHomeReactionImpl refuses and writes no catalog row', async () => {
+			const dataSource = await resolveHomeDataSource({
+				MY_WEB_2026_DATA_SOURCE: 'production-readonly',
+			});
+			expect(dataSource.write_policy).toBe('read-only');
+			const fetcher = vi.fn();
+			const result = await addHomeReactionImpl(
+				{
+					MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+					DB: env.DB,
+				},
+				{ proto: 'https', cookie: undefined },
+				{
+					target: 'home-page',
+					kind: 'emoji',
+					value: 'unicorn',
+					codepoint: '🦄',
+				},
+				TEST_ACTOR_ID,
+				'https://example.com',
+				fetcher as unknown as typeof fetch,
+				dataSource,
+			);
+			expect(result).toEqual({ ok: false, reason: 'production_readonly' });
+			expect(fetcher).not.toHaveBeenCalled();
+			// The direct D1 write must not have happened either.
+			const row = await env.DB.prepare('SELECT slug FROM reaction_emoji_catalog WHERE slug = ?1')
+				.bind('unicorn')
+				.first();
+			expect(row).toBeNull();
+		});
+
+		it('removeHomeReactionImpl refuses', async () => {
+			const dataSource = await resolveHomeDataSource({
+				MY_WEB_2026_DATA_SOURCE: 'production-readonly',
+			});
+			const fetcher = vi.fn();
+			const result = await removeHomeReactionImpl(
+				{
+					MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+					DB: env.DB,
+				},
+				{ proto: 'https', cookie: undefined },
+				{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+				TEST_ACTOR_ID,
+				'https://example.com',
+				fetcher as unknown as typeof fetch,
+				dataSource,
+			);
+			expect(result).toEqual({ ok: false, reason: 'production_readonly' });
+			expect(fetcher).not.toHaveBeenCalled();
+		});
 	});
 
 	it('addHomeReactionImpl rejects a malformed actor id with reason="invalid_body"', async () => {

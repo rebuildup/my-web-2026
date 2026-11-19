@@ -151,6 +151,18 @@ export default defineConfig({
 					'0%': { clipPath: 'inset(0 100% 0 0)' },
 					'100%': { clipPath: 'inset(0 0 0 0)' },
 				},
+				// Issue #522 — the melting-face motif's drip bob
+				// (`src/personal/melting-face/MeltingFace.tsx`). A slow
+				// two-pixel sink on the drip shapes only: the head,
+				// eyes and mouth never move, so the resting frame
+				// carries the whole meaning. Opt-out at render time
+				// through `usePrefersReducedMotion` and at the
+				// stylesheet layer through the `melting-face`
+				// data-motion hook.
+				meltingFaceDrip: {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(2.5px)' },
+				},
 			},
 		},
 	},

@@ -3637,6 +3637,256 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1053",
+			"pr": 1053,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-18",
+			"decision": "pending",
+			"fingerprint": "sha256:f5cd94fd2227dace69d8136e06f32a57438b585ff5599e6a4f5e649bdf72ada7",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "GitHub 活動カードの新規・変更公開日本語 copy 25 セグメントをレビュー。イベント type ラベルは GitHub Events API の値に対応する短い名詞で、測定値ブロックは authored commits / PRs の実測値のみを述べ、未測定を 0 と偽らない構成。時制を主張する語（現在/最新/今日/現時点）は含まない。",
+				"disposition": "提案は上記 comparisons の各 note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "コミット ${measure.commits} 件",
+					"text": "コミット ${measure.commits} 件",
+					"verdict": "intentional",
+					"note": "測定値の件数表記（コミット N 件 / PR N 件）。snapshot の activity.commits / prs の実測値のみを表示し、未測定は 0 ではなく欠落とする既存の正直な縮退規則に従う。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "PR ${measure.pullRequests} 件",
+					"text": "PR ${measure.pullRequests} 件",
+					"verdict": "intentional",
+					"note": "測定値の件数表記（コミット N 件 / PR N 件）。snapshot の activity.commits / prs の実測値のみを表示し、未測定は 0 ではなく欠落とする既存の正直な縮退規則に従う。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "・",
+					"text": "・",
+					"verdict": "intentional",
+					"note": "測定値行の区切り記号（コミット件数と PR 件数の併記）。装飾ではなく列挙の区切りで、意味を持たない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件",
+					"text": "期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件",
+					"verdict": "intentional",
+					"note": "Issue #967 の測定値（authored commits / PRs）をカードに表示するための小見出し。snapshot の windowDays に基づく期間表現で「現在」「最新」等の時制主張を含まない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "コミットコメント",
+					"text": "コミットコメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "作成",
+					"text": "作成",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "削除",
+					"text": "削除",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイキー",
+					"text": "デプロイキー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイ",
+					"text": "デプロイ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイ状態",
+					"text": "デプロイ状態",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ダウンロード",
+					"text": "ダウンロード",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "フォーク",
+					"text": "フォーク",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "Issue コメント",
+					"text": "Issue コメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ラベル",
+					"text": "ラベル",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "メンバー",
+					"text": "メンバー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "マイルストーン",
+					"text": "マイルストーン",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "公開",
+					"text": "公開",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "PR レビューコメント",
+					"text": "PR レビューコメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "PR レビュー",
+					"text": "PR レビュー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "プッシュ",
+					"text": "プッシュ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "リリース",
+					"text": "リリース",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "リポジトリ",
+					"text": "リポジトリ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ステータス",
+					"text": "ステータス",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "チーム追加",
+					"text": "チーム追加",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "スター",
+					"text": "スター",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/319",
+						"note": "本 PR の実装対象（GitHub 公開活動の表示）。"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/967",
+						"note": "測定値（authored commits / PRs）の集計と表示の要件。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1053",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/GitHubActivityCard.tsx",
+						"note": "変更対象の公開 copy を持つカード。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/event-labels.ts",
+						"note": "変更対象のイベント type ラベル写像。"
+					}
+				]
+			}
 		}
 	]
 }

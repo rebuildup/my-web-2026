@@ -147,7 +147,9 @@ export function toProject(record: NotionRecord): PortfolioProject | null {
 		facets: record.facets as readonly PortfolioFacet[],
 		technologies: record.technologies,
 		visibility: record.visibility,
-		status: record.status,
+		// `isPublicRecord` already proved status === 'published';
+		// state the narrowed value literally rather than casting.
+		status: 'published',
 		evidenceStatus: recordEvidenceStatus(record),
 		pinned: record.pinned,
 		displayOrder: record.displayOrder,

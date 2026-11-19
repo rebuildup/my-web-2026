@@ -9,7 +9,7 @@ import {
 	listImages,
 	uploadImage,
 } from '../../http/reactions/images';
-import { reactionImageReferenced } from '../../http/reactions/reactions';
+import { reactionImageReferenced, referencedImageIds } from '../../http/reactions/reactions';
 import { ALLOWED_IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from '../../http/reactions/schema';
 import type { AllowedImageContentType, ReactionImageRow } from '../../http/reactions/schema';
 import { createAuditLogger } from '../../logging/logger';
@@ -84,12 +84,11 @@ export const listReactionImages = createServerFn({ method: 'GET' })
 	.handler(async (): Promise<readonly AdminImage[]> => {
 		await requireAdmin();
 		const rows = await listImages(env.DB);
-		const annotated: AdminImage[] = [];
-		for (const row of rows) {
-			const referenced = await reactionImageReferenced(env.DB, row.id);
-			annotated.push(toAdminImage(row, referenced));
-		}
-		return annotated;
+		const referenced = await referencedImageIds(
+			env.DB,
+			rows.map((row) => row.id),
+		);
+		return rows.map((row) => toAdminImage(row, referenced.has(row.id)));
 	});
 
 export const uploadReactionImage = createServerFn({ method: 'POST' })

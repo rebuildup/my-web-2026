@@ -179,6 +179,38 @@ export async function reactionImageReferenced(db: D1Database, imageId: string): 
 }
 
 /**
+ * Bulk variant of `reactionImageReferenced` — returns the subset
+ * of `imageIds` that at least one `kind = 'image'` reaction row
+ * references. Used by the admin image list to annotate `referenced`
+ * on every row in one (or a few chunked) query instead of one
+ * query per image.
+ *
+ * Ids are chunked below SQLite's bind-parameter limit; `DISTINCT
+ * value` collapses to the same set the per-image EXISTS check
+ * would produce.
+ */
+export async function referencedImageIds(
+	db: D1Database,
+	imageIds: readonly string[],
+): Promise<ReadonlySet<string>> {
+	const referenced = new Set<string>();
+	const CHUNK = 90;
+	for (let i = 0; i < imageIds.length; i += CHUNK) {
+		const chunk = imageIds.slice(i, i + CHUNK);
+		const placeholders = chunk.map(() => '?').join(',');
+		const rows = await db
+			.prepare(
+				`SELECT DISTINCT value FROM reactions
+       WHERE kind = 'image' AND value IN (${placeholders})`,
+			)
+			.bind(...chunk)
+			.all<{ value: string }>();
+		for (const row of rows.results ?? []) referenced.add(row.value);
+	}
+	return referenced;
+}
+
+/**
  * List the reactions this specific visitor has applied to the
  * target — `(target_key, principal, actor_id)` filtered, returned
  * as a flat `{kind, value}[]` so the home widget can render the

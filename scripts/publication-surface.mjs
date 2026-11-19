@@ -96,6 +96,24 @@ export const SURFACE_DECLARATIONS = [
 			'Public contact surface; renders only channels that pass the fail-closed freshness gate.',
 	},
 	{
+		id: '/links',
+		path: '/links',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/links.tsx'],
+		reason:
+			'Public verified external-link inventory (Issue #390); renders the committed src/about/links.ts inventory and is linked from /about, but is not a sitemap target.',
+	},
+	{
+		id: '/commission',
+		path: '/commission',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/commission.tsx'],
+		reason:
+			'Public commission-intake status page (Issue #390); renders the committed src/contact/commission.ts inventory, is linked from /about, /contact and /links, and is not a sitemap target while intake is parked.',
+	},
+	{
 		id: '/projects/dotfiles',
 		path: '/projects/dotfiles',
 		classification: 'public',

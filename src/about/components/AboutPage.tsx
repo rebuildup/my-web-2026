@@ -4,8 +4,8 @@ import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
-import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { AboutPageData } from '../types';
 
@@ -54,6 +54,43 @@ const FACET_LABEL: Readonly<Record<string, string>> = {
 	design: 'Design',
 	other: 'Other',
 };
+
+/**
+ * On-site reference links in the footer (Issue #390 added `/links`
+ * and `/commission`; `/keyboard` predates them). Order is editorial.
+ */
+const SITE_REFERENCE_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+	{ href: '/links', label: 'リンク集 / Links' },
+	{ href: '/commission', label: '制作依頼 / Commission' },
+	{ href: '/keyboard', label: 'キーボード配列 / Keyboard' },
+];
+
+const siteReferenceLinkStyle = css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '2',
+	paddingBlock: '2',
+	paddingInline: '4',
+	borderRadius: 'full',
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: 'border.subtle',
+	color: 'text.accent',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '600',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	_hover: {
+		borderColor: 'border.strong',
+		textDecorationThickness: '2px',
+	},
+	_focusVisible: {
+		outline: '2px solid {colors.border.focus}',
+		outlineOffset: '2px',
+	},
+});
 
 const sectionStyle = css({
 	// Issue #300: canonical body-section beat (layout-system.md §3.3).
@@ -870,38 +907,25 @@ function ExternalHandlesFooter({
 						))}
 					</ul>
 					<nav aria-label="サイト内リファレンス">
-						<a
-							href="/keyboard"
+						<ul
 							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								paddingBlock: '2',
-								paddingInline: '4',
-								borderRadius: 'full',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.subtle',
-								color: 'text.accent',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_hover: {
-									borderColor: 'border.strong',
-									textDecorationThickness: '2px',
-								},
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
+								margin: '0',
+								padding: '0',
+								listStyle: 'none',
+								display: 'flex',
+								flexWrap: 'wrap',
+								gap: '3',
 							})}
 						>
-							キーボード配列 / Keyboard
-							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
-						</a>
+							{SITE_REFERENCE_LINKS.map((item) => (
+								<li key={item.href}>
+									<a href={item.href} className={siteReferenceLinkStyle}>
+										{item.label}
+										<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+									</a>
+								</li>
+							))}
+						</ul>
 					</nav>
 				</div>
 			</Container>

@@ -59,6 +59,22 @@
 			"note": "Home はこの release で declare した card 画像を持たない。og:title / description / url と twitter:card=summary は出ており、card 画像だけが無い — cardPolicy 'none' はその状態を宣言したもので、og:image が後から増えた時点で drift finding になる。fallbackCard をそのまま出すか別の decision にするかは Home の card design 問題であり、この Issue の範囲外。"
 		},
 		{
+			"path": "/links",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/links",
+			"note": "リンク集 (Issue #390)。og:title / description / url を出すが代表画像を declare していない — 外部アカウントの列挙にこのサイトの card 画像を被せない。"
+		},
+		{
+			"path": "/commission",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/commission",
+			"note": "制作依頼の案内 (Issue #390)。受付休止中の status surface であり、og:title / description / url を出すが card 画像は declare しない。"
+		},
+		{
 			"path": "/contact",
 			"public": true,
 			"status": "not-implemented",

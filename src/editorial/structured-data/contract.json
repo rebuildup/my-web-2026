@@ -55,6 +55,22 @@
 			"note": "Person は承認済み snapshot（identity + externalHandles）だけから組み立てる。"
 		},
 		{
+			"path": "/links",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/links",
+			"note": "リンク集は外部 URL の列挙であり、構造化データの主張を持たない。breadcrumb leaf のみ emit する（Issue #390）。"
+		},
+		{
+			"path": "/commission",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/commission",
+			"note": "制作依頼の案内。受付休止中の status notice が本文の契約であり、Service / Offer の構造化表現は料金・受付が owner 決定されるまで emit しない（Issue #390 / #368 / #369）。breadcrumb leaf のみ。"
+		},
+		{
 			"path": "/keyboard",
 			"public": true,
 			"status": "implemented",

@@ -216,6 +216,18 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 			'Public keyboard reference, linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed source snapshot is synchronised.',
 	},
 	{
+		route: '/links',
+		kind: 'route',
+		reason:
+			'Public verified external-link inventory (Issue #390), linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed link inventory is re-verified.',
+	},
+	{
+		route: '/commission',
+		kind: 'route',
+		reason:
+			'Public commission-intake status page (Issue #390), linked from /about, /contact and /links. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and while intake is parked the page is a status notice rather than a discovery surface.',
+	},
+	{
 		route: '/projects/dotfiles',
 		kind: 'route',
 		reason:

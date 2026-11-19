@@ -114,6 +114,18 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		note: 'Keyboard — the read-only layout reference (Issue #620).',
 	},
 	{
+		path: '/links',
+		title: 'リンク集 / Links — rebuildup.dev',
+		expect: 'pass',
+		note: 'Links — the verified external-link inventory (Issue #390).',
+	},
+	{
+		path: '/commission',
+		title: '制作依頼 / Commission — rebuildup.dev',
+		expect: 'pass',
+		note: 'Commission — the parked intake-status surface (Issue #390).',
+	},
+	{
 		path: '/contact',
 		title: 'Contact — rebuildup.dev',
 		expect: 'pass',

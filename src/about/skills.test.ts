@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PORTFOLIO_SEED } from '../portfolio/seed';
+import notionSnapshot from '../portfolio/notion/generated/snapshot.json';
 import {
 	SKILLS,
 	SKILL_CATEGORY_LABELS,
@@ -15,8 +15,9 @@ import {
  *
  *   - every entry links to at least one work or record (evidence);
  *   - internal `/portfolio/<slug>` evidence resolves to a slug that
- *     exists in the committed portfolio seed, so a renamed project
- *     cannot silently leave a dead link;
+ *     exists in the committed Notion snapshot's public+published
+ *     records — the corpus production actually serves — so a renamed
+ *     or unpublished project cannot silently leave a dead link;
  *   - `usage` splits current from past, and the two selectors
  *     partition the list;
  *   - NO proficiency claim can exist: the entry shape has no level
@@ -30,7 +31,11 @@ const CATEGORIES = new Set(Object.keys(SKILL_CATEGORY_LABELS));
 const USAGES = new Set(Object.keys(SKILL_USAGE_LABELS));
 const PROHIBITED_KEY = /level|proficien|percent|score|rank/i;
 
-const PORTFOLIO_SLUGS = new Set(PORTFOLIO_SEED.map((entry) => entry.slug));
+const PORTFOLIO_SLUGS = new Set(
+	notionSnapshot.records
+		.filter((record) => record.visibility === 'public' && record.status === 'published')
+		.map((record) => record.slug),
+);
 
 describe('SKILLS data contract', () => {
 	it('commits at least one entry', () => {

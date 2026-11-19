@@ -3456,6 +3456,7 @@
 				"identifier": false,
 				"files": [
 					"src/about/career.ts",
+					"src/about/skills.ts",
 					"src/contact/channels.json",
 					"src/home/activity/github-activity.json",
 					"src/home/composer.stories.tsx",
@@ -5889,21 +5890,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://github.com/rebuildup/example-repo"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/example-repo"
-			}
-		]
+		"findings": []
 	}
 }

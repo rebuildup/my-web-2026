@@ -72,7 +72,7 @@ export const ABOUT_DATA: AboutData = {
 	// canonical `pinned → display_order → updated_at → id` sort.
 	// Slugs that no longer resolve to a public project are dropped
 	// at load time — this list does not pin visibility itself.
-	experienceSlugs: ['aulymo', 'multi-slicer', 'my-web-2026'],
+	experienceSlugs: ['my-web-2025', 'multislicer', 'aulymo-v03', 'reel-2025'],
 	current: [
 		'my-web-2026 — personal Web Platform の再構築。foundation release を 2026-09 に終え、portfolio / about はこの release に統合済み。content / activity を順次移行中。',
 		'Tastile — scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development。',

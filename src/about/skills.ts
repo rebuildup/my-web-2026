@@ -57,6 +57,18 @@ export interface SkillEntry {
 
 const PORTFOLIO = (slug: string) => `/portfolio/${slug}`;
 
+/**
+ * Evidence for the current platform itself: the public repository is
+ * the work record (the site has no portfolio entry of its own).
+ */
+const SITE_REPO_URL = 'https://github.com/rebuildup/my-web-2026';
+
+/**
+ * Tastile is a current project but has no public portfolio entry yet;
+ * `/about`'s Current section is the public record that names it.
+ */
+const ABOUT_URL = '/about';
+
 const LEGACY_ABOUT_URL = 'https://yusuke-kim.com/about/';
 
 /**
@@ -75,9 +87,9 @@ export const SKILLS: readonly SkillEntry[] = [
 		usage: 'current',
 		summary: 'my-web-2026 / tastile / Aulymo の実装言語。',
 		evidence: [
-			{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') },
-			{ label: 'Tastile', href: PORTFOLIO('tastile') },
-			{ label: 'Aulymo', href: PORTFOLIO('aulymo') },
+			{ label: 'my-web-2026', href: SITE_REPO_URL },
+			{ label: 'Tastile', href: ABOUT_URL },
+			{ label: 'Aulymo', href: PORTFOLIO('aulymo-v03') },
 		],
 	},
 	{
@@ -87,8 +99,8 @@ export const SKILLS: readonly SkillEntry[] = [
 		usage: 'current',
 		summary: 'my-web-2026 と Tastile の UI 実装。',
 		evidence: [
-			{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') },
-			{ label: 'Tastile', href: PORTFOLIO('tastile') },
+			{ label: 'my-web-2026', href: SITE_REPO_URL },
+			{ label: 'Tastile', href: ABOUT_URL },
 		],
 	},
 	{
@@ -97,7 +109,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'framework',
 		usage: 'current',
 		summary: 'my-web-2026 の Web framework。',
-		evidence: [{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') }],
+		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
 	{
 		id: 'hono',
@@ -105,7 +117,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'framework',
 		usage: 'current',
 		summary: 'my-web-2026 の外部 HTTP boundary (`/api/v1/*` 等)。',
-		evidence: [{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') }],
+		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
 	{
 		id: 'panda-css',
@@ -113,7 +125,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'framework',
 		usage: 'current',
 		summary: 'my-web-2026 の styling 基盤。',
-		evidence: [{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') }],
+		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
 	{
 		id: 'cloudflare-workers',
@@ -121,7 +133,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'platform',
 		usage: 'current',
 		summary: 'my-web-2026 の runtime とデータ層。',
-		evidence: [{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') }],
+		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
 	{
 		id: 'vite',
@@ -130,8 +142,8 @@ export const SKILLS: readonly SkillEntry[] = [
 		usage: 'current',
 		summary: 'my-web-2026 / Tastile の build toolchain。',
 		evidence: [
-			{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') },
-			{ label: 'Tastile', href: PORTFOLIO('tastile') },
+			{ label: 'my-web-2026', href: SITE_REPO_URL },
+			{ label: 'Tastile', href: ABOUT_URL },
 		],
 	},
 	{
@@ -140,7 +152,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'tool',
 		usage: 'current',
 		summary: 'my-web-2026 の format / lint 基盤。',
-		evidence: [{ label: 'my-web-2026', href: PORTFOLIO('my-web-2026') }],
+		evidence: [{ label: 'my-web-2026', href: SITE_REPO_URL }],
 	},
 	{
 		id: 'kotlin',
@@ -148,7 +160,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'language',
 		usage: 'current',
 		summary: 'Tastile の Android client 実装。',
-		evidence: [{ label: 'Tastile', href: PORTFOLIO('tastile') }],
+		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
 	{
 		id: 'rust',
@@ -156,7 +168,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'language',
 		usage: 'current',
 		summary: 'Tastile の desktop / backend 側で使用。',
-		evidence: [{ label: 'Tastile', href: PORTFOLIO('tastile') }],
+		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
 	{
 		id: 'tauri',
@@ -164,7 +176,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'framework',
 		usage: 'current',
 		summary: 'Tastile の desktop client。',
-		evidence: [{ label: 'Tastile', href: PORTFOLIO('tastile') }],
+		evidence: [{ label: 'Tastile', href: ABOUT_URL }],
 	},
 	{
 		id: 'c-plus-plus',
@@ -172,7 +184,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'language',
 		usage: 'current',
 		summary: 'MultiSlicer の After Effects native plugin 実装。',
-		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multi-slicer') }],
+		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multislicer') }],
 	},
 	{
 		id: 'after-effects-sdk',
@@ -180,7 +192,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'sdk',
 		usage: 'current',
 		summary: 'MultiSlicer の effect plugin 開発。',
-		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multi-slicer') }],
+		evidence: [{ label: 'MultiSlicer', href: PORTFOLIO('multislicer') }],
 	},
 	{
 		id: 'extendscript',
@@ -188,7 +200,7 @@ export const SKILLS: readonly SkillEntry[] = [
 		category: 'language',
 		usage: 'current',
 		summary: 'Aulymo の After Effects 向け tool 実装。',
-		evidence: [{ label: 'Aulymo', href: PORTFOLIO('aulymo') }],
+		evidence: [{ label: 'Aulymo', href: PORTFOLIO('aulymo-v03') }],
 	},
 	// --- Past use ----------------------------------------------------------
 	{

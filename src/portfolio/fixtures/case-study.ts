@@ -16,7 +16,7 @@ import type {
  *   - `confirmed` entries restate facts already published by the
  *     platform itself — `src/portfolio/seed.ts` (`motivationMd`,
  *     `architectureMd`, `evidenceMd`), `docs/personal/domain.md` §8/§9
- *     and the shipped 0.1.0 release record.
+ *     and the shipped foundation release record.
  *   - `period-estimate` entries record what was believed or planned
  *     AT THE TIME (the migration target window, the unread inventory
  *     of the old site). They are labelled estimates precisely because
@@ -96,7 +96,7 @@ export const MY_WEB_2026_CASE_STUDY: PortfolioCaseStudyFixture = {
 			entries: [
 				entry(
 					'confirmed',
-					'0.1.0 Foundation を 2026-09-11 に shipped し、CI の validate:integration が format / lint / typecheck / test / build / wrangler dry-run を一括で検証している。',
+					'Foundation release を 2026-09-11 に shipped し、CI の validate:integration が format / lint / typecheck / test / build / wrangler dry-run を一括で検証している。',
 				),
 				entry(
 					'period-estimate',

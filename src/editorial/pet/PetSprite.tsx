@@ -62,10 +62,15 @@ import { PET_DRAG_THRESHOLD_PX, type PetPose, dragPose, lookPose, scrollPose } f
  *     is actually being moved; the gaze never claims travel; the
  *     desktop overlay's "working / waiting / failed" states are not
  *     drawn because this site has no such state.
- *   - No autoplay loop. Every reaction is finite (0.7 s greeting,
- *     0.9 s gaze) or bound to an interaction (drag). The platform
- *     ships no content that moves by itself for longer than five
- *     seconds — WCAG 2.2 SC 2.2.2 — and the resting frame is still.
+ *   - The resting pose is the idle LOOP (Issue #1044): the six-frame
+ *     breathing / blink strip plays continuously so the character
+ *     reads as alive rather than a pasted image. It is the only
+ *     ambient motion — every other reaction stays finite (0.7 s
+ *     greeting, 0.9 s gaze) or bound to an interaction (drag). The
+ *     loop is decorative (`aria-hidden`), carries no information,
+ *     never moves the sprite's position, and is fully suppressed
+ *     under `prefers-reduced-motion: reduce` at both the render and
+ *     the stylesheet layer.
  *   - No JS frame-stepping. Multi-frame poses are committed strips
  *     translated by a CSS `steps()` animation, so the motion is
  *     visible to the reduced-motion gate and can be stopped by the
@@ -206,7 +211,7 @@ const BOX = { width: FRAME_WIDTH, height: FRAME_HEIGHT } as const;
 
 /** Committed files produced by `scripts/build-pet-sprites.mjs`. */
 const POSE_SOURCE: Readonly<Record<PetPose, string>> = {
-	idle: '/pets/melty/idle-rest.webp',
+	idle: '/pets/melty/idle.webp',
 	wave: '/pets/melty/waving.webp',
 	'run-right': '/pets/melty/running-right.webp',
 	'run-left': '/pets/melty/running-left.webp',
@@ -217,7 +222,7 @@ const POSE_SOURCE: Readonly<Record<PetPose, string>> = {
 };
 
 const POSE_FRAMES: Readonly<Record<PetPose, number>> = {
-	idle: 1,
+	idle: 6,
 	wave: 4,
 	'run-right': 8,
 	'run-left': 8,
@@ -572,11 +577,18 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 	const waveStyle = css({ animation: `petReaction ${ARRIVAL_MS}ms steps(4, jump-none) 1` });
 	// One keyframe for both directions: only the committed strip differs.
 	const runStyle = css({ animation: 'petRun 1060ms steps(8, jump-none) infinite' });
+	// Issue #1044 — the resting loop. Six 96 px frames in a 576 px
+	// strip: -83.3333 % is five frame widths, so `steps(6, jump-none)`
+	// shows each frame once and the loop snaps back to the breathing
+	// frame. 3 s per cycle keeps the motion calm enough to sit behind
+	// a page of text.
+	const idleStyle = css({ animation: 'petIdle 3000ms steps(6, jump-none) infinite' });
 
 	let animationStyle: string | null = null;
 	if (!reducedMotion) {
 		if (pose === 'wave') animationStyle = waveStyle;
 		else if (pose === 'run-right' || pose === 'run-left') animationStyle = runStyle;
+		else if (pose === 'idle') animationStyle = idleStyle;
 	}
 
 	// Growing is itself a reaction, so it is one of the things reduced

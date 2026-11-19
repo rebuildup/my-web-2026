@@ -95,11 +95,13 @@ describe('PetSprite (Issue #274)', () => {
 		expect(markup()).toContain('data-motion="pet-reaction"');
 	});
 
-	it('reserves the frame at its intrinsic size so decoding cannot shift layout', () => {
+	it('reserves the strip frame box at its intrinsic size so decoding cannot shift layout', () => {
 		const [resting] = images(markup());
-		expect(resting).toContain('width="96"');
+		// Six 96 px frames of the idle strip: the width attribute is the
+		// full strip, the CSS box clips it to one frame.
+		expect(resting).toContain('width="576"');
 		expect(resting).toContain('height="104"');
-		expect(resting).toContain('/pets/melty/idle-rest.webp');
+		expect(resting).toContain('/pets/melty/idle.webp');
 	});
 
 	it('loads only the resting frame on the server document', () => {
@@ -127,9 +129,9 @@ describe('PetSprite (Issue #274)', () => {
 		}
 	});
 
-	it('renders the same resting frame under reduced motion', () => {
+	it('renders the same resting strip under reduced motion', () => {
 		const html = markup({ reducedMotion: true });
-		expect(html).toContain('/pets/melty/idle-rest.webp');
+		expect(html).toContain('/pets/melty/idle.webp');
 		expect(html).not.toContain('waving.webp');
 		expect(html).not.toContain('running-right.webp');
 		expect(html).not.toContain('<button');

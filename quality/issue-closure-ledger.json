@@ -1430,16 +1430,23 @@
 			"title": "spike(contact): 映像・デザイン・開発依頼の受付状態を明示するUI",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/contact/channels.json", "src/contact/page.tsx", "stories.tsx", "#380"],
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/contact/commission-page.tsx",
+				"src/contact/commission.ts",
+				"src/routes/commission.tsx",
+				"docs/verification/contact/commission-status.png",
+				"docs/verification/contact/commission-paused.png",
+				"#1051"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "spike の成果物である試作 UI 自体が存在しないため、受付可否の判断記録も無い。依頼受付を公開するかどうかは owner 決定でもある。",
-			"missing": "映像/デザイン/開発の受付可否を区別する UI、休止中の非押下、owner が受付状態と最終確認日を変更できる source。"
+			"action": "closed",
+			"note": "PR #1051 で /commission を復元。受付状況は approved /about narrative の parked mode（src/about/data.ts future.parked）を正本とし、休止中であることを最優先で表示。フォーム・料金表・受付 CTA は一切なく、サービス内容/流れ/見積要件/ソフトウェアは 2025 版の公開済み事実のみを移植。owner が変更できる source は src/contact/commission.ts + src/about/data.ts（repo 管理）。docs/verification/contact/commission-status.png / commission-paused.png を本 PR で補完。2026-11-19 に実ページ（production-readonly）で表示を確認して close。",
+			"missing": null
 		},
 		{
 			"issue": 369,
@@ -1469,23 +1476,23 @@
 			"title": "feat(privacy): 公開ページのCookie/プライバシー説明への導線を監査・実装",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "partial",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
 				"src/privacy/data-lifecycle.ts",
-				"#496",
 				"src/home/privacy-notice.tsx",
-				"src/home/footer.tsx",
-				"src/routes/__root.tsx",
-				"docs/verification/privacy/analytics-disabled.md"
+				"docs/verification/privacy/privacy-link.png",
+				"docs/verification/privacy/cookie-information.png",
+				"#1054",
+				"#1055"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "説明文の正確性側は別 Issue（#496 / #495）で達成されているが、本 Issue が求めた「各公開ページから到達できるプライバシー説明の導線」は Home footer 以外に未実装。",
-			"missing": "Home/About/記事から辿れる privacy / Cookie 情報面（専用 route が存在しない: git ls-tree origin/release-0-8-0 -- src/routes/ に privacy ルートなし）、About 側からの導線、docs/verification/privacy/privacy-link.png 等"
+			"action": "closed",
+			"note": "Home 以外のリアクション設置面（/about /contact /portfolio /projects/dotfiles /tools）へコンパクトなプライバシー導線を PR #1054 で追加。文言は src/privacy/data-lifecycle.ts の approved entries のみを fail-closed で描画し、Cookie 非使用環境でも嘘にならない。/about での実表示を確認し docs/verification/privacy/privacy-link.png / cookie-information.png を補完。2026-11-19 close。",
+			"missing": null
 		},
 		{
 			"issue": 371,
@@ -1887,23 +1894,24 @@
 			"title": "feat(identity): 旧サイトの経歴年表を根拠付きデータと表示コンポーネントへ移行",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"components/AboutPage.tsx",
-				"data.ts",
-				"load.ts",
-				"structured-data.ts",
-				"grep -ni 'timeline|history' over src/about returns no match",
-				"No cross-referenced PR exists for this issue"
+				"src/about/components/AboutPage.tsx",
+				"src/about/load.ts",
+				"docs/verification/identity/history-timeline.png",
+				"docs/verification/identity/history-mobile.png",
+				"#1052",
+				"#1055",
+				"#1059"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "旧サイトの年表を根拠付きデータへ移行する作業はその Hygienization の終着点に到達していない。",
-			"missing": "経歴年表の型（過去/現在/予定）、各項目の旧サイト source URL と確認状態、公開承認0件時の代替表示、Storybook/プレビュー。"
+			"action": "closed",
+			"note": "PR #1052 で経歴タイムラインを実装（過去/現在/予定の型区別・旧サイト source URL と確認状態・公開承認ゼロ時の代替表示・私生活情報の除外）。PR #1055 で /about へ mount、PR #1059 で seed slug → 実公開 slug（my-web-2025/multislicer/aulymo-v03/reel-2025）へ修正し Experience が空になる本番欠陥を解消。production-readonly で経歴/Career/Skills と実 slug の描画を確認。docs/verification/identity/history-timeline.png / history-mobile.png は #1052 で添付済み。2026-11-19 close。",
+			"missing": null
 		},
 		{
 			"issue": 390,
@@ -1929,22 +1937,24 @@
 			"title": "feat(identity): 旧サイトのSkills表示を技術使用実績つきで再構成",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/about/data.ts",
-				"docs/influences/tech-interests.md",
-				"#528",
-				"#391",
-				"src/personal/ on release-0-8-0 has no skills preview (audience-purpose, brand-naming, flat-vs-depth, music-connections, tech-interests, typography-grid-swiss, usable-product-publication)"
+				"src/about/skills.ts",
+				"src/about/components/AboutPage.tsx",
+				"docs/verification/identity/skills-evidence.png",
+				"docs/verification/identity/skills-mobile.png",
+				"#1052",
+				"#1055",
+				"#1059"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "A technical-interest inventory was delivered under Issue #528, but by its own header it is not the skills display this issue asked for, and no skills component exists.",
-			"missing": "the whole issue: a Skills view with per-item evidence links to actual works, current/past distinction, and a standalone Storybook; plus docs/verification/identity/skills-*.png"
+			"action": "closed",
+			"note": "PR #1052 で根拠リンク付き Skills を実装（現在/過去使用の区別・推測の習熟度を出さない）。PR #1055 で /about へ mount、PR #1059 で skill evidence link を実公開 slug へ修正（旧 seed slug による全件 404 を解消し、テストの照合先を Notion snapshot の public+published コーパスへ変更）。docs/verification/identity/skills-evidence.png / skills-mobile.png 添付済み。2026-11-19 close。",
+			"missing": null
 		},
 		{
 			"issue": 392,

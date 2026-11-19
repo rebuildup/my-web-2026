@@ -125,16 +125,17 @@ export const Route = createRootRoute({
 		],
 		// Webfonts are self-hosted (Issue #876): the woff2 subsets in
 		// `public/fonts/` are declared by `@font-face` rules in
-		// `src/styles.css` with the same unicode-range partitioning
-		// Google Fonts used to serve, so first paint still shows the
-		// platform Japanese fallback while the needed subsets stream
-		// in — but every request is now same-origin and
-		// the page no longer contacts `fonts.googleapis.com` /
-		// `fonts.gstatic.com` at all. There is deliberately no font
-		// `<link>` or flip script here anymore: the `@font-face` rules
-		// live inside the bundled stylesheet, which the browser already
-		// fetches for the page itself.
+		// `public/fonts/fonts.css` — a plain same-origin stylesheet
+		// kept out of the bundled `src/styles.css` so the declarations
+		// stay outside the per-route initial CSS budget
+		// (`scripts/check-bundle-budget.mjs`). The unicode-range
+		// partitioning is unchanged, so first paint still shows the
+		// metric-compatible fallback faces in `src/styles.css` while
+		// the needed subsets stream in — and every request is
+		// same-origin: the page no longer contacts
+		// `fonts.googleapis.com` / `fonts.gstatic.com` at all.
 		links: [
+			{ rel: 'stylesheet', href: '/fonts/fonts.css' },
 			// Icon family (Issue #285 SVG favicon, Issue #504 PNG +
 			// Apple Touch Icon + Web App Manifest). `APP_ICON_LINKS`
 			// carries the block-level contract; see its docstring.

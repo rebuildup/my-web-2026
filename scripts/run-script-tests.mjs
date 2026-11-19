@@ -230,5 +230,14 @@ export async function main(argv, { lifecycleEvent = process.env.npm_lifecycle_ev
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-	main(process.argv.slice(2)).then((code) => process.exit(code));
+	// `process.exitCode`, not `process.exit(code)`: the runner writes
+	// progress and `--list` output through the async stdout queue, and
+	// `process.exit` discards whatever is still queued when stdout is
+	// a pipe — CI observed the listing cut off mid-alphabet
+	// (`check-test-wiring.test.mjs` "lists exactly the files the runner
+	// would execute"). Letting the event loop drain flushes the queue
+	// before the process ends.
+	main(process.argv.slice(2)).then((code) => {
+		process.exitCode = code;
+	});
 }

@@ -35,19 +35,34 @@ import { selectGuideRows } from './select';
  *     the hollow external marker carry the "current location" motif;
  *     there are no decorative routes, connectors or ambient
  *     animation.
- *   - Semantic colour as identification: node fill =
- *     `accent.category.<class>`; shape = the same class, drawn with
- *     the shared `StateMark` clip-paths. Colour is never the only
- *     carrier — every station also shows its title and summary, and
- *     the legend under the route names every shape/colour pair.
+ *   - Semantic colour as AREAS (Issue #968 owner directive
+ *     2026-11-19): each station's content cell is a flat colour
+ *     FIELD, not a white card with a coloured mark. A facility whose
+ *     class has an approved field step (`design` / `code` /
+ *     `writing`) sits on `accent.field.<class>` and reads through
+ *     `mono.ink.onColour`; `tool` keeps its mark-only treatment
+ *     (sunken panel + `accent.category.tool` node) because the
+ *     canonical system deliberately approves no field step for it;
+ *     a classless facility sits on `mono.surface.sunken`; the
+ *     off-site spur sits on `mono.surface.inverse` so "this
+ *     destination leaves the site" is a large-area statement, not
+ *     only a dashed line. Colour still never carries meaning alone:
+ *     every panel also shows its title and summary, shape and text
+ *     survive greyscale, and the legend names every mark.
+ *   - The route line and node keep their jobs: the node fill stays
+ *     `accent.category.<class>` (the MARK step, 3:1 on the ground)
+ *     with the shared `StateMark` silhouette, drawn in the rail
+ *     OUTSIDE the panel so mark and field never merge into one
+ *     blob.
  *   - No-JS safe: expansion is a native `<details>`/`<summary>`, so
  *     the whole guide works with scripting disabled and every link is
  *     reachable by keyboard and screen reader without extra ARIA.
  *   - Promotion emphasis is a badge, not a reorder: the featured
  *     facility keeps its authored position.
- *   - Colour stays inside the editorial system: monochrome ground,
- *     `border.strong` / `bg.accent` only for the featured state and
- *     link affordances — identical to the rest of the page.
+ *   - Colour stays inside the editorial system: the page ground
+ *     stays monochrome; the only hues are the approved
+ *     classification fields, and every ink on a field is a
+ *     `mono.ink.*` token — identical to the rest of the page.
  */
 
 /** The map grid: the site route on the left, the external spur on the right. */
@@ -370,6 +385,280 @@ const externalHeadingClassName = /*#__PURE__*/ css({
 });
 
 /**
+ * Station field panels (Issue #968 owner directive 2026-11-19).
+ *
+ * The content cell of every station IS the colour area: a flat field
+ * that carries the facility's classification as a large surface, not
+ * a white card with a coloured mark. Three skins cover every case:
+ *
+ *   field   — `accent.field.<class>` for the three classes the
+ *             canonical system approves a field step for; ink is
+ *             `mono.ink.onColour` (the token made for exactly this).
+ *   sunken  — `mono.surface.sunken` for `tool` (no approved field
+ *             step — its class still shows through the mark) and
+ *             for classless facilities; the ORIGINAL text/border
+ *             classes are reused unchanged.
+ *   inverse — `mono.surface.inverse` for the off-site spur, so
+ *             "leaves the site" is a large-area statement in BOTH
+ *             appearances (the panel inverts with the theme and
+ *             `mono.ink.inverse` always contrasts it).
+ *
+ * Every panel class is COMPLETE (fill + edge + geometry) for the
+ * same reason the node classes are: Panda atomic classes do not
+ * guarantee override order, so variants never share a property.
+ */
+const panelBase = {
+	paddingBlock: '4',
+	paddingInline: '5',
+	borderRadius: 'md',
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: 'mono.line.hairline',
+} as const;
+
+const fieldDesignPanelClassName = /*#__PURE__*/ css({
+	...panelBase,
+	backgroundColor: 'accent.field.design',
+});
+
+const fieldCodePanelClassName = /*#__PURE__*/ css({
+	...panelBase,
+	backgroundColor: 'accent.field.code',
+});
+
+const fieldWritingPanelClassName = /*#__PURE__*/ css({
+	...panelBase,
+	backgroundColor: 'accent.field.writing',
+});
+
+const sunkenPanelClassName = /*#__PURE__*/ css({
+	...panelBase,
+	backgroundColor: 'mono.surface.sunken',
+});
+
+const inversePanelClassName = /*#__PURE__*/ css({
+	...panelBase,
+	backgroundColor: 'mono.surface.inverse',
+});
+
+type PanelSkin = 'field' | 'sunken' | 'inverse';
+
+const FIELD_PANELS: Partial<Record<GuideCategory, string>> = {
+	design: fieldDesignPanelClassName,
+	code: fieldCodePanelClassName,
+	writing: fieldWritingPanelClassName,
+};
+
+/**
+ * Which panel a station paints. `tool` deliberately falls through
+ * to `sunken`: the canonical system approves field steps for three
+ * classes only, and `tool.500` cannot carry the 4.5:1 text ratio
+ * `mono.ink.onColour` demands — its classification still shows
+ * through the mark, the legend and the summary text.
+ */
+function panelFor(
+	entry: GuideEntry,
+	external: boolean,
+): { panelClassName: string; skin: PanelSkin } {
+	if (external) return { panelClassName: inversePanelClassName, skin: 'inverse' };
+	const fieldPanel = entry.category ? FIELD_PANELS[entry.category] : undefined;
+	if (fieldPanel) return { panelClassName: fieldPanel, skin: 'field' };
+	return { panelClassName: sunkenPanelClassName, skin: 'sunken' };
+}
+
+/**
+ * The `field` skin's text classes: every ink is `mono.ink.onColour`,
+ * links carry a permanent underline (direction B: a link is marked
+ * by its underline, and on a colour field the underline is also the
+ * affordance that survives greyscale), and focus rings use the same
+ * ink so the indicator always contrasts its own panel.
+ */
+const fieldLinkClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'baseline',
+	gap: '3',
+	fontFamily: 'sans',
+	fontSize: 'xl',
+	fontWeight: '700',
+	lineHeight: '1.3',
+	letterSpacing: '-0.015em',
+	color: 'mono.ink.onColour',
+	textDecoration: 'underline',
+	textUnderlineOffset: '3px',
+	_hover: { textDecorationThickness: '2px' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.onColour}',
+		outlineOffset: '2px',
+	},
+});
+
+const fieldSummaryClassName = /*#__PURE__*/ css({
+	margin: '0',
+	marginBlockStart: '1',
+	fontFamily: 'sans',
+	fontSize: 'md',
+	lineHeight: '1.6',
+	color: 'mono.ink.onColour',
+	textWrap: 'pretty',
+});
+
+const fieldToggleClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '1',
+	padding: '1',
+	marginInlineStart: '-1',
+	borderRadius: 'sm',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '600',
+	color: 'mono.ink.onColour',
+	cursor: 'pointer',
+	_hover: { opacity: '0.75' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.onColour}',
+		outlineOffset: '2px',
+	},
+	'&::marker': { color: 'mono.ink.onColour' },
+});
+
+const fieldChildLinkClassName = /*#__PURE__*/ css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '1',
+	paddingInlineStart: '5',
+	paddingBlock: '2',
+	textDecoration: 'none',
+	borderInlineStartWidth: '2px',
+	borderInlineStartStyle: 'solid',
+	borderInlineStartColor: 'mono.ink.onColour',
+	_hover: { opacity: '0.75' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.onColour}',
+		outlineOffset: '2px',
+	},
+});
+
+const fieldChildLabelClassName = /*#__PURE__*/ css({
+	fontFamily: 'sans',
+	fontSize: 'md',
+	fontWeight: '600',
+	color: 'mono.ink.onColour',
+});
+
+const fieldExternalMarkClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '1',
+	fontFamily: 'sans',
+	fontSize: 'xs',
+	fontWeight: '600',
+	color: 'mono.ink.onColour',
+});
+
+/** The inverse panel's badge: `bg.accent` would vanish into the panel. */
+const inverseBadgeClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	paddingInline: '2',
+	paddingBlock: '1',
+	borderRadius: 'sm',
+	backgroundColor: 'mono.surface.ground',
+	color: 'mono.ink.text',
+	fontFamily: 'sans',
+	fontSize: 'xs',
+	fontWeight: '700',
+	letterSpacing: '0.02em',
+});
+
+/**
+ * The `inverse` skin mirrors `field` with `mono.ink.inverse`: the
+ * off-site spur's ink always contrasts its own (inverting) panel.
+ */
+const inverseLinkClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'baseline',
+	gap: '3',
+	fontFamily: 'sans',
+	fontSize: 'xl',
+	fontWeight: '700',
+	lineHeight: '1.3',
+	letterSpacing: '-0.015em',
+	color: 'mono.ink.inverse',
+	textDecoration: 'underline',
+	textUnderlineOffset: '3px',
+	_hover: { textDecorationThickness: '2px' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.inverse}',
+		outlineOffset: '2px',
+	},
+});
+
+const inverseSummaryClassName = /*#__PURE__*/ css({
+	margin: '0',
+	marginBlockStart: '1',
+	fontFamily: 'sans',
+	fontSize: 'md',
+	lineHeight: '1.6',
+	color: 'mono.ink.inverse',
+	textWrap: 'pretty',
+});
+
+const inverseToggleClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '1',
+	padding: '1',
+	marginInlineStart: '-1',
+	borderRadius: 'sm',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	fontWeight: '600',
+	color: 'mono.ink.inverse',
+	cursor: 'pointer',
+	_hover: { opacity: '0.75' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.inverse}',
+		outlineOffset: '2px',
+	},
+	'&::marker': { color: 'mono.ink.inverse' },
+});
+
+const inverseChildLinkClassName = /*#__PURE__*/ css({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: '1',
+	paddingInlineStart: '5',
+	paddingBlock: '2',
+	textDecoration: 'none',
+	borderInlineStartWidth: '2px',
+	borderInlineStartStyle: 'solid',
+	borderInlineStartColor: 'mono.ink.inverse',
+	_hover: { opacity: '0.75' },
+	_focusVisible: {
+		outline: '2px solid {colors.mono.ink.inverse}',
+		outlineOffset: '2px',
+	},
+});
+
+const inverseChildLabelClassName = /*#__PURE__*/ css({
+	fontFamily: 'sans',
+	fontSize: 'md',
+	fontWeight: '600',
+	color: 'mono.ink.inverse',
+});
+
+const inverseExternalMarkClassName = /*#__PURE__*/ css({
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '1',
+	fontFamily: 'sans',
+	fontSize: 'xs',
+	fontWeight: '600',
+	color: 'mono.ink.inverse',
+});
+
+/**
  * The legend under the site route: every shape/colour pair the route
  * uses, so the node is never the only carrier of meaning — a reader
  * can always look the mark up. The external spur needs no legend
@@ -474,6 +763,44 @@ function StationRow({
 	const { entry, featured } = row;
 	const lineClassName = lineClassNameFor({ index, count }, external);
 	const node = nodeFor(entry, external);
+	const { panelClassName, skin } = panelFor(entry, external);
+	const linkClassName =
+		skin === 'field'
+			? fieldLinkClassName
+			: skin === 'inverse'
+				? inverseLinkClassName
+				: facilityLinkClassName;
+	const stationSummaryClassName =
+		skin === 'field'
+			? fieldSummaryClassName
+			: skin === 'inverse'
+				? inverseSummaryClassName
+				: summaryClassName;
+	const toggleClassName =
+		skin === 'field'
+			? fieldToggleClassName
+			: skin === 'inverse'
+				? inverseToggleClassName
+				: summaryToggleClassName;
+	const stationChildLinkClassName =
+		skin === 'field'
+			? fieldChildLinkClassName
+			: skin === 'inverse'
+				? inverseChildLinkClassName
+				: childLinkClassName;
+	const childLabelSkinClassName =
+		skin === 'field'
+			? fieldChildLabelClassName
+			: skin === 'inverse'
+				? inverseChildLabelClassName
+				: childLabelClassName;
+	const stationExternalMarkClassName =
+		skin === 'field'
+			? fieldExternalMarkClassName
+			: skin === 'inverse'
+				? inverseExternalMarkClassName
+				: externalMarkClassName;
+	const badgeClassName = skin === 'inverse' ? inverseBadgeClassName : featuredBadgeClassName;
 	return (
 		<li className={stationClassName}>
 			<span className={railClassName} aria-hidden="true">
@@ -483,7 +810,7 @@ function StationRow({
 					style={node.clipPath ? { clipPath: node.clipPath } : undefined}
 				/>
 			</span>
-			<div>
+			<div className={panelClassName}>
 				<div
 					className={css({
 						display: 'flex',
@@ -492,24 +819,22 @@ function StationRow({
 						gap: '3',
 					})}
 				>
-					<a href={entry.href} className={facilityLinkClassName}>
+					<a href={entry.href} className={linkClassName}>
 						<span>{entry.titleJa}</span>
 					</a>
-					{featured ? <span className={featuredBadgeClassName}>注目</span> : null}
-					{external ? <span className={externalMarkClassName}>外部 ↗</span> : null}
+					{featured ? <span className={badgeClassName}>注目</span> : null}
+					{external ? <span className={stationExternalMarkClassName}>外部 ↗</span> : null}
 				</div>
-				<p className={summaryClassName}>{entry.summaryJa}</p>
+				<p className={stationSummaryClassName}>{entry.summaryJa}</p>
 				{entry.children && entry.children.length > 0 ? (
 					<details className={detailsClassName}>
-						<summary className={summaryToggleClassName}>
-							下の階層を見る ({entry.children.length})
-						</summary>
+						<summary className={toggleClassName}>下の階層を見る ({entry.children.length})</summary>
 						<ul className={childrenClassName}>
 							{entry.children.map((child) => (
 								<li key={child.id}>
-									<a href={child.href} className={childLinkClassName}>
-										<span className={childLabelClassName}>{child.labelJa}</span>
-										<span className={summaryClassName}>{child.summaryJa}</span>
+									<a href={child.href} className={stationChildLinkClassName}>
+										<span className={childLabelSkinClassName}>{child.labelJa}</span>
+										<span className={stationSummaryClassName}>{child.summaryJa}</span>
 									</a>
 								</li>
 							))}
@@ -543,7 +868,7 @@ export function GuideSection({ today }: GuideSectionProps) {
 					eyebrow="Site guide"
 					title="サイト内案内"
 					titleEn="Site guide"
-					description="このサイトに何があり、どう辿るか。駅の路線図のように、施設は同じ路線上の停車駅です。駅の形と色はその施設の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
+					description="このサイトに何があり、どう辿るか。駅の路線図のように、施設は同じ路線上の停車駅です。各駅の色面はその施設の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 					variant="spread"
 				>
 					<div className={guideMapClassName}>

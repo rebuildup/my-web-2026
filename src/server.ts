@@ -575,15 +575,103 @@ function observeRequestAnomaly(pathname: string, status: number): void {
 }
 
 /**
+ * The dispatch target the Worker entry chooses between: the Hono
+ * external boundary for the `EXTERNAL_BOUNDARY_PREFIXES` paths, the
+ * TanStack Start SSR pipeline for everything else. It is a function
+ * type rather than a union of the two handler shapes because the two
+ * sides take different arguments (`externalBoundary.fetch` also
+ * receives `env` and `ctx`).
+ */
+type WorkerDispatch = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>;
+
+/**
+ * Production dispatch. `env` and `ctx` flow through to Hono so
+ * external-boundary handlers can talk to D1, R2, KV, and other
+ * bindings without indirection.
+ */
+const workerDispatch: WorkerDispatch = async (request, env, ctx) => {
+	const pathname = new URL(request.url).pathname;
+	return matchesExternalBoundary(pathname)
+		? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
+		: applyHtmlCachePolicy(
+				request,
+				await settleSsrDocumentResponse(request, await handler.fetch(request)),
+			);
+};
+
+/**
+ * The full Worker request pipeline: dispatch, failure boundary,
+ * anomaly observation, and the security-header chain.
+ *
+ * `dispatch` is a parameter rather than a closed-over constant so the
+ * failure boundary is testable: the workerd vitest pool does not
+ * honour `vi.mock` of regular TS modules (see
+ * `src/http/api-keys/middleware.ts` for the same constraint), so a
+ * test cannot swap `handler` / `externalBoundary` — it passes a
+ * throwing stub instead. Production never passes the argument; the
+ * default is `workerDispatch`, so the Worker entry's behaviour is
+ * unchanged.
+ */
+export async function serveWorkerRequest(
+	request: Request,
+	env: Env,
+	ctx: ExecutionContext,
+	dispatch: WorkerDispatch = workerDispatch,
+): Promise<Response> {
+	const url = new URL(request.url);
+	// Issue #995: the dispatch is the one place a throw used to escape
+	// every contract — the runtime answered a bare 500 with none of the
+	// security headers below and no anomaly record. The catch converts
+	// any dispatch-level throw into a defined 500 that still flows
+	// through the same observation and header choke points, so a
+	// failure can never be quieter than a success.
+	let response: Response;
+	try {
+		response = await dispatch(request, env, ctx);
+	} catch (error) {
+		// Status-only record: the error NAME is a class label, never a
+		// message — messages can carry binding names or upstream detail.
+		anomalyAuditLogger.audit('dispatch-failure', {
+			errorName: error instanceof Error ? error.name : 'unknown',
+		});
+		// The fallback answers in the failed surface's own contract:
+		// the external boundary gets the documented JSON envelope
+		// (`src/http/errors.ts`), every other path gets the #501
+		// failure document — never the runtime's bare text 500.
+		response = matchesExternalBoundary(url.pathname)
+			? dispatchInternalErrorResponse(generateRequestId())
+			: createSsrFailureResponse(request);
+	}
+	observeRequestAnomaly(url.pathname, response.status);
+	// Issue #449: security headers are applied AFTER the dispatch so
+	// one choke point covers every Worker-generated response — SSR
+	// HTML, redirects, server-function payloads and the Hono
+	// boundary alike. `public/_headers` cannot do this job for the
+	// SSR path (Cloudflare does not apply `_headers` to Worker-
+	// generated responses). HSTS (#446) keeps the same choke point.
+	const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
+	// Issue #448: the inbound embed policy is applied to the same
+	// choke point, after the #449 baseline, so every Worker response
+	// also carries `frame-ancestors`. HSTS (#446) stays outermost.
+	const framed = applyFrameAncestorsPolicy(request, secured);
+	// Issue #447: CSP is added in REPORT-ONLY mode at the same choke
+	// point. It observes script/style/font/image/frame/connect origins
+	// without blocking them, so the shipped UI keeps behaving exactly
+	// as before while the origin inventory is measured. Moving a
+	// directive to enforcement is a separate decision. HSTS (#446)
+	// stays outermost.
+	const observed = applyContentSecurityPolicyReportOnly(framed, {
+		mediaBaseUrl: env.MEDIA_PUBLIC_BASE_URL,
+	});
+	return applyTransportSecurityPolicy(request, observed);
+}
+
+/**
  * Cloudflare Worker entry for my-web-2026.
  *
  * Default export shape matches the Cloudflare Workers `ExportedHandler`
  * contract. The `@cloudflare/vite-plugin` reads `wrangler.jsonc.main`,
  * resolves it through Vite, and uses the default export's `fetch`.
- *
- * Real `env` and `ctx` flow through to Hono so external-boundary
- * handlers can talk to D1, R2, KV, and other bindings without
- * indirection.
  *
  * A route COMPONENT that throws during SSR is outside the reach of the
  * router-level failure surfaces: React error boundaries do not catch
@@ -594,57 +682,5 @@ function observeRequestAnomaly(pathname: string, status: number): void {
  * React, which is why the check lives here.
  */
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		const url = new URL(request.url);
-		// Issue #995: the dispatch is the one place a throw used to escape
-		// every contract — the runtime answered a bare 500 with none of the
-		// security headers below and no anomaly record. The catch converts
-		// any dispatch-level throw into a defined 500 that still flows
-		// through the same observation and header choke points, so a
-		// failure can never be quieter than a success.
-		let response: Response;
-		try {
-			response = matchesExternalBoundary(url.pathname)
-				? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
-				: applyHtmlCachePolicy(
-						request,
-						await settleSsrDocumentResponse(request, await handler.fetch(request)),
-					);
-		} catch (error) {
-			// Status-only record: the error NAME is a class label, never a
-			// message — messages can carry binding names or upstream detail.
-			anomalyAuditLogger.audit('dispatch-failure', {
-				errorName: error instanceof Error ? error.name : 'unknown',
-			});
-			// The fallback answers in the failed surface's own contract:
-			// the external boundary gets the documented JSON envelope
-			// (`src/http/errors.ts`), every other path gets the #501
-			// failure document — never the runtime's bare text 500.
-			response = matchesExternalBoundary(url.pathname)
-				? dispatchInternalErrorResponse(generateRequestId())
-				: createSsrFailureResponse(request);
-		}
-		observeRequestAnomaly(url.pathname, response.status);
-		// Issue #449: security headers are applied AFTER the dispatch so
-		// one choke point covers every Worker-generated response — SSR
-		// HTML, redirects, server-function payloads and the Hono
-		// boundary alike. `public/_headers` cannot do this job for the
-		// SSR path (Cloudflare does not apply `_headers` to Worker-
-		// generated responses). HSTS (#446) keeps the same choke point.
-		const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
-		// Issue #448: the inbound embed policy is applied to the same
-		// choke point, after the #449 baseline, so every Worker response
-		// also carries `frame-ancestors`. HSTS (#446) stays outermost.
-		const framed = applyFrameAncestorsPolicy(request, secured);
-		// Issue #447: CSP is added in REPORT-ONLY mode at the same choke
-		// point. It observes script/style/font/image/frame/connect origins
-		// without blocking them, so the shipped UI keeps behaving exactly
-		// as before while the origin inventory is measured. Moving a
-		// directive to enforcement is a separate decision. HSTS (#446)
-		// stays outermost.
-		const observed = applyContentSecurityPolicyReportOnly(framed, {
-			mediaBaseUrl: env.MEDIA_PUBLIC_BASE_URL,
-		});
-		return applyTransportSecurityPolicy(request, observed);
-	},
+	fetch: (request, env, ctx) => serveWorkerRequest(request, env, ctx),
 } satisfies ExportedHandler<Env>;

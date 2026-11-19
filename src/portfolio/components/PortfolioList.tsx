@@ -2,9 +2,14 @@ import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
+import { DEFAULT_PORTFOLIO_VIEW, type PortfolioView } from '../views';
+import { DesignView } from './DesignView';
+import { DevelopView } from './DevelopView';
 import { PortfolioEmptyState } from './EmptyState';
 import { FacetFilter } from './FacetFilter';
 import { ProjectCard } from './ProjectCard';
+import { VideoView } from './VideoView';
+import { ViewSwitcher } from './ViewSwitcher';
 
 /**
  * PortfolioList — `/portfolio` route surface (presentation only).
@@ -30,6 +35,14 @@ import { ProjectCard } from './ProjectCard';
 export interface PortfolioListProps {
 	initialPage: PortfolioListPage;
 	activeFacets: readonly PortfolioFacet[];
+	/**
+	 * Exhibition mode (Issue #1048). `all` keeps the card grid this
+	 * component shipped with; `develop` / `video` / `design` render
+	 * the same filtered project set through the predecessor's three
+	 * gallery presentations. Optional so existing callers and tests
+	 * that predate the switcher keep compiling — absent means `all`.
+	 */
+	view?: PortfolioView;
 	hasMore: boolean;
 	busy: boolean;
 	error: string | null;
@@ -40,6 +53,7 @@ export interface PortfolioListProps {
 export function PortfolioList({
 	initialPage,
 	activeFacets,
+	view = DEFAULT_PORTFOLIO_VIEW,
 	hasMore,
 	busy,
 	error,
@@ -111,6 +125,7 @@ export function PortfolioList({
 							</p>
 						</header>
 						<FacetFilter value={activeFacets} />
+						<ViewSwitcher value={view} />
 					</Container>
 				</section>
 				<section
@@ -157,6 +172,12 @@ export function PortfolioList({
 							) : (
 								<PortfolioEmptyState />
 							)
+						) : view === 'develop' ? (
+							<DevelopView projects={allProjects} />
+						) : view === 'video' ? (
+							<VideoView projects={allProjects} />
+						) : view === 'design' ? (
+							<DesignView projects={allProjects} />
 						) : (
 							<ol
 								className={css({

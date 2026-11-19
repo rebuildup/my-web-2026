@@ -16,6 +16,7 @@ import {
 	type PortfolioListPage,
 	type PortfolioProject,
 } from '../../portfolio/schema';
+import { parsePortfolioView } from '../../portfolio/views';
 
 /** Target key for the portfolio list page reactions. */
 export const PORTFOLIO_REACTIONS_TARGET = 'portfolio-list';
@@ -30,8 +31,14 @@ export const PORTFOLIO_REACTIONS_TARGET = 'portfolio-list';
  *
  * URL search-param contract:
  *   `?facets=develop,design`  any-of filter (closed enum)
+ *   `?view=develop|video|design`  exhibition mode (Issue #1048;
+ *                              absent = `all`, the card grid)
  *   `?cursor=<opaque>`         cursor for the next page (set by
  *                              the route after the first load)
+ *
+ * `facets` and `view` are orthogonal: facets filter the catalogue,
+ * the view decides how the filtered set is exhibited, so a view
+ * change never refetches and never appears in `loaderDeps`.
  *
  * Both are validated server-side. Malformed cursors fall back to
  * the first page per Decision 4; malformed facets are dropped.
@@ -44,6 +51,7 @@ export const PORTFOLIO_REACTIONS_TARGET = 'portfolio-list';
 
 const SearchSchema = z.object({
 	facets: z.string().optional(),
+	view: z.string().optional(),
 });
 
 export const Route = createFileRoute('/portfolio/')({
@@ -106,6 +114,11 @@ function PortfolioRoute() {
 
 function PortfolioFacetView() {
 	const { initialPage, activeFacets, reactions } = Route.useLoaderData();
+	// Issue #1048: the exhibition view is presentation, not query — it
+	// is read from the validated search params here rather than the
+	// loader, so switching views never refetches the catalogue.
+	const { view: rawView } = Route.useSearch();
+	const view = parsePortfolioView(rawView);
 	const [extra, setExtra] = useState<PortfolioProject[]>([]);
 	const [cursor, setCursor] = useState<string | null>(initialPage.nextCursor);
 	const [busy, setBusy] = useState(false);
@@ -141,6 +154,7 @@ function PortfolioFacetView() {
 			<PortfolioList
 				initialPage={initialPage}
 				activeFacets={activeFacets}
+				view={view}
 				hasMore={cursor !== null}
 				busy={busy}
 				error={error}

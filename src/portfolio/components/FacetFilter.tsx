@@ -40,7 +40,10 @@ export interface FacetFilterProps {
 
 export function FacetFilter({ value }: FacetFilterProps) {
 	const router = useRouter();
-	const search = useSearch({ strict: false }) as { facets?: string | undefined };
+	const search = useSearch({ strict: false }) as {
+		facets?: string | undefined;
+		view?: string | undefined;
+	};
 	const active = new Set(value);
 
 	const onToggle = (facet: PortfolioFacet) => () => {
@@ -50,7 +53,14 @@ export function FacetFilter({ value }: FacetFilterProps) {
 		else next.add(facet);
 		// Preserve canonical order to keep URLs stable for caching.
 		const ordered = PORTFOLIO_FACETS.filter((f) => next.has(f));
-		const nextSearch = ordered.length > 0 ? { facets: ordered.join(',') } : {};
+		// Issue #1048: `?view=` is orthogonal to the facet query — the
+		// exhibition mode must survive a facet toggle (and `ViewSwitcher`
+		// preserves `?facets=` the same way in return).
+		const nextSearch: { facets?: string; view?: string } = {};
+		if (ordered.length > 0) nextSearch.facets = ordered.join(',');
+		if (typeof search.view === 'string' && search.view.length > 0) {
+			nextSearch.view = search.view;
+		}
 		router.navigate({
 			to: '/portfolio',
 			search: nextSearch,
@@ -59,7 +69,13 @@ export function FacetFilter({ value }: FacetFilterProps) {
 	};
 
 	const onClear = () => {
-		router.navigate({ to: '/portfolio', search: {}, replace: false });
+		// Clearing the facet filter keeps the exhibition view.
+		router.navigate({
+			to: '/portfolio',
+			search:
+				typeof search.view === 'string' && search.view.length > 0 ? { view: search.view } : {},
+			replace: false,
+		});
 	};
 
 	return (

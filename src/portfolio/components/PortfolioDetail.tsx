@@ -3,9 +3,9 @@ import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { isFacetDerivedRole } from '../kind-labels';
-import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
+import type { PortfolioAdjacent, PortfolioProject } from '../schema';
 import { selectPortfolioVideo } from '../video-facade';
-import { FACET_LABEL } from '../vocabulary';
+import { FACET_LABEL, LINK_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioEvidenceNotice } from './PortfolioEvidenceNotice';
 import { PortfolioMediaFigure } from './PortfolioMedia';
@@ -87,16 +87,6 @@ const SECTION_DEFINITIONS: ReadonlyArray<{
 		field: 'retrospectiveMd',
 	},
 ];
-
-const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
-	repo: 'Repository',
-	demo: 'Demo',
-	release: 'Release',
-	article: 'Article',
-	shop: 'Shop',
-	video: 'Video',
-	other: 'Link',
-};
 
 export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;

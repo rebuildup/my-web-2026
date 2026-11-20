@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 88 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -252,7 +252,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
-| `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
+| `https://361do.booth.pm` | `361do.booth.pm` | external | `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://361do.booth.pm/items/6403113` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/6472931` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/6520211` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -534,7 +534,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/ai-knowledge` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/atcoder-kit` | `github.com` | external | `src/home/activity/github-activity.json` |
-| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
@@ -555,13 +555,13 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
-| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/readmark` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-ae-expression` | `github.com` | external | `src/home/activity/github-activity.json` |
@@ -812,6 +812,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
-- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
+_No findings._
 

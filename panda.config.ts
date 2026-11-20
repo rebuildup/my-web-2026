@@ -163,6 +163,19 @@ export default defineConfig({
 					'0%, 100%': { transform: 'translateY(0)' },
 					'50%': { transform: 'translateY(2.5px)' },
 				},
+				// Issue #517 — the engagement preview's deck step
+				// (`src/personal/engagement/Engagement.tsx`). A short
+				// transform-only arrival for the swapped-in work panel:
+				// no opacity (the axe contrast scan reads a translucent
+				// entrance as a violation) and no layout property, so
+				// the step can never move the deck's height. Opt-out at
+				// render time through `usePrefersReducedMotion` and at
+				// the stylesheet layer through the `engagement-step`
+				// data-motion hook.
+				engagementStep: {
+					'0%': { transform: 'translateY(8px)' },
+					'100%': { transform: 'translateY(0)' },
+				},
 			},
 		},
 	},

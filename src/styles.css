@@ -431,3 +431,19 @@
 		animation: none !important;
 	}
 }
+
+/*
+ * Layer 2, the engagement preview's deck step (Issue #517,
+ * `animationName: engagementStep` in
+ * `src/personal/engagement/Engagement.tsx`). The step is decoration
+ * on a state swap the controls already announce — under the
+ * preference the component emits no `animation-name` and the swap is
+ * instant; this selector is the stylesheet half of the same decision
+ * for markup produced without a client preference read, paired with
+ * the contract constant `ENGAGEMENT_STEP_MOTION`.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="engagement-step"]) {
+		animation: none !important;
+	}
+}

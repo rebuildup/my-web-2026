@@ -137,6 +137,19 @@ export const AD_REVEAL_MOTION = 'ad-reveal';
 export const MELTING_FACE_MOTION = 'melting-face';
 
 /**
+ * The `data-motion` value the engagement preview's step transition
+ * uses (Issue #517, `src/personal/engagement/Engagement.tsx`).
+ *
+ * The interactive variant's deck swaps one work for the next with a
+ * single short transform-only step; the work panel's facts are the
+ * resting document and are identical in both modes. Under reduced
+ * motion the component emits no `animation-name` at all — the step
+ * becomes an instant swap, never a hidden state — and the same
+ * contract constant names the stylesheet backstop.
+ */
+export const ENGAGEMENT_STEP_MOTION = 'engagement-step';
+
+/**
  * The `data-motion` value the in-creative attention pulses use
  * (Issue #925): the video spot's play affordance and the playable
  * unit's TRY IT badge breathe once per cycle to pull the eye the way

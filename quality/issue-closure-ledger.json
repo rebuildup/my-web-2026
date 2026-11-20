@@ -1741,20 +1741,23 @@
 			"title": "feat(stack): Biome設定とフォーマット変換例を技術ページに掲載",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/routes/ に /stack ルートが存在しない（git ls-tree origin/release-0-8-0 -- src/routes/ に stack なし）",
-				"git grep '/stack' -- docs/ src/ は 0 件",
-				"docs/verification/stack/ ディレクトリが存在しない"
+				"src/routes/stack/stack.ts",
+				"src/routes/stack/biome-settings-table.ts",
+				"docs/verification/stack/biome-formatting.md",
+				"docs/verification/stack/biome-config.png",
+				"docs/verification/stack/biome-before-after.png",
+				"#1079"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "実設定（biome.json indentStyle tab / lineWidth 100）は存在するが、公開 tech ページと比較記録は未作成。",
-			"missing": "biome.json の実設定表示、formatter before/after の比較、1 行圧縮案と現行 100 桁整形案の採用/保留記録、formatter CLI の再現手順、必須スクリーンショット"
+			"action": "closed",
+			"note": "PR #1079 で /stack に Biome セクションを追加し release-0-11-0 に統合。biome.json 実値を実行時導出、1 行圧縮案は deferred として記録。css:check / typecheck / lint / architecture / publication / vitest / e2e pass。2026-11-20 close。",
+			"missing": "なし（公開 copy の owner 承認は copy:approval の pending record で別系統管理）。"
 		},
 		{
 			"issue": 383,

@@ -12,7 +12,7 @@
  * Usage: node scripts/check-ui-contract.mjs [--json]
  * Exit: 0 clean / 1 violations or stale allowlist / 2 input error.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import ts from 'typescript';
 
@@ -119,7 +119,8 @@ const C1_SURFACE = new Set(['backgroundColor', 'background', 'backgroundImage'])
 const C1_RULES = C1.detection.valueRules;
 
 const C3_PROPS = new Set(contract.clauses['C-3'].detection.styleProperties);
-const C3_PAD = /^(paddingBlock|paddingBlockStart|paddingBlockEnd|marginBlock|marginBlockStart|marginBlockEnd|minHeight|height)$/;
+const C3_PAD =
+	/^(paddingBlock|paddingBlockStart|paddingBlockEnd|marginBlock|marginBlockStart|marginBlockEnd|minHeight|height)$/;
 
 const C4_PROPS = new Set(contract.clauses['C-4'].styleProperties);
 
@@ -285,14 +286,14 @@ for (const { abs, rel } of files) {
 
 	// C-8: unbounded .map( in home/routes scope
 	if (C8_SCOPE.test(rel)) {
-		let idx = 0;
-		while ((idx = text.indexOf('.map(', idx)) !== -1) {
+		let idx = text.indexOf('.map(');
+		while (idx !== -1) {
 			const window = text.slice(idx, idx + 800);
 			if (!C8_NEARBY.some((tok) => window.includes(tok))) {
 				const pos = sf.getLineAndCharacterOfPosition(idx).line + 1;
 				violations.push({ clause: 'C-8', file: rel, line: pos, detail: 'unbounded .map(' });
 			}
-			idx += 5;
+			idx = text.indexOf('.map(', idx + 5);
 		}
 	}
 
@@ -300,7 +301,9 @@ for (const { abs, rel } of files) {
 		// css()/cva() object literals -> full clause scan + C-7 dedup
 		if (ts.isCallExpression(node)) {
 			const exprText = node.expression.getText(sf);
-			const callee = ts.isIdentifier(node.expression) ? node.expression.text : exprText.split('.').pop();
+			const callee = ts.isIdentifier(node.expression)
+				? node.expression.text
+				: exprText.split('.').pop();
 			if (CSS_CALLS.has(callee)) {
 				for (const arg of node.arguments) {
 					if (ts.isObjectLiteralExpression(arg)) {
@@ -374,9 +377,7 @@ for (const [listName, clauses] of Object.entries(ALLOWLIST_KEYS)) {
 	for (const e of entries) {
 		if (!e || typeof e.path !== 'string') continue;
 		// an entry is live if it suppressed something for its clause+path
-		const liveMatch = deduped.some(
-			(v) => clauses.includes(v.clause) && pathMatch(e.path, v.file),
-		);
+		const liveMatch = deduped.some((v) => clauses.includes(v.clause) && pathMatch(e.path, v.file));
 		if (!liveMatch) stale.push(`${listName}: ${e.path} (${e.reason ?? 'no reason'})`);
 	}
 }
@@ -406,14 +407,18 @@ for (const d of c7All) {
 }
 for (const e of dupAllow) {
 	if (!Array.isArray(e.files)) continue;
-	const liveMatch = c7All.some(
-		(d) => d.files.join('|') === e.files.slice().sort().join('|'),
-	);
+	const liveMatch = c7All.some((d) => d.files.join('|') === e.files.slice().sort().join('|'));
 	if (!liveMatch) staleDup.push(`duplicateAllowlist: ${e.files.join(', ')} (waives nothing)`);
 }
 
 if (JSON_OUT) {
-	console.log(JSON.stringify({ violations: live, suppressed: [...suppressed], stale: [...stale, ...staleDup], c7 }, null, 2));
+	console.log(
+		JSON.stringify(
+			{ violations: live, suppressed: [...suppressed], stale: [...stale, ...staleDup], c7 },
+			null,
+			2,
+		),
+	);
 } else {
 	const byClause = new Map();
 	for (const v of live) {
@@ -433,7 +438,7 @@ if (JSON_OUT) {
 		console.log(`  ${d.literal}…`);
 	}
 	if (stale.length || staleDup.length) {
-		console.log(`\nStale allowlist entries (waive nothing — remove or fix path):`);
+		console.log('\nStale allowlist entries (waive nothing — remove or fix path):');
 		for (const s of [...stale, ...staleDup]) console.log(`  ${s}`);
 	}
 	console.log(

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { describe, it } from 'node:test';
 
 /**
  * UI composition-contract gate tests (Issue #1107, ADR-0022).

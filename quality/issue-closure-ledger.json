@@ -712,21 +712,27 @@
 			"title": "feat(activity): 公開Issue/PRの動きを読み取り専用で可視化",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/ に activity 系の所有者ディレクトリ／モジュールが存在しない（ls src/ に activity なし、src/home/ にも activity なし）",
-				"src/external-api/ExternalReadCard.tsx",
-				"AGENTS.md",
-				"docs/verification/activity/ ディレクトリが存在しない"
+				"src/home/activity/contract.ts",
+				"src/home/activity/snapshot.ts",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/home/activity/event-labels.ts",
+				"scripts/sync-github-activity.mjs",
+				"docs/verification/activity/github-prs.png",
+				"docs/verification/activity/github-empty.png",
+				"#334 close comment 2026-11-20",
+				"#1089",
+				"#1096"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "一括 close コメントは scope 外とのみ述べており、実装の痕跡はない。",
-			"missing": "Issue/PR の分類・状態・日時・元リンクを持つ一覧 UI、取得失敗時の空/stale 表示、GitHub トークンをWebへ渡さない取得経路、unit/contract/E2E、必須スクリーンショット。機能全体が未実装"
+			"action": "closed",
+			"note": "活動カードに加え PR #1096 で feed ref（issue/pull number+state）と個別パーマリンクを実装。payload 依存の state 欠落は正直に非表示。実データで snapshot 再生成・検証 PNG 再撮影。2026-11-20 に受入照合のうえ close。",
+			"missing": null
 		},
 		{
 			"issue": 335,
@@ -1088,20 +1094,26 @@
 			"title": "feat(activity): release・記事・制作物を統合する活動タイムライン",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
+			"state": "partial",
 			"closure": "unsupported",
 			"evidence": [
-				"src/routes/ に /activity ルートなし",
-				"src/ に activity タイムラインの component / fixture は存在しない",
-				"#336"
+				"src/activity/contract.ts",
+				"src/activity/sources.ts",
+				"src/activity/merge.ts",
+				"src/activity/Timeline.tsx",
+				"src/activity/fixtures.ts",
+				"docs/verification/activity/timeline-desktop.png",
+				"docs/verification/activity/timeline-mobile.png",
+				"#352 progress comment 2026-11-20",
+				"#1095"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
 			"action": "reopened",
-			"note": "Home から導線を入れる前段としてページ自体が存在しないため、本 Issue の成果は未達。",
-			"missing": "複数ソース (release / 記事 / 承認済み作品) を日付降順に並べるタイムライン、種別・出典・日付・詳細 URL の表示、更新時刻/取得失敗/空状態。"
+			"note": "PR #1095 で src/activity/ 基盤（contract/sources/merge/Timeline/fixture/states/Storybook/検証PNG）を実装。記事ソースは #323、専用 releases source は #336、portfolio published_at は owner 判断。/activity route・Home 導線・live assembly が未実装のため部分完了として open 維持。",
+			"missing": "/activity route + Home 導線 + live assembly（route loader が GitHub activity + portfolio を合成）。記事コンテンツモデル（#323）と専用 releases source（#336）は別 Issue。"
 		},
 		{
 			"issue": 353,

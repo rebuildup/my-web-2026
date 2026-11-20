@@ -195,7 +195,7 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'about-identity',
 				description:
-					'the repo-controlled identity snapshot renders (identity heading + five narrative sections)',
+					'the repo-controlled identity snapshot renders (identity heading + seven narrative sections)',
 				probes: Object.freeze({ identityHeading: true, narrativeSections: true }),
 			}),
 		]),
@@ -327,7 +327,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
  * against a real render (`e2e/smoke.spec.ts` for the six home sections,
- * `e2e/about.spec.ts` for the five narrative sections), so a composition
+ * `e2e/about.spec.ts` for the seven narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
  *
  * `/` gained one section in Issue #316: `current-projects-heading`
@@ -342,11 +342,15 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * section ("what exists here and how do I reach it"), so the count went
  * 5 -> 6.
  *
+ * `/about` gained two narrative sections — `about-section-skills`
+ * (Issue #391) and `about-section-career` (Issue #389) — so its count
+ * went 5 -> 7.
+ *
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
 	'/': Object.freeze({ labelled: 6 }),
-	'/about': Object.freeze({ narrative: 5 }),
+	'/about': Object.freeze({ narrative: 7 }),
 });
 
 /** @returns {ReadonlyArray<RepresentativeRoute>} */

@@ -231,34 +231,6 @@
 			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
 		},
 		{
-			"id": "contact-commission-not-accepted",
-			"path": "src/contact/page.tsx",
-			"expression": "のお問い合わせは、現時点ではこのページでは受け付けていません。 公開されている channel",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Secondary paragraph of `/contact` (src/contact/page.tsx:123). It states a permission: this page does not accept commission requests, and the published channels are the only route it names (src/contact/channels.json). The permission itself is unchanged by the freshness window; only the channel list moves."
-		},
-		{
 			"id": "contact-channels-heading-title",
 			"path": "src/contact/page.tsx",
 			"expression": "現在利用可能な channel",
@@ -1460,6 +1432,29 @@
 				]
 			},
 			"note": "/now の head.title。「現在地 / Where I am now」は home の CurrentProjects セクション見出しと同一の語彙で、ページが全件列挙 surface であることを表す。日付・件数などの時制主張を含まない。"
+		},
+		{
+			"id": "breadcrumb-now-label-1109",
+			"path": "src/editorial/nav/route-labels.ts",
+			"expression": "現在地",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-20",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1109",
+						"note": "Breadcrumb label registered for /now so BreadcrumbJsonLd emits the BreadcrumbList the route-coverage contract declares. Awaiting owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Breadcrumb leaf label for /now (src/editorial/nav/route-labels.ts). Short form of the page title 「現在地 / Where I am now」; names the same destination the home section links to."
 		}
 	]
 }

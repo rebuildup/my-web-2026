@@ -31,7 +31,7 @@ import { useMediaQuery } from '../use-media-query';
  */
 export function PetCompanion() {
 	const [Sprite, setSprite] = useState<ComponentType | null>(null);
-	const wideEnough = useMediaQuery('(min-width: 768px)');
+	const wideEnough = useMediaQuery('(width >= 768px)');
 
 	useEffect(() => {
 		if (!wideEnough) return;

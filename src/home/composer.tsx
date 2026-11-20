@@ -204,7 +204,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	// disclosure once mounted. With JavaScript disabled the details
 	// stays open on every viewport — the ambient signals remain
 	// reachable through the native summary toggle.
-	const isDesktop = useMediaQuery('(min-width: 1024px)');
+	const isDesktop = useMediaQuery('(width >= 1024px)');
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls

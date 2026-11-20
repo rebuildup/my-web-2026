@@ -29,7 +29,7 @@ describe('pet safe area (Issue #767)', () => {
 	);
 
 	it('reserves nothing below md, where the companion does not mount', () => {
-		// Issue #1110 — PetCompanion gates on `(min-width: 768px)`; a
+		// Issue #1110 — PetCompanion gates on `(width >= 768px)`; a
 		// corridor on a phone viewport would consume ~20% of the measure.
 		expect(PET_SAFE_AREA_INLINE_END.base).toBe('0px');
 	});

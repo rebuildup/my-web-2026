@@ -29,17 +29,6 @@ export type SectionTone =
 
 export type FieldTone = Extract<SectionTone, `field.${string}`>;
 
-const FIELD_TONES: readonly FieldTone[] = [
-	'field.design',
-	'field.code',
-	'field.writing',
-	'field.tool',
-];
-
-export function isFieldTone(tone: SectionTone): tone is FieldTone {
-	return (FIELD_TONES as readonly string[]).includes(tone);
-}
-
 /** The `backgroundColor` token a tone paints on its own element. */
 export const TONE_BACKGROUND: Record<SectionTone, string> = {
 	ground: 'bg.canvas',

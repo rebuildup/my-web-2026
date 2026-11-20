@@ -142,7 +142,14 @@ async function main() {
 		for (const route of routes) {
 			for (const viewport of VIEWPORTS) {
 				for (const scheme of SCHEMES) {
-					const result = await captureCondition(browser, args.base, route, viewport, scheme, outDir);
+					const result = await captureCondition(
+						browser,
+						args.base,
+						route,
+						viewport,
+						scheme,
+						outDir,
+					);
 					results.push(result);
 					const label = `${route} ${viewport.name} ${scheme}`;
 					if (result.error) {

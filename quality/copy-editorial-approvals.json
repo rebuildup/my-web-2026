@@ -4640,6 +4640,147 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-352",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f10d3cab52f9ab634c145a935e002829661ed64324c46aeacdc7a79a64061e34",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #352 の活動タイムラインが追加する公開日本語 copy 12 セグメント。unavailable / empty / 全ソース失敗の 3 状態文、ソース状態フォールバック「不明」、観測日ラベル、ソース区切りの全角スペース、kind ラベル 3 件（リリース / 記事 / 作品）、ソース状態ラベル 3 件（観測中 / 未接続 / 取得失敗 — GitHubActivityCard と同一語彙）。いずれも Issue が要求する状態表示と区分語であり、新規の時制主張・権限主張・数値の創作を含まない。",
+				"disposition": "各セグメントの突合結果は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "活動タイムラインを読み込めませんでした。",
+					"text": "活動タイムラインを読み込めませんでした。",
+					"verdict": "intentional",
+					"note": "timeline === null（assembly 失敗）時の unavailable 文。GitHubActivityCard「GitHub 活動スナップショットを読み込めませんでした。」と同じ「読み込めませんでした」語彙で、失敗を空状態と区別する。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "不明",
+					"text": "不明",
+					"verdict": "intentional",
+					"note": "ソース状態ラベルのフォールバック。contract の union に無い status 値が来た場合に推測せず「不明」と出す防御的既定値。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "",
+					"text": "",
+					"verdict": "intentional",
+					"note": "ソース状態行の区切りに使う全角スペース（U+3000）リテラル。trim 後は空文字列になる区切り記号であり文ではない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
+					"text": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
+					"verdict": "intentional",
+					"note": "タイムラインヘッダの観測日ラベル。GitHubActivityCard「観測日」と同一語彙で、表示値はソースの observedAt か assembly 時刻のいずれか新しい方の日付部分のみ（鮮度を偽らない）。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "活動ソースを取得できませんでした。",
+					"text": "活動ソースを取得できませんでした。",
+					"verdict": "intentional",
+					"note": "items が 0 件かつ全ソースが ok 以外のときの文言。「空 = 活動なし」と誤読させないための失敗側の表示で、Issue の「取得失敗」状態要件に対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/Timeline.tsx",
+					"before": null,
+					"after": "掲載できる活動はまだありません。",
+					"text": "掲載できる活動はまだありません。",
+					"verdict": "intentional",
+					"note": "items が 0 件かつ少なくとも 1 ソースが ok のときの空状態文。捏造した項目を出さず「まだ何も無い」ことだけを述べる。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "観測中",
+					"text": "観測中",
+					"verdict": "intentional",
+					"note": "ソース状態 ok の日本語ラベル。GitHubActivityCard の SOURCE_STATUS_LABELS と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "未接続",
+					"text": "未接続",
+					"verdict": "intentional",
+					"note": "ソース状態 unconfigured の日本語ラベル（記事ソース未実装など）。GitHubActivityCard と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "取得失敗",
+					"text": "取得失敗",
+					"verdict": "intentional",
+					"note": "ソース状態 failed の日本語ラベル。GitHubActivityCard と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "リリース",
+					"text": "リリース",
+					"verdict": "intentional",
+					"note": "kind=release のバッジラベル。GitHub の ReleaseEvent に対応する区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "記事",
+					"text": "記事",
+					"verdict": "intentional",
+					"note": "kind=article のバッジラベル。Issue #323 の記事ソースが将来供給する区分。現時点で live adapter は article 項目を出さない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "作品",
+					"text": "作品",
+					"verdict": "intentional",
+					"note": "kind=work のバッジラベル。portfolio の published+public プロジェクトに対応する区分語。新規追加。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/352",
+						"note": "本変更の実装対象。「更新時刻/取得失敗/空状態を表示」受入条件が状態文言を要求する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/Timeline.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/contract.ts",
+						"note": "kind / source / 状態ラベルの定義元。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/activity/README.md",
+						"note": "fixture ベースの実描画を記録した検証記録（timeline-desktop.png / timeline-mobile.png）。"
+					}
+				]
+			}
 		}
 	]
 }

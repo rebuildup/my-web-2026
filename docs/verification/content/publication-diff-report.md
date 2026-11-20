@@ -15,7 +15,7 @@
 | Publicly reachable URLs (surface + Static Assets) | 89 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | 4 finding(s) |
+| Approved transition | 1 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -212,9 +212,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/stack`
+- (none)
 
 ### Removed public URLs (0)
 
@@ -557,7 +557,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/activity/fixtures.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main` | `github.com` | external | `src/routes/stack/stack.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
@@ -596,6 +596,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/writing-skills` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/tastile/tastile-android` | `github.com` | external | `src/activity/fixtures.ts` |
 | `https://gitty-code.com/user/rebuildup` | `gitty-code.com` | external | `src/about/links.ts` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
 | `https://note.com/alert_toad4443` | `note.com` | external | `src/about/links.ts` |
@@ -816,8 +817,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/tree/main
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/stack
-- **WARN** `W004 public-url-added` Public URL added: /stack
+- **WARN** `W002 external-url-added` External URL added: https://github.com/tastile/tastile-android
 

@@ -3477,6 +3477,7 @@
 				"files": [
 					"src/about/career.ts",
 					"src/about/skills.ts",
+					"src/activity/fixtures.ts",
 					"src/contact/channels.json",
 					"src/home/activity/github-activity.json",
 					"src/home/composer.stories.tsx",
@@ -3832,6 +3833,15 @@
 				"identifier": false,
 				"files": [
 					"src/home/activity/github-activity.json"
+				]
+			},
+			{
+				"url": "https://github.com/tastile/tastile-android",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/activity/fixtures.ts"
 				]
 			},
 			{
@@ -5949,14 +5959,10 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/stack"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://github.com/rebuildup/my-web-2026/blob/main",
-			"https://github.com/rebuildup/my-web-2026/tree/main",
-			"https://rebuildup.dev/stack"
+			"https://github.com/tastile/tastile-android"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
@@ -5968,22 +5974,7 @@
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/my-web-2026/blob/main"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/my-web-2026/tree/main"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/stack"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /stack"
+				"message": "External URL added: https://github.com/tastile/tastile-android"
 			}
 		]
 	}

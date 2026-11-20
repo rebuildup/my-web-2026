@@ -89,6 +89,13 @@ personal -> editorial (Issue #709 — the personal-document preview owner
                    ALLOWLIST: every other owner directory under `src/`
                    is forbidden, including one that does not exist yet)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+routes -> activity (Issue #352 — the `/activity` page is a follow-up
+                   integration; the route will compose the timeline
+                   from the home GitHub-activity projection and the
+                   public portfolio index. `activity` itself declares
+                   NO outgoing owner edge — its adapters take narrow
+                   structural inputs — so the edge is one-directional
+                   and enforced as an EMPTY allowlist)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
                  fixture is policy data: which code points a heading
@@ -379,6 +386,22 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   a demo surface, so it stays outside the public-Japanese-copy gate for
   the same reason `**/*.stories.tsx` does. See
   `src/personal/README.md`.
+- `src/activity/**` (Issue #352) owns the **unified activity-timeline
+  read model**: the merged chronology contract (`contract.ts`), the
+  date-descending merge (`merge.ts`), the per-source adapters
+  (`sources.ts`), the display component (`Timeline.tsx`) and the
+  committed fixtures. It answers "what did the owner publish, and
+  when" across GitHub releases, published articles and approved
+  portfolio works — each item keeps its 種別 / 出典 / 日付 / 詳細 URL,
+  and unknown dates are never interpolated (a work contributes its
+  authored `periodStart` / `periodLabel`; the portfolio model has no
+  publication-date field, so none is claimed). Its adapters take
+  narrow STRUCTURAL inputs, so the obligation imports no peer owner,
+  no route, no binding and no boundary — `allowedOwnerDependencies`
+  in `scripts/check-architecture.mjs` registers it with an EMPTY
+  allowlist. The `/activity` route and the Home 導線 are follow-up
+  integration; until then the surface is verified through the
+  committed fixtures and Storybook only.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),

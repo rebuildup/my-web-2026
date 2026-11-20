@@ -126,7 +126,19 @@ const forbiddenOwnerDependencies = new Map([
  * no peer obligation, so every other owner directory is forbidden —
  * including one that does not exist yet.
  */
-const allowedOwnerDependencies = new Map([['personal', new Set(['editorial'])]]);
+const allowedOwnerDependencies = new Map([
+	['personal', new Set(['editorial'])],
+	// `activity` (Issue #352) owns the unified activity-timeline read
+	// model: the merged chronology contract, the per-source adapters
+	// and the display component. Its inputs are narrow STRUCTURAL
+	// types — `HomeGitHubActivityFeedItem` and `PortfolioProject` are
+	// satisfied without an import — so the obligation reads no peer
+	// owner, no route, no binding and no boundary. The allowlist is
+	// EMPTY on purpose: AGENTS.md §3 declares no outgoing edge for it,
+	// and a denylist could not keep that true once a new peer owner
+	// appears (same reason `personal` is an allowlist, Issue #709).
+	['activity', new Set()],
+]);
 
 /**
  * Directories whose contents are considered "parent" for the

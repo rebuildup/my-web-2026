@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
@@ -58,11 +57,7 @@ function NowRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<main
-				className={css({
-					paddingBlock: { base: '10', lg: '16' },
-				})}
-			>
+			<main>
 				<CurrentProjects projects={projects} today={today} />
 			</main>
 		</>

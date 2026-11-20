@@ -14,12 +14,24 @@
 	},
 	"scope": {
 		"root": "src",
-		"extensions": [".tsx", ".ts"],
-		"exemptPrefixes": ["src/editorial/"],
+		"extensions": [
+			".tsx",
+			".ts"
+		],
+		"exemptPrefixes": [
+			"src/editorial/"
+		],
 		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
 	},
 	"primitives": {
-		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split"],
+		"layout": [
+			"PageSection",
+			"Container",
+			"Grid",
+			"Stack",
+			"Cluster",
+			"Split"
+		],
 		"components": [
 			"SectionHeading",
 			"Button",
@@ -76,7 +88,9 @@
 					},
 					{
 						"property": "backgroundColor",
-						"values": ["bg.canvas"],
+						"values": [
+							"bg.canvas"
+						],
 						"note": "painting the page ground by hand"
 					},
 					{
@@ -138,7 +152,11 @@
 			"name": "section-tone-owner",
 			"summary": "Colored/shaded section bands are expressed only through PageSection tone.",
 			"detection": {
-				"styleProperties": ["backgroundColor", "background", "backgroundImage"],
+				"styleProperties": [
+					"backgroundColor",
+					"background",
+					"backgroundImage"
+				],
 				"sectionScaleHeuristic": "a style object containing both a band surface property AND (paddingBlock* OR minHeight OR width:'100%' with block padding) is section-scale and must use PageSection tone",
 				"panelPath": "smaller classified surfaces use Panel variant=\"field.*\"; arbitrary backgroundColor on a non-allowlisted element is a violation"
 			},
@@ -177,8 +195,12 @@
 					},
 					{
 						"element": "ul",
-						"elementAliases": ["ol"],
-						"forbiddenStyleProperties": ["display"],
+						"elementAliases": [
+							"ol"
+						],
+						"forbiddenStyleProperties": [
+							"display"
+						],
 						"note": "list layout goes through Stack/Grid presets; listStyle:'none' resets stay allowed"
 					}
 				]
@@ -192,7 +214,9 @@
 				"jsxPatterns": [
 					{
 						"element": "a",
-						"elementAliases": ["button"],
+						"elementAliases": [
+							"button"
+						],
 						"controlStyleProperties": [
 							"padding",
 							"paddingInline",
@@ -362,14 +386,6 @@
 		},
 		{
 			"path": "src/home/capabilities/grid.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/home/composer.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
 				"gridTemplateColumns": 1
@@ -779,13 +795,12 @@
 		},
 		{
 			"path": "src/home/composer.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"reason": "legacy debt pending #1109 migration to PageSection (skip-link surface + sponsored slot)",
 			"signatures": {
 				"backgroundColor: bg.canvas": 1,
-				"raw <section> element": 2,
-				"surface + block padding/min-height outside PageSection": 1
+				"raw <section> element": 1
 			},
-			"clause": "C-1/C-3"
+			"clause": "C-1"
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
@@ -1294,13 +1309,10 @@
 		},
 		{
 			"path": "src/home/composer.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"reason": "legacy debt pending #1109 Button/TextLink migration (skip link)",
 			"signatures": {
-				"<a> backgroundColor": 3,
-				"<a> borderRadius": 1,
-				"<a> height": 1,
-				"<a> padding": 1,
-				"<a> paddingInline": 1
+				"<a> backgroundColor": 1,
+				"<a> padding": 1
 			},
 			"clause": "C-6"
 		},
@@ -1933,7 +1945,7 @@
 			"path": "src/home/current/CurrentProjects.tsx",
 			"reason": "legacy debt pending #1108 HOME/index-route curation",
 			"signatures": {
-				"unbounded .map(": 3
+				"unbounded .map(": 2
 			},
 			"clause": "C-8"
 		},
@@ -2187,7 +2199,6 @@
 				"src/contact/commission-page.tsx",
 				"src/contact/page.tsx",
 				"src/home/capabilities/grid.tsx",
-				"src/home/composer.tsx",
 				"src/home/current/CurrentProjects.tsx",
 				"src/home/footer.tsx",
 				"src/home/hero.tsx",
@@ -2275,14 +2286,6 @@
 			"files": [
 				"src/about/components/AboutPage.tsx",
 				"src/home/footer.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/home/composer.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"

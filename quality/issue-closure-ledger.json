@@ -1774,21 +1774,21 @@
 			"title": "feat(stack): CI・テスト・デプロイ工程の可視化ページを追加",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/routes/ on origin/release-0-8-0 has no stack route (index, about, admin.*, contact, design-system, keyboard, portfolio, projects.dotfiles, tools.* only)",
-				"quality-gates.png",
-				"delivery-mobile.png",
-				"quality/profile.yaml"
+				"src/routes/stack/stack.ts",
+				"docs/verification/stack/quality-gates.png",
+				"docs/verification/stack/delivery-mobile.png",
+				"#1076"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "The underlying facts (profile.yaml, runbooks) exist, but the visible /stack surface that this issue is about was never built; the merged cross-referenced PR #593 is a bundle-dependency report, unrelated.",
-			"missing": "the whole issue: the /stack Quality/Delivery sections, the diagram/text description of the fast/integration/release gates, Cloudflare Workers Builds vs GitHub Actions responsibility split, and the secret-free mobile-readable rendering"
+			"action": "closed",
+			"note": "PR #1076 で /stack に delivery 節を追加し release-0-11-0 に統合。3 gate は quality/profile.yaml gates.* と package.json scripts に一致、Workers Builds = 唯一の本番デプロイ主体、Actions = 検証専用、Infisical = secret SoT（status-only）を記載。validate:fast pass。2026-11-20 close。",
+			"missing": "なし（公開 copy の owner 承認は copy:approval の pending record で別系統管理）。"
 		},
 		{
 			"issue": 384,

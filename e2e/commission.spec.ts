@@ -47,8 +47,10 @@ test.describe('commission — /commission status surface', () => {
 		await page.goto('/commission');
 
 		await expect(page.getByRole('heading', { name: /依頼できる内容/ })).toBeVisible();
-		await expect(page.getByText('MV 制作')).toBeVisible();
-		await expect(page.getByText('Web 開発')).toBeVisible();
+		// exact: the inquiry-form example also contains 「MV 制作」
+		// inside a longer hint string, so a substring match is ambiguous.
+		await expect(page.getByText('MV 制作', { exact: true })).toBeVisible();
+		await expect(page.getByText('Web 開発', { exact: true })).toBeVisible();
 
 		await expect(page.getByRole('heading', { name: /依頼の流れ/ })).toBeVisible();
 		await expect(page.getByText('お問い合わせ', { exact: true }).first()).toBeVisible();

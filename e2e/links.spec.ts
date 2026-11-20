@@ -28,8 +28,11 @@ test.describe('links — /links inventory', () => {
 			expect(await list.locator('li').count()).toBeGreaterThan(0);
 		}
 
-		// Spot-check migrated entries.
-		await expect(page.getByRole('link', { name: /GitHub/ })).toBeVisible();
+		// Spot-check migrated entries. The row renders the account
+		// title as text and the anchor carries the URL, so the
+		// destination href — not the link's accessible name — is the
+		// stable assertion.
+		await expect(page.locator('a[href="https://github.com/rebuildup"]')).toBeVisible();
 		await expect(page.locator('a[href="https://github.com/rebuildup"]')).toHaveAttribute(
 			'rel',
 			'noopener noreferrer',

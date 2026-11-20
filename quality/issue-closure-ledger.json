@@ -1941,19 +1941,27 @@
 			"title": "feat(identity): 旧サイトの外部リンク一覧を確認して利用先別リンクコンポーネントへ移行",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/about/data.ts",
-				"docs/verification/identity/ ディレクトリが存在せず、links の公開/無効/空 fixture も存在しない"
+				"src/about/links.ts",
+				"src/about/components/LinksPage.tsx",
+				"src/routes/links.tsx",
+				"src/about/links.test.ts",
+				"docs/verification/identity/verified-links.png",
+				"docs/verification/identity/links-empty.png",
+				"scripts/capture-links-empty.mjs",
+				"#390 close comment 2026-11-20",
+				"#1051",
+				"#1088"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "既存の externalHandles は本 Issue の成果物ではない（出典検証のないハードコード 3 件）。",
-			"missing": "旧 links.yusuke-kim.com の URL/表示名/用途の inventory と出典、リンク切れ・活動停止・非公開先の分類、用途別の独立 component と fixture、必須スクリーンショット"
+			"action": "closed",
+			"note": "/links 実装済み（#1051）。PR #1088 で空状態 fixture・Empty/EmptyGroups story・links-empty.png を補完し、受入条件を照合して 2026-11-20 に close。外部 URL の実到達性はネットワーク依存のため CI 対象外（形状・整合性テストで代替）と正直に記録。",
+			"missing": null
 		},
 		{
 			"issue": 391,

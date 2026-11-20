@@ -75,6 +75,40 @@ const PUBLIC_SSR_PATHS = [
  */
 const PUBLIC_JSON_PATHS = ['/api/v1/health', '/api/v1/db/ping'] as const;
 
+/**
+ * Error documents (Issue #1009 follow-up). A failed request still
+ * returns an HTML document whose `$_TSR` payload can carry MORE than
+ * a success payload: TanStack's `ShallowErrorPlugin` serialises the
+ * failed match's `error.message` into the dehydrated state
+ * (`test/integration/error-states.test.ts` pins that the message —
+ * and only the message — travels). An error message authored from
+ * internals (a repo path, a schema field name, an Issue ref) is the
+ * same leak class as a loader field, so every error surface this
+ * suite can produce cheaply is scanned with the same rules:
+ *
+ *   - unmatched path → router `defaultNotFoundComponent` (404)
+ *   - valid slug, no row → route `notFound()` (404)
+ *   - unknown tool slug → route `notFoundComponent` (404)
+ *   - repeated `?facets=` → `validateSearch` failure → error surface
+ *     (the serialized search error is the payload canary)
+ *   - slug rejected by `SlugSchema` INSIDE the loader → a real thrown
+ *     loader error → `defaultErrorComponent` (5xx); the ZodError
+ *     message is what `ShallowErrorPlugin` would ship
+ *
+ * A genuine loader-throw 503 (`D1_ERROR` → redacted
+ * `portfolio_unavailable (ref=…)`) is pinned message-only by
+ * `error-states.test.ts`; this file's pool applies the portfolio
+ * schema, so that failure cannot be produced here without
+ * fabricating one.
+ */
+const ERROR_DOCUMENT_PATHS = [
+	'/this-route-does-not-exist-1009',
+	'/portfolio/identifier-fixture-missing',
+	'/tools/no-such-tool-1009',
+	'/portfolio?facets=a&facets=b',
+	'/portfolio/Invalid_Slug',
+] as const;
+
 interface ScanHit {
 	readonly rule: string;
 	readonly match: string;
@@ -191,6 +225,17 @@ describe('public surface — no internal identifiers reach rendered bytes', () =
 			expect([200, 404]).toContain(response.status);
 			const body = await response.text();
 			expect(scanBody(path, body)).toEqual([]);
+		});
+	}
+
+	for (const path of ERROR_DOCUMENT_PATHS) {
+		it(`GET ${path} (error document) carries no internal identifier`, async () => {
+			const response = await SELF.fetch(`https://example.com${path}`);
+			// Non-vacuity: the request must actually fail — a 200 here
+			// means the fixture stopped exercising the error surface.
+			expect(response.status).toBeGreaterThanOrEqual(400);
+			const html = await response.text();
+			expect(scanBody(path, html)).toEqual([]);
 		});
 	}
 });

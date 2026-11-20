@@ -190,5 +190,12 @@ describe('resolveStackSections over the committed inventory', () => {
 		// declared not-applicable, never pass.
 		const identical = checks.find((check) => check.id === 'preview-route-identical-output');
 		expect(identical?.status).toBe('not-applicable');
+		// The GitHub-merge parity check is verified by
+		// src/home/current/parity.test.ts, and the locale check is
+		// not-applicable because the site has no per-locale routes.
+		const mergeParity = checks.find((check) => check.id === 'github-merge-parity');
+		expect(mergeParity?.status).toBe('pass');
+		const locale = checks.find((check) => check.id === 'other-locale-render');
+		expect(locale?.status).toBe('not-applicable');
 	});
 });

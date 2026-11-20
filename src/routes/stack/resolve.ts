@@ -1,4 +1,4 @@
-import type { StackItem, StackSection, StackVersionRef } from './stack';
+import type { StackFactRef, StackFactRow, StackItem, StackSection, StackVersionRef } from './stack';
 
 /**
  * Pure version-resolution for the `/stack` page (Issue #381).
@@ -21,8 +21,14 @@ export interface StackVersionView {
 }
 
 /** An item with its version resolved — what the page renders. */
-export interface StackItemView extends Omit<StackItem, 'version'> {
+export interface StackItemView extends Omit<StackItem, 'version' | 'facts'> {
 	readonly version: StackVersionView;
+	/**
+	 * Resolved fact-table rows (Issue #382). Present only when the
+	 * item declared `facts` AND the source produced rows; absent
+	 * means "nothing truthful to show" — the page renders no table.
+	 */
+	readonly settings?: readonly StackFactRow[];
 }
 
 /** A section with resolved items. */
@@ -42,6 +48,13 @@ export interface StackFactSources {
 	readonly npmSpec: (name: string) => string | null;
 	/** `package.json#packageManager`, e.g. `pnpm@12.3.4`. */
 	readonly packageManager: string | null;
+	/**
+	 * `biome.json` settings rows already extracted by
+	 * `biome-facts.ts` (Issue #382); `undefined`/`null` when the file
+	 * yielded nothing reportable — the `biomeJson` fact then resolves
+	 * to no table.
+	 */
+	readonly biomeSettings?: readonly StackFactRow[] | null;
 }
 
 /**
@@ -82,9 +95,29 @@ export function resolveVersion(ref: StackVersionRef, sources: StackFactSources):
 	}
 }
 
+/**
+ * Resolve one item's fact reference against the injected sources.
+ * Same fail-closed contract as {@link resolveVersion}: a source that
+ * produced nothing yields `undefined`, and the page omits the table.
+ */
+export function resolveFacts(
+	ref: StackFactRef,
+	sources: StackFactSources,
+): readonly StackFactRow[] | undefined {
+	switch (ref.kind) {
+		case 'biomeJson':
+			return sources.biomeSettings ?? undefined;
+	}
+}
+
 function resolveItem(item: StackItem, sources: StackFactSources): StackItemView {
-	const { version: ref, ...rest } = item;
-	return { ...rest, version: resolveVersion(ref, sources) };
+	const { version: ref, facts: factRef, ...rest } = item;
+	const settings = factRef === undefined ? undefined : resolveFacts(factRef, sources);
+	return {
+		...rest,
+		version: resolveVersion(ref, sources),
+		...(settings === undefined ? {} : { settings }),
+	};
 }
 
 function resolveSection(section: StackSection, sources: StackFactSources): StackSectionView {

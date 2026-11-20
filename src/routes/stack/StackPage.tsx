@@ -2,7 +2,10 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
+import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
+import type { StackFactRow } from './stack';
 
 /**
  * `/stack` page composition (Issue #381).
@@ -195,6 +198,44 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					<span className={css({ fontWeight: '600', color: 'text.default' })}>採用理由 — </span>
 					{item.reason}
 				</p>
+				{item.settings !== undefined && item.settings.length > 0 ? (
+					<div data-testid={`stack-settings-${item.id}`}>
+						<DataTable
+							caption="biome.json の設定値（リクエスト時にファイルから読み取り）"
+							columns={BIOME_SETTINGS_COLUMNS}
+							rows={biomeSettingsRows(item.settings)}
+							compact
+						/>
+					</div>
+				) : null}
+				{item.samples !== undefined && item.samples.length > 0 ? (
+					<div
+						data-testid={`stack-samples-${item.id}`}
+						className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
+					>
+						{item.samples.map((sample) => (
+							<div
+								key={sample.label}
+								className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}
+							>
+								<CodeBlock label={sample.label} code={sample.code} language={sample.language} />
+								{sample.note !== undefined ? (
+									<p
+										className={css({
+											margin: '0',
+											fontFamily: 'sans',
+											fontSize: 'xs',
+											lineHeight: '1.6',
+											color: 'text.muted',
+										})}
+									>
+										{sample.note}
+									</p>
+								) : null}
+							</div>
+						))}
+					</div>
+				) : null}
 				{item.evidence.length > 0 ? (
 					<ul
 						aria-label="根拠 source"
@@ -262,6 +303,14 @@ function VersionBadge({ version }: { version: StackItemView['version'] }) {
 			<span className={css({ fontFamily: 'mono' })}>{version.label}</span>
 		</Badge>
 	);
+}
+
+function biomeSettingsRows(settings: readonly StackFactRow[]): TableRow[] {
+	return settings.map((row) => ({
+		key: row.label,
+		label: row.label,
+		cells: { value: row.value },
+	}));
 }
 
 const skipLinkStyle = css({

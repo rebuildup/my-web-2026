@@ -53,6 +53,41 @@ export type StackVersionRef =
 	| { readonly kind: 'none' }
 	| { readonly kind: 'undetermined' };
 
+/**
+ * A labelled code block rendered inside an item — the before/after
+ * pairs and the proposal comparison the Biome section (Issue #382)
+ * shows. The `code` text is committed copy: when it claims to be a
+ * formatter output it must be the real bytes the formatter produced
+ * (the reproduction command is named in `note` and in
+ * `docs/verification/stack/biome-formatting.md`).
+ */
+export interface StackCodeSample {
+	/** Visible label, e.g. 「変換前」 / 「Biome 適用後」. */
+	readonly label: string;
+	/** Fence language hint (`ts`, `json`, `text`); metadata only. */
+	readonly language?: string;
+	readonly code: string;
+	/** Optional muted note under the block. */
+	readonly note?: string;
+}
+
+/**
+ * A runtime-resolved fact table. `version` resolves to ONE label;
+ * `facts` resolves to a list of labelled rows read from a repository
+ * file at request time — currently only `biome.json` (Issue #382).
+ * Same fail-closed contract as `version`: a reference that resolves
+ * to nothing renders no table, never a guessed value.
+ */
+export type StackFactRef = { readonly kind: 'biomeJson' };
+
+/** One row of a resolved fact table (`settings` on the view). */
+export interface StackFactRow {
+	/** Dotted key path, e.g. `formatter.lineWidth`. */
+	readonly label: string;
+	readonly value: string;
+	readonly note?: string;
+}
+
 /** One technology / configuration entry on the page. */
 export interface StackItem {
 	readonly id: string;
@@ -63,6 +98,10 @@ export interface StackItem {
 	/** Why it was adopted / the design intent behind the choice. */
 	readonly reason: string;
 	readonly version: StackVersionRef;
+	/** Optional runtime-resolved settings table (see {@link StackFactRef}). */
+	readonly facts?: StackFactRef;
+	/** Optional committed code samples (before/after, proposals). */
+	readonly samples?: readonly StackCodeSample[];
 	readonly evidence: readonly StackEvidence[];
 }
 
@@ -94,6 +133,58 @@ const evidenceDir = (label: string, ...segments: readonly string[]): StackEviden
 	label,
 	href: tree(...segments),
 });
+
+/**
+ * The Biome before/after sample (Issue #382).
+ *
+ * `BIOME_SAMPLE_BEFORE` is the deliberately unformatted input;
+ * `BIOME_SAMPLE_AFTER` is the byte-exact stdout of
+ *
+ *   pnpm exec biome format --stdin-file-path=sample.ts < before.ts
+ *
+ * run with the repository's own `biome.json` (Biome 1.9.4,
+ * `lineWidth: 100`, tab indent, single quotes, `trailingCommas: "all"`).
+ * The reproduction command and the compressed-proposal comparison are
+ * recorded in `docs/verification/stack/biome-formatting.md`; if
+ * `biome.json`'s formatter settings change, this pair must be
+ * regenerated, not hand-edited.
+ */
+const BIOME_SAMPLE_BEFORE = [
+	'export function describeStackItem(item:{name:string;responsibility:string;reason:string;version:string|null}):string{',
+	'return `${item.name} — ${item.responsibility} (${item.version??"未確定"})`',
+	'}',
+	'export const SAMPLE=describeStackItem({name:"Biome",responsibility:"format と lint を 1 つの binary で担う toolchain。",reason:"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。",version:"1.9.x"})',
+].join('\n');
+
+const BIOME_SAMPLE_AFTER = [
+	'export function describeStackItem(item: {',
+	'\tname: string;',
+	'\tresponsibility: string;',
+	'\treason: string;',
+	'\tversion: string | null;',
+	'}): string {',
+	"\treturn `${item.name} — ${item.responsibility} (${item.version ?? '未確定'})`;",
+	'}',
+	'export const SAMPLE = describeStackItem({',
+	"\tname: 'Biome',",
+	"\tresponsibility: 'format と lint を 1 つの binary で担う toolchain。',",
+	"\treason: 'Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。',",
+	"\tversion: '1.9.x',",
+	'});',
+].join('\n');
+
+/**
+ * The compressed one-line proposal (Issue #382): the same function
+ * with the signature minified and the object literal kept on one
+ * line. Under `lineWidth: 100` Biome cannot keep this shape — the
+ * call alone exceeds the width, so `biome format --write` re-expands
+ * it to {@link BIOME_SAMPLE_AFTER}. That is the mechanical reason the
+ * proposal is deferred rather than adopted.
+ */
+const BIOME_SAMPLE_COMPRESSED = [
+	'export function describeStackItem(i:{name:string;responsibility:string;reason:string;version:string|null}):string{return`${i.name} — ${i.responsibility} (${i.version??"未確定"})`}',
+	'export const SAMPLE=describeStackItem({name:"Biome",responsibility:"format と lint を 1 つの binary で担う toolchain。",reason:"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。",version:"1.9.x"})',
+].join('\n');
 
 /**
  * The committed stack inventory.
@@ -359,6 +450,78 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 				evidence: [
 					evidence('ci.yml', '.github', 'workflows', 'ci.yml'),
 					evidence('profile.yaml', 'quality', 'profile.yaml'),
+				],
+			},
+		],
+	},
+	{
+		id: 'biome',
+		title: 'コード品質・Biome',
+		titleEn: 'Code quality · Biome',
+		description:
+			'format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。',
+		items: [
+			{
+				id: 'biome-config',
+				name: 'biome.json の設定値',
+				responsibility:
+					'formatter（indent・lineWidth・lineEnding）・JavaScript formatter（quote・semicolon・trailing comma）・linter rules・organizeImports の設定値を表で示します。',
+				reason:
+					'「コードをどう整形するか」の契約は `biome.json` 1 ファイルが所有し、`format:check` / `lint:check` がそれを機械的に強制するためです。表の値はページ表示時にファイルから読み取るので、記載が実設定からずれることはありません。',
+				version: { kind: 'profile', key: 'format_lint' },
+				facts: { kind: 'biomeJson' },
+				evidence: [evidence('biome.json', 'biome.json'), evidence('package.json', 'package.json')],
+			},
+			{
+				id: 'biome-format-sample',
+				name: '整形の before / after',
+				responsibility:
+					'「変換前」は整形していない TypeScript の入力、「Biome 適用後」は同じ入力を `biome format --stdin-file-path` に通した実際の出力です。',
+				reason:
+					'設定値の列挙だけでは 100 桁での折り返し方が伝わらないため、実バイナリの出力をそのまま掲載しています。再現手順と採否の記録は根拠リンク先の検証記録にあります。',
+				version: { kind: 'none' },
+				samples: [
+					{
+						label: '変換前（整形前の入力）',
+						language: 'ts',
+						code: BIOME_SAMPLE_BEFORE,
+					},
+					{
+						label: 'Biome 適用後（biome format の実出力）',
+						language: 'ts',
+						code: BIOME_SAMPLE_AFTER,
+						note: 'pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。',
+					},
+				],
+				evidence: [
+					evidence('biome.json', 'biome.json'),
+					evidence('biome-formatting.md', 'docs', 'verification', 'stack', 'biome-formatting.md'),
+				],
+			},
+			{
+				id: 'biome-compression-decision',
+				name: '1行圧縮案との比較（保留）',
+				responsibility:
+					'「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。',
+				reason:
+					'圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。',
+				version: { kind: 'none' },
+				samples: [
+					{
+						label: '1行圧縮案（未採用）',
+						language: 'ts',
+						code: BIOME_SAMPLE_COMPRESSED,
+						note: 'この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。',
+					},
+					{
+						label: '現行の整形結果（lineWidth: 100）',
+						language: 'ts',
+						code: BIOME_SAMPLE_AFTER,
+					},
+				],
+				evidence: [
+					evidence('biome.json', 'biome.json'),
+					evidence('biome-formatting.md', 'docs', 'verification', 'stack', 'biome-formatting.md'),
 				],
 			},
 		],

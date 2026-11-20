@@ -2,11 +2,13 @@ import { css } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
+import { Disclosure } from '../editorial/primitives/Disclosure';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
+import { useMediaQuery } from '../editorial/use-media-query';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import { GitHubActivityCard } from './activity/GitHubActivityCard';
@@ -191,6 +193,12 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * section — they are `h3` sub-blocks of "サイトの状態".
  */
 export function HomePage({ data, locale, timeZone }: HomePageProps) {
+	// Issue #1110 — the two ambient-signal widgets (GitHub activity,
+	// Discord presence) collapse behind a disclosure on narrow
+	// viewports: they are secondary signals, and stacking all five
+	// widgets made the status section a third of the mobile page.
+	// Desktop keeps them expanded; SSR emits the expanded document.
+	const isDesktop = useMediaQuery('(min-width: 1024px)');
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls
@@ -359,28 +367,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							/>
 						</div>
 						<div>
-							<h3 id="github-activity-heading" className={subsectionTitleClassName}>
-								GitHub の活動 / GitHub activity
-							</h3>
-							<p className={subsectionDescriptionClassName}>
-								GitHub
-								から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
-							</p>
-							<GitHubActivityCard activity={data.githubActivity ?? null} />
-							<img
-								src={GITHUB_STATS_IMAGE_URL}
-								alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
-								loading="lazy"
-								decoding="async"
-								className={css({
-									display: 'block',
-									maxWidth: '100%',
-									height: 'auto',
-									marginBlockStart: '4',
-								})}
-							/>
-						</div>
-						<div>
 							<h3 id="reactions-heading" className={subsectionTitleClassName}>
 								みんなの反応 / Reactions
 							</h3>
@@ -400,21 +386,51 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								<CounterTile data={data.counter} locale={locale} />
 							</div>
 						</div>
-						<div>
-							<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
-								Discord プレゼンス / Discord Presence
-							</h3>
-							{data.discordPresence ? (
-								<PresenceCard
-									card={data.discordPresence}
-									locale={locale}
-									timeZone={timeZone}
-									chrome="body"
-									headingId="discord-presence-card-heading"
-								/>
-							) : null}
-						</div>
 					</Grid>
+					<Disclosure
+						summary="GitHub の活動と Discord プレゼンス"
+						open={isDesktop}
+						className={css({ marginBlockStart: '10' })}
+					>
+						<Grid columns={2} gap="10">
+							<div>
+								<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+									GitHub の活動 / GitHub activity
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									GitHub
+									から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+								</p>
+								<GitHubActivityCard activity={data.githubActivity ?? null} />
+								<img
+									src={GITHUB_STATS_IMAGE_URL}
+									alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+									loading="lazy"
+									decoding="async"
+									className={css({
+										display: 'block',
+										maxWidth: '100%',
+										height: 'auto',
+										marginBlockStart: '4',
+									})}
+								/>
+							</div>
+							<div>
+								<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
+									Discord プレゼンス / Discord Presence
+								</h3>
+								{data.discordPresence ? (
+									<PresenceCard
+										card={data.discordPresence}
+										locale={locale}
+										timeZone={timeZone}
+										chrome="body"
+										headingId="discord-presence-card-heading"
+									/>
+								) : null}
+							</div>
+						</Grid>
+					</Disclosure>
 				</PageSection>
 				{/* ad slot: sponsored pair — native + product units share one
 				    labelled region instead of a sticky rail. */}

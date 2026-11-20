@@ -103,7 +103,7 @@ test.describe('stack — /stack reference', () => {
 		const preview = page.locator('[data-testid="stack-item-current-projects-preview"]');
 		await expect(preview).toContainText('CurrentProjects.stories');
 
-		// pass / not run / not applicable are rendered as distinct
+		// pass / not applicable verdicts are rendered as distinct
 		// literal tokens, each carrying its data-status attribute.
 		await expect(page.locator('[data-testid="stack-check-preview-same-sources"]')).toHaveAttribute(
 			'data-status',
@@ -112,13 +112,15 @@ test.describe('stack — /stack reference', () => {
 		await expect(
 			page.locator('[data-testid="stack-check-preview-route-identical-output"]'),
 		).toHaveAttribute('data-status', 'not-applicable');
+		// github-merge-parity is verified by src/home/current/parity.test.ts;
+		// other-locale-render is not-applicable (no per-locale routes exist).
 		await expect(page.locator('[data-testid="stack-check-github-merge-parity"]')).toHaveAttribute(
 			'data-status',
-			'not-run',
+			'pass',
 		);
 		await expect(page.locator('[data-testid="stack-check-other-locale-render"]')).toHaveAttribute(
 			'data-status',
-			'not-run',
+			'not-applicable',
 		);
 	});
 

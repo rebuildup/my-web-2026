@@ -735,6 +735,7 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 					),
 					evidence('loader.ts', 'src', 'home', 'current', 'loader.ts'),
 					evidence('git-facts.test.ts', 'src', 'home', 'current', 'git-facts.test.ts'),
+					evidence('parity.test.ts', 'src', 'home', 'current', 'parity.test.ts'),
 				],
 				checks: [
 					{
@@ -747,13 +748,13 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 						id: 'preview-route-identical-output',
 						label: 'preview と route の表示 record 集合が完全一致する',
 						status: 'not-applicable',
-						note: 'route はさらに live の GitHub activity snapshot（D1 優先、committed artefact に fallback）を merge するため、`currentProjectsFor` の結果と record 集合が一致しない場合があります。この差分は意図的で、完全一致は本例の保証範囲外です（保留）。',
+						note: 'route はさらに GitHub activity snapshot 由来の `gh-*` record を merge するため、record 集合全体は一致しません。実測では preview が roster 由来 4 件、route が 16 件（同一の 4 件 + `gh-*` 12 件）で、`src/home/current/parity.test.ts` が roster 由来 record の同一性（順序・公開 field を含む）を pin しています。集合全体の完全一致は意図的に保証範囲外です。',
 					},
 					{
 						id: 'github-merge-parity',
 						label: 'GitHub merge 後の record 集合を preview と突合する',
-						status: 'not-run',
-						note: '自動検証は roster + git の合成までを対象とし、live snapshot 由来の record を含む完全な route 出力との突合は未実施です。',
+						status: 'pass',
+						note: '`parity.test.ts` が commit 済み activity snapshot を入力に route の merge 経路を実行し、preview の全 roster record が同じ順序・同じ公開 field で残り、追加分が `github` source の `gh-*` record のみであることを確認しています（roster 4 件 + `gh-*` 12 件 = 16 件）。live D1 snapshot の選択規則は `src/home/activity/live.test.ts` が担保します。',
 					},
 				],
 			},
@@ -780,8 +781,8 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 					{
 						id: 'other-locale-render',
 						label: 'fr / de / pt / ru locale での描画を確認する',
-						status: 'not-run',
-						note: '`statusJa` は日本語主体の文で、他言語 locale での表示確認は本例の対象外です。ページ統合や全言語対応を前提にしません。',
+						status: 'not-applicable',
+						note: 'サイトに locale 別 route は存在せず（`src/routes/` は flat で `/fr` 等を持たない）、`statusJa` は契約上の日本語の文（`types.ts`）です。`src/i18n` の fr / de / pt / ru は見出し glyph の fixture で locale routing ではなく、`src/home/format.ts` の `HOME_LOCALES`（en / ja / ko）は Intl 整形専用で CurrentProjects はこれを使いません（`derive.ts` の整形は locale 非依存）。他言語 locale での描画という検査対象が存在しません。',
 					},
 				],
 			},

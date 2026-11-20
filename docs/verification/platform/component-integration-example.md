@@ -38,17 +38,19 @@ Storybook → route adapter への薄い接続」を **1 つの実在 component*
 
 ページ上の各 check は `pass` / `fail` / `not run` / `not applicable`
 の 4 値で描画される（`e2e/stack.spec.ts` が `data-status` 属性で
-区別を pin する）。
+区別を pin する。本節の check に `fail` / `not run` の実例は
+残っていない — Issue #510 後続の parity 検証で `not run` だった
+2 件が `pass` / `not applicable` に確定したため）。
 
 | check | 判定 | 根拠 |
 | --- | --- | --- |
 | preview と route が同一のデータ契約を共有する | **pass** | `CurrentProjects.stories.tsx` の `Shipped` と `/` route の loader がどちらも `CurrentProjectRecord[]` を同じ `CurrentProjects` component に渡す（`src/home/current/types.ts`）。 |
 | preview 用と route 用で実装を複製していない | **pass** | story も route（`home/composer.tsx` 経由）も `CurrentProjects.tsx` を直接 import する。preview 専用の写しは存在しない。 |
 | preview が route と同じ committed source を合成する | **pass** | `currentProjectsFor`（`loader.ts`）は `currentProjectsLoader` と同じ `PROJECT_ROSTER` と `FACT_SOURCES`（手書き + `git-facts.json`）を使う。`git-facts.test.ts` が合成結果を pin。 |
-| preview と route の表示 record 集合が完全一致する | **not applicable** | route はさらに live の GitHub activity snapshot（D1 優先、committed artefact fallback）を merge するため、`currentProjectsFor` の結果と record 集合が一致しない場合がある。この差分は意図的で、完全一致は本例の保証範囲外（**保留**）。 |
-| GitHub merge 後の record 集合を preview と突合する | **not run** | 自動検証は roster + git の合成までが対象。live snapshot 由来 record を含む完全な route 出力との突合は未実施。 |
+| preview と route の表示 record 集合が完全一致する | **not applicable** | route はさらに GitHub activity snapshot 由来の `gh-*` record を merge するため、record 集合全体は一致しない。実測では preview が roster 由来 4 件、route が 16 件（同一の 4 件 + `gh-*` 12 件）。この差分は意図的で、集合全体の完全一致は本例の保証範囲外。 |
+| GitHub merge 後の record 集合を preview と突合する | **pass** | `src/home/current/parity.test.ts` が commit 済み activity snapshot を入力に route の merge 経路（`currentProjectsLoader.loadCurrentProjects` + `selectPublishedProjects`）を実行し、preview の全 roster record が同じ順序・同じ公開 field（`load.ts` の `toPublicRecord` が落とす `evidence` を除く）で残り、追加分が `github` source の `gh-*` record のみであることを確認した（roster 4 件 + `gh-*` 12 件 = 16 件）。live D1 snapshot の選択規則は `src/home/activity/live.test.ts` が担保する。 |
 | route がデータ合成を所有しない | **pass** | `routes/index.tsx` は `getCurrentProjects({ data: { today } })` を呼び結果を `HomePage` に渡すだけ。合成は server 側 `currentProjectsLoader` が行う。 |
-| fr / de / pt / ru locale での描画を確認する | **not run** | `statusJa` は日本語主体の文で、他言語 locale の表示確認は本例の対象外。ページ統合や全言語対応を前提にしない。 |
+| fr / de / pt / ru locale での描画を確認する | **not applicable** | サイトに locale 別 route は存在しない（`src/routes/` は flat で `/fr` 等を持たない）。`statusJa` は `types.ts` の契約上の日本語の文。`src/i18n` の fr / de / pt / ru は見出し glyph の fixture で locale routing ではなく、`src/home/format.ts` の `HOME_LOCALES`（en / ja / ko）は Intl 整形専用で CurrentProjects はこれを使わない（`derive.ts` の整形は locale 非依存）。他言語 locale での描画という検査対象が存在しない。 |
 
 `fail` の項目は今回の実例には存在しない（検証が主張と矛盾した項目が
 無いため）。語彙としては `StackCheckStatus` が 4 値を保持し、
@@ -95,10 +97,14 @@ node scripts/e2e-local-bootstrap.mjs --port=3000 &
 
 ## 対象外と将来の手作業
 
-- **対象外**: live D1 snapshot を含む route 出力と preview 出力の
-  完全一致の検証（`not run` のまま）。GitHub merge を preview 側の
+- **対象外**: live D1 snapshot を入力にした route 出力と preview 出力の
+  record 集合の完全一致。parity は commit 済み artefact 経路で
+  `parity.test.ts` が pin し、live / committed の選択規則は
+  `live.test.ts` が担保するが、実 D1 document を使った突合は
+  operator 環境依存のため対象外。GitHub merge を preview 側の
   story にも載せるかは owner 判断。
-- **対象外**: fr / de / pt / ru locale での描画確認（`not run`）。
+- **対象外**: fr / de / pt / ru locale での描画確認（locale 別
+  route が存在しないため `not applicable`）。
 - **対象外**: 新しい route・公開 surface の追加。`/stack` は
   `PUBLIC_NAV_ITEMS` / `SITEMAP_ENTRIES` に載らない reference
   surface のまま（#381 の契約を維持）。

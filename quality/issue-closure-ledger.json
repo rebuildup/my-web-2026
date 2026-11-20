@@ -3969,6 +3969,28 @@
 			"action": "closed",
 			"note": "my-web-2025 の /portfolio/gallery/{develop,video,video&design,all} に対応する 3 展示方式を ?view= クエリで実装。facet scope を旧ギャラリーの意味論へ対応付け、pagination の facet scan を bounded に拡張（#997 系）。本番 ?view=all/develop/video/design 全て 200・実メディア 127 URL 全件 200・60 slug 全件 200・YouTube facade（youtube-nocookie iframe）を実測確認。",
 			"missing": "2025 版との pixel 級の視覚差分の網羅的比較は RC 包括 QA で実施。"
+		},
+		{
+			"issue": 1009,
+			"title": "audit(architecture): SSR hydration payload ($_TSR) の内部フィールド混入を機械検査する gate がない — #836/#994/#1005 の再発防止",
+			"closedAt": "2026-11-20",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"test/integration/public-internal-identifier-surface.test.ts",
+				"scripts/check-public-internal-identifiers.mjs",
+				"docs/architecture.md",
+				"#1056",
+				"#1074"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "PR #1056 で route roster 由来の SSR ペイロードゲートを新設、PR #1074 で loader 監査・error document 5 経路・architecture.md の不変条件を完了。既知低リスク baseline と authored 例外 2 件を記録。",
+			"missing": null
 		}
 	]
 }

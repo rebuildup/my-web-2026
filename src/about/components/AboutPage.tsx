@@ -3,6 +3,7 @@ import { css } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -152,15 +153,7 @@ const NARRATIVE_ORDER = [
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
 		<PageSection rhythm="hero" labelledBy="about-hero-title">
-			<div
-				className={css({
-					display: 'grid',
-					gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-					columnGap: { base: '0', lg: '10' },
-					rowGap: { base: '10', lg: '0' },
-					alignItems: 'start',
-				})}
-			>
+			<Split rowGap="10" className={css({ alignItems: 'start' })}>
 				<aside
 					aria-hidden="true"
 					className={css({
@@ -263,7 +256,7 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 						</p>
 					) : null}
 				</div>
-			</div>
+			</Split>
 		</PageSection>
 	);
 }

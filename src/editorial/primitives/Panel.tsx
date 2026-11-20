@@ -40,6 +40,8 @@ export interface PanelProps {
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
 export function Panel({
@@ -49,6 +51,7 @@ export function Panel({
 	as,
 	className,
 	children,
+	...rest
 }: PanelProps) {
 	const Tag: ElementType = as ?? 'div';
 	const tone: FieldTone | 'ground' = variant.startsWith('field.')
@@ -56,6 +59,7 @@ export function Panel({
 		: 'ground';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					backgroundColor: PANEL_BACKGROUND[variant],

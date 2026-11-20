@@ -1,6 +1,8 @@
 import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
+import { Split } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
+import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
@@ -136,9 +138,6 @@ function ChannelList({ channels }: { channels: readonly PublicContactChannel[] }
 		<ul
 			data-testid="contact-channels"
 			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '0',
 				margin: '0',
 				padding: '0',
 				listStyle: 'none',
@@ -177,19 +176,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 						'検証日が未来です / verification date is in the future'
 					: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
-		<li
-			data-channel-id={channel.id}
-			className={css({
-				display: 'grid',
-				gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-				columnGap: { base: '0', lg: '10' },
-				rowGap: { base: '2', lg: '0' },
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartColor: 'border.subtle',
-				borderBlockStartStyle: 'solid',
-			})}
-		>
+		<Split as="li" rowGap="2" separated data-channel-id={channel.id}>
 			<div
 				className={css({
 					display: 'flex',
@@ -296,23 +283,23 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 					{verifiedLabel}
 				</span>
 			</div>
-		</li>
+		</Split>
 	);
 }
 
 function AuditDueNotice() {
 	return (
-		<p
+		<Panel
+			as="p"
+			variant="surface"
+			padding="4"
 			data-testid="contact-audit-due"
 			className={css({
 				margin: '0',
 				marginBlockEnd: '6',
-				padding: '3',
-				borderRadius: 'md',
 				borderWidth: '1px',
 				borderColor: 'border.subtle',
 				borderStyle: 'solid',
-				backgroundColor: 'bg.surface',
 				fontFamily: 'sans',
 				fontSize: 'md',
 				lineHeight: '1.6',
@@ -321,23 +308,21 @@ function AuditDueNotice() {
 		>
 			最終確認から時間が経過した channel があります。
 			経路の実在は確認済みですが、最新の状態は未確認です。
-		</p>
+		</Panel>
 	);
 }
 
 function EmptyState({ unverifiable }: { unverifiable: boolean }) {
 	return (
-		<div
+		<Panel
+			variant="surface"
+			padding="10"
 			data-testid="contact-empty"
 			data-empty-reason={unverifiable ? 'unverifiable' : 'none'}
 			className={css({
-				paddingBlock: '12',
-				paddingInline: '6',
-				borderRadius: 'md',
 				borderWidth: '1px',
 				borderColor: 'border.subtle',
 				borderStyle: 'dashed',
-				backgroundColor: 'bg.surface',
 				color: 'text.muted',
 				fontFamily: 'sans',
 				fontSize: 'md',
@@ -349,6 +334,6 @@ function EmptyState({ unverifiable }: { unverifiable: boolean }) {
 					? '現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。'
 					: '現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。'}
 			</p>
-		</div>
+		</Panel>
 	);
 }

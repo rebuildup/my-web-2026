@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
@@ -112,15 +113,7 @@ function Hero() {
 			})}
 		>
 			<Container>
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-						columnGap: { base: '0', lg: '10' },
-						rowGap: { base: '10', lg: '0' },
-						alignItems: 'start',
-					})}
-				>
+				<Split rowGap="10" className={css({ alignItems: 'start' })}>
 					<aside
 						aria-hidden="true"
 						className={css({
@@ -217,7 +210,7 @@ function Hero() {
 							が正本、 このページは視覚的な検証用 mirror。
 						</p>
 					</div>
-				</div>
+				</Split>
 			</Container>
 		</section>
 	);

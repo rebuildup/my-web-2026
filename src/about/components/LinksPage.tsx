@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -157,18 +158,7 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 
 function LinkRow({ link }: { link: AboutLink }) {
 	return (
-		<li
-			className={css({
-				display: 'grid',
-				gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-				columnGap: { base: '0', lg: '10' },
-				rowGap: '2',
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartColor: 'border.subtle',
-				borderBlockStartStyle: 'solid',
-			})}
-		>
+		<Split as="li" rowGap="2" separated>
 			<div
 				className={css({
 					display: 'flex',
@@ -224,7 +214,7 @@ function LinkRow({ link }: { link: AboutLink }) {
 				<span>{link.url}</span>
 				{link.external ? <span aria-hidden="true">↗</span> : null}
 			</a>
-		</li>
+		</Split>
 	);
 }
 

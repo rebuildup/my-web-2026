@@ -68,15 +68,39 @@ export function Grid({ columns = 1, gap = '6', as, className, children }: GridPr
 export interface SplitProps {
 	/** Gap between the two columns at `lg` (default `10` = 40px). */
 	gap?: FlowGap;
+	/**
+	 * Stacked-row gap below `lg` (default `6` = 24px). Rows that
+	 * tighten their label/content spacing on small screens pass a
+	 * smaller token here.
+	 */
+	rowGap?: FlowGap;
+	/**
+	 * Row-list separation: a top hairline plus `6` block padding —
+	 * the chrome every split-row list (`/contact` channels, `/links`
+	 * rows, `/stack` items) shares. Off by default; hero/aside splits
+	 * pass nothing.
+	 */
+	separated?: boolean;
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Split({ gap = '10', as, className, children }: SplitProps) {
+export function Split({
+	gap = '10',
+	rowGap = '6',
+	separated = false,
+	as,
+	className,
+	children,
+	...rest
+}: SplitProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'grid',
@@ -85,7 +109,15 @@ export function Split({ gap = '10', as, className, children }: SplitProps) {
 						lg: 'minmax(0, 4fr) minmax(0, 8fr)',
 					},
 					columnGap: { base: '0', lg: gap },
-					rowGap: { base: '6', lg: '0' },
+					rowGap: { base: rowGap, lg: '0' },
+					...(separated
+						? {
+								paddingBlock: '6',
+								borderBlockStartWidth: '1px',
+								borderBlockStartColor: 'border.subtle',
+								borderBlockStartStyle: 'solid',
+							}
+						: {}),
 				}),
 				className,
 			)}

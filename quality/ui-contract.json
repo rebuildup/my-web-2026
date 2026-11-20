@@ -300,15 +300,7 @@
 			"path": "src/about/components/AboutPage.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
-				"gridTemplateColumns": 3
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/about/components/LinksPage.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
+				"gridTemplateColumns": 2
 			},
 			"clause": "C-4"
 		},
@@ -349,14 +341,6 @@
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
 				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/contact/page.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
 			},
 			"clause": "C-4"
 		},
@@ -516,14 +500,6 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/routes/design-system/DesignSystemPage.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
@@ -581,14 +557,6 @@
 		},
 		{
 			"path": "src/routes/design-system/sections/Typography.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/routes/stack/StackPage.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
 				"gridTemplateColumns": 1
@@ -713,16 +681,6 @@
 			"signatures": {
 				"marginBlockStart on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
-		},
-		{
-			"path": "src/contact/page.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"marginBlockEnd on surface object": 1,
-				"paddingBlock on surface object": 1,
-				"surface + block padding/min-height outside PageSection": 2
 			},
 			"clause": "C-1/C-3"
 		},
@@ -1538,14 +1496,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/contact/page.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/home/activity/GitHubActivityCard.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -2071,35 +2021,6 @@
 				"src/projects/DotfilesIntroductionPage.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx",
 				"src/routes/tools.$slug.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/page.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/page.tsx",
-				"src/home/footer.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/home/footer.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},

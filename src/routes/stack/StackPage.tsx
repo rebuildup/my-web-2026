@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -124,19 +125,7 @@ function StackSectionBlock({
 
 function StackItemRow({ item }: { item: StackItemView }) {
 	return (
-		<li
-			data-testid={`stack-item-${item.id}`}
-			className={css({
-				display: 'grid',
-				gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-				columnGap: { base: '0', lg: '10' },
-				rowGap: '3',
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartColor: 'border.subtle',
-				borderBlockStartStyle: 'solid',
-			})}
-		>
+		<Split as="li" rowGap="4" separated data-testid={`stack-item-${item.id}`}>
 			<div
 				className={css({
 					display: 'flex',
@@ -273,7 +262,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					</ul>
 				) : null}
 			</div>
-		</li>
+		</Split>
 	);
 }
 

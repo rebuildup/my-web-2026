@@ -50,9 +50,9 @@ test('the committed registry covers every route the router generates', () => {
 });
 
 test('a new public route with no decision is an error, not a silent pass', () => {
-	const result = check([...ROUTE_PATHS, '/activity']);
+	const result = check([...ROUTE_PATHS, '/undecided-surface']);
 	assert.equal(result.errors.length, 1);
-	assert.match(result.errors[0], /\/activity has no structured-data decision/);
+	assert.match(result.errors[0], /\/undecided-surface has no structured-data decision/);
 });
 
 test('a stale registry entry is an error', () => {

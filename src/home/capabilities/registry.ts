@@ -46,11 +46,16 @@ export const CAPABILITIES: readonly Capability[] = [
 		status: 'planned',
 	},
 	{
+		// `activity` (Issue #352): the unified activity timeline is
+		// deployed at /activity, so the capability flips to `live`
+		// with an internal CTA — the same transition `tools` made
+		// in Issue #168.
 		id: 'activity',
 		label: 'Activity',
 		labelJa: 'アクティビティ',
 		summary: 'Recent commits, releases, and shipped work in one timeline.',
 		summaryJa: '最近のコミット・リリース・出荷した仕事を 1 本のタイムラインに。',
-		status: 'planned',
+		status: 'live',
+		href: '/activity',
 	},
 ] as const;

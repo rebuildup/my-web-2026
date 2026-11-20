@@ -79,6 +79,14 @@
 			"note": "開発スタックの参照ページ (Issue #381)。技術一覧の列挙であり schema.org の主張を持たない。breadcrumb leaf のみ emit する。"
 		},
 		{
+			"path": "/activity",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/activity",
+			"note": "統合アクティビティタイムライン (Issue #352)。公開イベントの時系列列挙であり schema.org の主張を持たない。breadcrumb leaf のみ emit する。"
+		},
+		{
 			"path": "/keyboard",
 			"public": true,
 			"status": "implemented",

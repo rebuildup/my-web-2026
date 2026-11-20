@@ -83,6 +83,14 @@
 			"note": "開発スタックの参照ページ (Issue #381)。og:title / description / url を出すが、技術一覧の列挙にこのサイトの card 画像を被せないため og:image は declare しない。"
 		},
 		{
+			"path": "/activity",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/activity",
+			"note": "統合アクティビティタイムライン (Issue #352)。og:title / description / url を出すが、時系列項目の列挙にこのサイトの card 画像を被せないため og:image は declare しない。"
+		},
+		{
 			"path": "/contact",
 			"public": true,
 			"status": "not-implemented",

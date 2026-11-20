@@ -229,6 +229,15 @@ const ROUTE_INTENT = [
 			'not a public-nav destination and therefore not listed in the sitemap.',
 	},
 	{
+		paths: ['/activity'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public unified activity timeline (Issue #352). Indexable and linked from the home site ' +
+			'guide, but not a public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
 		paths: ['/design-system'],
 		zone: 'public',
 		crawl: 'allow',

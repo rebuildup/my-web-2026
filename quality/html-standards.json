@@ -54,6 +54,13 @@
 			"why": "public development-stack reference (Issue #381); heading tree, lists and outbound evidence links."
 		},
 		{
+			"route_id": "/activity",
+			"path": "/activity",
+			"source": "src/routes/activity.tsx",
+			"mode": "render",
+			"why": "public unified activity timeline (Issue #352); heading tree plus a date-descending list of source-attributed items."
+		},
+		{
 			"route_id": "/projects/dotfiles",
 			"path": "/projects/dotfiles",
 			"source": "src/routes/projects.dotfiles.tsx",

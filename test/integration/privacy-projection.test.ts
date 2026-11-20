@@ -247,17 +247,14 @@ describe('public SSR surfaces carry no owner-unapproved data', () => {
 		30_000,
 	);
 
-	it('GET / still offers the activity surface as a public fallback', async () => {
+	it('GET / links the activity capability to its live surface', async () => {
 		// The positive half of the location contract: the home page
-		// keeps telling a visitor what the Activity surface is, and
-		// marks it `planned` — the public alternative display. The
-		// capability carries no deep link, because there is no
-		// published surface behind it yet.
+		// tells a visitor what the Activity surface is, and — since
+		// Issue #352 shipped `/activity` — the capability carries a
+		// real deep link instead of the former `planned` fallback.
 		const html = await (await SELF.fetch('https://example.com/')).text();
 		expect(html).toContain('アクティビティ');
-		expect(html).toContain(PUBLIC_FALLBACK_PROJECTION.statementJa);
-		expect(html).toContain('planned');
-		expect(html).not.toContain('href="/activity"');
+		expect(html).toContain('href="/activity"');
 	}, 30_000);
 });
 

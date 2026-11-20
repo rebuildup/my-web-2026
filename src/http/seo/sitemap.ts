@@ -234,6 +234,12 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 			'Public development-stack reference (Issue #381), linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed stack inventory or the declared toolchain changes.',
 	},
 	{
+		route: '/activity',
+		kind: 'route',
+		reason:
+			'Public unified activity timeline (Issue #352), linked from the home site guide. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its entries are a read model over sources each of which already has its own canonical surface.',
+	},
+	{
 		route: '/projects/dotfiles',
 		kind: 'route',
 		reason:

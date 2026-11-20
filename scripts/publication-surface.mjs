@@ -123,6 +123,15 @@ export const SURFACE_DECLARATIONS = [
 			'Public development-stack reference (Issue #381); renders the committed src/routes/stack/ article data with versions resolved from package.json and quality/profile.yaml, is linked from /about, and is not a sitemap target.',
 	},
 	{
+		id: '/activity',
+		path: '/activity',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/activity.tsx'],
+		reason:
+			'Public unified activity timeline (Issue #352); composes the GitHub public projection and the public portfolio index through the src/activity adapters at request time, is linked from the home site guide, and is not a sitemap target.',
+	},
+	{
 		id: '/projects/dotfiles',
 		path: '/projects/dotfiles',
 		classification: 'public',
@@ -286,6 +295,9 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/stack/profile-stack.ts',
 	'src/routes/stack/resolve.ts',
 	'src/routes/stack/stack.ts',
+	'src/routes/activity/ActivityPage.tsx',
+	'src/routes/activity/assemble.ts',
+	'src/routes/activity/load.ts',
 ];
 
 /**

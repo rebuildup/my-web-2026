@@ -88,6 +88,12 @@
 		"ogDescription": "my-web-2026 を動かしている runtime・framework・データ層・開発ツールの一覧。version は package.json と profile.yaml から読み取り、各項目に根拠 source へのリンクを付けています。",
 		"ogUrl": "https://rebuildup.dev/stack"
 	},
+	"/activity": {
+		"ogType": "website",
+		"ogTitle": "活動タイムライン / Activity — rebuildup.dev",
+		"ogDescription": "GitHub のリリース、公開記事、Portfolio の公開作品を一つの時系列で読むページ。各項目はソースが記録した日付と出典を併記し、ソースごとの観測状態を表示します。",
+		"ogUrl": "https://rebuildup.dev/activity"
+	},
 	"/contact": {
 		"ogType": "website",
 		"ogTitle": "Contact — rebuildup.dev",

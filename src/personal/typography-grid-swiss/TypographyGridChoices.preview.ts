@@ -356,7 +356,7 @@ export const TYPOGRAPHY_GRID_CHOICES: {
 						'行 1: ポートフォリオ / 主要な作品と、その解説・ソースへのリンク。 / live',
 						'行 2: ツール / 単体で動作する Web ツール群。Tool Registry 経由で統合。 / live',
 						'行 3: コンテンツ / 長めのノートや記事。RSS と JSON フィードで配信。 / planned',
-						'行 4: アクティビティ / 最近のコミット・リリース・出荷した仕事を 1 本のタイムラインに。 / planned',
+						'行 4: アクティビティ / 最近のコミット・リリース・出荷した仕事を 1 本のタイムラインに。 / live',
 					],
 				},
 				{
@@ -479,8 +479,8 @@ export const COMPARISON_SCREEN: ComparisonScreen = {
 		{
 			label: 'アクティビティ',
 			value: '最近のコミット・リリース・出荷した仕事を 1 本のタイムラインに。',
-			status: 'planned',
-			tone: 'neutral',
+			status: 'live',
+			tone: 'accent',
 		},
 	],
 };

@@ -9,10 +9,10 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 22 |
-| Publicly reachable surfaces | 15 |
+| Declared surfaces | 23 |
+| Publicly reachable surfaces | 16 |
 | Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 89 |
+| Publicly reachable URLs (surface + Static Assets) | 90 |
 | External hosts | 62 |
 | First-party hosts | 0 |
 | Approved transition | 2 finding(s) |
@@ -95,6 +95,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - `/`
 - `/about`
+- `/activity`
 - `/admin/invitations/accept`
 - `/admin/login`
 - `/commission`
@@ -190,6 +191,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/` | `/` | public | yes | `src/routes/index.tsx` |
 | `/__root__` | — | internal | no | `src/routes/__root.tsx` |
 | `/about` | `/about` | public | yes | `src/routes/about.tsx` |
+| `/activity` | `/activity` | public | no | `src/routes/activity.tsx` |
 | `/admin` | `/admin` | internal | no | `src/routes/admin.tsx` |
 | `/admin/` | — | internal | no | `src/routes/admin.index.tsx` |
 | `/admin/emoji-catalog` | `/admin/emoji-catalog` | internal | no | `src/routes/admin.emoji-catalog.tsx` |
@@ -212,9 +214,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (1)
 
-- (none)
+- `/activity`
 
 ### Removed public URLs (0)
 
@@ -817,6 +819,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/rebuildup
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/ai-knowledge
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/activity
+- **WARN** `W004 public-url-added` Public URL added: /activity
 

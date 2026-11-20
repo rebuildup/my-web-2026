@@ -56,11 +56,12 @@ manager-only の静的ビルド (`iframe.html` 無し) のため、Storybook ギ
 # 活動タイムライン — 検証記録 (Issue #352)
 
 > Issue #352「release・記事・制作物を統合する活動タイムライン」の
-> **コンポーネント単体の検証記録**。対象は
-> `ActivityTimelineView` (`src/activity/Timeline.tsx`)。データは
-> コミット済み fixture (`src/activity/fixtures.ts`) — 合成の検証用
-> データであり、実際の公開実績を主張するものではない。`/activity`
-> route と Home 導線は後続統合 (2026-10-17 補足の standalone 範囲)。
+> 検証記録。`src/activity` の Timeline コンポーネント単体 (fixture
+> story) と、公開 route `/activity` の実データ描画の 2 系統を記録する。
+> fixture は合成の検証用データであり、実際の公開実績を主張するもの
+> ではない。route 側は `src/routes/activity/` が Home の公開 GitHub
+> 投影と Portfolio の公開一覧だけを読み、`src/activity` は peer
+> obligation を import しない (依存方向 `routes -> activity` のみ)。
 
 ## 画像
 
@@ -68,13 +69,26 @@ manager-only の静的ビルド (`iframe.html` 無し) のため、Storybook ギ
 | --- | --- | --- |
 | `timeline-desktop.png` | データあり (fixture) | `Populated` story を 1440px viewport で撮影。日付降順に リリース×2 (GitHub)・記事×1 (Content)・作品×3 (Portfolio、`periodLabel` の authored 日付表示) が並び、各行に種別バッジ・出典・日付・詳細リンクが見える。上部にソース別状態 (観測中) と観測日。 |
 | `timeline-mobile.png` | データあり (fixture) | 同じ `Populated` story を 390px viewport で撮影。折り返しレイアウトで同一内容が読める。 |
+| `route-desktop.png` | 実データ (route) | `/activity` を `pnpm run dev` の実サーバー (1440×900) で撮影。fixture ではなく loader の実投影。GitHub はコミット済みスナップショット由来の `ReleaseEvent` のみ、Portfolio はローカル D1 の `published` + `public` 行、Content は `未接続`。 |
+| `route-mobile.png` | 実データ (route) | 同じ route を 390×844 で撮影。 |
 
 ## データソースと正直さの境界
 
-- 画像は **コミット済み fixture** 由来。実データ経路
+- `timeline-*.png` は **コミット済み fixture** 由来。実データ経路
   (`sources.ts` の `githubReleaseItems` / `portfolioWorkItems` →
   `merge.ts` の `sortActivityTimelineItems`) は unit test
-  (`src/activity/*.test.ts`) が pin する。
+  (`src/activity/*.test.ts`、`src/routes/activity/assemble.test.ts`)
+  が pin する。
+- `route-*.png` は **実 route の SSR 出力** 由来。`pnpm run dev` で
+  `http://127.0.0.1:3000/activity` を開き、
+  `[data-testid="activity-timeline"]` の出現を待って撮影した。
+  ローカル D1 は `pnpm run db:migrate:apply:local` 適用済みの状態で、
+  GitHub は `観測中` (コミット済みスナップショットの `ReleaseEvent`
+  のみが項目になる。Issues/PR/Push は出ない)、Portfolio は
+  `観測中` (published + public のみ。日付は authored
+  `periodStart` / `periodLabel` で `created_at` は使わない)、
+  Content は記事ソース未実装 (Issue #323) のため `未接続`。
+  いずれのソースも失敗時は件数を捏造せず状態表示だけを出す。
 - 実ソースの現状 (2026-11 時点): GitHub Release は events feed の
   `ReleaseEvent` のみ (専用 releases source は Issue #336)、記事は
   content モデル未実装 (Issue #323)、作品は portfolio の
@@ -98,3 +112,21 @@ Vite ハーネスを生成し、出荷済み story
 800ms の settle を待ち、`リリース` / `記事` / `作品` / `GitHub` /
 `観測日` の含有と unavailable 文言の非含有を検査してから書き出す
 (満たさなければ非 0 終了)。
+
+## route 画像の再現手順
+
+```sh
+pnpm run db:migrate:apply:local   # ローカル D1 (.tmp/d1state) を最新化
+pnpm run dev                     # http://127.0.0.1:3000
+pnpm exec playwright screenshot \
+  --viewport-size=1440,900 \
+  --wait-for-selector '[data-testid="activity-timeline"]' \
+  http://127.0.0.1:3000/activity docs/verification/activity/route-desktop.png
+pnpm exec playwright screenshot \
+  --viewport-size=390,844 \
+  --wait-for-selector '[data-testid="activity-timeline"]' \
+  http://127.0.0.1:3000/activity docs/verification/activity/route-mobile.png
+```
+
+E2E 側の対応 spec は `e2e/activity.spec.ts` (canonical heading・
+timeline testid・canonical/OGP metadata・正直な空/失敗表示を検査)。

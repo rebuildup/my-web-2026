@@ -57,7 +57,7 @@ import { AUDITED_ROUTES, AXE_TAGS, SKIPPED_ROUTES } from './axe-manifest';
  * cross-checks that the two agree):
  *
  *   "/"  "/about"  "/keyboard"  "/links"  "/commission"  "/stack"
- *   "/contact"  "/portfolio"  "/portfolio/my-web-2026"
+ *   "/activity"  "/contact"  "/portfolio"  "/portfolio/my-web-2026"
  *   "/projects/dotfiles"  "/tools"  "/design-system"  "/admin/login"
  *
  * Where the scan runs

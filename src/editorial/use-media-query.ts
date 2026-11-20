@@ -5,12 +5,10 @@ import { useSyncExternalStore } from 'react';
  * CSS alone cannot express (e.g. whether a `<details>` disclosure
  * starts open).
  *
- * The server snapshot is `true`: the SSR document is the
- * desktop-first editorial surface, so the emitted markup is the
- * expanded one. A narrow viewport closes the disclosure during
- * hydration — the same "server renders the common case, the client
- * corrects" contract `usePrefersReducedMotion` documents for the
- * inverse preference.
+ * The server snapshot is `true`: callers use the predicate to pick a
+ * post-hydration DOM state (e.g. whether a `<details>` disclosure
+ * opens on mount), never to change the SSR markup itself — SSR
+ * attributes the standards gate validates must stay viewport-free.
  */
 export function useMediaQuery(query: string): boolean {
 	return useSyncExternalStore(

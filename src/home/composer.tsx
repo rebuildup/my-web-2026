@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { css } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Button } from '../editorial/primitives/Button';
@@ -198,8 +199,18 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	// Discord presence) collapse behind a disclosure on narrow
 	// viewports: they are secondary signals, and stacking all five
 	// widgets made the status section a third of the mobile page.
-	// Desktop keeps them expanded; SSR emits the expanded document.
+	// Desktop keeps them expanded. The open state is applied after
+	// hydration through the element ref — the SSR document never
+	// carries an `open` attribute (the standards gate rejects the
+	// `open=""` serialization), so every viewport starts collapsed
+	// and desktop expands on mount.
 	const isDesktop = useMediaQuery('(min-width: 1024px)');
+	const statusDisclosureRef = useRef<HTMLDetailsElement>(null);
+	useEffect(() => {
+		if (statusDisclosureRef.current) {
+			statusDisclosureRef.current.open = isDesktop;
+		}
+	}, [isDesktop]);
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls
@@ -370,8 +381,8 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</div>
 					</Grid>
 					<Disclosure
+						ref={statusDisclosureRef}
 						summary="GitHub の活動と Discord プレゼンス"
-						open={isDesktop}
 						className={css({ marginBlockStart: '10' })}
 					>
 						<Grid columns={2} gap="10">

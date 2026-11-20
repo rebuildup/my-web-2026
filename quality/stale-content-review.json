@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -490,7 +492,7 @@
 		{
 			"id": "home-current-projects-heading",
 			"path": "src/home/current/CurrentProjects.tsx",
-			"expression": "現在地 / Where I am now",
+			"expression": "現在地",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
@@ -518,7 +520,7 @@
 					}
 				]
 			},
-			"note": "The heading of the home \"現在地 / Where I am now\" section (src/home/current/CurrentProjects.tsx:89, Issue #316). The section publishes a committed snapshot of the projects the owner is working on, so the heading itself is a claim about *now* and decays with it. OWNER REVIEW PENDING: the owner has not read this wording yet. The mixed Japanese / English label follows the convention of the other home section headings (src/home/capabilities/grid.tsx) and is not a typography question."
+			"note": "The JA half of the home current-projects heading (src/home/current/CurrentProjects.tsx). Issue #1110 split the bilingual title into title/titleEn blocks (Issue #792 pattern) so the JA title and its EN rendering never share a line; the EN half \"Where I am now\" is not a ja-locale expression. The section publishes a committed snapshot of the projects the owner is working on, so the heading itself is a claim about *now* and decays with it. OWNER REVIEW PENDING: the owner has not read this wording yet."
 		},
 		{
 			"id": "home-current-projects-empty",
@@ -850,34 +852,6 @@
 				]
 			},
 			"note": "Head description of `/contact`. Same data basis as the home CTA: the freshness gate plus the per-row purpose label. (src/routes/contact.tsx:41)"
-		},
-		{
-			"id": "home-hero-eyebrow-current-location",
-			"path": "src/home/hero.tsx",
-			"expression": "現在地 / Where I am now",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "bb85e033c0b8277d921b8e93d5a35c284992d725",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/925",
-						"note": "the hero eyebrow labels the page-level 現在地 statement; the same phrase remains the CurrentProjects section title (src/home/current/CurrentProjects.tsx) as the section-level label"
-					}
-				]
-			},
-			"note": "hero の eyebrow (src/home/hero.tsx:41)。ページ全体の「現在地」宣言を指すモノスペースの小見出しで、現在地セクション自体の見出し (CurrentProjects.tsx) とは役割が異なるページレベル/セクションレベルのラベルとして併存させている。時制・数量・期限を含まない不変のラベル文。"
 		},
 		{
 			"id": "home-ad-video-play-cta",

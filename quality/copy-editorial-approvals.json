@@ -5269,6 +5269,22 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-1110-home-recompose",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-21",
+			"decision": "pending",
+			"fingerprint": "sha256:d65f650959a1a4208035396419ab9c396f4ca10a68fe469f2f7f74f2a1a8a7c4",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1110 の HOME 再構成イテレーション3。公開日本語 copy への実質的な変更は最小限: hero eyebrow を「現在地 / Where I am now」から英語のみの「Personal site」へ変更 (CurrentProjects h2 との重複解消)、CurrentProjects / Contact の見出しを title/titleEn 分割 (Issue #792) し JA 側は「現在地」「お問い合わせ」のまま、stale-content registry の hero eyebrow レコードを除去。残りの差分セグメントは #1109 の PageSection/Split/Panel/SkipLink 移行に伴う JSX の移動・再フォーマットで、文字列自体の変更はほぼ無い。",
+				"disposition": "hero eyebrow は JA 走査対象外の英語ラベル。見出し分割は表示上の JA/EN 併記を 2 ブロック化したもので、各言語の文字列は不変。stale-content-review.json 側では hero eyebrow の orphan レコードを削除し、CurrentProjects 見出しレコードの expression を「現在地」へ更新済み。semantic comparison の全セグメント走査は未実施のため comparisons は空 — owner 判断用の pending 記録として登録する。"
+			},
+			"comparisons": []
 		}
 	]
 }

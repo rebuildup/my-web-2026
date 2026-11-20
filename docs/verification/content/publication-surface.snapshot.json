@@ -336,6 +336,20 @@
 				"reason": "Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory."
 			},
 			{
+				"id": "/stack",
+				"path": "/stack",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/stack.tsx"
+				],
+				"urls": [
+					"/stack"
+				],
+				"reason": "Public development-stack reference (Issue #381); renders the committed src/routes/stack/ article data with versions resolved from package.json and quality/profile.yaml, is linked from /about, and is not a sitemap target."
+			},
+			{
 				"id": "/tools/",
 				"path": "/tools",
 				"classification": "public",
@@ -519,6 +533,7 @@
 			"/portfolio/yukikate",
 			"/projects/dotfiles",
 			"/share/procon2026/",
+			"/stack",
 			"/tools",
 			"/tools/ae-expression",
 			"/tools/business-mail-block",
@@ -3472,6 +3487,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/stack/stack.ts"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md",
 				"host": "github.com",
 				"kind": "external",
@@ -3498,6 +3522,15 @@
 				"files": [
 					"src/home/status/incidents.ts",
 					"src/home/status/tiles.stories.tsx"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/tree/main",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/stack/stack.ts"
 				]
 			},
 			{
@@ -4033,6 +4066,15 @@
 				"identifier": false,
 				"files": [
 					"src/http/seo/README.md"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/stack",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/stack.tsx"
 				]
 			},
 			{
@@ -5907,15 +5949,42 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/stack"
+		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://github.com/rebuildup/my-web-2026/blob/main",
+			"https://github.com/rebuildup/my-web-2026/tree/main",
+			"https://rebuildup.dev/stack"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/my-web-2026/blob/main"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/my-web-2026/tree/main"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://rebuildup.dev/stack"
+			},
+			{
+				"code": "W004 public-url-added",
+				"severity": "warn",
+				"message": "Public URL added: /stack"
+			}
+		]
 	}
 }

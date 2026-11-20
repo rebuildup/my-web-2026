@@ -220,6 +220,15 @@ const ROUTE_INTENT = [
 			'the GitHub repository and other external links, never from a generated inventory entry.',
 	},
 	{
+		paths: ['/stack'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public development-stack reference (Issue #381). Indexable and linked from /about, but ' +
+			'not a public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
 		paths: ['/design-system'],
 		zone: 'public',
 		crawl: 'allow',

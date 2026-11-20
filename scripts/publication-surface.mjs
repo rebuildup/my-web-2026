@@ -114,6 +114,15 @@ export const SURFACE_DECLARATIONS = [
 			'Public commission-intake status page (Issue #390); renders the committed src/contact/commission.ts inventory, is linked from /about, /contact and /links, and is not a sitemap target while intake is parked.',
 	},
 	{
+		id: '/stack',
+		path: '/stack',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/stack.tsx'],
+		reason:
+			'Public development-stack reference (Issue #381); renders the committed src/routes/stack/ article data with versions resolved from package.json and quality/profile.yaml, is linked from /about, and is not a sitemap target.',
+	},
+	{
 		id: '/projects/dotfiles',
 		path: '/projects/dotfiles',
 		classification: 'public',
@@ -249,8 +258,9 @@ export const SURFACE_DECLARATIONS = [
 
 /**
  * Files inside `src/routes/**` that the file-route generator does
- * NOT turn into routes (colocated components and barrels under the
- * `design-system/` directory). Declared explicitly rather than
+ * NOT turn into routes (colocated components, data modules and
+ * barrels under the `design-system/` and `stack/` directories).
+ * Declared explicitly rather than
  * matched by a glob so an exception has to be justified in review.
  */
 export const ROUTE_DIR_INERT_FILES = [
@@ -269,6 +279,11 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',
 	'src/routes/design-system/sections/TableCode.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
+	'src/routes/stack/StackPage.tsx',
+	'src/routes/stack/load.ts',
+	'src/routes/stack/profile-stack.ts',
+	'src/routes/stack/resolve.ts',
+	'src/routes/stack/stack.ts',
 ];
 
 /**

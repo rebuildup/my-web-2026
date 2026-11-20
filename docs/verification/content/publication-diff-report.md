@@ -9,14 +9,14 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 21 |
-| Publicly reachable surfaces | 14 |
+| Declared surfaces | 22 |
+| Publicly reachable surfaces | 15 |
 | Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 88 |
+| Publicly reachable URLs (surface + Static Assets) | 89 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 4 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -165,6 +165,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/yukikate`
 - `/projects/dotfiles`
 - `/share/procon2026/`
+- `/stack`
 - `/tools`
 - `/tools/ae-expression`
 - `/tools/business-mail-block`
@@ -205,14 +206,15 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
+| `/stack` | `/stack` | public | no | `src/routes/stack.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
 | `/tools/$slug` | — | public | no | `src/routes/tools.$slug.tsx` |
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (1)
 
-- (none)
+- `/stack`
 
 ### Removed public URLs (0)
 
@@ -556,9 +558,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026/blob/main` | `github.com` | external | `src/routes/stack/stack.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
+| `https://github.com/rebuildup/my-web-2026/tree/main` | `github.com` | external | `src/routes/stack/stack.ts` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
@@ -812,5 +816,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/tree/main
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/stack
+- **WARN** `W004 public-url-added` Public URL added: /stack
 

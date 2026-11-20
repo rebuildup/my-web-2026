@@ -47,6 +47,13 @@
 			"why": "public commission-intake status page (Issue #390); status notice plus service / process / requirements sections."
 		},
 		{
+			"route_id": "/stack",
+			"path": "/stack",
+			"source": "src/routes/stack.tsx",
+			"mode": "render",
+			"why": "public development-stack reference (Issue #381); heading tree, lists and outbound evidence links."
+		},
+		{
 			"route_id": "/projects/dotfiles",
 			"path": "/projects/dotfiles",
 			"source": "src/routes/projects.dotfiles.tsx",

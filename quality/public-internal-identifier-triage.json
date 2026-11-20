@@ -848,6 +848,13 @@
 			"match": "src/tools/embed-privacy.ts.",
 			"classification": "operator-metadata",
 			"rationale": "Manifest JSON Schema consumed by check-tools-manifest.mjs; field names and doc paths are internal contract, never rendered."
+		},
+		{
+			"file": "src/routes/stack/load.ts",
+			"rule": "repo-path",
+			"match": "quality/profile.yaml",
+			"classification": "non-rendered-field",
+			"rationale": "Vite ?raw import specifier in the /stack server function (Issue #381): a module-resolution path, never a rendered string — the visitor sees only the resolved version label."
 		}
 	]
 }

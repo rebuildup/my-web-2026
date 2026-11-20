@@ -75,6 +75,14 @@
 			"note": "制作依頼の案内 (Issue #390)。受付休止中の status surface であり、og:title / description / url を出すが card 画像は declare しない。"
 		},
 		{
+			"path": "/stack",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/stack",
+			"note": "開発スタックの参照ページ (Issue #381)。og:title / description / url を出すが、技術一覧の列挙にこのサイトの card 画像を被せないため og:image は declare しない。"
+		},
+		{
 			"path": "/contact",
 			"public": true,
 			"status": "not-implemented",

@@ -171,6 +171,12 @@ export const PAGE_UNITS = [
 		note: 'the commission-intake status page (Issue #390) — shares the contact obligation but is a different page outline',
 	},
 	{
+		id: 'stack',
+		kind: 'page',
+		files: ['src/routes/stack.tsx', 'src/routes/stack/**'],
+		note: 'the development-stack reference (Issue #381) — a routes-owned page, so the route file and its colocated modules are one unit',
+	},
+	{
 		id: 'keyboard',
 		kind: 'page',
 		files: ['src/routes/keyboard.tsx', 'src/keyboard/components/**'],

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	type StackFactSources,
+	resolveFacts,
 	resolveStackSections,
 	resolveVersion,
 	versionPart,
@@ -97,6 +98,18 @@ describe('resolveVersion', () => {
 	});
 });
 
+describe('resolveFacts', () => {
+	it('resolves the biomeJson reference to the injected rows', () => {
+		const rows = [{ label: 'formatter.lineWidth', value: '100' }];
+		expect(resolveFacts({ kind: 'biomeJson' }, sources({ biomeSettings: rows }))).toEqual(rows);
+	});
+
+	it('fails closed when the source produced nothing', () => {
+		expect(resolveFacts({ kind: 'biomeJson' }, sources())).toBeUndefined();
+		expect(resolveFacts({ kind: 'biomeJson' }, sources({ biomeSettings: null }))).toBeUndefined();
+	});
+});
+
 describe('resolveStackSections over the committed inventory', () => {
 	it('resolves every declared reference against a complete source set', () => {
 		const data = resolveStackSections(STACK_SECTIONS, {
@@ -128,5 +141,37 @@ describe('resolveStackSections over the committed inventory', () => {
 		// The deliberately-undetermined entry stays undetermined.
 		const gha = items.find((item) => item.id === 'github-actions');
 		expect(gha?.version).toEqual({ state: 'undetermined', label: null });
+	});
+
+	it('attaches resolved settings only to items that declare facts (Issue #382)', () => {
+		const data = resolveStackSections(STACK_SECTIONS, {
+			profileStack: { format_lint: 'biome@1.9.x' },
+			npmSpec: () => null,
+			packageManager: 'pnpm@12.3.4',
+			biomeSettings: [{ label: 'formatter.lineWidth', value: '100' }],
+		});
+
+		const items = data.sections.flatMap((section) => section.items);
+		const config = items.find((item) => item.id === 'biome-config');
+		expect(config?.settings).toEqual([{ label: 'formatter.lineWidth', value: '100' }]);
+		// Items without a `facts` reference carry no settings key.
+		const workers = items.find((item) => item.id === 'cloudflare-workers');
+		expect(workers !== undefined && 'settings' in workers).toBe(false);
+		// And the committed samples survive resolution untouched.
+		const sample = items.find((item) => item.id === 'biome-format-sample');
+		expect(sample?.samples?.length).toBe(2);
+	});
+
+	it('omits the settings table when biome.json yields nothing', () => {
+		const data = resolveStackSections(STACK_SECTIONS, {
+			profileStack: {},
+			npmSpec: () => null,
+			packageManager: null,
+			biomeSettings: null,
+		});
+		const config = data.sections
+			.flatMap((section) => section.items)
+			.find((item) => item.id === 'biome-config');
+		expect(config?.settings).toBeUndefined();
 	});
 });

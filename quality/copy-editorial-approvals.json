@@ -4111,6 +4111,242 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-382",
+			"pr": null,
+			"base": "381-stack-page",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f27764331d958716c5c14403ac7a3e8141996c4655e1bfe6c7b50757f9b50cbd",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #382 の /stack「コード品質・Biome」節が追加する公開日本語 copy 27 セグメント。節見出し・説明・3 項目の name/responsibility/reason、DataTable の caption と列見出し、サンプルラベルと注記、サンプルコード内の日本語リテラル。新規の時制主張・権限主張を含まず、設定値は biome.json からの実行時読み取り、コードサンプルは実バイナリ出力または明示された未採用案として区別されている。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。base はスタック元の 381-stack-page。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "biome.json の設定値（リクエスト時にファイルから読み取り）",
+					"text": "biome.json の設定値（リクエスト時にファイルから読み取り）",
+					"verdict": "intentional",
+					"note": "DataTable の caption。設定値がリクエスト時に biome.json から読まれることを明示する表示名。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "設定",
+					"text": "設定",
+					"verdict": "intentional",
+					"note": "DataTable の列見出し「設定」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "値",
+					"text": "値",
+					"verdict": "intentional",
+					"note": "DataTable の列見出し「値」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "return `${item.name} — ${item.responsibility} (${item.version??\"未確定\"})`",
+					"text": "return `${item.name} — ${item.responsibility} (${item.version??\"未確定\"})`",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "export const SAMPLE=describeStackItem({name:\"Biome\",responsibility:\"format と lint を 1 つの binary で担う toolchain。\",reason:\"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。\",version:\"1.9.x\"})",
+					"text": "export const SAMPLE=describeStackItem({name:\"Biome\",responsibility:\"format と lint を 1 つの binary で担う toolchain。\",reason:\"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。\",version:\"1.9.x\"})",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "treturn `${item.name} — ${item.responsibility} (${item.version ?? '未確定'})`;",
+					"text": "treturn `${item.name} — ${item.responsibility} (${item.version ?? '未確定'})`;",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "tresponsibility: 'format と lint を 1 つの binary で担う toolchain。',",
+					"text": "tresponsibility: 'format と lint を 1 つの binary で担う toolchain。',",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "treason: 'Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。',",
+					"text": "treason: 'Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。',",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "export function describeStackItem(i:{name:string;responsibility:string;reason:string;version:string|null}):string{return`${i.name} — ${i.responsibility} (${i.version??\"未確定\"})`}",
+					"text": "export function describeStackItem(i:{name:string;responsibility:string;reason:string;version:string|null}):string{return`${i.name} — ${i.responsibility} (${i.version??\"未確定\"})`}",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "コード品質・Biome",
+					"text": "コード品質・Biome",
+					"verdict": "intentional",
+					"note": "新規セクション見出し「コード品質・Biome」。Issue #382 が要求する節名で、tool 名と責務範囲をそのまま示す名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。",
+					"text": "format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。",
+					"verdict": "intentional",
+					"note": "節の説明文。掲載内容（実設定・実出力の before/after・圧縮案比較）と値の読み取り時点を述べる定義文。時制・権限の新規主張なし。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "biome.json の設定値",
+					"text": "biome.json の設定値",
+					"verdict": "intentional",
+					"note": "項目名「biome.json の設定値」。対象ファイル名をそのまま示す名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "formatter（indent・lineWidth・lineEnding）・JavaScript formatter（quote・semicolon・trailing comma）・linter rules・organizeImports の設定値を表で示します。",
+					"text": "formatter（indent・lineWidth・lineEnding）・JavaScript formatter（quote・semicolon・trailing comma）・linter rules・organizeImports の設定値を表で示します。",
+					"verdict": "intentional",
+					"note": "責務文。表が示すキー範囲を列挙する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「コードをどう整形するか」の契約は `biome.json` 1 ファイルが所有し、`format:check` / `lint:check` がそれを機械的に強制するためです。表の値はページ表示時にファイルから読み取るので、記載が実設定からずれることはありません。",
+					"text": "「コードをどう整形するか」の契約は `biome.json` 1 ファイルが所有し、`format:check` / `lint:check` がそれを機械的に強制するためです。表の値はページ表示時にファイルから読み取るので、記載が実設定からずれることはありません。",
+					"verdict": "intentional",
+					"note": "採用理由。biome.json が整形契約の単一所有者で format:check / lint:check が機械強制する、という観測可能な事実の記述。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "整形の before / after",
+					"text": "整形の before / after",
+					"verdict": "intentional",
+					"note": "項目名「整形の before / after」。新規追加の名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「変換前」は整形していない TypeScript の入力、「Biome 適用後」は同じ入力を `biome format --stdin-file-path` に通した実際の出力です。",
+					"text": "「変換前」は整形していない TypeScript の入力、「Biome 適用後」は同じ入力を `biome format --stdin-file-path` に通した実際の出力です。",
+					"verdict": "intentional",
+					"note": "責務文。「変換前」「Biome 適用後」の各サンプルが何か（未整形入力と biome format --stdin-file-path の実出力）を定義する文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "設定値の列挙だけでは 100 桁での折り返し方が伝わらないため、実バイナリの出力をそのまま掲載しています。再現手順と採否の記録は根拠リンク先の検証記録にあります。",
+					"text": "設定値の列挙だけでは 100 桁での折り返し方が伝わらないため、実バイナリの出力をそのまま掲載しています。再現手順と採否の記録は根拠リンク先の検証記録にあります。",
+					"verdict": "intentional",
+					"note": "採用理由。実バイナリ出力を掲載する根拠と検証記録の在処を述べる文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "変換前（整形前の入力）",
+					"text": "変換前（整形前の入力）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「変換前（整形前の入力）」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "Biome 適用後（biome format の実出力）",
+					"text": "Biome 適用後（biome format の実出力）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「Biome 適用後（biome format の実出力）」。出力が実コマンドの結果であることを明示。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。",
+					"text": "pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。",
+					"verdict": "intentional",
+					"note": "サンプル注記。再現コマンドと byte 一致の条件を述べる技術注記。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "1行圧縮案との比較（保留）",
+					"text": "1行圧縮案との比較（保留）",
+					"verdict": "intentional",
+					"note": "項目名「1行圧縮案との比較（保留）」。Issue #382 の採否結果を名に含む名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。",
+					"text": "「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。",
+					"verdict": "intentional",
+					"note": "責務文。比較対象の 2 案を定義する文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。",
+					"text": "圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。",
+					"verdict": "intentional",
+					"note": "採用理由。保留の根拠（可読性契約との競合・lineWidth 100 での再展開・format policy 不変更）を述べる文。採用は別 Issue と明記。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "1行圧縮案（未採用）",
+					"text": "1行圧縮案（未採用）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「1行圧縮案（未採用）」。案の提示であり採用を主張しないことを明示。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。",
+					"text": "この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。",
+					"verdict": "intentional",
+					"note": "サンプル注記。biome format --write が圧縮案を再展開する実測結果の説明（引数名の差のみで同じ整形になることを明記）。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "現行の整形結果（lineWidth: 100）",
+					"text": "現行の整形結果（lineWidth: 100）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「現行の整形結果（lineWidth: 100）」。比較の基準側を示す見出し語。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "devin-subagent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					"units extracted by scripts/check-copy-editorial-approval.mjs --base=381-stack-page --format=json (27 units)",
+					"sample code strings verified byte-exact against `pnpm exec biome format --stdin-file-path=sample.ts` stdout (Biome 1.9.4)",
+					"docs/verification/stack/biome-formatting.md records reproduction commands and the defer decision"
+				]
+			}
 		}
 	]
 }

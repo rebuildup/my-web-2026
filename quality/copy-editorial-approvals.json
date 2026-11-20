@@ -3983,6 +3983,134 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-518",
+			"pr": null,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f1b3f1704d0261c0c3fc82200946726f15fd3a5f8df3ffe3c7fcfddacfe3bf9b",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #518 の制作史タイムライン要素が追加する公開日本語 copy。kind ラベル 4 件（制作開始 / 改版 / 公開 / 補足）、basis ラベルと説明 2 件（記録 / 記憶）、「読み方 / How to read」「出典 / Sources」凡例見出し、月精度 marker「（月まで）」。いずれも Issue が名指しする区分語であり、新規の時制主張・権限主張を含まない短い名詞句と定義文。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "制作開始",
+					"text": "制作開始",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 1 つ目。Issue #518 が要求する制作開始イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "改版",
+					"text": "改版",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 2 つ目。Issue #518 が要求する改版イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "公開",
+					"text": "公開",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 3 つ目。Issue #518 が要求する公開イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "補足",
+					"text": "補足",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 4 つ目。年表の文脈記述（見積もり・継続中の状態）を置くための区分。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "記録",
+					"text": "記録",
+					"verdict": "intentional",
+					"note": "epistemic axis の basis ラベル 1 つ目。コミット済み記録で確認できる事実の区分語。Issue #518 の fact/recollection 区別要件に対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "コミット済みの記録（文書・tag・検証記録・seed）で確認できる事実。",
+					"text": "コミット済みの記録（文書・tag・検証記録・seed）で確認できる事実。",
+					"verdict": "intentional",
+					"note": "記録 basis の凡例説明。確認手段を列挙する定義文で、新規の時制主張・権限主張を含まない。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "記憶",
+					"text": "記憶",
+					"verdict": "intentional",
+					"note": "epistemic axis の basis ラベル 2 つ目。制作当時の記憶・見積もりを事実と区別する区分語。Issue #518 の「制作の記憶を事実でない言葉に置き換えない」に直接対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "制作当時の記憶や見積もり。その時点の認識であり、確認済みの事実ではない。",
+					"text": "制作当時の記憶や見積もり。その時点の認識であり、確認済みの事実ではない。",
+					"verdict": "intentional",
+					"note": "記憶 basis の凡例説明。「確認済みの事実ではない」と明示する否定を含む定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<span className={precisionClassName}>（月まで）</span>",
+					"text": "（月まで）",
+					"verdict": "intentional",
+					"note": "月精度の日付に付く精度 marker。日付を補わないことを読者に示す注記。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<p className={sourcesLabelClassName}>出典 / Sources</p>",
+					"text": "出典 / Sources",
+					"verdict": "intentional",
+					"note": "各イベントの出典一覧の見出し。日英併記で既存 surface の語彙に揃えた。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<p className={legendLabelClassName}>読み方 / How to read</p>",
+					"text": "読み方 / How to read",
+					"verdict": "intentional",
+					"note": "凡例ブロックの見出し。Issue #519 のケーススタディ要素と同じ語彙を再利用。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/518",
+						"note": "本 PR の実装対象。完了条件「制作の記憶を事実でない言葉に置き換えない」「出典つきで表示」が basis ラベルと出典一覧の語彙を規定する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/portfolio/components/PortfolioProjectHistory.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/portfolio/project-history.md",
+						"note": "採用 / 保留の判断と典拠を記録した検証文書。"
+					}
+				]
+			}
 		}
 	]
 }

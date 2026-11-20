@@ -3087,6 +3087,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/snapshot.ts",
 					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},
@@ -3256,15 +3257,6 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://github.com/rebuildup/ai-knowledge",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -3581,6 +3573,15 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/rebuildup",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -5962,9 +5963,11 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://github.com/tastile/tastile-android"
+			"https://github.com/rebuildup/rebuildup"
 		],
-		"removedExternalUrls": [],
+		"removedExternalUrls": [
+			"https://github.com/rebuildup/ai-knowledge"
+		],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -5974,7 +5977,12 @@
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://github.com/tastile/tastile-android"
+				"message": "External URL added: https://github.com/rebuildup/rebuildup"
+			},
+			{
+				"code": "W003 external-url-removed",
+				"severity": "warn",
+				"message": "External URL removed: https://github.com/rebuildup/ai-knowledge"
 			}
 		]
 	}

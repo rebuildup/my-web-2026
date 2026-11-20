@@ -15,7 +15,7 @@
 | Publicly reachable URLs (surface + Static Assets) | 89 |
 | External hosts | 62 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
+| Approved transition | 2 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -515,7 +515,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
+| `https://github.com` | `github.com` | external | `src/home/activity/snapshot.ts`, `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/googlefonts/zen-kakugothic` | `github.com` | external | `public/fonts/zen-kaku-gothic-new-LICENSE.txt` |
@@ -534,7 +534,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
-| `https://github.com/rebuildup/ai-knowledge` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/atcoder-kit` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
@@ -568,6 +567,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/readmark` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/rebuildup` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-ae-expression` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-ae-expression.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-business-mail-block` | `github.com` | external | `src/home/activity/github-activity.json` |
@@ -817,5 +817,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/tastile/tastile-android
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/rebuildup
+- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/ai-knowledge
 

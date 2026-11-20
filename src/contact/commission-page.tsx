@@ -1,6 +1,7 @@
 import { css } from '../../styled-system/css';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { SkipLink } from '../editorial/primitives/SkipLink';
 import {
 	COMMISSION_REQUIREMENTS,
 	COMMISSION_SERVICE_GROUPS,
@@ -23,9 +24,7 @@ import {
 export function CommissionPage() {
 	return (
 		<>
-			<a href="#main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="commission-hero-title">
 				<span
 					className={css({
@@ -523,22 +522,6 @@ function ContactSection() {
 		</PageSection>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
 
 const inlineLinkStyle = css({
 	color: 'text.accent',

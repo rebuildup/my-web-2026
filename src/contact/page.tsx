@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { SkipLink } from '../editorial/primitives/SkipLink';
 import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
 import type { PublicContactChannel } from './public';
 
@@ -46,26 +47,7 @@ export interface ContactPageProps {
 export function ContactPage({ channels, empty, unverifiableCount }: ContactPageProps) {
 	return (
 		<>
-			<a
-				href="#main"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					padding: '2',
-					backgroundColor: 'bg.canvas',
-					color: 'text.default',
-					textDecoration: 'none',
-					transform: 'translateY(-200%)',
-					_focusVisible: {
-						transform: 'translateY(0)',
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
-				})}
-			>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="contact-hero-title">
 				<span
 					className={css({

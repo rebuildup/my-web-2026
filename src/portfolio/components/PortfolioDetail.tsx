@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioAdjacent, PortfolioProject } from '../schema';
 import { selectPortfolioVideo } from '../video-facade';
@@ -120,9 +121,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<>
-			<a href="#portfolio-detail" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#portfolio-detail" />
 			<main id="main">
 				<article id="portfolio-detail" aria-labelledby="portfolio-detail-heading">
 					<header
@@ -589,19 +588,3 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 		</>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});

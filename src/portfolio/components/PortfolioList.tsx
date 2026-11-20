@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
 import { DEFAULT_PORTFOLIO_VIEW, type PortfolioView } from '../views';
@@ -73,9 +74,7 @@ export function PortfolioList({
 
 	return (
 		<>
-			<a href="#portfolio-list" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#portfolio-list" />
 			<main id="main">
 				<section
 					aria-labelledby="portfolio-heading"
@@ -283,22 +282,6 @@ export function PortfolioList({
 		</>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
 
 /**
  * Grid item behaviour for one card (same shape as the tools index's

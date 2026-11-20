@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
@@ -27,9 +28,7 @@ import type { StackCheckStatus, StackFactRow } from './stack';
 export function StackPage({ data }: { data: StackPageData }) {
 	return (
 		<>
-			<a href="#main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="stack-hero-title">
 				<span
 					className={css({
@@ -395,22 +394,6 @@ function biomeSettingsRows(settings: readonly StackFactRow[]): TableRow[] {
 		cells: { value: row.value },
 	}));
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
 
 const inlineCodeStyle = css({
 	fontFamily: 'mono',

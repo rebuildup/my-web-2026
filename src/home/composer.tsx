@@ -7,6 +7,7 @@ import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { SkipLink } from '../editorial/primitives/SkipLink';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import { useMediaQuery } from '../editorial/use-media-query';
 import type { HomeCounterData } from './access/load';
@@ -204,26 +205,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 		// fixed companion occupies, so the reading column never scrolls
 		// under it. See `src/editorial/pet/safe-area.ts`.
 		<div className={petSafeAreaStyle}>
-			<a
-				href="#main"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					padding: '2',
-					backgroundColor: 'bg.canvas',
-					color: 'text.default',
-					textDecoration: 'none',
-					transform: 'translateY(-200%)',
-					_focusVisible: {
-						transform: 'translateY(0)',
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
-				})}
-			>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			{/* Issue #925 — publisher masthead. Real ad surfaces never show
 			    a leaderboard without the site chrome it belongs to; the
 			    wordmark + section links are what make the banner below

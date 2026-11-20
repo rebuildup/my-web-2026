@@ -3,6 +3,7 @@ import { ActivityTimelineView } from '../../activity/Timeline';
 import type { ActivityTimeline } from '../../activity/contract';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 
 /**
  * `/activity` page composition (Issue #352).
@@ -21,9 +22,7 @@ import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 	return (
 		<>
-			<a href="#main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="activity-hero-title">
 				<span
 					className={css({
@@ -83,19 +82,3 @@ export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 		</>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});

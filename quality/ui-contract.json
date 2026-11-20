@@ -610,7 +610,6 @@
 			"path": "src/about/components/AboutPage.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"borderTop: 1px solid {colors.border.subtle}": 1
 			},
 			"clause": "C-1"
@@ -620,14 +619,6 @@
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
 				"borderTop: 1px solid {colors.border.subtle}": 1
-			},
-			"clause": "C-1"
-		},
-		{
-			"path": "src/about/components/LinksPage.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"backgroundColor: bg.canvas": 1
 			},
 			"clause": "C-1"
 		},
@@ -720,7 +711,6 @@
 			"path": "src/contact/commission-page.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"marginBlockStart on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 1
 			},
@@ -730,7 +720,6 @@
 			"path": "src/contact/page.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"marginBlockEnd on surface object": 1,
 				"paddingBlock on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 2
@@ -761,7 +750,6 @@
 			"path": "src/home/composer.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection (skip-link surface + sponsored slot)",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"raw <section> element": 1
 			},
 			"clause": "C-1"
@@ -914,7 +902,6 @@
 			"path": "src/portfolio/components/PortfolioDetail.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"borderTop: 1px solid {colors.border.subtle}": 3,
 				"raw <section> element": 2
 			},
@@ -933,7 +920,6 @@
 			"path": "src/portfolio/components/PortfolioList.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"raw <section> element": 2
 			},
 			"clause": "C-1"
@@ -958,20 +944,11 @@
 			"path": "src/projects/DotfilesIntroductionPage.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
 				"paddingBlock on surface object": 2,
 				"raw <section> element": 7,
 				"surface + block padding/min-height outside PageSection": 3
 			},
 			"clause": "C-1/C-3"
-		},
-		{
-			"path": "src/routes/activity/ActivityPage.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"backgroundColor: bg.canvas": 1
-			},
-			"clause": "C-1"
 		},
 		{
 			"path": "src/routes/admin.emoji-catalog.tsx",
@@ -1105,14 +1082,6 @@
 			"clause": "C-1"
 		},
 		{
-			"path": "src/routes/stack/StackPage.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"backgroundColor: bg.canvas": 1
-			},
-			"clause": "C-1"
-		},
-		{
 			"path": "src/routes/tools.index.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
@@ -1127,23 +1096,12 @@
 			"path": "src/about/components/AboutPage.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
-				"<a> backgroundColor": 1,
 				"<a> borderColor": 3,
 				"<a> borderRadius": 3,
 				"<a> borderStyle": 2,
 				"<a> borderWidth": 2,
-				"<a> padding": 1,
 				"<a> paddingBlock": 2,
 				"<a> paddingInline": 2
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/about/components/LinksPage.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
 			},
 			"clause": "C-6"
 		},
@@ -1214,24 +1172,6 @@
 			"clause": "C-6"
 		},
 		{
-			"path": "src/contact/commission-page.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/contact/page.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/external-api/ExternalReadCard.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
@@ -1263,15 +1203,6 @@
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
 				"<a> borderRadius": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/home/composer.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration (skip link)",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
 			},
 			"clause": "C-6"
 		},
@@ -1390,9 +1321,7 @@
 			"path": "src/portfolio/components/PortfolioDetail.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
-				"<a> backgroundColor": 1,
 				"<a> borderRadius": 2,
-				"<a> padding": 1,
 				"<a> paddingBlock": 2
 			},
 			"clause": "C-6"
@@ -1401,8 +1330,6 @@
 			"path": "src/portfolio/components/PortfolioList.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1,
 				"<button> backgroundColor": 1,
 				"<button> borderColor": 1,
 				"<button> borderRadius": 1,
@@ -1448,22 +1375,12 @@
 			"path": "src/projects/DotfilesIntroductionPage.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
-				"<a> backgroundColor": 2,
+				"<a> backgroundColor": 1,
 				"<a> borderColor": 1,
 				"<a> borderRadius": 2,
 				"<a> borderStyle": 1,
 				"<a> borderWidth": 1,
-				"<a> padding": 1,
 				"<a> paddingInline": 2
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/routes/activity/ActivityPage.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
 			},
 			"clause": "C-6"
 		},
@@ -1521,15 +1438,6 @@
 				"<button> borderWidth": 1,
 				"<button> height": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/routes/stack/StackPage.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> padding": 1
 			},
 			"clause": "C-6"
 		}
@@ -2153,36 +2061,6 @@
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/admin.login.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/home/composer.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/home/composer.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/stack/StackPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},

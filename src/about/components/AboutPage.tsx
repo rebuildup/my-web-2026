@@ -6,6 +6,7 @@ import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
@@ -101,22 +102,6 @@ const siteReferenceLinkStyle = css({
 	},
 });
 
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
-
 export function AboutPage({ data }: AboutPageProps) {
 	const { identity, interests, skills, experience, career, current, future, externalHandles } =
 		data;
@@ -125,9 +110,7 @@ export function AboutPage({ data }: AboutPageProps) {
 		// corner; the page reserves that corridor so its text never
 		// scrolls underneath. See `src/editorial/pet/safe-area.ts`.
 		<div className={petSafeAreaStyle}>
-			<a href="#about-main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#about-main" />
 			<Hero identity={identity} />
 			<main id="about-main">
 				<IdentitySection identity={identity} />

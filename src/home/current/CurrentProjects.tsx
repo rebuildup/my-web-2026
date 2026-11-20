@@ -75,6 +75,17 @@ export interface CurrentProjectsProps {
 	 * clock, so the document is a pure function of (records, today).
 	 */
 	today: string;
+	/**
+	 * Issue #1108 — curated mode. When set, only the first `limit`
+	 * records of the ORDERED published list render (the ordering is
+	 * the component's own importance/freshness/weight order, so the
+	 * representative slice is never hand-picked). The summary still
+	 * reports the full published count, and `seeAllHref` renders a
+	 * "see all" link to the enumeration surface (`/now`). Omitted on
+	 * the index route, which exists to enumerate.
+	 */
+	limit?: number;
+	seeAllHref?: string;
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -390,9 +401,10 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 	}).length;
 }
 
-export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) {
+export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
-	const groups = groupByWeight(published);
+	const visible = limit === undefined ? published : published.slice(0, limit);
+	const groups = groupByWeight(visible);
 	const reducedMotion = usePrefersReducedMotion();
 	const changedIds = useChangedProjectIds(published);
 	const recent = recentlyUpdatedCount(published, today);
@@ -458,7 +470,7 @@ export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) 
 								</ul>
 							) : (
 								<ul data-testid="home-current-projects-list" className={listClassName}>
-									{published.map((project) => (
+									{visible.map((project) => (
 										<ProjectRow
 											key={project.id}
 											project={project}
@@ -470,6 +482,15 @@ export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) 
 									))}
 								</ul>
 							)}
+							{seeAllHref && published.length > visible.length ? (
+								<a
+									href={seeAllHref}
+									className={linkClassName}
+									data-testid="home-current-projects-see-all"
+								>
+									すべて見る ({published.length} 件)
+								</a>
+							) : null}
 						</>
 					)}
 				</SectionHeading>

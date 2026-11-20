@@ -1,7 +1,10 @@
 import { css } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
+import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
+import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import type { HomeCounterData } from './access/load';
@@ -304,247 +307,182 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			</div>
 			<Hero />
 			<main id="main">
-				{/* Issue #925 — the body grid is ad-defined, the way real
-				    publisher pages compose: the editorial sections read down
-				    a narrow article column while a sponsored rail runs the
-				    full height of the page beside them (sticky on lg). The
-				    rail is a sibling of the whole flow, not a block dropped
-				    between sections — that persistent occupancy is what
-				    makes a page read as an ad surface. On base the rail
-				    stacks after the article in reading order. */}
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', xl: 'minmax(0, 1fr) 22rem' },
-						columnGap: '10',
-						alignItems: 'start',
-						paddingInline: { base: '4', lg: '6' },
-					})}
-				>
-					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
-						{/* Issue #930 / Epic #928 — the site guide is the FIRST
-						    body section: a first-time visitor's primary
-						    question is "what exists here and how do I reach
-						    it". */}
-						<GuideSection today={data.observedAt.slice(0, 10)} />
-						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
-						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolLinkCard />
-							</div>
-						</Container>
-						{data.dataSource ? (
-							<Container>
-								<DataSourceBadge source={data.dataSource} />
-							</Container>
-						) : null}
-						<CapabilitiesGrid capabilities={data.capabilities} />
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolCarousel projects={data.adProjects ?? []} />
-								<div className={css({ marginBlockStart: '10' })}>
-									<AdToolVideo />
-								</div>
-							</div>
-						</Container>
-						<section
-							aria-labelledby="site-status-heading"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-							})}
-						>
-							<Container>
-								<SectionHeading
-									id="site-status-heading"
-									eyebrow="02 — Status"
-									title="サイトの状態"
-									titleEn="Site status"
-									description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
-									variant="spread"
-								>
-									<div
-										className={css({
-											display: 'flex',
-											flexDirection: 'column',
-											gap: { base: '14', lg: '16' },
-										})}
-									>
-										<div>
-											<h3 id="status-heading" className={subsectionTitleClassName}>
-												プラットフォームの状態 / Platform health
-											</h3>
-											<StatusTiles
-												chrome="body"
-												services={data.services}
-												statuses={data.statuses}
-												observedAt={data.observedAt}
-												incidents={data.incidents}
-												locale={locale}
-												timeZone={timeZone}
-											/>
-										</div>
-										<div>
-											<h3 id="github-activity-heading" className={subsectionTitleClassName}>
-												GitHub の活動 / GitHub activity
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												GitHub
-												から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
-											</p>
-											<GitHubActivityCard activity={data.githubActivity ?? null} />
-											{/* Issue #933 — the self-hosted stats card
-											    supplements the committed-activity feed
-											    with the same GitHub numbers the profile
-											    README advertises. It is decorative
-											    support: `lazy` + `async` because the
-											    block sits well below the fold, and a
-											    Japanese alt that names what the image
-											    shows rather than "image". */}
-											<img
-												src={GITHUB_STATS_IMAGE_URL}
-												alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
-												loading="lazy"
-												decoding="async"
-												className={css({
-													display: 'block',
-													maxWidth: '100%',
-													height: 'auto',
-													marginBlockStart: '4',
-												})}
-											/>
-										</div>
-										<div>
-											<h3 id="reactions-heading" className={subsectionTitleClassName}>
-												みんなの反応 / Reactions
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
-												を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
-											</p>
-											<ReactionsWidget data={data.reactions} />
-										</div>
-										<div>
-											<h3 id="access-counter-heading" className={subsectionTitleClassName}>
-												ページビュー / Page views
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												各リクエストは短時間ウィンドウ内で重複加算されません。
-											</p>
-											<CounterTile data={data.counter} locale={locale} />
-										</div>
-										<div>
-											<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
-												Discord プレゼンス / Discord Presence
-											</h3>
-											{data.discordPresence && (
-												<PresenceCard
-													card={data.discordPresence}
-													locale={locale}
-													timeZone={timeZone}
-													chrome="body"
-													headingId="discord-presence-card-heading"
-												/>
-											)}
-										</div>
-									</div>
-								</SectionHeading>
-							</Container>
-						</section>
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolPlayable />
-								<div className={css({ marginBlockStart: '10' })}>
-									{data.adProjects?.[3] ? (
-										<AdPortfolioRect project={data.adProjects[3]} />
-									) : (
-										<AdToolRect />
-									)}
-								</div>
-							</div>
-						</Container>
-						<section
-							aria-labelledby="contact-cta-heading"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-							})}
-						>
-							<Container>
-								<SectionHeading
-									id="contact-cta-heading"
-									eyebrow="03 — Contact"
-									title="Contact / お問い合わせ"
-									description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
-									variant="spread"
-								>
-									<div
-										data-testid="home-contact-cta"
-										className={css({
-											display: 'flex',
-											flexWrap: 'wrap',
-											gap: '4',
-										})}
-									>
-										<a
-											href="/contact"
-											data-testid="home-contact-link"
-											className={css({
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: '2',
-												paddingInline: '4',
-												height: '10',
-												borderRadius: 'md',
-												backgroundColor: 'bg.accent',
-												color: 'text.inverse',
-												fontFamily: 'sans',
-												fontSize: 'md',
-												fontWeight: '600',
-												textDecoration: 'none',
-												transition: 'background-color 120ms ease',
-												_hover: { backgroundColor: 'accent.interactive' },
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
-											})}
-										>
-											<span lang="ja">Contact を見る</span>
-											<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
-										</a>
-									</div>
-								</SectionHeading>
-							</Container>
-						</section>
+				{/* Issue #1108 — the page is a single editorial column again.
+				    The old xl sticky ad rail is gone: sponsored units are
+				    named inline slots between content sections, the way the
+				    contract's ad-independence clause requires. */}
+				{/* Site guide — orientation first (Issue #930). */}
+				<GuideSection today={data.observedAt.slice(0, 10)} />
+				{/* 現在地 — curated representative slice; the full ordered
+				    enumeration lives at /now (ADR-0022 C-8). */}
+				<CurrentProjects
+					projects={data.projects}
+					today={data.observedAt.slice(0, 10)}
+					limit={4}
+					seeAllHref="/now"
+				/>
+				{/* ad slot: in-feed link card */}
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolLinkCard />
 					</div>
-					<aside
-						aria-label="Sponsored"
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '6',
-							position: { xl: 'sticky' },
-							top: { xl: '6' },
-						})}
+				</Container>
+				{data.dataSource ? (
+					<Container>
+						<DataSourceBadge source={data.dataSource} />
+					</Container>
+				) : null}
+				<CapabilitiesGrid capabilities={data.capabilities} />
+				{/* ad slot: carousel + video */}
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolCarousel projects={data.adProjects ?? []} />
+						<div className={css({ marginBlockStart: '10' })}>
+							<AdToolVideo />
+						</div>
+					</div>
+				</Container>
+				<PageSection labelledBy="site-status-heading" tone="sunken">
+					<SectionHeading
+						id="site-status-heading"
+						eyebrow="02 — Status"
+						title="サイトの状態"
+						titleEn="Site status"
+						description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
+						variant="spread"
 					>
-						{data.adProjects?.[0] ? (
-							<AdPortfolioNative project={data.adProjects[0]} />
-						) : (
-							<AdToolNative />
-						)}
-						<AdToolInstall />
-						{data.adProjects?.[1] ? (
-							<AdPortfolioProduct project={data.adProjects[1]} />
-						) : (
-							<AdToolProduct />
-						)}
-						{data.adProjects?.[2] ? (
-							<AdPortfolioNative project={data.adProjects[2]} />
-						) : (
-							<AdToolNativeCounter />
-						)}
-					</aside>
-				</div>
+						<Grid columns={2} gap="10">
+							<div>
+								<h3 id="status-heading" className={subsectionTitleClassName}>
+									プラットフォームの状態 / Platform health
+								</h3>
+								<StatusTiles
+									chrome="body"
+									services={data.services}
+									statuses={data.statuses}
+									observedAt={data.observedAt}
+									incidents={data.incidents}
+									locale={locale}
+									timeZone={timeZone}
+								/>
+							</div>
+							<div>
+								<h3 id="reactions-heading" className={subsectionTitleClassName}>
+									みんなの反応 / Reactions
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+									を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+								</p>
+								<ReactionsWidget data={data.reactions} />
+							</div>
+							<div>
+								<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+									ページビュー / Page views
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									各リクエストは短時間ウィンドウ内で重複加算されません。
+								</p>
+								<CounterTile data={data.counter} locale={locale} />
+							</div>
+							<div>
+								<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+									GitHub の活動 / GitHub activity
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									GitHub
+									から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+								</p>
+								<GitHubActivityCard activity={data.githubActivity ?? null} />
+								<img
+									src={GITHUB_STATS_IMAGE_URL}
+									alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+									loading="lazy"
+									decoding="async"
+									className={css({
+										display: 'block',
+										maxWidth: '100%',
+										height: 'auto',
+										marginBlockStart: '4',
+									})}
+								/>
+							</div>
+							<div>
+								<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
+									Discord プレゼンス / Discord Presence
+								</h3>
+								{data.discordPresence ? (
+									<PresenceCard
+										card={data.discordPresence}
+										locale={locale}
+										timeZone={timeZone}
+										chrome="body"
+										headingId="discord-presence-card-heading"
+									/>
+								) : null}
+							</div>
+						</Grid>
+					</SectionHeading>
+				</PageSection>
+				{/* ad slot: playable + display rect */}
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolPlayable />
+						<div className={css({ marginBlockStart: '10' })}>
+							{data.adProjects?.[3] ? (
+								<AdPortfolioRect project={data.adProjects[3]} />
+							) : (
+								<AdToolRect />
+							)}
+						</div>
+					</div>
+				</Container>
+				{/* ad slot: sponsored pair — native + product units share one
+				    labelled region instead of a sticky rail. */}
+				<section aria-label="Sponsored">
+					<Container>
+						<Grid columns={2} gap="6" className={css({ marginBlock: '10' })}>
+							<div>
+								{data.adProjects?.[0] ? (
+									<AdPortfolioNative project={data.adProjects[0]} />
+								) : (
+									<AdToolNative />
+								)}
+							</div>
+							<div>
+								{data.adProjects?.[1] ? (
+									<AdPortfolioProduct project={data.adProjects[1]} />
+								) : (
+									<AdToolProduct />
+								)}
+							</div>
+							<div>
+								{data.adProjects?.[2] ? (
+									<AdPortfolioNative project={data.adProjects[2]} />
+								) : (
+									<AdToolNativeCounter />
+								)}
+							</div>
+							<div>
+								<AdToolInstall />
+							</div>
+						</Grid>
+					</Container>
+				</section>
+				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="raised" separator>
+					<SectionHeading
+						id="contact-cta-heading"
+						eyebrow="03 — Contact"
+						title="Contact / お問い合わせ"
+						description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
+						variant="spread"
+					>
+						<Button as="a" href="/contact" variant="primary" data-testid="home-contact-link">
+							<span lang="ja">Contact を見る</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+						</Button>
+					</SectionHeading>
+				</PageSection>
 			</main>
 			<Footer privacyNotice={data.privacyNotice} />
 			<PetCompanion />

@@ -382,22 +382,27 @@
 			"title": "feat(home): GitHubの公開開発ステータスを表示",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/home/composer.tsx",
-				"docs/domain/integrations.md",
-				"src/external-api/github.ts",
-				"closing PR references: [] / Cross-referenced PRs: []",
-				"docs/verification/home/ が存在しない（github-activity-*.png 未作成）"
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/home/activity/snapshot.ts",
+				"src/home/activity/live.ts",
+				"src/routes/index.tsx",
+				"scripts/sync-github-activity.mjs",
+				"docs/runbook/github-activity-sync.md",
+				"docs/verification/home/github-activity.png",
+				"docs/verification/home/github-activity-mobile.png",
+				"#319 close comment 2026-11-20",
+				"#1082"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "参照アダプタは存在するが route に結線されておらず、Home に表示されるスナップショットは存在しない。「統合済み」という主張は実体に反する。",
-			"missing": "公開リリース/活動への遷移リンク、最終取得時刻と取得失敗時の古さ表示、未公開repo・認証情報を返さない制御、キャッシュ方針、テストとスクリーンショット"
+			"action": "closed",
+			"note": "Epic #928 系で src/home/activity/ 一式が実装・Home マウント済み。committed snapshot + D1 freshness 優先、source status で未接続/失敗/古さを区別、private repo は HMAC 匿名化。2026-11-20 に受入条件を照合して close。検証画像は PR #1082 で補完。",
+			"missing": null
 		},
 		{
 			"issue": 320,

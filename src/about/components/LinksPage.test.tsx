@@ -12,7 +12,7 @@ import { LinksPage } from './LinksPage';
  */
 
 describe('LinksPage', () => {
-	const html = renderToStaticMarkup(<LinksPage />);
+	const html = renderToStaticMarkup(<LinksPage groups={ABOUT_LINK_GROUPS} />);
 
 	it('renders one h1 and the canonical heading', () => {
 		expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
@@ -49,6 +49,33 @@ describe('LinksPage', () => {
 		expect(html).toContain('href="/contact"');
 		expect(html).not.toMatch(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/);
 		expect(html).not.toContain('<form');
+	});
+});
+
+describe('LinksPage empty state', () => {
+	it('renders an honest empty message when no group is publishable', () => {
+		const empty = renderToStaticMarkup(<LinksPage groups={[]} />);
+		expect(empty).toContain('公開しているリンクはまだありません');
+		expect(empty).toContain('href="/contact"');
+		expect(empty).not.toContain('links-group-');
+	});
+
+	it('treats groups with zero links as unpublishable', () => {
+		const groups = ABOUT_LINK_GROUPS.map((group) => ({ ...group, links: [] }));
+		const empty = renderToStaticMarkup(<LinksPage groups={groups} />);
+		expect(empty).toContain('公開しているリンクはまだありません');
+		expect(empty).not.toContain('links-group-');
+	});
+
+	it('still renders the groups that carry links when others are empty', () => {
+		const groups = [
+			{ id: 'empty', label: '空', labelEn: 'Empty', links: [] },
+			ABOUT_LINK_GROUPS[0],
+		];
+		const html = renderToStaticMarkup(<LinksPage groups={groups} />);
+		expect(html).toContain('links-group-site');
+		expect(html).not.toContain('links-group-empty');
+		expect(html).not.toContain('公開しているリンクはまだありません');
 	});
 });
 

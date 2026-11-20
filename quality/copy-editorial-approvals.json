@@ -4500,6 +4500,70 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "issue-390",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:3a279981318ab9ff79c2b40ba18a6264da170ac0c35474cd03fa9ca514f743e8",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #390 の /links 空状態が追加する公開日本語 copy 3 セグメント。空状態の見出し「公開しているリンクはまだありません」と、既存ヒーロー copy と同一の /contact 誘導文の分割 2 セグメント（「連絡先は」「に掲載している verified channel を参照してください。」— JSX の <a> 要素で分割されたテキストノード）。いずれも既存 surface の語彙の再利用で、新規の時制主張・権限主張・否定の変更を含まない。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "公開しているリンクはまだありません",
+					"text": "公開しているリンクはまだありません",
+					"verdict": "intentional",
+					"note": "links が 1 件も publishable でない場合の空状態見出し。SkillsList「根拠となる制作記録が確認できた技術はまだありません。」/ CareerTimeline「公開が承認された経歴項目はまだありません。」と同じ「まだありません」語彙で、空であることを正直に述べ、リンクを捏造しない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "連絡先は",
+					"text": "連絡先は",
+					"verdict": "intentional",
+					"note": "空状態の補足文の前半。ヒーロー copy「連絡先は /contact に掲載している verified channel を参照してください。」と同一の文を <a> 要素の前で分割したテキストノード。既存語彙の再利用。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "に掲載している verified channel を参照してください。",
+					"text": "に掲載している verified channel を参照してください。",
+					"verdict": "intentional",
+					"note": "空状態の補足文の後半。/contact への誘導で、private channel をこの surface に載せない Issue #390 の境界を維持する。ヒーロー copy と同一文の分割後半。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/390",
+						"note": "本変更の実装対象。「公開/無効/空のfixture」受入条件が空状態の存在を要求する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/about/components/LinksPage.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/identity/links-empty.png",
+						"note": "空状態の実描画を記録した検証画像 (scripts/capture-links-empty.mjs が生成)。"
+					}
+				]
+			}
 		}
 	]
 }

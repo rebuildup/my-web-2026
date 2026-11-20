@@ -13,8 +13,19 @@ import { ABOUT_LINK_GROUPS, type AboutLink, type AboutLinkGroup } from '../links
  * link group → a closing note that points contact-shaped requests
  * at `/contact` (the page deliberately carries no e-mail address —
  * Issue #390 keeps private channels out of this surface).
+ *
+ * The component renders whatever `groups` it is given — the route
+ * adapter passes the committed `ABOUT_LINK_GROUPS`. A group with no
+ * links is not rendered at all, and when NOTHING is publishable the
+ * page renders an honest empty message rather than an empty frame
+ * (same contract as `SkillsList` / `CareerTimeline`).
  */
-export function LinksPage() {
+export interface LinksPageProps {
+	readonly groups: readonly AboutLinkGroup[];
+}
+
+export function LinksPage({ groups }: LinksPageProps) {
+	const visibleGroups = groups.filter((group) => group.links.length > 0);
 	return (
 		<>
 			<a href="#main" className={skipLinkStyle}>
@@ -68,11 +79,64 @@ export function LinksPage() {
 				</Container>
 			</section>
 			<main id="main">
-				{ABOUT_LINK_GROUPS.map((group, index) => (
-					<LinkGroupSection key={group.id} group={group} index={index + 1} />
-				))}
+				{visibleGroups.length === 0 ? (
+					<LinksEmptyState />
+				) : (
+					visibleGroups.map((group, index) => (
+						<LinkGroupSection key={group.id} group={group} index={index + 1} />
+					))
+				)}
 			</main>
 		</>
+	);
+}
+
+function LinksEmptyState() {
+	return (
+		<section
+			aria-labelledby="links-empty-title"
+			className={css({
+				paddingBlock: { base: '16', lg: '24' },
+				borderTopWidth: '1px',
+				borderTopStyle: 'solid',
+				borderTopColor: 'border.subtle',
+			})}
+		>
+			<Container>
+				<h2
+					id="links-empty-title"
+					lang="ja"
+					className={css({
+						margin: '0',
+						fontFamily: 'heading',
+						fontSize: 'xl',
+						fontWeight: '700',
+						lineHeight: '1.4',
+						color: 'text.default',
+					})}
+				>
+					公開しているリンクはまだありません
+				</h2>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '4',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.6',
+						color: 'text.muted',
+						maxWidth: '640px',
+					})}
+				>
+					連絡先は
+					<a href="/contact" className={inlineLinkStyle}>
+						/contact
+					</a>
+					に掲載している verified channel を参照してください。
+				</p>
+			</Container>
+		</section>
 	);
 }
 

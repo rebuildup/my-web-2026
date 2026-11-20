@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { LinksPage } from '../about/components';
+import { ABOUT_LINK_GROUPS } from '../about/links';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
@@ -54,7 +55,7 @@ function LinksRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<LinksPage />
+			<LinksPage groups={ABOUT_LINK_GROUPS} />
 		</>
 	);
 }

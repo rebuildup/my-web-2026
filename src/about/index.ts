@@ -19,4 +19,4 @@ export type {
 	AboutExternalHandle,
 } from './types';
 export { AboutPage, LinksPage } from './components';
-export type { AboutPageProps } from './components';
+export type { AboutPageProps, LinksPageProps } from './components';

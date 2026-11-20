@@ -363,4 +363,109 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 			},
 		],
 	},
+	{
+		id: 'delivery',
+		title: '品質ゲートとデリバリー',
+		titleEn: 'Quality gates & delivery',
+		description:
+			'変更が本番に届くまでの経路です。ticket PR では `pnpm run validate:fast`、release PR と `main` への push では `pnpm run validate:integration` / `pnpm run validate:release` が走ります。release PR の merge・tag・Release 公開は owner の明示的な承認を経て、`main` への push を起点に Cloudflare Workers Builds が唯一の本番デプロイ主体として deploy します。',
+		items: [
+			{
+				id: 'gate-fast',
+				name: 'validate:fast',
+				responsibility:
+					'ローカルとすべての CI run で実行される高速 gate。`pnpm run validate:fast` が `run-quality-gates.mjs` 経由で `profile.yaml` の `gates.fast.components` を宣言された順に 1 コマンドずつ実行し、最初の失敗でその exit code のまま停止します。offline・read-only が契約です。',
+				reason:
+					'gate の構成は `profile.yaml` が唯一の宣言元で、workflow YAML に hidden step を置かない方針のため。安い検証をすべての変更で先に済ませます。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('profile.yaml', 'quality', 'profile.yaml'),
+					evidence('package.json', 'package.json'),
+					evidence('run-quality-gates.mjs', 'scripts', 'run-quality-gates.mjs'),
+				],
+			},
+			{
+				id: 'gate-integration',
+				name: 'validate:integration',
+				responsibility:
+					'release candidate の検証。`fast` の全成分を展開した上で `pnpm run build:production`、bundle budget と server-only module の gate、build 済み artifact の secret scan、Build Output contract、Storybook build、artifact attestation までを実行します。trigger は release PR・frozen SHA への `workflow_dispatch`・`main` への push です。',
+				reason:
+					'重い検証を ticket ごとではなく release candidate ごとに 1 回だけ走らせるため。ticket PR は `validate:fast` で merge します。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('profile.yaml', 'quality', 'profile.yaml'),
+					evidence('package.json', 'package.json'),
+				],
+			},
+			{
+				id: 'gate-release',
+				name: 'validate:release',
+				responsibility:
+					'`main` へ merge する前の最終検証。`validate:integration` の全成分に加えて `pnpm run cf-typegen:check` を実行し、再生成される Worker 型が commit 済みのものと byte 一致しなければ失敗します。',
+				reason: '型の乖離を release 前に検出するため。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('profile.yaml', 'quality', 'profile.yaml'),
+					evidence('package.json', 'package.json'),
+				],
+			},
+			{
+				id: 'workers-builds',
+				name: 'Cloudflare Workers Builds',
+				responsibility:
+					'唯一の本番デプロイ主体。`main` への push で Cloudflare 側の build 環境が `pnpm run build` → `pnpm run deploy:production:prepared` を実行します。build phase が `.cloudflare/output` の Build Output を作り、deploy phase は rebuild せずその artifact を検証して ship します。',
+				reason:
+					'deploy に使う 2 つの command は runbook に記録され、`cf:config:drift:check` が package.json の script 名と記録の一致を fast gate で検査します。非 production branch の build は無効化されており、release PR の merge・tag push・GitHub Release 公開は owner の明示承認を要します。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence(
+						'cloudflare-workers-builds.md',
+						'docs',
+						'runbook',
+						'cloudflare-workers-builds.md',
+					),
+					evidence('release.md', 'docs', 'release.md'),
+					evidence('cloudflare-config-drift.json', 'quality', 'cloudflare-config-drift.json'),
+				],
+			},
+			{
+				id: 'github-actions-delivery',
+				name: 'GitHub Actions',
+				responsibility:
+					'本番デリバリーにおける検証専用の実行環境。`ci.yml` の validate job が format・lint・architecture・version・typecheck・test・build・wrangler dry-run を実行し、release PR と `ui-change` label の PR、`main` / release branch への push で Playwright E2E が走ります。`prod-smoke.yml` は operator が手動で起動する diagnostic で、push event には繋がっていません。',
+				reason:
+					'本番デプロイ権限は Cloudflare Workers Builds に限定するため、deploy 用の workflow は意図的に存在しません。',
+				version: { kind: 'undetermined' },
+				evidence: [
+					evidence('ci.yml', '.github', 'workflows', 'ci.yml'),
+					evidence('prod-smoke.yml', '.github', 'workflows', 'prod-smoke.yml'),
+					evidence(
+						'cloudflare-workers-builds.md',
+						'docs',
+						'runbook',
+						'cloudflare-workers-builds.md',
+					),
+				],
+			},
+			{
+				id: 'infisical',
+				name: 'Infisical',
+				responsibility:
+					'runtime secret value の source of truth（`prod` / `dev` environment）。Universal Auth の Machine Identity で deploy 経路が secret を取得し、operator 向けの照合は status-only 出力（`MATCH` / `DIFFER` / `MISSING` / `PRESENT`）に限定されます。secret 値は stdout・log・argv・commit のいずれにも出ません。',
+				reason:
+					'runtime secret は Cloudflare から再読できないため別 store が必要です。static な非 secret 変数と identifier は Wrangler config、Workers Builds の API token は Cloudflare UI に残す境界です。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('infisical-secrets.md', 'docs', 'runbook', 'infisical-secrets.md'),
+					evidence(
+						'ADR-0015-infisical-env-management.md',
+						'docs',
+						'adr',
+						'ADR-0015-infisical-env-management.md',
+					),
+					evidence('deploy-with-secrets.mjs', 'scripts', 'deploy-with-secrets.mjs'),
+				],
+			},
+		],
+	},
 ];

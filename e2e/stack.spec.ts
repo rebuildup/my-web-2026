@@ -21,7 +21,7 @@ test.describe('stack — /stack reference', () => {
 
 		await expect(page.locator('h1')).toHaveText('開発スタック / Stack');
 
-		for (const section of ['runtime', 'data', 'styling', 'quality']) {
+		for (const section of ['runtime', 'data', 'styling', 'quality', 'delivery']) {
 			const list = page.locator(`[data-testid="stack-items-${section}"]`);
 			await expect(list).toBeVisible();
 			expect(await list.locator('li').count()).toBeGreaterThan(0);
@@ -32,6 +32,16 @@ test.describe('stack — /stack reference', () => {
 			'Cloudflare Workers',
 		);
 		await expect(page.locator('[data-testid="stack-item-biome"]')).toContainText('Biome');
+
+		// Issue #383 — the delivery section names the real gate commands
+		// and the sole production deploy authority.
+		await expect(page.locator('[data-testid="stack-item-gate-fast"]')).toContainText(
+			'validate:fast',
+		);
+		await expect(page.locator('[data-testid="stack-item-workers-builds"]')).toContainText(
+			'Cloudflare Workers Builds',
+		);
+		await expect(page.locator('[data-testid="stack-item-infisical"]')).toContainText('Infisical');
 	});
 
 	test('every evidence link opens externally and safely', async ({ page }) => {

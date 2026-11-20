@@ -89,7 +89,7 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveText('my-web-2026');
 		await expect(h1).toHaveAccessibleName('my-web-2026');
 
-		// Six named sections, in order, all anchored by aria-labelledby.
+		// Five named sections, in order, all anchored by aria-labelledby.
 		//
 		// The count alone is not the assertion: every section is also
 		// named by the id that labels it, so a section that is removed,
@@ -98,32 +98,32 @@ test.describe('home page composition', () => {
 		//
 		// Issue #316 added exactly one — `current-projects-heading`
 		// ("現在地 / Where I am now"), rendered between the hero and the
-		// capabilities grid.
+		// explore grid.
 		//
 		// Epic #928 / Issue #930 added `site-guide-heading` — the site
-		// guide is the FIRST body section, answering "what exists here
-		// and how do I reach it" before the projects and status blocks.
+		// guide. Epic #1104's second pass merged it with the former
+		// capabilities grid into ONE explore section: both answered
+		// "what exists here and how do I reach it" with the same
+		// destinations, so the page carries five top-level sections
+		// instead of six.
 		//
 		// Issue #884 merged the three "is this site working right now"
 		// blocks — platform health, reactions, page views — into ONE
 		// section named by `site-status-heading`. Those three ids
 		// (`status-heading`, `reactions-heading`,
-		// `access-counter-heading`) now label `h3` sub-blocks inside it,
-		// which is why the page has six top-level sections instead of
-		// seven.
+		// `access-counter-heading`) now label `h3` sub-blocks inside it.
 		//
 		// The selector is scoped to the page subtree (Issue #664): the
 		// root layout's chrome — including the GA4 consent panel, which
 		// is itself a named `<section>` — is rendered outside it and is
 		// not a section of this page.
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
-		await expect(sections).toHaveCount(6);
+		await expect(sections).toHaveCount(5);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
-		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
-		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'site-status-heading');
-		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Issue #925 second pass — the hero is editorial flow content
 		// again with a single /about link; the ad units are a separate
@@ -145,73 +145,36 @@ test.describe('home page composition', () => {
 		await expect(page.locator('a[href="#main"]')).toHaveCount(1);
 	});
 
-	test('capabilities grid reflects the current domain contract (live+CTA / planned)', async ({
+	test('explore grid reflects the current domain contract (linked destinations / planned)', async ({
 		page,
 	}) => {
-		// Domain contract as of Issue #168 (PR adds `tools` next to `portfolio`):
-		//   - portfolio  → live, with an internal CTA to /portfolio
-		//   - tools      → live, with an internal CTA to /tools (Issue #168)
-		//   - content    → planned, no internal CTA
-		//   - activity   → live, with an internal CTA to /activity (Issue #352)
-		// The test names each capability by its Japanese h3 label so
-		// it survives any English-copy revision. The 4-card count is a
-		// sanity check on the registry, not an assertion of how many
-		// are planned.
+		// Domain contract after the Epic #1104 merge — the explore grid
+		// unifies the former capabilities cards with the site guide:
+		//   - Portfolio / Tools / Activity → linked destinations
+		//   - Content → planned, no link (no published surface yet)
+		// The test names each card by its title text so it survives any
+		// badge or label revision.
 		await page.goto('/');
-		const section = page.locator('section[aria-labelledby="capabilities-heading"]');
-		await expect(section.locator('li')).toHaveCount(4);
+		const section = page.locator('section[aria-labelledby="site-guide-heading"]');
 
-		// portfolio — LIVE with an internal CTA to /portfolio.
-		const portfolioCard = section.locator('li').filter({ hasText: 'ポートフォリオ' });
-		await expect(portfolioCard.locator('text=live')).toBeVisible();
-		const portfolioCta = portfolioCard.locator('a[href="/portfolio"]');
-		await expect(portfolioCta).toBeVisible();
-		await expect(portfolioCta).toHaveAttribute('href', '/portfolio');
+		// Portfolio — linked destination.
+		const portfolioCard = section.locator('li').filter({ hasText: 'Portfolio — 作品' });
+		await expect(portfolioCard.locator('a[href="/portfolio"]')).toBeVisible();
 
-		// tools — LIVE with an internal CTA to /tools (Issue #168).
-		const toolsCard = section.locator('li').filter({ hasText: 'ツール' });
-		await expect(toolsCard.locator('text=live')).toBeVisible();
-		const toolsCta = toolsCard.locator('a[href="/tools"]');
-		await expect(toolsCta).toBeVisible();
-		await expect(toolsCta).toHaveAttribute('href', '/tools');
+		// Tools — linked destination.
+		const toolsCard = section.locator('li').filter({ hasText: 'Tools — ブラウザで使える小物' });
+		await expect(toolsCard.locator('a[href="/tools"]')).toBeVisible();
 
-		// content — PLANNED, no internal CTA.
-		const contentCard = section.locator('li').filter({ hasText: 'コンテンツ' });
+		// Content — PLANNED, no link.
+		const contentCard = section.locator('li').filter({ hasText: 'Content — コンテンツ' });
 		await expect(contentCard.locator('text=planned')).toBeVisible();
 		await expect(contentCard.locator('a[href^="/"]')).toHaveCount(0);
 
-		// activity — LIVE with an internal CTA to /activity (Issue #352).
-		const activityCard = section.locator('li').filter({ hasText: 'アクティビティ' });
-		await expect(activityCard.locator('text=live')).toBeVisible();
-		const activityCta = activityCard.locator('a[href="/activity"]');
-		await expect(activityCta).toBeVisible();
-		await expect(activityCta).toHaveAttribute('href', '/activity');
-
-		// Issue #782 — every row starts at its grid column's x. The live
-		// rows used to carry a 24px `paddingInlineStart` plus an
-		// absolutely positioned 2px bar, so a live row and the planned row
-		// beside it in the same column did not share a start line. State is
-		// now carried by the badge alone, and no replacement decoration is
-		// allowed: an absolutely positioned child under a row is a bar.
-		await page.setViewportSize({ width: 1440, height: 1000 });
-		const rows = section.locator('li');
-		const rowCount = await rows.count();
-		for (let index = 0; index < rowCount; index += 1) {
-			const row = rows.nth(index);
-			const rowBox = await row.boundingBox();
-			const headingBox = await row.locator('h3').boundingBox();
-			expect(rowBox).not.toBeNull();
-			expect(headingBox).not.toBeNull();
-			expect(
-				Math.abs((headingBox?.x ?? Number.NaN) - (rowBox?.x ?? Number.NaN)),
-			).toBeLessThanOrEqual(0.5);
-		}
-		const absoluteBars = await section
-			.locator('li > span[aria-hidden="true"]')
-			.evaluateAll(
-				(nodes) => nodes.filter((node) => getComputedStyle(node).position === 'absolute').length,
-			);
-		expect(absoluteBars).toBe(0);
+		// Activity — linked destination.
+		const activityCard = section.locator('li').filter({
+			hasText: 'Activity — 公開アクティビティ',
+		});
+		await expect(activityCard.locator('a[href="/activity"]')).toBeVisible();
 	});
 
 	test('renders the system status section with three services', async ({ page }) => {
@@ -228,15 +191,16 @@ test.describe('home page composition', () => {
 		// platform health, GitHub activity, reactions, page views and
 		// Discord presence separately (Issues #319 / #320). The
 		// remaining `h3`s are the known-incident list the status rows
-		// own (Issue #502) and the presence card's own heading — both
-		// asserted by count, not by wording.
-		await expect(section.locator('h3')).toHaveCount(7);
+		// own (Issue #502); the presence card's own heading carries
+		// `discord-presence-card-heading` (the composer's duplicate
+		// `discord-presence-heading` was removed in Epic #1104).
+		await expect(section.locator('h3')).toHaveCount(6);
 		for (const id of [
 			'status-heading',
 			'github-activity-heading',
 			'reactions-heading',
 			'access-counter-heading',
-			'discord-presence-heading',
+			'discord-presence-card-heading',
 		]) {
 			const block = section.locator(`h3#${id}`);
 			await expect(block).toHaveCount(1);

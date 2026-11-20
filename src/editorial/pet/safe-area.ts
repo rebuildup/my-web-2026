@@ -40,10 +40,12 @@ import { PET_FRAME_WIDTH, PET_POSITION_MARGIN, PET_REST_SCALE } from './position
  * base / md / lg), and this style is additional padding on the page
  * wrapper, so the reserve per breakpoint is the remainder:
  *
- *     base: 0     (the companion does not mount below `md` — Issue
- *                  #1110; a ~92 px corridor on a phone viewport is
- *                  ~20% of the measure, so phones keep the full
- *                  reading column and the character appears at `md`)
+ *     base: 0     (below `md` the sprite does not AUTO-mount — Issue
+ *                  #1110 second pass; a ~92 px corridor on a phone
+ *                  viewport is ~20% of the measure, so phones keep the
+ *                  full reading column and summon the companion
+ *                  through `PetCompanion`'s optional-invocation
+ *                  control instead of a permanent reservation)
  *     md:   92 - 24 = 68px
  *     lg:   92 - 32 = 60px
  *     xl:   0     (the centred 1024 px column clears the box)

@@ -72,7 +72,7 @@ export function Hero() {
 						fontFamily: 'sans',
 						fontSize: 'md',
 						lineHeight: '1.7',
-						color: 'text.muted',
+						color: 'text.default',
 						textWrap: 'pretty',
 					})}
 				>

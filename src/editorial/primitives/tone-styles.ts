@@ -1,4 +1,4 @@
-import type { SystemStyleObject } from '../../../styled-system/types';
+import type { CSSProperties } from 'react';
 
 /**
  * Section / panel tone machinery (ADR-0022 §4.2, layout-system.md §4.2).
@@ -7,7 +7,10 @@ import type { SystemStyleObject } from '../../../styled-system/types';
  * and `Panel` re-bind the `--colors-*` custom properties Panda emits
  * for the semantic tokens inside their subtree, so every existing
  * component renders correct ink and surfaces on the tone without
- * knowing the tone exists.
+ * knowing the tone exists. The rebinding is applied as an inline
+ * `style` custom-property map: Panda's `css()` drops `--*` keys, so
+ * spreading these into a style object emits nothing (Issue #1110 —
+ * inverse panels rendered ink-on-ink until the vars moved to `style`).
  *
  * Only semantic-token vars are rebound — never raw palette vars — so
  * the rebinding stays valid when the palette is re-tuned. The
@@ -29,23 +32,14 @@ export type SectionTone =
 
 export type FieldTone = Extract<SectionTone, `field.${string}`>;
 
-/** The `backgroundColor` token a tone paints on its own element. */
-export const TONE_BACKGROUND: Record<SectionTone, string> = {
-	ground: 'bg.canvas',
-	sunken: 'bg.subtle',
-	raised: 'bg.surface',
-	inverse: 'bg.inverse',
-	'field.design': 'accent.field.design',
-	'field.code': 'accent.field.code',
-	'field.writing': 'accent.field.writing',
-	'field.tool': 'bg.subtle',
-};
+/** CSS custom-property map — the only keys a tone rebind may set. */
+export type ToneRebinds = { [K in `--${string}`]: string };
 
 /**
  * Variable rebinding per tone. `ground` rebinds nothing — the page
  * defaults already are the ground ladder.
  */
-const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, SystemStyleObject> = {
+const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, ToneRebinds> = {
 	// Recessed band. Panels keep `raised`; `subtle` wells step down to
 	// `control` so they stay distinct from the band itself.
 	sunken: {
@@ -130,10 +124,12 @@ const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, SystemStyleObject> = 
 };
 
 /**
- * The `css({...})` fragment that applies a tone's variable rebinding.
- * Spread into the element that OWNS the tone surface.
+ * The inline-style fragment that applies a tone's variable rebinding.
+ * Pass it to the element that OWNS the tone surface — React writes
+ * `--*` keys from `style` straight onto the element, which is the
+ * only channel that survives Panda's property filtering.
  */
-export function toneRebinds(tone: SectionTone): SystemStyleObject {
+export function toneRebinds(tone: SectionTone): CSSProperties {
 	if (tone === 'ground') return {};
-	return TONE_REBINDS[tone];
+	return TONE_REBINDS[tone] as CSSProperties;
 }

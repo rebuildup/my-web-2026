@@ -23,14 +23,12 @@ import {
 	AdTopBanner,
 	type HomeAdProject,
 } from './ads/placements';
-import type { Capability } from './capabilities/capability';
-import { CapabilitiesGrid } from './capabilities/grid';
 import { CurrentProjects } from './current/CurrentProjects';
 import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
-import { GuideSection } from './guide/GuideSection';
+import { ExploreSection } from './explore/ExploreSection';
 import { Hero } from './hero';
 import { PresenceCard } from './presence/PresenceCard';
 import type { DiscordPresenceCard } from './presence/types';
@@ -43,7 +41,6 @@ import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
 
 export interface HomePageData {
-	capabilities: readonly Capability[];
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
@@ -167,10 +164,13 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * Individual sections keep their own change reasons below src/home/.
  *
  * Reading order (Issue #31 spread; Issue #884 merged the three
- * "is this site up right now" blocks into one section):
+ * "is this site up right now" blocks into one section; Issue #1108
+ * second pass merged the site guide and the capabilities grid into
+ * one explore section):
  *   - Hero             (page entry; own 4/8 grid)
  *   - 00 — Now         (current projects; committed snapshot, Issue #316)
- *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
+ *   - 01 — Explore     (merged site guide + capabilities; classified
+ *                       destination grid, Epic #1104)
  *   - 02 — Status      (site status; spread SectionHeading with three
  *                       `h3` blocks: platform health / reactions /
  *                       page views). The three blocks answer ONE
@@ -291,12 +291,18 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</div>
 				</Container>
 			</header>
+			<Hero />
+			{/* Issue #1110 review — the leaderboard sat ABOVE the hero and
+			    its high-contrast creative hijacked the page's first
+			    viewport, so the owner's own introduction lost the opening
+			    frame. It now follows the hero: still the masthead ad slot
+			    under the publisher chrome, but the identity statement
+			    keeps first claim on the eye. */}
 			<Container>
 				<div className={css({ paddingBlock: '4' })}>
 					<AdTopBanner />
 				</div>
 			</Container>
-			<Hero />
 			<main id="main">
 				{/* Issue #1108 — the page is a single editorial column again.
 				    The old xl sticky ad rail is gone: sponsored units are
@@ -306,8 +312,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    leaderboard, one in-feed link card, one sponsored pair) —
 				    six interruptions made the page read as an ad inventory,
 				    not a composition. */}
-				{/* Site guide — orientation first (Issue #930). */}
-				<GuideSection today={data.observedAt.slice(0, 10)} />
 				{/* Now records — curated representative slice; the full ordered
 				    enumeration lives at /now (ADR-0022 C-8). */}
 				<CurrentProjects
@@ -327,7 +331,10 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						<DataSourceBadge source={data.dataSource} />
 					</Container>
 				) : null}
-				<CapabilitiesGrid capabilities={data.capabilities} />
+				{/* Site guide + capabilities — one merged destination grid
+				    (Epic #1104 second pass; the transit-map station list and
+				    the separate capabilities cards answered the same question). */}
+				<ExploreSection today={data.observedAt.slice(0, 10)} />
 				<PageSection labelledBy="site-status-heading" tone="sunken">
 					{/* Issue #1110 — this section aggregates five widgets, so it
 					    takes the `default` heading and the full measure: the
@@ -379,7 +386,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Grid>
 					<Disclosure
 						open={isDesktop}
-						summary="GitHub の活動と Discord プレゼンス"
+						summary="補助的な稼働シグナル / Ambient signals"
 						className={css({ marginBlockStart: '10' })}
 					>
 						<Grid columns={2} gap="10">
@@ -406,9 +413,9 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								/>
 							</div>
 							<div>
-								<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
-									Discord プレゼンス / Discord Presence
-								</h3>
+								{/* PresenceCard owns its own h3 + description
+								    (`chrome="body"`); a second heading here
+								    duplicated the block's name. */}
 								{data.discordPresence ? (
 									<PresenceCard
 										card={data.discordPresence}
@@ -444,7 +451,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</Grid>
 					</Container>
 				</section>
-				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="raised" separator>
+				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="inverse" separator>
 					<SectionHeading
 						id="contact-cta-heading"
 						eyebrow="03 — Contact"

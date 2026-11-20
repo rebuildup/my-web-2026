@@ -88,6 +88,18 @@ async function captureCondition(browser, base, route, viewport, scheme, outDir) 
 		reducedMotion: 'reduce',
 		deviceScaleFactor: 2,
 	});
+	// Design review judges the settled page: seed a `denied` analytics
+	// consent (the privacy-conservative answer) so the first-visit
+	// consent surface does not cover the composition under review.
+	// The storage key is the contract in
+	// `src/editorial/analytics/consent.ts` (`ANALYTICS_CONSENT_STORAGE_KEY`).
+	await context.addInitScript(() => {
+		try {
+			window.localStorage.setItem('my-web-2026:analytics-consent', 'denied');
+		} catch {
+			// storage unavailable — the banner stays, same as a real visitor
+		}
+	});
 	const page = await context.newPage();
 	try {
 		const url = `${base}${route === '/' ? '/' : route}`;

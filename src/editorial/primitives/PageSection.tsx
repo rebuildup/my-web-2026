@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { css, cx } from '../../../styled-system/css';
+import { css, cva, cx } from '../../../styled-system/css';
 import { Container } from './Container';
-import { type SectionTone, TONE_BACKGROUND, toneRebinds } from './tone-styles';
+import { type SectionTone, toneRebinds } from './tone-styles';
 
 /**
  * PageSection — the only owner of section-level surface decisions
@@ -46,6 +46,27 @@ const RHYTHM_PADDING: Record<SectionRhythm, { base: string; lg: string }> = {
 	closing: { base: '16', lg: '24' },
 };
 
+// The tone → surface map is a `cva` recipe, not a lookup record:
+// Panda resolves recipe variants statically, while a
+// `RECORD[prop]` indirection can emit the class name with no rule
+// behind it — the `field.*` tones had no generated background until
+// the map moved here (Issue #1110).
+const sectionRecipe = cva({
+	variants: {
+		tone: {
+			ground: {},
+			sunken: { backgroundColor: 'bg.subtle' },
+			raised: { backgroundColor: 'bg.surface' },
+			inverse: { backgroundColor: 'bg.inverse' },
+			'field.design': { backgroundColor: 'accent.field.design' },
+			'field.code': { backgroundColor: 'accent.field.code' },
+			'field.writing': { backgroundColor: 'accent.field.writing' },
+			'field.tool': { backgroundColor: 'bg.subtle' },
+		},
+	},
+	defaultVariants: { tone: 'ground' },
+});
+
 export function PageSection({
 	tone = 'ground',
 	rhythm = 'body',
@@ -55,6 +76,7 @@ export function PageSection({
 	className,
 	children,
 }: PageSectionProps) {
+	const content = <Container>{children}</Container>;
 	return (
 		<section
 			aria-labelledby={labelledBy}
@@ -62,15 +84,19 @@ export function PageSection({
 			className={cx(
 				css({
 					paddingBlock: RHYTHM_PADDING[rhythm],
-					backgroundColor: TONE_BACKGROUND[tone],
 					borderTop: separator ? '1px solid' : undefined,
 					borderTopColor: separator ? 'border.subtle' : undefined,
-					...toneRebinds(tone),
 				}),
+				sectionRecipe({ tone }),
 				className,
 			)}
 		>
-			<Container>{children}</Container>
+			{/* The rebinding wraps the CONTENT, never the section element
+			    itself: several rebinds retarget the very vars the tone's
+			    own `backgroundColor` reads (`bg.inverse` → ink-inverse),
+			    so applying them here painted the plate in its own ink —
+			    light-on-light (Issue #1110). */}
+			{tone === 'ground' ? content : <div style={toneRebinds(tone)}>{content}</div>}
 		</section>
 	);
 }

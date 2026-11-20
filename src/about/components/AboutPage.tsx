@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
+import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { Container } from '../../editorial/primitives/Container';
 import { Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
@@ -558,17 +559,7 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 					</span>
 				) : null}
 			</header>
-			<h3
-				className={css({
-					margin: '0',
-					fontFamily: 'heading',
-					fontSize: 'xl',
-					fontWeight: '700',
-					color: 'text.default',
-					lineHeight: '1.25',
-					letterSpacing: '-0.01em',
-				})}
-			>
+			<h3 className={cardTitleClassName}>
 				<a
 					href={`/portfolio/${project.slug}`}
 					className={css({

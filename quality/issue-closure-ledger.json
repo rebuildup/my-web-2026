@@ -2270,40 +2270,50 @@
 			"title": "spike(experience): 「見てて楽しい」の2種類の体験を比較",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/personal/ 配下は audience-purpose / flat-vs-depth / tech-interests / typography-grid-swiss / brand-naming / music-connections / usable-product-publication で、靜態/操作型の比較 preview は存在しない",
-				"git grep '見てて楽しい' はリポジトリ全体で 0 件"
+				"src/personal/engagement/Engagement.tsx",
+				"src/personal/engagement/Engagement.preview.ts",
+				"src/personal/engagement/Engagement.stories.tsx",
+				"docs/verification/experience/engagement-static.png",
+				"docs/verification/experience/engagement-interactive.png",
+				"docs/verification/experience/engagement.md",
+				"scripts/capture-engagement.mjs",
+				"#1070"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "spike の成果物が一つも作られていない。",
-			"missing": "同一実コンテンツによる静的/操作型の 2 プレビュー、視認性・操作可能性・load 負荷・reduced motion の比較、採用/保留の記録、必須スクリーンショット 2 枚"
+			"action": "closed",
+			"note": "PR #1070 で spike 完了。同一の公開 portfolio 6 作品を静的文書と操作 deck の 2 案で比較。視認性/操作可能性/読み込み負荷/reduced motion の 4 軸を測定（bundle 差は約 5 bytes と正直に報告、真の差は UX 特性）。reduced-motion は機械強制（hook 登録 + stylesheet opt-out + capture 実測）。採用・ページ適用は決めていない。2026-11-19 close。",
+			"missing": "採用デザインの決定とページ適用（Issue のスコープ外・owner 判断）。"
 		},
 		{
 			"issue": 518,
 			"title": "feat(portfolio): 作品ごとの制作史・変遷を示す履歴コンポーネント",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/portfolio/components/ on release-0-8-0 has no history/timeline component (EmptyState, FacetFilter, Markdown, PortfolioDetail, PortfolioList, PortfolioMedia, ProjectCard)",
-				"git grep '制作史|projectHistory|年表' origin/release-0-8-0 -- src/ : hits only in personal/roadmap-style preview texts (music-connections, typography-grid-swiss, usable-product-publication, GrowthThroughMaking), i.e. unrelated documents",
-				"project-history-story.png",
-				"project-history-mobile.png"
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/portfolio/fixtures/project-history.ts",
+				"src/portfolio/components/PortfolioProjectHistory.test.tsx",
+				"docs/verification/portfolio/project-history-story.png",
+				"docs/verification/portfolio/project-history-mobile.png",
+				"docs/verification/portfolio/project-history.md",
+				"scripts/capture-project-history.mjs",
+				"#1069"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "No portfolio history component or fixture exists on release-0-8-0 and the issue has no cross-referenced PR at all.",
-			"missing": "the whole issue: at least one work's sourced creation/revision/publication timeline, the text-only fallback when no public image exists, and the standalone Storybook"
+			"action": "closed",
+			"note": "PR #1069 で実装。公開済み作品 1 件（my-web-2026 自身）の制作開始/改版/公開イベント 7 件を出典つきで表示。kind（時系列）と basis（記録/記憶）の 2 軸で認識論を分離し、記憶は「記憶」と明示。画像なしの text-only fallback が出荷状態。日付は authored granularity（月精度マーカー）で捏造なし。version literal 不使用。2026-11-19 close。",
+			"missing": "作品詳細ページへの mount（Issue では任意・別作業）。"
 		},
 		{
 			"issue": 519,

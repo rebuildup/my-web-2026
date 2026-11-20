@@ -42,10 +42,7 @@ import sharp from 'sharp';
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const base = process.argv[2] ?? 'http://127.0.0.1:3000';
-const outDir = resolve(
-	REPO_ROOT,
-	process.argv[3] ?? 'docs/verification/home',
-);
+const outDir = resolve(REPO_ROOT, process.argv[3] ?? 'docs/verification/home');
 
 const CONDITIONS = [
 	{ name: 'desktop-light', width: 1440, height: 900, colorScheme: 'light' },
@@ -66,9 +63,7 @@ async function inspect(page) {
 		const headings = [...document.querySelectorAll('h2')].map((h) =>
 			h.textContent?.trim().replace(/\s+/g, ' '),
 		);
-		const links = [...document.querySelectorAll('a[href]')].map((a) =>
-			a.getAttribute('href'),
-		);
+		const links = [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href'));
 		const text = document.body.innerText;
 		return {
 			headings,

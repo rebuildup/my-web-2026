@@ -121,6 +121,9 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run ogp:card:check',
 	'pnpm run index:boundary:check',
 	'pnpm run tools:check',
+	// Issue #1107 / ADR-0022: the UI composition-contract gate, declared
+	// in `quality/profile.yaml` right after `tools:check`.
+	'pnpm run ui:contract:check',
 	'pnpm run install:scripts:check',
 	'pnpm run wrangler:independence:check',
 	'pnpm run cloudflare:contract:check',

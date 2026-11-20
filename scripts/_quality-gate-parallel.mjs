@@ -55,6 +55,7 @@ export const PARALLEL_SAFE_SCRIPTS = new Set([
 	'ogp:card:check',
 	'index:boundary:check',
 	'tools:check',
+	'ui:contract:check',
 	'install:scripts:check',
 	'wrangler:independence:check',
 	'cloudflare:contract:check',

@@ -117,7 +117,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": ["#63", "AGENTS.md", "#647"],
+			"evidence": [
+				"#63",
+				"AGENTS.md",
+				"#647"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -202,7 +206,10 @@
 			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
-			"evidence": ["issue #254 comments (2026-10-05, 2026-10-08)", "scripts/_d1.mjs"],
+			"evidence": [
+				"issue #254 comments (2026-10-05, 2026-10-08)",
+				"scripts/_d1.mjs"
+			],
 			"decision": {
 				"kind": "owner",
 				"reason": "製品欠陥ではなくローカル node_modules 解決差であると調査で特定され、判定・workaround が記録済み。コード変更なしで閉じられる事案。"
@@ -1129,40 +1136,44 @@
 			"title": "feat(tools): 円周率暗記ゲーム をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
 				"src/tools/manifest.json",
-				"docs/verification/tools/ ディレクトリが存在せず、必須スクリーンショットも未作成"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/functional-verification-2026-11-04.md",
+				"docs/verification/tools/pi-game-desktop.webp",
+				"docs/verification/tools/pi-game-mobile.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "上游 standalone ビルドという前提条件は達成されている形跡がなく、host 側の実装も存在しない。",
-			"missing": "pinned SHA での standalone ビルド,/tools/pi-game の実コンテンツ表示,入力/採点/終了の操作確認,iframe sandbox と asset URL・権限・ライセンス境界の維持,欠落 artifact の CI 検知"
+			"action": "closed",
+			"note": "2026-11-20 監査で実装・検証済みと判断し close。manifest は same_origin_static + pinned SHA、artifact inventory で license/dependencies verified、functional-verification-2026-11-04.md で操作 PASS、desktop/mobile webp あり。",
+			"missing": "なし"
 		},
 		{
 			"issue": 355,
 			"title": "feat(tools): QR Code Generator をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
 				"src/tools/manifest.json",
-				"slug.tsx",
-				"qr-generator-desktop.png",
-				"qr-generator-mobile.png"
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/functional-verification-2026-11-04.md",
+				"docs/verification/tools/qr-generator-desktop.webp",
+				"docs/verification/tools/qr-generator-mobile.webp"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "The tool is still disabled on release-0-8-0 — the sweep comment claims integration with no artefact and no cross-referenced PR at all.",
-			"missing": "the whole issue: pinned-SHA standalone build, the host-side enablement of the tool, real QR rendering/download at /tools/qr-generator, iframe sandbox checks and CI detection of missing build artefacts"
+			"action": "closed",
+			"note": "2026-11-20 監査で実装・検証済みと判断し close。manifest は same_origin_static + pinned SHA、artifact inventory で license/dependencies verified、functional-verification-2026-11-04.md で操作 PASS、desktop/mobile webp あり。",
+			"missing": "なし"
 		},
 		{
 			"issue": 356,
@@ -1219,16 +1230,22 @@
 			"title": "feat(tools): Pomodoro Timer をhost_disabledから利用可能なWeb Toolへ統合",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
-			"evidence": ["src/tools/manifest.json", "docs/verification/tools/ ディレクトリが存在しない"],
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/tools/manifest.json",
+				"quality/tool-artifact-inventory.json",
+				"docs/verification/tools/functional-verification-2026-11-04.md",
+				"docs/verification/tools/pomodoro-desktop.webp",
+				"docs/verification/tools/pomodoro-mobile.webp"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "354 と同型の未実装。close コメントも scope 外とのみ言っている。",
-			"missing": "pinned SHA の standalone ビルド、/tools/pomodoro の実コンテンツ表示、開始/停止/リセット操作確認、iframe sandbox と asset URL・権限・ライセンス境界、欠落 artifact の CI 検知"
+			"action": "closed",
+			"note": "2026-11-20 監査で実装・検証済みと判断し close。manifest は same_origin_static + pinned SHA、artifact inventory で license/dependencies verified、functional-verification-2026-11-04.md で操作 PASS、desktop/mobile webp あり。",
+			"missing": "なし"
 		},
 		{
 			"issue": 359,
@@ -2423,7 +2440,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/personal/domain.md", "361do-name-meanings.md", "#521"],
+			"evidence": [
+				"docs/personal/domain.md",
+				"361do-name-meanings.md",
+				"#521"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2555,7 +2576,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/influences/tech-interests.md", "#528", "docs/personal/knowledge-model.md"],
+			"evidence": [
+				"docs/influences/tech-interests.md",
+				"#528",
+				"docs/personal/knowledge-model.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2736,7 +2761,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["src/cloudflare/d1-backup.ts", "src/cloudflare/d1-numeric.test.ts", "#705"],
+			"evidence": [
+				"src/cloudflare/d1-backup.ts",
+				"src/cloudflare/d1-numeric.test.ts",
+				"#705"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2885,7 +2914,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#731", "skills/herdr-runtime/SKILL.md", "AGENTS.md"],
+			"evidence": [
+				"#731",
+				"skills/herdr-runtime/SKILL.md",
+				"AGENTS.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3256,7 +3289,11 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#789", ".mcp.json", "docs/runbook/notion-mcp.md"],
+			"evidence": [
+				"#789",
+				".mcp.json",
+				"docs/runbook/notion-mcp.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3272,7 +3309,10 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#846", "src/tools/manifest.json"],
+			"evidence": [
+				"#846",
+				"src/tools/manifest.json"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",

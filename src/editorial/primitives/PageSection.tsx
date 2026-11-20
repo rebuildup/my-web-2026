@@ -34,6 +34,8 @@ export interface PageSectionProps {
 	labelledBy?: string;
 	/** Full-width hairline above the section (e.g. before a closing band). */
 	separator?: boolean;
+	/** `data-testid` hook for e2e/integration selectors. */
+	testId?: string;
 	className?: string;
 	children?: ReactNode;
 }
@@ -49,12 +51,14 @@ export function PageSection({
 	rhythm = 'body',
 	labelledBy,
 	separator = false,
+	testId,
 	className,
 	children,
 }: PageSectionProps) {
 	return (
 		<section
 			aria-labelledby={labelledBy}
+			data-testid={testId}
 			className={cx(
 				css({
 					paddingBlock: RHYTHM_PADDING[rhythm],

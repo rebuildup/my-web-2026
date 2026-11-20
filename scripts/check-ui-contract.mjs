@@ -9,16 +9,35 @@
  * every entry must carry a reason and suppress at least one live
  * violation (a stale entry fails the gate).
  *
- * Usage: node scripts/check-ui-contract.mjs [--json]
+ * Usage:
+ *   node scripts/check-ui-contract.mjs [--json]
+ *   node scripts/check-ui-contract.mjs --emit-allowlist
+ *   node scripts/check-ui-contract.mjs --root <dir> --contract <path>
+ *
+ * Allowlist model (Issue #1107 review): entries are NOT blanket
+ * file×clause exemptions. Each entry records the exact violation
+ * signatures it waives — { path, clause, reason, signatures:
+ * { "<detail>": <count> } } — so a NEW violation added to an
+ * allowlisted file still fails, and a fixed violation leaves a stale
+ * signature that fails until the entry shrinks. The debt mirror is
+ * exact: every recorded signature must be fully consumed by a live
+ * violation, and every live violation must be covered.
+ *
  * Exit: 0 clean / 1 violations or stale allowlist / 2 input error.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
 const ROOT = process.cwd();
-const CONTRACT_PATH = 'quality/ui-contract.json';
+const argValue = (name) => {
+	const i = process.argv.indexOf(name);
+	return i === -1 ? null : process.argv[i + 1];
+};
 const JSON_OUT = process.argv.includes('--json');
+const EMIT_ALLOWLIST = process.argv.includes('--emit-allowlist');
+const CONTRACT_PATH = argValue('--contract') ?? 'quality/ui-contract.json';
+const SCAN_ROOT = argValue('--root') ?? null;
 
 function fail(msg) {
 	console.error(`check-ui-contract: ${msg}`);
@@ -27,13 +46,13 @@ function fail(msg) {
 
 let contract;
 try {
-	contract = JSON.parse(readFileSync(join(ROOT, CONTRACT_PATH), 'utf8'));
+	contract = JSON.parse(readFileSync(resolve(ROOT, CONTRACT_PATH), 'utf8'));
 } catch (e) {
 	fail(`cannot read ${CONTRACT_PATH}: ${e.message}`);
 }
 
 const { root, extensions, exemptPrefixes } = contract.scope;
-const SRC = join(ROOT, root);
+const SRC = resolve(ROOT, SCAN_ROOT ?? root);
 
 function* walk(dir) {
 	for (const name of readdirSync(dir)) {
@@ -138,7 +157,10 @@ const C7_MIN_PROPS = 2;
 const CSS_CALLS = new Set(['css', 'cva']);
 
 const C8 = contract.clauses['C-8'].detection.jsxPatterns[0];
-const C8_SCOPE = /^src\/(home|routes)\//;
+// C-8 scope is relative to the SCAN ROOT: 'home/' and 'routes/' trees
+// directly under it (src/home, src/routes in production; a fixture
+// root lays out the same shape).
+const C8_SCOPE = /^(home|routes)\//;
 const C8_NEARBY = C8.requiredNearby;
 
 // C-7 accumulator: normalized literal -> Set(files)
@@ -224,20 +246,57 @@ function checkObjectLiteral(node, file, sf, inCssCall) {
 	}
 }
 
-function jsxClassNameObjects(attr) {
-	// yield ObjectLiteralExpressions inside a className={...css({...})...} or style={{...}} initializer
+function jsxClassNameObjects(attr, constCss) {
+	// Object literals inside the initializer PLUS css() objects bound
+	// to consts referenced by name (the `const s = css({...})` pattern
+	// this codebase uses everywhere).
 	const out = [];
 	const init = attr.initializer;
 	if (!init) return out;
+	const seenObj = new Set();
+	const push = (o) => {
+		if (!seenObj.has(o)) {
+			seenObj.add(o);
+			out.push(o);
+		}
+	};
 	const visit = (n) => {
-		if (ts.isObjectLiteralExpression(n)) out.push(n);
+		if (ts.isObjectLiteralExpression(n)) push(n);
+		if (ts.isIdentifier(n) && constCss.has(n.text)) {
+			for (const o of constCss.get(n.text)) push(o);
+		}
 		ts.forEachChild(n, visit);
 	};
 	visit(init);
 	return out;
 }
 
-function checkJsx(node, file, sf) {
+function buildConstCssMap(sf) {
+	// const name -> [ObjectLiteralExpression] for `const x = css({...})`
+	const map = new Map();
+	const visit = (node) => {
+		if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+			const init = node.initializer;
+			if (ts.isCallExpression(init)) {
+				const callee = ts.isIdentifier(init.expression)
+					? init.expression.text
+					: init.expression.getText(sf).split('.').pop();
+				if (CSS_CALLS.has(callee)) {
+					const objs = init.arguments.filter(ts.isObjectLiteralExpression);
+					if (objs.length) {
+						if (!map.has(node.name.text)) map.set(node.name.text, []);
+						map.get(node.name.text).push(...objs);
+					}
+				}
+			}
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sf);
+	return map;
+}
+
+function checkJsx(node, file, sf, constCss) {
 	const tag = jsxTagName(node);
 	if (!tag) return;
 
@@ -251,7 +310,7 @@ function checkJsx(node, file, sf) {
 		const forbidden = tag === 'li' ? C5_FORBIDDEN_LI : C5_FORBIDDEN_UL;
 		for (const attr of node.attributes?.properties ?? []) {
 			if (!ts.isJsxAttribute(attr) || propName(attr.name) !== 'className') continue;
-			for (const obj of jsxClassNameObjects(attr)) {
+			for (const obj of jsxClassNameObjects(attr, constCss)) {
 				for (const prop of obj.properties) {
 					if (!ts.isPropertyAssignment(prop)) continue;
 					const name = propName(prop.name);
@@ -267,7 +326,7 @@ function checkJsx(node, file, sf) {
 	if (C6_TAGS.has(tag)) {
 		for (const attr of node.attributes?.properties ?? []) {
 			if (!ts.isJsxAttribute(attr) || propName(attr.name) !== 'className') continue;
-			for (const obj of jsxClassNameObjects(attr)) {
+			for (const obj of jsxClassNameObjects(attr, constCss)) {
 				for (const prop of obj.properties) {
 					if (!ts.isPropertyAssignment(prop)) continue;
 					const name = propName(prop.name);
@@ -283,9 +342,11 @@ function checkJsx(node, file, sf) {
 for (const { abs, rel } of files) {
 	const text = readFileSync(abs, 'utf8');
 	const sf = ts.createSourceFile(abs, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+	const relScan = toPosix(relative(SRC, abs));
+	const constCss = buildConstCssMap(sf);
 
 	// C-8: unbounded .map( in home/routes scope
-	if (C8_SCOPE.test(rel)) {
+	if (C8_SCOPE.test(relScan)) {
 		let idx = text.indexOf('.map(');
 		while (idx !== -1) {
 			const window = text.slice(idx, idx + 800);
@@ -329,9 +390,9 @@ for (const { abs, rel } of files) {
 		if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node) || ts.isJsxElement(node)) {
 			if (ts.isJsxElement(node)) {
 				// check opening element only
-				checkJsx(node.openingElement, rel, sf);
+				checkJsx(node.openingElement, rel, sf, constCss);
 			} else {
-				checkJsx(node, rel, sf);
+				checkJsx(node, rel, sf, constCss);
 			}
 		}
 		ts.forEachChild(node, visit);
@@ -348,19 +409,16 @@ const deduped = violations.filter((v) => {
 	return true;
 });
 
-// apply allowlists
-const live = [];
-const suppressed = new Map(); // allowlistKey -> count
-for (const v of deduped) {
-	if (allowlisted(v.clause, v.file)) {
-		const key = `${v.clause}:${v.file}`;
-		suppressed.set(key, (suppressed.get(key) ?? 0) + 1);
-	} else {
-		live.push(v);
-	}
-}
+// ---------- signature-based allowlist ----------
+// An entry waives EXACTLY the violations it records:
+//   { path, clause, reason, signatures: { "<detail>": <count> } }
+// A violation is suppressed only when a matching entry still has
+// budget for its (clause, file, detail) signature. Anything else —
+// a new detail, an extra occurrence, a violation in an allowlisted
+// file — is live. Entries are stale when they waive nothing or when
+// a recorded signature has no live violation left to consume (the
+// debt shrank; the mirror must shrink with it).
 
-// stale allowlist detection: every entry must suppress >=1 violation
 const ALLOWLIST_KEYS = {
 	sectionAllowlist: ['C-1', 'C-3'],
 	colorAllowlist: ['C-2'],
@@ -370,15 +428,57 @@ const ALLOWLIST_KEYS = {
 	enumerationAllowlist: ['C-8'],
 };
 
+// budget: entryKey -> { listName, path, clauses, remaining: { detail: count } }
+const budget = new Map();
 const stale = [];
 for (const [listName, clauses] of Object.entries(ALLOWLIST_KEYS)) {
-	const entries = allowlistEntries(listName);
-	if (!Array.isArray(entries)) continue;
-	for (const e of entries) {
-		if (!e || typeof e.path !== 'string') continue;
-		// an entry is live if it suppressed something for its clause+path
-		const liveMatch = deduped.some((v) => clauses.includes(v.clause) && pathMatch(e.path, v.file));
-		if (!liveMatch) stale.push(`${listName}: ${e.path} (${e.reason ?? 'no reason'})`);
+	for (const e of allowlistEntries(listName)) {
+		if (!e || typeof e.path !== 'string' || !e.signatures) continue;
+		const key = `${listName} ${e.path}`;
+		if (!budget.has(key)) {
+			budget.set(key, { listName, path: e.path, clauses, remaining: {} });
+		}
+		const b = budget.get(key);
+		for (const [detail, count] of Object.entries(e.signatures)) {
+			b.remaining[detail] = (b.remaining[detail] ?? 0) + count;
+		}
+		if (!e.reason) {
+			stale.push(`${listName}: ${e.path} (no reason)`);
+		}
+	}
+}
+
+const live = [];
+const suppressed = new Map(); // "clause:file" -> count
+for (const v of deduped) {
+	const listName = clauseToList(v.clause);
+	const candidates = allowlistEntries(listName).filter((e) => pathMatch(e.path, v.file));
+	let covered = false;
+	for (const e of candidates) {
+		const b = budget.get(`${listName} ${e.path}`);
+		if (!b || !b.clauses.includes(v.clause)) continue;
+		const remaining = b.remaining[v.detail] ?? 0;
+		if (remaining > 0) {
+			b.remaining[v.detail] = remaining - 1;
+			covered = true;
+			const sk = `${v.clause}:${v.file}`;
+			suppressed.set(sk, (suppressed.get(sk) ?? 0) + 1);
+			break;
+		}
+	}
+	if (!covered) live.push(v);
+}
+
+// stale: recorded signatures with no live violation left to consume
+// (the debt shrank — the mirror must shrink with it, so the waiver
+// can never outlive the violation it documents).
+for (const b of budget.values()) {
+	const leftovers = Object.entries(b.remaining).filter(([, n]) => n > 0);
+	if (leftovers.length > 0) {
+		const totalLeft = leftovers.reduce((a, [, n]) => a + n, 0);
+		stale.push(
+			`${b.listName}: ${b.path} — ${totalLeft} recorded signature(s) have no live violation (debt shrank; shrink the entry)`,
+		);
 	}
 }
 
@@ -409,6 +509,39 @@ for (const e of dupAllow) {
 	if (!Array.isArray(e.files)) continue;
 	const liveMatch = c7All.some((d) => d.files.join('|') === e.files.slice().sort().join('|'));
 	if (!liveMatch) staleDup.push(`duplicateAllowlist: ${e.files.join(', ')} (waives nothing)`);
+}
+
+if (EMIT_ALLOWLIST) {
+	// Regenerate the debt mirror: group every live violation by
+	// (allowlist, file) and record { detail: count } signatures.
+	// `reason` is emitted as null — the caller fills it per clause
+	// before committing (an entry without a reason fails the gate).
+	const groups = new Map(); // listName -> Map(file -> Map(detail -> count))
+	const clauseSets = new Map(); // "listName file" -> Set(clause)
+	for (const v of deduped) {
+		const ln = clauseToList(v.clause);
+		if (!groups.has(ln)) groups.set(ln, new Map());
+		const fm = groups.get(ln);
+		if (!fm.has(v.file)) fm.set(v.file, new Map());
+		const dm = fm.get(v.file);
+		dm.set(v.detail, (dm.get(v.detail) ?? 0) + 1);
+		const ck = `${ln} ${v.file}`;
+		if (!clauseSets.has(ck)) clauseSets.set(ck, new Set());
+		clauseSets.get(ck).add(v.clause);
+	}
+	const out = {};
+	for (const [ln, fm] of [...groups.entries()].sort()) {
+		out[ln] = [...fm.entries()]
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([path, dm]) => ({
+				path,
+				clauses: [...clauseSets.get(`${ln} ${path}`)].sort(),
+				reason: null,
+				signatures: Object.fromEntries([...dm.entries()].sort()),
+			}));
+	}
+	console.log(JSON.stringify(out, null, 2));
+	process.exit(0);
 }
 
 if (JSON_OUT) {

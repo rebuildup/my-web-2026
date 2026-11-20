@@ -420,7 +420,8 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 			<SectionHeading
 				id="current-projects-heading"
 				eyebrow="00 — Now"
-				title="現在地 / Where I am now"
+				title="現在地"
+				titleEn="Where I am now"
 				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
 				variant="spread"
 			>

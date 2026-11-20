@@ -1,4 +1,4 @@
-import type { DetailsHTMLAttributes, ReactNode, Ref } from 'react';
+import type { DetailsHTMLAttributes, ReactNode } from 'react';
 import { css, cx } from '../../../styled-system/css';
 
 /**
@@ -12,23 +12,15 @@ import { css, cx } from '../../../styled-system/css';
  * the primary content of a page.
  */
 
-export interface DisclosureProps extends Omit<DetailsHTMLAttributes<HTMLDetailsElement>, 'open'> {
+export interface DisclosureProps extends DetailsHTMLAttributes<HTMLDetailsElement> {
 	/** Summary line — always visible. */
 	summary: ReactNode;
 	children?: ReactNode;
-	/**
-	 * Element ref. Callers that need to toggle `open` after
-	 * hydration (e.g. a viewport-dependent initial state) use this
-	 * instead of the `open` prop, whose SSR serialization the HTML
-	 * standards gate rejects (`open=""` is a bad value).
-	 */
-	ref?: Ref<HTMLDetailsElement>;
 }
 
-export function Disclosure({ summary, className, children, ref, ...rest }: DisclosureProps) {
+export function Disclosure({ summary, className, children, ...rest }: DisclosureProps) {
 	return (
 		<details
-			ref={ref}
 			className={cx(css({ borderTop: '1px solid', borderTopColor: 'border.subtle' }), className)}
 			{...rest}
 		>

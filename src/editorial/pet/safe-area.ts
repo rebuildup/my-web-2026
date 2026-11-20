@@ -40,7 +40,10 @@ import { PET_FRAME_WIDTH, PET_POSITION_MARGIN, PET_REST_SCALE } from './position
  * base / md / lg), and this style is additional padding on the page
  * wrapper, so the reserve per breakpoint is the remainder:
  *
- *     base: 92 - 16 = 76px
+ *     base: 0     (the companion does not mount below `md` — Issue
+ *                  #1110; a ~92 px corridor on a phone viewport is
+ *                  ~20% of the measure, so phones keep the full
+ *                  reading column and the character appears at `md`)
  *     md:   92 - 24 = 68px
  *     lg:   92 - 32 = 60px
  *     xl:   0     (the centred 1024 px column clears the box)
@@ -59,7 +62,7 @@ import { PET_FRAME_WIDTH, PET_POSITION_MARGIN, PET_REST_SCALE } from './position
  * clears the full 96 px box.
  */
 export const PET_SAFE_AREA_INLINE_END = {
-	base: '76px',
+	base: '0px',
 	md: '68px',
 	lg: '60px',
 	xl: '0px',
@@ -79,7 +82,7 @@ export const PET_PAGE_PADDING_PX = { base: 16, md: 24, lg: 32 } as const;
  */
 export const petSafeAreaStyle = css({
 	paddingInlineEnd: {
-		base: '76px',
+		base: '0px',
 		md: '68px',
 		lg: '60px',
 		xl: '0px',

@@ -39,7 +39,7 @@ export function Hero() {
 						color: 'text.muted',
 					})}
 				>
-					現在地 / Where I am now
+					Personal site
 				</p>
 				<h1 id="hero-title" className={css({ margin: '0' })}>
 					<SiteMark className={css({ height: '16', width: 'auto' })} />

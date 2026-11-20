@@ -5,10 +5,12 @@ import { useSyncExternalStore } from 'react';
  * CSS alone cannot express (e.g. whether a `<details>` disclosure
  * starts open).
  *
- * The server snapshot is `true`: callers use the predicate to pick a
- * post-hydration DOM state (e.g. whether a `<details>` disclosure
- * opens on mount), never to change the SSR markup itself — SSR
- * attributes the standards gate validates must stay viewport-free.
+ * The server snapshot is always `true`: SSR renders the
+ * desktop/expanded variant uniformly and viewport-free, and a
+ * narrow client corrects the DOM state once mounted (e.g. closing
+ * a `<details>` the server rendered open). With JavaScript
+ * disabled the expanded variant persists on every viewport, so
+ * collapsed content must stay reachable through native controls.
  */
 export function useMediaQuery(query: string): boolean {
 	return useSyncExternalStore(

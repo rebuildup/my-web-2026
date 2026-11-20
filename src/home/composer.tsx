@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { css } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Button } from '../editorial/primitives/Button';
@@ -199,18 +198,13 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	// Discord presence) collapse behind a disclosure on narrow
 	// viewports: they are secondary signals, and stacking all five
 	// widgets made the status section a third of the mobile page.
-	// Desktop keeps them expanded. The open state is applied after
-	// hydration through the element ref — the SSR document never
-	// carries an `open` attribute (the standards gate rejects the
-	// `open=""` serialization), so every viewport starts collapsed
-	// and desktop expands on mount.
+	// Desktop keeps them expanded. `useMediaQuery` resolves to the
+	// desktop snapshot during SSR and hydration, so the server
+	// document renders them open; a narrow client closes the
+	// disclosure once mounted. With JavaScript disabled the details
+	// stays open on every viewport — the ambient signals remain
+	// reachable through the native summary toggle.
 	const isDesktop = useMediaQuery('(min-width: 1024px)');
-	const statusDisclosureRef = useRef<HTMLDetailsElement>(null);
-	useEffect(() => {
-		if (statusDisclosureRef.current) {
-			statusDisclosureRef.current.open = isDesktop;
-		}
-	}, [isDesktop]);
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls
@@ -225,80 +219,83 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			<header
 				className={css({
 					paddingBlock: '4',
-					paddingInline: { base: '4', lg: '6' },
 					borderBottomWidth: '1px',
 					borderBottomStyle: 'solid',
 					borderBottomColor: 'border.subtle',
 				})}
 			>
-				<div
-					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '4',
-					})}
-				>
-					<a
-						href="/"
+				<Container>
+					<div
 						className={css({
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							fontWeight: '800',
-							letterSpacing: '-0.02em',
-							color: 'text.default',
-							textDecoration: 'none',
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: '4',
 						})}
 					>
-						rebuildup
-					</a>
-					<nav aria-label="Site">
-						<ul
+						<a
+							href="/"
 							className={css({
-								display: 'flex',
-								alignItems: 'center',
-								gap: { base: '3', sm: '5' },
-								margin: '0',
-								padding: '0',
-								listStyle: 'none',
 								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
+								fontSize: 'lg',
+								fontWeight: '800',
+								letterSpacing: '-0.02em',
+								color: 'text.default',
+								textDecoration: 'none',
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
 							})}
 						>
-							{[
-								{ href: '/tools', label: 'Tools' },
-								{ href: '/portfolio', label: 'Portfolio' },
-								{ href: '/about', label: 'About' },
-							].map((item) => (
-								<li key={item.href}>
-									<a
-										href={item.href}
-										className={css({
-											color: 'text.muted',
-											textDecoration: 'none',
-											_hover: { color: 'text.default' },
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
-										})}
-									>
-										{item.label}
-									</a>
-								</li>
-							))}
-						</ul>
-					</nav>
-				</div>
+							rebuildup
+						</a>
+						<nav aria-label="Site">
+							<ul
+								className={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: { base: '3', sm: '5' },
+									margin: '0',
+									padding: '0',
+									listStyle: 'none',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									fontWeight: '600',
+								})}
+							>
+								{[
+									{ href: '/tools', label: 'Tools' },
+									{ href: '/portfolio', label: 'Portfolio' },
+									{ href: '/about', label: 'About' },
+								].map((item) => (
+									<li key={item.href}>
+										<a
+											href={item.href}
+											className={css({
+												color: 'text.muted',
+												textDecoration: 'none',
+												_hover: { color: 'text.default' },
+												_focusVisible: {
+													outline: '2px solid {colors.border.focus}',
+													outlineOffset: '2px',
+												},
+											})}
+										>
+											{item.label}
+										</a>
+									</li>
+								))}
+							</ul>
+						</nav>
+					</div>
+				</Container>
 			</header>
-			<div className={css({ paddingBlock: '4', paddingInline: { base: '4', lg: '6' } })}>
-				<AdTopBanner />
-			</div>
+			<Container>
+				<div className={css({ paddingBlock: '4' })}>
+					<AdTopBanner />
+				</div>
+			</Container>
 			<Hero />
 			<main id="main">
 				{/* Issue #1108 — the page is a single editorial column again.
@@ -381,7 +378,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</div>
 					</Grid>
 					<Disclosure
-						ref={statusDisclosureRef}
+						open={isDesktop}
 						summary="GitHub の活動と Discord プレゼンス"
 						className={css({ marginBlockStart: '10' })}
 					>
@@ -451,7 +448,8 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					<SectionHeading
 						id="contact-cta-heading"
 						eyebrow="03 — Contact"
-						title="Contact / お問い合わせ"
+						title="お問い合わせ"
+						titleEn="Contact"
 						description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
 						variant="spread"
 					>

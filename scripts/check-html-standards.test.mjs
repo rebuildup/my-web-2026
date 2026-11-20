@@ -150,6 +150,18 @@ test('invalid markup — the three defect classes the Issue names', async (t) =>
 		assert.ok(!errorRules('<input type="checkbox" checked="checked">').includes('bad-value'));
 	});
 
+	await t.test('a boolean attribute accepts its empty and self-named forms', () => {
+		// `open` is enumerated for <details>/<dialog> AND boolean: the
+		// token-list enum rule must not reject the valid empty value
+		// (Issue #1110 regression — `open=""` is legal HTML).
+		assert.ok(!errorRules('<details open></details>').includes('bad-value'));
+		assert.ok(!errorRules('<details open=""></details>').includes('bad-value'));
+		assert.ok(!errorRules('<details open="open"></details>').includes('bad-value'));
+		assert.ok(!errorRules('<dialog open=""></dialog>').includes('bad-value'));
+		assert.ok(errorRules('<details open="yes"></details>').includes('bad-value'));
+		assert.ok(errorRules('<details open=" true "></details>').includes('bad-value'));
+	});
+
 	await t.test('a rel token list is validated per token', () => {
 		assert.ok(!errorRules('<a href="/" rel="noopener noreferrer">x</a>').includes('bad-value'));
 		assert.ok(errorRules('<a href="/" rel="noopener inventedrel">x</a>').includes('bad-value'));

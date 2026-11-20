@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { isFacetDerivedRole } from '../kind-labels';
@@ -318,111 +319,92 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 						const body = project[section.field];
 						if (!body || body.trim() === '') return null;
 						return (
-							<section
+							<PageSection
 								key={section.id}
-								aria-labelledby={`portfolio-section-${section.id}`}
-								className={css({
-									paddingBlock: { base: '16', lg: '24' },
-									borderTop: '1px solid {colors.border.subtle}',
-								})}
+								labelledBy={`portfolio-section-${section.id}`}
+								separator
 							>
-								<Container>
-									<SectionHeading
-										id={`portfolio-section-${section.id}`}
-										eyebrow={section.eyebrow}
-										title={section.title}
-									/>
-									<PortfolioMarkdown source={body} />
-								</Container>
-							</section>
+								<SectionHeading
+									id={`portfolio-section-${section.id}`}
+									eyebrow={section.eyebrow}
+									title={section.title}
+								/>
+								<PortfolioMarkdown source={body} />
+							</PageSection>
 						);
 					})}
 					{project.links.length > 0 ? (
-						<section
-							aria-labelledby="portfolio-section-links"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
-							})}
-						>
-							<Container>
-								<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
-								<ul
-									className={css({
-										listStyle: 'none',
-										margin: '0',
-										padding: '0',
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '3',
-									})}
-								>
-									{project.links.map((link) => (
-										<li key={link.id}>
-											<a
-												href={link.url}
-												target="_blank"
-												rel="noopener noreferrer"
+						<PageSection labelledBy="portfolio-section-links" separator>
+							<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
+							<ul
+								className={css({
+									listStyle: 'none',
+									margin: '0',
+									padding: '0',
+									display: 'flex',
+									flexDirection: 'column',
+									gap: '3',
+								})}
+							>
+								{project.links.map((link) => (
+									<li key={link.id}>
+										<a
+											href={link.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className={css({
+												display: 'inline-flex',
+												gap: '3',
+												alignItems: 'baseline',
+												// Issue #871: a URL with no break opportunity
+												// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
+												// is one unbreakable run. Without these three
+												// properties the anchor's max-content width
+												// exceeds the viewport at 390px and the WHOLE
+												// document scrolls sideways (measured
+												// 410 / 390). `flexWrap` lets the label and the
+												// URL sit on separate lines; `minWidth: 0` lets
+												// the flex item shrink below its content size;
+												// `overflowWrap` supplies the break opportunity
+												// inside the URL itself.
+												flexWrap: 'wrap',
+												minWidth: '0',
+												maxWidth: '100%',
+												overflowWrap: 'anywhere',
+												fontFamily: 'sans',
+												fontSize: 'md',
+												color: 'text.accent',
+												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
+												_focusVisible: {
+													outline: '2px solid {colors.border.focus}',
+													outlineOffset: '2px',
+												},
+												_hover: { textDecorationThickness: '2px' },
+											})}
+										>
+											<span
 												className={css({
-													display: 'inline-flex',
-													gap: '3',
-													alignItems: 'baseline',
-													// Issue #871: a URL with no break opportunity
-													// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
-													// is one unbreakable run. Without these three
-													// properties the anchor's max-content width
-													// exceeds the viewport at 390px and the WHOLE
-													// document scrolls sideways (measured
-													// 410 / 390). `flexWrap` lets the label and the
-													// URL sit on separate lines; `minWidth: 0` lets
-													// the flex item shrink below its content size;
-													// `overflowWrap` supplies the break opportunity
-													// inside the URL itself.
-													flexWrap: 'wrap',
-													minWidth: '0',
-													maxWidth: '100%',
-													overflowWrap: 'anywhere',
-													fontFamily: 'sans',
-													fontSize: 'md',
-													color: 'text.accent',
-													textDecoration: 'underline',
-													textUnderlineOffset: '0.18em',
-													textDecorationThickness: '1px',
-													_focusVisible: {
-														outline: '2px solid {colors.border.focus}',
-														outlineOffset: '2px',
-													},
-													_hover: { textDecorationThickness: '2px' },
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.04em',
+													textTransform: 'uppercase',
+													color: 'text.muted',
 												})}
 											>
-												<span
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.04em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
-													{LINK_LABEL[link.kind]}
-												</span>
-												<span>{link.label ?? link.url}</span>
-											</a>
-										</li>
-									))}
-								</ul>
-							</Container>
-						</section>
+												{LINK_LABEL[link.kind]}
+											</span>
+											<span>{link.label ?? link.url}</span>
+										</a>
+									</li>
+								))}
+							</ul>
+						</PageSection>
 					) : null}
 					{showAdjacent ? (
-						<nav
-							aria-labelledby="portfolio-section-adjacent"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
-							})}
-						>
-							<Container>
+						<PageSection labelledBy="portfolio-section-adjacent" separator>
+							<nav aria-labelledby="portfolio-section-adjacent">
 								{/*
 								 * Issue #767 — no eyebrow here. The numbered
 								 * eyebrows belong to the body sections, and those
@@ -580,8 +562,8 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										)}
 									</li>
 								</ul>
-							</Container>
-						</nav>
+							</nav>
+						</PageSection>
 					) : null}
 				</article>
 			</main>

@@ -4854,6 +4854,133 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "352-activity-route",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:afde3d17af982dcf06cae64b2c7aa3983e3b4726143fb71ece1b39c8e32db164",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #352 の公開 route /activity 追加に伴う新規日本語セグメント 12 件をレビュー。route label・guide ledger の導線文・head の title/description・ページの lead 文と説明文で構成される。いずれも「GitHub の ReleaseEvent・公開記事・Portfolio の published+public 作品を日付降順に並べる読み取り専用一覧」という実装どおりの主張に限定し、日付を補わない・ソース状態を併記するという正直さの契約を文面にも反映した。記事ソースは未実装 (Issue #323) だが、ページ文は「公開記事」を将来の供給元として列挙するだけで存在を主張せず、Timeline 側は Content を 未接続 と表示する。新規の時制主張・権限主張・数値の創作は無い。",
+				"disposition": "各セグメントは route-labels / guide ledger / head / ActivityPage の実装文字列と 1 対 1 で対応し、src/activity/contract.ts の kind・source・status 語彙 (リリース/記事/作品、GitHub/Portfolio/Content、観測中/未接続/取得失敗) と Timeline.tsx の既存日本語ラベルに揃えた。「公開・掲載中」「日付の新しい順」「日付を補いません」などの限定表現は assemble.ts / sources.ts の実際のフィルタ・ソート規則と一致する。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は branch/issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/editorial/nav/route-labels.ts",
+					"before": null,
+					"after": "活動タイムライン",
+					"verdict": "intentional",
+					"note": "/activity の route label。src/activity/contract.ts が timeline を「活動タイムライン」と呼ぶ語彙と一致。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Activity — 公開アクティビティ",
+					"verdict": "intentional",
+					"note": "Home guide ledger の /activity 駅名。公開 route であることだけを述べ、副題の「公開アクティビティ」は sitemap 非掲載だが crawl/index 可能という境界方針と矛盾しない。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "GitHub のリリースや公開作品を一つの時系列で振り返る読み取り専用の一覧。",
+					"verdict": "intentional",
+					"note": "ledger の副題。assemble.ts が実際に供給する 3 ソースのうち記事を「公開作品」に含めない簡潔な言い換えで、機能の誇張は無い。"
+				},
+				{
+					"path": "src/routes/activity.tsx",
+					"before": null,
+					"after": "活動タイムライン / Activity — rebuildup.dev",
+					"verdict": "intentional",
+					"note": "head() の title。他 route と同じ「和名 / 英名 — rebuildup.dev」規約。"
+				},
+				{
+					"path": "src/routes/activity.tsx",
+					"before": null,
+					"after": "GitHub のリリース、公開記事、Portfolio の公開作品を一つの時系列で読むページ。各項目はソースが記録した日付と出典を併記し、ソースごとの観測状態を表示します。",
+					"verdict": "intentional",
+					"note": "head() の description。OGP snapshot (test/integration/fixtures/ogp-card-snapshot.json) と同一文字列。ソース状態併記・日付はソース記録値のみという契約をそのまま述べる。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "本文へスキップ",
+					"verdict": "intentional",
+					"note": "skip link。他の公開 route と同一の定型文言。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "活動タイムライン / Activity",
+					"verdict": "intentional",
+					"note": "ページ h1。title と同じ和名/英名の併記。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "GitHub のリリース、公開された記事、Portfolio",
+					"verdict": "intentional",
+					"note": "lead 文の前半 (JSX テキストが要素境界で分割された片側)。公開記事はソース契約上の kind=article に対応し、現在 unconfigured として正直に表示される。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。ソースごとの観測状態は一覧の上に併記します。",
+					"verdict": "intentional",
+					"note": "lead 文の後半。日付補間をしない・ソース状態を併記するという Issue #352 の正直さ要件を文面で明示。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "公開アクティビティ",
+					"verdict": "intentional",
+					"note": "セクション見出し。route label の副題と同語彙。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "GitHub のリリースイベント、公開記事、公開・掲載中の Portfolio 作品を日付の新しい順に並べます。日付は各ソースが記録した値だけを使い、作品は期間ラベルをそのまま表示します。",
+					"verdict": "intentional",
+					"note": "セクション説明文。「公開・掲載中」は portfolioWorkItems の status==='published' && visibility==='public' フィルタの訳語で、「期間ラベルをそのまま表示」は periodStart/periodLabel を authored 値として使い created_at を公開日扱いしない規則と一致。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/352",
+						"note": "本変更の実装対象。release・記事・制作物を統合する活動タイムラインの公開 route 化。"
+					},
+					{
+						"type": "commit",
+						"reference": "620c1dd1",
+						"note": "the commit that introduced this copy (feat(activity): expose unified activity timeline at /activity)"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/contract.ts",
+						"note": "kind/source/status の語彙と Timeline の状態表示がページ文の根拠であることの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/sources.ts",
+						"note": "ReleaseEvent のみ採用・published+public のみ採用・created_at を公開日にしない規則の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/activity/assemble.ts",
+						"note": "ページ文が述べるフィルタ・ソート・状態併記の実装典拠。"
+					}
+				]
+			}
 		}
 	]
 }

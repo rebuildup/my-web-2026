@@ -65,6 +65,28 @@ export interface ActivityRepoFacts {
 	readonly weightLevel?: 'primary' | 'active' | 'side' | 'paused';
 }
 
+/**
+ * The Issue/PR a feed event belongs to (Issue #334 residual).
+ *
+ * Present only on event types whose GitHub payload carries the
+ * object — `IssuesEvent`, `IssueCommentEvent`, `PullRequestEvent`,
+ * `PullRequestReviewEvent`, `PullRequestReviewCommentEvent`. The
+ * permalink is NOT stored: it is derived at projection time from the
+ * public repo identity, so the snapshot never carries a URL the
+ * generator did not verify.
+ */
+export interface ActivityFeedItemRef {
+	readonly kind: 'issue' | 'pull';
+	readonly number: number;
+	/**
+	 * `merged` is a PR-only state GitHub reports through
+	 * `pull_request.merged` / `merged_at`; `open` / `closed` are the
+	 * shared issue/PR states. Absent means the payload did not carry
+	 * a state — the card then prints no state claim.
+	 */
+	readonly state?: 'open' | 'closed' | 'merged';
+}
+
 /** The recent-activity feed items for the status card (#319). */
 export interface ActivityFeedItem {
 	readonly id: string;
@@ -72,6 +94,8 @@ export interface ActivityFeedItem {
 	readonly repoId: string;
 	readonly type: string;
 	readonly at: string;
+	/** The specific Issue/PR the event touched, when the payload had one. */
+	readonly ref?: ActivityFeedItemRef;
 }
 
 /** Source-level health: did the generator reach GitHub at all? */
@@ -97,10 +121,12 @@ export interface GitHubActivitySnapshot {
 }
 
 /**
- * A feed item projected for the status card (#319): the public feed
- * entry plus the repository URL it belongs to when the snapshot
- * carries one. The link target is always a public repo `htmlUrl` —
- * never a private identity, never a fabricated event URL.
+ * A feed item projected for the status card (#319 / #334): the public
+ * feed entry plus the link target the snapshot can prove. When the
+ * item carries `ref`, `href` is the event permalink
+ * (`…/issues/<n>` / `…/pull/<n>`); otherwise it is the public repo
+ * `htmlUrl`. The target is always derived from a public repo
+ * identity — never a private identity, never a fabricated event URL.
  */
 export interface HomeGitHubActivityFeedItem extends ActivityFeedItem {
 	readonly href?: string;

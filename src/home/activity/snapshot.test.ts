@@ -75,6 +75,37 @@ describe('readGitHubActivitySnapshot', () => {
 		const dup = { ...base, repos: [base.repos[0], base.repos[0]] };
 		expect(readGitHubActivitySnapshot(dup)).toBeNull();
 	});
+	it('accepts a feed item carrying a well-formed ref (Issue #334)', () => {
+		const snap: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '3',
+					kind: 'public' as const,
+					repoId: 'rebuildup/public-a',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull' as const, number: 12, state: 'merged' as const },
+				},
+			],
+		};
+		expect(readGitHubActivitySnapshot(snap)).toEqual(snap);
+	});
+	it('rejects a feed item with a malformed ref — fail closed', () => {
+		for (const ref of [
+			{ kind: 'release', number: 1 },
+			{ kind: 'issue', number: 0 },
+			{ kind: 'issue', number: 1.5 },
+			{ kind: 'pull', number: 3, state: 'draft' },
+			'not-an-object',
+		]) {
+			const snap = {
+				...base,
+				feed: [{ ...base.feed[0], ref }],
+			};
+			expect(readGitHubActivitySnapshot(snap)).toBeNull();
+		}
+	});
 });
 
 describe('activityProjectRecords', () => {
@@ -150,6 +181,72 @@ describe('publicGitHubActivity', () => {
 	it('links a public feed item to the repo htmlUrl the snapshot carries (#319)', () => {
 		const pub = publicGitHubActivity(base);
 		expect(pub.feed[0]?.href).toBe('https://github.com/rebuildup/public-a');
+	});
+
+	it('links a feed item with ref to the specific Issue/PR permalink (#334)', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '10',
+					kind: 'public',
+					repoId: 'rebuildup/public-a',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull', number: 55, state: 'merged' },
+				},
+				{
+					id: '11',
+					kind: 'public',
+					repoId: 'someone-else/other-repo',
+					type: 'IssuesEvent',
+					at: '2026-11-15T11:00:00Z',
+					ref: { kind: 'issue', number: 7, state: 'open' },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBe('https://github.com/rebuildup/public-a/pull/55');
+		// A ref on a repo the owner does not own still resolves: the
+		// permalink is built from the public events `repoId`, not from
+		// the owner's repo list.
+		expect(pub.feed[1]?.href).toBe('https://github.com/someone-else/other-repo/issues/7');
+	});
+
+	it('never derives a permalink for a private-kind feed item (#334)', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '20',
+					kind: 'private',
+					repoId: 'private-0123456789ab',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull', number: 3 },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed).toHaveLength(0);
+	});
+
+	it('derives no permalink when ref exists but repoId is not owner/name', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '30',
+					kind: 'public',
+					repoId: 'not a repo id',
+					type: 'IssuesEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'issue', number: 4 },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBeUndefined();
 	});
 
 	it('leaves href absent when the feed repo has no publishable URL', () => {

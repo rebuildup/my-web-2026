@@ -139,6 +139,10 @@ describe('buildSnapshot — privacy contract (#932)', () => {
 		assert.equal(snapshot.headSha, 'abc123');
 	});
 
+	it('carries no ref on event types without an Issue/PR payload (Issue #334)', () => {
+		assert.equal(snapshot.feed[0].ref, undefined);
+	});
+
 	it('publishes measured contribution counts, not events, as commits (Issue #967)', () => {
 		const priv = snapshot.repos.find((r) => r.kind === 'private');
 		assert.equal(priv.activity.commits, 4);
@@ -184,5 +188,99 @@ describe('buildSnapshot — privacy contract (#932)', () => {
 		});
 		assert.equal(noToken.sources.private.status, 'unconfigured');
 		assert.equal(noToken.repos.filter((r) => r.kind === 'private').length, 0);
+	});
+});
+
+describe('buildSnapshot — feed item refs (Issue #334)', () => {
+	const feedFor = (events) =>
+		buildSnapshot({ events, publicRepos: [], privateRepos: null, now: NOW, salt: '' }).feed;
+
+	it('derives an issue ref with state from IssuesEvent', () => {
+		const [item] = feedFor([
+			{
+				id: 'e1',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'IssuesEvent',
+				created_at: RECENT,
+				payload: { issue: { number: 42, state: 'open' } },
+			},
+		]);
+		assert.deepEqual(item.ref, { kind: 'issue', number: 42, state: 'open' });
+	});
+
+	it('derives a merged pull ref from PullRequestEvent', () => {
+		const [item] = feedFor([
+			{
+				id: 'e2',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'PullRequestEvent',
+				created_at: RECENT,
+				payload: {
+					pull_request: {
+						number: 7,
+						state: 'closed',
+						merged: true,
+						merged_at: RECENT,
+					},
+				},
+			},
+		]);
+		assert.deepEqual(item.ref, { kind: 'pull', number: 7, state: 'merged' });
+	});
+
+	it('keeps an unmerged closed PR as closed, never merged', () => {
+		const [item] = feedFor([
+			{
+				id: 'e3',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'PullRequestReviewEvent',
+				created_at: RECENT,
+				payload: { pull_request: { number: 8, state: 'closed', merged: false } },
+			},
+		]);
+		assert.deepEqual(item.ref, { kind: 'pull', number: 8, state: 'closed' });
+	});
+
+	it('classifies an IssueCommentEvent on a PR as a pull ref', () => {
+		const [item] = feedFor([
+			{
+				id: 'e4',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'IssueCommentEvent',
+				created_at: RECENT,
+				payload: {
+					issue: { number: 9, state: 'open', pull_request: { url: 'x' } },
+				},
+			},
+		]);
+		assert.deepEqual(item.ref, { kind: 'pull', number: 9, state: 'open' });
+	});
+
+	it('emits no ref when the payload lacks the object or the number', () => {
+		const feed = feedFor([
+			{
+				id: 'e5',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'IssuesEvent',
+				created_at: RECENT,
+				payload: {},
+			},
+			{
+				id: 'e6',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'PullRequestEvent',
+				created_at: RECENT,
+				payload: { pull_request: { state: 'open' } },
+			},
+			{
+				id: 'e7',
+				repo: { name: 'rebuildup/my-web-2026' },
+				type: 'PushEvent',
+				created_at: RECENT,
+				payload: { issue: { number: 1, state: 'open' } },
+			},
+		]);
+		assert.equal(feed.length, 3);
+		for (const item of feed) assert.equal(item.ref, undefined);
 	});
 });

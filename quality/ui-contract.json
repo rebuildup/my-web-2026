@@ -627,8 +627,7 @@
 			"path": "src/about/components/LinksPage.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
-				"raw <section> element": 3
+				"backgroundColor: bg.canvas": 1
 			},
 			"clause": "C-1"
 		},
@@ -1119,8 +1118,7 @@
 			"path": "src/routes/stack/StackPage.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
-				"backgroundColor: bg.canvas": 1,
-				"raw <section> element": 2
+				"backgroundColor: bg.canvas": 1
 			},
 			"clause": "C-1"
 		},
@@ -2152,7 +2150,6 @@
 		{
 			"files": [
 				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
 				"src/admin/composer.tsx",
 				"src/admin/emoji-catalog/catalog.tsx",
 				"src/admin/images/images.tsx",
@@ -2167,8 +2164,7 @@
 				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/admin.login.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx"
+				"src/routes/design-system/DesignSystemPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2204,12 +2200,10 @@
 		},
 		{
 			"files": [
-				"src/about/components/LinksPage.tsx",
 				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/projects/DotfilesIntroductionPage.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx",
 				"src/routes/tools.$slug.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"

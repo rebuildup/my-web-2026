@@ -1,5 +1,5 @@
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ABOUT_LINK_GROUPS, type AboutLink, type AboutLinkGroup } from '../links';
 
@@ -31,53 +31,51 @@ export function LinksPage({ groups }: LinksPageProps) {
 			<a href="#main" className={skipLinkStyle}>
 				本文へスキップ
 			</a>
-			<section aria-labelledby="links-hero-title" className={heroStyle}>
-				<Container>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						my-web-2026 · /links
-					</span>
-					<h1
-						id="links-hero-title"
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '2',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							color: 'text.default',
-							letterSpacing: '-0.03em',
-						})}
-					>
-						リンク集 / Links
-					</h1>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '6',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-							maxWidth: '640px',
-						})}
-					>
-						公開している外部アカウントとサイト内ページの一覧です。連絡先は
-						<a href="/contact" className={inlineLinkStyle}>
-							/contact
-						</a>
-						に掲載している verified channel を参照してください。
-					</p>
-				</Container>
-			</section>
+			<PageSection rhythm="hero" labelledBy="links-hero-title">
+				<span
+					className={css({
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					my-web-2026 · /links
+				</span>
+				<h1
+					id="links-hero-title"
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '2',
+						fontFamily: 'heading',
+						fontSize: { base: '3xl', lg: '4xl' },
+						fontWeight: '700',
+						lineHeight: { base: '1.15', lg: '1.05' },
+						color: 'text.default',
+						letterSpacing: '-0.03em',
+					})}
+				>
+					リンク集 / Links
+				</h1>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						fontFamily: 'sans',
+						fontSize: 'lg',
+						lineHeight: '1.6',
+						color: 'text.default',
+						maxWidth: '640px',
+					})}
+				>
+					公開している外部アカウントとサイト内ページの一覧です。連絡先は
+					<a href="/contact" className={inlineLinkStyle}>
+						/contact
+					</a>
+					に掲載している verified channel を参照してください。
+				</p>
+			</PageSection>
 			<main id="main">
 				{visibleGroups.length === 0 ? (
 					<LinksEmptyState />
@@ -93,88 +91,68 @@ export function LinksPage({ groups }: LinksPageProps) {
 
 function LinksEmptyState() {
 	return (
-		<section
-			aria-labelledby="links-empty-title"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.subtle',
-			})}
-		>
-			<Container>
-				<h2
-					id="links-empty-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						fontFamily: 'heading',
-						fontSize: 'xl',
-						fontWeight: '700',
-						lineHeight: '1.4',
-						color: 'text.default',
-					})}
-				>
-					公開しているリンクはまだありません
-				</h2>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '4',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						lineHeight: '1.6',
-						color: 'text.muted',
-						maxWidth: '640px',
-					})}
-				>
-					連絡先は
-					<a href="/contact" className={inlineLinkStyle}>
-						/contact
-					</a>
-					に掲載している verified channel を参照してください。
-				</p>
-			</Container>
-		</section>
+		<PageSection labelledBy="links-empty-title" separator>
+			<h2
+				id="links-empty-title"
+				lang="ja"
+				className={css({
+					margin: '0',
+					fontFamily: 'heading',
+					fontSize: 'xl',
+					fontWeight: '700',
+					lineHeight: '1.4',
+					color: 'text.default',
+				})}
+			>
+				公開しているリンクはまだありません
+			</h2>
+			<p
+				lang="ja"
+				className={css({
+					margin: '0',
+					marginBlockStart: '4',
+					fontFamily: 'sans',
+					fontSize: 'md',
+					lineHeight: '1.6',
+					color: 'text.muted',
+					maxWidth: '640px',
+				})}
+			>
+				連絡先は
+				<a href="/contact" className={inlineLinkStyle}>
+					/contact
+				</a>
+				に掲載している verified channel を参照してください。
+			</p>
+		</PageSection>
 	);
 }
 
 function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: number }) {
 	return (
-		<section
-			aria-labelledby={`links-group-${group.id}`}
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.subtle',
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id={`links-group-${group.id}`}
-					eyebrow={`${String(index).padStart(2, '0')} — ${group.labelEn}`}
-					title={group.label}
-					variant="default"
-				/>
-				<ul
-					data-testid={`links-group-${group.id}`}
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '0',
-						margin: '0',
-						padding: '0',
-						listStyle: 'none',
-					})}
-				>
-					{group.links.map((link) => (
-						<LinkRow key={link.id} link={link} />
-					))}
-				</ul>
-			</Container>
-		</section>
+		<PageSection labelledBy={`links-group-${group.id}`} separator>
+			<SectionHeading
+				id={`links-group-${group.id}`}
+				eyebrow={`${String(index).padStart(2, '0')} — ${group.labelEn}`}
+				title={group.label}
+				variant="default"
+			/>
+			<ul
+				data-testid={`links-group-${group.id}`}
+				className={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '0',
+					margin: '0',
+					padding: '0',
+					listStyle: 'none',
+				})}
+			>
+				{group.links.map((link) => (
+					<LinkRow key={link.id} link={link} />
+				))}
+			</ul>
+		</PageSection>
 	);
 }
 
@@ -265,10 +243,6 @@ const skipLinkStyle = css({
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '2px',
 	},
-});
-
-const heroStyle = css({
-	paddingBlock: { base: '16', lg: '32' },
 });
 
 const inlineLinkStyle = css({

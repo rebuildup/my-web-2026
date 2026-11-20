@@ -3,8 +3,8 @@ import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
-import { Container } from '../editorial/primitives/Container';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import {
@@ -304,114 +304,98 @@ function ToolsIndexRoute() {
 			<BreadcrumbJsonLd />
 			{/* Issue #300: hero beat (16/32), same Container and left axis
 			    as every other public page. */}
-			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
-				<Container>
-					<header
+			<PageSection rhythm="hero">
+				<header
+					className={css({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '4',
+						marginBlockEnd: '0',
+					})}
+				>
+					<span
 						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '4',
-							marginBlockEnd: '0',
+							fontFamily: 'mono',
+							fontSize: 'sm',
+							color: 'text.muted',
+							letterSpacing: '0.04em',
+							textTransform: 'uppercase',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
-							Tools
-						</span>
-						<h1
-							className={css({
-								margin: '0',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								color: 'text.default',
-								lineHeight: '1.05',
-								letterSpacing: '-0.03em',
-								maxWidth: '720px',
-							})}
-						>
-							ツール
-						</h1>
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								color: 'text.muted',
-								lineHeight: '1.6',
-								maxWidth: '640px',
-							})}
-						>
-							ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
-							repository で開発し、同じ origin から配信しています。
-						</p>
-					</header>
-				</Container>
-			</section>
+						Tools
+					</span>
+					<h1
+						className={css({
+							margin: '0',
+							fontFamily: 'heading',
+							fontSize: { base: '3xl', lg: '4xl' },
+							fontWeight: '700',
+							color: 'text.default',
+							lineHeight: '1.05',
+							letterSpacing: '-0.03em',
+							maxWidth: '720px',
+						})}
+					>
+						ツール
+					</h1>
+					<p
+						className={css({
+							margin: '0',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.muted',
+							lineHeight: '1.6',
+							maxWidth: '640px',
+						})}
+					>
+						ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
+						repository で開発し、同じ origin から配信しています。
+					</p>
+				</header>
+			</PageSection>
 			{available.length === 0 && planned.length === 0 ? (
-				<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
-					<Container>
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								color: 'text.muted',
-							})}
-						>
-							登録されているツールはまだありません。
-						</p>
-					</Container>
-				</section>
+				<PageSection>
+					<p
+						className={css({
+							margin: '0',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.muted',
+						})}
+					>
+						登録されているツールはまだありません。
+					</p>
+				</PageSection>
 			) : null}
 			{available.length > 0 ? (
-				<section
-					aria-labelledby="tools-available-heading"
-					data-route="tools-available"
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id="tools-available-heading"
-							description="このページから開けます。カードを選ぶとツールが開きます。"
-							eyebrow="01 — Available"
-							title="使えるツール"
-						/>
-						<ul className={cardGrid}>
-							{available.map((tool) => (
-								<ToolCard key={tool.slug} tool={tool} />
-							))}
-						</ul>
-					</Container>
-				</section>
+				<PageSection labelledBy="tools-available-heading">
+					<SectionHeading
+						id="tools-available-heading"
+						description="このページから開けます。カードを選ぶとツールが開きます。"
+						eyebrow="01 — Available"
+						title="使えるツール"
+					/>
+					<ul className={cardGrid}>
+						{available.map((tool) => (
+							<ToolCard key={tool.slug} tool={tool} />
+						))}
+					</ul>
+				</PageSection>
 			) : null}
 			{planned.length > 0 ? (
-				<section
-					aria-labelledby="tools-planned-heading"
-					data-route="tools-planned"
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id="tools-planned-heading"
-							description="公開に向けて準備しているツールです。開けるようになるまで、分かっている内容だけを載せています。"
-							eyebrow="02 — Planned"
-							title="準備中"
-						/>
-						<ul className={plannedGrid}>
-							{planned.map((tool) => (
-								<PlannedToolItem key={tool.slug} tool={tool} />
-							))}
-						</ul>
-					</Container>
-				</section>
+				<PageSection labelledBy="tools-planned-heading">
+					<SectionHeading
+						id="tools-planned-heading"
+						description="公開に向けて準備しているツールです。開けるようになるまで、分かっている内容だけを載せています。"
+						eyebrow="02 — Planned"
+						title="準備中"
+					/>
+					<ul className={plannedGrid}>
+						{planned.map((tool) => (
+							<PlannedToolItem key={tool.slug} tool={tool} />
+						))}
+					</ul>
+				</PageSection>
 			) : null}
 			<ReactionsWidget data={reactions} />
 			<PrivacyNoticeCompact {...privacyNotice} />

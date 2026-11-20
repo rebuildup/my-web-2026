@@ -14,24 +14,12 @@
 	},
 	"scope": {
 		"root": "src",
-		"extensions": [
-			".tsx",
-			".ts"
-		],
-		"exemptPrefixes": [
-			"src/editorial/"
-		],
+		"extensions": [".tsx", ".ts"],
+		"exemptPrefixes": ["src/editorial/"],
 		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
 	},
 	"primitives": {
-		"layout": [
-			"PageSection",
-			"Container",
-			"Grid",
-			"Stack",
-			"Cluster",
-			"Split"
-		],
+		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split"],
 		"components": [
 			"SectionHeading",
 			"Button",
@@ -88,9 +76,7 @@
 					},
 					{
 						"property": "backgroundColor",
-						"values": [
-							"bg.canvas"
-						],
+						"values": ["bg.canvas"],
 						"note": "painting the page ground by hand"
 					},
 					{
@@ -152,11 +138,7 @@
 			"name": "section-tone-owner",
 			"summary": "Colored/shaded section bands are expressed only through PageSection tone.",
 			"detection": {
-				"styleProperties": [
-					"backgroundColor",
-					"background",
-					"backgroundImage"
-				],
+				"styleProperties": ["backgroundColor", "background", "backgroundImage"],
 				"sectionScaleHeuristic": "a style object containing both a band surface property AND (paddingBlock* OR minHeight OR width:'100%' with block padding) is section-scale and must use PageSection tone",
 				"panelPath": "smaller classified surfaces use Panel variant=\"field.*\"; arbitrary backgroundColor on a non-allowlisted element is a violation"
 			},
@@ -195,12 +177,8 @@
 					},
 					{
 						"element": "ul",
-						"elementAliases": [
-							"ol"
-						],
-						"forbiddenStyleProperties": [
-							"display"
-						],
+						"elementAliases": ["ol"],
+						"forbiddenStyleProperties": ["display"],
 						"note": "list layout goes through Stack/Grid presets; listStyle:'none' resets stay allowed"
 					}
 				]
@@ -214,9 +192,7 @@
 				"jsxPatterns": [
 					{
 						"element": "a",
-						"elementAliases": [
-							"button"
-						],
+						"elementAliases": ["button"],
 						"controlStyleProperties": [
 							"padding",
 							"paddingInline",

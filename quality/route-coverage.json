@@ -53,10 +53,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/smoke.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -64,9 +61,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -90,22 +85,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/about.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/about.spec.ts"
-					]
+					"evidence": ["e2e/about.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -129,21 +117,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/keyboard.spec.ts"
-					]
+					"evidence": ["e2e/keyboard.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/keyboard.spec.ts"
-					]
+					"evidence": ["e2e/keyboard.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -167,10 +149,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/contact.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -178,9 +157,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -204,21 +181,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/links.spec.ts"
-					]
+					"evidence": ["e2e/links.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/links.spec.ts"
-					]
+					"evidence": ["e2e/links.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -242,21 +213,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/commission.spec.ts"
-					]
+					"evidence": ["e2e/commission.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/commission.spec.ts"
-					]
+					"evidence": ["e2e/commission.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -280,21 +245,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/stack.spec.ts"
-					]
+					"evidence": ["e2e/stack.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/stack.spec.ts"
-					]
+					"evidence": ["e2e/stack.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -318,21 +277,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/activity.spec.ts"
-					]
+					"evidence": ["e2e/activity.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/activity.spec.ts"
-					]
+					"evidence": ["e2e/activity.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -356,21 +309,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/projects-dotfiles.spec.ts"
-					]
+					"evidence": ["e2e/projects-dotfiles.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/projects-dotfiles.spec.ts"
-					]
+					"evidence": ["e2e/projects-dotfiles.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -394,22 +341,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/now.spec.ts"
-					]
+					"evidence": ["e2e/now.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/seo-status.spec.ts",
-						"e2e/now.spec.ts"
-					]
+					"evidence": ["e2e/seo-status.spec.ts", "e2e/now.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -433,10 +373,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/portfolio.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -444,9 +381,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -471,21 +406,15 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/portfolio.spec.ts"
-					]
+					"evidence": ["e2e/portfolio.spec.ts"]
 				},
 				"seo": {
 					"status": "covered",
-					"evidence": [
-						"e2e/portfolio.spec.ts"
-					]
+					"evidence": ["e2e/portfolio.spec.ts"]
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -509,10 +438,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/tools-index.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -520,9 +446,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -547,11 +471,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/tools-prototype.spec.ts",
-						"e2e/tools-index.spec.ts",
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/tools-prototype.spec.ts", "e2e/tools-index.spec.ts", "e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -583,9 +503,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/nav.spec.ts"
-					]
+					"evidence": ["e2e/nav.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -593,9 +511,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",
@@ -684,10 +600,7 @@
 			"gates": {
 				"e2e": {
 					"status": "covered",
-					"evidence": [
-						"e2e/nav.spec.ts",
-						"e2e/prod-smoke.spec.ts"
-					]
+					"evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"]
 				},
 				"seo": {
 					"status": "excluded",
@@ -695,9 +608,7 @@
 				},
 				"a11y": {
 					"status": "covered",
-					"evidence": [
-						"e2e/a11y/axe-public-routes.spec.ts"
-					]
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
 				},
 				"performance": {
 					"status": "excluded",

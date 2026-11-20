@@ -724,7 +724,6 @@
 			"signatures": {
 				"backgroundColor: bg.canvas": 1,
 				"marginBlockStart on surface object": 1,
-				"raw <section> element": 7,
 				"surface + block padding/min-height outside PageSection": 1
 			},
 			"clause": "C-1/C-3"
@@ -2171,7 +2170,6 @@
 				"src/admin/invitations/accept-view.tsx",
 				"src/admin/invitations/invitations.tsx",
 				"src/admin/keys/keys.tsx",
-				"src/contact/commission-page.tsx",
 				"src/home/capabilities/grid.tsx",
 				"src/home/current/CurrentProjects.tsx",
 				"src/home/footer.tsx",
@@ -2221,7 +2219,6 @@
 			"files": [
 				"src/about/components/AboutPage.tsx",
 				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
 				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/projects/DotfilesIntroductionPage.tsx",
@@ -2567,7 +2564,6 @@
 		{
 			"files": [
 				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
 				"src/routes/activity/ActivityPage.tsx",
 				"src/routes/stack/StackPage.tsx"
 			],

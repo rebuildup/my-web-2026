@@ -1,5 +1,5 @@
 import { css } from '../../styled-system/css';
-import { Container } from '../editorial/primitives/Container';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import {
 	COMMISSION_REQUIREMENTS,
@@ -26,49 +26,47 @@ export function CommissionPage() {
 			<a href="#main" className={skipLinkStyle}>
 				本文へスキップ
 			</a>
-			<section aria-labelledby="commission-hero-title" className={heroStyle}>
-				<Container>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						my-web-2026 · /commission
-					</span>
-					<h1
-						id="commission-hero-title"
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '2',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							color: 'text.default',
-							letterSpacing: '-0.03em',
-						})}
-					>
-						制作依頼 / Commission
-					</h1>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '6',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-							maxWidth: '640px',
-						})}
-					>
-						Web 開発・アプリケーション開発・映像制作の依頼についての案内です。
-					</p>
-				</Container>
-			</section>
+			<PageSection rhythm="hero" labelledBy="commission-hero-title">
+				<span
+					className={css({
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					my-web-2026 · /commission
+				</span>
+				<h1
+					id="commission-hero-title"
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '2',
+						fontFamily: 'heading',
+						fontSize: { base: '3xl', lg: '4xl' },
+						fontWeight: '700',
+						lineHeight: { base: '1.15', lg: '1.05' },
+						color: 'text.default',
+						letterSpacing: '-0.03em',
+					})}
+				>
+					制作依頼 / Commission
+				</h1>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						fontFamily: 'sans',
+						fontSize: 'lg',
+						lineHeight: '1.6',
+						color: 'text.default',
+						maxWidth: '640px',
+					})}
+				>
+					Web 開発・アプリケーション開発・映像制作の依頼についての案内です。
+				</p>
+			</PageSection>
 			<main id="main">
 				<StatusSection />
 				<ServicesSection />
@@ -88,461 +86,441 @@ export function CommissionPage() {
  */
 function StatusSection() {
 	return (
-		<section
-			aria-labelledby="commission-status-heading"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.subtle',
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id="commission-status-heading"
-					eyebrow="Status"
-					title="受付状況"
-					titleEn="Intake status"
-				/>
-				<div
-					data-testid="commission-status"
+		<PageSection labelledBy="commission-status-heading" separator>
+			<SectionHeading
+				id="commission-status-heading"
+				eyebrow="Status"
+				title="受付状況"
+				titleEn="Intake status"
+			/>
+			<div
+				data-testid="commission-status"
+				className={css({
+					marginBlockStart: '6',
+					padding: '6',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.subtle',
+					borderRadius: 'md',
+					backgroundColor: 'bg.surface',
+				})}
+			>
+				<p
+					lang="ja"
 					className={css({
-						marginBlockStart: '6',
-						padding: '6',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.subtle',
-						borderRadius: 'md',
-						backgroundColor: 'bg.surface',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'lg',
+						fontWeight: '600',
+						color: 'text.default',
 					})}
 				>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							fontWeight: '600',
-							color: 'text.default',
-						})}
-					>
-						現在、制作依頼の受付は休止しています。
-					</p>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '3',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.6',
-							color: 'text.muted',
-							maxWidth: '640px',
-						})}
-					>
-						以下は依頼内容の案内です。受付を再開した場合は、このページと
-						<a href="/contact" className={inlineLinkStyle}>
-							/contact
-						</a>
-						の掲載 channel でお知らせします。休止中のため、依頼フォームや料金表は公開していません。
-					</p>
-				</div>
-			</Container>
-		</section>
+					現在、制作依頼の受付は休止しています。
+				</p>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '3',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.6',
+						color: 'text.muted',
+						maxWidth: '640px',
+					})}
+				>
+					以下は依頼内容の案内です。受付を再開した場合は、このページと
+					<a href="/contact" className={inlineLinkStyle}>
+						/contact
+					</a>
+					の掲載 channel でお知らせします。休止中のため、依頼フォームや料金表は公開していません。
+				</p>
+			</div>
+		</PageSection>
 	);
 }
 
 function ServicesSection() {
 	return (
-		<section aria-labelledby="commission-services-heading" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="commission-services-heading"
-					eyebrow="01 — Services"
-					title="依頼できる内容"
-					titleEn="What can be requested"
-				/>
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-						gap: '10',
-						marginBlockStart: '10',
-					})}
-				>
-					{COMMISSION_SERVICE_GROUPS.map((group) => (
-						<div key={group.id}>
-							<h3
-								className={css({
-									margin: '0',
-									fontFamily: 'heading',
-									fontSize: 'xl',
-									fontWeight: '700',
-									color: 'text.default',
-								})}
-							>
-								{group.title}
-								<span lang="en" className={css({ color: 'text.muted', fontSize: 'md' })}>
-									{' '}
-									/ {group.titleEn}
-								</span>
-							</h3>
-							<ul
-								className={css({
-									margin: '0',
-									marginBlockStart: '4',
-									padding: '0',
-									listStyle: 'none',
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '4',
-								})}
-							>
-								{group.services.map((service) => (
-									<li key={service.title}>
-										<div
+		<PageSection labelledBy="commission-services-heading" separator>
+			<SectionHeading
+				id="commission-services-heading"
+				eyebrow="01 — Services"
+				title="依頼できる内容"
+				titleEn="What can be requested"
+			/>
+			<div
+				className={css({
+					display: 'grid',
+					gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
+					gap: '10',
+					marginBlockStart: '10',
+				})}
+			>
+				{COMMISSION_SERVICE_GROUPS.map((group) => (
+					<div key={group.id}>
+						<h3
+							className={css({
+								margin: '0',
+								fontFamily: 'heading',
+								fontSize: 'xl',
+								fontWeight: '700',
+								color: 'text.default',
+							})}
+						>
+							{group.title}
+							<span lang="en" className={css({ color: 'text.muted', fontSize: 'md' })}>
+								{' '}
+								/ {group.titleEn}
+							</span>
+						</h3>
+						<ul
+							className={css({
+								margin: '0',
+								marginBlockStart: '4',
+								padding: '0',
+								listStyle: 'none',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '4',
+							})}
+						>
+							{group.services.map((service) => (
+								<li key={service.title}>
+									<div
+										className={css({
+											fontFamily: 'sans',
+											fontSize: 'md',
+											fontWeight: '600',
+											color: 'text.default',
+										})}
+									>
+										{service.title}
+									</div>
+									{service.description ? (
+										<p
 											className={css({
+												margin: '0',
+												marginBlockStart: '1',
 												fontFamily: 'sans',
-												fontSize: 'md',
-												fontWeight: '600',
-												color: 'text.default',
+												fontSize: 'sm',
+												color: 'text.muted',
 											})}
 										>
-											{service.title}
-										</div>
-										{service.description ? (
-											<p
-												className={css({
-													margin: '0',
-													marginBlockStart: '1',
-													fontFamily: 'sans',
-													fontSize: 'sm',
-													color: 'text.muted',
-												})}
-											>
-												{service.description}
-											</p>
-										) : null}
-										{service.items ? (
-											<ul
-												className={css({
-													margin: '0',
-													marginBlockStart: '2',
-													padding: '0',
-													listStyle: 'none',
-													display: 'flex',
-													flexDirection: 'column',
-													gap: '1',
-												})}
-											>
-												{service.items.map((item) => (
-													<li
-														key={item}
-														className={css({
-															fontFamily: 'sans',
-															fontSize: 'sm',
-															color: 'text.muted',
-														})}
-													>
-														{item}
-													</li>
-												))}
-											</ul>
-										) : null}
-									</li>
-								))}
-							</ul>
-						</div>
-					))}
-				</div>
-			</Container>
-		</section>
+											{service.description}
+										</p>
+									) : null}
+									{service.items ? (
+										<ul
+											className={css({
+												margin: '0',
+												marginBlockStart: '2',
+												padding: '0',
+												listStyle: 'none',
+												display: 'flex',
+												flexDirection: 'column',
+												gap: '1',
+											})}
+										>
+											{service.items.map((item) => (
+												<li
+													key={item}
+													className={css({
+														fontFamily: 'sans',
+														fontSize: 'sm',
+														color: 'text.muted',
+													})}
+												>
+													{item}
+												</li>
+											))}
+										</ul>
+									) : null}
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</div>
+		</PageSection>
 	);
 }
 
 function ProcessSection() {
 	return (
-		<section aria-labelledby="commission-process-heading" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="commission-process-heading"
-					eyebrow="02 — Process"
-					title="依頼の流れ"
-					titleEn="How a request flows"
-				/>
-				<ol
-					className={css({
-						margin: '0',
-						marginBlockStart: '8',
-						padding: '0',
-						listStyle: 'none',
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '4',
-						maxWidth: '720px',
-					})}
-				>
-					{COMMISSION_STEPS.map((step) => (
-						<li
-							key={step.step}
+		<PageSection labelledBy="commission-process-heading" separator>
+			<SectionHeading
+				id="commission-process-heading"
+				eyebrow="02 — Process"
+				title="依頼の流れ"
+				titleEn="How a request flows"
+			/>
+			<ol
+				className={css({
+					margin: '0',
+					marginBlockStart: '8',
+					padding: '0',
+					listStyle: 'none',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '4',
+					maxWidth: '720px',
+				})}
+			>
+				{COMMISSION_STEPS.map((step) => (
+					<li
+						key={step.step}
+						className={css({
+							display: 'flex',
+							gap: '4',
+							padding: '4',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.subtle',
+							borderRadius: 'md',
+						})}
+					>
+						<span
+							aria-hidden="true"
 							className={css({
-								display: 'flex',
-								gap: '4',
-								padding: '4',
+								flexShrink: '0',
+								width: '8',
+								height: '8',
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								fontWeight: '700',
+								color: 'text.default',
 								borderWidth: '1px',
 								borderStyle: 'solid',
 								borderColor: 'border.subtle',
-								borderRadius: 'md',
+								borderRadius: 'full',
 							})}
 						>
-							<span
-								aria-hidden="true"
+							{step.step}
+						</span>
+						<div>
+							<div
 								className={css({
-									flexShrink: '0',
-									width: '8',
-									height: '8',
-									display: 'inline-flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									fontWeight: '700',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									fontWeight: '600',
 									color: 'text.default',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.subtle',
-									borderRadius: 'full',
 								})}
 							>
-								{step.step}
-							</span>
-							<div>
-								<div
-									className={css({
-										fontFamily: 'sans',
-										fontSize: 'md',
-										fontWeight: '600',
-										color: 'text.default',
-									})}
-								>
-									{step.title}
-								</div>
-								<p
-									className={css({
-										margin: '0',
-										marginBlockStart: '1',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
-									{step.description}
-								</p>
+								{step.title}
 							</div>
-						</li>
-					))}
-				</ol>
-			</Container>
-		</section>
+							<p
+								className={css({
+									margin: '0',
+									marginBlockStart: '1',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.muted',
+								})}
+							>
+								{step.description}
+							</p>
+						</div>
+					</li>
+				))}
+			</ol>
+		</PageSection>
 	);
 }
 
 function RequirementsSection() {
 	return (
-		<section aria-labelledby="commission-requirements-heading" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="commission-requirements-heading"
-					eyebrow="03 — Requirements"
-					title="見積もりに必要な情報"
-					titleEn="What an estimate needs"
-				/>
-				<div
+		<PageSection labelledBy="commission-requirements-heading" separator>
+			<SectionHeading
+				id="commission-requirements-heading"
+				eyebrow="03 — Requirements"
+				title="見積もりに必要な情報"
+				titleEn="What an estimate needs"
+			/>
+			<div
+				className={css({
+					marginBlockStart: '6',
+					padding: '6',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.subtle',
+					borderRadius: 'md',
+					maxWidth: '720px',
+				})}
+			>
+				<p
+					lang="ja"
 					className={css({
-						marginBlockStart: '6',
-						padding: '6',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.subtle',
-						borderRadius: 'md',
-						maxWidth: '720px',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						color: 'text.default',
 					})}
 				>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.default',
-						})}
-					>
-						受付再開後、依頼時に以下を伺います:
-					</p>
-					<ul
-						className={css({
-							margin: '0',
-							marginBlockStart: '4',
-							padding: '0',
-							listStyle: 'none',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '2',
-						})}
-					>
-						{COMMISSION_REQUIREMENTS.map((item) => (
-							<li
-								key={item}
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'md',
-									color: 'text.default',
-								})}
-							>
-								{item}
-							</li>
-						))}
-					</ul>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '4',
-							fontFamily: 'sans',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						場合によっては、追加で音源やイラスト、曲名などを伺うことがあります。
-					</p>
-				</div>
-			</Container>
-		</section>
+					受付再開後、依頼時に以下を伺います:
+				</p>
+				<ul
+					className={css({
+						margin: '0',
+						marginBlockStart: '4',
+						padding: '0',
+						listStyle: 'none',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '2',
+					})}
+				>
+					{COMMISSION_REQUIREMENTS.map((item) => (
+						<li
+							key={item}
+							className={css({
+								fontFamily: 'sans',
+								fontSize: 'md',
+								color: 'text.default',
+							})}
+						>
+							{item}
+						</li>
+					))}
+				</ul>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '4',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					場合によっては、追加で音源やイラスト、曲名などを伺うことがあります。
+				</p>
+			</div>
+		</PageSection>
 	);
 }
 
 function SoftwareSection() {
 	return (
-		<section aria-labelledby="commission-software-heading" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="commission-software-heading"
-					eyebrow="04 — Software"
-					title="使用ソフトウェア"
-					titleEn="Software used"
-				/>
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: {
-							base: '1fr',
-							lg: 'repeat(auto-fit, minmax(200px, 1fr))',
-						},
-						gap: '6',
-						marginBlockStart: '8',
-					})}
-				>
-					{COMMISSION_SOFTWARE.map((group) => (
-						<div key={group.title}>
-							<h3
-								className={css({
-									margin: '0',
-									fontFamily: 'heading',
-									fontSize: 'md',
-									fontWeight: '700',
-									color: 'text.default',
-								})}
-							>
-								{group.title}
-								<span lang="en" className={css({ color: 'text.muted', fontSize: 'sm' })}>
-									{' '}
-									/ {group.titleEn}
-								</span>
-							</h3>
-							<ul
-								className={css({
-									margin: '0',
-									marginBlockStart: '2',
-									padding: '0',
-									listStyle: 'none',
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '1',
-								})}
-							>
-								{group.tools.map((tool) => (
-									<li
-										key={tool}
-										className={css({
-											fontFamily: 'sans',
-											fontSize: 'sm',
-											color: 'text.muted',
-										})}
-									>
-										{tool}
-									</li>
-								))}
-							</ul>
-						</div>
-					))}
-				</div>
-			</Container>
-		</section>
+		<PageSection labelledBy="commission-software-heading" separator>
+			<SectionHeading
+				id="commission-software-heading"
+				eyebrow="04 — Software"
+				title="使用ソフトウェア"
+				titleEn="Software used"
+			/>
+			<div
+				className={css({
+					display: 'grid',
+					gridTemplateColumns: {
+						base: '1fr',
+						lg: 'repeat(auto-fit, minmax(200px, 1fr))',
+					},
+					gap: '6',
+					marginBlockStart: '8',
+				})}
+			>
+				{COMMISSION_SOFTWARE.map((group) => (
+					<div key={group.title}>
+						<h3
+							className={css({
+								margin: '0',
+								fontFamily: 'heading',
+								fontSize: 'md',
+								fontWeight: '700',
+								color: 'text.default',
+							})}
+						>
+							{group.title}
+							<span lang="en" className={css({ color: 'text.muted', fontSize: 'sm' })}>
+								{' '}
+								/ {group.titleEn}
+							</span>
+						</h3>
+						<ul
+							className={css({
+								margin: '0',
+								marginBlockStart: '2',
+								padding: '0',
+								listStyle: 'none',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '1',
+							})}
+						>
+							{group.tools.map((tool) => (
+								<li
+									key={tool}
+									className={css({
+										fontFamily: 'sans',
+										fontSize: 'sm',
+										color: 'text.muted',
+									})}
+								>
+									{tool}
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</div>
+		</PageSection>
 	);
 }
 
 function ContactSection() {
 	return (
-		<section aria-labelledby="commission-contact-heading" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="commission-contact-heading"
-					eyebrow="05 — Contact"
-					title="連絡方法"
-					titleEn="How to reach"
-				/>
-				<div
+		<PageSection labelledBy="commission-contact-heading" separator>
+			<SectionHeading
+				id="commission-contact-heading"
+				eyebrow="05 — Contact"
+				title="連絡方法"
+				titleEn="How to reach"
+			/>
+			<div
+				className={css({
+					marginBlockStart: '6',
+					padding: '6',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.subtle',
+					borderRadius: 'md',
+					maxWidth: '720px',
+				})}
+			>
+				<p
+					lang="ja"
 					className={css({
-						marginBlockStart: '6',
-						padding: '6',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.subtle',
-						borderRadius: 'md',
-						maxWidth: '720px',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						color: 'text.default',
 					})}
 				>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.default',
-						})}
-					>
-						連絡は
-						<a href="/contact" className={inlineLinkStyle}>
-							/contact
-						</a>
-						に掲載している verified channel
-						経由で行います。このページにはメールアドレスを直接掲載していません。
-					</p>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '3',
-							fontFamily: 'sans',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						通話などでのミーティングの対応は行っていません。料金は公開していません。受付再開後、依頼内容に応じて個別にお見積もりします。
-					</p>
-				</div>
-			</Container>
-		</section>
+					連絡は
+					<a href="/contact" className={inlineLinkStyle}>
+						/contact
+					</a>
+					に掲載している verified channel
+					経由で行います。このページにはメールアドレスを直接掲載していません。
+				</p>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '3',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					通話などでのミーティングの対応は行っていません。料金は公開していません。受付再開後、依頼内容に応じて個別にお見積もりします。
+				</p>
+			</div>
+		</PageSection>
 	);
 }
 
@@ -560,17 +538,6 @@ const skipLinkStyle = css({
 		outline: '2px solid {colors.border.focus}',
 		outlineOffset: '2px',
 	},
-});
-
-const heroStyle = css({
-	paddingBlock: { base: '16', lg: '32' },
-});
-
-const sectionStyle = css({
-	paddingBlock: { base: '16', lg: '24' },
-	borderTopWidth: '1px',
-	borderTopStyle: 'solid',
-	borderTopColor: 'border.subtle',
 });
 
 const inlineLinkStyle = css({

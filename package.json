@@ -87,6 +87,7 @@
 		"security:redirect:report": "node scripts/redirect-validation-report.mjs",
 		"capture:analytics-consent": "node scripts/capture-analytics-consent.mjs",
 		"capture:home-current-projects": "node scripts/capture-home-current-projects.mjs",
+		"capture:home-928": "node scripts/capture-home-928.mjs",
 		"capture:github-activity": "node scripts/capture-github-activity.mjs",
 		"capture:activity-334": "node scripts/capture-activity-334.mjs",
 		"capture:activity-timeline": "node scripts/capture-activity-timeline.mjs",

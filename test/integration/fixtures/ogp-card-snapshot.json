@@ -82,6 +82,12 @@
 		"ogDescription": "Web 開発・アプリケーション開発・映像制作の依頼案内。受付状況と依頼時に必要な情報を掲載しています。",
 		"ogUrl": "https://rebuildup.dev/commission"
 	},
+	"/stack": {
+		"ogType": "website",
+		"ogTitle": "開発スタック / Stack — rebuildup.dev",
+		"ogDescription": "my-web-2026 を動かしている runtime・framework・データ層・開発ツールの一覧。version は package.json と quality/profile.yaml から読み取り、各項目に根拠 source へのリンクを付けています。",
+		"ogUrl": "https://rebuildup.dev/stack"
+	},
 	"/contact": {
 		"ogType": "website",
 		"ogTitle": "Contact — rebuildup.dev",

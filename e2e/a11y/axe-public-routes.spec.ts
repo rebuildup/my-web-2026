@@ -56,9 +56,9 @@ import { AUDITED_ROUTES, AXE_TAGS, SKIPPED_ROUTES } from './axe-manifest';
  * the ledger's evidence path, and `quality/route-coverage.json`
  * cross-checks that the two agree):
  *
- *   "/"  "/about"  "/keyboard"  "/links"  "/commission"  "/contact"
- *   "/portfolio"  "/portfolio/my-web-2026"  "/projects/dotfiles"
- *   "/tools"  "/design-system"  "/admin/login"
+ *   "/"  "/about"  "/keyboard"  "/links"  "/commission"  "/stack"
+ *   "/contact"  "/portfolio"  "/portfolio/my-web-2026"
+ *   "/projects/dotfiles"  "/tools"  "/design-system"  "/admin/login"
  *
  * Where the scan runs
  * -------------------

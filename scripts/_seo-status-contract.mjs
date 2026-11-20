@@ -211,6 +211,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		openDecision: null,
 	},
 	{
+		id: 'public-stack',
+		route: '/stack',
+		request: 'GET /stack (anonymous)',
+		expect: { status: 200, robots: 'absent', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF],
+		why: 'Public development-stack reference (Issue #381). A 200 with no robots meta is the contract; the page is indexable but deliberately not in sitemap.xml.',
+		openDecision: null,
+	},
+	{
 		id: 'public-projects-dotfiles',
 		route: '/projects/dotfiles',
 		request: 'GET /projects/dotfiles (anonymous)',

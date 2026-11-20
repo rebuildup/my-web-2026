@@ -17,6 +17,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as KeyboardRouteImport } from './routes/keyboard'
 import { Route as LinksRouteImport } from './routes/links'
+import { Route as StackRouteImport } from './routes/stack'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminEmojiCatalogRouteImport } from './routes/admin.emoji-catalog'
 import { Route as AdminImagesRouteImport } from './routes/admin.images'
@@ -68,6 +69,11 @@ const KeyboardRoute = KeyboardRouteImport.update({
 const LinksRoute = LinksRouteImport.update({
   id: '/links',
   path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StackRoute = StackRouteImport.update({
+  id: '/stack',
+  path: '/stack',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
   '/links': typeof LinksRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
   '/links': typeof LinksRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
   '/links': typeof LinksRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/keyboard'
     | '/links'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/keyboard'
     | '/links'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/keyboard'
     | '/links'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -274,6 +286,7 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   KeyboardRoute: typeof KeyboardRoute
   LinksRoute: typeof LinksRoute
+  StackRoute: typeof StackRoute
   PortfolioSlugRoute: typeof PortfolioSlugRoute
   ProjectsDotfilesRoute: typeof ProjectsDotfilesRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/links'
       fullPath: '/links'
       preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stack': {
+      id: '/stack'
+      path: '/stack'
+      fullPath: '/stack'
+      preLoaderRoute: typeof StackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -457,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   KeyboardRoute: KeyboardRoute,
   LinksRoute: LinksRoute,
+  StackRoute: StackRoute,
   PortfolioSlugRoute: PortfolioSlugRoute,
   ProjectsDotfilesRoute: ProjectsDotfilesRoute,
   ToolsSlugRoute: ToolsSlugRoute,

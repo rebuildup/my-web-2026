@@ -126,6 +126,12 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		note: 'Commission — the parked intake-status surface (Issue #390).',
 	},
 	{
+		path: '/stack',
+		title: '開発スタック / Stack — rebuildup.dev',
+		expect: 'pass',
+		note: 'Stack — the development-stack reference (Issue #381).',
+	},
+	{
 		path: '/contact',
 		title: 'Contact — rebuildup.dev',
 		expect: 'pass',

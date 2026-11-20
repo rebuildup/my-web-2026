@@ -63,12 +63,14 @@ const FACET_LABEL: Readonly<Record<string, string>> = {
 
 /**
  * On-site reference links in the footer (Issue #390 added `/links`
- * and `/commission`; `/keyboard` predates them). Order is editorial.
+ * and `/commission`; `/keyboard` predates them; Issue #381 added
+ * `/stack`). Order is editorial.
  */
 const SITE_REFERENCE_LINKS: ReadonlyArray<{ href: string; label: string }> = [
 	{ href: '/links', label: 'リンク集 / Links' },
 	{ href: '/commission', label: '制作依頼 / Commission' },
 	{ href: '/keyboard', label: 'キーボード配列 / Keyboard' },
+	{ href: '/stack', label: '開発スタック / Stack' },
 ];
 
 const siteReferenceLinkStyle = css({

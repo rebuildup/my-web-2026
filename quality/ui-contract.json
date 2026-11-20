@@ -736,7 +736,6 @@
 				"backgroundColor: bg.canvas": 1,
 				"marginBlockEnd on surface object": 1,
 				"paddingBlock on surface object": 1,
-				"raw <section> element": 2,
 				"surface + block padding/min-height outside PageSection": 2
 			},
 			"clause": "C-1/C-3"
@@ -2173,7 +2172,6 @@
 				"src/admin/invitations/invitations.tsx",
 				"src/admin/keys/keys.tsx",
 				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
 				"src/home/capabilities/grid.tsx",
 				"src/home/current/CurrentProjects.tsx",
 				"src/home/footer.tsx",
@@ -2224,7 +2222,6 @@
 				"src/about/components/AboutPage.tsx",
 				"src/about/components/LinksPage.tsx",
 				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
 				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/projects/DotfilesIntroductionPage.tsx",

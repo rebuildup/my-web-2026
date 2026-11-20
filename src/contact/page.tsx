@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
-import { Container } from '../editorial/primitives/Container';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
 import type { PublicContactChannel } from './public';
@@ -66,100 +66,84 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 			>
 				本文へスキップ
 			</a>
-			<section
-				aria-labelledby="contact-hero-title"
-				className={css({
-					// Issue #300: hero beat is 16/32 (layout-system.md §3.3) —
-					// was 16/24, i.e. a body-section rhythm on a hero.
-					paddingBlock: { base: '16', lg: '32' },
-				})}
-			>
-				<Container>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						my-web-2026 · /contact
-					</span>
-					<h1
-						id="contact-hero-title"
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '2',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							color: 'text.default',
-							letterSpacing: '-0.03em',
-						})}
-					>
-						Contact
-					</h1>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '6',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-							maxWidth: '640px',
-						})}
-					>
-						現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel
-						は現在 re-verified されていないため、ここには載せていません。
-					</p>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '3',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.6',
-							color: 'text.muted',
-							maxWidth: '640px',
-						})}
-					>
-						制作依頼の受付状況は
-						<a href="/commission" className={css({ color: 'text.accent' })}>
-							/commission
-						</a>
-						を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
-					</p>
-				</Container>
-			</section>
-			<main id="main">
-				<section
-					aria-labelledby="channels-heading"
+			<PageSection rhythm="hero" labelledBy="contact-hero-title">
+				<span
 					className={css({
-						paddingBlock: { base: '16', lg: '24' },
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
 					})}
 				>
-					<Container>
-						<SectionHeading
-							id="channels-heading"
-							eyebrow="01 — Channels"
-							title="現在利用可能な channel"
-							description="各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。"
-							variant="default"
-						/>
-						{empty ? (
-							<EmptyState unverifiable={unverifiableCount > 0} />
-						) : (
-							<>
-								{channels.some((ch) => ch.audit === 'due') ? <AuditDueNotice /> : null}
-								<ChannelList channels={channels} />
-							</>
-						)}
-					</Container>
-				</section>
+					my-web-2026 · /contact
+				</span>
+				<h1
+					id="contact-hero-title"
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '2',
+						fontFamily: 'heading',
+						fontSize: { base: '3xl', lg: '4xl' },
+						fontWeight: '700',
+						lineHeight: { base: '1.15', lg: '1.05' },
+						color: 'text.default',
+						letterSpacing: '-0.03em',
+					})}
+				>
+					Contact
+				</h1>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						fontFamily: 'sans',
+						fontSize: 'lg',
+						lineHeight: '1.6',
+						color: 'text.default',
+						maxWidth: '640px',
+					})}
+				>
+					現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel
+					は現在 re-verified されていないため、ここには載せていません。
+				</p>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '3',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.6',
+						color: 'text.muted',
+						maxWidth: '640px',
+					})}
+				>
+					制作依頼の受付状況は
+					<a href="/commission" className={css({ color: 'text.accent' })}>
+						/commission
+					</a>
+					を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
+				</p>
+			</PageSection>
+			<main id="main">
+				<PageSection labelledBy="channels-heading">
+					<SectionHeading
+						id="channels-heading"
+						eyebrow="01 — Channels"
+						title="現在利用可能な channel"
+						description="各 channel には用途を明示しています。掲載中の channel は実在が確認されたものです。最終確認から時間が経過した channel には要再検証の注記を付けています。"
+						variant="default"
+					/>
+					{empty ? (
+						<EmptyState unverifiable={unverifiableCount > 0} />
+					) : (
+						<>
+							{channels.some((ch) => ch.audit === 'due') ? <AuditDueNotice /> : null}
+							<ChannelList channels={channels} />
+						</>
+					)}
+				</PageSection>
 			</main>
 		</>
 	);

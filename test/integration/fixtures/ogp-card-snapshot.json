@@ -76,6 +76,12 @@
 		"ogDescription": "公開している外部アカウントとサイト内ページの一覧。連絡先は /contact の verified channel を参照。",
 		"ogUrl": "https://rebuildup.dev/links"
 	},
+	"/now": {
+		"ogDescription": "続けているプロジェクトの全件一覧。開始日・最終更新・活動量を出所付きで掲載しています。",
+		"ogTitle": "現在地 / Where I am now — rebuildup.dev",
+		"ogType": "website",
+		"ogUrl": "https://rebuildup.dev/now"
+	},
 	"/commission": {
 		"ogType": "website",
 		"ogTitle": "制作依頼 / Commission — rebuildup.dev",

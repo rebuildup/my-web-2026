@@ -4781,6 +4781,79 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "334-event-links",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:880b00e9fd5791c2724493fa46fde428dd3a38ccd3e6e75ffcaa0fe76e00d12d",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #334 residual の feed item ref 表示に伴い追加された日本語セグメント 3 件(オープン / クローズ / マージ済み)と、再生成スナップショット内の非公開プロジェクト表示名の removed+added ペアをレビュー。state ラベルは GitHub の open/closed/merged 語彙への対応辞書(src/home/activity/event-labels.ts の REF_STATE_LABELS_JA)で、イベント種別ラベルと同じ「短い名詞・未知値は raw fallback」の規則に従う。merged は PR のみが取りうる状態で generator が pull_request.merged/merged_at からのみ導出し、issue には出さない。新規の時制主張・権限主張・数値の創作は無い。",
+				"disposition": "3 つの state ラベルは contract.ts の ActivityFeedItemRef.state enum(open/closed/merged)と 1 対 1 で対応し、GitHub の Issue/PR state 語彙の一般的な日本語訳として一意。カードは ref.state が存在する場合のみ表示するため、state を持たないイベントに余計な主張を足さない。github-activity.json の 非公開プロジェクト ペアはジェネレータ再実行による同一文字列の再出力で、意味差分は無い。owner 判断の artefact は未取得のため decision は pending(Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は branch 名で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "オープン",
+					"verdict": "intentional",
+					"note": "GitHub issue/PR state 'open' の表示ラベル。state が open と確認できたイベントにのみ付く。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "クローズ",
+					"verdict": "intentional",
+					"note": "GitHub issue/PR state 'closed' の表示ラベル。open でも merged でもない終了状態をそのまま訳したもの。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "マージ済み",
+					"verdict": "intentional",
+					"note": "PR が merged === true または merged_at を持つ場合のみ generator が付与する state 'merged' の表示ラベル。issue には適用されない。"
+				},
+				{
+					"path": "src/home/activity/github-activity.json",
+					"before": "非公開プロジェクト",
+					"after": "非公開プロジェクト",
+					"verdict": "equivalent",
+					"note": "ジェネレータ再実行によるスナップショット再生成で、private repo エントリの匿名エイリアス name が diff 上 removed と added のペアとして現れた。両側とも同一文字列で、公開 copy の意味は変わらない。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/334",
+						"note": "本変更の実装対象。公開 Issue/PR の動きを読み取り専用で可視化する residual。"
+					},
+					{
+						"type": "commit",
+						"reference": "ae712a9f35bcbd44411d4f868f748ecd52416d0c",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/contract.ts",
+						"note": "ActivityFeedItemRef.state の enum(open/closed/merged)がラベル辞書の値域であることの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "scripts/sync-github-activity.mjs",
+						"note": "merged は pull_request.merged / merged_at のみから導出し、state は payload が証明する場合のみ出力することの典拠。"
+					}
+				]
+			}
 		}
 	]
 }

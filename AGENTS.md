@@ -589,6 +589,28 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
 
+### Committed-text contamination (Issue #1038)
+
+- Agent tool-call serialisation fragments were once concatenated onto
+  the EOF of three committed verification documents; `tail`-style
+  inspection missed them because no newline preceded the bytes. Only
+  a byte-level scan finds them, so `pnpm run
+  docs:contamination:check` (a `validate:fast` component) scans every
+  file `git ls-files` reports for the prohibited marker set. The set
+  lives in ONE place —
+  `scripts/check-doc-contamination.mjs` (`CONTAMINATION_MARKERS` +
+  `CONTAMINATION_PATTERNS`). **Never spell a marker literally in
+  prose, docs or code** — this repository is itself scanned, and the
+  script builds its own needles by concatenation for exactly that
+  reason.
+- **Before committing staged text** (docs, JSON, source — anything
+  the gate scans), byte-check the staged content for those markers:
+  `git diff --cached` piped through `grep -F` against the constant,
+  or simply run `pnpm run docs:contamination:check` on the tree.
+  Re-run it after pushing as well. A tracked file the gate cannot
+  read fails loudly — that is a broken checkout to fix, never a
+  reason to remove the path from the index.
+
 Issue #937 split the CI triggers so heavy verification runs once per
 candidate instead of once per ticket merge:
 

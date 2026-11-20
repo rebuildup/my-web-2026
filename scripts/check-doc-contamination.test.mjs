@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -75,6 +75,56 @@ describe('check-doc-contamination', () => {
 			} finally {
 				rmSync(dir, { recursive: true, force: true });
 			}
+		}
+	});
+
+	it('fails on generic bracket-pipe envelopes the incident did not name', () => {
+		// The envelopes are assembled so THIS file does not carry the
+		// byte sequence the gate forbids.
+		for (const envelope of [
+			'<' + '|' + 'im' + '_end' + '|' + '>',
+			'[' + '|' + 'tool' + '_call' + '|' + ']',
+		]) {
+			const dir = makeFixture({
+				'docs/contaminated.md': `# title\nvisible text ${envelope}`,
+			});
+			try {
+				const res = runGate(dir);
+				assert.equal(res.status, 1, 'envelope should fail');
+				assert.match(res.stderr, /docs\/contaminated\.md/);
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it('fails when a tracked file is missing from the worktree', () => {
+		const dir = makeFixture({
+			'docs/gone.md': '# deleted\n',
+			'docs/ok.md': '# fine\n',
+		});
+		try {
+			rmSync(join(dir, 'docs', 'gone.md'));
+			const res = runGate(dir);
+			assert.equal(res.status, 1, 'a tracked path the worktree cannot supply must fail, not skip');
+			assert.match(res.stderr, /docs\/gone\.md/);
+			assert.match(res.stderr, /unreadable/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('fails when a tracked symlink dangles', () => {
+		const dir = makeFixture({ 'docs/ok.md': '# fine\n' });
+		try {
+			symlinkSync('missing-target', join(dir, 'docs', 'link.md'));
+			execFileSync('git', ['add', 'docs/link.md'], { cwd: dir });
+			const res = runGate(dir);
+			assert.equal(res.status, 1, 'a tracked path that cannot be read must fail, not skip');
+			assert.match(res.stderr, /docs\/link\.md/);
+			assert.match(res.stderr, /unreadable/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
 		}
 	});
 

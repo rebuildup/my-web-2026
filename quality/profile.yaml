@@ -133,6 +133,11 @@ gates:
       # Issue #80: the Tool Registry manifest — manifest pin == gitlink
       # == checked-out commit, read from `src/tools/manifest.json`.
       - 'pnpm run tools:check'
+      # Issue #1107 / ADR-0022: the UI composition contract. AST-based
+      # detection of C-1…C-8 violations outside src/editorial/**;
+      # legacy debt is carried in quality/ui-contract.json allowlists
+      # and shrinks as #1108/#1109 migrate pages. Read-only, offline.
+      - 'pnpm run ui:contract:check'
       # Issue #474: the dependency install-lifecycle audit. The reviewed
       # policy is `quality/install-scripts.json`; the runbook is
       # docs/runbook/install-script-audit.md.

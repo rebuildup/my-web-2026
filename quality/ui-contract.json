@@ -14,12 +14,24 @@
 	},
 	"scope": {
 		"root": "src",
-		"extensions": [".tsx", ".ts"],
-		"exemptPrefixes": ["src/editorial/"],
+		"extensions": [
+			".tsx",
+			".ts"
+		],
+		"exemptPrefixes": [
+			"src/editorial/"
+		],
 		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
 	},
 	"primitives": {
-		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split"],
+		"layout": [
+			"PageSection",
+			"Container",
+			"Grid",
+			"Stack",
+			"Cluster",
+			"Split"
+		],
 		"components": [
 			"SectionHeading",
 			"Button",
@@ -76,14 +88,19 @@
 					},
 					{
 						"property": "backgroundColor",
-						"values": ["bg.canvas"],
+						"values": [
+							"bg.canvas"
+						],
 						"note": "painting the page ground by hand"
 					},
 					{
 						"property": "borderTop",
 						"note": "section separators are PageSection's borderTop prop"
 					},
-					{ "property": "borderBottom", "note": "same, for bottom separators" }
+					{
+						"property": "borderBottom",
+						"note": "same, for bottom separators"
+					}
 				]
 			},
 			"rationale": "Without this clause every section re-decides the page's vertical rhythm, which is how the current HOME became a stack of unrelated beats."
@@ -135,7 +152,11 @@
 			"name": "section-tone-owner",
 			"summary": "Colored/shaded section bands are expressed only through PageSection tone.",
 			"detection": {
-				"styleProperties": ["backgroundColor", "background", "backgroundImage"],
+				"styleProperties": [
+					"backgroundColor",
+					"background",
+					"backgroundImage"
+				],
 				"sectionScaleHeuristic": "a style object containing both a band surface property AND (paddingBlock* OR minHeight OR width:'100%' with block padding) is section-scale and must use PageSection tone",
 				"panelPath": "smaller classified surfaces use Panel variant=\"field.*\"; arbitrary backgroundColor on a non-allowlisted element is a violation"
 			},
@@ -174,8 +195,12 @@
 					},
 					{
 						"element": "ul",
-						"elementAliases": ["ol"],
-						"forbiddenStyleProperties": ["display"],
+						"elementAliases": [
+							"ol"
+						],
+						"forbiddenStyleProperties": [
+							"display"
+						],
 						"note": "list layout goes through Stack/Grid presets; listStyle:'none' resets stay allowed"
 					}
 				]
@@ -189,7 +214,9 @@
 				"jsxPatterns": [
 					{
 						"element": "a",
-						"elementAliases": ["button"],
+						"elementAliases": [
+							"button"
+						],
 						"controlStyleProperties": [
 							"padding",
 							"paddingInline",
@@ -266,10 +293,1715 @@
 			"enumerationAllowlist: page files allowed unbounded .map pending the /now + index-route migration (#1108)."
 		]
 	},
-	"colorAllowlist": [],
-	"gridAllowlist": [],
-	"sectionAllowlist": [],
-	"controlAllowlist": [],
-	"listAllowlist": [],
-	"enumerationAllowlist": []
+	"colorAllowlist": [
+		{
+			"path": "src/home/ads/units.tsx",
+			"clause": "C-2",
+			"reason": "legacy debt pending #1109 semantic-token migration"
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clause": "C-2",
+			"reason": "legacy debt pending #1109 semantic-token migration"
+		}
+	],
+	"gridAllowlist": [
+		{
+			"path": "src/about/components/AboutPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/about/components/LinksPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/contact/commission-page.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/contact/page.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/capabilities/grid.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/composer.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/footer.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/guide/GuideSection.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/home/status/tiles.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/legal/AssetLicenseReview.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/personal/melting-face/MeltingFace.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioList.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/ProjectCard.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/portfolio/components/VideoView.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/admin.emoji-catalog.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/DesignSystemPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/ImageCls.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/stack/StackPage.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		},
+		{
+			"path": "src/routes/tools.index.tsx",
+			"clause": "C-4",
+			"reason": "legacy debt pending #1109 Grid/Split preset migration"
+		}
+	],
+	"sectionAllowlist": [
+		{
+			"path": "src/about/components/AboutPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/about/components/CareerTimeline.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/about/components/LinksPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/about/components/SkillsList.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/composer.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/invitations/accept-view.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/admin/keys/step-up-panel.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/contact/commission-page.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/contact/page.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/external-api/ExternalReadCard.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/ads/units.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/capabilities/grid.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/composer.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/guide/GuideSection.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/hero.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/presence/PresenceCard.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/status/incident-list.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/home/status/tiles.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardDiagram.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/legal/AssetLicenseReview.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/personal/engagement/Engagement.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/personal/handle-map/HandleMap.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/personal/melting-face/MeltingFace.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/EmptyState.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/portfolio/components/Markdown.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioEvidenceNotice.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioList.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioMedia.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/activity/ActivityPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/admin.emoji-catalog.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/admin.index.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/admin.invitations.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/admin.login.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/DesignSystemPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/sections/ImageCls.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clause": "C-3",
+			"reason": "legacy debt pending #1109 PageSection tone migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/stack/StackPage.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		},
+		{
+			"path": "src/routes/tools.index.tsx",
+			"clause": "C-1",
+			"reason": "legacy debt pending #1109 migration to PageSection"
+		}
+	],
+	"controlAllowlist": [
+		{
+			"path": "src/about/components/AboutPage.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/invitations/accept-view.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/admin/keys/step-up-panel.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/contact/page.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/external-api/ExternalReadCard.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/home/ads/units.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/home/capabilities/grid.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/home/composer.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/EmptyState.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/FacetFilter.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioList.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/ProjectCard.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/VideoView.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/portfolio/components/ViewSwitcher.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/routes/admin.emoji-catalog.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/routes/admin.invitations.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/routes/admin.login.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clause": "C-6",
+			"reason": "legacy debt pending #1109 Button/TextLink migration"
+		}
+	],
+	"listAllowlist": [
+		{
+			"path": "src/about/components/AboutPage.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/about/components/LinksPage.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/admin/composer.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/contact/commission-page.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/contact/page.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/home/capabilities/grid.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/home/composer.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/home/footer.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioList.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/portfolio/components/VideoView.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		},
+		{
+			"path": "src/routes/stack/StackPage.tsx",
+			"clause": "C-5",
+			"reason": "legacy debt pending #1109 list-primitive migration"
+		}
+	],
+	"enumerationAllowlist": [
+		{
+			"path": "src/home/access/tiles.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/capabilities/grid.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/current/load.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/current/source.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/format.compare.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/guide/GuideSection.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/presence/PresenceCard.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/presence/reader.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/privacy-notice.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/reactions/emoji-catalog.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/reactions/production-read.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/home/status/tiles.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/CjkLineBreak.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/design-system/tokens.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/portfolio/index.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/stack/StackPage.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/stack/resolve.ts",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/tools.$slug.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		},
+		{
+			"path": "src/routes/tools.index.tsx",
+			"clause": "C-8",
+			"reason": "legacy debt pending #1108 HOME/index-route curation"
+		}
+	],
+	"duplicateAllowlist": [
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/contact/page.tsx",
+				"src/home/composer.tsx",
+				"src/home/footer.tsx",
+				"src/home/guide/GuideSection.tsx",
+				"src/home/guide/VisitTrail.tsx",
+				"src/home/hero.tsx",
+				"src/home/privacy-notice-compact.tsx",
+				"src/home/privacy-notice.tsx",
+				"src/home/reactions/widget.tsx",
+				"src/home/status/incident-list.tsx",
+				"src/keyboard/components/KeyboardDiagram.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/EmptyState.tsx",
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/Markdown.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/portfolio/components/VideoView.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/ReactionPicker.tsx",
+				"src/routes/stack/StackPage.tsx",
+				"src/routes/tools.$slug.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/accept-view.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/home/capabilities/grid.tsx",
+				"src/home/composer.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/home/footer.tsx",
+				"src/home/hero.tsx",
+				"src/home/presence/PresenceCard.tsx",
+				"src/home/status/tiles.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/admin.login.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/home/composer.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/home/composer.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx",
+				"src/routes/tools.$slug.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/page.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/page.tsx",
+				"src/home/footer.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/footer.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/composer.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/external-api/ExternalReadCard.tsx",
+				"src/home/access/tiles.tsx",
+				"src/home/reactions/widget.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/capabilities/grid.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/access/tiles.tsx",
+				"src/portfolio/components/MediaPlaceholder.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioMedia.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/ReactionPicker.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx",
+				"src/routes/design-system/sections/SurfaceTreatments.tsx",
+				"src/routes/design-system/sections/Typography.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/portfolio/components/PortfolioList.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/home/guide/GuideSection.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/home/footer.tsx",
+				"src/home/privacy-notice-compact.tsx",
+				"src/portfolio/components/Markdown.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/routes/tools.$slug.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/admin/keys/step-up-panel.tsx",
+				"src/home/presence/PresenceCard.tsx",
+				"src/personal/engagement/Engagement.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/portfolio/components/VideoView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/capabilities/grid.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/portfolio/components/VideoView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/portfolio/components/DesignView.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/portfolio/components/VideoView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/home/status/incident-list.tsx",
+				"src/home/status/tiles.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/routes/design-system/sections/ImageCls.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/CareerTimeline.tsx",
+				"src/admin/keys/step-up-panel.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/admin.keys.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/capabilities/grid.tsx",
+				"src/legal/AssetLicenseReview.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/ImageCls.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/activity/Timeline.tsx",
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/home/guide/GuideSection.tsx",
+				"src/home/presence/PresenceCard.tsx",
+				"src/personal/engagement/Engagement.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/routes/admin.emoji-catalog.tsx",
+				"src/routes/admin.invitations.tsx",
+				"src/routes/admin.keys.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/portfolio/components/ProjectCard.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/reactions/widget.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/portfolio/components/Markdown.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/admin/composer.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/admin/keys/step-up-panel.tsx",
+				"src/home/access/tiles.tsx",
+				"src/home/footer.tsx",
+				"src/routes/admin.emoji-catalog.tsx",
+				"src/routes/admin.invitations.tsx",
+				"src/routes/admin.keys.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/home/hero.tsx",
+				"src/portfolio/components/DevelopView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/LinksPage.tsx",
+				"src/contact/commission-page.tsx",
+				"src/routes/activity/ActivityPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/LinksPage.tsx",
+				"src/contact/page.tsx",
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/routes/admin.emoji-catalog.tsx",
+				"src/routes/admin.keys.tsx",
+				"src/routes/design-system/sections/ImageCls.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx",
+				"src/routes/design-system/sections/Typography.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/SkillsList.tsx",
+				"src/admin/images/images.tsx",
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/routes/admin.invitations.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/SkillsList.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/home/guide/GuideSection.tsx",
+				"src/legal/AssetLicenseReview.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/SkillsList.tsx",
+				"src/home/privacy-notice-compact.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/activity/Timeline.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/activity/Timeline.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/activity/Timeline.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/home/activity/GitHubActivityCard.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/routes/design-system/sections/CjkLineBreak.tsx",
+				"src/routes/design-system/sections/ImageCls.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx",
+				"src/routes/design-system/sections/TableCode.tsx",
+				"src/routes/design-system/sections/Typography.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/legal/AssetLicenseReview.tsx",
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/routes/design-system/sections/SpacingRuler.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/invitations/accept-view.tsx",
+				"src/external-api/ExternalReadCard.tsx",
+				"src/home/reactions/widget.tsx",
+				"src/routes/admin.emoji-catalog.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/contact/commission-page.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/keys/step-up-panel.tsx",
+				"src/contact/commission-page.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/routes/admin.emoji-catalog.tsx",
+				"src/routes/admin.keys.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/keys/step-up-panel.tsx",
+				"src/routes/admin.emoji-catalog.tsx",
+				"src/routes/admin.keys.tsx",
+				"src/routes/admin.login.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/contact/commission-page.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/contact/commission-page.tsx",
+				"src/contact/page.tsx",
+				"src/external-api/ExternalReadCard.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/home/access/tiles.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/StatusAccents.tsx",
+				"src/routes/design-system/sections/SurfaceTreatments.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/home/capabilities/grid.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/ReactionPicker.tsx",
+				"src/routes/design-system/sections/SpacingRuler.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/home/capabilities/grid.tsx",
+				"src/home/footer.tsx",
+				"src/home/status/tiles.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/home/capabilities/grid.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/home/data-source-badge.tsx",
+				"src/home/privacy-notice.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/keyboard/components/KeyboardDiagram.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioEvidenceNotice.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/portfolio/components/VideoView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/legal/AssetLicenseReview.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/legal/AssetLicenseReview.tsx",
+				"src/personal/engagement/Engagement.tsx",
+				"src/personal/handle-map/HandleMap.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/personal/engagement/Engagement.tsx",
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/routes/stack/StackPage.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/personal/melting-face/MeltingFace.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/DesignView.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/VideoView.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/ProjectCard.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx",
+				"src/routes/admin.keys.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/PortfolioCaseStudy.tsx",
+				"src/portfolio/components/PortfolioProjectHistory.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/portfolio/components/VideoView.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/portfolio/components/VideoView.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/SpacingRuler.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		}
+	]
 }

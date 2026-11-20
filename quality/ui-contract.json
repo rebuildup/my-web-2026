@@ -1,0 +1,275 @@
+{
+	"schema_version": 1,
+	"issue": "#1105",
+	"gate": "ui:contract:check",
+	"contract": {
+		"adr": "docs/adr/ADR-0022-editorial-composition-contract.md",
+		"spec": "src/editorial/layout-system.md",
+		"review": "docs/runbook/ui-visual-review.md",
+		"notes": [
+			"The design system is a constraint system: this file is the machine-readable half of the composition contract. layout-system.md is the prose half; where they disagree the ADR wins.",
+			"Detection is property/context-aware, never a blanket text scan: a hex literal in a test fixture, a data file or an icon path table is not a violation. Only color-valued properties inside style objects (css({}), style props, cva variants) and the JSX patterns named per clause are inspected.",
+			"Every allowlist entry carries a reason. An entry that waives nothing fails. Growing an allowlist is a contract change reviewed like code; shrinking it is the migration tickets' job (#1109)."
+		]
+	},
+	"scope": {
+		"root": "src",
+		"extensions": [".tsx", ".ts"],
+		"exemptPrefixes": ["src/editorial/"],
+		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
+	},
+	"primitives": {
+		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split"],
+		"components": [
+			"SectionHeading",
+			"Button",
+			"TextLink",
+			"Panel",
+			"Badge",
+			"StateMark",
+			"RecordList",
+			"RecordRow",
+			"Disclosure",
+			"MediaFrame",
+			"MaterialSymbol"
+		],
+		"notes": [
+			"Names are the L1/L2 vocabulary of layout-system.md §1. #1106 implements them; until a primitive exists its clause is enforced against the allowlist, not against the missing import.",
+			"SectionHeading is an L2 component that internally uses the split grid rule; it is NOT a Grid consumer violation."
+		]
+	},
+	"tones": [
+		"ground",
+		"sunken",
+		"raised",
+		"inverse",
+		"field.design",
+		"field.code",
+		"field.writing",
+		"field.tool"
+	],
+	"clauses": {
+		"C-1": {
+			"name": "section-surface-owner",
+			"summary": "Section-level rhythm, page background and section separators belong to PageSection alone.",
+			"detection": {
+				"styleProperties": [
+					"paddingBlock",
+					"paddingBlockStart",
+					"paddingBlockEnd",
+					"paddingTop",
+					"paddingBottom",
+					"marginBlock",
+					"marginBlockStart",
+					"marginBlockEnd"
+				],
+				"jsxPatterns": [
+					{
+						"element": "section",
+						"note": "a raw <section> outside editorial must be a PageSection or an allowlisted page-composition file"
+					}
+				],
+				"valueRules": [
+					{
+						"property": "background",
+						"note": "bg.canvas on a section-scale element is a page-background decision"
+					},
+					{
+						"property": "backgroundColor",
+						"values": ["bg.canvas"],
+						"note": "painting the page ground by hand"
+					},
+					{
+						"property": "borderTop",
+						"note": "section separators are PageSection's borderTop prop"
+					},
+					{ "property": "borderBottom", "note": "same, for bottom separators" }
+				]
+			},
+			"rationale": "Without this clause every section re-decides the page's vertical rhythm, which is how the current HOME became a stack of unrelated beats."
+		},
+		"C-2": {
+			"name": "semantic-color-only",
+			"summary": "Color-valued properties resolve to semantic tokens only.",
+			"colorProperties": [
+				"backgroundColor",
+				"background",
+				"backgroundImage",
+				"color",
+				"borderColor",
+				"borderTopColor",
+				"borderBottomColor",
+				"borderLeftColor",
+				"borderRightColor",
+				"outlineColor",
+				"fill",
+				"stroke",
+				"textDecorationColor",
+				"caretColor",
+				"accentColor",
+				"columnRuleColor",
+				"textEmphasisColor",
+				"textShadow",
+				"boxShadow"
+			],
+			"forbiddenValuePatterns": [
+				"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+				"^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\\(",
+				"^\\{colors\\.(?:brand|neutral|charcoal|positive|negative|warning|design|code|writing|tool|mono)\\.",
+				"^(?:black|white|red|green|blue|gray|grey|silver|maroon|purple|fuchsia|lime|olive|yellow|navy|teal|aqua|orange)$"
+			],
+			"semanticValuePrefixes": [
+				"bg.",
+				"text.",
+				"border.",
+				"accent.",
+				"mono.",
+				"{colors.semantic.",
+				"currentColor",
+				"transparent",
+				"inherit"
+			],
+			"rationale": "Raw palette references and literals bypass the semantic layer, so a palette change ripples through feature code and per-component color decisions drift (the current accent-color-on-some-cards failure mode)."
+		},
+		"C-3": {
+			"name": "section-tone-owner",
+			"summary": "Colored/shaded section bands are expressed only through PageSection tone.",
+			"detection": {
+				"styleProperties": ["backgroundColor", "background", "backgroundImage"],
+				"sectionScaleHeuristic": "a style object containing both a band surface property AND (paddingBlock* OR minHeight OR width:'100%' with block padding) is section-scale and must use PageSection tone",
+				"panelPath": "smaller classified surfaces use Panel variant=\"field.*\"; arbitrary backgroundColor on a non-allowlisted element is a violation"
+			},
+			"rationale": "Color must carry section-level meaning (classification or emphasis), assigned by the composition contract — not invented per component. Decorative color is a review failure even when undetectable statically (layout-system.md §4.2)."
+		},
+		"C-4": {
+			"name": "grid-presets-only",
+			"summary": "Grid track definitions live in editorial layout primitives or the page-composition allowlist.",
+			"styleProperties": [
+				"gridTemplateColumns",
+				"gridTemplateRows",
+				"gridTemplateAreas",
+				"gridAutoFlow",
+				"gridAutoColumns",
+				"gridAutoRows"
+			],
+			"rationale": "Every bespoke grid is a competing coordinate system. The measured 4/8 + container contract only holds if feature code cannot invent tracks."
+		},
+		"C-5": {
+			"name": "list-primitive-required",
+			"summary": "Repeated rows/lists use RecordList/RecordRow, Grid+Panel or Stack; no per-item boxes.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "li",
+						"forbiddenStyleProperties": [
+							"border",
+							"borderWidth",
+							"borderStyle",
+							"borderColor",
+							"backgroundColor",
+							"background",
+							"borderRadius"
+						],
+						"note": "a boxed <li> draws a redundant container the section already frames"
+					},
+					{
+						"element": "ul",
+						"elementAliases": ["ol"],
+						"forbiddenStyleProperties": ["display"],
+						"note": "list layout goes through Stack/Grid presets; listStyle:'none' resets stay allowed"
+					}
+				]
+			},
+			"rationale": "layout-system.md §4 (proximity, not boxes) and C-8 (bounded lists) both depend on lists being composed, not decorated per item."
+		},
+		"C-6": {
+			"name": "control-primitives-required",
+			"summary": "Button/link affordances use Button/TextLink variants; hand-styled lookalikes are forbidden.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "a",
+						"elementAliases": ["button"],
+						"controlStyleProperties": [
+							"padding",
+							"paddingInline",
+							"paddingBlock",
+							"height",
+							"borderRadius",
+							"backgroundColor",
+							"background",
+							"borderWidth",
+							"borderStyle",
+							"borderColor",
+							"borderRadius"
+						],
+						"note": "an <a>/<button> styled as a control must be Button/TextLink or an allowlisted non-control (semantic row, tab, resize handle, swatch, editor surface)"
+					}
+				]
+			},
+			"rationale": "T3 Code's no-restyle rule: the same look needed twice is a variant on the primitive, not a third hand-rolled copy."
+		},
+		"C-7": {
+			"name": "no-duplicate-styling",
+			"summary": "The same normalized css({...}) literal in 3+ files is a missing primitive.",
+			"detection": {
+				"method": "normalize each css()/cva style object literal (sort keys, drop whitespace), hash it, group by hash across files; report hashes seen in >= minFiles files",
+				"minFiles": 3,
+				"exemptNote": "single-property resets (margin:0, padding:0, listStyle:none) below minProperties are ignored"
+			},
+			"rationale": "Duplication is the observable symptom of a missing abstraction; three copies is the promotion threshold (token-audit evidence rule)."
+		},
+		"C-8": {
+			"name": "curated-pages-enumerate-on-index",
+			"summary": "Public pages bound mapped collections; full sets live on dedicated index routes.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"pattern": ".map(",
+						"requiredNearby": [
+							".slice(",
+							"limit",
+							"Disclosure",
+							"ShowMore",
+							"showMore",
+							"SeeAll",
+							"すべて",
+							"href"
+						],
+						"scope": "src/home/**, src/routes/** page components",
+						"note": "a data collection rendered on a public page must bound the render or link to the index route that owns the enumeration"
+					}
+				],
+				"indexOwners": [
+					"/portfolio",
+					"/tools",
+					"/activity",
+					"/now",
+					"/projects/dotfiles",
+					"/stack",
+					"/links",
+					"/keyboard",
+					"/design-system"
+				]
+			},
+			"rationale": "HOME became a long list because every section mapped its whole collection. The full set must remain reachable — on the route whose obligation IS enumeration."
+		}
+	},
+	"allowlists": {
+		"notes": [
+			"Known-debt entries land here as the #1107 gate inventories current violations; migration tickets (#1108/#1109) shrink them. An allowlist entry is { path, clause, reason } and must still match a live violation.",
+			"colorAllowlist: files allowed raw color values (brand marks, icon assets, ad creatives).",
+			"gridAllowlist: files allowed bespoke gridTemplate* (page-composition files only, with reason).",
+			"sectionAllowlist: files allowed section-level properties outside PageSection (page chrome: masthead/footer/skip-link owned by editorial or composer).",
+			"controlAllowlist: elements intentionally not Button/TextLink (semantic rows, tabs, resize handles, swatches, editor surfaces).",
+			"listAllowlist: files allowed <li> boxes or unstyled list layout pending migration.",
+			"enumerationAllowlist: page files allowed unbounded .map pending the /now + index-route migration (#1108)."
+		]
+	},
+	"colorAllowlist": [],
+	"gridAllowlist": [],
+	"sectionAllowlist": [],
+	"controlAllowlist": [],
+	"listAllowlist": [],
+	"enumerationAllowlist": []
+}

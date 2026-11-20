@@ -1,255 +1,338 @@
-# Layout System
+# Layout System — Composition Contract
 
-> Layout rules for `src/editorial/`. Style is produced by Panda CSS
-> (`@pandacss/dev`); the **token contract** that every surface
-> consumes lives in `src/editorial/tokens.ts` (raw) and
-> `src/editorial/semantic-tokens.ts` (semantic). Components never
-> reach past the semantic layer.
+> Layout rules for `src/editorial/` and every public surface built on it.
+> Style is produced by Panda CSS (`@pandacss/dev`); the **token contract**
+> lives in `src/editorial/tokens.ts` (raw) and
+> `src/editorial/semantic-tokens.ts` (semantic). Components never reach
+> past the semantic layer.
+>
+> **This file is the operative specification of ADR-0022**
+> (`docs/adr/ADR-0022-editorial-composition-contract.md`). The ADR records
+> the decision; this file is what reviewers, the `ui:contract:check` gate
+> (`scripts/check-ui-contract.mjs`, data in `quality/ui-contract.json`)
+> and page authors enforce. Where they disagree, the ADR wins and this
+> file is corrected.
+>
+> The design system is a **constraint system**, not a component catalogue:
+> its job is to make low-quality screens hard to assemble. Every rule
+> below names what a layer owns and what a call site may not decide.
 
-## 1. Core rule — no box-style containment on public surfaces
-
-**Public surfaces use grid + whitespace, not bordered boxes.**
-
-The canonical layout vocabulary of every public surface is:
-
-```text
-section          →  paddingBlock (responsive vertical rhythm)
-  Container      →  max-width + responsive paddingInline
-    SectionHeading →  grid: 4/12 heading column  +  8/12 body column
-      body        →  grid / flex + gap (no border / no background)
-```
-
-A bordered "box" (1px `border.subtle` + padding + `borderRadius`)
-drawn around ordinary prose / list items is **forbidden** on public
-surfaces. It narrows the readable body, it duplicates the visual frame
-the surrounding section already provides (the §3.3 padding rhythm,
-optionally topped by a `borderTop` hairline), and it shifts the page's
-voice from "editorial whitespace" to "card grid" — which is not the
-design language.
-
-### Reserve bordered / contained surfaces for state-specific UI
-
-The exceptions that are allowed (state-specific UI):
-
-- **Buttons and toggle chips** — interactive controls whose primary
-  job is to read as "this can be pressed". Pill / square / rounded
-  backgrounds with a faint border are the affordance.
-- **Modal / dialog surfaces** — the picker skeleton, the emoji
-  picker dialog, any future modal.
-- **Empty / error / loading states** — `border.dashed` + a faint
-  background to mark "nothing to show right now, the data is in
-  flight / absent / broken".
-- **Code blocks** — `<pre>` / `<code>` blocks in the Markdown
-  renderer, where the box communicates "this is code, not prose".
-- **Form fields** — `<input>` / `<textarea>` / `<select>` (only when
-  ever introduced).
-- **Image placeholder / broken-image frame** — `bg.subtle` + a thin
-  border around the placeholder, so the layout does not collapse
-  while the real image is missing.
-
-Anything that is **not** one of the above should rely on grid
-placement + spacing tokens + the shared section separator (§3.3
-padding rhythm, with a `borderTop` hairline where the page uses one)
-to be readable.
-
-### Viewport observations (where the box anti-pattern was loudest)
-
-| Viewport | Why the box is jarring |
-| --- | --- |
-| 375 px (iPhone SE / narrow phones) | Each box eats ~32 px of internal width (4 + 4 padding + border); the prose column narrows visibly. |
-| 768 px (md breakpoint) | The boxes align horizontally and read as a card grid, not as editorial prose. |
-| 1024 px (lg, content max-width) | The boxes feel "added"; the prose without the box is the cleaner read. |
-| 1440 px (wide desktop) | The max-width container (1024 px) already constrains the eye; an inner border becomes redundant. |
-
-## 2. Stack — what primitive owns what
-
-| Primitive | Lives in | Job |
-| --- | --- | --- |
-| `Container` | `src/editorial/primitives/Container.tsx` | Page-width wrapper (`max-width: 1024px` + responsive `paddingInline`). |
-| `SectionHeading` | `src/editorial/primitives/SectionHeading.tsx` | Section header (eyebrow / h2 / description) — `default` (single-column) or `spread` (4/12 + 8/12 grid). |
-| `Badge` | `src/editorial/primitives/Badge.tsx` | Inline status pill (`bg.subtle` / `bg.accent`). Status only — never a primary interactive element. |
-| `PublicNav` | `src/editorial/nav/PublicNav.tsx` | Chrome for the opt-in public pages (Issue #199): each page renders it explicitly — `/` and `/admin/*` carry no nav, so "site-wide" is the opt-in roster (`PUBLIC_NAV_ITEMS`), not a root mount. |
-
-## 3. Canonical grid — the one grid every public page sits on
-
-> Formalised by Issue #300 from a site-wide audit (all public pages
-> screenshotted at 1280 px and 375 px, element boxes measured with
-> Playwright `boundingBox()`). Every number below is measured, not
-> guessed. Do not introduce a competing grid.
-
-### 3.1 Geometry
-
-| Coordinate | Value |
-| --- | --- |
-| `Container` | `max-width: 1024px`, centred, `paddingInline` `4 / 6 / 8` (16 / 24 / 32 px) → content width ≤ **960 px**, content-left edge at **160 px** on a 1280 px viewport, **16 px** at 375 px |
-| Column system | 12 conceptual columns; the canonical split is **4/12 title span + 8/12 content span** |
-| Section grid rule | `gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' }`, `columnGap: { base: '0', lg: '10' }` (40 px), `rowGap: { base: '10', lg: '0' }` (40 px) |
-| Title span (left) | **306.67 px** @1280 — left edge = Container content edge |
-| Content span (right) | **613.33 px** @1280 — left edge = `x = 506.67` |
-| Below `lg` | one column (`1fr`); the heading cluster and the content are separated by `rowGap` 10 (40 px) |
-
-The three renderings of this one rule:
-
-- `SectionHeading variant="spread"` — heading cluster (eyebrow → h2 →
-  description) in the title span, section content in the content span.
-- The home hero (Issue #295) — the same grid, verbatim: the eyebrow
-  line and the h1 sit in the **title span**, the right span starts
-  with the lead description.
-- Label/value rows inside a content span — contact channel rows use
-  the same 4/8 split *inside* their column so the inner label axis
-  lines up with the page grid; wider tables (home status rows) size
-  the label column to its content and give the rest to the detail
-  column (`minmax(0, auto) minmax(0, 1fr) auto`), keeping all three
-  cells on one line at the Container width.
-
-**Key lines to verify with `boundingBox()`** (they are the grid, made
-visible):
-
-1. Every section title and every hero title span shares the same
-   left `x` (the Container content edge).
-2. Every content column shares the same left `x`
-   (`content edge + 4/12 + gutter`).
-3. Below `lg`, everything starts at the Container content edge.
-
-A `default` (single-column) `SectionHeading` remains legitimate **only
-when a section genuinely has no content column** — its heading cluster
-still starts on the same left edge, and its description keeps the
-640 px measure cap. The section *content* itself may be full-width
-below the heading (contact's channel list, portfolio's list) as long
-as its rows keep the 4/8 label/value axes above.
-
-### 3.2 Section anatomy
+## 1. Layer model and ownership
 
 ```text
-section        →  paddingBlock (rhythm, §3.3) + optional full-bleed
-                  borderTop hairline (page-voice decision, §3.5)
-  Container    →  max-width 1024 + responsive paddingInline
-    SectionHeading (spread)  →  4/12 title span  |  8/12 content span
-      content   →  grid / flex / list + gap tokens (no box, §1)
+L0 tokens        tokens.ts / semantic-tokens.ts — color, type, spacing,
+                 radii. Change reason: a visual-language decision only.
+L1 layout        PageSection / Container / Grid / Stack / Cluster / Split
+                 (src/editorial/primitives/). Owns section rhythm,
+                 surface tone, page grid, flow gaps.
+L2 components    Button / TextLink / Panel / Badge / StateMark /
+                 RecordList / Disclosure / MediaFrame / SectionHeading.
+                 Owns the look of one interactive or display element
+                 through variant × size props.
+L3 pages         obligation dirs (src/home/**, src/portfolio/**, …) and
+                 src/routes/**. Compose L1/L2 only. May choose WHICH
+                 content appears, its order, its wording and its data
+                 projection — never section-level padding, page
+                 background, grid tracks or component chrome.
 ```
 
-### 3.3 Spacing rhythm
+The dependency direction is unchanged: obligations import `editorial`
+primitives; `editorial` imports no obligation. See AGENTS.md §3.
 
-One rhythm for every page (`docs/visual/home-design-brief.md` golden-ratio scale;
-tokens are the authority, not pixel literals):
+## 2. The clauses (C-1 … C-8)
 
-| Beat | `paddingBlock` (base / lg) | px @375 / @1280 |
+Each clause is enforced by `scripts/check-ui-contract.mjs` against
+`quality/ui-contract.json`. Violation codes are `C-1` … `C-8`.
+
+### C-1 — Section surface is owned by `PageSection`
+
+`<section>` level decisions — vertical rhythm (`paddingBlock`), page
+background, section separator (`borderTop`) — belong to `PageSection`
+alone. Feature code must not set block-direction padding on a section or
+page-level container, and must not paint a section background or draw a
+section-separating rule by hand.
+
+Allowed exceptions, all inside L2 primitives or the primitives'
+allowlist: inline cluster padding inside a control (`Button`, `Panel`,
+`Badge`), and the page chrome owned by `editorial` itself (masthead,
+footer, skip link).
+
+### C-2 — Color is owned by the semantic layer
+
+Every color-valued property (`backgroundColor`, `background`,
+`color`, `borderColor`, `outlineColor`, `fill`, `stroke`,
+`textDecorationColor`, `caretColor`, `accentColor`) resolves to a
+semantic token (`bg.*`, `text.*`, `border.*`, `accent.*`, `mono.*`).
+Raw palette references (`{colors.brand.*}`, `{colors.neutral.*}`,
+`{colors.design.*}`, …), hex / `rgb()` / `hsl()` / `oklch()` literals
+and named CSS colors are forbidden outside `src/editorial/**` and the
+explicit allowlist in `quality/ui-contract.json` (brand marks, icon
+assets, ad creatives — each entry states its reason).
+
+### C-3 — Section tone is a `PageSection` prop
+
+A colored or shaded **section band** is expressed only through
+`PageSection`'s `tone` prop (§4.2). Feature code may not create a
+section-scale surface with an arbitrary `backgroundColor`; smaller
+classified surfaces go through `Panel variant="field.*"`. Decorative
+color — a field that carries no classification or emphasis meaning —
+is a review failure even when the gate cannot see intent.
+
+### C-4 — Grids are presets
+
+`gridTemplateColumns` / `gridTemplateRows` / `gridAutoFlow` may be
+declared only inside `src/editorial/**` and the page-composition
+allowlist. Feature content uses `Grid` presets (§5) or `Split`. A
+bespoke grid is a composition-contract change: it lands in `editorial`
+or is recorded as an allowlist entry with its reason.
+
+### C-5 — Lists and rows use the list primitives
+
+Repeated content uses `RecordList`/`RecordRow` (label/value),
+`Grid`+`Panel` (card-like repetition) or `Stack`+reset list (plain
+lists). A `<li>` must not carry its own border / background /
+borderRadius — that draws a box the section already frames. A
+`.map()`-rendered list on a public page must be bounded (§C-8) or live
+on a dedicated index route.
+
+### C-6 — Controls are primitives
+
+Button-like and link-like affordances use `Button` / `TextLink`
+variants. Hand-styling a raw `<a>` or `<button>` with padding, radius,
+background or border to look like a control is forbidden. Intentional
+non-controls (semantic rows, tabs, resize handles, swatches, editor
+surfaces) are allowlisted per file with a reason — the same exemption
+philosophy as T3 Code's `no-restyle` contracts.
+
+### C-7 — No duplicated styling
+
+The same normalized `css({...})` object literal appearing in three or
+more files is a missing primitive: extract it into `editorial` (L2) or
+a page-owned shared module, not a third copy. The gate reports the
+literal's hash and the file list.
+
+### C-8 — Public pages curate, index routes enumerate
+
+A public page is a curated entrance: it shows representative items and
+links to the full set. A section that maps a data collection must
+bound the render (`.slice()`, a `limit`, a `Disclosure`, or a link to
+a dedicated index route) unless the page's obligation IS the index
+(`/portfolio`, `/tools`, `/activity`, `/now`, …). "A stopped item must
+not be hidden" survives as a rule — on the index route, not on every
+page that mentions the collection.
+
+## 3. Section anatomy
+
+```text
+PageSection (tone, rhythm, optional borderTop)
+  └─ Container (max-width 1024, responsive paddingInline)
+       ├─ SectionHeading (default | spread)
+       └─ content — Grid / Stack / Cluster / Split / Panel / lists
+```
+
+`PageSection` owns: `<section>` element, `aria-labelledby` wiring
+(`labelledBy` prop pairs with the heading's `id`), the rhythm
+`paddingBlock`, the `tone` surface, and the optional full-width
+`borderTop` hairline. It renders `Container` internally; the content
+column is therefore always the canonical 1024 px measure unless a
+future `width` variant is added through the contract, not per page.
+
+Rhythm roles (the beat comes from the section's role, never its
+density):
+
+| Role | `paddingBlock` (base / lg) | Use |
 | --- | --- | --- |
-| Page hero (top of page → first section) | `16 / 32` | 64 / 128 |
-| Body section | `16 / 24` | 64 / 96 |
-| Footer / closing section | `16 / 24` | 64 / 96 |
-| List row (bordered row inside a list) | `6` | 24 |
-| Gap between list rows / cards | `10` (status, cards) or `0` + hairline (contact, tools) | 40 or 0 |
+| `hero` | `16 / 32` | page entry only — one per page |
+| `body` | `16 / 24` | every content section |
+| `closing` | `16 / 24` | footer-adjacent / final CTA band |
 
-The beat comes from the **section role**, never from how dense its
-content is: a sparse section (home 05 Contact — one button) and a
-dense section (home 01 Capabilities) carry the same padding, so the
-step between them is always readable as structure.
+## 4. Surface and tone
 
-### 3.4 Type inside the grid
+### 4.1 The monochrome ground stays
+
+`mono.*` remains the structural layer: page ground, sunken / raised /
+control surfaces, hairline / rule, ink ladder, inverse ground. The
+operation fill stays ink (`bg.accent` / `bg.inverse` = inverse ground,
+label `text.inverse`). Links stay ink + underline. Status stays
+silhouette + word + ink — no status hue (Issue #887 rule unchanged).
+
+### 4.2 Section tones
+
+`PageSection tone` names a surface **and** the ink that belongs on it.
+The vocabulary is closed — seven values:
+
+| tone | surface | ink | meaning |
+| --- | --- | --- | --- |
+| `ground` | `mono.surface.ground` | normal ink | default page (implicit) |
+| `sunken` | `mono.surface.sunken` | normal ink | recessed band — supporting material |
+| `raised` | `mono.surface.raised` | normal ink | lifted band — emphasis without hue |
+| `inverse` | `mono.surface.inverse` | `mono.ink.inverse` | ink plate — a turning point (CTA, colophon) |
+| `field.design` | `accent.field.design` | `mono.ink.onColour` | design-classified content |
+| `field.code` | `accent.field.code` | `mono.ink.onColour` | code-classified content |
+| `field.writing` | `accent.field.writing` | `mono.ink.onColour` | writing-classified content |
+| `field.tool` | `mono.surface.sunken` + tool mark treatment | normal ink | tool-classified content (no approved field step — see colors.md) |
+
+Tone assignment rules (ADR-0022 §3.4):
+
+- A `field.*` tone matches the section's content classification. A
+  decorative field is a defect.
+- The same tone never repeats on two adjacent sections — the contrast
+  between bands is what makes tone mean something.
+- `inverse` appears at most one or two times per page, where the page
+  genuinely turns (contact CTA, closing band).
+- `sunken` / `raised` may repeat but not adjacently.
+
+**Mechanism**: `PageSection` binds the tone by re-binding the
+`--colors-*` custom properties Panda emits for semantic tokens inside
+the section's subtree. Every existing component then renders correct
+ink and surfaces on the tone without knowing it exists. The contrast
+gate (`scripts/check-a11y-contrast.mjs`) measures every tone × ink
+pairing; a tone that cannot carry its ink at the required ratio does
+not ship.
+
+### 4.3 What is NOT a tone
+
+- A card, panel or tile inside a section is `Panel`, not a tone.
+- A status, category mark or badge is `accent.category.*` /
+  `StateMark`, not a tone.
+- An ad unit's own palette is the ad contract's business (Issue #925);
+  it sits inside a named ad slot and does not set the section tone.
+
+## 5. Grid and flow
+
+### 5.1 `Container`
+
+`max-width: 1024px`, centered, `paddingInline` `4 / 6 / 8` (16 / 24 /
+32 px) → content width ≤ 960 px. Unchanged. Every page section's
+content sits inside it (via `PageSection`).
+
+### 5.2 `Grid` presets
+
+| preset | base | md | lg | use |
+| --- | --- | --- | --- | --- |
+| `columns=1` | 1fr | 1fr | 1fr | single flow |
+| `columns=2` | 1fr | repeat(2, minmax(0,1fr)) | same | pairs, 2-up lists |
+| `columns=3` | 1fr | repeat(2, …) | repeat(3, …) | card triads |
+| `columns=4` | 1fr | repeat(2, …) | repeat(4, …) | dense indexes |
+| `split` | 1fr | 1fr | `minmax(0,4fr) minmax(0,8fr)` | heading/content editorial split |
+
+`gap` accepts spacing tokens only (`1 2 4 6 10 16 24 32`), named by
+the rhythm table below. `minmax(0, …)` is mandatory so content can
+shrink.
+
+### 5.3 `Stack` / `Cluster`
+
+- `Stack`: vertical flow, `gap` from the same token set. Replaces
+  ad-hoc `flexDirection: 'column'` + `gap` compositions.
+- `Cluster`: inline flow with wrap, `gap` from the same set, plus
+  `align`/`justify` presets. Replaces ad-hoc `flex` + `gap` + `wrap`.
+
+### 5.4 `Split`
+
+The 4/12 + 8/12 editorial split for content that is not a
+`SectionHeading`. Same track rule as the `split` Grid preset; use it
+when the left column carries a label cluster and the right carries
+content (contact channel rows, detail pages).
+
+### 5.5 SectionHeading
+
+`default` (single column) and `spread` (4/8 split via the same rule)
+are unchanged in behavior. `spread` is how a `body` section pairs its
+heading cluster with its content column; `default` is for sections
+with no content column. New sections should prefer `spread` when they
+have body content — the shared left axis is what makes a page read as
+one grid.
+
+## 6. Spacing rhythm
+
+Unchanged token scale (golden-ratio steps): `1=4 2=8 4=16 6=24
+10=40 16=64 24=96 32=128`.
+
+| Relationship | token | px | role |
+| --- | --- | --- | --- |
+| decoration on title | `1` | 4 | ordinal gap |
+| tight cluster | `2` | 8 | sibling inside one thought |
+| cluster close | `4` | 16 | intra-cluster separation |
+| cluster separator | `6` | 24 | between related clusters |
+| list / card gap | `10` | 40 | between peer items |
+| section padding | `16`/`24` | 64/96 | page-level beat (see §3) |
+| hero entry breath | `32` | 128 | top of page only |
+
+The beat between sections is **always** the `PageSection` rhythm —
+never a hand-set margin. Within a section, proximity encodes
+relationship: caption↔title tight, title↔body close, peer items at
+`10`.
+
+## 7. Typography inside the grid
+
+Unchanged from the measured contract (was §3.4):
 
 | Role | Size | line-height / tracking | Note |
 | --- | --- | --- | --- |
-| Page `h1` (hero) | `3xl / 4xl` (40 / 64) | `1.15 / 1.05`, `-0.03em` | one display voice per page |
-| Section `h2` (both `SectionHeading` variants) | `2xl` (32) | `1.15`, `-0.025em` | Issue #300: the title span is 306.67 px wide, and a 10-character Japanese phrase at 40 px needs 312 px — it cannot resolve at any phrase boundary. 2xl fits every current JP title with margin, and unifies the `default`/`spread` variants which previously rendered 24/32 vs 32/40 for the same heading level. Supersedes the Issue #21 brief's §4 `2xl/3xl` for the title-span h2 (the brief now lives at `docs/visual/home-design-brief.md` as a historical record, Issue #843). |
-| Card / row `h3`-tier title | `xl` (24) | — | one tier under the section title |
-| Description | `md` (16), line-height `1.6` | — | capped at 640 px in the `default` variant; constrained by the title span in `spread` |
+| Page `h1` | `3xl` / mark | — | one display voice per page |
+| Section `h2` | `2xl` (32) | `1.15`, `-0.025em` | fits the 306.67 px title span |
+| Card / row title | `xl` (24) | — | one tier under section title |
+| Description | `md` (16), `1.6` | — | measure-capped |
 
-**Japanese line breaking (Issue #300).** The site sets
-`word-break: normal` then `word-break: auto-phrase` once in
-`src/styles.css` (`@layer base`), so every Japanese text node offers
-phrase-boundary break opportunities in browsers that implement
-`auto-phrase` (Chromium 119+; verified in this repo's Playwright
-Chromium) and falls back to `normal` where the value is unknown —
-the declaration is dropped and rendering is unchanged from before.
-On top of that base:
+Japanese line breaking (`word-break: auto-phrase` + `text-wrap:
+balance/pretty`) is unchanged.
 
-- titles (`h1`/`h2`) add `text-wrap: balance`,
-- descriptions add `text-wrap: pretty`.
+## 8. Interaction states
 
-Components that legitimately need freer breaking (mono token names,
-long identifiers) keep their local `word-break: break-all` — the
-utilities layer wins over the base layer.
+Unchanged in principle, now owned by primitives:
 
-### 3.5 Hero contract
-
-The hero is a section like any other: same `Container`, same 4/8
-coordinate system (§3.1), same `16 / 32` beat (§3.3). What differs
-between pages is *which span carries the title*, and that composition
-is owned by the page:
-
-- **Home** — Issue #295 / #287: title span = eyebrow line + mark `h1`,
-  content span = lead description → secondary → CTAs.
-- **About / Design system** — metadata rail in the title span,
-  caption → `h1` → lead in the content span.
-- **Contact / Portfolio / Tools** — single-column title block
-  (eyebrow → `h1` → lead, measure-capped) starting on the Container
-  content edge.
-
-All three sit on the same key lines; only the composition inside the
-spans differs. Restructuring a page hero's composition is a
-page-owner decision (`src/home/hero.tsx` is Issue #295's).
-
-**Section separators.** The rhythm beat is always whitespace
-(§3.3). A page may additionally mark section boundaries with a
-full-bleed `borderTop` hairline (`about`, `design-system`) or mark
-*list rows* with an inset hairline (contact, tools) — never both
-around the same surface, and never instead of the padding beat.
-
-## 4. Proximity rule
-
-Within a `spread` SectionHeading, the body column carries content
-that has internal `gap` tokens. Within `Container`-centric edges
-(`PortfolioList` and `PortfolioDetail`), the section-to-section
-separation is the **shared `borderTop: 1px solid {colors.border.subtle}`**
-plus a `paddingBlock` (16 / 24). Do not invent per-card borders on
-top.
-
-Within a single list:
-
-- Use `gap` to separate items, not per-item borders.
-- Use the section's existing `borderTop` to anchor the first item if
-  you must visually start a list (only when the list is preceded by
-  the previous section's separator).
-- A row inside a list (`<li>`) must NOT carry its own `border` /
-  `backgroundColor` / `borderRadius`; that draws a redundant box.
-
-## 5. Interaction states (hover / focus / active)
-
-The reserved space for interaction visual feedback is the
-`_hover` / `_focusVisible` / `_active` states of the actual
-control:
-
-- Buttons: `border.subtle → border.strong` on hover; `outline` on
-  focus-visible.
-- Toggles (chips / facet filters): `bg.surface → bg.accent` and
-  `text.default → text.inverse` plus `aria-pressed` for AT users.
-- Inline links: `text.muted → text.default` plus underline on hover;
-  outline on focus-visible.
+- `Button`: `primary` fill swaps to `accent.interactive`-equivalent
+  ink step on hover; `secondary`/`ghost` swap surface step;
+  focus-visible gets the `border.focus` outline.
+- `TextLink` / inline links: underline at rest; `text.muted →
+  text.default` or weight step on hover; focus outline.
+- `Panel`/`Disclosure`: state changes use `bg.*` step swaps and
+  `aria-*`/`data-*` hooks, never a hover shadow or a color that
+  isn't a semantic token.
 
 Do not communicate state by toggling a background that looks like a
-card; communicate it by toggling the existing interactive surface.
+card; communicate it through the control's own surface.
 
-## 7. Audit checklist for new code
+## 9. Information density and disclosure
 
-Before a public surface PR merges, the author must verify:
+- A public page shows representative content; the full set lives on
+  the index route (C-8). "See everything" is a `Button variant="link"`
+  or `TextLink` to that route.
+- Progressive disclosure uses `Disclosure` (native `<details>`) or a
+  dedicated route — never an unbounded in-page expansion.
+- Density is a section-role decision recorded in the page's design
+  note, not a per-component accident: a `body` section's content
+  column is 613 px at 1280; filling it is expected, leaving it
+  half-empty is a composition defect unless the section is `hero`.
 
-1. No `borderWidth` / `borderStyle` / `borderColor` is used on a
-   list item, column, or prose block (exceptions: §1, §4 controls).
-2. No `backgroundColor: 'bg.surface'` / `'bg.subtle'` / `'bg.muted'`
-   is used on a non-state surface (exceptions: §1).
-3. New surfaces participate in the spread / default
-   `SectionHeading` grid documented in §3 — not a competing grid:
-   same Container edges, same 4/8 split, same left key lines.
-4. Section / hero `paddingBlock` matches the §3.3 rhythm table —
-   the beat comes from the section role, not its density.
-5. Japanese titles and descriptions render at phrase boundaries
-   (§3.4): no mid-phrase title wrap, no 1–2 character orphan line.
-   Verify at 1280 px **and** 375 px with `boundingBox()` / line
-   inspection, not only by eye.
-6. At 375 px the readable column inside the body section is
-   **not** narrowed by an internal box that the section did not
-   already carry, and the page has no horizontal overflow
-   (`scrollWidth <= clientWidth`).
-7. The visual language still reads as "editorial whitespace" at
-   1024 px (the max-width viewport) — not as "card grid".
+## 10. Ads
+
+Ad units keep their independent creative contract (Issue #925):
+their palette, formats and behavior are not governed by this file.
+What IS governed: placement. Ads occupy named slots declared by the
+page composer (`AdSlot` positions: masthead leaderboard, in-feed
+unit, sponsored rail), never injected between a section's heading
+and its content, and never set a `PageSection` tone. An ad must not
+break the reading column's alignment or the section rhythm.
+
+## 11. Audit checklist for new code
+
+Before a public surface PR merges:
+
+1. `pnpm run ui:contract:check` is clean for the changed files (C-1…C-8).
+2. No section-level `paddingBlock` / page background / separator
+   outside `PageSection` (C-1).
+3. No raw color values or palette references outside the allowlist
+   (C-2); every colored band uses a `tone` prop (C-3).
+4. Grids use `Grid`/`Split` presets; no bespoke
+   `gridTemplateColumns` outside the allowlist (C-4).
+5. Lists/rows use the list primitives; no `<li>` boxes (C-5).
+6. Controls use `Button`/`TextLink`; no hand-styled button/link
+   lookalikes (C-6).
+7. No third copy of a styling literal (C-7).
+8. Public pages curate; enumerations live on index routes (C-8).
+9. The rendered page passes the visual review in
+   `docs/runbook/ui-visual-review.md` — whitespace, alignment,
+   proximity, contrast, repetition, eye flow, density and color-field
+   composition judged on desktop/mobile × light/dark captures, not
+   on code or axe output alone.

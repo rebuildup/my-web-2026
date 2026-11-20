@@ -107,6 +107,24 @@ statement, not a classification hue. Colour still never carries
 meaning alone: every panel also shows its title and summary text,
 and the node mark + legend keep their shape/colour pairing.
 
+**Section tones (Issue #1105, ADR-0022).** The field step is now also
+a **section-band** role, not only a panel role: `PageSection`'s
+`tone` prop names a surface + its ink as one vocabulary
+(`ground` / `sunken` / `raised` / `inverse` / `field.design` /
+`field.code` / `field.writing` / `field.tool` — see
+`src/editorial/layout-system.md` §4.2). A `field.*` tone matches the
+section's content classification; a decorative field is a defect.
+Two rules changed with it: the direction-comparison harness's
+"≈5% chromatic area" operational cap is **retired as a numeric
+limit** (colour area is now constrained by meaning — the tone
+vocabulary and the classification-match rule — and measured as an
+observation, not gated by a percentage), and colour is no longer
+confined to "the classification layer" — it may span a section's
+area when the section IS that classification. What did not change:
+body text, links and operations stay ink; status stays
+silhouette + word + ink; every tone × ink pairing is measured by
+`scripts/check-a11y-contrast.mjs`.
+
 ## Monochrome layer — the ground the colour sits on (Issue #764)
 
 The owner's decision (2026-11-02) is the direction the name carries:
@@ -497,6 +515,17 @@ and what a person decides (whether a colour is semantically adequate).
   name and trust Panda to pick the right variant.
 
 ## Change history
+
+- **2026-11-21** (Issue #1105, ADR-0022) — Section tones: the field
+  step becomes a `PageSection` band role (`tone` prop, closed
+  vocabulary of 8 values), implemented by re-binding the `--colors-*`
+  custom properties inside the section subtree so existing components
+  inherit correct ink without per-component changes. The ≈5%
+  chromatic-area operational cap is retired as a numeric limit;
+  colour area is constrained by meaning (classification match,
+  no adjacent tone repetition, `inverse` ≤ 1–2 per page) and measured
+  as observation. Body/link/operation ink rules and the no-status-hue
+  rule are unchanged.
 
 - **2026-11-04** (Issue #887) — Deleted the three transitional status
   aliases that had bound a status to `mono.ink.text`. They were already

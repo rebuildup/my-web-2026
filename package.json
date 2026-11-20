@@ -89,6 +89,7 @@
 		"capture:home-current-projects": "node scripts/capture-home-current-projects.mjs",
 		"capture:github-activity": "node scripts/capture-github-activity.mjs",
 		"capture:activity-334": "node scripts/capture-activity-334.mjs",
+		"capture:activity-timeline": "node scripts/capture-activity-timeline.mjs",
 		"capture:project-card-category": "node scripts/capture-project-card-category-bar.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
 		"capture:dev-data-source": "node scripts/capture-dev-data-source.mjs",

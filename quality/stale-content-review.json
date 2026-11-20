@@ -1411,7 +1411,7 @@
 			"expression": "独立した feature が「データ契約 → 表示 component → Storybook preview → 薄い route adapter」の順にどう接続されるかを、実在する 1 つの component で示します。対象は `/` トップの「現在地」セクション（CurrentProjects）です。各項目の検証状況は pass / fail / not run / not applicable で区別しています。",
 			"locale": "ja",
 			"dimension": "prose",
-			"reviewedAt": "2026-11-20",
+			"reviewedAt": "2026-11-19",
 			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",

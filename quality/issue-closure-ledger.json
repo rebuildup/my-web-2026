@@ -1358,20 +1358,23 @@
 			"title": "feat(portfolio): 映像作品のYouTube型プレイヤー表示を実装",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/portfolio/components/PortfolioMedia.tsx",
-				"reduced-motion.ts",
-				"src/portfolio/components/ に動画 player component は存在しない"
+				"src/portfolio/video-facade.ts",
+				"src/portfolio/components/PortfolioVideoFacade.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"docs/verification/portfolio/video-facade.md",
+				"docs/verification/portfolio/video-facade/measurement-summary.json",
+				"#364 close comment 2026-11-20"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "video facet 自体は schema に存在するが、公開面の再生 UI は未実装。#408 は字幕契約の gate を作るだけで、この Goa とは別物。",
-			"missing": "動画 URL がある作品だけプレイヤー + ポスター + 説明 + 外部視聴 URL を出す表示、再生不可時のフォールバック、字幕/フォーカス/外部 URL 挙動の確認。"
+			"action": "closed",
+			"note": "video-facade + PortfolioVideoFacade が PortfolioDetail にマウント済み。id 検証・youtube-nocookie・autoplay なしの安全契約、bogus-video fallback 実測あり。#910 で click-to-load ゲートは owner 指示により削除（契約変更は video-facade.md に訂正記録）。2026-11-20 に受入条件を照合して close。",
+			"missing": null
 		},
 		{
 			"issue": 365,
@@ -1999,22 +2002,25 @@
 			"title": "feat(a11y): タップ・クリックターゲットとドラッグ代替を整備",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "partial",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
+				"scripts/check-a11y-target-size.mjs",
+				"scripts/capture-a11y-target-size.mjs",
+				"scripts/check-a11y-target-size.test.mjs",
+				"docs/verification/a11y/target-size.md",
+				"docs/verification/a11y/tap-target-overlay.webp",
+				"package.json a11y:target-size:check",
 				"#698",
-				"#401",
-				"docs/verification/a11y/ contains axe/focus/contrast/etc. artefacts but no tap-target-size artefact",
-				"grep for '2.5.8' / target size finds only src/http/security-txt/* and the WCAG review-matrix tooling, not a target-size test",
-				"#698"
+				"#401 close comment 2026-11-20"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "kept-closed",
-			"note": "実装 PR #698 が open のままなので、issue を閉じると追跡只剩下失われる。",
-			"missing": "PR #698 内容が未 merge のため、対象サイズ検査・ドラッグ操作のクリック代替・Storybook/ルートの違反再現が出荷面にない。"
+			"action": "closed",
+			"note": "10/31 時点では PR #698 未 merge だったが、その後 gate が統合済み。WCAG 2.5.8 対応の target-size 検査（MIN_TARGET_PX）とブラウザ実測キャプチャ、fixture 群が存在し、Issue は GitHub 上で CLOSED。",
+			"missing": null
 		},
 		{
 			"issue": 402,

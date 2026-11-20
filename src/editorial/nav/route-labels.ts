@@ -120,6 +120,7 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/links': { label: 'リンク集' },
 	'/commission': { label: '制作依頼' },
 	'/stack': { label: '開発スタック' },
+	'/activity': { label: '活動タイムライン' },
 	'/contact': { label: 'Contact' },
 	'/portfolio/': { label: 'Portfolio' },
 	'/projects/dotfiles': { label: 'dotfiles' },

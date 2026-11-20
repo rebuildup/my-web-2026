@@ -221,6 +221,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		openDecision: null,
 	},
 	{
+		id: 'public-activity',
+		route: '/activity',
+		request: 'GET /activity (anonymous)',
+		expect: { status: 200, robots: 'absent', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF],
+		why: 'Public unified activity timeline (Issue #352). A 200 with no robots meta is the contract; the page is indexable but deliberately not in sitemap.xml. Source outages are rendered INSIDE the document as per-source health, never as a 5xx.',
+		openDecision: null,
+	},
+	{
 		id: 'public-projects-dotfiles',
 		route: '/projects/dotfiles',
 		request: 'GET /projects/dotfiles (anonymous)',

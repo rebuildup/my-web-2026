@@ -126,6 +126,7 @@ describe('public documents answer 200 and stay indexable (#419)', () => {
 	it('public-links', async () => expectCase('public-links', '/links'));
 	it('public-commission', async () => expectCase('public-commission', '/commission'));
 	it('public-stack', async () => expectCase('public-stack', '/stack'));
+	it('public-activity', async () => expectCase('public-activity', '/activity'));
 	it('public-projects-dotfiles', async () =>
 		expectCase('public-projects-dotfiles', '/projects/dotfiles'));
 });

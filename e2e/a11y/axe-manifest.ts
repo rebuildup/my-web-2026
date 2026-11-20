@@ -132,6 +132,12 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		note: 'Stack — the development-stack reference (Issue #381).',
 	},
 	{
+		path: '/activity',
+		title: '活動タイムライン / Activity — rebuildup.dev',
+		expect: 'pass',
+		note: 'Activity — the unified activity timeline (Issue #352).',
+	},
+	{
 		path: '/contact',
 		title: 'Contact — rebuildup.dev',
 		expect: 'pass',

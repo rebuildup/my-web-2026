@@ -177,6 +177,12 @@ export const PAGE_UNITS = [
 		note: 'the development-stack reference (Issue #381) — a routes-owned page, so the route file and its colocated modules are one unit',
 	},
 	{
+		id: 'activity',
+		kind: 'page',
+		files: ['src/routes/activity.tsx', 'src/routes/activity/**'],
+		note: 'the unified activity timeline (Issue #352) — a routes-owned page, so the route file and its colocated modules are one unit',
+	},
+	{
 		id: 'keyboard',
 		kind: 'page',
 		files: ['src/routes/keyboard.tsx', 'src/keyboard/components/**'],

@@ -55,6 +55,20 @@
 				"reason": "Public narrative surface; renders repo-controlled copy only."
 			},
 			{
+				"id": "/activity",
+				"path": "/activity",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/activity.tsx"
+				],
+				"urls": [
+					"/activity"
+				],
+				"reason": "Public unified activity timeline (Issue #352); composes the GitHub public projection and the public portfolio index through the src/activity adapters at request time, is linked from the home site guide, and is not a sitemap target."
+			},
+			{
 				"id": "/admin",
 				"path": "/admin",
 				"classification": "internal",
@@ -463,6 +477,7 @@
 		"publicUrls": [
 			"/",
 			"/about",
+			"/activity",
 			"/admin/invitations/accept",
 			"/admin/login",
 			"/commission",
@@ -3986,6 +4001,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/activity",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/activity.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/commission",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -5960,14 +5984,14 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/activity"
+		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://github.com/rebuildup/rebuildup"
+			"https://rebuildup.dev/activity"
 		],
-		"removedExternalUrls": [
-			"https://github.com/rebuildup/ai-knowledge"
-		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -5977,12 +6001,12 @@
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/rebuildup"
+				"message": "External URL added: https://rebuildup.dev/activity"
 			},
 			{
-				"code": "W003 external-url-removed",
+				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://github.com/rebuildup/ai-knowledge"
+				"message": "Public URL added: /activity"
 			}
 		]
 	}

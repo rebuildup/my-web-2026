@@ -75,6 +75,7 @@ const FIXTURE_ROUTES = [
 	['/tools/', './routes/tools.index'],
 	['/tools/$slug', './routes/tools.$slug'],
 	['/stack', './routes/stack'],
+	['/activity', './routes/activity'],
 	['/admin', './routes/admin'],
 	['/admin/', './routes/admin.index'],
 	['/admin/login', './routes/admin.login'],

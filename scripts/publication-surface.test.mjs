@@ -739,12 +739,13 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 		// targets — the shell declares `robots: noindex` in its own head.
 		assert.equal(surface.sitemap.length, 6 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
-		// The public surfaces outside the sitemap: the seven static ones
+		// The public surfaces outside the sitemap: the eight static ones
 		// (`/admin/login`, `/admin/invitations/accept`, `/keyboard`
 		// (Issue #620), `/projects/dotfiles` (Issue #621), `/links`
-		// and `/commission` (Issue #390), `/stack` (Issue #381)) plus
+		// and `/commission` (Issue #390), `/stack` (Issue #381),
+		// `/activity` (Issue #352)) plus
 		// the 4000 Tool shells the noindex rule keeps out.
-		assert.equal(surface.publicUrls.length, surface.sitemap.length + 7 + 4000);
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 8 + 4000);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

@@ -313,7 +313,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    contract's ad-independence clause requires. */}
 				{/* Site guide — orientation first (Issue #930). */}
 				<GuideSection today={data.observedAt.slice(0, 10)} />
-				{/* 現在地 — curated representative slice; the full ordered
+				{/* Now records — curated representative slice; the full ordered
 				    enumeration lives at /now (ADR-0022 C-8). */}
 				<CurrentProjects
 					projects={data.projects}

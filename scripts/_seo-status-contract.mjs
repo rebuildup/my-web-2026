@@ -240,6 +240,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		why: 'Public project introduction rendered from a committed snapshot. A 200 with no robots meta is the contract; an unavailable upstream is represented INSIDE the document, never by turning the page into a 404/5xx or a noindex.',
 		openDecision: null,
 	},
+	{
+		id: 'public-now',
+		route: '/now',
+		request: 'GET /now (anonymous)',
+		expect: { status: 200, robots: 'absent', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF, BROWSER_PROOF],
+		why: 'Public full enumeration of the current-project records (Issue #1108). A 200 with no robots meta is the contract; the page is indexable but deliberately not in sitemap.xml — it is a read model over the same committed snapshot the home section projects, not a discovery surface.',
+		openDecision: null,
+	},
 	// ── 200 but not indexable ─────────────────────────────────────────
 	{
 		id: 'tool-detail-noindex',

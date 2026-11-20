@@ -9,10 +9,10 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 23 |
-| Publicly reachable surfaces | 16 |
+| Declared surfaces | 24 |
+| Publicly reachable surfaces | 17 |
 | Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 90 |
+| Publicly reachable URLs (surface + Static Assets) | 91 |
 | External hosts | 62 |
 | First-party hosts | 0 |
 | Approved transition | 2 finding(s) |
@@ -103,6 +103,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/design-system`
 - `/keyboard`
 - `/links`
+- `/now`
 - `/portfolio`
 - `/portfolio/alice`
 - `/portfolio/aulymo-v01`
@@ -205,6 +206,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/design-system` | `/design-system` | public | yes | `src/routes/design-system.tsx` |
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
 | `/links` | `/links` | public | no | `src/routes/links.tsx` |
+| `/now` | `/now` | public | no | `src/routes/now.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
@@ -216,7 +218,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ### Added public URLs (1)
 
-- `/activity`
+- `/now`
 
 ### Removed public URLs (0)
 
@@ -819,6 +821,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/activity
-- **WARN** `W004 public-url-added` Public URL added: /activity
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/now
+- **WARN** `W004 public-url-added` Public URL added: /now
 

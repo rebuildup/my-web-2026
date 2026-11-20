@@ -162,6 +162,12 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		note: 'Project introduction — the committed snapshot surface (Issue #621).',
 	},
 	{
+		path: '/now',
+		title: '現在地 / Where I am now — rebuildup.dev',
+		expect: 'pass',
+		note: 'Now — the full current-project enumeration reached from the home see-all link (Issue #1108).',
+	},
+	{
 		path: '/tools',
 		title: 'Tools — my-web-2026',
 		expect: 'pass',

@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -1427,6 +1429,39 @@
 				]
 			},
 			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
+		},
+		{
+			"id": "now-route-title-1108",
+			"path": "src/routes/now.tsx",
+			"expression": "現在地 / Where I am now — rebuildup.dev",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-20",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1108",
+						"note": "本変更の実装対象。HOME のキュレーション入口化と /now 全件 route。"
+					},
+					{
+						"type": "commit",
+						"reference": "927f4835",
+						"note": "the commit that introduced this record (feat(home): curated HOME composition per ADR-0022)."
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/now.tsx",
+						"note": "head.title の典拠。ページ内容 (現在地の全件一覧) と一致する title。"
+					}
+				]
+			},
+			"note": "/now の head.title。「現在地 / Where I am now」は home の CurrentProjects セクション見出しと同一の語彙で、ページが全件列挙 surface であることを表す。日付・件数などの時制主張を含まない。"
 		}
 	]
 }

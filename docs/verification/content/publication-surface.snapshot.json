@@ -249,6 +249,20 @@
 				"reason": "Public verified external-link inventory (Issue #390); renders the committed src/about/links.ts inventory and is linked from /about, but is not a sitemap target."
 			},
 			{
+				"id": "/now",
+				"path": "/now",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/now.tsx"
+				],
+				"urls": [
+					"/now"
+				],
+				"reason": "Public full enumeration of the current-project records (Issue #1108); renders the same committed snapshot the home 現在地 section projects, is reached from its see-all link, and is recorded in SITEMAP_EXCLUSIONS as a non-nav destination."
+			},
+			{
 				"id": "/portfolio/",
 				"path": "/portfolio",
 				"classification": "public",
@@ -485,6 +499,7 @@
 			"/design-system",
 			"/keyboard",
 			"/links",
+			"/now",
 			"/portfolio",
 			"/portfolio/alice",
 			"/portfolio/aulymo-v01",
@@ -4055,6 +4070,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/now",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/now.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/portfolio",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -5985,11 +6009,11 @@
 	},
 	"approvedTransition": {
 		"addedPublicUrls": [
-			"/activity"
+			"/now"
 		],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://rebuildup.dev/activity"
+			"https://rebuildup.dev/now"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
@@ -6001,12 +6025,12 @@
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/activity"
+				"message": "External URL added: https://rebuildup.dev/now"
 			},
 			{
 				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /activity"
+				"message": "Public URL added: /now"
 			}
 		]
 	}

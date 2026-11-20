@@ -152,7 +152,7 @@ test.describe('home page composition', () => {
 		//   - portfolio  → live, with an internal CTA to /portfolio
 		//   - tools      → live, with an internal CTA to /tools (Issue #168)
 		//   - content    → planned, no internal CTA
-		//   - activity   → planned, no internal CTA
+		//   - activity   → live, with an internal CTA to /activity (Issue #352)
 		// The test names each capability by its Japanese h3 label so
 		// it survives any English-copy revision. The 4-card count is a
 		// sanity check on the registry, not an assertion of how many
@@ -180,10 +180,12 @@ test.describe('home page composition', () => {
 		await expect(contentCard.locator('text=planned')).toBeVisible();
 		await expect(contentCard.locator('a[href^="/"]')).toHaveCount(0);
 
-		// activity — PLANNED, no internal CTA.
+		// activity — LIVE with an internal CTA to /activity (Issue #352).
 		const activityCard = section.locator('li').filter({ hasText: 'アクティビティ' });
-		await expect(activityCard.locator('text=planned')).toBeVisible();
-		await expect(activityCard.locator('a[href^="/"]')).toHaveCount(0);
+		await expect(activityCard.locator('text=live')).toBeVisible();
+		const activityCta = activityCard.locator('a[href="/activity"]');
+		await expect(activityCta).toBeVisible();
+		await expect(activityCta).toHaveAttribute('href', '/activity');
 
 		// Issue #782 — every row starts at its grid column's x. The live
 		// rows used to carry a 24px `paddingInlineStart` plus an

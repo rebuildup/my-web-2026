@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
+import biomeJson from '../../../biome.json?raw';
 import packageJson from '../../../package.json';
 import profileYaml from '../../../quality/profile.yaml?raw';
+import { extractBiomeSettings } from './biome-facts';
 import { parseProfileStack } from './profile-stack';
 import { resolveStackSections, type StackPageData } from './resolve';
 import { STACK_SECTIONS } from './stack';
@@ -43,6 +45,11 @@ export const getStackPageData = createServerFn({ method: 'GET' }).handler(
 			npmSpec,
 			packageManager:
 				typeof packageJson.packageManager === 'string' ? packageJson.packageManager : null,
+			// Issue #382: the Biome settings table is read from the
+			// committed `biome.json` itself (`?raw`, parsed by
+			// `biome-facts.ts`), so the page can never show a stale
+			// hand-copied value. `null` → the item renders no table.
+			biomeSettings: extractBiomeSettings(biomeJson) ?? undefined,
 		});
 	},
 );

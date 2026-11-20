@@ -21,7 +21,7 @@ test.describe('stack — /stack reference', () => {
 
 		await expect(page.locator('h1')).toHaveText('開発スタック / Stack');
 
-		for (const section of ['runtime', 'data', 'styling', 'quality', 'delivery']) {
+		for (const section of ['runtime', 'data', 'styling', 'quality', 'biome', 'delivery']) {
 			const list = page.locator(`[data-testid="stack-items-${section}"]`);
 			await expect(list).toBeVisible();
 			expect(await list.locator('li').count()).toBeGreaterThan(0);
@@ -42,6 +42,32 @@ test.describe('stack — /stack reference', () => {
 			'Cloudflare Workers Builds',
 		);
 		await expect(page.locator('[data-testid="stack-item-infisical"]')).toContainText('Infisical');
+	});
+
+	test('renders the Biome settings table from biome.json and the code samples (Issue #382)', async ({
+		page,
+	}) => {
+		await page.goto('/stack');
+
+		// The settings table is resolved from the committed biome.json
+		// at request time — the values the file declares must appear.
+		const settings = page.locator('[data-testid="stack-settings-biome-config"]');
+		await expect(settings).toBeVisible();
+		await expect(settings).toContainText('formatter.lineWidth');
+		await expect(settings).toContainText('100');
+		await expect(settings).toContainText('javascript.formatter.trailingCommas');
+		await expect(settings).toContainText('linter.rules.recommended');
+
+		// The before/after pair and the compression comparison render
+		// as labelled code blocks.
+		const samples = page.locator('[data-testid="stack-samples-biome-format-sample"]');
+		await expect(samples).toContainText('変換前');
+		await expect(samples).toContainText('Biome 適用後');
+		await expect(samples.locator('[data-code-block]')).toHaveCount(2);
+
+		const comparison = page.locator('[data-testid="stack-samples-biome-compression-decision"]');
+		await expect(comparison).toContainText('1行圧縮案');
+		await expect(comparison.locator('[data-code-block]')).toHaveCount(2);
 	});
 
 	test('every evidence link opens externally and safely', async ({ page }) => {

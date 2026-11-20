@@ -280,6 +280,8 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/TableCode.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
 	'src/routes/stack/StackPage.tsx',
+	'src/routes/stack/biome-facts.ts',
+	'src/routes/stack/biome-settings-table.ts',
 	'src/routes/stack/load.ts',
 	'src/routes/stack/profile-stack.ts',
 	'src/routes/stack/resolve.ts',

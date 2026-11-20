@@ -24,7 +24,7 @@ export function Hero() {
 		<section
 			aria-labelledby="hero-title"
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: { base: '12', lg: '20' },
 			})}
 		>
 			<Container>

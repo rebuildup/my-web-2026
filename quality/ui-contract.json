@@ -2130,7 +2130,6 @@
 				"src/home/footer.tsx",
 				"src/home/guide/GuideSection.tsx",
 				"src/home/guide/VisitTrail.tsx",
-				"src/home/hero.tsx",
 				"src/home/privacy-notice-compact.tsx",
 				"src/home/privacy-notice.tsx",
 				"src/home/reactions/widget.tsx",
@@ -2150,7 +2149,8 @@
 				"src/routes/design-system/sections/InteractiveStates.tsx",
 				"src/routes/design-system/sections/ReactionPicker.tsx",
 				"src/routes/stack/StackPage.tsx",
-				"src/routes/tools.$slug.tsx"
+				"src/routes/tools.$slug.tsx",
+				"src/home/hero.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2177,7 +2177,6 @@
 				"src/home/capabilities/grid.tsx",
 				"src/home/current/CurrentProjects.tsx",
 				"src/home/footer.tsx",
-				"src/home/hero.tsx",
 				"src/home/presence/PresenceCard.tsx",
 				"src/home/status/tiles.tsx",
 				"src/portfolio/components/PortfolioDetail.tsx",
@@ -2553,8 +2552,8 @@
 		{
 			"files": [
 				"src/about/components/AboutPage.tsx",
-				"src/home/hero.tsx",
-				"src/portfolio/components/DevelopView.tsx"
+				"src/portfolio/components/DevelopView.tsx",
+				"src/home/hero.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},

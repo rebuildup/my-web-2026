@@ -14,16 +14,9 @@ import type { HomeGitHubActivity } from './activity/contract';
 import {
 	AdPortfolioNative,
 	AdPortfolioProduct,
-	AdPortfolioRect,
-	AdToolCarousel,
-	AdToolInstall,
 	AdToolLinkCard,
 	AdToolNative,
-	AdToolNativeCounter,
-	AdToolPlayable,
 	AdToolProduct,
-	AdToolRect,
-	AdToolVideo,
 	AdTopBanner,
 	type HomeAdProject,
 } from './ads/placements';
@@ -302,7 +295,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</nav>
 				</div>
 			</header>
-			<div className={css({ paddingBlock: '6', paddingInline: { base: '4', lg: '6' } })}>
+			<div className={css({ paddingBlock: '4', paddingInline: { base: '4', lg: '6' } })}>
 				<AdTopBanner />
 			</div>
 			<Hero />
@@ -310,7 +303,11 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				{/* Issue #1108 — the page is a single editorial column again.
 				    The old xl sticky ad rail is gone: sponsored units are
 				    named inline slots between content sections, the way the
-				    contract's ad-independence clause requires. */}
+				    contract's ad-independence clause requires. Issue #1110
+				    review: ad moments are consolidated to three (masthead
+				    leaderboard, one in-feed link card, one sponsored pair) —
+				    six interruptions made the page read as an ad inventory,
+				    not a composition. */}
 				{/* Site guide — orientation first (Issue #930). */}
 				<GuideSection today={data.observedAt.slice(0, 10)} />
 				{/* Now records — curated representative slice; the full ordered
@@ -333,50 +330,67 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Container>
 				) : null}
 				<CapabilitiesGrid capabilities={data.capabilities} />
-				{/* ad slot: carousel + video */}
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolCarousel projects={data.adProjects ?? []} />
-						<div className={css({ marginBlockStart: '10' })}>
-							<AdToolVideo />
-						</div>
-					</div>
-				</Container>
 				<PageSection labelledBy="site-status-heading" tone="sunken">
+					{/* Issue #1110 — this section aggregates five widgets, so it
+					    takes the `default` heading and the full measure: the
+					    spread variant's 8/12 content column left every widget
+					    ~290px wide and tripled the section's height. Density
+					    is a section-role decision (layout-system.md §9). */}
 					<SectionHeading
 						id="site-status-heading"
 						eyebrow="02 — Status"
 						title="サイトの状態"
 						titleEn="Site status"
 						description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
-						variant="spread"
-					>
-						<Grid columns={2} gap="10">
-							<div>
-								<h3 id="status-heading" className={subsectionTitleClassName}>
-									プラットフォームの状態 / Platform health
-								</h3>
-								<StatusTiles
-									chrome="body"
-									services={data.services}
-									statuses={data.statuses}
-									observedAt={data.observedAt}
-									incidents={data.incidents}
-									locale={locale}
-									timeZone={timeZone}
-								/>
-							</div>
-							<div>
-								<h3 id="reactions-heading" className={subsectionTitleClassName}>
-									みんなの反応 / Reactions
-								</h3>
-								<p className={subsectionDescriptionClassName}>
-									リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
-									を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
-								</p>
-								<ReactionsWidget data={data.reactions} />
-							</div>
-							<div>
+					/>
+					<Grid columns={2} gap="10">
+						<div>
+							<h3 id="status-heading" className={subsectionTitleClassName}>
+								プラットフォームの状態 / Platform health
+							</h3>
+							<StatusTiles
+								chrome="body"
+								services={data.services}
+								statuses={data.statuses}
+								observedAt={data.observedAt}
+								incidents={data.incidents}
+								locale={locale}
+								timeZone={timeZone}
+							/>
+						</div>
+						<div>
+							<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+								GitHub の活動 / GitHub activity
+							</h3>
+							<p className={subsectionDescriptionClassName}>
+								GitHub
+								から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+							</p>
+							<GitHubActivityCard activity={data.githubActivity ?? null} />
+							<img
+								src={GITHUB_STATS_IMAGE_URL}
+								alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+								loading="lazy"
+								decoding="async"
+								className={css({
+									display: 'block',
+									maxWidth: '100%',
+									height: 'auto',
+									marginBlockStart: '4',
+								})}
+							/>
+						</div>
+						<div>
+							<h3 id="reactions-heading" className={subsectionTitleClassName}>
+								みんなの反応 / Reactions
+							</h3>
+							<p className={subsectionDescriptionClassName}>
+								リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+								を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+							</p>
+							<ReactionsWidget data={data.reactions} />
+
+							<div className={css({ marginBlockStart: '8' })}>
 								<h3 id="access-counter-heading" className={subsectionTitleClassName}>
 									ページビュー / Page views
 								</h3>
@@ -385,58 +399,23 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								</p>
 								<CounterTile data={data.counter} locale={locale} />
 							</div>
-							<div>
-								<h3 id="github-activity-heading" className={subsectionTitleClassName}>
-									GitHub の活動 / GitHub activity
-								</h3>
-								<p className={subsectionDescriptionClassName}>
-									GitHub
-									から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
-								</p>
-								<GitHubActivityCard activity={data.githubActivity ?? null} />
-								<img
-									src={GITHUB_STATS_IMAGE_URL}
-									alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
-									loading="lazy"
-									decoding="async"
-									className={css({
-										display: 'block',
-										maxWidth: '100%',
-										height: 'auto',
-										marginBlockStart: '4',
-									})}
-								/>
-							</div>
-							<div>
-								<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
-									Discord プレゼンス / Discord Presence
-								</h3>
-								{data.discordPresence ? (
-									<PresenceCard
-										card={data.discordPresence}
-										locale={locale}
-										timeZone={timeZone}
-										chrome="body"
-										headingId="discord-presence-card-heading"
-									/>
-								) : null}
-							</div>
-						</Grid>
-					</SectionHeading>
-				</PageSection>
-				{/* ad slot: playable + display rect */}
-				<Container>
-					<div className={css({ marginBlock: '10' })}>
-						<AdToolPlayable />
-						<div className={css({ marginBlockStart: '10' })}>
-							{data.adProjects?.[3] ? (
-								<AdPortfolioRect project={data.adProjects[3]} />
-							) : (
-								<AdToolRect />
-							)}
 						</div>
-					</div>
-				</Container>
+						<div>
+							<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
+								Discord プレゼンス / Discord Presence
+							</h3>
+							{data.discordPresence ? (
+								<PresenceCard
+									card={data.discordPresence}
+									locale={locale}
+									timeZone={timeZone}
+									chrome="body"
+									headingId="discord-presence-card-heading"
+								/>
+							) : null}
+						</div>
+					</Grid>
+				</PageSection>
 				{/* ad slot: sponsored pair — native + product units share one
 				    labelled region instead of a sticky rail. */}
 				<section aria-label="Sponsored">
@@ -455,16 +434,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								) : (
 									<AdToolProduct />
 								)}
-							</div>
-							<div>
-								{data.adProjects?.[2] ? (
-									<AdPortfolioNative project={data.adProjects[2]} />
-								) : (
-									<AdToolNativeCounter />
-								)}
-							</div>
-							<div>
-								<AdToolInstall />
 							</div>
 						</Grid>
 					</Container>

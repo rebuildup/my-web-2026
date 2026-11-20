@@ -68,6 +68,17 @@ const PrivateRepo = z
 	})
 	.strict();
 
+// The optional Issue/PR reference a feed item may carry (Issue #334).
+// Strict and allowlisted like every other block: an unknown key, kind
+// or state is refused at the write boundary.
+const FeedItemRef = z
+	.object({
+		kind: z.enum(['issue', 'pull']),
+		number: z.number().int().min(1).max(1_000_000),
+		state: z.enum(['open', 'closed', 'merged']).optional(),
+	})
+	.strict();
+
 const FeedItem = z
 	.object({
 		id: z.string().min(1).max(64),
@@ -75,6 +86,7 @@ const FeedItem = z
 		repoId: z.string().min(1).max(200),
 		type: z.string().min(1).max(64),
 		at: z.string().regex(RFC3339).max(64),
+		ref: FeedItemRef.optional(),
 	})
 	.strict();
 

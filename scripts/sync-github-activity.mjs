@@ -123,6 +123,63 @@ function hasObservedSignal(events, contribution) {
 }
 
 /**
+ * The Issue/PR a public feed event belongs to (Issue #334 residual).
+ *
+ * Only the event types whose GitHub payload carries the object yield
+ * a ref: `IssuesEvent` / `IssueCommentEvent` carry `payload.issue`
+ * (an issue comment on a pull request has `issue.pull_request`, so
+ * it is a `pull` ref), and the three pull-request event types carry
+ * `payload.pull_request`. Every other type — `PushEvent`,
+ * `CreateEvent`, … — has no Issue/PR to point at and gets no ref.
+ *
+ * `state` is published only when the payload proves it: `open` /
+ * `closed` come from the object's `state`, and `merged` is derived
+ * from `merged === true` / a `merged_at` timestamp on pull requests —
+ * never guessed. A missing or malformed payload field yields no ref
+ * at all rather than a partial claim.
+ */
+function eventRef(event) {
+	const payload = event?.payload;
+	if (!payload || typeof payload !== 'object') return undefined;
+
+	const issueState = (issue) =>
+		issue?.state === 'open' || issue?.state === 'closed' ? issue.state : undefined;
+	const prState = (pr) => {
+		if (pr?.merged === true || (typeof pr?.merged_at === 'string' && pr.merged_at)) {
+			return 'merged';
+		}
+		return issueState(pr);
+	};
+	const ref = (kind, number, state) =>
+		Number.isInteger(number) && number > 0
+			? { kind, number, ...(state ? { state } : {}) }
+			: undefined;
+
+	switch (event.type) {
+		case 'IssuesEvent': {
+			const issue = payload.issue;
+			return ref('issue', issue?.number, issueState(issue));
+		}
+		case 'IssueCommentEvent': {
+			const issue = payload.issue;
+			// A comment on a pull request arrives as an issue-shaped
+			// payload with `pull_request` set — the permalink target
+			// is the PR, so the ref kind follows the object.
+			const kind = issue?.pull_request ? 'pull' : 'issue';
+			return ref(kind, issue?.number, issueState(issue));
+		}
+		case 'PullRequestEvent':
+		case 'PullRequestReviewEvent':
+		case 'PullRequestReviewCommentEvent': {
+			const pr = payload.pull_request;
+			return ref('pull', pr?.number, prState(pr));
+		}
+		default:
+			return undefined;
+	}
+}
+
+/**
  * Pure snapshot builder — fetch results in, serialisable snapshot
  * out. Exported so the privacy contract (private fields never
  * survive) is testable without network or credentials.
@@ -149,13 +206,17 @@ export function buildSnapshot({
 	const cutoff = now.getTime() - WINDOW_DAYS * 86_400_000;
 	const feed = (Array.isArray(events) ? events : [])
 		.filter((e) => e.repo?.name && Date.parse(e.created_at) >= cutoff)
-		.map((e) => ({
-			id: `${e.id}`,
-			kind: 'public',
-			repoId: e.repo.name,
-			type: e.type,
-			at: e.created_at,
-		}))
+		.map((e) => {
+			const ref = eventRef(e);
+			return {
+				id: `${e.id}`,
+				kind: 'public',
+				repoId: e.repo.name,
+				type: e.type,
+				at: e.created_at,
+				...(ref ? { ref } : {}),
+			};
+		})
 		.slice(0, 30);
 
 	const counts = new Map();

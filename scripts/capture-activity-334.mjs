@@ -12,7 +12,9 @@
  *     and public projection (`publicGitHubActivity`) the Home route
  *     uses. The feed carries `IssuesEvent` / `PullRequestEvent` rows,
  *     so the artefact shows the real Issue/PR classification labels,
- *     dates and repository source links — no fabricated event data.
+ *     per-event state labels, dates and the specific Issue/PR
+ *     permalinks the snapshot's `ref` fields derive (Issue #334) —
+ *     no fabricated event data.
  *   - `github-empty.png` — the same card with the snapshot's `repos`
  *     and `feed` emptied BEFORE the reader runs: the snapshot's honest
  *     "nothing observed" shape. The card keeps its header and prints

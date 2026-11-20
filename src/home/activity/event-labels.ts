@@ -51,3 +51,23 @@ const EVENT_TYPE_LABELS_JA: Readonly<Record<string, string>> = {
 export function githubEventTypeLabelJa(type: string): string {
 	return EVENT_TYPE_LABELS_JA[type] ?? type;
 }
+
+/**
+ * Issue/PR state labels (Issue #334) — the Japanese reading of the
+ * `ref.state` vocabulary the snapshot contract publishes
+ * (`open` / `closed` / `merged`). `merged` exists only for pull
+ * requests; the generator never emits it for an issue.
+ *
+ * The mapping is total over the contract's enum; an out-of-contract
+ * value falls back to the raw string, same rule as the event-type
+ * labels — show what the data says, never a guessed meaning.
+ */
+const REF_STATE_LABELS_JA: Readonly<Record<string, string>> = {
+	open: 'オープン',
+	closed: 'クローズ',
+	merged: 'マージ済み',
+};
+
+export function githubRefStateLabelJa(state: string): string {
+	return REF_STATE_LABELS_JA[state] ?? state;
+}

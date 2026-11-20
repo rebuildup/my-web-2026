@@ -1,6 +1,6 @@
 import { css } from '../../../styled-system/css';
 import type { HomeGitHubActivity, HomeGitHubActivityRepoMeasure } from './contract';
-import { githubEventTypeLabelJa } from './event-labels';
+import { githubEventTypeLabelJa, githubRefStateLabelJa } from './event-labels';
 
 /**
  * GitHub activity card — the "GitHub の今" block of the home status
@@ -20,9 +20,11 @@ import { githubEventTypeLabelJa } from './event-labels';
  *   - The measured block lists only repos whose contribution search
  *     RAN (`topRepos` is empty otherwise) — "not measured" renders
  *     as absence, never as a zero.
- *   - Feed items show the Japanese event-type label and link to the
- *     public repository URL the snapshot carries; nothing is
- *     fabricated when the feed is empty or a repo URL is unknown.
+ *   - Feed items show the Japanese event-type label, the Issue/PR
+ *     state and number when the snapshot carries `ref` (Issue #334),
+ *     and link to the specific Issue/PR permalink — or the public
+ *     repository URL when no ref exists. Nothing is fabricated when
+ *     the feed is empty or a link target is unknown.
  */
 
 const listClassName = /*#__PURE__*/ css({
@@ -138,24 +140,33 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 				<p className={mutedClassName}>直近の公開イベントはありません。</p>
 			) : (
 				<ul className={listClassName}>
-					{activity.feed.slice(0, 8).map((item) => (
-						<li key={item.id} className={itemClassName}>
-							<span className={monoClassName}>{item.at.slice(0, 10)}</span>
-							<span>{githubEventTypeLabelJa(item.type)}</span>
-							{item.href ? (
-								<a
-									href={item.href}
-									rel="noopener noreferrer"
-									target="_blank"
-									className={linkClassName}
-								>
-									{item.repoId}
-								</a>
-							) : (
-								<span className={mutedClassName}>{item.repoId}</span>
-							)}
-						</li>
-					))}
+					{activity.feed.slice(0, 8).map((item) => {
+						const ref = item.ref;
+						return (
+							<li key={item.id} className={itemClassName}>
+								<span className={monoClassName}>{item.at.slice(0, 10)}</span>
+								<span>{githubEventTypeLabelJa(item.type)}</span>
+								{ref?.state ? (
+									<span className={mutedClassName}>{githubRefStateLabelJa(ref.state)}</span>
+								) : null}
+								{ref ? <span className={mutedClassName}>{item.repoId}</span> : null}
+								{item.href ? (
+									<a
+										href={item.href}
+										rel="noopener noreferrer"
+										target="_blank"
+										className={linkClassName}
+									>
+										{ref ? `#${ref.number}` : item.repoId}
+									</a>
+								) : ref ? (
+									<span className={mutedClassName}>#{ref.number}</span>
+								) : (
+									<span className={mutedClassName}>{item.repoId}</span>
+								)}
+							</li>
+						);
+					})}
 				</ul>
 			)}
 			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>

@@ -44,6 +44,11 @@ const PUBLIC_ID = /^[^/\s]+\/[^/\s]+$/;
 // a source status may be, or a document the gate passes could be
 // refused at render time.
 const KNOWN_SOURCE_STATUSES = new Set(['ok', 'unconfigured', 'failed']);
+// The feed `ref` vocabulary (`src/home/activity/contract.ts`
+// `ActivityFeedItemRef`, Issue #334). The gate and the reader must
+// agree on what a ref may claim.
+const REF_KINDS = new Set(['issue', 'pull']);
+const REF_STATES = new Set(['open', 'closed', 'merged']);
 
 /**
  * Validate one parsed snapshot document. Returns the list of
@@ -98,6 +103,24 @@ export function checkActivitySnapshot(snapshot) {
 	for (const [i, item] of feed.entries()) {
 		if (!item || item.kind !== 'public' || typeof item.repoId !== 'string') {
 			fail(`feed[${i}] is not a public repo reference`);
+			continue;
+		}
+		// Issue #334 — an optional Issue/PR reference. When present it
+		// must be exactly the contract shape: a known kind, a positive
+		// integer number, and a known state or none. A malformed ref is
+		// a malformed claim, so the document is refused.
+		if (item.ref !== undefined) {
+			const ref = item.ref;
+			if (
+				!ref ||
+				typeof ref !== 'object' ||
+				!REF_KINDS.has(ref.kind) ||
+				!Number.isInteger(ref.number) ||
+				ref.number < 1 ||
+				(ref.state !== undefined && !REF_STATES.has(ref.state))
+			) {
+				fail(`feed[${i}] carries a malformed ref`);
+			}
 		}
 	}
 

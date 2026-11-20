@@ -2175,20 +2175,28 @@
 			"title": "feat(platform): 部品ごとの組込実例をStack説明ページに掲載",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"src/routes/ に stack ページは存在しない (design-system ルートのみ)",
-				"storybook-ownership-check.webp",
-				"git grep -ln \"component-integration-example\" → ヒットなし"
+				"src/routes/stack/stack.ts",
+				"src/routes/stack/StackPage.tsx",
+				"src/home/current/parity.test.ts",
+				"src/home/current/CurrentProjects.stories.tsx",
+				"src/routes/index.tsx",
+				"docs/verification/platform/component-integration-example.png",
+				"docs/verification/platform/component-integration-example.md",
+				"e2e/stack.spec.ts",
+				"#510 close comment 2026-11-20",
+				"#1077",
+				"#1091"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "既存の design-system ページ (src/routes/design-system) に実体はあるが、本 Issue が求める「接続実例 + 判定語彙の区別」は実装されていない。",
-			"missing": "独立 preview と接続済み route を同じデータで確認できる Stack ページ、pass/fail/not run/not applicable の区別、正常/不正常 fixture の検証記録。"
+			"action": "closed",
+			"note": "/stack の component-integration 節として CurrentProjects を実例採用。contract→component→story→route adapter の接続を説明し、StackCheckStatus 4状態で検証状況を区別。PR #1091 の parity テストで roster record の同一性を実測 pin、record 集合全体の不一致は gh-* merge 由来として not-applicable に実測値付きで記録。locale 別 route 非存在も not-applicable として確認。2026-11-20 に受入照合のうえ close。",
+			"missing": null
 		},
 		{
 			"issue": 512,

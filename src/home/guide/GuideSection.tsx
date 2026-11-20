@@ -1,5 +1,5 @@
 import { css, cx } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { CATEGORY_SILHOUETTE_CLIP_PATH } from '../../editorial/primitives/StateMark';
 import { VisitTrail } from './VisitTrail';
@@ -861,66 +861,64 @@ export function GuideSection({ today }: GuideSectionProps) {
 	const siteRows = rows.filter(({ entry }) => entry.kind === 'site');
 	const externalRows = rows.filter(({ entry }) => entry.kind === 'external');
 	return (
-		<section aria-labelledby="site-guide-heading">
-			<Container>
-				{/* Issue #1110 — the guide is a two-column map surface, so it
+		<PageSection labelledBy="site-guide-heading">
+			{/* Issue #1110 — the guide is a two-column map surface, so it
 				    takes the `default` heading and the full measure: inside the
 				    spread variant's 8/12 column the station panels were ~360px
 				    wide and every summary wrapped into a tall block. */}
-				<SectionHeading
-					id="site-guide-heading"
-					eyebrow="Site guide"
-					title="サイト内案内"
-					titleEn="Site guide"
-					description="このサイトに何があり、どう辿るか。駅の路線図のように、施設は同じ路線上の停車駅です。各駅の色面はその施設の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
-				/>
-				<div className={guideMapClassName}>
-					<div>
-						<ol className={routeListClassName} aria-label="サイト内の施設">
-							{siteRows.map(({ entry, featured }, index) => (
+			<SectionHeading
+				id="site-guide-heading"
+				eyebrow="Site guide"
+				title="サイト内案内"
+				titleEn="Site guide"
+				description="このサイトに何があり、どう辿るか。駅の路線図のように、施設は同じ路線上の停車駅です。各駅の色面はその施設の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
+			/>
+			<div className={guideMapClassName}>
+				<div>
+					<ol className={routeListClassName} aria-label="サイト内の施設">
+						{siteRows.map(({ entry, featured }, index) => (
+							<StationRow
+								key={entry.id}
+								row={{ entry, featured }}
+								index={index}
+								count={siteRows.length}
+								external={false}
+							/>
+						))}
+					</ol>
+					<ul className={cx(legendClassName, css({ marginBlockStart: '6' }))}>
+						{CATEGORY_LEGEND.map(({ className, label }) => (
+							<li key={label} className={legendItemClassName}>
+								<span className={className} aria-hidden="true" />
+								{label}
+							</li>
+						))}
+					</ul>
+				</div>
+				{externalRows.length > 0 ? (
+					<div className={externalGroupClassName}>
+						<h3 className={externalHeadingClassName}>サイト外の拠点</h3>
+						<ol className={routeListClassName} aria-label="サイト外の拠点">
+							{externalRows.map(({ entry, featured }, index) => (
 								<StationRow
 									key={entry.id}
 									row={{ entry, featured }}
 									index={index}
-									count={siteRows.length}
-									external={false}
+									count={externalRows.length}
+									external
 								/>
 							))}
 						</ol>
-						<ul className={cx(legendClassName, css({ marginBlockStart: '6' }))}>
-							{CATEGORY_LEGEND.map(({ className, label }) => (
-								<li key={label} className={legendItemClassName}>
-									<span className={className} aria-hidden="true" />
-									{label}
-								</li>
-							))}
-						</ul>
 					</div>
-					{externalRows.length > 0 ? (
-						<div className={externalGroupClassName}>
-							<h3 className={externalHeadingClassName}>サイト外の拠点</h3>
-							<ol className={routeListClassName} aria-label="サイト外の拠点">
-								{externalRows.map(({ entry, featured }, index) => (
-									<StationRow
-										key={entry.id}
-										row={{ entry, featured }}
-										index={index}
-										count={externalRows.length}
-										external
-									/>
-								))}
-							</ol>
-						</div>
-					) : null}
-				</div>
-				{/* Issue #936 — the visitor's own recently-visited
+				) : null}
+			</div>
+			{/* Issue #936 — the visitor's own recently-visited
 				    destinations. Renders nothing on SSR, first visit
 				    or blocked storage; the guide above is complete
 				    without it. */}
-				<div className={css({ marginBlockStart: '8' })}>
-					<VisitTrail />
-				</div>
-			</Container>
-		</section>
+			<div className={css({ marginBlockStart: '8' })}>
+				<VisitTrail />
+			</div>
+		</PageSection>
 	);
 }

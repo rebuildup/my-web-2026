@@ -1,9 +1,9 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
-import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { Capability } from './capability';
 
 export interface CapabilitiesGridProps {
@@ -36,156 +36,149 @@ export interface CapabilitiesGridProps {
  */
 export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 	return (
-		<section
-			aria-labelledby="capabilities-heading"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id="capabilities-heading"
-					eyebrow="01 — Capabilities"
-					title="できごと"
-					titleEn="What's here"
-					description="個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。"
-					variant="spread"
+		<PageSection labelledBy="capabilities-heading">
+			<SectionHeading
+				id="capabilities-heading"
+				eyebrow="01 — Capabilities"
+				title="できごと"
+				titleEn="What's here"
+				description="個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。"
+				variant="spread"
+			>
+				<ul
+					className={css({
+						display: 'grid',
+						gridTemplateColumns: {
+							base: '1fr',
+							md: 'repeat(2, minmax(0, 1fr))',
+						},
+						rowGap: '10',
+						columnGap: { base: '0', md: '6' },
+						margin: '0',
+						padding: '0',
+						listStyle: 'none',
+					})}
 				>
-					<ul
-						className={css({
-							display: 'grid',
-							gridTemplateColumns: {
-								base: '1fr',
-								md: 'repeat(2, minmax(0, 1fr))',
-							},
-							rowGap: '10',
-							columnGap: { base: '0', md: '6' },
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-						})}
-					>
-						{capabilities.map((capability, index) => {
-							const ordinal = String(index + 1).padStart(2, '0');
-							// Issue #782 — every row in the grid starts at the same
-							// x. The live/planned difference is carried by the badge
-							// alone; the former 24px start offset and the 2px
-							// absolute left bar existed only for live rows, which
-							// pushed those rows off the column start the planned
-							// rows (and the heading above) establish. No replacement
-							// decoration is added.
-							return (
-								<li
-									key={capability.id}
+					{capabilities.map((capability, index) => {
+						const ordinal = String(index + 1).padStart(2, '0');
+						// Issue #782 — every row in the grid starts at the same
+						// x. The live/planned difference is carried by the badge
+						// alone; the former 24px start offset and the 2px
+						// absolute left bar existed only for live rows, which
+						// pushed those rows off the column start the planned
+						// rows (and the heading above) establish. No replacement
+						// decoration is added.
+						return (
+							<li
+								key={capability.id}
+								className={css({
+									display: 'flex',
+									flexDirection: 'column',
+								})}
+							>
+								<header
 									className={css({
 										display: 'flex',
-										flexDirection: 'column',
+										alignItems: 'baseline',
+										justifyContent: 'space-between',
+										gap: '4',
 									})}
 								>
-									<header
-										className={css({
-											display: 'flex',
-											alignItems: 'baseline',
-											justifyContent: 'space-between',
-											gap: '4',
-										})}
-									>
-										<h3
-											className={css({
-												margin: '0',
-												fontFamily: 'heading',
-												fontSize: 'xl',
-												fontWeight: '700',
-												color: 'text.default',
-												lineHeight: '1.2',
-												letterSpacing: '-0.01em',
-											})}
-										>
-											{capability.labelJa}
-										</h3>
-										<Badge tone={capability.status === 'live' ? 'accent' : 'neutral'}>
-											{capability.status === 'live' ? 'live' : 'planned'}
-										</Badge>
-									</header>
-									<span
-										aria-hidden="true"
-										className={css({
-											marginBlockStart: '1',
-											fontFamily: 'mono',
-											fontSize: 'sm',
-											color: 'text.muted',
-											letterSpacing: '0.04em',
-										})}
-									>
-										{ordinal} · {capability.label}
-									</span>
-									<p
+									<h3
 										className={css({
 											margin: '0',
-											marginBlockStart: '4',
-											fontFamily: 'sans',
-											fontSize: 'md',
-											color: 'text.muted',
-											lineHeight: '1.6',
+											fontFamily: 'heading',
+											fontSize: 'xl',
+											fontWeight: '700',
+											color: 'text.default',
+											lineHeight: '1.2',
+											letterSpacing: '-0.01em',
 										})}
 									>
-										{capability.summaryJa}
-									</p>
-									<p
-										className={css({
-											margin: '0',
-											marginBlockStart: '1',
-											fontFamily: 'sans',
-											fontSize: 'sm',
-											color: 'text.muted',
-											lineHeight: '1.6',
-										})}
-									>
-										{capability.summary}
-									</p>
-									{capability.status === 'live' && capability.href ? (
-										/* Issue #718 (WCAG 2.2 SC 2.5.3, Label in
+										{capability.labelJa}
+									</h3>
+									<Badge tone={capability.status === 'live' ? 'accent' : 'neutral'}>
+										{capability.status === 'live' ? 'live' : 'planned'}
+									</Badge>
+								</header>
+								<span
+									aria-hidden="true"
+									className={css({
+										marginBlockStart: '1',
+										fontFamily: 'mono',
+										fontSize: 'sm',
+										color: 'text.muted',
+										letterSpacing: '0.04em',
+									})}
+								>
+									{ordinal} · {capability.label}
+								</span>
+								<p
+									className={css({
+										margin: '0',
+										marginBlockStart: '4',
+										fontFamily: 'sans',
+										fontSize: 'md',
+										color: 'text.muted',
+										lineHeight: '1.6',
+									})}
+								>
+									{capability.summaryJa}
+								</p>
+								<p
+									className={css({
+										margin: '0',
+										marginBlockStart: '1',
+										fontFamily: 'sans',
+										fontSize: 'sm',
+										color: 'text.muted',
+										lineHeight: '1.6',
+									})}
+								>
+									{capability.summary}
+								</p>
+								{capability.status === 'live' && capability.href ? (
+									/* Issue #718 (WCAG 2.2 SC 2.5.3, Label in
 										   Name): the accessible name must contain the
 										   visible label, and the visible label of this
 										   link is the EN capability name. The name now
 										   carries the JA label, the visible EN label
 										   and the JA verb, in the same order the card
 										   reads. The visible text is unchanged. */
-										<a
-											href={capability.href}
-											aria-label={`${capability.labelJa} / ${capability.label} を開く`}
-											className={css({
-												marginBlockStart: '4',
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: '2',
-												fontFamily: 'sans',
-												fontSize: 'sm',
-												fontWeight: '600',
-												color: 'text.accent',
-												textDecoration: 'underline',
-												textUnderlineOffset: '0.18em',
-												textDecorationThickness: '1px',
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '4px',
-													borderRadius: '2px',
-												},
-												_hover: {
-													textDecorationThickness: '2px',
-												},
-											})}
-										>
-											<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
-											<span>{capability.label}を開く</span>
-										</a>
-									) : null}
-								</li>
-							);
-						})}
-					</ul>
-				</SectionHeading>
-			</Container>
-		</section>
+									<a
+										href={capability.href}
+										aria-label={`${capability.labelJa} / ${capability.label} を開く`}
+										className={css({
+											marginBlockStart: '4',
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: '2',
+											fontFamily: 'sans',
+											fontSize: 'sm',
+											fontWeight: '600',
+											color: 'text.accent',
+											textDecoration: 'underline',
+											textUnderlineOffset: '0.18em',
+											textDecorationThickness: '1px',
+											_focusVisible: {
+												outline: '2px solid {colors.border.focus}',
+												outlineOffset: '4px',
+												borderRadius: '2px',
+											},
+											_hover: {
+												textDecorationThickness: '2px',
+											},
+										})}
+									>
+										<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+										<span>{capability.label}を開く</span>
+									</a>
+								) : null}
+							</li>
+						);
+					})}
+				</ul>
+			</SectionHeading>
+		</PageSection>
 	);
 }

@@ -758,14 +758,6 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/home/capabilities/grid.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"raw <section> element": 1
-			},
-			"clause": "C-1"
-		},
-		{
 			"path": "src/home/composer.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection (skip-link surface + sponsored slot)",
 			"signatures": {
@@ -779,7 +771,6 @@
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
 				"paddingBlock on surface object": 1,
-				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 1
 			},
 			"clause": "C-1/C-3"
@@ -790,7 +781,6 @@
 			"signatures": {
 				"marginBlockStart on surface object": 1,
 				"paddingBlock on surface object": 2,
-				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 4
 			},
 			"clause": "C-1/C-3"
@@ -1914,7 +1904,7 @@
 			"path": "src/home/current/CurrentProjects.tsx",
 			"reason": "legacy debt pending #1108 HOME/index-route curation",
 			"signatures": {
-				"unbounded .map(": 2
+				"unbounded .map(": 1
 			},
 			"clause": "C-8"
 		},
@@ -2156,8 +2146,6 @@
 				"src/admin/invitations/accept-view.tsx",
 				"src/admin/invitations/invitations.tsx",
 				"src/admin/keys/keys.tsx",
-				"src/home/capabilities/grid.tsx",
-				"src/home/current/CurrentProjects.tsx",
 				"src/home/footer.tsx",
 				"src/home/presence/PresenceCard.tsx",
 				"src/home/status/tiles.tsx",

@@ -21,7 +21,15 @@ test.describe('stack — /stack reference', () => {
 
 		await expect(page.locator('h1')).toHaveText('開発スタック / Stack');
 
-		for (const section of ['runtime', 'data', 'styling', 'quality', 'biome', 'delivery']) {
+		for (const section of [
+			'runtime',
+			'data',
+			'styling',
+			'quality',
+			'biome',
+			'delivery',
+			'component-integration',
+		]) {
 			const list = page.locator(`[data-testid="stack-items-${section}"]`);
 			await expect(list).toBeVisible();
 			expect(await list.locator('li').count()).toBeGreaterThan(0);
@@ -86,6 +94,32 @@ test.describe('stack — /stack reference', () => {
 
 		const gha = page.locator('[data-testid="stack-item-github-actions"]');
 		await expect(gha).toContainText('未確定');
+	});
+
+	test('distinguishes the component-integration check verdicts (Issue #510)', async ({ page }) => {
+		await page.goto('/stack');
+
+		// The example section cites the real CurrentProjects wiring.
+		const preview = page.locator('[data-testid="stack-item-current-projects-preview"]');
+		await expect(preview).toContainText('CurrentProjects.stories');
+
+		// pass / not run / not applicable are rendered as distinct
+		// literal tokens, each carrying its data-status attribute.
+		await expect(page.locator('[data-testid="stack-check-preview-same-sources"]')).toHaveAttribute(
+			'data-status',
+			'pass',
+		);
+		await expect(
+			page.locator('[data-testid="stack-check-preview-route-identical-output"]'),
+		).toHaveAttribute('data-status', 'not-applicable');
+		await expect(page.locator('[data-testid="stack-check-github-merge-parity"]')).toHaveAttribute(
+			'data-status',
+			'not-run',
+		);
+		await expect(page.locator('[data-testid="stack-check-other-locale-render"]')).toHaveAttribute(
+			'data-status',
+			'not-run',
+		);
 	});
 
 	test('emits the contracted canonical and Open Graph metadata', async ({ page }) => {

@@ -5,7 +5,7 @@ import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
-import type { StackFactRow } from './stack';
+import type { StackCheckStatus, StackFactRow } from './stack';
 
 /**
  * `/stack` page composition (Issue #381).
@@ -236,6 +236,9 @@ function StackItemRow({ item }: { item: StackItemView }) {
 						))}
 					</div>
 				) : null}
+				{item.checks !== undefined && item.checks.length > 0 ? (
+					<StackChecks checks={item.checks} itemId={item.id} />
+				) : null}
 				{item.evidence.length > 0 ? (
 					<ul
 						aria-label="根拠 source"
@@ -281,6 +284,95 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				) : null}
 			</div>
 		</li>
+	);
+}
+
+/**
+ * Verification verdicts for the component-integration example
+ * (Issue #510). Each check renders its status as a literal token —
+ * `pass` / `fail` / `not run` / `not applicable` — so the four states
+ * stay distinguishable without relying on colour (the editorial
+ * semantic layer carries no status hue, Issue #887). `pass` uses the
+ * accent badge tone; every other state stays neutral, because a
+ * `not-applicable` verdict is a boundary statement, not a warning.
+ */
+const CHECK_STATUS_LABEL: Readonly<Record<StackCheckStatus, string>> = {
+	pass: 'pass',
+	fail: 'fail',
+	'not-run': 'not run',
+	'not-applicable': 'not applicable',
+};
+
+function StackChecks({
+	checks,
+	itemId,
+}: {
+	checks: NonNullable<StackItemView['checks']>;
+	itemId: string;
+}) {
+	return (
+		<ul
+			aria-label="検証状況"
+			data-testid={`stack-checks-${itemId}`}
+			className={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2',
+				margin: '0',
+				padding: '0',
+				listStyle: 'none',
+			})}
+		>
+			{checks.map((check) => (
+				<li
+					key={check.id}
+					data-testid={`stack-check-${check.id}`}
+					data-status={check.status}
+					className={css({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '1',
+					})}
+				>
+					<span
+						className={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							flexWrap: 'wrap',
+						})}
+					>
+						<Badge tone={check.status === 'pass' ? 'accent' : 'neutral'}>
+							<span className={css({ fontFamily: 'mono' })}>
+								{CHECK_STATUS_LABEL[check.status]}
+							</span>
+						</Badge>
+						<span
+							className={css({
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+								color: 'text.default',
+							})}
+						>
+							{check.label}
+						</span>
+					</span>
+					{check.note !== undefined ? (
+						<span
+							className={css({
+								fontFamily: 'sans',
+								fontSize: 'xs',
+								lineHeight: '1.7',
+								color: 'text.muted',
+							})}
+						>
+							{check.note}
+						</span>
+					) : null}
+				</li>
+			))}
+		</ul>
 	);
 }
 

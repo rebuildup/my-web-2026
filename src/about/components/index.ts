@@ -7,4 +7,3 @@
 export { AboutPage } from './AboutPage';
 export type { AboutPageProps } from './AboutPage';
 export { LinksPage } from './LinksPage';
-export type { LinksPageProps } from './LinksPage';

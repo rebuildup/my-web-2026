@@ -1716,23 +1716,25 @@
 			"title": "feat(stack): Webサイトの開発スタックを説明する独立ページを追加",
 			"closedAt": "2026-10-31",
 			"window": "sweep-2026-10-31",
-			"state": "planned-unimplemented",
-			"closure": "unsupported",
+			"state": "implemented-and-verified",
+			"closure": "supported",
 			"evidence": [
-				"index.tsx",
-				"about.tsx",
-				"contact.tsx",
-				"keyboard.tsx",
-				"design-system.tsx",
-				"projects.dotfiles.tsx"
+				"src/routes/stack.tsx",
+				"src/routes/stack/stack.ts",
+				"src/routes/stack/load.ts",
+				"src/routes/stack/StackPage.tsx",
+				"e2e/stack.spec.ts",
+				"docs/verification/stack/overview-desktop.png",
+				"docs/verification/stack/overview-mobile.png",
+				"#1075"
 			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
 			"ownerReference": null,
-			"action": "reopened",
-			"note": "内部には docs/architecture.md など資料はあるが、公開面の独立ページは作られていない。",
-			"missing": "/stack ページ（runtime/framework/Cloudflare/データ/CI/test/formatter の説明）、根拠リンク、スクリーンショット。"
+			"action": "closed",
+			"note": "PR #1075 で /stack 実ルートを実装し release-0-11-0 に統合。version は package.json / quality/profile.yaml から導出、未確定項目は未確定表示。route coverage / sitemap / SEO / OGP / a11y / publication 等の登録を更新し validate:fast pass。2026-11-20 close。",
+			"missing": "節追加の後続 Issue（#382 Biome / #383 Quality・Delivery / #510 組込実例）は別途 open。"
 		},
 		{
 			"issue": 382,

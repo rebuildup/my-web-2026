@@ -174,4 +174,21 @@ describe('resolveStackSections over the committed inventory', () => {
 			.find((item) => item.id === 'biome-config');
 		expect(config?.settings).toBeUndefined();
 	});
+
+	it('passes the component-integration checks through resolution (Issue #510)', () => {
+		const data = resolveStackSections(STACK_SECTIONS, sources());
+		const section = data.sections.find((entry) => entry.id === 'component-integration');
+		expect(section).toBeDefined();
+		const checks = section?.items.flatMap((item) => item.checks ?? []) ?? [];
+		expect(checks.length).toBeGreaterThan(0);
+		// Every verdict uses the four-state vocabulary and carries a label.
+		for (const check of checks) {
+			expect(['pass', 'fail', 'not-run', 'not-applicable']).toContain(check.status);
+			expect(check.label.length).toBeGreaterThan(0);
+		}
+		// The honest gap is recorded, not hidden: identical output is
+		// declared not-applicable, never pass.
+		const identical = checks.find((check) => check.id === 'preview-route-identical-output');
+		expect(identical?.status).toBe('not-applicable');
+	});
 });

@@ -1404,6 +1404,29 @@
 				]
 			},
 			"note": "Claim-class label of the portfolio case-study element (src/portfolio/components/PortfolioCaseStudy.tsx). It names the third epistemic class the Issue #519 element must distinguish; it is a fixed vocabulary word, not a live status claim — re-check only if the class vocabulary changes."
+		},
+		{
+			"id": "stack-component-integration-510",
+			"path": "src/routes/stack/stack.ts",
+			"expression": "独立した feature が「データ契約 → 表示 component → Storybook preview → 薄い route adapter」の順にどう接続されるかを、実在する 1 つの component で示します。対象は `/` トップの「現在地」セクション（CurrentProjects）です。各項目の検証状況は pass / fail / not run / not applicable で区別しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "5ca16e7a",
+						"note": "the commit that introduced this record (Issue #510 component-integration section)."
+					}
+				]
+			},
+			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
 		}
 	]
 }

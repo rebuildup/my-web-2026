@@ -4,7 +4,7 @@ import packageJson from '../../../package.json';
 import profileYaml from '../../../quality/profile.yaml?raw';
 import { extractBiomeSettings } from './biome-facts';
 import { parseProfileStack } from './profile-stack';
-import { resolveStackSections, type StackPageData } from './resolve';
+import { type StackPageData, resolveStackSections } from './resolve';
 import { STACK_SECTIONS } from './stack';
 
 /**

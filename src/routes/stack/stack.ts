@@ -103,6 +103,12 @@ export interface StackItem {
 	/** Optional committed code samples (before/after, proposals). */
 	readonly samples?: readonly StackCodeSample[];
 	readonly evidence: readonly StackEvidence[];
+	/**
+	 * Optional verification verdicts (Issue #510). Only the
+	 * component-integration example carries them today; the resolver
+	 * and the page pass them through untouched.
+	 */
+	readonly checks?: readonly StackCheck[];
 }
 
 /** A titled group of stack items. */
@@ -115,6 +121,37 @@ export interface StackSection {
 	/** Optional muted description under the heading. */
 	readonly description?: string;
 	readonly items: readonly StackItem[];
+}
+
+/**
+ * Verification verdict for one claim an item makes (Issue #510).
+ *
+ * The vocabulary is deliberately the same four-state one the
+ * editorial-approval and publication gates use, so a reader who knows
+ * those reports reads this page the same way:
+ *
+ *   - `pass`            — the claim was verified against the cited
+ *                         source;
+ *   - `fail`            — a verification ran and contradicted the
+ *                         claim;
+ *   - `not-run`         — no verification exists yet;
+ *   - `not-applicable`  — the claim does not apply to this example
+ *                         (for example a guarantee the example
+ *                         deliberately does not make).
+ *
+ * A `not-applicable` verdict is NOT a failure and is never rendered
+ * as one: it records the boundary of what the example claims.
+ */
+export type StackCheckStatus = 'pass' | 'fail' | 'not-run' | 'not-applicable';
+
+/** One verification verdict attached to a stack item. */
+export interface StackCheck {
+	readonly id: string;
+	/** What was checked, in Japanese. */
+	readonly label: string;
+	readonly status: StackCheckStatus;
+	/** Optional muted note qualifying the verdict (the honest gap). */
+	readonly note?: string;
 }
 
 const blob = (...segments: readonly string[]): string =>
@@ -627,6 +664,125 @@ export const STACK_SECTIONS: readonly StackSection[] = [
 						'ADR-0015-infisical-env-management.md',
 					),
 					evidence('deploy-with-secrets.mjs', 'scripts', 'deploy-with-secrets.mjs'),
+				],
+			},
+		],
+	},
+	{
+		id: 'component-integration',
+		title: 'コンポーネント統合の実例',
+		titleEn: 'Component integration example',
+		description:
+			'独立した feature が「データ契約 → 表示 component → Storybook preview → 薄い route adapter」の順にどう接続されるかを、実在する 1 つの component で示します。対象は `/` トップの「現在地」セクション（CurrentProjects）です。各項目の検証状況は pass / fail / not run / not applicable で区別しています。',
+		items: [
+			{
+				id: 'current-projects-contract',
+				name: 'CurrentProjects — データ契約',
+				responsibility:
+					'`home/current/types.ts` が所有する `CurrentProjectRecord` / `ProjectFact`。継続・稼働・注力の 3 軸を「値 + 出典（handwritten / git / github）+ 観測日」の fact として保持し、出典の違う値を区別します。',
+				reason:
+					'出典の異なる値を 1 つの列に混ぜると、手書きの記憶が commit と同じ確かさに見えてしまうため。preview と route が同じ型を読むことで、表示側は出典を偽れません。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('types.ts', 'src', 'home', 'current', 'types.ts'),
+					evidence('source.ts', 'src', 'home', 'current', 'source.ts'),
+				],
+				checks: [
+					{
+						id: 'contract-single-vocabulary',
+						label: 'preview と route が同一のデータ契約を共有する',
+						status: 'pass',
+						note: '`CurrentProjects.stories.tsx` の Shipped story と `/` route の loader が、どちらも `CurrentProjectRecord[]` を同じ `CurrentProjects` component に渡します。',
+					},
+				],
+			},
+			{
+				id: 'current-projects-component',
+				name: 'CurrentProjects — 表示 component',
+				responsibility:
+					'`home/current/CurrentProjects.tsx`。record を継続・稼働・注力の軸で描画し、無い fact は省略して placeholder を置きません。描画判断はこの component に閉じています。',
+				reason:
+					'Storybook と route の両方がこの 1 つの component を mount するため、preview で見える組版は route が出す組版と同じ実装です。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('CurrentProjects.tsx', 'src', 'home', 'current', 'CurrentProjects.tsx'),
+					evidenceDir('current/', 'src', 'home', 'current'),
+				],
+				checks: [
+					{
+						id: 'component-single-implementation',
+						label: 'preview 用と route 用で実装を複製していない',
+						status: 'pass',
+						note: 'story も route も `CurrentProjects.tsx` を直接 import します。preview 専用の写しは存在しません。',
+					},
+				],
+			},
+			{
+				id: 'current-projects-preview',
+				name: 'CurrentProjects.stories — Storybook preview',
+				responsibility:
+					'`Shipped` story は `currentProjectsFor(TODAY)` を呼び、route と同じ committed source（`roster.ts` の手書き値と `git-facts.json` の git snapshot）を合成して描画します。独立 preview はこの story です。',
+				reason:
+					'preview が独自 fixture を持たないため、Storybook で見えるものは route が読むのと同じ合成経路の結果です。検証画像は `capture-home-current-projects.mjs` が story の `render()` 出力から生成します。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence(
+						'CurrentProjects.stories.tsx',
+						'src',
+						'home',
+						'current',
+						'CurrentProjects.stories.tsx',
+					),
+					evidence('loader.ts', 'src', 'home', 'current', 'loader.ts'),
+					evidence('git-facts.test.ts', 'src', 'home', 'current', 'git-facts.test.ts'),
+				],
+				checks: [
+					{
+						id: 'preview-same-sources',
+						label: 'preview が route と同じ committed source を合成する',
+						status: 'pass',
+						note: '`currentProjectsFor` は `currentProjectsLoader` と同じ `PROJECT_ROSTER` と `FACT_SOURCES`（手書き + git snapshot）を使います。`git-facts.test.ts` が合成結果を pin しています。',
+					},
+					{
+						id: 'preview-route-identical-output',
+						label: 'preview と route の表示 record 集合が完全一致する',
+						status: 'not-applicable',
+						note: 'route はさらに live の GitHub activity snapshot（D1 優先、committed artefact に fallback）を merge するため、`currentProjectsFor` の結果と record 集合が一致しない場合があります。この差分は意図的で、完全一致は本例の保証範囲外です（保留）。',
+					},
+					{
+						id: 'github-merge-parity',
+						label: 'GitHub merge 後の record 集合を preview と突合する',
+						status: 'not-run',
+						note: '自動検証は roster + git の合成までを対象とし、live snapshot 由来の record を含む完全な route 出力との突合は未実施です。',
+					},
+				],
+			},
+			{
+				id: 'current-projects-route',
+				name: 'routes/index.tsx — thin route adapter',
+				responsibility:
+					'`/` route は `getCurrentProjects` server function を呼ぶだけで、合成は server 側の `currentProjectsLoader` が行います。route が持つのは chrome と loader 呼び出しだけです。',
+				reason:
+					'合成に必要な committed artefact（roster・git snapshot）を client bundle に載せないため、server function の境界の内側で解決します。',
+				version: { kind: 'none' },
+				evidence: [
+					evidence('index.tsx', 'src', 'routes', 'index.tsx'),
+					evidence('load.ts', 'src', 'home', 'current', 'load.ts'),
+					evidence('composer.tsx', 'src', 'home', 'composer.tsx'),
+				],
+				checks: [
+					{
+						id: 'route-no-composition',
+						label: 'route がデータ合成を所有しない',
+						status: 'pass',
+						note: '`routes/index.tsx` は `getCurrentProjects({ data: { today } })` を呼び、結果を `HomePage` に渡すだけです。',
+					},
+					{
+						id: 'other-locale-render',
+						label: 'fr / de / pt / ru locale での描画を確認する',
+						status: 'not-run',
+						note: '`statusJa` は日本語主体の文で、他言語 locale での表示確認は本例の対象外です。ページ統合や全言語対応を前提にしません。',
+					},
 				],
 			},
 		],

@@ -3,7 +3,7 @@
 	"version": "0.11.0",
 	"private": true,
 	"type": "module",
-	"description": "my-web-2026 \u2014 Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
+	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
 	"license": "MIT",
 	"engines": {
 		"node": ">=22.18.0"
@@ -104,6 +104,7 @@
 		"threat:model:check": "node scripts/check-threat-model.mjs",
 		"threat:model:report": "node scripts/check-threat-model.mjs --report=.tmp/threat-model-report.html",
 		"tools:check": "node scripts/check-tools-manifest.mjs",
+		"ui:contract:check": "node scripts/check-ui-contract.mjs",
 		"tools:embed-policy:report": "node scripts/tools-embed-policy-report.mjs",
 		"typecheck": "tsc --noEmit",
 		"validate:fast": "node scripts/run-quality-gates.mjs fast",

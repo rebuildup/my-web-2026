@@ -1,0 +1,156 @@
+{
+	"schema_version": 1,
+	"fixture": true,
+	"scope": {
+		"root": ".",
+		"extensions": [".tsx", ".ts"],
+		"exemptPrefixes": ["editorial/"]
+	},
+	"tones": [
+		"ground",
+		"sunken",
+		"raised",
+		"inverse",
+		"field.design",
+		"field.code",
+		"field.writing",
+		"field.tool"
+	],
+	"clauses": {
+		"C-1": {
+			"detection": {
+				"styleProperties": [
+					"paddingBlock",
+					"paddingBlockStart",
+					"paddingBlockEnd",
+					"paddingTop",
+					"paddingBottom",
+					"marginBlock",
+					"marginBlockStart",
+					"marginBlockEnd"
+				],
+				"valueRules": [
+					{ "property": "background", "note": "bg.canvas on a section-scale element" },
+					{
+						"property": "backgroundColor",
+						"values": ["bg.canvas"],
+						"note": "painting the page ground"
+					},
+					{ "property": "borderTop", "note": "section separators" },
+					{ "property": "borderBottom", "note": "section separators" }
+				]
+			}
+		},
+		"C-2": {
+			"colorProperties": [
+				"backgroundColor",
+				"background",
+				"color",
+				"borderColor",
+				"outlineColor",
+				"fill",
+				"stroke"
+			],
+			"forbiddenValuePatterns": [
+				"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+				"^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\\(",
+				"^\\{colors\\.(?:brand|neutral|charcoal|positive|negative|warning|design|code|writing|tool|mono)\\.",
+				"^(?:black|white|red|green|blue|gray|grey|silver|maroon|purple|fuchsia|lime|olive|yellow|navy|teal|aqua|orange)$"
+			],
+			"semanticValuePrefixes": [
+				"bg.",
+				"text.",
+				"border.",
+				"accent.",
+				"mono.",
+				"{colors.semantic.",
+				"currentColor",
+				"transparent",
+				"inherit"
+			]
+		},
+		"C-3": {
+			"detection": {
+				"styleProperties": ["backgroundColor", "background", "backgroundImage"]
+			}
+		},
+		"C-4": {
+			"styleProperties": [
+				"gridTemplateColumns",
+				"gridTemplateRows",
+				"gridTemplateAreas",
+				"gridAutoFlow",
+				"gridAutoColumns",
+				"gridAutoRows"
+			]
+		},
+		"C-5": {
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "li",
+						"forbiddenStyleProperties": [
+							"border",
+							"borderWidth",
+							"borderStyle",
+							"borderColor",
+							"backgroundColor",
+							"background",
+							"borderRadius"
+						]
+					},
+					{ "element": "ul", "elementAliases": ["ol"], "forbiddenStyleProperties": ["display"] }
+				]
+			}
+		},
+		"C-6": {
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "a",
+						"elementAliases": ["button"],
+						"controlStyleProperties": [
+							"padding",
+							"paddingInline",
+							"paddingBlock",
+							"height",
+							"borderRadius",
+							"backgroundColor",
+							"background",
+							"borderWidth",
+							"borderStyle",
+							"borderColor"
+						]
+					}
+				]
+			}
+		},
+		"C-7": { "detection": { "minFiles": 3 } },
+		"C-8": {
+			"detection": {
+				"jsxPatterns": [
+					{
+						"pattern": ".map(",
+						"requiredNearby": [
+							".slice(",
+							"limit",
+							"Disclosure",
+							"ShowMore",
+							"showMore",
+							"SeeAll",
+							"すべて",
+							"href"
+						]
+					}
+				]
+			}
+		}
+	},
+	"colorAllowlist": [],
+	"gridAllowlist": [],
+	"sectionAllowlist": [],
+	"controlAllowlist": [],
+	"listAllowlist": [],
+	"enumerationAllowlist": [],
+	"duplicateAllowlist": []
+}

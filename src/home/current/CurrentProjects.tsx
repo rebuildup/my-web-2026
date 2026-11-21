@@ -188,8 +188,12 @@ const rowIndexClassName = /* @__PURE__ */ css({
  * draw a false relationship.
  */
 const factsColumnClassName = /* @__PURE__ */ css({
-	borderLeftWidth: { base: '0', md: '1px' },
-	borderLeftStyle: 'solid',
+	// The vertical rule uses the `border-left` SHORTHAND: the CSS
+	// vocabulary gate (quality/css-standards.json) knows the shorthand
+	// and `border-left-color`, and rejects the `border-left-width` /
+	// `border-left-style` longhands Panda would emit from the
+	// longhand props.
+	borderLeft: { base: 'none', md: '1px solid' },
 	borderLeftColor: 'border.subtle',
 	paddingInlineStart: { base: '0', md: '6' },
 });

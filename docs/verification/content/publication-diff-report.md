@@ -216,9 +216,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/now`
+- (none)
 
 ### Removed public URLs (0)
 
@@ -821,6 +821,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/now
-- **WARN** `W004 public-url-added` Public URL added: /now
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

@@ -6008,12 +6008,11 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/now"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://rebuildup.dev/now"
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
@@ -6025,12 +6024,12 @@
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/now"
+				"message": "External URL added: http://www.w3.org/1999/xlink"
 			},
 			{
-				"code": "W004 public-url-added",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "Public URL added: /now"
+				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 			}
 		]
 	}

@@ -706,22 +706,11 @@
 				]
 			},
 			{
-				"url": "http://www.w3.org/1999/xlink",
-				"host": "www.w3.org",
-				"kind": "external",
-				"identifier": true,
-				"files": [
-					"external/prototype/public/vite.svg"
-				]
-			},
-			{
 				"url": "http://www.w3.org/2000/svg",
 				"host": "www.w3.org",
 				"kind": "external",
 				"identifier": true,
 				"files": [
-					"external/prototype/public/vite.svg",
-					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
@@ -1009,17 +998,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/tools/manifest.json"
-				]
-			},
-			{
-				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
-				"host": "fonts.googleapis.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"external/prototype/index.html"
 				]
 			},
 			{
@@ -1028,7 +1007,6 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/tools/manifest.json"
 				]
 			},
@@ -4290,7 +4268,6 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html",
 					"src/tools/manifest.json"
 				]
 			},
@@ -6008,14 +5985,13 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/now"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://rebuildup.dev/now"
+		"addedExternalUrls": [],
+		"removedExternalUrls": [
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 		],
-		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -6023,14 +5999,14 @@
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/now"
+				"message": "External URL removed: http://www.w3.org/1999/xlink"
 			},
 			{
-				"code": "W004 public-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "Public URL added: /now"
+				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
 			}
 		]
 	}

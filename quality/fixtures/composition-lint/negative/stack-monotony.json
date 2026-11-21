@@ -1,0 +1,318 @@
+{
+  "version": "composition-model/v1",
+  "document": {
+    "width": 1440,
+    "height": 5000
+  },
+  "sectionOrder": [],
+  "sections": [
+    {
+      "tone": "ground",
+      "rhythm": "hero",
+      "signature": "hero-a",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 600
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 80000,
+          "fontSize": 48,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "text",
+          "area": 120000,
+          "fontSize": 17,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.67,
+      "emptyAreaRatio": 0,
+      "contentLeft": 240,
+      "contentRight": 1200,
+      "density": 0.45,
+      "columnCount": 1,
+      "blockOrder": [
+        "heading",
+        "text"
+      ]
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "cards-ish",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 600
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 30000,
+          "fontSize": 28,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "panel",
+          "area": 200000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "panel",
+          "area": 200000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "panel",
+          "area": 200000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.67,
+      "emptyAreaRatio": 0,
+      "contentLeft": 240,
+      "contentRight": 1200,
+      "density": 0.42,
+      "columnCount": 1,
+      "blockOrder": [
+        "heading",
+        "text"
+      ]
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "rows-ish",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 600
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 30000,
+          "fontSize": 28,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "list",
+          "area": 250000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "list",
+          "area": 250000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.67,
+      "emptyAreaRatio": 0,
+      "contentLeft": 240,
+      "contentRight": 1200,
+      "density": 0.44,
+      "columnCount": 1,
+      "blockOrder": [
+        "heading",
+        "text"
+      ]
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "tiles-ish",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 600
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 30000,
+          "fontSize": 28,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "control",
+          "area": 50000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "control",
+          "area": 50000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "control",
+          "area": 50000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.67,
+      "emptyAreaRatio": 0,
+      "contentLeft": 240,
+      "contentRight": 1200,
+      "density": 0.41,
+      "columnCount": 1,
+      "blockOrder": [
+        "heading",
+        "text"
+      ]
+    },
+    {
+      "tone": "inverse",
+      "rhythm": "closing",
+      "signature": "tail",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 600
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 50000,
+          "fontSize": 32,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        },
+        {
+          "kind": "control",
+          "area": 30000,
+          "fontSize": 15,
+          "rect": {
+            "x": 240,
+            "y": 0,
+            "w": 960,
+            "h": 100
+          }
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.67,
+      "emptyAreaRatio": 0,
+      "contentLeft": 240,
+      "contentRight": 1200,
+      "density": 0.4,
+      "columnCount": 1,
+      "blockOrder": [
+        "heading",
+        "text"
+      ]
+    }
+  ],
+  "media": {
+    "totalArea": 0,
+    "byKind": {}
+  },
+  "metrics": {
+    "contentArea": 7200000
+  },
+  "features": []
+}

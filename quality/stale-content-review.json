@@ -14,7 +14,9 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": ["ja"],
+	"locales": [
+		"ja"
+	],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",
@@ -1378,7 +1380,7 @@
 			"expression": "現在地 / Where I am now — rebuildup.dev",
 			"locale": "ja",
 			"dimension": "prose",
-			"reviewedAt": "2026-11-20",
+			"reviewedAt": "2026-11-19",
 			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",
@@ -1411,7 +1413,7 @@
 			"expression": "現在地",
 			"locale": "ja",
 			"dimension": "prose",
-			"reviewedAt": "2026-11-20",
+			"reviewedAt": "2026-11-19",
 			"reviewedBy": "agent",
 			"provenance": {
 				"kind": "agent-recorded",

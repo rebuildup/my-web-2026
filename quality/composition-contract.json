@@ -17,16 +17,7 @@
 	"model": {
 		"version": "composition-model/v1",
 		"sections": "document-order <section> elements; PageSection-derived ones carry data-tone / data-rhythm / data-section",
-		"blockKinds": [
-			"heading",
-			"text",
-			"media",
-			"list",
-			"panel",
-			"control",
-			"ad",
-			"other"
-		],
+		"blockKinds": ["heading", "text", "media", "list", "panel", "control", "ad", "other"],
 		"signature": "quantized composition vector: tone + column count + media presence + heading style + dominant block kinds. Component names are irrelevant; identical rendered structure yields identical signatures."
 	},
 	"viewports": [
@@ -72,9 +63,7 @@
 			"mediaExpected": true,
 			"indexRoute": false,
 			"heroMediaMinRatio": 0.15,
-			"proseSections": [
-				"prose"
-			],
+			"proseSections": ["prose"],
 			"proseSectionsReason": "the markdown case-study body sections are long-form prose by design; the exemption applies to those sections only (Issue #1149)"
 		},
 		{
@@ -156,10 +145,7 @@
 			},
 			"exceptions": "pages whose obligation IS a uniform index (e.g. a pure chronological list) may register a route-level exception with reason",
 			"falsePositives": "a deliberately austere monochrome page — mitigated by CL-8 staying warning-level and exceptions requiring a recorded reason",
-			"fixture": [
-				"negative/monotone-stack",
-				"positive/mono-editorial"
-			]
+			"fixture": ["negative/monotone-stack", "positive/mono-editorial"]
 		},
 		{
 			"id": "CL-2",
@@ -174,10 +160,7 @@
 			},
 			"exceptions": "index routes where repetition is the content (activity timeline, links list) — route.indexRoute suppresses unless the run spans heterogeneous content types",
 			"falsePositives": "a page that genuinely has three same-shaped sections by meaning — requires exception entry",
-			"fixture": [
-				"negative/repeated-structure",
-				"positive/list-with-rhythm"
-			]
+			"fixture": ["negative/repeated-structure", "positive/list-with-rhythm"]
 		},
 		{
 			"id": "CL-3",
@@ -192,10 +175,7 @@
 			},
 			"exceptions": "tool/utility pages may declare reduced hierarchy expectations",
 			"falsePositives": "pages whose hierarchy is carried by tone rather than type scale — tone transitions count as hierarchy evidence",
-			"fixture": [
-				"negative/no-hierarchy",
-				"positive/clear-hierarchy"
-			]
+			"fixture": ["negative/no-hierarchy", "positive/clear-hierarchy"]
 		},
 		{
 			"id": "CL-4",
@@ -211,10 +191,7 @@
 			},
 			"exceptions": "intentional whitespace compositions (positive fixture) register a route or section exception",
 			"falsePositives": "editorial measure pages — the canonical 1024 container is itself the contract, so this rule measures blocks INSIDE sections that further narrow themselves",
-			"fixture": [
-				"negative/narrow-column",
-				"positive/whitespace-led"
-			]
+			"fixture": ["negative/narrow-column", "positive/whitespace-led"]
 		},
 		{
 			"id": "CL-5",
@@ -229,10 +206,7 @@
 			},
 			"exceptions": "dense index pages (portfolio grid) are expected-equal; declare per-route",
 			"falsePositives": "homogeneous data genuinely wants equal cells — warning level only",
-			"fixture": [
-				"negative/uniform-grid",
-				"positive/asymmetric-grid"
-			]
+			"fixture": ["negative/uniform-grid", "positive/asymmetric-grid"]
 		},
 		{
 			"id": "CL-6",
@@ -246,10 +220,7 @@
 			},
 			"exceptions": "routes may declare mediaExpected:false; items legitimately without assets are covered by the media manifest, not this rule",
 			"falsePositives": "a mediaExpected route in a data-empty state — the empty state itself is a separate contract",
-			"fixture": [
-				"negative/text-only-portfolio",
-				"positive/media-led-detail"
-			]
+			"fixture": ["negative/text-only-portfolio", "positive/media-led-detail"]
 		},
 		{
 			"id": "CL-7",
@@ -265,10 +236,7 @@
 			},
 			"exceptions": "reading-order preservation is an accessibility requirement — reordering for effect must keep DOM order meaningful",
 			"falsePositives": "content that is legitimately sequential — warning level only",
-			"fixture": [
-				"negative/mobile-naive-stack",
-				"positive/mobile-recomposed"
-			]
+			"fixture": ["negative/mobile-naive-stack", "positive/mobile-recomposed"]
 		},
 		{
 			"id": "CL-8",
@@ -283,10 +251,7 @@
 			},
 			"exceptions": "route-level declaration for deliberately monochrome pages",
 			"falsePositives": "high — this is why it is warning-level",
-			"fixture": [
-				"negative/no-tone-variation",
-				"positive/intentional-mono"
-			]
+			"fixture": ["negative/no-tone-variation", "positive/intentional-mono"]
 		},
 		{
 			"id": "CL-9",
@@ -301,10 +266,7 @@
 			},
 			"exceptions": "utility pages (contact form, keyboard reference) may have diffuse hierarchy by nature",
 			"falsePositives": "pages whose focal point is an image measured under CL-6's mediaArea instead",
-			"fixture": [
-				"negative/no-focal",
-				"positive/anchored-hero"
-			]
+			"fixture": ["negative/no-focal", "positive/anchored-hero"]
 		},
 		{
 			"id": "CL-10",
@@ -320,10 +282,7 @@
 			},
 			"exceptions": "index routes are exempt (a catalog IS a list); a minority of list sections on a varied page is legitimate parallel structure; intentional repetition with variation is judged by the distinct-signature evidence in the detail string",
 			"falsePositives": "a page genuinely built from parallel catalogs — warning level feeds L-C review, never blocks",
-			"fixture": [
-				"negative/repeated-lists",
-				"positive/list-with-rhythm"
-			]
+			"fixture": ["negative/repeated-lists", "positive/list-with-rhythm"]
 		},
 		{
 			"id": "CL-11",
@@ -342,10 +301,7 @@
 			},
 			"exceptions": "index routes are exempt (catalogs stack by nature); intentional single-column editorial flows that vary density, axis or media do not form a qualifying run",
 			"falsePositives": "a genuinely minimal single-column page — mitigated by minRunLength + dominance; warning-level evidence is kept in the detail string",
-			"fixture": [
-				"negative/stack-monotony",
-				"positive/varied-single-column"
-			]
+			"fixture": ["negative/stack-monotony", "positive/varied-single-column"]
 		},
 		{
 			"id": "CL-12",
@@ -360,10 +316,7 @@
 			},
 			"exceptions": "a unit whose emptiness IS the design (a spacer tile, a deliberately blank tile) has to be declared per route with a reason",
 			"falsePositives": "a unit whose content is painted as a background image or a canvas has no content block — such a unit must declare an exception",
-			"fixture": [
-				"negative/empty-cards",
-				"positive/filled-cards"
-			]
+			"fixture": ["negative/empty-cards", "positive/filled-cards"]
 		},
 		{
 			"id": "CL-13",
@@ -376,18 +329,13 @@
 			},
 			"exceptions": "an image that is intentionally a tracking pixel or a decorative spacer",
 			"falsePositives": "an image whose source is blocked by the capture environment (offline preview) — record it in the run report rather than silencing the rule",
-			"fixture": [
-				"negative/broken-media",
-				"positive/loaded-media"
-			]
+			"fixture": ["negative/broken-media", "positive/loaded-media"]
 		}
 	],
 	"allowlists": [],
 	"allowlistSchema": {
 		"routeOrFile": "route slug or source path the exception covers",
-		"rules": [
-			"CL-* ids the entry waives"
-		],
+		"rules": ["CL-* ids the entry waives"],
 		"reason": "why the composition is legitimate despite the rule",
 		"signatures": "optional set of section signatures the entry covers — an entry matching nothing is stale and fails",
 		"verification": "how the exception was checked (fixture id, review doc, issue number)"

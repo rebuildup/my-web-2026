@@ -26,9 +26,9 @@ import {
 import { CurrentProjects } from './current/CurrentProjects';
 import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
+import { ExploreSection } from './explore/ExploreSection';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
-import { ExploreSection } from './explore/ExploreSection';
 import { Hero } from './hero';
 import { PresenceCard } from './presence/PresenceCard';
 import type { DiscordPresenceCard } from './presence/types';
@@ -292,17 +292,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				</Container>
 			</header>
 			<Hero />
-			{/* Issue #1110 review — the leaderboard sat ABOVE the hero and
-			    its high-contrast creative hijacked the page's first
-			    viewport, so the owner's own introduction lost the opening
-			    frame. It now follows the hero: still the masthead ad slot
-			    under the publisher chrome, but the identity statement
-			    keeps first claim on the eye. */}
-			<Container>
-				<div className={css({ paddingBlock: '4' })}>
-					<AdTopBanner />
-				</div>
-			</Container>
 			<main id="main">
 				{/* Issue #1108 — the page is a single editorial column again.
 				    The old xl sticky ad rail is gone: sponsored units are
@@ -335,6 +324,17 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    (Epic #1104 second pass; the transit-map station list and
 				    the separate capabilities cards answered the same question). */}
 				<ExploreSection today={data.observedAt.slice(0, 10)} />
+				{/* Issue #1110 v10 review — the leaderboard's high-contrast
+				    creative still out-weighed the hero + site guide when it
+				    sat between them, so the masthead slot now follows the
+				    explore grid: the identity statement and the destination
+				    index keep the opening of the page, and the ad reads as
+				    an in-content break before the status section. */}
+				<Container>
+					<div className={css({ paddingBlock: '4' })}>
+						<AdTopBanner />
+					</div>
+				</Container>
 				<PageSection labelledBy="site-status-heading" tone="sunken">
 					{/* Issue #1110 — this section aggregates five widgets, so it
 					    takes the `default` heading and the full measure: the

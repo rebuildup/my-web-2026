@@ -550,8 +550,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 					color: 'text.muted',
 				})}
 			>
-				reactions disabled — consumer API key not configured (run
-				scripts/bootstrap-home-api-key.mjs)
+				Reactions are unavailable in this environment.
 			</div>
 		);
 	}

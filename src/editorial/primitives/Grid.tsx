@@ -19,7 +19,11 @@ const COLUMN_TRACKS: Record<GridColumns, Record<string, string>> = {
 	1: { base: '1fr', md: '1fr', lg: '1fr' },
 	2: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(2, minmax(0, 1fr))' },
 	3: {
-		base: '1fr',
+		// Two columns even at `base`: the only consumer is the home
+		// Explore destination grid, whose single-column mobile stack
+		// read as scroll fatigue in the v10 visual review — paired
+		// cards keep the index scannable at 390px.
+		base: 'repeat(2, minmax(0, 1fr))',
 		md: 'repeat(2, minmax(0, 1fr))',
 		lg: 'repeat(3, minmax(0, 1fr))',
 	},

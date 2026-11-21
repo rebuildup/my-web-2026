@@ -5277,7 +5277,7 @@
 			"reviewer": null,
 			"reviewedAt": "2026-11-21",
 			"decision": "pending",
-			"fingerprint": "sha256:d65f650959a1a4208035396419ab9c396f4ca10a68fe469f2f7f74f2a1a8a7c4",
+			"fingerprint": "sha256:43b6bbabf348b216602963cb0bb2a99ce9af0451087f348199b9707af5eb94c3",
 			"proposal": {
 				"tool": "agent editorial pass (Devin)",
 				"ran": true,
@@ -5320,6 +5320,16 @@
 						"type": "document",
 						"reference": "quality/stale-content-review.json",
 						"note": "hero eyebrow orphan レコード除去と CurrentProjects 見出しレコード更新の典拠。"
+					},
+					{
+						"type": "commit",
+						"reference": "f0c686c1",
+						"note": "Declare ToneMatrix as an inert design-system file for the publication surface"
+					},
+					{
+						"type": "commit",
+						"reference": "07930746",
+						"note": "Forbid invalid PageSection tone x Panel pairings at render time"
 					}
 				]
 			}

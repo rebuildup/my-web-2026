@@ -550,7 +550,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 					color: 'text.muted',
 				})}
 			>
-				Reactions are unavailable in this environment.
+				Reactions disabled in this environment.
 			</div>
 		);
 	}

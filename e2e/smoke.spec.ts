@@ -114,17 +114,23 @@ test.describe('home page composition', () => {
 		// (`status-heading`, `reactions-heading`,
 		// `access-counter-heading`) now label `h3` sub-blocks inside it.
 		//
+		// Issue #1110's v13 visual review added `sponsored-heading` —
+		// the labelled sponsored ad zone between the status section
+		// and the closing contact CTA — so the page carries six
+		// top-level sections.
+		//
 		// The selector is scoped to the page subtree (Issue #664): the
 		// root layout's chrome — including the GA4 consent panel, which
 		// is itself a named `<section>` — is rendered outside it and is
 		// not a section of this page.
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
-		await expect(sections).toHaveCount(5);
+		await expect(sections).toHaveCount(6);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
 		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'sponsored-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Issue #925 second pass — the hero is editorial flow content
 		// again with a single /about link; the ad units are a separate
@@ -213,7 +219,7 @@ test.describe('home page composition', () => {
 			await expect(block).toBeVisible();
 		}
 		// None of the three may have survived as a top-level section:
-		// the page's section contract above pins the count at five.
+		// the page's section contract above pins the count at six.
 		await expect(page.locator('section[aria-labelledby="reactions-heading"]')).toHaveCount(0);
 		await expect(page.locator('section[aria-labelledby="access-counter-heading"]')).toHaveCount(0);
 	});

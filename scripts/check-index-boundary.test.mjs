@@ -76,6 +76,7 @@ const FIXTURE_ROUTES = [
 	['/tools/$slug', './routes/tools.$slug'],
 	['/stack', './routes/stack'],
 	['/activity', './routes/activity'],
+	['/now', './routes/now'],
 	['/admin', './routes/admin'],
 	['/admin/', './routes/admin.index'],
 	['/admin/login', './routes/admin.login'],
@@ -132,6 +133,7 @@ function routeFileSources(routes = FIXTURE_ROUTES) {
 				'/portfolio',
 				'/projects/dotfiles',
 				'/tools',
+				'/now',
 			].includes(path)
 		) {
 			source += `const links = [{ rel: 'canonical', href: '${ORIGIN}${path}' }];\n`;

@@ -1384,6 +1384,14 @@
 			"clause": "C-5"
 		},
 		{
+			"path": "src/activity/Timeline.tsx",
+			"reason": "legacy debt pending #1109 list-primitive migration",
+			"signatures": {
+				"<ul> display": 1
+			},
+			"clause": "C-5"
+		},
+		{
 			"path": "src/admin/composer.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -2168,6 +2176,7 @@
 		},
 		{
 			"files": [
+				"src/activity/Timeline.tsx",
 				"src/home/activity/GitHubActivityCard.tsx",
 				"src/keyboard/components/KeyboardPage.tsx",
 				"src/routes/stack/StackPage.tsx"
@@ -2557,7 +2566,6 @@
 		{
 			"files": [
 				"src/about/components/LinksPage.tsx",
-				"src/activity/Timeline.tsx",
 				"src/contact/page.tsx",
 				"src/home/explore/ExploreSection.tsx",
 				"src/routes/design-system/sections/ColorSwatches.tsx"

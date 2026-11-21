@@ -62,7 +62,7 @@ describe('ReactionsWidget', () => {
 			enabled: false,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
-		expect(html).toContain('Reactions are unavailable in this environment.');
+		expect(html).toContain('Reactions disabled in this environment.');
 	});
 
 	it('renders aggregate chips with the resolved emoji when data.enabled is true and aggregates are non-empty', () => {

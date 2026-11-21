@@ -689,14 +689,6 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/home/composer.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection (skip-link surface + sponsored slot)",
-			"signatures": {
-				"raw <section> element": 1
-			},
-			"clause": "C-1"
-		},
-		{
 			"path": "src/home/current/CurrentProjects.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {

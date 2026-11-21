@@ -6,6 +6,7 @@ import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
+import { TextLink } from '../editorial/primitives/TextLink';
 import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
 import type { PublicContactChannel } from './public';
 
@@ -105,9 +106,7 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 					})}
 				>
 					制作依頼の受付状況は
-					<a href="/commission" className={css({ color: 'text.accent' })}>
-						/commission
-					</a>
+					<TextLink href="/commission">/commission</TextLink>
 					を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
 				</p>
 			</PageSection>

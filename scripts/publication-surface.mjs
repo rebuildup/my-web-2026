@@ -296,6 +296,7 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/StatusAccents.tsx',
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',
 	'src/routes/design-system/sections/TableCode.tsx',
+	'src/routes/design-system/sections/ToneMatrix.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
 	'src/routes/stack/StackPage.tsx',
 	'src/routes/stack/biome-facts.ts',

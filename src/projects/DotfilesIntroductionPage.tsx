@@ -10,6 +10,12 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { StateMark } from '../editorial/primitives/StateMark';
 import { TextLink } from '../editorial/primitives/TextLink';
+import {
+	leadingDisplay,
+	noteMonoSm,
+	noteSansSm,
+	sizeDisplay,
+} from '../editorial/primitives/shared-styles';
 import { RichText } from './RichText';
 import type {
 	FreshnessState,
@@ -116,15 +122,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 			<SkipLink />
 			<main id="main">
 				<PageSection rhythm="hero" labelledBy="dotfiles-hero-title">
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						projects · dotfiles
-					</span>
+					<span className={css(noteMonoSm)}>projects · dotfiles</span>
 					<div
 						className={css({
 							display: 'flex',
@@ -141,9 +139,9 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 								className={css({
 									margin: '0',
 									fontFamily: 'heading',
-									fontSize: { base: '3xl', lg: '4xl' },
+									fontSize: sizeDisplay,
 									fontWeight: '700',
-									lineHeight: { base: '1.15', lg: '1.05' },
+									lineHeight: leadingDisplay,
 									letterSpacing: '-0.03em',
 									color: 'text.default',
 								})}
@@ -543,14 +541,7 @@ function FreshnessNotice({ view }: { readonly view: ProjectIntroductionView }) {
 						{FRESHNESS_LABEL[freshness]}
 					</h2>
 					{snapshot ? (
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								color: 'text.muted',
-							})}
-						>
+						<p className={css(noteSansSm)}>
 							最終確認 {formatDate(snapshot.verifiedAt)} · snapshot applied{' '}
 							{formatDate(snapshot.appliedAt)}
 						</p>

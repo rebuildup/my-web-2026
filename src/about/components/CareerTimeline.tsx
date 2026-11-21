@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import { bodySansMd, noteSansMd, noteSansSm } from '../../editorial/primitives/shared-styles';
 import type { CareerEntry, CareerEntryKind } from '../career';
 
 /**
@@ -74,13 +75,7 @@ const titleStyle = css({
 	letterSpacing: '-0.01em',
 });
 
-const summaryStyle = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const summaryStyle = css(noteSansMd);
 
 const emptyStyle = css({
 	paddingBlock: '8',
@@ -91,19 +86,8 @@ export function CareerTimeline({ entries }: CareerTimelineProps) {
 	if (entries.length === 0) {
 		return (
 			<Stack as="output" gap="2" className={emptyStyle}>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						lineHeight: '1.6',
-					})}
-				>
-					公開が承認された経歴項目はまだありません。
-				</p>
-				<p
-					className={css({ margin: '0', fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}
-				>
+				<p className={css(bodySansMd)}>公開が承認された経歴項目はまだありません。</p>
+				<p className={css(noteSansSm)}>
 					旧サイトの記録は確認待ちの項目として保持しています。確認が済み次第、ここに表示されます。
 				</p>
 			</Stack>

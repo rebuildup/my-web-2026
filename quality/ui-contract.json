@@ -273,6 +273,7 @@
 	"colorAllowlist": [
 		{
 			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-2"],
 			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
 			"signatures": {
 				"backgroundColor: \"#ffffff\"": 2,
@@ -284,309 +285,298 @@
 				"color: \"rgba(255, 255, 255, 0.75)\"": 1,
 				"color: \"rgba(255, 255, 255, 0.88)\"": 1,
 				"color: \"rgba(255,255,255,0.7)\"": 1
-			},
-			"clause": "C-2"
+			}
 		},
 		{
 			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-2"],
 			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
 			"signatures": {
 				"backgroundColor: \"rgba(0, 0, 0, 0.45)\"": 1
-			},
-			"clause": "C-2"
+			}
 		}
 	],
 	"gridAllowlist": [
 		{
 			"path": "src/about/components/AboutPage.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: key-value row uses auto/1fr tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/admin/emoji-catalog/catalog.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/admin/images/images.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/admin/invitations/invitations.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/admin/keys/keys.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/home/footer.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: footer uses an equal-thirds 4fr/4fr/4fr column split",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/home/status/tiles.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: service row uses a measured auto/1fr/auto 3-track dl grid (Issue #300)",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/legal/AssetLicenseReview.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/personal/melting-face/MeltingFace.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
 			"signatures": {
 				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/portfolio/components/DesignView.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
 			"signatures": {
 				"gridAutoFlow": 1,
 				"gridAutoRows": 1,
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/portfolio/components/DevelopView.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/portfolio/components/ProjectCard.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clauses": ["C-4"],
 			"reason": "justified: provenance <dl> uses asymmetric 3fr/9fr label/value tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/admin.emoji-catalog.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/admin.keys.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 8
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ImageCls.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/StatusAccents.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/Typography.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
+			}
 		}
 	],
 	"sectionAllowlist": [
 		{
 			"path": "src/admin/composer.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"raw <section> element": 1
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/admin/emoji-catalog/catalog.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: transparent": 3,
-				"paddingBlock on surface object": 3,
-				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
+				"raw <section> element": 1
+			}
 		},
 		{
 			"path": "src/admin/images/images.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"background: bg.accent": 1,
-				"background: transparent": 1,
-				"paddingBlock on surface object": 2,
+				"paddingBlock on surface object": 1,
 				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
+				"surface + block padding/min-height outside PageSection": 1
+			}
 		},
 		{
 			"path": "src/admin/invitations/accept-view.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"background: bg.accent": 1,
 				"paddingBlock on surface object": 1,
 				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/admin/invitations/invitations.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: transparent": 1,
-				"paddingBlock on surface object": 1,
-				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+				"raw <section> element": 1
+			}
 		},
 		{
 			"path": "src/admin/keys/keys.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: transparent": 1,
-				"paddingBlock on surface object": 1,
-				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+				"raw <section> element": 1
+			}
 		},
 		{
 			"path": "src/admin/keys/step-up-panel.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: bg.accent": 1,
 				"background: bg.surface": 2,
-				"paddingBlock on surface object": 3,
+				"paddingBlock on surface object": 2,
 				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
+				"surface + block padding/min-height outside PageSection": 2
+			}
 		},
 		{
 			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-1", "C-3"],
 			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
 			"signatures": {
 				"borderBottom: 8px solid transparent": 2,
@@ -594,312 +584,255 @@
 				"marginBlockStart on surface object": 7,
 				"paddingBlock on surface object": 3,
 				"surface + block padding/min-height outside PageSection": 19
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "justified: change marker is a raised status chip (surface + padding), content-level not section-scale",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
 			"signatures": {
 				"paddingBlock on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-1", "C-3"],
 			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
 			"signatures": {
 				"backgroundColor: bg.canvas": 3,
 				"surface + block padding/min-height outside PageSection": 4
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/keyboard/components/KeyboardDiagram.tsx",
+			"clauses": ["C-1", "C-3"],
 			"reason": "justified: diagram canvas surface and key caps are illustration chrome, not PageSection bands",
 			"signatures": {
 				"backgroundColor: bg.canvas": 1,
 				"paddingBlock on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "justified: ARIA tablist chrome (role=tab, aria-selected state) is not Button/TextLink vocabulary (ADR-0022 C-6) — the tab pills carry surface chrome",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
 			"signatures": {
 				"backgroundColor: bg.canvas": 2,
 				"paddingBlock on surface object": 2,
 				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/legal/AssetLicenseReview.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
 			"signatures": {
 				"background: bg.canvas": 1,
 				"background: bg.subtle": 1,
 				"raw <section> element": 4
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/personal/engagement/Engagement.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
 			"signatures": {
 				"backgroundColor: bg.canvas": 1,
 				"paddingBlock on surface object": 2,
 				"surface + block padding/min-height outside PageSection": 4
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/personal/handle-map/HandleMap.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
 			"signatures": {
 				"raw <section> element": 1
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/personal/melting-face/MeltingFace.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
 			"signatures": {
 				"paddingBlock on surface object": 1,
 				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/portfolio/components/PortfolioMedia.tsx",
+			"clauses": ["C-3"],
 			"reason": "justified: bg.subtle is the media well fill behind figures, not a Panel surface",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
+			}
 		},
 		{
 			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "justified: FreshnessNotice is a slim status band (8/16px beat) with a conditional surface fill — no PageSection rhythm or Panel variant expresses it",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: provenance <dl> uses asymmetric 3fr/9fr label/value tracks, not a Grid preset",
 			"signatures": {
 				"paddingBlock on surface object": 2,
 				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/routes/admin.emoji-catalog.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: bg.accent": 1,
 				"background: bg.surface": 2,
-				"paddingBlock on surface object": 3,
-				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 2
+			}
 		},
 		{
 			"path": "src/routes/admin.index.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"background: transparent": 1,
 				"paddingBlock on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/routes/admin.invitations.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"background: bg.accent": 2,
 				"background: bg.surface": 1,
 				"paddingBlock on surface object": 3,
 				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/routes/admin.keys.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: bg.accent": 2,
+				"background: bg.accent": 1,
 				"background: bg.surface": 2,
-				"paddingBlock on surface object": 4,
-				"surface + block padding/min-height outside PageSection": 4
-			},
-			"clause": "C-1/C-3"
+				"paddingBlock on surface object": 3,
+				"surface + block padding/min-height outside PageSection": 3
+			}
 		},
 		{
 			"path": "src/routes/admin.login.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"background: bg.accent": 1,
-				"paddingBlock on surface object": 1,
-				"raw <section> element": 1,
-				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-1/C-3"
-		},
-		{
-			"path": "src/routes/design-system/DesignSystemPage.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"borderTop: 1px solid {colors.border.subtle}": 1,
-				"raw <section> element": 10
-			},
-			"clause": "C-1"
+				"raw <section> element": 1
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"raw <section> element": 6,
 				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ImageCls.tsx",
-			"reason": "legacy debt pending #1109 PageSection tone migration",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"paddingBlock on surface object": 2,
 				"raw <section> element": 1,
 				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
-			"reason": "legacy debt pending #1109 PageSection tone migration",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
-			"reason": "legacy debt pending #1109 PageSection tone migration",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/StatusAccents.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"raw <section> element": 2
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"backgroundColor: bg.canvas": 1
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/Typography.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"borderTop: 1px solid {colors.border.subtle}": 1,
 				"raw <section> element": 1
-			},
-			"clause": "C-1"
+			}
 		},
 		{
 			"path": "src/routes/tools.index.tsx",
+			"clauses": ["C-3"],
 			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
+			}
 		}
 	],
 	"controlAllowlist": [
 		{
-			"path": "src/admin/emoji-catalog/catalog.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 3,
-				"<button> borderRadius": 3,
-				"<button> paddingBlock": 3,
-				"<button> paddingInline": 3
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/admin/images/images.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
-				"<button> background": 2,
-				"<button> borderRadius": 2,
-				"<button> paddingBlock": 2,
-				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
+				"<button> background": 1,
+				"<button> borderRadius": 1,
+				"<button> paddingBlock": 1,
+				"<button> paddingInline": 1
+			}
 		},
 		{
 			"path": "src/admin/invitations/accept-view.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"<button> background": 1,
 				"<button> borderRadius": 1,
 				"<button> paddingBlock": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/admin/invitations/invitations.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 1,
-				"<button> borderRadius": 1,
-				"<button> paddingBlock": 1,
-				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/admin/keys/keys.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 1,
-				"<button> borderRadius": 1,
-				"<button> paddingBlock": 1,
-				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/admin/keys/step-up-panel.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 1,
-				"<button> borderRadius": 1,
-				"<button> paddingBlock": 1,
-				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-6"],
 			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
 			"signatures": {
 				"<a> backgroundColor": 8,
@@ -912,11 +845,11 @@
 				"<a> paddingInline": 1,
 				"<button> backgroundColor": 1,
 				"<button> height": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/home/guide/VisitTrail.tsx",
+			"clauses": ["C-6"],
 			"reason": "justified: mono xs path chip is a data affordance distinct from the TextLink chip variant",
 			"signatures": {
 				"<a> borderColor": 1,
@@ -925,11 +858,11 @@
 				"<a> borderWidth": 1,
 				"<a> paddingBlock": 1,
 				"<a> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-6"],
 			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
 			"signatures": {
 				"<button> backgroundColor": 2,
@@ -939,12 +872,12 @@
 				"<button> borderWidth": 2,
 				"<button> height": 2,
 				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/keyboard/components/KeyboardDiagram.tsx",
-			"reason": "justified: diagram key/control buttons are canvas chrome, not Button vocabulary",
+			"clauses": ["C-6"],
+			"reason": "justified: diagram canvas surface and key caps are illustration chrome, not PageSection bands",
 			"signatures": {
 				"<button> backgroundColor": 1,
 				"<button> borderColor": 1,
@@ -952,12 +885,12 @@
 				"<button> borderStyle": 1,
 				"<button> borderWidth": 1,
 				"<button> padding": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "justified: ARIA tablist chrome (role=tab, aria-selected state) is not Button/TextLink vocabulary (ADR-0022 C-6)",
+			"clauses": ["C-6"],
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
 			"signatures": {
 				"<button> backgroundColor": 2,
 				"<button> borderColor": 2,
@@ -966,12 +899,12 @@
 				"<button> borderWidth": 2,
 				"<button> paddingBlock": 2,
 				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/personal/engagement/Engagement.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
 			"signatures": {
 				"<button> backgroundColor": 1,
 				"<button> borderColor": 1,
@@ -980,95 +913,63 @@
 				"<button> borderWidth": 1,
 				"<button> paddingBlock": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/portfolio/components/DesignView.tsx",
-			"reason": "justified: whole-tile link chrome (height:100% + focus ring) is card-level affordance, not TextLink",
+			"clauses": ["C-6"],
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
 			"signatures": {
-				"<a> borderRadius": 1,
 				"<a> height": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "justified: card-level focus ring on the stretched project link, not Button/TextLink chrome",
-			"signatures": {
-				"<a> borderRadius": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/portfolio/components/PortfolioDetail.tsx",
-			"reason": "justified: adjacent-project nav links are two-line row affordances, not TextLink rows",
+			"clauses": ["C-6"],
+			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
 			"signatures": {
 				"<a> borderRadius": 2,
 				"<a> paddingBlock": 2
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/portfolio/components/VideoView.tsx",
+			"clauses": ["C-6"],
 			"reason": "justified: circular play/close overlay media controls + cover/title link focus rings are not Button/TextLink vocabulary",
 			"signatures": {
-				"<a> borderRadius": 1,
 				"<button> backgroundColor": 2,
 				"<button> borderColor": 2,
 				"<button> borderRadius": 2,
 				"<button> borderStyle": 2,
 				"<button> borderWidth": 2
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/routes/admin.emoji-catalog.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 1,
-				"<button> borderRadius": 1,
-				"<button> paddingBlock": 1,
-				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/routes/admin.invitations.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"<button> background": 2,
 				"<button> borderRadius": 2,
 				"<button> paddingBlock": 2,
 				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/routes/admin.keys.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> background": 2,
-				"<button> borderRadius": 2,
-				"<button> paddingBlock": 2,
-				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/routes/admin.login.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"<button> background": 1,
 				"<button> borderRadius": 1,
 				"<button> paddingBlock": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"clauses": ["C-6"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"<button> backgroundColor": 3,
 				"<button> borderRadius": 1,
@@ -1076,62 +977,22 @@
 				"<button> borderWidth": 1,
 				"<button> height": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
+			}
 		}
 	],
 	"listAllowlist": [
 		{
-			"path": "src/admin/composer.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/admin/emoji-catalog/catalog.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/admin/images/images.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/admin/invitations/invitations.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/admin/keys/keys.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/legal/AssetLicenseReview.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
 			"signatures": {
-				"<ul> display": 2
-			},
-			"clause": "C-5"
+				"<ul> display": 1
+			}
 		},
 		{
 			"path": "src/personal/engagement/Engagement.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
 			"signatures": {
 				"<li> backgroundColor": 1,
 				"<li> borderColor": 1,
@@ -1140,25 +1001,25 @@
 				"<li> borderWidth": 1,
 				"<ol> display": 1,
 				"<ul> display": 2
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/personal/handle-map/HandleMap.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
 			"signatures": {
 				"<li> backgroundColor": 1,
 				"<li> borderColor": 1,
 				"<li> borderRadius": 1,
 				"<li> borderStyle": 1,
 				"<li> borderWidth": 1,
-				"<ul> display": 2
-			},
-			"clause": "C-5"
+				"<ul> display": 1
+			}
 		},
 		{
 			"path": "src/personal/melting-face/MeltingFace.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
 			"signatures": {
 				"<li> backgroundColor": 1,
 				"<li> borderColor": 1,
@@ -1167,809 +1028,269 @@
 				"<li> borderWidth": 1,
 				"<ol> display": 1,
 				"<ul> display": 1
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/portfolio/components/DesignView.tsx",
-			"reason": "justified: the mosaic <ol> is the DesignView grid above",
+			"clauses": ["C-5"],
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
 			"signatures": {
 				"<ol> display": 1
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "justified: technology tag chips keep their pill chrome on <li>",
+			"clauses": ["C-5"],
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
 			"signatures": {
 				"<li> borderColor": 1,
 				"<li> borderRadius": 1,
 				"<li> borderStyle": 1,
 				"<li> borderWidth": 1
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"<ul> display": 7
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"<ul> display": 1
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/StatusAccents.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"<ul> display": 2
-			},
-			"clause": "C-5"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"<ul> display": 1
-			},
-			"clause": "C-5"
+			}
 		}
 	],
 	"enumerationAllowlist": [
 		{
 			"path": "src/home/access/tiles.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: digit strip length is bounded by the counter's own width",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "justified: render is bounded by the limit prop; truncated views link to the portfolio index via seeAllHref (ADR-0022 C-8)",
+			"clauses": ["C-8"],
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/current/load.ts",
+			"clauses": ["C-8"],
 			"reason": "justified: loader projection transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/current/source.ts",
+			"clauses": ["C-8"],
 			"reason": "justified: roster/source projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 3
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/format.compare.ts",
+			"clauses": ["C-8"],
 			"reason": "justified: locale-comparison fixture transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 3
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/presence/reader.ts",
+			"clauses": ["C-8"],
 			"reason": "justified: presence projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/privacy-notice.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: closed published-lifecycle registry; per-entry senders are a fixed record set",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/reactions/emoji-catalog.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: projection transform over the reaction catalog (filter+map slug list), not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/reactions/production-read.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: projection transform over production read rows, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/home/status/tiles.tsx",
-			"reason": "justified: SYSTEM_SERVICES is a closed service registry, not an open collection",
+			"clauses": ["C-8"],
+			"reason": "justified: service row uses a measured auto/1fr/auto 3-track dl grid (Issue #300)",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/activity/Timeline.tsx",
-			"reason": "/activity is the index route that owns the full timeline enumeration (ADR-0022 C-8 indexOwners)",
+			"clauses": ["C-8"],
+			"reason": "justified: TODO",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/admin.keys.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/CjkLineBreak.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 6
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/StatusAccents.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/ToneMatrix.tsx",
-			"reason": "closed tone/variant vocabulary enumeration on the design-system measurement fixture — bounded by the contract's 8-tone × Panel-variant matrix, not a data collection (Issue #1110)",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/sections/Typography.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/design-system/tokens.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"clauses": ["C-8"],
+			"reason": "justified: closed token-path registry transforms (FAMILY_PATHS/LEDGER_PATHS/MONO_ROLES constants), not an open rendered collection",
 			"signatures": {
 				"unbounded .map(": 4
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/portfolio/index.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: parseFacets is a query-param transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/stack/resolve.ts",
+			"clauses": ["C-8"],
 			"reason": "justified: resolveItem/resolveSection are projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/stack/StackPage.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: /stack is the index route that owns full stack enumeration (ADR-0022 C-8)",
 			"signatures": {
-				"unbounded .map(": 5
-			},
-			"clause": "C-8"
+				"unbounded .map(": 4
+			}
 		},
 		{
 			"path": "src/routes/tools.$slug.tsx",
+			"clauses": ["C-8"],
 			"reason": "justified: policy-violation list is a closed diagnostic vocabulary, not an open data collection",
 			"signatures": {
 				"unbounded .map(": 3
-			},
-			"clause": "C-8"
+			}
 		},
 		{
 			"path": "src/routes/tools.index.tsx",
-			"reason": "justified: /tools is the index route that owns full tool enumeration (ADR-0022 C-8)",
+			"clauses": ["C-8"],
+			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
 			"signatures": {
 				"unbounded .map(": 2
-			},
-			"clause": "C-8"
+			}
 		}
 	],
-	"duplicateAllowlist": [
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/external-api/ExternalReadCard.tsx",
-				"src/home/access/tiles.tsx",
-				"src/home/reactions/widget.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx",
-				"src/routes/tools.index.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/home/access/tiles.tsx",
-				"src/portfolio/components/MediaPlaceholder.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioMedia.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/ReactionPicker.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx",
-				"src/routes/design-system/sections/SurfaceTreatments.tsx",
-				"src/routes/design-system/sections/Typography.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/CareerTimeline.tsx",
-				"src/about/components/SkillsList.tsx",
-				"src/portfolio/components/PortfolioList.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/admin/keys/step-up-panel.tsx",
-				"src/home/presence/PresenceCard.tsx",
-				"src/personal/engagement/Engagement.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/CareerTimeline.tsx",
-				"src/home/current/CurrentProjects.tsx",
-				"src/home/status/incident-list.tsx",
-				"src/home/status/tiles.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx",
-				"src/portfolio/components/ProjectCard.tsx",
-				"src/routes/design-system/sections/ImageCls.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/CareerTimeline.tsx",
-				"src/admin/keys/step-up-panel.tsx",
-				"src/home/activity/GitHubActivityCard.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/admin.keys.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/portfolio/components/ProjectCard.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/accept-view.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/home/footer.tsx",
-				"src/routes/admin.login.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/admin/keys/step-up-panel.tsx",
-				"src/home/access/tiles.tsx",
-				"src/home/footer.tsx",
-				"src/routes/admin.emoji-catalog.tsx",
-				"src/routes/admin.invitations.tsx",
-				"src/routes/admin.keys.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/tools.index.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/home/hero.tsx",
-				"src/portfolio/components/DevelopView.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/LinksPage.tsx",
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/routes/activity/ActivityPage.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/LinksPage.tsx",
-				"src/contact/page.tsx",
-				"src/personal/handle-map/HandleMap.tsx",
-				"src/routes/admin.emoji-catalog.tsx",
-				"src/routes/admin.keys.tsx",
-				"src/routes/design-system/sections/ImageCls.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx",
-				"src/routes/design-system/sections/Typography.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/LinksPage.tsx",
-				"src/contact/page.tsx",
-				"src/home/composer.tsx",
-				"src/home/guide/VisitTrail.tsx",
-				"src/home/privacy-notice-compact.tsx",
-				"src/home/privacy-notice.tsx",
-				"src/home/reactions/widget.tsx",
-				"src/home/status/incident-list.tsx",
-				"src/keyboard/components/KeyboardDiagram.tsx",
-				"src/keyboard/components/KeyboardPage.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/Markdown.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/VideoView.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/ReactionPicker.tsx",
-				"src/routes/tools.$slug.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/SkillsList.tsx",
-				"src/home/privacy-notice-compact.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/routes/design-system/sections/CjkLineBreak.tsx",
-				"src/routes/design-system/sections/ImageCls.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx",
-				"src/routes/design-system/sections/TableCode.tsx",
-				"src/routes/design-system/sections/Typography.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/home/activity/GitHubActivityCard.tsx",
-				"src/home/presence/PresenceCard.tsx",
-				"src/personal/engagement/Engagement.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/routes/activity/Timeline.tsx",
-				"src/routes/admin.emoji-catalog.tsx",
-				"src/routes/admin.invitations.tsx",
-				"src/routes/admin.keys.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/legal/AssetLicenseReview.tsx",
-				"src/personal/handle-map/HandleMap.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/composer.tsx",
-				"src/home/activity/GitHubActivityCard.tsx",
-				"src/keyboard/components/KeyboardPage.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/ProjectCard.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/home/activity/GitHubActivityCard.tsx",
-				"src/routes/activity/Timeline.tsx",
-				"src/routes/tools.index.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx",
-				"src/routes/design-system/sections/SpacingRuler.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/images/images.tsx",
-				"src/personal/handle-map/HandleMap.tsx",
-				"src/routes/admin.invitations.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/invitations/accept-view.tsx",
-				"src/external-api/ExternalReadCard.tsx",
-				"src/home/reactions/widget.tsx",
-				"src/routes/admin.emoji-catalog.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/contact/commission-page.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/keys/step-up-panel.tsx",
-				"src/contact/commission-page.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/routes/admin.emoji-catalog.tsx",
-				"src/routes/admin.keys.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/admin/keys/step-up-panel.tsx",
-				"src/routes/admin.emoji-catalog.tsx",
-				"src/routes/admin.keys.tsx",
-				"src/routes/admin.login.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/contact/commission-page.tsx",
-				"src/contact/page.tsx",
-				"src/external-api/ExternalReadCard.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/home/access/tiles.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx",
-				"src/routes/design-system/sections/SurfaceTreatments.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/home/activity/GitHubActivityCard.tsx",
-				"src/routes/activity/Timeline.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/home/data-source-badge.tsx",
-				"src/home/privacy-notice.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/home/privacy-notice-compact.tsx",
-				"src/portfolio/components/Markdown.tsx",
-				"src/routes/tools.$slug.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/home/reactions/widget.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/keyboard/components/KeyboardDiagram.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioEvidenceNotice.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx",
-				"src/portfolio/components/VideoView.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/legal/AssetLicenseReview.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/legal/AssetLicenseReview.tsx",
-				"src/personal/engagement/Engagement.tsx",
-				"src/personal/handle-map/HandleMap.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/legal/AssetLicenseReview.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/design-system/sections/ImageCls.tsx",
-				"src/routes/design-system/sections/StatusAccents.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/personal/handle-map/HandleMap.tsx",
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx",
-				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/personal/melting-face/MeltingFace.tsx",
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/DesignView.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/VideoView.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/ProjectCard.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/FacetFilter.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/portfolio/components/ViewSwitcher.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioProjectHistory.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/routes/tools.index.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/portfolio/components/VideoView.tsx",
-				"src/routes/tools.index.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/VideoView.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/design-system/sections/SpacingRuler.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/design-system/sections/ReactionPicker.tsx",
-				"src/routes/design-system/sections/SpacingRuler.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		}
-	]
+	"duplicateAllowlist": []
 }

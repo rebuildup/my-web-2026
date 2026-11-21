@@ -1,4 +1,14 @@
 import { css } from '../../../styled-system/css';
+import {
+	eyebrowMonoXsReset,
+	noteSansSmBare,
+	noteSansSmLoose,
+	noteSansXsBody,
+	titleHeadingLg,
+	vStackGap2,
+	vStackGap4,
+	vStackGap6,
+} from '../../editorial/primitives/shared-styles';
 import { MELTING_FACE_MOTION, usePrefersReducedMotion } from '../../editorial/reduced-motion';
 import type {
 	MeltingFaceChainStep,
@@ -41,17 +51,9 @@ import type {
  * undecided, so the Storybook story is the whole surface.
  */
 
-const motifClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '6',
-});
+const motifClassName = css(vStackGap6);
 
-const motifHeaderClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
+const motifHeaderClassName = css(vStackGap2);
 
 const motifHeadingClassName = css({
 	margin: '0',
@@ -62,13 +64,7 @@ const motifHeadingClassName = css({
 	color: 'text.default',
 });
 
-const motifLeadClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.muted',
-});
+const motifLeadClassName = css(noteSansSmLoose);
 
 const chainClassName = css({
 	margin: '0',
@@ -97,11 +93,7 @@ const chainStepClassName = css({
 	color: 'text.default',
 });
 
-const chainArrowClassName = css({
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	color: 'text.muted',
-});
+const chainArrowClassName = css(noteSansSmBare);
 
 const chainItemClassName = css({
 	display: 'contents',
@@ -174,20 +166,9 @@ const markCaptionClassName = css({
 	overflowWrap: 'anywhere',
 });
 
-const copyCardClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-});
+const copyCardClassName = css(vStackGap4);
 
-const roleLabelClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const roleLabelClassName = css(eyebrowMonoXsReset);
 
 const shortCopyClassName = css({
 	margin: '0',
@@ -240,22 +221,9 @@ const explanationCardClassName = css({
 	backgroundColor: 'bg.surface',
 });
 
-const explanationLabelClassName = css({
-	margin: '0',
-	fontFamily: 'heading',
-	fontSize: 'lg',
-	fontWeight: '700',
-	lineHeight: '1.3',
-	color: 'text.default',
-});
+const explanationLabelClassName = css(titleHeadingLg);
 
-const explanationStanceClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'xs',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const explanationStanceClassName = css(noteSansXsBody);
 
 /**
  * The mark itself: the icon role of the motif.

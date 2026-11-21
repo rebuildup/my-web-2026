@@ -7,6 +7,14 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { TextLink } from '../editorial/primitives/TextLink';
 import {
+	bodySansMdPlain,
+	bodySansMdReset,
+	ledeSansLg,
+	noteMonoSm,
+	noteSansSmBare,
+	pageTitle,
+} from '../editorial/primitives/shared-styles';
+import {
 	COMMISSION_REQUIREMENTS,
 	COMMISSION_SERVICE_GROUPS,
 	COMMISSION_SOFTWARE,
@@ -42,43 +50,11 @@ export function CommissionPage() {
 		<>
 			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="commission-hero-title">
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					my-web-2026 · /commission
-				</span>
-				<h1
-					id="commission-hero-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '2',
-						fontFamily: 'heading',
-						fontSize: { base: '3xl', lg: '4xl' },
-						fontWeight: '700',
-						lineHeight: { base: '1.15', lg: '1.05' },
-						color: 'text.default',
-						letterSpacing: '-0.03em',
-					})}
-				>
+				<span className={css(noteMonoSm)}>my-web-2026 · /commission</span>
+				<h1 id="commission-hero-title" lang="ja" className={css(pageTitle)}>
 					制作依頼 / Commission
 				</h1>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '6',
-						fontFamily: 'sans',
-						fontSize: 'lg',
-						lineHeight: '1.6',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
+				<p lang="ja" className={css(ledeSansLg)}>
 					Web 開発・アプリケーション開発・映像制作の依頼についての案内です。
 				</p>
 			</PageSection>
@@ -212,14 +188,7 @@ function ServicesSection() {
 											className={cx(listResetClassName, css({ marginBlockStart: '2' }))}
 										>
 											{service.items.map((item) => (
-												<li
-													key={item}
-													className={css({
-														fontFamily: 'sans',
-														fontSize: 'sm',
-														color: 'text.muted',
-													})}
-												>
+												<li key={item} className={css(noteSansSmBare)}>
 													{item}
 												</li>
 											))}
@@ -324,27 +293,12 @@ function RequirementsSection() {
 				radius="md"
 				className={cx(hairlineBox, css({ marginBlockStart: '6', maxWidth: '720px' }))}
 			>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-					})}
-				>
+				<p lang="ja" className={css(bodySansMdReset)}>
 					受付再開後、依頼時に以下を伺います:
 				</p>
 				<Stack as="ul" gap="2" className={cx(listResetClassName, css({ marginBlockStart: '4' }))}>
 					{COMMISSION_REQUIREMENTS.map((item) => (
-						<li
-							key={item}
-							className={css({
-								fontFamily: 'sans',
-								fontSize: 'md',
-								color: 'text.default',
-							})}
-						>
+						<li key={item} className={css(bodySansMdPlain)}>
 							{item}
 						</li>
 					))}
@@ -399,14 +353,7 @@ function SoftwareSection() {
 							className={cx(listResetClassName, css({ marginBlockStart: '2' }))}
 						>
 							{group.tools.map((tool) => (
-								<li
-									key={tool}
-									className={css({
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
+								<li key={tool} className={css(noteSansSmBare)}>
 									{tool}
 								</li>
 							))}
@@ -433,15 +380,7 @@ function ContactSection() {
 				radius="md"
 				className={cx(hairlineBox, css({ marginBlockStart: '6', maxWidth: '720px' }))}
 			>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-					})}
-				>
+				<p lang="ja" className={css(bodySansMdReset)}>
 					連絡は
 					<TextLink href="/contact">/contact</TextLink>
 					に掲載している verified channel

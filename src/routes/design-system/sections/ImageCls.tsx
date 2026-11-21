@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
 import { css } from '../../../../styled-system/css';
+import {
+	cols1to2,
+	noteSansMd,
+	vStackGap1,
+	vStackGap10,
+} from '../../../editorial/primitives/shared-styles';
 import { PortfolioMediaFigure } from '../../../portfolio/components/PortfolioMedia';
 import type { PortfolioMedia as PortfolioMediaData } from '../../../portfolio/schema';
 
@@ -68,23 +74,15 @@ function fixtureMedia(
 
 export function ImageCls() {
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '10' })}>
-			<p
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					color: 'text.muted',
-					lineHeight: '1.6',
-				})}
-			>
+		<div className={css(vStackGap10)}>
+			<p className={css(noteSansMd)}>
 				Issue #486 の計測対象。実運用の <code>PortfolioMediaFigure</code> を固定データで描画し、
 				下の 4 セルが「予約済みの枠」を保つかを E2E で実測する。
 			</p>
 			<div
 				className={css({
 					display: 'grid',
-					gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+					gridTemplateColumns: cols1to2,
 					gap: '8',
 				})}
 			>
@@ -223,13 +221,7 @@ function Cell({
 				backgroundColor: 'bg.surface',
 			})}
 		>
-			<figcaption
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
+			<figcaption className={css(vStackGap1)}>
 				<span
 					className={css({
 						fontFamily: 'mono',

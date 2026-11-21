@@ -3,6 +3,7 @@ import type { ActivityTimeline } from '../../activity/contract';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { ledeSansLg, noteMonoSm, pageTitle } from '../../editorial/primitives/shared-styles';
 import { ActivityTimelineView } from './Timeline';
 
 /**
@@ -24,43 +25,11 @@ export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 		<>
 			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="activity-hero-title">
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					my-web-2026 · /activity
-				</span>
-				<h1
-					id="activity-hero-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '2',
-						fontFamily: 'heading',
-						fontSize: { base: '3xl', lg: '4xl' },
-						fontWeight: '700',
-						lineHeight: { base: '1.15', lg: '1.05' },
-						color: 'text.default',
-						letterSpacing: '-0.03em',
-					})}
-				>
+				<span className={css(noteMonoSm)}>my-web-2026 · /activity</span>
+				<h1 id="activity-hero-title" lang="ja" className={css(pageTitle)}>
 					活動タイムライン / Activity
 				</h1>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '6',
-						fontFamily: 'sans',
-						fontSize: 'lg',
-						lineHeight: '1.6',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
+				<p lang="ja" className={css(ledeSansLg)}>
 					GitHub のリリース、公開された記事、Portfolio
 					の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。ソースごとの観測状態は一覧の上に併記します。
 				</p>

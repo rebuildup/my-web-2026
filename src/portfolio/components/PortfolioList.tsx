@@ -4,6 +4,13 @@ import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import {
+	bodySansMd,
+	eyebrowSans,
+	gridMin,
+	pageTitleFlush,
+	sizeDisplay,
+} from '../../editorial/primitives/shared-styles';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
 import { DEFAULT_PORTFOLIO_VIEW, type PortfolioView } from '../views';
@@ -88,31 +95,8 @@ export function PortfolioList({
 							marginBlockEnd: '10',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-								color: 'text.muted',
-							})}
-						>
-							Portfolio
-						</span>
-						<h1
-							id="portfolio-heading"
-							className={css({
-								margin: '0',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								color: 'text.default',
-								lineHeight: '1.05',
-								letterSpacing: '-0.03em',
-								maxWidth: '720px',
-							})}
-						>
+						<span className={css(eyebrowSans)}>Portfolio</span>
+						<h1 id="portfolio-heading" className={css(pageTitleFlush)}>
 							主要な制作物 / Selected projects
 						</h1>
 						<p
@@ -155,16 +139,7 @@ export function PortfolioList({
 								>
 									該当する project はありません
 								</h2>
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										lineHeight: '1.6',
-									})}
-								>
-									別の facet を試すか、filter を外してください。
-								</p>
+								<p className={css(bodySansMd)}>別の facet を試すか、filter を外してください。</p>
 							</output>
 						) : (
 							<PortfolioEmptyState />
@@ -242,7 +217,4 @@ export function PortfolioList({
  * the list) and the card inside fills it, so every card in a row is the
  * same height.
  */
-const liStretchClass = css({
-	display: 'grid',
-	minWidth: '0',
-});
+const liStretchClass = css(gridMin);

@@ -2,6 +2,13 @@ import { css } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { Panel } from '../../editorial/primitives/Panel';
+import {
+	eyebrowMonoXsReset,
+	labelAction,
+	noteSansMd,
+	noteSansXsBody,
+	titleHeadingLg,
+} from '../../editorial/primitives/shared-styles';
 
 /**
  * PortfolioCaseStudy — the case-study element of Issue #519.
@@ -172,58 +179,17 @@ const titleClassName = css({
 	color: 'text.default',
 });
 
-const metaClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const metaClassName = css(eyebrowMonoXsReset);
 
-const summaryClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const summaryClassName = css(noteSansMd);
 
-const legendLabelClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const legendLabelClassName = css(eyebrowMonoXsReset);
 
-const legendNameClassName = css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: '2',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	fontWeight: '600',
-	color: 'text.default',
-});
+const legendNameClassName = css(labelAction);
 
-const legendDescriptionClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'xs',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const legendDescriptionClassName = css(noteSansXsBody);
 
-const sectionHeadingClassName = css({
-	margin: '0',
-	fontFamily: 'heading',
-	fontSize: 'lg',
-	fontWeight: '700',
-	lineHeight: '1.3',
-	color: 'text.default',
-});
+const sectionHeadingClassName = css(titleHeadingLg);
 
 const entryClassName = css({
 	display: 'flex',

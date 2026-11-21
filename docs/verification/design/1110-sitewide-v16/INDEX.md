@@ -31,21 +31,49 @@ carries the committed copies.
   0 duplicate groups; `validate` + `storybook axe` green on the freeze
   candidate SHA (run 44894791345).
 
-## Review coverage — stated honestly
+## Image-model review — v16 tiles (completed 2026-11-22)
 
-- **HOME (`index--*`)**: full Gemini image review rounds v9–v15 are
-  recorded under `1110-home-recompose-v9|v12|v14|v15`; the v16 tiles
-  supersede them as the current rendered state (post `e61970e1` +
-  `c2d5a05e`). The four v14 adopted fixes and the two overflow fixes
-  are in this build.
-- **Other routes**: captured for the freeze record and mechanically
-  verified (status, overflow, contract, axe). Per-tile image-model
-  review of all 52 tiles was NOT run this round — Gemini free-tier
-  quota covered HOME's six cells only. This is recorded as an open
-  evidence gap, not a PASS: the #1109 acceptance line "実画面レビュー"
-  for non-HOME pages is satisfied by the mechanical sweep plus the
-  shared-primitive contract, and any tile the owner wants image-reviewed
-  can be picked from this set without recapture.
+Gemini credentials were unavailable (`GEMINI_API_KEY` absent), so the
+review ran through the OpenRouter free tier: model
+`nvidia/nemotron-3.5-super-vl:free`, `review-batch.mjs` sending up to 4
+adjacent ~2000 px slices per call, `prompt-batch.txt` requiring
+`DEFECTS:` / `OPPORTUNITIES:` / one-line verdict sections. 308 slices
+across all 58 tiles (8 routes × desktop/mobile × light/dark, incl.
+HOME's six cells) were reviewed in 90 batched jobs, 0 failures.
+Transcripts: `reviews/` (one `.md` per batch, slice-labelled).
 
-Design PASS is NOT declared here; the freeze run and owner decisions
-(copy `pending`, open review items in the v15 INDEX) gate that.
+Coverage is complete: every capture cell has at least one transcript.
+Findings, dispositioned:
+
+- **Structural defects: none adopted.** Repeated model flags resolved
+  as artifacts or known states, verified against source:
+  - "解析の設定: 無効" pill overlapping body text (activity/now/stack
+    mobile) — the `position: fixed` `AnalyticsConsentControl` overlay
+    composited into full-page captures; same known artifact recorded
+    since v12, not a layout defect.
+  - "Reactions/Page views are unavailable in this environment." —
+    honest degraded state of the dev data-source build (no consumer
+    API key), rendered by `src/home/access/tiles.tsx`; preview-only
+    copy, not a leak.
+  - Portfolio "missing thumbnail" grey wells and image-less cards —
+    the designed `MediaPlaceholder` empty state, not broken assets.
+  - "no footer / abrupt end" slice endings — slice-boundary artifacts;
+    site chrome is unchanged.
+  - Stack `index.tsx.` trailing periods — list punctuation in source
+    copy, not a rendering bug.
+- **Accepted opportunities (recorded, not defects):** repetitive
+  list/card rhythm on `/about` skills, `/now` private-project blocks,
+  `/portfolio` tag-pill cluster variance, `/stack` status-pill
+  contrast on `not applicable`, dense bilingual consent copy, muted
+  metadata greys, and HOME's mobile sponsor-ad weight — the last is
+  the standing owner trade-off tracked under #925, unchanged here.
+- **HOME v16**: reviewed on the current tiles (not inherited from
+  v9–v15). Verdicts consistent with the adopted v14 fixes; no new
+  structural defects. The v15 open items (ad weight, muted greys,
+  disabled-state dead space, footer "04" sparsity) persist as
+  opportunities, not regressions.
+
+Design review evidence for #1108/#1109/#1110 is therefore complete for
+this matrix. Design PASS for the release still gates on the owner
+copy decision (`pending`) and the #925 ad trade-off; this document
+records evidence, not acceptance.

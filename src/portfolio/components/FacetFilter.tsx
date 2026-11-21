@@ -2,6 +2,7 @@ import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
 import { Cluster, Stack } from '../../editorial/primitives/Flow';
 import { ToggleChip } from '../../editorial/primitives/ToggleChip';
+import { eyebrowSans } from '../../editorial/primitives/shared-styles';
 import type { PortfolioFacet } from '../schema';
 import { PORTFOLIO_FACETS } from '../schema';
 import { FACET_LABEL, FACET_LABEL_JA } from '../vocabulary';
@@ -83,18 +84,7 @@ export function FacetFilter({ value }: FacetFilterProps) {
 
 	return (
 		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
-			<legend
-				className={css({
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					fontWeight: '600',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-					color: 'text.muted',
-				})}
-			>
-				Facet filter
-			</legend>
+			<legend className={css(eyebrowSans)}>Facet filter</legend>
 			<Cluster aria-label="facet filter chips" gap="2">
 				{PORTFOLIO_FACETS.map((facet) => {
 					const isActive = active.has(facet);

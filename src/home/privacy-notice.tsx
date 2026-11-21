@@ -1,4 +1,5 @@
 import { css } from '../../styled-system/css';
+import { emphasisDefault, focusRing } from '../editorial/primitives/shared-styles';
 import type { BilingualText, PublicDataLifecycleEntry } from '../privacy/data-lifecycle';
 
 /**
@@ -80,10 +81,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 					cursor: 'pointer',
 					fontWeight: '600',
 					color: 'text.default',
-					_focusVisible: {
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
+					_focusVisible: focusRing,
 				})}
 			>
 				データと保持期間 / <span lang="en">Data and retention</span>
@@ -107,12 +105,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 			>
 				{published.map((entry) => (
 					<div key={entry.id} data-lifecycle-id={entry.id}>
-						<dt
-							className={css({
-								fontWeight: '600',
-								color: 'text.default',
-							})}
-						>
+						<dt className={css(emphasisDefault)}>
 							{entry.label.ja}
 							<span lang="en"> {entry.label.en}</span>
 						</dt>

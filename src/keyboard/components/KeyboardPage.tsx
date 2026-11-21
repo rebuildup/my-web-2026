@@ -8,6 +8,7 @@ import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import { focusRing, vStackGap2 } from '../../editorial/primitives/shared-styles';
 import { ScrollRegion } from '../../editorial/table-code';
 import { formatDate, layerLabel, shortRef } from '../format';
 import { KEYBOARD_DEFAULT_LAYER } from '../types';
@@ -216,21 +217,14 @@ const platformTabStyle = css({
 	fontWeight: '600',
 	cursor: 'pointer',
 	_hover: { borderColor: 'border.strong' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
 		backgroundColor: 'accent.surface',
 	},
 });
 
-const layerTablistStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
+const layerTablistStyle = css(vStackGap2);
 
 const layerGroupStyle = css({
 	display: 'flex',
@@ -262,10 +256,7 @@ const layerTabStyle = css({
 	fontSize: 'sm',
 	cursor: 'pointer',
 	_hover: { borderColor: 'border.strong' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
 		backgroundColor: 'accent.surface',

@@ -1,5 +1,12 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import {
+	bodySansSmLoose,
+	listStackGap3,
+	noteSansXsBody,
+	vStackGap1,
+	vStackGap3Plain,
+} from '../../editorial/primitives/shared-styles';
 import type { HandleMapEntry } from './HandleMap.preview';
 
 /**
@@ -31,20 +38,9 @@ import type { HandleMapEntry } from './HandleMap.preview';
  * story is the whole surface.
  */
 
-const legendClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
+const legendClassName = css(vStackGap3Plain);
 
-const entryListClassName = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
+const entryListClassName = css(listStackGap3);
 
 const entryClassName = css({
 	display: 'flex',
@@ -58,11 +54,7 @@ const entryClassName = css({
 	backgroundColor: 'bg.surface',
 });
 
-const entryHeaderClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
-});
+const entryHeaderClassName = css(vStackGap1);
 
 const entryNameClassName = css({
 	margin: '0',
@@ -75,13 +67,7 @@ const entryNameClassName = css({
 	overflowWrap: 'anywhere',
 });
 
-const entryDescriptionClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.default',
-});
+const entryDescriptionClassName = css(bodySansSmLoose);
 
 const linkListClassName = css({
 	margin: '0',
@@ -106,13 +92,7 @@ const linkClassName = css({
 	_hover: { color: 'text.muted' },
 });
 
-const noLinkClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'xs',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const noLinkClassName = css(noteSansXsBody);
 
 function HandleMapEntryCard({ entry }: { entry: HandleMapEntry }) {
 	return (

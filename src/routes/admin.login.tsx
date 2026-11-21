@@ -6,6 +6,7 @@ import { getCurrentSession } from '../admin/public';
 import { ErrorSummary, TextField } from '../editorial/forms';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { buttonAccent, spaceSection } from '../editorial/primitives/shared-styles';
 import { classifyRedirectTarget } from '../http/security/redirect';
 
 /**
@@ -93,7 +94,7 @@ function LoginRoute() {
 	return (
 		<section
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -148,24 +149,7 @@ function LoginRoute() {
 							description="このアカウントのパスワード。"
 							required
 						/>
-						<button
-							type="submit"
-							disabled={busy}
-							aria-busy={busy}
-							className={css({
-								fontFamily: 'sans',
-								fontSize: 'md',
-								fontWeight: '600',
-								color: 'text.inverse',
-								background: 'bg.accent',
-								border: 'none',
-								borderRadius: '4',
-								paddingBlock: '3',
-								paddingInline: '6',
-								cursor: 'pointer',
-								_disabled: { opacity: '0.5' },
-							})}
-						>
+						<button type="submit" disabled={busy} aria-busy={busy} className={css(buttonAccent)}>
 							{busy ? 'Signing in…' : 'Sign in'}
 						</button>
 					</form>

@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import { bodySansMd, noteSansSmBody } from '../../editorial/primitives/shared-styles';
 import {
 	SKILL_CATEGORY_LABELS,
 	SKILL_USAGE_LABELS,
@@ -75,13 +76,7 @@ const nameStyle = css({
 	color: 'text.default',
 });
 
-const summaryStyle = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const summaryStyle = css(noteSansSmBody);
 
 const evidenceListStyle = css({
 	listStyle: 'none',
@@ -144,16 +139,7 @@ export function SkillsList({ skills }: SkillsListProps) {
 	if (current.length === 0 && past.length === 0) {
 		return (
 			<Stack as="output" gap="2" className={emptyStyle}>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						lineHeight: '1.6',
-					})}
-				>
-					根拠となる制作記録が確認できた技術はまだありません。
-				</p>
+				<p className={css(bodySansMd)}>根拠となる制作記録が確認できた技術はまだありません。</p>
 			</Stack>
 		);
 	}

@@ -1,5 +1,6 @@
 import { css } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
+import { eyebrowMonoXsLoose, noteMonoXs } from '../../../editorial/primitives/shared-styles';
 
 /**
  * SurfaceTreatments — the three page-level surface tokens shown as
@@ -109,17 +110,7 @@ function SurfaceBand({ token, title, description, eyebrow, badges, variant }: Su
 			data-surface-variant={variant}
 		>
 			<div className={css({ display: 'flex', flexDirection: 'column', gap: '2', minWidth: '0' })}>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
-					{eyebrow}
-				</span>
+				<span className={css(eyebrowMonoXsLoose)}>{eyebrow}</span>
 				<h3
 					className={css({
 						margin: '0',
@@ -156,15 +147,7 @@ function SurfaceBand({ token, title, description, eyebrow, badges, variant }: Su
 					gap: '3',
 				})}
 			>
-				<code
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.muted',
-					})}
-				>
-					{token}
-				</code>
+				<code className={css(noteMonoXs)}>{token}</code>
 				{badges}
 			</div>
 		</article>

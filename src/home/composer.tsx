@@ -10,6 +10,7 @@ import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
+import { focusRing } from '../editorial/primitives/shared-styles';
 import { useMediaQuery } from '../editorial/use-media-query';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
@@ -243,10 +244,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								letterSpacing: '-0.02em',
 								color: 'text.default',
 								textDecoration: 'none',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
+								_focusVisible: focusRing,
 							})}
 						>
 							rebuildup
@@ -272,10 +270,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 												color: 'text.muted',
 												textDecoration: 'none',
 												_hover: { color: 'text.default' },
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
+												_focusVisible: focusRing,
 											})}
 										>
 											{item.label}

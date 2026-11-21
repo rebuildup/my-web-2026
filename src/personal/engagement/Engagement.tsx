@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { bodySansSmLoose, rowWrapGap3, vStackGap4 } from '../../editorial/primitives/shared-styles';
 import { ENGAGEMENT_STEP_MOTION, usePrefersReducedMotion } from '../../editorial/reduced-motion';
 import type { EngagementWork } from './Engagement.preview';
 
@@ -58,13 +59,7 @@ const workMetaClassName = css({
 	color: 'text.muted',
 });
 
-const workFactClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.default',
-});
+const workFactClassName = css(bodySansSmLoose);
 
 const techListClassName = css({
 	margin: '0',
@@ -177,18 +172,9 @@ export function EngagementStaticPreview({ works }: { works: readonly EngagementW
 	);
 }
 
-const deckClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-});
+const deckClassName = css(vStackGap4);
 
-const deckControlsClassName = css({
-	display: 'flex',
-	alignItems: 'center',
-	gap: '3',
-	flexWrap: 'wrap',
-});
+const deckControlsClassName = css(rowWrapGap3);
 
 const deckButtonClassName = css({
 	display: 'inline-flex',

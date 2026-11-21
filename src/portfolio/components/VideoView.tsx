@@ -3,6 +3,13 @@ import { css } from '../../../styled-system/css';
 import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { cardTitleLinkClassName } from '../../editorial/primitives/card-title';
+import {
+	eyebrowMonoXsReset,
+	focusRing,
+	focusRingMedia,
+	gridMin,
+	vStackGap1Min,
+} from '../../editorial/primitives/shared-styles';
 import type { PortfolioProject } from '../schema';
 import { projectCover, projectVideo } from '../views';
 import { FACET_LABEL } from '../vocabulary';
@@ -81,7 +88,7 @@ function VideoTile({
 	const showFrame = playing && video !== null;
 
 	return (
-		<li className={css({ display: 'grid', minWidth: '0' })}>
+		<li className={css(gridMin)}>
 			<article
 				className={css({
 					display: 'flex',
@@ -117,10 +124,7 @@ function VideoTile({
 									fontSize: 'md',
 									fontWeight: '700',
 									cursor: 'pointer',
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
+									_focusVisible: focusRing,
 								})}
 							>
 								<span aria-hidden="true">×</span>
@@ -133,11 +137,7 @@ function VideoTile({
 							className={css({
 								display: 'block',
 								textDecoration: 'none',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '4px',
-									borderRadius: '6px',
-								},
+								_focusVisible: focusRingMedia,
 							})}
 						>
 							<PortfolioMediaFigure media={cover} loading="lazy" frameAspectRatio="16 / 9" />
@@ -175,24 +175,14 @@ function VideoTile({
 								fontSize: 'lg',
 								paddingInlineStart: '1',
 								cursor: 'pointer',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
+								_focusVisible: focusRing,
 							})}
 						>
 							<span aria-hidden="true">▶</span>
 						</button>
 					) : null}
 				</div>
-				<header
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '1',
-						minWidth: '0',
-					})}
-				>
+				<header className={css(vStackGap1Min)}>
 					<h3
 						className={css({
 							margin: '0',
@@ -220,16 +210,7 @@ function VideoTile({
 					>
 						{project.summary}
 					</p>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-							color: 'text.muted',
-						})}
-					>
+					<p className={css(eyebrowMonoXsReset)}>
 						{firstFacet ? FACET_LABEL[firstFacet] : 'Project'}
 						{project.periodLabel ? ` · ${project.periodLabel}` : ''}
 					</p>

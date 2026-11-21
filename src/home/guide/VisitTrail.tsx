@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import { Cluster, listResetClassName } from '../../editorial/primitives/Flow';
+import { focusRing } from '../../editorial/primitives/shared-styles';
 import { readVisitTrail } from './trail';
 
 /**
@@ -37,10 +38,7 @@ const trailLinkClassName = /*#__PURE__*/ css({
 	color: 'text.default',
 	textDecoration: 'none',
 	_hover: { borderColor: 'border.strong', color: 'accent.interactive' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 });
 
 const trailLabelClassName = /*#__PURE__*/ css({

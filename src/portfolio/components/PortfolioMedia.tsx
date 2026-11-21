@@ -1,6 +1,7 @@
 import { type ReactEventHandler, useState } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import { Stack } from '../../editorial/primitives/Flow';
+import { eyebrowMonoXsLoose } from '../../editorial/primitives/shared-styles';
 import type { PortfolioMedia as PortfolioMediaData } from '../schema';
 
 /**
@@ -175,13 +176,7 @@ const mediaFrameStyle = css({
 	borderRadius: '6px',
 });
 
-const mediaFrameLabel = css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const mediaFrameLabel = css(eyebrowMonoXsLoose);
 
 const imageStyle = css({
 	width: '100%',

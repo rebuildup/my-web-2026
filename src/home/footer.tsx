@@ -2,6 +2,7 @@ import { css, cx } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { TextLink } from '../editorial/primitives/TextLink';
+import { eyebrowMonoSm, spaceSection } from '../editorial/primitives/shared-styles';
 import { PrivacyNotice } from './privacy-notice';
 import type { PrivacyNoticeData } from './privacy/load';
 import { PACKAGE_VERSION } from './version';
@@ -43,7 +44,7 @@ export function Footer({ privacyNotice }: FooterProps) {
 	return (
 		<footer
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -65,16 +66,7 @@ export function Footer({ privacyNotice }: FooterProps) {
 							flexDirection: 'column',
 						})}
 					>
-						<span
-							aria-hidden="true"
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
+						<span aria-hidden="true" className={css(eyebrowMonoSm)}>
 							04 — Edition
 						</span>
 						<span
@@ -98,17 +90,7 @@ export function Footer({ privacyNotice }: FooterProps) {
 							flexDirection: 'column',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
-							Platform
-						</span>
+						<span className={css(eyebrowMonoSm)}>Platform</span>
 						<p
 							className={css({
 								margin: '0',
@@ -140,17 +122,7 @@ export function Footer({ privacyNotice }: FooterProps) {
 							flexDirection: 'column',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
-							Index
-						</span>
+						<span className={css(eyebrowMonoSm)}>Index</span>
 						<Stack
 							as="ul"
 							gap="2"

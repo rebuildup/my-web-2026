@@ -28,6 +28,13 @@ import {
 	TEXT_FIELDS_PATH,
 	TIMER_PATH,
 } from '../editorial/primitives/material-symbol-tool-paths';
+import {
+	eyebrowMonoSm,
+	gridMin,
+	noteSansMdPlain,
+	pageTitleFlush,
+	sizeDisplay,
+} from '../editorial/primitives/shared-styles';
 import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
 import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
@@ -316,31 +323,8 @@ function ToolsIndexRoute() {
 						marginBlockEnd: '0',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Tools
-					</span>
-					<h1
-						className={css({
-							margin: '0',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							color: 'text.default',
-							lineHeight: '1.05',
-							letterSpacing: '-0.03em',
-							maxWidth: '720px',
-						})}
-					>
-						ツール
-					</h1>
+					<span className={css(eyebrowMonoSm)}>Tools</span>
+					<h1 className={css(pageTitleFlush)}>ツール</h1>
 					<p
 						className={css({
 							margin: '0',
@@ -358,16 +342,7 @@ function ToolsIndexRoute() {
 			</PageSection>
 			{available.length === 0 && planned.length === 0 ? (
 				<PageSection>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.muted',
-						})}
-					>
-						登録されているツールはまだありません。
-					</p>
+					<p className={css(noteSansMdPlain)}>登録されているツールはまだありません。</p>
 				</PageSection>
 			) : null}
 			{available.length > 0 ? (
@@ -430,10 +405,7 @@ function ToolsIndexRoute() {
  * the shared `listResetClassName` because `display` belongs to the
  * primitive (C-5).
  */
-const cardItem = css({
-	display: 'grid',
-	minWidth: '0',
-});
+const cardItem = css(gridMin);
 
 /**
  * The whole card is the link. `height: 100%` lets it fill the `1fr` row

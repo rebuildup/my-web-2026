@@ -219,7 +219,7 @@ test.describe('home page composition', () => {
 			await expect(block).toBeVisible();
 		}
 		// None of the three may have survived as a top-level section:
-		// the page's section contract above pins the count at five.
+		// the page's section contract above pins the count at six.
 		await expect(page.locator('section[aria-labelledby="reactions-heading"]')).toHaveCount(0);
 		await expect(page.locator('section[aria-labelledby="access-counter-heading"]')).toHaveCount(0);
 	});

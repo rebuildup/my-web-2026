@@ -1,9 +1,11 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
@@ -103,22 +105,16 @@ function StackSectionBlock({
 				description={section.description}
 				variant="default"
 			/>
-			<ul
+			<Stack
+				as="ul"
+				gap="0"
 				data-testid={`stack-items-${section.id}`}
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '0',
-					margin: '0',
-					marginBlockStart: '10',
-					padding: '0',
-					listStyle: 'none',
-				})}
+				className={cx(listResetClassName, css({ marginBlockStart: '10' }))}
 			>
 				{section.items.map((item) => (
 					<StackItemRow key={item.id} item={item} />
 				))}
-			</ul>
+			</Stack>
 		</PageSection>
 	);
 }
@@ -132,6 +128,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					flexDirection: 'column',
 					gap: '2',
 					alignItems: 'flex-start',
+					minWidth: '0',
 				})}
 			>
 				<h3
@@ -147,13 +144,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				</h3>
 				<VersionBadge version={item.version} />
 			</div>
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-				})}
-			>
+			<Stack gap="3" className={css({ minWidth: '0' })}>
 				<p
 					className={css({
 						margin: '0',
@@ -188,15 +179,13 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					</div>
 				) : null}
 				{item.samples !== undefined && item.samples.length > 0 ? (
-					<div
+					<Stack
 						data-testid={`stack-samples-${item.id}`}
-						className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
+						gap="4"
+						className={css({ minWidth: '0' })}
 					>
 						{item.samples.map((sample) => (
-							<div
-								key={sample.label}
-								className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}
-							>
+							<Stack key={sample.label} gap="2" className={css({ minWidth: '0' })}>
 								<CodeBlock label={sample.label} code={sample.code} language={sample.language} />
 								{sample.note !== undefined ? (
 									<p
@@ -211,57 +200,31 @@ function StackItemRow({ item }: { item: StackItemView }) {
 										{sample.note}
 									</p>
 								) : null}
-							</div>
+							</Stack>
 						))}
-					</div>
+					</Stack>
 				) : null}
 				{item.checks !== undefined && item.checks.length > 0 ? (
 					<StackChecks checks={item.checks} itemId={item.id} />
 				) : null}
 				{item.evidence.length > 0 ? (
-					<ul
-						aria-label="根拠 source"
-						className={css({
-							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '2',
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-						})}
-					>
+					<Cluster as="ul" aria-label="根拠 source" className={listResetClassName}>
 						{item.evidence.map((link) => (
 							<li key={link.href}>
-								<a
+								<TextLink
 									href={link.href}
 									target="_blank"
 									rel="noopener noreferrer"
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '1',
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
+									className={css({ fontFamily: 'mono', fontSize: 'xs', fontWeight: '600' })}
 								>
 									<span>{link.label}</span>
 									<span aria-hidden="true">↗</span>
-								</a>
+								</TextLink>
 							</li>
 						))}
-					</ul>
+					</Cluster>
 				) : null}
-			</div>
+			</Stack>
 		</Split>
 	);
 }
@@ -290,17 +253,12 @@ function StackChecks({
 	itemId: string;
 }) {
 	return (
-		<ul
+		<Stack
+			as="ul"
+			gap="2"
 			aria-label="検証状況"
 			data-testid={`stack-checks-${itemId}`}
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '2',
-				margin: '0',
-				padding: '0',
-				listStyle: 'none',
-			})}
+			className={listResetClassName}
 		>
 			{checks.map((check) => (
 				<li
@@ -351,7 +309,7 @@ function StackChecks({
 					) : null}
 				</li>
 			))}
-		</ul>
+		</Stack>
 	);
 }
 

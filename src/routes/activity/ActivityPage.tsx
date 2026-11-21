@@ -1,9 +1,9 @@
 import { css } from '../../../styled-system/css';
-import { ActivityTimelineView } from '../../activity/Timeline';
 import type { ActivityTimeline } from '../../activity/contract';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { ActivityTimelineView } from './Timeline';
 
 /**
  * `/activity` page composition (Issue #352).

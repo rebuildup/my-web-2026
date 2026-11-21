@@ -23,7 +23,6 @@
 		"src/legal/AssetLicenseReview.tsx",
 		"src/legal/contract.ts",
 		"src/privacy/data-lifecycle.ts",
-		"src/activity/Timeline.tsx",
 		"src/activity/contract.ts"
 	],
 	"excludeGlobs": [

@@ -7,10 +7,10 @@ import {
 	CURRENT_RECOMMENDATIONS,
 	INTEREST_CATEGORY_LABELS,
 	INTEREST_STATE_LABELS,
+	type InterestState,
 	SUPERSEDED_OBSERVATIONS,
 	TECH_INTEREST_ENTRY_BY_ID,
 	TECH_INTEREST_SECTIONS,
-	type InterestState,
 	type TechInterestEntry,
 	type TechInterestSection,
 } from './TechInterests.preview';

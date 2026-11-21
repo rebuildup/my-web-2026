@@ -1,4 +1,5 @@
 import { css, cx } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -136,21 +137,6 @@ const summaryClassName = /* @__PURE__ */ css({
 	lineHeight: '1.6',
 });
 
-const listClassName = /* @__PURE__ */ css({
-	display: 'flex',
-	flexDirection: 'column',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
-const groupClassName = /* @__PURE__ */ css({
-	display: 'block',
-	'&:not(:first-child)': {
-		marginBlockStart: '10',
-	},
-});
-
 const groupHeadingClassName = /* @__PURE__ */ css({
 	display: 'flex',
 	alignItems: 'baseline',
@@ -184,7 +170,7 @@ const rowHeaderClassName = /* @__PURE__ */ css({
 const nameClassName = /* @__PURE__ */ css({
 	margin: '0',
 	fontFamily: 'heading',
-	fontSize: 'xl',
+	fontSize: '2xl',
 	fontWeight: '700',
 	color: 'text.default',
 	lineHeight: '1.2',
@@ -443,19 +429,23 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 						{summary}
 					</p>
 					{groups ? (
-						<ul data-testid="home-current-projects-list" className={listClassName}>
+						<Stack
+							as="ul"
+							gap="10"
+							data-testid="home-current-projects-list"
+							className={listResetClassName}
+						>
 							{groups.map((group) => (
 								<li
 									key={group.level}
 									data-testid="home-current-project-group"
 									data-level={group.level}
-									className={groupClassName}
 								>
 									<h3 className={groupHeadingClassName}>
 										<span>{group.label}</span>
 										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
 									</h3>
-									<ul className={listClassName}>
+									<Stack as="ul" gap="0" className={listResetClassName}>
 										{group.records.map((project) => (
 											<ProjectRow
 												key={project.id}
@@ -466,12 +456,17 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 												grouped
 											/>
 										))}
-									</ul>
+									</Stack>
 								</li>
 							))}
-						</ul>
+						</Stack>
 					) : (
-						<ul data-testid="home-current-projects-list" className={listClassName}>
+						<Stack
+							as="ul"
+							gap="0"
+							data-testid="home-current-projects-list"
+							className={listResetClassName}
+						>
 							{visible.map((project) => (
 								<ProjectRow
 									key={project.id}
@@ -482,7 +477,7 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 									grouped={false}
 								/>
 							))}
-						</ul>
+						</Stack>
 					)}
 					{seeAllHref && published.length > visible.length ? (
 						<a

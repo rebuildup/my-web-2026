@@ -1,5 +1,7 @@
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { ToggleChip } from '../../editorial/primitives/ToggleChip';
 import type { PortfolioFacet } from '../schema';
 import { PORTFOLIO_FACETS } from '../schema';
 import { FACET_LABEL, FACET_LABEL_JA } from '../vocabulary';
@@ -80,16 +82,7 @@ export function FacetFilter({ value }: FacetFilterProps) {
 	};
 
 	return (
-		<fieldset
-			className={css({
-				margin: '0',
-				padding: '0',
-				border: 'none',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
-			})}
-		>
+		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
 			<legend
 				className={css({
 					fontFamily: 'sans',
@@ -102,94 +95,29 @@ export function FacetFilter({ value }: FacetFilterProps) {
 			>
 				Facet filter
 			</legend>
-			<div
-				aria-label="facet filter chips"
-				className={css({
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: '2',
-				})}
-			>
+			<Cluster aria-label="facet filter chips" gap="2">
 				{PORTFOLIO_FACETS.map((facet) => {
 					const isActive = active.has(facet);
 					const label = { ja: FACET_LABEL_JA[facet], en: FACET_LABEL[facet] };
 					return (
-						<button
+						<ToggleChip
 							key={facet}
-							type="button"
-							aria-pressed={isActive}
+							active={isActive}
 							aria-label={`${label.ja} / ${label.en} facet${isActive ? ' selected' : ''}`}
 							onClick={onToggle(facet)}
-							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								h: '8',
-								px: '4',
-								borderRadius: 'full',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: isActive ? 'border.strong' : 'border.subtle',
-								backgroundColor: isActive ? 'bg.accent' : 'bg.surface',
-								color: isActive ? 'text.inverse' : 'text.default',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								cursor: 'pointer',
-								transition: 'background-color 120ms ease, color 120ms ease',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
+							sublabel={label.en}
 						>
-							<span aria-hidden="true">{isActive ? '✓' : ''}</span>
-							<span>{label.ja}</span>
-							<span
-								aria-hidden="true"
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									color: isActive ? 'text.inverse' : 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								{label.en}
-							</span>
-						</button>
+							{label.ja}
+						</ToggleChip>
 					);
 				})}
 				{active.size > 0 ? (
-					<button
-						type="button"
-						onClick={onClear}
-						className={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-							h: '8',
-							px: '4',
-							borderRadius: 'full',
-							borderWidth: '1px',
-							borderStyle: 'dashed',
-							borderColor: 'border.subtle',
-							backgroundColor: 'transparent',
-							color: 'text.muted',
-							fontFamily: 'sans',
-							fontSize: 'sm',
-							cursor: 'pointer',
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
-						})}
-					>
+					<ToggleChip tone="clear" onClick={onClear}>
 						Clear
-					</button>
+					</ToggleChip>
 				) : null}
-			</div>
-		</fieldset>
+			</Cluster>
+		</Stack>
 	);
 }
 

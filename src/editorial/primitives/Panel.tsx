@@ -1,6 +1,5 @@
 import { type ElementType, type ReactNode, useContext } from 'react';
 import { cva, cx } from '../../../styled-system/css';
-import type { FlowGap } from './Grid';
 import {
 	type FieldTone,
 	type SectionTone,
@@ -77,14 +76,21 @@ const panelRecipe = cva({
 	},
 });
 
+/** Panel padding is the cva variant set — a strict subset of `FlowGap`. */
+export type PanelPadding = '1' | '2' | '4' | '6' | '10' | '16' | '24' | '32';
+
 export interface PanelProps {
 	variant?: PanelVariant;
 	/** Inner spacing from the rhythm set (default `6` = 24px). */
-	padding?: FlowGap;
+	padding?: PanelPadding;
 	/** Corner radius (default `md`). */
 	radius?: 'sm' | 'md' | 'lg';
 	as?: ElementType;
 	className?: string;
+	/** ARIA role for landmark/section panels (e.g. `note`). */
+	role?: string;
+	/** ARIA busy state for async panels. */
+	'aria-busy'?: boolean | 'true' | 'false';
 	children?: ReactNode;
 	/** Pass-through `data-*` attributes for E2E/integration selectors. */
 	[key: `data-${string}`]: string | number | boolean | undefined;

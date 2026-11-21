@@ -26,7 +26,8 @@ L1 layout        PageSection / Container / Grid / Stack / Cluster / Split
                  (src/editorial/primitives/). Owns section rhythm,
                  surface tone, page grid, flow gaps.
 L2 components    Button / TextLink / Panel / Badge / StateMark /
-                 RecordList / Disclosure / MediaFrame / SectionHeading.
+                 RecordList / Disclosure / MediaFrame / SectionHeading /
+                 ToggleChip.
                  Owns the look of one interactive or display element
                  through variant × size props.
 L3 pages         obligation dirs (src/home/**, src/portfolio/**, …) and

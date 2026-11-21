@@ -1,5 +1,7 @@
-import { css } from '../../styled-system/css';
+import { css, cx } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { Stack, listResetClassName } from '../editorial/primitives/Flow';
+import { TextLink } from '../editorial/primitives/TextLink';
 import { PrivacyNotice } from './privacy-notice';
 import type { PrivacyNoticeData } from './privacy/load';
 import { PACKAGE_VERSION } from './version';
@@ -149,58 +151,31 @@ export function Footer({ privacyNotice }: FooterProps) {
 						>
 							Index
 						</span>
-						<ul
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '2',
-								margin: '0',
-								marginBlockStart: '2',
-								padding: '0',
-								listStyle: 'none',
-								fontFamily: 'sans',
-								fontSize: 'md',
-							})}
+						<Stack
+							as="ul"
+							gap="2"
+							className={cx(
+								listResetClassName,
+								css({
+									marginBlockStart: '2',
+									fontFamily: 'sans',
+									fontSize: 'md',
+								}),
+							)}
 						>
 							<li>
-								<a
+								<TextLink
 									href="https://github.com/rebuildup/my-web-2026"
 									rel="noopener noreferrer"
 									target="_blank"
-									className={css({
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
 								>
 									Source
-								</a>
+								</TextLink>
 							</li>
 							<li>
-								<a
-									href="/portfolio"
-									className={css({
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
-								>
-									Portfolio
-								</a>
+								<TextLink href="/portfolio">Portfolio</TextLink>
 							</li>
-						</ul>
+						</Stack>
 					</div>
 				</div>
 				{privacyNotice ? <PrivacyNotice {...privacyNotice} /> : null}

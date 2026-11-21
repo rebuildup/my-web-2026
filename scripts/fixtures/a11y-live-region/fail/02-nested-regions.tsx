@@ -9,7 +9,6 @@
 export const NestedRegions = () => (
 	// biome-ignore lint/a11y/useSemanticElements: this fixture reproduces the defect the gate rejects.
 	<div role="status">
-		{/* biome-ignore lint/a11y/useSemanticElements: this fixture reproduces the defect the gate rejects. */}
 		<span role="alert">Saved</span>
 	</div>
 );

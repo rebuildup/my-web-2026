@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ActivityTimelineView } from './Timeline';
 import {
 	activityTimelineFixture,
 	emptyActivityTimelineFixture,
 	failedActivityTimelineFixture,
-} from './fixtures';
+} from '../../activity/fixtures';
+import { ActivityTimelineView } from './Timeline';
 
 /**
  * ActivityTimelineView stories (Issue #352 verification).

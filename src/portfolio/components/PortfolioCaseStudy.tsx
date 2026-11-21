@@ -1,4 +1,7 @@
 import { css } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
+import { Panel } from '../../editorial/primitives/Panel';
 
 /**
  * PortfolioCaseStudy — the case-study element of Issue #519.
@@ -139,8 +142,8 @@ function ClaimClassMark({ claimClass }: { claimClass: PortfolioCaseStudyClaimCla
 			className={css({
 				display: 'inline-block',
 				flexShrink: '0',
-				width: '2',
-				height: '2',
+				inlineSize: '2',
+				blockSize: '2',
 				backgroundColor: isRing ? 'transparent' : 'currentColor',
 			})}
 			style={{
@@ -195,24 +198,6 @@ const legendLabelClassName = css({
 	color: 'text.muted',
 });
 
-const legendListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', sm: 'repeat(3, 1fr)' },
-	gap: '3',
-});
-
-const legendItemClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
-	padding: '3',
-	backgroundColor: 'bg.subtle',
-	borderRadius: '4',
-});
-
 const legendNameClassName = css({
 	display: 'inline-flex',
 	alignItems: 'center',
@@ -231,12 +216,6 @@ const legendDescriptionClassName = css({
 	color: 'text.muted',
 });
 
-const sectionClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
-
 const sectionHeadingClassName = css({
 	margin: '0',
 	fontFamily: 'heading',
@@ -244,15 +223,6 @@ const sectionHeadingClassName = css({
 	fontWeight: '700',
 	lineHeight: '1.3',
 	color: 'text.default',
-});
-
-const entryListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
 });
 
 const entryClassName = css({
@@ -297,19 +267,19 @@ export function PortfolioCaseStudy({
 
 	return (
 		<article className={rootClassName} data-portfolio-case-study="">
-			<header className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack as="header" gap="2">
 				<h2 className={titleClassName}>{title}</h2>
 				{periodLabel ? <p className={metaClassName}>{periodLabel}</p> : null}
 				{summary ? <p className={summaryClassName}>{summary}</p> : null}
-			</header>
+			</Stack>
 
-			<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack gap="2">
 				<p className={legendLabelClassName}>読み方 / How to read</p>
-				<ul className={legendListClassName}>
+				<Grid as="ul" columns={5} gap="3" className={listResetClassName}>
 					{CLAIM_CLASS_ORDER.map((claimClass) => {
 						const label = CLAIM_CLASS_LABEL[claimClass];
 						return (
-							<li key={claimClass} className={legendItemClassName}>
+							<Panel as="li" key={claimClass} variant="subtle" padding="4" radius="lg">
 								<span className={legendNameClassName}>
 									<ClaimClassMark claimClass={claimClass} />
 									{label.ja}
@@ -318,22 +288,18 @@ export function PortfolioCaseStudy({
 									</span>
 								</span>
 								<p className={legendDescriptionClassName}>{label.description}</p>
-							</li>
+							</Panel>
 						);
 					})}
-				</ul>
-			</div>
+				</Grid>
+			</Stack>
 
 			{visibleSections.map((section) => (
-				<section
-					key={section.id}
-					aria-labelledby={`case-study-${section.id}`}
-					className={sectionClassName}
-				>
+				<Stack as="section" key={section.id} gap="3" aria-labelledby={`case-study-${section.id}`}>
 					<h3 id={`case-study-${section.id}`} className={sectionHeadingClassName}>
 						{section.heading}
 					</h3>
-					<ul className={entryListClassName}>
+					<Stack as="ul" gap="3" className={listResetClassName}>
 						{section.entries.map((entry, index) => (
 							<li
 								// Entries have no stable id of their own; the
@@ -351,8 +317,8 @@ export function PortfolioCaseStudy({
 								<p className={entryTextClassName}>{entry.text}</p>
 							</li>
 						))}
-					</ul>
-				</section>
+					</Stack>
+				</Stack>
 			))}
 		</article>
 	);

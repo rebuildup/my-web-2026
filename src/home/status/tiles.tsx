@@ -1,6 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import type { HomeLocale } from '../format';
@@ -300,23 +300,16 @@ export function StatusTiles({
 		);
 	}
 	return (
-		<section
-			aria-labelledby={headingId}
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id={headingId}
-					eyebrow="System status"
-					title="プラットフォームの状態 / Platform health"
-					description={STATUS_DESCRIPTION}
-					variant="spread"
-				>
-					{body}
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy={headingId}>
+			<SectionHeading
+				id={headingId}
+				eyebrow="System status"
+				title="プラットフォームの状態 / Platform health"
+				description={STATUS_DESCRIPTION}
+				variant="spread"
+			>
+				{body}
+			</SectionHeading>
+		</PageSection>
 	);
 }

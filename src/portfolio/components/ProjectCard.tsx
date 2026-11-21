@@ -1,7 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioProject } from '../schema';
 import { FACET_LABEL } from '../vocabulary';
@@ -203,29 +203,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						{project.pinned ? <Badge tone="accent">Pinned</Badge> : null}
 					</div>
 					<h3 className={cardTitleClassName}>
-						<a
-							href={`/portfolio/${project.slug}`}
-							className={css({
-								color: 'inherit',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								// The heading is the whole link, so a full-ink rule
-								// under every line would shout. The underline stays
-								// — with no hue left it is the only affordance — but
-								// is drawn in the identifying-rule tone.
-								textDecorationColor: 'border.strong',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '4px',
-									borderRadius: '2px',
-								},
-								_hover: {
-									textDecorationThickness: '2px',
-									textDecorationColor: 'currentColor',
-								},
-							})}
-						>
+						<a href={`/portfolio/${project.slug}`} className={cardTitleLinkClassName}>
 							{project.title}
 						</a>
 					</h3>

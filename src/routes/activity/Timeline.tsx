@@ -1,11 +1,12 @@
-import { css } from '../../styled-system/css';
+import { css } from '../../../styled-system/css';
 import {
 	ACTIVITY_KIND_LABELS_JA,
 	ACTIVITY_SOURCE_LABELS_JA,
 	ACTIVITY_SOURCE_STATUS_LABELS_JA,
 	type ActivityTimeline,
 	type ActivityTimelineItem,
-} from './contract';
+} from '../../activity/contract';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 
 /**
  * ActivityTimeline — the unified read-only chronology of published
@@ -27,15 +28,6 @@ import {
  *     authored a coarse period label, else the `at` day) and a real
  *     permalink when one exists.
  */
-
-const listClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 const itemClassName = /*#__PURE__*/ css({
 	display: 'flex',
@@ -167,11 +159,11 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 					{noSourceOk ? '活動ソースを取得できませんでした。' : '掲載できる活動はまだありません。'}
 				</p>
 			) : (
-				<ul className={listClassName}>
+				<Stack as="ul" gap="2" className={listResetClassName}>
 					{timeline.items.map((item) => (
 						<TimelineItemRow key={item.id} item={item} />
 					))}
-				</ul>
+				</Stack>
 			)}
 		</div>
 	);

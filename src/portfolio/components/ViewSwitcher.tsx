@@ -1,5 +1,7 @@
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { ToggleChip } from '../../editorial/primitives/ToggleChip';
 import type { PortfolioView } from '../views';
 import { PORTFOLIO_VIEWS, parsePortfolioView } from '../views';
 import { FACET_LABEL } from '../vocabulary';
@@ -61,16 +63,7 @@ export function ViewSwitcher({ value }: ViewSwitcherProps) {
 	};
 
 	return (
-		<fieldset
-			className={css({
-				margin: '0',
-				padding: '0',
-				border: 'none',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
-			})}
-		>
+		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
 			<legend
 				className={css({
 					fontFamily: 'sans',
@@ -87,52 +80,22 @@ export function ViewSwitcher({ value }: ViewSwitcherProps) {
 			    already names this group, and a bare `<div>` cannot carry
 			    one anyway (implicit role `generic` — the Issue #490
 			    prohibited-attribute defect). */}
-			<div
-				className={css({
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: '2',
-				})}
-			>
+			<Cluster gap="2">
 				{PORTFOLIO_VIEWS.map((view) => {
 					const isActive = view === active;
 					const label = VIEW_LABEL[view];
 					return (
-						<button
+						<ToggleChip
 							key={view}
-							type="button"
-							aria-pressed={isActive}
+							active={isActive}
 							aria-label={`${label} view${isActive ? ' selected' : ''}`}
 							onClick={onSelect(view)}
-							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								h: '8',
-								px: '4',
-								borderRadius: 'full',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: isActive ? 'border.strong' : 'border.subtle',
-								backgroundColor: isActive ? 'bg.accent' : 'bg.surface',
-								color: isActive ? 'text.inverse' : 'text.default',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								cursor: 'pointer',
-								transition: 'background-color 120ms ease, color 120ms ease',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
 						>
-							<span aria-hidden="true">{isActive ? '✓' : ''}</span>
-							<span>{label}</span>
-						</button>
+							{label}
+						</ToggleChip>
 					);
 				})}
-			</div>
-		</fieldset>
+			</Cluster>
+		</Stack>
 	);
 }

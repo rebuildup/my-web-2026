@@ -7,8 +7,8 @@
 
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import {
@@ -233,23 +233,18 @@ export function PresenceCard({
 
 		if (chrome === 'section') {
 			return (
-				<section
-					aria-labelledby={headingId}
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id={headingId}
-							eyebrow="Discord"
-							title="Discord プレゼンス"
-							titleEn="Discord Presence"
-							description={PRESENCE_DESCRIPTION}
-							variant="spread"
-						>
-							{content}
-						</SectionHeading>
-					</Container>
-				</section>
+				<PageSection labelledBy={headingId}>
+					<SectionHeading
+						id={headingId}
+						eyebrow="Discord"
+						title="Discord プレゼンス"
+						titleEn="Discord Presence"
+						description={PRESENCE_DESCRIPTION}
+						variant="spread"
+					>
+						{content}
+					</SectionHeading>
+				</PageSection>
 			);
 		}
 
@@ -331,7 +326,7 @@ export function PresenceCard({
 	const additionalActivitiesContent =
 		card.additionalActivities.length > 0 ? (
 			<div className={additionalActivitiesClassName}>
-				{card.additionalActivities.map((activity, index) => (
+				{card.additionalActivities.slice(0, 4).map((activity, index) => (
 					<div
 						key={`${activity.typeLabel}-${activity.name}-${index}`}
 						className={additionalActivityClassName}
@@ -358,6 +353,9 @@ export function PresenceCard({
 						</span>
 					</div>
 				))}
+				{/* Render limit: a Discord profile lists a handful of
+				    activities at most; the slice above keeps the card a
+				    summary — the profile itself owns the full list. */}
 			</div>
 		) : null;
 
@@ -389,23 +387,18 @@ export function PresenceCard({
 
 	if (chrome === 'section') {
 		return (
-			<section
-				aria-labelledby={headingId}
-				className={css({ paddingBlock: { base: '16', lg: '24' } })}
-			>
-				<Container>
-					<SectionHeading
-						id={headingId}
-						eyebrow="Discord"
-						title="Discord プレゼンス"
-						titleEn="Discord Presence"
-						description={PRESENCE_DESCRIPTION}
-						variant="spread"
-					>
-						{cardContent}
-					</SectionHeading>
-				</Container>
-			</section>
+			<PageSection labelledBy={headingId}>
+				<SectionHeading
+					id={headingId}
+					eyebrow="Discord"
+					title="Discord プレゼンス"
+					titleEn="Discord Presence"
+					description={PRESENCE_DESCRIPTION}
+					variant="spread"
+				>
+					{cardContent}
+				</SectionHeading>
+			</PageSection>
 		);
 	}
 

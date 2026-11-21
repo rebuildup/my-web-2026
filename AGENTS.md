@@ -389,19 +389,20 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
 - `src/activity/**` (Issue #352) owns the **unified activity-timeline
   read model**: the merged chronology contract (`contract.ts`), the
   date-descending merge (`merge.ts`), the per-source adapters
-  (`sources.ts`), the display component (`Timeline.tsx`) and the
-  committed fixtures. It answers "what did the owner publish, and
-  when" across GitHub releases, published articles and approved
-  portfolio works — each item keeps its 種別 / 出典 / 日付 / 詳細 URL,
-  and unknown dates are never interpolated (a work contributes its
-  authored `periodStart` / `periodLabel`; the portfolio model has no
-  publication-date field, so none is claimed). Its adapters take
-  narrow STRUCTURAL inputs, so the obligation imports no peer owner,
-  no route, no binding and no boundary — `allowedOwnerDependencies`
-  in `scripts/check-architecture.mjs` registers it with an EMPTY
-  allowlist. The `/activity` route and the Home 導線 are follow-up
-  integration; until then the surface is verified through the
-  committed fixtures and Storybook only.
+  (`sources.ts`) and the committed fixtures. It answers "what did the
+  owner publish, and when" across GitHub releases, published articles
+  and approved portfolio works — each item keeps its 種別 / 出典 /
+  日付 / 詳細 URL, and unknown dates are never interpolated (a work
+  contributes its authored `periodStart` / `periodLabel`; the
+  portfolio model has no publication-date field, so none is claimed).
+  Its adapters take narrow STRUCTURAL inputs, so the obligation
+  imports no peer owner, no route, no binding and no boundary —
+  `allowedOwnerDependencies` in `scripts/check-architecture.mjs`
+  registers it with an EMPTY allowlist. The timeline's display
+  component lives in `src/routes/activity/Timeline.tsx` instead: a
+  presentational surface must compose `editorial` primitives, and
+  `activity` declares no outgoing edge, so the route layer owns the
+  composition while `activity` keeps the read model (Issue #1109).
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),

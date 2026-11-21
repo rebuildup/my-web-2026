@@ -67,6 +67,11 @@ const BASE_STYLES = {
 		outlineColor: 'border.focus',
 		outlineOffset: '2px',
 	},
+	_disabled: {
+		backgroundColor: 'bg.subtle',
+		color: 'text.muted',
+		cursor: 'not-allowed',
+	},
 } satisfies SystemStyleObject;
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLElement> {
@@ -76,6 +81,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLElement> {
 	as?: ElementType;
 	/** Anchor target when `as="a"` — forwarded through `...rest`. */
 	href?: string;
+	/** Anchor `target` when `as="a"`. */
+	target?: string;
+	/** Anchor `rel` when `as="a"`. */
+	rel?: string;
 	children?: ReactNode;
 }
 

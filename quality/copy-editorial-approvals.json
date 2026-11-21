@@ -4657,7 +4657,7 @@
 			},
 			"comparisons": [
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "活動タイムラインを読み込めませんでした。",
 					"text": "活動タイムラインを読み込めませんでした。",
@@ -4665,7 +4665,7 @@
 					"note": "timeline === null（assembly 失敗）時の unavailable 文。GitHubActivityCard「GitHub 活動スナップショットを読み込めませんでした。」と同じ「読み込めませんでした」語彙で、失敗を空状態と区別する。新規追加。owner 承認未取得のため decision は pending。"
 				},
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "不明",
 					"text": "不明",
@@ -4673,7 +4673,7 @@
 					"note": "ソース状態ラベルのフォールバック。contract の union に無い status 値が来た場合に推測せず「不明」と出す防御的既定値。新規追加。owner 承認未取得のため decision は pending。"
 				},
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "",
 					"text": "",
@@ -4681,7 +4681,7 @@
 					"note": "ソース状態行の区切りに使う全角スペース（U+3000）リテラル。trim 後は空文字列になる区切り記号であり文ではない。新規追加。owner 承認未取得のため decision は pending。"
 				},
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
 					"text": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
@@ -4689,7 +4689,7 @@
 					"note": "タイムラインヘッダの観測日ラベル。GitHubActivityCard「観測日」と同一語彙で、表示値はソースの observedAt か assembly 時刻のいずれか新しい方の日付部分のみ（鮮度を偽らない）。新規追加。owner 承認未取得のため decision は pending。"
 				},
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "活動ソースを取得できませんでした。",
 					"text": "活動ソースを取得できませんでした。",
@@ -4697,7 +4697,7 @@
 					"note": "items が 0 件かつ全ソースが ok 以外のときの文言。「空 = 活動なし」と誤読させないための失敗側の表示で、Issue の「取得失敗」状態要件に対応。新規追加。owner 承認未取得のため decision は pending。"
 				},
 				{
-					"path": "src/activity/Timeline.tsx",
+					"path": "src/routes/activity/Timeline.tsx",
 					"before": null,
 					"after": "掲載できる活動はまだありません。",
 					"text": "掲載できる活動はまだありません。",
@@ -4766,7 +4766,7 @@
 					},
 					{
 						"type": "document",
-						"reference": "src/activity/Timeline.tsx",
+						"reference": "src/routes/activity/Timeline.tsx",
 						"note": "変更対象の公開 copy を持つコンポーネント。"
 					},
 					{

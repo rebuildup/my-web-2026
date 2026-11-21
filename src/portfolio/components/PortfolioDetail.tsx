@@ -1,9 +1,12 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioAdjacent, PortfolioProject } from '../schema';
 import { selectPortfolioVideo } from '../video-facade';
@@ -125,196 +128,167 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 			<SkipLink href="#portfolio-detail" />
 			<main id="main">
 				<article id="portfolio-detail" aria-labelledby="portfolio-detail-heading">
-					<header
-						// Issue #300: hero beat is 16/32 (layout-system.md §3.3).
-						className={css({
-							paddingBlock: { base: '16', lg: '32' },
-						})}
-					>
-						<Container>
+					<PageSection rhythm="hero" labelledBy="portfolio-detail-heading">
+						<div
+							className={css({
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '6',
+							})}
+						>
 							<div
 								className={css({
 									display: 'flex',
-									flexDirection: 'column',
-									gap: '6',
+									alignItems: 'center',
+									gap: '3',
+									flexWrap: 'wrap',
 								})}
 							>
-								<div
+								<a
+									href="/portfolio"
 									className={css({
-										display: 'flex',
-										alignItems: 'center',
-										gap: '3',
-										flexWrap: 'wrap',
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										letterSpacing: '0.04em',
+										textTransform: 'uppercase',
+										color: 'text.muted',
+										textDecoration: 'none',
+										_focusVisible: {
+											outline: '2px solid {colors.border.focus}',
+											outlineOffset: '2px',
+										},
+										_hover: {
+											color: 'text.default',
+										},
 									})}
 								>
-									<a
-										href="/portfolio"
+									← Back to portfolio
+								</a>
+								{project.facets[0] ? (
+									<span
+										aria-hidden="true"
 										className={css({
 											fontFamily: 'mono',
 											fontSize: 'xs',
-											letterSpacing: '0.04em',
+											letterSpacing: '0.06em',
 											textTransform: 'uppercase',
 											color: 'text.muted',
-											textDecoration: 'none',
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
-											_hover: {
-												color: 'text.default',
-											},
 										})}
 									>
-										← Back to portfolio
-									</a>
-									{project.facets[0] ? (
-										<span
-											aria-hidden="true"
+										· {FACET_LABEL[project.facets[0]]}
+									</span>
+								) : null}
+							</div>
+							<h1
+								id="portfolio-detail-heading"
+								className={css({
+									margin: '0',
+									fontFamily: 'heading',
+									fontSize: { base: '3xl', lg: '4xl' },
+									fontWeight: '700',
+									color: 'text.default',
+									lineHeight: '1.05',
+									letterSpacing: '-0.03em',
+									maxWidth: '720px',
+								})}
+							>
+								{project.title}
+							</h1>
+							<p
+								className={css({
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'lg',
+									color: 'text.muted',
+									lineHeight: '1.6',
+									maxWidth: '720px',
+								})}
+							>
+								{project.summary}
+							</p>
+							<dl
+								className={css({
+									margin: '0',
+									display: 'grid',
+									gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
+									columnGap: '6',
+									rowGap: '2',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.muted',
+								})}
+							>
+								{hasRole ? (
+									<>
+										<dt
 											className={css({
 												fontFamily: 'mono',
 												fontSize: 'xs',
-												letterSpacing: '0.06em',
+												letterSpacing: '0.04em',
 												textTransform: 'uppercase',
-												color: 'text.muted',
 											})}
 										>
-											· {FACET_LABEL[project.facets[0]]}
-										</span>
-									) : null}
+											Role
+										</dt>
+										<dd className={css({ margin: '0' })}>{project.role}</dd>
+									</>
+								) : null}
+								{hasPeriod ? (
+									<>
+										<dt
+											className={css({
+												fontFamily: 'mono',
+												fontSize: 'xs',
+												letterSpacing: '0.04em',
+												textTransform: 'uppercase',
+											})}
+										>
+											Period
+										</dt>
+										<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+									</>
+								) : null}
+							</dl>
+							<Cluster aria-label="facets" gap="2">
+								{project.facets.map((facet) => (
+									<Badge
+										key={facet}
+										tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
+									>
+										{FACET_LABEL[facet] ?? facet}
+									</Badge>
+								))}
+							</Cluster>
+							{cover ? (
+								<div className={css({ maxWidth: '720px' })}>
+									<PortfolioMediaFigure media={cover} loading="eager" />
 								</div>
-								<h1
-									id="portfolio-detail-heading"
-									className={css({
-										margin: '0',
-										fontFamily: 'heading',
-										fontSize: { base: '3xl', lg: '4xl' },
-										fontWeight: '700',
-										color: 'text.default',
-										lineHeight: '1.05',
-										letterSpacing: '-0.03em',
-										maxWidth: '720px',
-									})}
-								>
-									{project.title}
-								</h1>
+							) : null}
+							{video ? (
+								<div className={css({ maxWidth: '720px' })}>
+									<PortfolioVideoFacade video={video} />
+								</div>
+							) : null}
+							{primaryLink ? (
 								<p
 									className={css({
 										margin: '0',
 										fontFamily: 'sans',
-										fontSize: 'lg',
-										color: 'text.muted',
-										lineHeight: '1.6',
-										maxWidth: '720px',
+										fontSize: 'md',
 									})}
 								>
-									{project.summary}
+									<TextLink href={primaryLink.url} target="_blank" rel="noopener noreferrer">
+										{LINK_LABEL[primaryLink.kind]}
+										{primaryLink.label ? ` — ${primaryLink.label}` : ''}
+									</TextLink>
 								</p>
-								<dl
-									className={css({
-										margin: '0',
-										display: 'grid',
-										gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
-										columnGap: '6',
-										rowGap: '2',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
-									{hasRole ? (
-										<>
-											<dt
-												className={css({
-													fontFamily: 'mono',
-													fontSize: 'xs',
-													letterSpacing: '0.04em',
-													textTransform: 'uppercase',
-												})}
-											>
-												Role
-											</dt>
-											<dd className={css({ margin: '0' })}>{project.role}</dd>
-										</>
-									) : null}
-									{hasPeriod ? (
-										<>
-											<dt
-												className={css({
-													fontFamily: 'mono',
-													fontSize: 'xs',
-													letterSpacing: '0.04em',
-													textTransform: 'uppercase',
-												})}
-											>
-												Period
-											</dt>
-											<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
-										</>
-									) : null}
-								</dl>
-								<div
-									aria-label="facets"
-									className={css({
-										display: 'flex',
-										flexWrap: 'wrap',
-										gap: '2',
-									})}
-								>
-									{project.facets.map((facet) => (
-										<Badge
-											key={facet}
-											tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
-										>
-											{FACET_LABEL[facet] ?? facet}
-										</Badge>
-									))}
-								</div>
-								{cover ? (
-									<div className={css({ maxWidth: '720px' })}>
-										<PortfolioMediaFigure media={cover} loading="eager" />
-									</div>
-								) : null}
-								{video ? (
-									<div className={css({ maxWidth: '720px' })}>
-										<PortfolioVideoFacade video={video} />
-									</div>
-								) : null}
-								{primaryLink ? (
-									<p
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'md',
-										})}
-									>
-										<a
-											href={primaryLink.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className={css({
-												color: 'text.accent',
-												textDecoration: 'underline',
-												textUnderlineOffset: '0.18em',
-												textDecorationThickness: '1px',
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
-												_hover: { textDecorationThickness: '2px' },
-											})}
-										>
-											{LINK_LABEL[primaryLink.kind]}
-											{primaryLink.label ? ` — ${primaryLink.label}` : ''}
-										</a>
-									</p>
-								) : null}
-							</div>
-							{/* ADR-0019 §2.5 — an asset published without a
+							) : null}
+						</div>
+						{/* ADR-0019 §2.5 — an asset published without a
 							    rights record says so, on the page that shows
 							    the asset. */}
-							<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
-						</Container>
-					</header>
+						<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
+					</PageSection>
 					{SECTION_DEFINITIONS.map((section) => {
 						const body = project[section.field];
 						if (!body || body.trim() === '') return null;
@@ -336,16 +310,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 					{project.links.length > 0 ? (
 						<PageSection labelledBy="portfolio-section-links" separator>
 							<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
-							<ul
-								className={css({
-									listStyle: 'none',
-									margin: '0',
-									padding: '0',
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '3',
-								})}
-							>
+							<Stack as="ul" gap="3" className={listResetClassName}>
 								{project.links.map((link) => (
 									<li key={link.id}>
 										<a
@@ -399,7 +364,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										</a>
 									</li>
 								))}
-							</ul>
+							</Stack>
 						</PageSection>
 					) : null}
 					{showAdjacent ? (
@@ -424,17 +389,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									title="隣接 project / Adjacent"
 									description="このプロジェクトの前後に並ぶ project。"
 								/>
-								<ul
-									className={css({
-										listStyle: 'none',
-										margin: '0',
-										padding: '0',
-										display: 'grid',
-										gridTemplateColumns: { base: '1fr', sm: '1fr 1fr' },
-										columnGap: '6',
-										rowGap: '4',
-									})}
-								>
+								<Grid as="ul" columns={2} columnGap="6" rowGap="4" className={listResetClassName}>
 									<li>
 										{adjacent.prev ? (
 											<a
@@ -561,7 +516,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											</span>
 										)}
 									</li>
-								</ul>
+								</Grid>
 							</nav>
 						</PageSection>
 					) : null}

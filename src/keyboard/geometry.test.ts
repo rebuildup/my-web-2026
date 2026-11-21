@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import macSource from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
-import winSource from './sources/key-map-kanata/win/kay-map-win.kbd?raw';
 import { resolveGeometry, splitRows } from './geometry';
 import { parseKanata } from './parse-kanata';
+import macSource from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
+import winSource from './sources/key-map-kanata/win/kay-map-win.kbd?raw';
 
 describe('keyboard geometry', () => {
 	it('maps the macOS defsrc onto six physical US ANSI rows', () => {

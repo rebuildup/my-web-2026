@@ -10,12 +10,12 @@
  * `scripts/sync-keyboard-layout.mjs`.
  */
 
+import type { KeyboardSourceBundle } from './catalog';
 import macKanata from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
 import winKanata from './sources/key-map-kanata/win/kay-map-win.kbd?raw';
 import manifestJson from './sources/manifest.json';
 import onishiJson from './sources/pc-setup/platforms/macos/keyboard/onishi.json?raw';
 import type { KeyboardManifest } from './types';
-import type { KeyboardSourceBundle } from './catalog';
 
 /** The committed manifest, typed at this boundary. */
 export const KEYBOARD_MANIFEST = manifestJson as unknown as KeyboardManifest;

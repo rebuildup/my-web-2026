@@ -4,9 +4,9 @@ import { Badge } from '../../../editorial/primitives/Badge';
 import { Container } from '../../../editorial/primitives/Container';
 import { SectionHeading } from '../../../editorial/primitives/SectionHeading';
 import {
+	GROWTH_THROUGH_MAKING,
 	type GrowthBlock,
 	type GrowthSection,
-	GROWTH_THROUGH_MAKING,
 } from './GrowthThroughMaking.preview';
 
 /**

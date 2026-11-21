@@ -1,5 +1,8 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
+import { Panel } from '../../editorial/primitives/Panel';
 
 /**
  * PortfolioProjectHistory — the production-history timeline of
@@ -161,8 +164,8 @@ function BasisMark({ basis }: { basis: PortfolioProjectHistoryBasis }) {
 			className={css({
 				display: 'inline-block',
 				flexShrink: '0',
-				width: '2',
-				height: '2',
+				inlineSize: '2',
+				blockSize: '2',
 				backgroundColor: isRing ? 'transparent' : 'currentColor',
 				borderRadius: '9999px',
 				...(isRing ? { border: '1.5px solid currentColor', boxSizing: 'border-box' } : {}),
@@ -214,24 +217,6 @@ const legendLabelClassName = css({
 	color: 'text.muted',
 });
 
-const legendListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', sm: 'repeat(2, 1fr)' },
-	gap: '3',
-});
-
-const legendItemClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
-	padding: '3',
-	backgroundColor: 'bg.subtle',
-	borderRadius: '4',
-});
-
 const legendNameClassName = css({
 	display: 'inline-flex',
 	alignItems: 'center',
@@ -248,14 +233,6 @@ const legendDescriptionClassName = css({
 	fontSize: 'xs',
 	lineHeight: '1.6',
 	color: 'text.muted',
-});
-
-const timelineClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
 });
 
 const eventClassName = css({
@@ -290,13 +267,6 @@ const precisionClassName = css({
 	fontFamily: 'sans',
 	fontSize: 'xs',
 	color: 'text.muted',
-});
-
-const badgesClassName = css({
-	display: 'inline-flex',
-	flexWrap: 'wrap',
-	alignItems: 'center',
-	gap: '2',
 });
 
 const basisBadgeClassName = css({
@@ -336,12 +306,6 @@ const imageClassName = css({
 	borderColor: 'border.subtle',
 });
 
-const sourcesClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
-});
-
 const sourcesLabelClassName = css({
 	margin: '0',
 	fontFamily: 'mono',
@@ -349,15 +313,6 @@ const sourcesLabelClassName = css({
 	letterSpacing: '0.04em',
 	textTransform: 'uppercase',
 	color: 'text.muted',
-});
-
-const sourceListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
 });
 
 const sourcePathClassName = css({
@@ -398,7 +353,7 @@ function HistoryEvent({ event }: { event: PortfolioProjectHistoryEvent }) {
 						<span className={precisionClassName}>（月まで）</span>
 					) : null}
 				</time>
-				<span className={badgesClassName}>
+				<Cluster gap="2">
 					<Badge tone="neutral">
 						{kind.ja}
 						<span lang="en"> / {kind.en}</span>
@@ -408,7 +363,7 @@ function HistoryEvent({ event }: { event: PortfolioProjectHistoryEvent }) {
 						{basis.ja}
 						<span lang="en"> / {basis.en}</span>
 					</span>
-				</span>
+				</Cluster>
 			</div>
 			<h3 className={eventTitleClassName}>{event.title}</h3>
 			{event.detail ? <p className={detailClassName}>{event.detail}</p> : null}
@@ -420,9 +375,9 @@ function HistoryEvent({ event }: { event: PortfolioProjectHistoryEvent }) {
 					loading="lazy"
 				/>
 			) : null}
-			<div className={sourcesClassName}>
+			<Stack gap="1">
 				<p className={sourcesLabelClassName}>出典 / Sources</p>
-				<ul className={sourceListClassName}>
+				<Stack as="ul" gap="1" className={listResetClassName}>
 					{event.sources.map((source) => (
 						<li key={source.label}>
 							{source.url ? (
@@ -439,8 +394,8 @@ function HistoryEvent({ event }: { event: PortfolioProjectHistoryEvent }) {
 							)}
 						</li>
 					))}
-				</ul>
-			</div>
+				</Stack>
+			</Stack>
 		</li>
 	);
 }
@@ -458,19 +413,19 @@ export function PortfolioProjectHistory({
 
 	return (
 		<article className={rootClassName} data-portfolio-project-history="">
-			<header className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack as="header" gap="2">
 				<h2 className={titleClassName}>{title}</h2>
 				{periodLabel ? <p className={metaClassName}>{periodLabel}</p> : null}
 				{summary ? <p className={summaryClassName}>{summary}</p> : null}
-			</header>
+			</Stack>
 
-			<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack gap="2">
 				<p className={legendLabelClassName}>読み方 / How to read</p>
-				<ul className={legendListClassName}>
+				<Grid as="ul" columns={2} gap="3" className={listResetClassName}>
 					{BASIS_ORDER.map((basis) => {
 						const label = BASIS_LABEL[basis];
 						return (
-							<li key={basis} className={legendItemClassName}>
+							<Panel as="li" key={basis} variant="subtle" padding="4" radius="lg">
 								<span className={legendNameClassName}>
 									<BasisMark basis={basis} />
 									{label.ja}
@@ -479,17 +434,17 @@ export function PortfolioProjectHistory({
 									</span>
 								</span>
 								<p className={legendDescriptionClassName}>{label.description}</p>
-							</li>
+							</Panel>
 						);
 					})}
-				</ul>
-			</div>
+				</Grid>
+			</Stack>
 
-			<ol className={timelineClassName}>
+			<Stack as="ol" gap="0" className={listResetClassName}>
 				{events.map((event) => (
 					<HistoryEvent key={event.id} event={event} />
 				))}
-			</ol>
+			</Stack>
 		</article>
 	);
 }

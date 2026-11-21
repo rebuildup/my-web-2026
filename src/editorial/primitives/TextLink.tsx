@@ -11,8 +11,12 @@ import { css, cx } from '../../../styled-system/css';
  */
 
 export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
-	/** `standalone` adds block padding + radius for row/card usage. */
-	variant?: 'inline' | 'standalone';
+	/**
+	 * `standalone` adds block padding + radius for row/card usage;
+	 * `chip` is the bordered pill affordance for handle/reference
+	 * link groups (footer "elsewhere" rows, site-reference nav).
+	 */
+	variant?: 'inline' | 'standalone' | 'chip';
 	children?: ReactNode;
 }
 
@@ -41,6 +45,23 @@ export function TextLink({ variant = 'inline', className, children, ...rest }: T
 								paddingInline: '2',
 								borderRadius: 'sm',
 								_hover: { backgroundColor: 'bg.subtle', color: 'text.default' },
+							}
+						: {}),
+					...(variant === 'chip'
+						? {
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: '2',
+								paddingBlock: '2',
+								paddingInline: '4',
+								borderRadius: 'full',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.subtle',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+								_hover: { borderColor: 'border.strong' },
 							}
 						: {}),
 				}),

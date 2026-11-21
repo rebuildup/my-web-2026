@@ -130,10 +130,13 @@ const allowedOwnerDependencies = new Map([
 	['personal', new Set(['editorial'])],
 	// `activity` (Issue #352) owns the unified activity-timeline read
 	// model: the merged chronology contract, the per-source adapters
-	// and the display component. Its inputs are narrow STRUCTURAL
+	// and the committed fixtures. Its inputs are narrow STRUCTURAL
 	// types — `HomeGitHubActivityFeedItem` and `PortfolioProject` are
 	// satisfied without an import — so the obligation reads no peer
-	// owner, no route, no binding and no boundary. The allowlist is
+	// owner, no route, no binding and no boundary. The display
+	// component lives under `src/routes/activity/` because it composes
+	// `editorial` primitives and this owner declares no outgoing edge
+	// (Issue #1109). The allowlist is
 	// EMPTY on purpose: AGENTS.md §3 declares no outgoing edge for it,
 	// and a denylist could not keep that true once a new peer owner
 	// appears (same reason `personal` is an allowlist, Issue #709).

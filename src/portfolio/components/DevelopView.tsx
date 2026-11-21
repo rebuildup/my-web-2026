@@ -1,6 +1,8 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import type { PortfolioProject } from '../schema';
 import { hasPeriodLabel, hasRecordedRole, projectCover } from '../views';
 import { FACET_LABEL, LINK_LABEL } from '../vocabulary';
@@ -40,20 +42,11 @@ const ROW_FRAME_RATIO = '16 / 9';
 
 export function DevelopView({ projects }: DevelopViewProps) {
 	return (
-		<ol
-			className={css({
-				listStyle: 'none',
-				margin: '0',
-				padding: '0',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: { base: '10', lg: '16' },
-			})}
-		>
+		<Stack as="ol" gap={{ base: '10', lg: '16' }} className={listResetClassName}>
 			{projects.map((project, index) => (
 				<DevelopRow key={project.id} project={project} index={index} />
 			))}
-		</ol>
+		</Stack>
 	);
 }
 
@@ -176,25 +169,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 								letterSpacing: '-0.01em',
 							})}
 						>
-							<a
-								href={detailHref}
-								className={css({
-									color: 'inherit',
-									textDecoration: 'underline',
-									textUnderlineOffset: '0.18em',
-									textDecorationThickness: '1px',
-									textDecorationColor: 'border.strong',
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '4px',
-										borderRadius: '2px',
-									},
-									_hover: {
-										textDecorationThickness: '2px',
-										textDecorationColor: 'currentColor',
-									},
-								})}
-							>
+							<a href={detailHref} className={cardTitleLinkClassName}>
 								{project.title}
 							</a>
 						</h3>
@@ -256,16 +231,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 						</dl>
 					) : null}
 					{hasTechnologies ? (
-						<ul
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '2',
-							})}
-						>
+						<Cluster as="ul" gap="2" className={listResetClassName}>
 							{project.technologies.map((technology) => (
 								<li
 									key={technology}
@@ -285,19 +251,10 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 									{technology}
 								</li>
 							))}
-						</ul>
+						</Cluster>
 					) : null}
 					{hasLinks ? (
-						<ul
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '4',
-							})}
-						>
+						<Cluster as="ul" gap="4" className={listResetClassName}>
 							{project.links.map((link) => (
 								<li key={link.id}>
 									<a
@@ -338,7 +295,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 									</a>
 								</li>
 							))}
-						</ul>
+						</Cluster>
 					) : null}
 				</div>
 			</article>

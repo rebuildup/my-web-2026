@@ -4,8 +4,8 @@ import { getRequestUrl } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { GetCountOutput, RecordHitOutput } from '../../http/access-counter/schema';
 import { createAuditLogger } from '../../logging/logger';
-import { readProductionCounter } from './production-read';
 import type { DataSourceDescriptor } from '../status/data-source';
+import { readProductionCounter } from './production-read';
 
 const accessLogger = createAuditLogger('home.access');
 

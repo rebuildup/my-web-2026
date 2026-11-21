@@ -10,10 +10,18 @@ import { css, cx } from '../../../styled-system/css';
  * is mandatory inside the presets so content can shrink.
  */
 
-export type GridColumns = 1 | 2 | 3 | 4;
+export type GridColumns = 1 | 2 | 3 | 4 | 5;
 
-/** Spacing-token gap values allowed by the rhythm contract. */
-export type FlowGap = '1' | '2' | '4' | '6' | '10' | '16' | '24' | '32';
+/** Spacing tokens allowed by the rhythm contract. */
+export type FlowGapToken = '0' | '1' | '2' | '3' | '4' | '6' | '10' | '16' | '24' | '32';
+
+/**
+ * A rhythm-token gap, or a responsive override across the `base`/`md`/`lg`
+ * breakpoints (Panda resolves the object inside `css()`).
+ */
+export type FlowGap =
+	| FlowGapToken
+	| { base?: FlowGapToken; sm?: FlowGapToken; md?: FlowGapToken; lg?: FlowGapToken };
 
 const COLUMN_TRACKS: Record<GridColumns, Record<string, string>> = {
 	1: { base: '1fr', md: '1fr', lg: '1fr' },
@@ -32,26 +40,56 @@ const COLUMN_TRACKS: Record<GridColumns, Record<string, string>> = {
 		md: 'repeat(2, minmax(0, 1fr))',
 		lg: 'repeat(4, minmax(0, 1fr))',
 	},
+	5: {
+		// The portfolio card progression: one column on phones, pairs on
+		// tablet, a 3-up sheet on desktop — the documented card-grid
+		// pattern (`/portfolio` index, Issue #912 round 2).
+		base: '1fr',
+		md: 'repeat(2, minmax(0, 1fr))',
+		lg: 'repeat(3, minmax(0, 1fr))',
+	},
 };
 
 export interface GridProps {
 	columns?: GridColumns;
 	/** Gap from the spacing-token rhythm set (default `6` = 24px). */
 	gap?: FlowGap;
+	/** Row-axis gap override; falls back to `gap`. */
+	rowGap?: FlowGap;
+	/** Column-axis gap override; falls back to `gap`. */
+	columnGap?: FlowGap;
+	/** `gridAutoRows: '1fr'` — every row track takes the tallest item's height. */
+	equalRows?: boolean;
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Grid({ columns = 1, gap = '6', as, className, children }: GridProps) {
+export function Grid({
+	columns = 1,
+	gap = '6',
+	rowGap,
+	columnGap,
+	equalRows = false,
+	as,
+	className,
+	children,
+	...rest
+}: GridProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'grid',
 					gridTemplateColumns: COLUMN_TRACKS[columns],
-					gap,
+					rowGap: rowGap ?? gap,
+					columnGap: columnGap ?? gap,
+					...(equalRows ? { gridAutoRows: '1fr' } : {}),
 				}),
 				className,
 			)}

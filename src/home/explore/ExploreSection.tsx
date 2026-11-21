@@ -1,6 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
@@ -116,12 +116,6 @@ function plannedCapabilities() {
 	return CAPABILITIES.filter((capability) => capability.status === 'planned');
 }
 
-const cardListClassName = /*#__PURE__*/ css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
 const classLabelClassName = /*#__PURE__*/ css({
 	fontFamily: 'sans',
 	fontSize: 'xs',
@@ -146,9 +140,13 @@ const plannedClassName = /*#__PURE__*/ css({
 	alignItems: 'baseline',
 	gap: '2',
 	margin: '0',
-	marginBlockStart: '6',
+	marginBlockStart: '8',
+	paddingBlockStart: '6',
+	borderBlockStartWidth: '1px',
+	borderBlockStartStyle: 'solid',
+	borderBlockStartColor: 'border.subtle',
 	fontFamily: 'sans',
-	fontSize: 'sm',
+	fontSize: 'md',
 	lineHeight: '1.6',
 	color: 'text.muted',
 });
@@ -157,7 +155,10 @@ const cardLinkClassName = /*#__PURE__*/ css({
 	display: 'inline-flex',
 	alignItems: 'center',
 	gap: '1',
+	maxWidth: '100%',
 });
+
+const cardLinkTextClassName = /*#__PURE__*/ css({ minWidth: '0' });
 
 function ExploreCard({ destination }: { readonly destination: ExploreDestination }) {
 	return (
@@ -174,7 +175,7 @@ function ExploreCard({ destination }: { readonly destination: ExploreDestination
 							className={cx(cardTitleClassName, cardLinkClassName)}
 							{...(destination.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
 						>
-							{destination.titleJa}
+							<span className={cardLinkTextClassName}>{destination.titleJa}</span>
 							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 						</TextLink>
 					) : (
@@ -219,7 +220,7 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 				titleEn="Site guide"
 				description="このサイトの行き先を、内容の分類ごとの面で並べています。各カードの色面はその行き先の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 			/>
-			<Grid columns={3} gap="6" as="ul" className={cardListClassName}>
+			<Grid columns={3} gap="6" as="ul" className={listResetClassName}>
 				{destinations.map((destination) => (
 					<ExploreCard key={destination.id} destination={destination} />
 				))}

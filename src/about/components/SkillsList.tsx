@@ -1,5 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import {
 	SKILL_CATEGORY_LABELS,
 	SKILL_USAGE_LABELS,
@@ -42,18 +44,6 @@ const CATEGORY_TONES: Readonly<Record<SkillCategory, 'accent' | 'neutral'>> = {
 	'design-tool': 'neutral',
 };
 
-const sectionStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-});
-
-const groupStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
-
 const groupLabelStyle = css({
 	margin: '0',
 	display: 'flex',
@@ -66,27 +56,14 @@ const groupLabelStyle = css({
 	color: 'text.muted',
 });
 
-const itemListStyle = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-});
-
 const itemStyle = css({
 	display: 'flex',
 	flexDirection: 'column',
 	gap: '2',
 	paddingBlock: '4',
-	borderTop: '1px solid {colors.border.subtle}',
-});
-
-const itemHeaderStyle = css({
-	display: 'flex',
-	alignItems: 'baseline',
-	flexWrap: 'wrap',
-	gap: '3',
+	borderBlockStartWidth: '1px',
+	borderBlockStartColor: 'border.subtle',
+	borderBlockStartStyle: 'solid',
 });
 
 const nameStyle = css({
@@ -107,32 +84,14 @@ const summaryStyle = css({
 });
 
 const evidenceListStyle = css({
-	display: 'flex',
-	flexWrap: 'wrap',
-	gap: '4',
+	listStyle: 'none',
 	margin: '0',
 	padding: '0',
-	listStyle: 'none',
 	fontFamily: 'sans',
 	fontSize: 'sm',
 });
 
-const linkStyle = css({
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-	_hover: { textDecorationThickness: '2px' },
-});
-
 const emptyStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
 	paddingBlock: '8',
 	color: 'text.muted',
 });
@@ -140,37 +99,42 @@ const emptyStyle = css({
 function SkillGroup({ usage, skills }: { usage: SkillUsage; skills: readonly SkillEntry[] }) {
 	if (skills.length === 0) return null;
 	return (
-		<section className={groupStyle} aria-label={SKILL_USAGE_LABELS[usage]}>
+		<Stack as="section" gap="3" aria-label={SKILL_USAGE_LABELS[usage]}>
 			<h3 className={groupLabelStyle}>{SKILL_USAGE_LABELS[usage]}</h3>
-			<ul className={itemListStyle}>
+			<Stack as="ul" gap="0" className={listResetClassName}>
 				{skills.map((skill) => (
 					<li key={skill.id} className={itemStyle}>
-						<header className={itemHeaderStyle}>
+						<Cluster as="header" align="baseline" gap="3">
 							<h4 className={nameStyle}>{skill.name}</h4>
 							<Badge tone={CATEGORY_TONES[skill.category]}>
 								{SKILL_CATEGORY_LABELS[skill.category]}
 							</Badge>
-						</header>
+						</Cluster>
 						{skill.summary ? <p className={summaryStyle}>{skill.summary}</p> : null}
 						{skill.evidence.length > 0 ? (
-							<ul className={evidenceListStyle} aria-label={`${skill.name} の根拠`}>
+							<Cluster
+								as="ul"
+								gap="4"
+								align="start"
+								aria-label={`${skill.name} の根拠`}
+								className={evidenceListStyle}
+							>
 								{skill.evidence.map((evidence) => (
 									<li key={evidence.href}>
-										<a
+										<TextLink
 											href={evidence.href}
-											className={linkStyle}
 											rel={evidence.href.startsWith('http') ? 'noreferrer' : undefined}
 										>
 											{evidence.label}
-										</a>
+										</TextLink>
 									</li>
 								))}
-							</ul>
+							</Cluster>
 						) : null}
 					</li>
 				))}
-			</ul>
-		</section>
+			</Stack>
+		</Stack>
 	);
 }
 
@@ -179,7 +143,7 @@ export function SkillsList({ skills }: SkillsListProps) {
 	const past = selectPastSkills(skills);
 	if (current.length === 0 && past.length === 0) {
 		return (
-			<output className={emptyStyle}>
+			<Stack as="output" gap="2" className={emptyStyle}>
 				<p
 					className={css({
 						margin: '0',
@@ -190,13 +154,13 @@ export function SkillsList({ skills }: SkillsListProps) {
 				>
 					根拠となる制作記録が確認できた技術はまだありません。
 				</p>
-			</output>
+			</Stack>
 		);
 	}
 	return (
-		<div className={sectionStyle}>
+		<Stack gap="4">
 			<SkillGroup usage="current" skills={current} />
 			<SkillGroup usage="past" skills={past} />
-		</div>
+		</Stack>
 	);
 }

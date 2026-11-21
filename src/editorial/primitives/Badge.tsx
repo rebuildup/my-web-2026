@@ -39,8 +39,14 @@ type BadgeVariants = NonNullable<RecipeVariantProps<typeof badgeRecipe>>;
 
 export interface BadgeProps extends BadgeVariants {
 	className?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Badge({ children, className, tone }: PropsWithChildren<BadgeProps>) {
-	return <span className={cx(badgeRecipe({ tone }), className)}>{children}</span>;
+export function Badge({ children, className, tone, ...rest }: PropsWithChildren<BadgeProps>) {
+	return (
+		<span {...rest} className={cx(badgeRecipe({ tone }), className)}>
+			{children}
+		</span>
+	);
 }

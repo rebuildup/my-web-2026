@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
+import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Split } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
@@ -135,18 +136,11 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 
 function ChannelList({ channels }: { channels: readonly PublicContactChannel[] }) {
 	return (
-		<ul
-			data-testid="contact-channels"
-			className={css({
-				margin: '0',
-				padding: '0',
-				listStyle: 'none',
-			})}
-		>
+		<Stack as="ul" gap="0" data-testid="contact-channels" className={listResetClassName}>
 			{channels.map((ch) => (
 				<ChannelRow key={ch.id} channel={ch} />
 			))}
-		</ul>
+		</Stack>
 	);
 }
 

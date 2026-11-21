@@ -11,18 +11,36 @@ import type { FlowGap } from './Grid';
  * code never writes ad-hoc `flexDirection` + `gap` pairs for layout.
  */
 
+/**
+ * `listResetClassName` — the owned reset for lists rendered through
+ * `Stack`/`Cluster`/`Grid` with `as="ul"|"ol"`. Feature code composes
+ * it via `cx(listResetClassName, …)` instead of re-declaring the
+ * `listStyle`/`margin`/`padding` literal (ADR-0022 C-7).
+ */
+export const listResetClassName = css({
+	listStyle: 'none',
+	margin: '0',
+	padding: '0',
+});
+
 export interface StackProps {
 	/** Gap from the spacing-token rhythm set (default `4` = 16px). */
 	gap?: FlowGap;
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** BCP-47 language tag forwarded to the rendered element. */
+	lang?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Stack({ gap = '4', as, className, children }: StackProps) {
+export function Stack({ gap = '4', as, className, children, ...rest }: StackProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'flex',
@@ -62,6 +80,11 @@ export interface ClusterProps {
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** BCP-47 language tag forwarded to the rendered element. */
+	lang?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
 export function Cluster({
@@ -71,10 +94,12 @@ export function Cluster({
 	as,
 	className,
 	children,
+	...rest
 }: ClusterProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'flex',

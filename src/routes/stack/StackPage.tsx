@@ -1,9 +1,11 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
@@ -106,9 +108,6 @@ function StackSectionBlock({
 			<ul
 				data-testid={`stack-items-${section.id}`}
 				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '0',
 					margin: '0',
 					marginBlockStart: '10',
 					padding: '0',
@@ -219,47 +218,25 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					<StackChecks checks={item.checks} itemId={item.id} />
 				) : null}
 				{item.evidence.length > 0 ? (
-					<ul
+					<Cluster
+						as="ul"
 						aria-label="根拠 source"
-						className={css({
-							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '2',
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-						})}
+						className={css({ margin: '0', padding: '0', listStyle: 'none' })}
 					>
 						{item.evidence.map((link) => (
 							<li key={link.href}>
-								<a
+								<TextLink
 									href={link.href}
 									target="_blank"
 									rel="noopener noreferrer"
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '1',
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
+									className={css({ fontFamily: 'mono', fontSize: 'xs', fontWeight: '600' })}
 								>
 									<span>{link.label}</span>
 									<span aria-hidden="true">↗</span>
-								</a>
+								</TextLink>
 							</li>
 						))}
-					</ul>
+					</Cluster>
 				) : null}
 			</div>
 		</Split>
@@ -290,17 +267,12 @@ function StackChecks({
 	itemId: string;
 }) {
 	return (
-		<ul
+		<Stack
+			as="ul"
+			gap="2"
 			aria-label="検証状況"
 			data-testid={`stack-checks-${itemId}`}
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '2',
-				margin: '0',
-				padding: '0',
-				listStyle: 'none',
-			})}
+			className={css({ margin: '0', padding: '0', listStyle: 'none' })}
 		>
 			{checks.map((check) => (
 				<li
@@ -351,7 +323,7 @@ function StackChecks({
 					) : null}
 				</li>
 			))}
-		</ul>
+		</Stack>
 	);
 }
 

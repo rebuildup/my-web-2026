@@ -32,6 +32,10 @@ export interface PageSectionProps {
 	 * `SectionHeading`'s `id` prop to wire `aria-labelledby`.
 	 */
 	labelledBy?: string;
+	/** `aria-label` for sections with no heading element (mutually exclusive with `labelledBy`). */
+	label?: string;
+	/** Anchor `id` for in-page links (e.g. `#keyboard-layers`). */
+	id?: string;
 	/** Full-width hairline above the section (e.g. before a closing band). */
 	separator?: boolean;
 	/** `data-testid` hook for e2e/integration selectors. */
@@ -71,6 +75,8 @@ export function PageSection({
 	tone = 'ground',
 	rhythm = 'body',
 	labelledBy,
+	label,
+	id,
 	separator = false,
 	testId,
 	className,
@@ -79,7 +85,9 @@ export function PageSection({
 	const content = <Container>{children}</Container>;
 	return (
 		<section
+			id={id}
 			aria-labelledby={labelledBy}
+			aria-label={labelledBy === undefined ? label : undefined}
 			data-testid={testId}
 			className={cx(
 				css({

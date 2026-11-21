@@ -17,12 +17,16 @@ export interface StackProps {
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Stack({ gap = '4', as, className, children }: StackProps) {
+export function Stack({ gap = '4', as, className, children, ...rest }: StackProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'flex',
@@ -62,6 +66,9 @@ export interface ClusterProps {
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
 export function Cluster({
@@ -71,10 +78,12 @@ export function Cluster({
 	as,
 	className,
 	children,
+	...rest
 }: ClusterProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'flex',

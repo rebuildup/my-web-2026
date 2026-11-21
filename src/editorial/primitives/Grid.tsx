@@ -38,20 +38,42 @@ export interface GridProps {
 	columns?: GridColumns;
 	/** Gap from the spacing-token rhythm set (default `6` = 24px). */
 	gap?: FlowGap;
+	/** Row-axis gap override; falls back to `gap`. */
+	rowGap?: FlowGap;
+	/** Column-axis gap override; falls back to `gap`. */
+	columnGap?: FlowGap;
+	/** `gridAutoRows: '1fr'` — every row track takes the tallest item's height. */
+	equalRows?: boolean;
 	as?: ElementType;
 	className?: string;
 	children?: ReactNode;
+	'aria-label'?: string;
+	/** Pass-through `data-*` attributes for E2E/integration selectors. */
+	[key: `data-${string}`]: string | number | boolean | undefined;
 }
 
-export function Grid({ columns = 1, gap = '6', as, className, children }: GridProps) {
+export function Grid({
+	columns = 1,
+	gap = '6',
+	rowGap,
+	columnGap,
+	equalRows = false,
+	as,
+	className,
+	children,
+	...rest
+}: GridProps) {
 	const Tag: ElementType = as ?? 'div';
 	return (
 		<Tag
+			{...rest}
 			className={cx(
 				css({
 					display: 'grid',
 					gridTemplateColumns: COLUMN_TRACKS[columns],
-					gap,
+					rowGap: rowGap ?? gap,
+					columnGap: columnGap ?? gap,
+					...(equalRows ? { gridAutoRows: '1fr' } : {}),
 				}),
 				className,
 			)}

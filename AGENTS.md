@@ -883,7 +883,10 @@ Upstreams:
   their older `0.1.1` / PR-head provenance (see the fork table).
   `writing-discipline` remains the project-init `0.1.1` vendored copy.
 - `rebuildup/design-skills` — design skills, pinned to **v0.3.0**
-  (`e1b64c4`).
+  (`e1b64c4`). `composition-review` (Issue #1137) is the one exception:
+  it was released upstream in **v0.6.0** (`10b0d4a`) and is vendored
+  from there, because the L-C half of ADR-0023 is that Skill's
+  responsibility.
 - `rebuildup/writing-skills` — `skill-authoring`, pinned to
   `release-0-4-0` (`b0f1398`).
 - `cloudflare/skills` — `cf-cli`, `workers-best-practices`, pinned to
@@ -984,6 +987,7 @@ Vendor-specific design system / media production 系は含まない
 - `skills/color-system/SKILL.md` — semantic color roles, light/dark
 - `skills/typesetting/SKILL.md` — text rhythm, mixed-script, hierarchy
 - `skills/layout-system/SKILL.md` — Marketing / Dashboard / Application / Swiss
+- `skills/composition-review/SKILL.md` — 完成画面の構図監査 (L-C、ADR-0023)
 - `skills/responsive-design/SKILL.md` — fluid / container query / breakpoint
 - `skills/interaction-states/SKILL.md` — hover / focus / pressed / loading 等 state
 - `skills/navigation-design/SKILL.md` — navigation model 選定

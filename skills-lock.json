@@ -55,6 +55,13 @@
 			"skillPath": "skills/color-system/SKILL.md",
 			"computedHash": "e472816781a66c00c97da3c50673a2b47eb71fafb69093f7977453331a4d3bff"
 		},
+		"composition-review": {
+			"source": "rebuildup/design-skills",
+			"ref": "v0.6.0",
+			"sourceType": "github",
+			"skillPath": "skills/composition-review/SKILL.md",
+			"computedHash": "5f3c437cdd99fdd653227896069024fc06b3c31ef0c52c43a065747ed2867c3f"
+		},
 		"content-design": {
 			"source": "rebuildup/design-skills",
 			"ref": "v0.3.0",

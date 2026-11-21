@@ -1,0 +1,148 @@
+{
+  "version": "composition-model/v1",
+  "document": {
+    "width": 1440,
+    "height": 4000
+  },
+  "sections": [
+    {
+      "tone": "ground",
+      "rhythm": "hero",
+      "signature": "hero-display",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 120000,
+          "fontSize": 56
+        },
+        {
+          "kind": "text",
+          "area": 100000,
+          "fontSize": 17
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    },
+    {
+      "tone": "sunken",
+      "rhythm": "body",
+      "signature": "split-48",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 25000,
+          "fontSize": 26
+        },
+        {
+          "kind": "text",
+          "area": 110000,
+          "fontSize": 15
+        }
+      ],
+      "grid": {
+        "tracks": [
+          "4fr",
+          "8fr"
+        ],
+        "columnRatio": [
+          4,
+          8
+        ]
+      },
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    },
+    {
+      "tone": "raised",
+      "rhythm": "body",
+      "signature": "media-band",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "media",
+          "area": 300000,
+          "fontSize": 15
+        },
+        {
+          "kind": "heading",
+          "area": 20000,
+          "fontSize": 24
+        },
+        {
+          "kind": "text",
+          "area": 60000,
+          "fontSize": 15
+        }
+      ],
+      "grid": null,
+      "mediaArea": 300000,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    },
+    {
+      "tone": "inverse",
+      "rhythm": "closing",
+      "signature": "closing-inverse",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 50000,
+          "fontSize": 30
+        },
+        {
+          "kind": "control",
+          "area": 20000,
+          "fontSize": 15
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    }
+  ],
+  "media": {
+    "totalArea": 0,
+    "byKind": {}
+  },
+  "metrics": {
+    "contentArea": 5760000,
+    "elementsPerPixel": 0.002
+  },
+  "features": []
+}

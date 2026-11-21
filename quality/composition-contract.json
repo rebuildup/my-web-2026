@@ -9,7 +9,7 @@
 		"The collector emits composition-model/v1 JSON; the judge is a pure function over that model. Detection is structure/geometry only — never content strings, never personal data.",
 		"severity: blocking stops integration, warning feeds the L-C visual review as a required input, info is an observation with no verdict.",
 		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job."
-	}],
+	],
 	"model": {
 		"version": "composition-model/v1",
 		"sections": "document-order <section> elements; PageSection-derived ones carry data-tone / data-rhythm / data-section",

@@ -1,4 +1,5 @@
 import { css } from '../../styled-system/css';
+import { Stack } from '../editorial/primitives/Flow';
 import {
 	ACTIVITY_KIND_LABELS_JA,
 	ACTIVITY_SOURCE_LABELS_JA,
@@ -29,9 +30,6 @@ import {
  */
 
 const listClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
 	margin: '0',
 	padding: '0',
 	listStyle: 'none',
@@ -167,11 +165,11 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 					{noSourceOk ? '活動ソースを取得できませんでした。' : '掲載できる活動はまだありません。'}
 				</p>
 			) : (
-				<ul className={listClassName}>
+				<Stack as="ul" gap="2" className={listClassName}>
 					{timeline.items.map((item) => (
 						<TimelineItemRow key={item.id} item={item} />
 					))}
-				</ul>
+				</Stack>
 			)}
 		</div>
 	);

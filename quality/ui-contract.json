@@ -1225,7 +1225,7 @@
 	"enumerationAllowlist": [
 		{
 			"path": "src/home/access/tiles.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: digit strip length is bounded by the counter's own width",
 			"signatures": {
 				"unbounded .map(": 1
 			},
@@ -1233,7 +1233,7 @@
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: render is bounded by the limit prop; truncated views link to the portfolio index via seeAllHref (ADR-0022 C-8)",
 			"signatures": {
 				"unbounded .map(": 2
 			},
@@ -1241,7 +1241,7 @@
 		},
 		{
 			"path": "src/home/current/load.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: loader projection transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
 			},
@@ -1249,7 +1249,7 @@
 		},
 		{
 			"path": "src/home/current/source.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: roster/source projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 3
 			},
@@ -1257,23 +1257,15 @@
 		},
 		{
 			"path": "src/home/format.compare.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: locale-comparison fixture transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 3
 			},
 			"clause": "C-8"
 		},
 		{
-			"path": "src/home/presence/PresenceCard.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
-			"signatures": {
-				"unbounded .map(": 1
-			},
-			"clause": "C-8"
-		},
-		{
 			"path": "src/home/presence/reader.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: presence projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 2
 			},
@@ -1281,7 +1273,7 @@
 		},
 		{
 			"path": "src/home/privacy-notice.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: closed published-lifecycle registry; per-entry senders are a fixed record set",
 			"signatures": {
 				"unbounded .map(": 2
 			},
@@ -1313,7 +1305,7 @@
 		},
 		{
 			"path": "src/home/status/tiles.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: SYSTEM_SERVICES is a closed service registry, not an open collection",
 			"signatures": {
 				"unbounded .map(": 1
 			},

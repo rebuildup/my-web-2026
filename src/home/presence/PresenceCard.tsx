@@ -326,7 +326,7 @@ export function PresenceCard({
 	const additionalActivitiesContent =
 		card.additionalActivities.length > 0 ? (
 			<div className={additionalActivitiesClassName}>
-				{card.additionalActivities.map((activity, index) => (
+				{card.additionalActivities.slice(0, 4).map((activity, index) => (
 					<div
 						key={`${activity.typeLabel}-${activity.name}-${index}`}
 						className={additionalActivityClassName}
@@ -353,6 +353,9 @@ export function PresenceCard({
 						</span>
 					</div>
 				))}
+				{/* Render limit: a Discord profile lists a handful of
+				    activities at most; the slice above keeps the card a
+				    summary — the profile itself owns the full list. */}
 			</div>
 		) : null;
 

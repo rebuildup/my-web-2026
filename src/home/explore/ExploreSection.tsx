@@ -1,19 +1,19 @@
 import { css, cx } from '../../../styled-system/css';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
+import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { Panel, type PanelVariant } from '../../editorial/primitives/Panel';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
-import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { CAPABILITIES } from '../capabilities/registry';
+import { VisitTrail } from '../guide/VisitTrail';
 import type { GuideCategory, GuideEntry } from '../guide/ledger';
 import { GUIDE_LEDGER } from '../guide/ledger';
 import { selectGuideRows } from '../guide/select';
-import { VisitTrail } from '../guide/VisitTrail';
 
 /**
  * Explore — the merged "where can I go" section of the home page
@@ -216,7 +216,7 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 		<PageSection labelledBy="site-guide-heading">
 			<SectionHeading
 				id="site-guide-heading"
-				eyebrow="01 — Explore"
+				eyebrow="00 — Explore"
 				title="サイト案内"
 				titleEn="Site guide"
 				description="このサイトの行き先を、内容の分類ごとの面で並べています。各カードの色面はその行き先の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"

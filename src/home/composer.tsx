@@ -301,6 +301,13 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    leaderboard, one in-feed link card, one sponsored pair) —
 				    six interruptions made the page read as an ad inventory,
 				    not a composition. */}
+				{/* Site guide + capabilities — one merged destination grid
+				    (Epic #1104 second pass; the transit-map station list and
+				    the separate capabilities cards answered the same question).
+				    v11 review: the destination index now opens the page —
+				    "what exists here" precedes "what I am doing", so the
+				    classified grid is the first content claim after the hero. */}
+				<ExploreSection today={data.observedAt.slice(0, 10)} />
 				{/* Now records — curated representative slice; the full ordered
 				    enumeration lives at /now (ADR-0022 C-8). */}
 				<CurrentProjects
@@ -320,10 +327,6 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						<DataSourceBadge source={data.dataSource} />
 					</Container>
 				) : null}
-				{/* Site guide + capabilities — one merged destination grid
-				    (Epic #1104 second pass; the transit-map station list and
-				    the separate capabilities cards answered the same question). */}
-				<ExploreSection today={data.observedAt.slice(0, 10)} />
 				{/* Issue #1110 v10 review — the leaderboard's high-contrast
 				    creative still out-weighed the hero + site guide when it
 				    sat between them, so the masthead slot now follows the

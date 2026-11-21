@@ -97,15 +97,16 @@ test.describe('home page composition', () => {
 		// the count still matches.
 		//
 		// Issue #316 added exactly one — `current-projects-heading`
-		// ("現在地 / Where I am now"), rendered between the hero and the
-		// explore grid.
+		// ("現在地 / Where I am now").
 		//
 		// Epic #928 / Issue #930 added `site-guide-heading` — the site
 		// guide. Epic #1104's second pass merged it with the former
 		// capabilities grid into ONE explore section: both answered
 		// "what exists here and how do I reach it" with the same
 		// destinations, so the page carries five top-level sections
-		// instead of six.
+		// instead of six. Issue #1110's v11 visual review moved the
+		// destination index ahead of the Now records — "what exists
+		// here" is the first content claim after the hero.
 		//
 		// Issue #884 merged the three "is this site working right now"
 		// blocks — platform health, reactions, page views — into ONE
@@ -120,8 +121,8 @@ test.describe('home page composition', () => {
 		const sections = page.locator(PAGE_CONTENT_SECTIONS);
 		await expect(sections).toHaveCount(5);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
-		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'site-guide-heading');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'current-projects-heading');
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'site-status-heading');
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 

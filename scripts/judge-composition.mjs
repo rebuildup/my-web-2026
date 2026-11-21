@@ -193,7 +193,10 @@ function checkCL4(model, rule, viewport) {
 }
 
 /** CL-5 — uniform grid with no variation anywhere. */
-function checkCL5(model, rule) {
+function checkCL5(model, rule, route) {
+	// Card catalogs legitimately use equal tracks — the contract's
+	// own exception note. Same indexRoute exemption as CL-2/CL-8/CL-10.
+	if (route?.indexRoute) return null;
 	const grids = gridsWithUniformTracks(model);
 	const uniform = grids.filter((g) => {
 		const tracks = g.tracks ?? [];
@@ -254,7 +257,10 @@ function checkCL6(model, rule, route) {
 }
 
 /** CL-7 — mobile naive stack (needs the desktop/mobile pair). */
-export function checkCL7(desktopModel, mobileModel, rule) {
+export function checkCL7(desktopModel, mobileModel, rule, route) {
+	// Index/catalog routes legitimately stack cards in reading order
+	// on mobile — uniform stacking IS the correct transform there.
+	if (route?.indexRoute) return null;
 	const dSections = bodySections(desktopModel);
 	const mSections = bodySections(mobileModel);
 	const multiColDesktop = dSections.filter((s) => (s.grid?.tracks?.length ?? 0) >= rule.detection.minDesktopColumns);
@@ -390,6 +396,11 @@ function checkCL9(model, rule) {
  */
 function checkCL11(model, rule, route, viewport) {
 	if (route?.indexRoute) return null;
+	// Content-shaped pages (markdown case studies) legitimately stack
+	// prose sections; their composition lives in the hero/media
+	// sections which other rules still judge. Declared per-route
+	// with a recorded reason — see contract notes.
+	if (route?.proseStackAllowed) return null;
 	// Single-column is the REQUIRED mobile transform; stack
 	// monotony is a desktop-composition defect.
 	if ((viewport?.width ?? 0) < (rule.detection.viewportMinWidth ?? 1024)) return null;
@@ -465,7 +476,7 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL2(model, ruleById(contract, 'CL-2'), route));
 	push(checkCL3(model, ruleById(contract, 'CL-3')));
 	push(checkCL4(model, ruleById(contract, 'CL-4'), viewport));
-	push(checkCL5(model, ruleById(contract, 'CL-5')));
+	push(checkCL5(model, ruleById(contract, 'CL-5'), route));
 	push(checkCL6(model, ruleById(contract, 'CL-6'), route));
 	push(checkCL8(model, ruleById(contract, 'CL-8'), route));
 	push(checkCL9(model, ruleById(contract, 'CL-9')));
@@ -488,6 +499,7 @@ export function judgeRoute(modelsByViewport, contract, route) {
 			modelsByViewport[desktopKey],
 			modelsByViewport[mobileKey],
 			ruleById(contract, 'CL-7'),
+			route,
 		);
 		if (v) verdicts.push(v);
 	}

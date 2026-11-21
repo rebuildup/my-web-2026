@@ -1,8 +1,9 @@
-import { css } from '../../styled-system/css';
+import { css, cx } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
 import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
 import { Disclosure } from '../editorial/primitives/Disclosure';
+import { Cluster, listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../editorial/primitives/PageSection';
@@ -251,18 +252,13 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							rebuildup
 						</a>
 						<nav aria-label="Site">
-							<ul
-								className={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: { base: '3', sm: '5' },
-									margin: '0',
-									padding: '0',
-									listStyle: 'none',
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									fontWeight: '600',
-								})}
+							<Cluster
+								as="ul"
+								gap={{ base: '3', sm: '4' }}
+								className={cx(
+									listResetClassName,
+									css({ fontFamily: 'sans', fontSize: 'sm', fontWeight: '600' }),
+								)}
 							>
 								{[
 									{ href: '/tools', label: 'Tools' },
@@ -286,7 +282,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 										</a>
 									</li>
 								))}
-							</ul>
+							</Cluster>
 						</nav>
 					</div>
 				</Container>

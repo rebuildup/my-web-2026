@@ -1,5 +1,6 @@
-import { css } from '../../styled-system/css';
+import { css, cx } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { TextLink } from '../editorial/primitives/TextLink';
 import { PrivacyNotice } from './privacy-notice';
 import type { PrivacyNoticeData } from './privacy/load';
@@ -150,18 +151,17 @@ export function Footer({ privacyNotice }: FooterProps) {
 						>
 							Index
 						</span>
-						<ul
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '2',
-								margin: '0',
-								marginBlockStart: '2',
-								padding: '0',
-								listStyle: 'none',
-								fontFamily: 'sans',
-								fontSize: 'md',
-							})}
+						<Stack
+							as="ul"
+							gap="2"
+							className={cx(
+								listResetClassName,
+								css({
+									marginBlockStart: '2',
+									fontFamily: 'sans',
+									fontSize: 'md',
+								}),
+							)}
 						>
 							<li>
 								<TextLink
@@ -175,7 +175,7 @@ export function Footer({ privacyNotice }: FooterProps) {
 							<li>
 								<TextLink href="/portfolio">Portfolio</TextLink>
 							</li>
-						</ul>
+						</Stack>
 					</div>
 				</div>
 				{privacyNotice ? <PrivacyNotice {...privacyNotice} /> : null}

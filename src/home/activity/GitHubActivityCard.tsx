@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import type { HomeGitHubActivity, HomeGitHubActivityRepoMeasure } from './contract';
 import { githubEventTypeLabelJa, githubRefStateLabelJa } from './event-labels';
 
@@ -26,15 +27,6 @@ import { githubEventTypeLabelJa, githubRefStateLabelJa } from './event-labels';
  *     repository URL when no ref exists. Nothing is fabricated when
  *     the feed is empty or a link target is unknown.
  */
-
-const listClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 const itemClassName = /*#__PURE__*/ css({
 	display: 'flex',
@@ -115,7 +107,7 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 					<p className={sectionLabelClassName}>
 						期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件
 					</p>
-					<ul className={listClassName}>
+					<Stack as="ul" gap="2" className={listResetClassName}>
 						{activity.topRepos.map((repo) => (
 							<li key={repo.id} className={itemClassName}>
 								{repo.href ? (
@@ -133,13 +125,13 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 								<span className={mutedClassName}>{measureSummary(repo)}</span>
 							</li>
 						))}
-					</ul>
+					</Stack>
 				</div>
 			) : null}
 			{activity.feed.length === 0 ? (
 				<p className={mutedClassName}>直近の公開イベントはありません。</p>
 			) : (
-				<ul className={listClassName}>
+				<Stack as="ul" gap="2" className={listResetClassName}>
 					{activity.feed.slice(0, 8).map((item) => {
 						const ref = item.ref;
 						return (
@@ -167,7 +159,7 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 							</li>
 						);
 					})}
-				</ul>
+				</Stack>
 			)}
 			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
 				観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開リポジトリ{' '}

@@ -89,6 +89,8 @@ export interface PanelProps {
 	className?: string;
 	/** ARIA role for landmark/section panels (e.g. `note`). */
 	role?: string;
+	/** ARIA busy state for async panels. */
+	'aria-busy'?: boolean | 'true' | 'false';
 	children?: ReactNode;
 	/** Pass-through `data-*` attributes for E2E/integration selectors. */
 	[key: `data-${string}`]: string | number | boolean | undefined;

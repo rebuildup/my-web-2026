@@ -3,6 +3,7 @@ import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { Badge } from '../editorial/primitives/Badge';
 import { listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
@@ -548,18 +549,6 @@ const cta = css({
 	textDecorationThickness: '1px',
 });
 
-const badge = css({
-	flexShrink: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	color: 'text.muted',
-	paddingBlock: '1',
-	paddingInline: '2',
-	backgroundColor: 'bg.subtle',
-	borderRadius: 'full',
-});
-
 const plannedItem = css({
 	display: 'flex',
 	flexDirection: 'column',
@@ -645,9 +634,12 @@ function PlannedToolItem({ tool }: { tool: ToolIndexEntry }) {
 				{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
 				    asserts a host_disabled row by (Issue #195); the
 				    visible word stays Japanese. */}
-				<span data-tool-badge="coming-soon" className={badge}>
+				<Badge
+					data-tool-badge="coming-soon"
+					className={css({ flexShrink: '0', fontFamily: 'mono', letterSpacing: '0.06em' })}
+				>
 					準備中
-				</span>
+				</Badge>
 			</span>
 			<span className={plannedDescription}>{tool.description_ja}</span>
 		</li>

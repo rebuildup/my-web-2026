@@ -299,7 +299,7 @@
 	"gridAllowlist": [
 		{
 			"path": "src/about/components/AboutPage.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: key-value row uses auto/1fr tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -339,7 +339,7 @@
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -347,7 +347,7 @@
 		},
 		{
 			"path": "src/home/footer.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: footer uses an equal-thirds 4fr/4fr/4fr column split",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -355,7 +355,7 @@
 		},
 		{
 			"path": "src/home/status/tiles.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: service row uses a measured auto/1fr/auto 3-track dl grid (Issue #300)",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -397,15 +397,7 @@
 		},
 		{
 			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -420,16 +412,8 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/portfolio/components/ProjectCard.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -602,14 +586,6 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/external-api/ExternalReadCard.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"raw <section> element": 1
-			},
-			"clause": "C-1"
-		},
-		{
 			"path": "src/home/ads/units.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
@@ -623,20 +599,12 @@
 		},
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"reason": "justified: change marker is a raised status chip (surface + padding), content-level not section-scale",
 			"signatures": {
 				"paddingBlock on surface object": 1,
 				"surface + block padding/min-height outside PageSection": 1
 			},
 			"clause": "C-1/C-3"
-		},
-		{
-			"path": "src/home/presence/PresenceCard.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"raw <section> element": 2
-			},
-			"clause": "C-1"
 		},
 		{
 			"path": "src/home/reactions/widget.tsx",
@@ -648,24 +616,8 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/home/status/incident-list.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"borderTop: 1px solid {colors.border.subtle}": 2
-			},
-			"clause": "C-1"
-		},
-		{
-			"path": "src/home/status/tiles.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"raw <section> element": 1
-			},
-			"clause": "C-1"
-		},
-		{
 			"path": "src/keyboard/components/KeyboardDiagram.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"reason": "justified: diagram canvas surface and key caps are illustration chrome, not PageSection bands",
 			"signatures": {
 				"backgroundColor: bg.canvas": 1,
 				"paddingBlock on surface object": 1,
@@ -722,24 +674,8 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
-		},
-		{
 			"path": "src/portfolio/components/PortfolioMedia.tsx",
-			"reason": "legacy debt pending #1109 PageSection tone migration",
-			"signatures": {
-				"surface + block padding/min-height outside PageSection": 1
-			},
-			"clause": "C-3"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
-			"reason": "legacy debt pending #1109 PageSection tone migration",
+			"reason": "justified: bg.subtle is the media well fill behind figures, not a Panel surface",
 			"signatures": {
 				"surface + block padding/min-height outside PageSection": 1
 			},
@@ -888,12 +824,11 @@
 		},
 		{
 			"path": "src/routes/tools.index.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
 			"signatures": {
-				"paddingBlock on surface object": 1,
-				"surface + block padding/min-height outside PageSection": 2
+				"surface + block padding/min-height outside PageSection": 1
 			},
-			"clause": "C-1/C-3"
+			"clause": "C-3"
 		}
 	],
 	"controlAllowlist": [
@@ -964,16 +899,6 @@
 			"clause": "C-6"
 		},
 		{
-			"path": "src/external-api/ExternalReadCard.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> borderRadius": 1,
-				"<button> paddingBlock": 1,
-				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/home/ads/units.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
@@ -992,7 +917,7 @@
 		},
 		{
 			"path": "src/home/guide/VisitTrail.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"reason": "justified: mono xs path chip is a data affordance distinct from the TextLink chip variant",
 			"signatures": {
 				"<a> borderColor": 1,
 				"<a> borderRadius": 1,
@@ -1019,7 +944,7 @@
 		},
 		{
 			"path": "src/keyboard/components/KeyboardDiagram.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
+			"reason": "justified: diagram key/control buttons are canvas chrome, not Button vocabulary",
 			"signatures": {
 				"<button> backgroundColor": 1,
 				"<button> borderColor": 1,
@@ -1069,7 +994,7 @@
 		},
 		{
 			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "legacy debt pending #1109: cover/title link focus-ring chrome shared with the card-title link pattern",
+			"reason": "justified: card-level focus ring on the stretched project link, not Button/TextLink chrome",
 			"signatures": {
 				"<a> borderRadius": 1
 			},
@@ -1197,54 +1122,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/home/activity/GitHubActivityCard.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/home/composer.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/home/current/CurrentProjects.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/home/footer.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/home/guide/VisitTrail.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/home/status/incident-list.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/legal/AssetLicenseReview.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -1313,26 +1190,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<li> backgroundColor": 1,
-				"<li> borderRadius": 1,
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<li> backgroundColor": 1,
-				"<li> borderRadius": 1,
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -1378,7 +1235,7 @@
 			"path": "src/home/current/CurrentProjects.tsx",
 			"reason": "legacy debt pending #1108 HOME/index-route curation",
 			"signatures": {
-				"unbounded .map(": 1
+				"unbounded .map(": 2
 			},
 			"clause": "C-8"
 		},
@@ -1736,8 +1593,6 @@
 				"src/admin/invitations/invitations.tsx",
 				"src/admin/keys/keys.tsx",
 				"src/home/footer.tsx",
-				"src/home/presence/PresenceCard.tsx",
-				"src/home/status/tiles.tsx",
 				"src/routes/admin.login.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx"
 			],

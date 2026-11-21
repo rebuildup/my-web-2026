@@ -67,6 +67,11 @@ const BASE_STYLES = {
 		outlineColor: 'border.focus',
 		outlineOffset: '2px',
 	},
+	_disabled: {
+		backgroundColor: 'bg.subtle',
+		color: 'text.muted',
+		cursor: 'not-allowed',
+	},
 } satisfies SystemStyleObject;
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLElement> {

@@ -254,10 +254,24 @@ export function checkCL7(desktopModel, mobileModel, rule) {
 	const orderDiff = sameLen
 		? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length
 		: 0;
+	// Block-level order check: pair sections by index and compare
+	// their block-kind sequences. A naive stack preserves every
+	// sequence verbatim; real recomposition reorders at least one.
+	let orderPreserved = true;
+	const pairs = Math.min(dSections.length, mSections.length);
+	for (let i = 0; i < pairs; i += 1) {
+		const dSeq = (dSections[i].blockOrder ?? []).join(',');
+		const mSeq = (mSections[i].blockOrder ?? []).join(',');
+		if (dSeq && mSeq && dSeq !== mSeq) {
+			orderPreserved = false;
+			break;
+		}
+	}
 	const recomposed =
 		(mobileModel.features ?? []).some((f) => f === 'reorder' || f === 'disclosure') ||
 		(mobileModel.metrics?.recompositionScore ?? 0) > 0 ||
-		orderDiff > 0.3;
+		orderDiff > 0.3 ||
+		!orderPreserved;
 	if (
 		!recomposed &&
 		heightRatio !== null &&
@@ -267,7 +281,7 @@ export function checkCL7(desktopModel, mobileModel, rule) {
 			rule: 'CL-7',
 			severity: rule.severity,
 			verdict: 'warn',
-			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x, order preserved, no recomposition signal`,
+			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x, section and block order preserved, no recomposition signal`,
 		};
 	}
 	return null;
@@ -344,6 +358,71 @@ function checkCL9(model, rule) {
 	return null;
 }
 
+
+/** CL-11 — page-level stack monotony.
+ *
+ * CL-1/CL-2 compare section signatures; CL-10 compares repeat
+ * profiles. This rule compares the composition itself: a run of
+ * consecutive single-column, media-free sections that share the same
+ * content left edge and a similar density band is a vertical stack
+ * regardless of which components produced it. Intentional editorial
+ * single-column flow is preserved by requiring the RUN to dominate
+ * the page and by exempting index routes.
+ */
+function checkCL11(model, rule, route, viewport) {
+	if (route?.indexRoute) return null;
+	// Single-column is the REQUIRED mobile transform; stack
+	// monotony is a desktop-composition defect.
+	if ((viewport?.width ?? 0) < (rule.detection.viewportMinWidth ?? 1024)) return null;
+	const d = rule.detection;
+	const sections = bodySections(model);
+	const alignTol = d.alignTolerancePx ?? 16;
+	const densityTol = d.densityTolerance ?? 0.15;
+
+	const isStackUnit = (s) =>
+		(s.columnCount ?? (s.grid ? s.grid.columnCount : 1)) <= 1 &&
+		(s.mediaArea ?? 0) < (d.mediaAreaMax ?? 20000) &&
+		typeof s.contentLeft === 'number' &&
+		typeof s.density === 'number';
+
+	// Longest run of consecutive stack units sharing left edge ±tol
+	// and density within ±tol of the run's first member.
+	let bestRun = [];
+	let cur = [];
+	const flush = () => {
+		if (cur.length > bestRun.length) bestRun = cur;
+		cur = [];
+	};
+	for (const s of sections) {
+		if (!isStackUnit(s)) {
+			flush();
+			continue;
+		}
+		const anchor = cur[0];
+		if (
+			anchor &&
+			(Math.abs(s.contentLeft - anchor.contentLeft) > alignTol ||
+				Math.abs(s.density - anchor.density) > densityTol)
+		) {
+			flush();
+		}
+		cur.push(s);
+	}
+	flush();
+
+	const minRun = d.minRunLength ?? 3;
+	const dominance = bestRun.length / Math.max(1, sections.length);
+	if (bestRun.length >= minRun && dominance >= (d.runDominanceMin ?? 0.5)) {
+		return {
+			rule: 'CL-11',
+			severity: rule.severity,
+			verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
+			detail: `${bestRun.length}/${sections.length} consecutive sections form a single-column left-aligned stack (same axis, no media, uniform density) — composition reduces to vertical stacking`,
+		};
+	}
+	return null;
+}
+
 /**
  * Judge one viewport's model. Returns an array of verdict objects;
  * empty array means no rule fired (pass for that cell).
@@ -372,6 +451,7 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL8(model, ruleById(contract, 'CL-8'), route));
 	push(checkCL9(model, ruleById(contract, 'CL-9')));
 	push(checkCL10(model, ruleById(contract, 'CL-10'), route));
+	push(checkCL11(model, ruleById(contract, 'CL-11'), route, viewport));
 	return verdicts;
 }
 

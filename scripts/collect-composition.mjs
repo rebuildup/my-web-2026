@@ -184,6 +184,20 @@ const COLLECTOR = () => {
 			}
 		}
 
+		// Composition fingerprint: content column edges, density and
+		// block order — the page-level rhythm signals that
+		// section signatures cannot see.
+		const flowBlocks = blocks.filter((b) => b.rect);
+		const contentLeft = flowBlocks.length
+			? Math.min(...flowBlocks.map((b) => b.rect.x))
+			: Math.round(r.left);
+		const contentRight = flowBlocks.length
+			? Math.max(...flowBlocks.map((b) => b.rect.x + b.rect.w))
+			: Math.round(r.left + r.width);
+		const covered = flowBlocks.reduce((sum, b) => sum + b.area, 0);
+		const density = area(r) > 0 ? Math.min(1, Math.round((covered / area(r)) * 100) / 100) : 0;
+		const blockOrder = blocks.slice(0, 16).map((b) => b.kind);
+
 		const mediaArea = mediaAreaOf(section);
 		const heading = section.querySelector('h1,h2,h3');
 		const headingSize = heading ? px(getComputedStyle(heading).fontSize) : undefined;
@@ -218,6 +232,11 @@ const COLLECTOR = () => {
 			repeatUnits: maxRepeatUnits,
 			repeatKind: repeatKind ?? undefined,
 			repeatProfile: repeatProfile ?? undefined,
+			contentLeft,
+			contentRight,
+			density,
+			columnCount: grid?.columnCount ?? 1,
+			blockOrder,
 		};
 	});
 

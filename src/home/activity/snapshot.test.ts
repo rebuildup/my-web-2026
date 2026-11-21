@@ -75,6 +75,37 @@ describe('readGitHubActivitySnapshot', () => {
 		const dup = { ...base, repos: [base.repos[0], base.repos[0]] };
 		expect(readGitHubActivitySnapshot(dup)).toBeNull();
 	});
+	it('accepts a feed item carrying a well-formed ref (Issue #334)', () => {
+		const snap: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '3',
+					kind: 'public' as const,
+					repoId: 'rebuildup/public-a',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull' as const, number: 12, state: 'merged' as const },
+				},
+			],
+		};
+		expect(readGitHubActivitySnapshot(snap)).toEqual(snap);
+	});
+	it('rejects a feed item with a malformed ref — fail closed', () => {
+		for (const ref of [
+			{ kind: 'release', number: 1 },
+			{ kind: 'issue', number: 0 },
+			{ kind: 'issue', number: 1.5 },
+			{ kind: 'pull', number: 3, state: 'draft' },
+			'not-an-object',
+		]) {
+			const snap = {
+				...base,
+				feed: [{ ...base.feed[0], ref }],
+			};
+			expect(readGitHubActivitySnapshot(snap)).toBeNull();
+		}
+	});
 });
 
 describe('activityProjectRecords', () => {
@@ -145,5 +176,148 @@ describe('publicGitHubActivity', () => {
 		expect(pub.feed).toHaveLength(1);
 		expect(pub.repoCount).toEqual({ public: 1, private: 1 });
 		expect(JSON.stringify(pub)).not.toContain('secret');
+	});
+
+	it('links a public feed item to the repo htmlUrl the snapshot carries (#319)', () => {
+		const pub = publicGitHubActivity(base);
+		expect(pub.feed[0]?.href).toBe('https://github.com/rebuildup/public-a');
+	});
+
+	it('links a feed item with ref to the specific Issue/PR permalink (#334)', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '10',
+					kind: 'public',
+					repoId: 'rebuildup/public-a',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull', number: 55, state: 'merged' },
+				},
+				{
+					id: '11',
+					kind: 'public',
+					repoId: 'someone-else/other-repo',
+					type: 'IssuesEvent',
+					at: '2026-11-15T11:00:00Z',
+					ref: { kind: 'issue', number: 7, state: 'open' },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBe('https://github.com/rebuildup/public-a/pull/55');
+		// A ref on a repo the owner does not own still resolves: the
+		// permalink is built from the public events `repoId`, not from
+		// the owner's repo list.
+		expect(pub.feed[1]?.href).toBe('https://github.com/someone-else/other-repo/issues/7');
+	});
+
+	it('never derives a permalink for a private-kind feed item (#334)', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '20',
+					kind: 'private',
+					repoId: 'private-0123456789ab',
+					type: 'PullRequestEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'pull', number: 3 },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed).toHaveLength(0);
+	});
+
+	it('derives no permalink when ref exists but repoId is not owner/name', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			feed: [
+				{
+					id: '30',
+					kind: 'public',
+					repoId: 'not a repo id',
+					type: 'IssuesEvent',
+					at: '2026-11-15T10:00:00Z',
+					ref: { kind: 'issue', number: 4 },
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBeUndefined();
+	});
+
+	it('leaves href absent when the feed repo has no publishable URL', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			repos: [
+				{
+					id: 'rebuildup/no-url',
+					kind: 'public',
+					name: 'no-url',
+					activity: { events: 1, commits: 1, windowDays: 30 },
+				},
+			],
+			feed: [
+				{
+					id: '9',
+					kind: 'public',
+					repoId: 'rebuildup/no-url',
+					type: 'PushEvent',
+					at: '2026-11-15T10:00:00Z',
+				},
+			],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.feed[0]?.href).toBeUndefined();
+	});
+
+	it('projects measured commits/PRs ranked by contribution, capped (#967)', () => {
+		const repos = Array.from({ length: 8 }, (_, i) => ({
+			id: `rebuildup/r${i}`,
+			kind: 'public' as const,
+			name: `r${i}`,
+			repoFullName: `rebuildup/r${i}`,
+			htmlUrl: `https://github.com/rebuildup/r${i}`,
+			activity: {
+				events: 0,
+				commits: i,
+				...(i % 2 === 0 ? { prs: 2 } : {}),
+				windowDays: 30,
+			},
+		}));
+		const snapshot: GitHubActivitySnapshot = { ...base, repos, feed: [] };
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.topRepos).toHaveLength(5);
+		// r7 (7 commits) vs r6 (6 commits + 2 PRs = 8): score wins.
+		expect(pub.topRepos[0]?.id).toBe('rebuildup/r6');
+		expect(pub.topRepos[0]?.commits).toBe(6);
+		expect(pub.topRepos[0]?.pullRequests).toBe(2);
+		expect(pub.topRepos[0]?.href).toBe('https://github.com/rebuildup/r6');
+	});
+
+	it('omits repos whose contribution was not measured — absence, not zero', () => {
+		const snapshot: GitHubActivitySnapshot = {
+			...base,
+			repos: [
+				{
+					id: 'rebuildup/unmeasured',
+					kind: 'public',
+					name: 'unmeasured',
+					activity: { events: 2, windowDays: 30 },
+				},
+				{
+					id: 'private-0123456789ab',
+					kind: 'private',
+					name: '非公開プロジェクト',
+					activity: { events: 1, windowDays: 30 },
+				},
+			],
+			feed: [],
+		};
+		const pub = publicGitHubActivity(snapshot);
+		expect(pub.topRepos).toHaveLength(0);
 	});
 });

@@ -1,5 +1,13 @@
 import type { CSSProperties } from 'react';
 import { css } from '../../../../styled-system/css';
+import {
+	eyebrowMonoXsLoose,
+	focusRing,
+	noteSansSm,
+	vStackGap1,
+	vStackGap6,
+	vStackGap10,
+} from '../../../editorial/primitives/shared-styles';
 
 /**
  * InteractiveStates — `<a>` and `<button>` samples at default /
@@ -62,13 +70,7 @@ import { css } from '../../../../styled-system/css';
 
 export function InteractiveStates() {
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '10',
-			})}
-		>
+		<div className={css(vStackGap10)}>
 			<Row
 				label="Primary CTA — anchor"
 				caption="<a> filled with bg.accent (idle) → accent.interactive (hover / pressed) → outline 2px border.focus (focus)"
@@ -193,45 +195,10 @@ interface RowProps {
 
 function Row({ label, caption, render }: RowProps) {
 	return (
-		<section
-			className={css({
-				// Issue #804: the hairline above each row was another
-				// border doing a layout job. The rows are separated by
-				// the parent's `gap` and this header-to-samples gap
-				// only; no divider is drawn.
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '6',
-			})}
-		>
-			<header
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
-					{label}
-				</span>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{caption}
-				</p>
+		<section className={css(vStackGap6)}>
+			<header className={css(vStackGap1)}>
+				<span className={css(eyebrowMonoXsLoose)}>{label}</span>
+				<p className={css(noteSansSm)}>{caption}</p>
 			</header>
 			<div
 				className={css({
@@ -259,16 +226,7 @@ function Row({ label, caption, render }: RowProps) {
 							alignItems: 'flex-start',
 						})}
 					>
-						<span
-							aria-hidden="true"
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'xs',
-								letterSpacing: '0.06em',
-								textTransform: 'uppercase',
-								color: 'text.muted',
-							})}
-						>
+						<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 							{state}
 						</span>
 						{render(state)}
@@ -303,10 +261,7 @@ function ctaPrimaryClass() {
 		_active: {
 			backgroundColor: 'accent.interactive',
 		},
-		_focusVisible: {
-			outline: '2px solid {colors.border.focus}',
-			outlineOffset: '2px',
-		},
+		_focusVisible: focusRing,
 	});
 }
 
@@ -339,10 +294,7 @@ function ctaSecondaryClass() {
 			backgroundColor: 'accent.interactive',
 			color: 'text.inverse',
 		},
-		_focusVisible: {
-			outline: '2px solid {colors.border.focus}',
-			outlineOffset: '2px',
-		},
+		_focusVisible: focusRing,
 	});
 }
 
@@ -362,9 +314,6 @@ function inlineLinkClass() {
 		_hover: {
 			textDecorationThickness: '2px',
 		},
-		_focusVisible: {
-			outline: '2px solid {colors.border.focus}',
-			outlineOffset: '2px',
-		},
+		_focusVisible: focusRing,
 	});
 }

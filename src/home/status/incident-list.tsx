@@ -1,4 +1,6 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { focusRing, noteSansMd } from '../../editorial/primitives/shared-styles';
 import type { KnownIncident } from './incidents';
 import { INCIDENT_TRACKER_URL, selectPublishableIncidents } from './incidents';
 
@@ -56,30 +58,16 @@ const headingClassName = css({
 	letterSpacing: '-0.01em',
 });
 
-const bodyClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	color: 'text.muted',
-	lineHeight: '1.6',
-});
-
-const listClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-	margin: '0',
-	marginBlockStart: '4',
-	padding: '0',
-	listStyle: 'none',
-});
+const bodyClassName = css(noteSansMd);
 
 const itemClassName = css({
 	display: 'flex',
 	flexDirection: 'column',
 	gap: '1',
 	paddingBlockStart: '3',
-	borderTop: '1px solid {colors.border.subtle}',
+	borderBlockStartWidth: '1px',
+	borderBlockStartStyle: 'solid',
+	borderBlockStartColor: 'border.subtle',
 });
 
 const itemTitleClassName = css({
@@ -108,10 +96,7 @@ const linkClassName = css({
 	textUnderlineOffset: '0.18em',
 	textDecorationThickness: '1px',
 	_hover: { textDecorationThickness: '2px' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 });
 
 export function IncidentList({ incidents, headingId = 'status-incidents' }: IncidentListProps) {
@@ -125,7 +110,9 @@ export function IncidentList({ incidents, headingId = 'status-incidents' }: Inci
 				gap: '2',
 				marginBlockStart: '8',
 				paddingBlockStart: '6',
-				borderTop: '1px solid {colors.border.subtle}',
+				borderBlockStartWidth: '1px',
+				borderBlockStartStyle: 'solid',
+				borderBlockStartColor: 'border.subtle',
 			})}
 		>
 			<h3 id={headingId} className={headingClassName}>
@@ -144,7 +131,7 @@ export function IncidentList({ incidents, headingId = 'status-incidents' }: Inci
 				</p>
 			) : null}
 			{publishable.length > 0 ? (
-				<ul className={listClassName}>
+				<Stack as="ul" gap="4" className={cx(listResetClassName, css({ marginBlockStart: '4' }))}>
 					{publishable.map((incident) => (
 						<li key={incident.id} className={itemClassName}>
 							<p className={itemTitleClassName}>{incident.title}</p>
@@ -162,7 +149,7 @@ export function IncidentList({ incidents, headingId = 'status-incidents' }: Inci
 							</p>
 						</li>
 					))}
-				</ul>
+				</Stack>
 			) : null}
 			{incidents.length === 0 ? (
 				<p className={bodyClassName}>

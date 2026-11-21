@@ -273,6 +273,11 @@
 			"match": "src/routes/admin.invitations_.accept.tsx"
 		},
 		{
+			"file": "src/routes/stack/load.ts",
+			"rule": "repo-path",
+			"match": "quality/profile.yaml"
+		},
+		{
 			"file": "src/tools/artifact-inventory.ts",
 			"rule": "repo-path",
 			"match": "quality/tool-artifact-inventory.json"

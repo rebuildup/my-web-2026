@@ -171,22 +171,22 @@ test.describe('public nav — Home → Tools one-click (Issue #168)', () => {
 	// Since #199 `/` carries no PublicNav, the one-click path from
 	// home runs through the capabilities card CTA instead. The IA
 	// requirement (#168) is unchanged; only the affordance moved.
-	test('home capabilities card links to /tools', async ({ page }) => {
+	test('home explore card links to /tools', async ({ page }) => {
 		await page.goto('/');
-		const section = page.locator('section[aria-labelledby="capabilities-heading"]');
+		const section = page.locator('section[aria-labelledby="site-guide-heading"]');
 		const toolsCta = section
 			.locator('li')
-			.filter({ hasText: 'ツール' })
+			.filter({ hasText: 'Tools — ブラウザで使える小物' })
 			.locator('a[href="/tools"]');
 		await expect(toolsCta).toBeVisible();
 	});
 
-	test('clicking the home capabilities card navigates to /tools', async ({ page }) => {
+	test('clicking the home explore card navigates to /tools', async ({ page }) => {
 		await page.goto('/');
-		const section = page.locator('section[aria-labelledby="capabilities-heading"]');
+		const section = page.locator('section[aria-labelledby="site-guide-heading"]');
 		const toolsCta = section
 			.locator('li')
-			.filter({ hasText: 'ツール' })
+			.filter({ hasText: 'Tools — ブラウザで使える小物' })
 			.locator('a[href="/tools"]');
 		await toolsCta.click();
 		await expect(page).toHaveURL(/\/tools$/);

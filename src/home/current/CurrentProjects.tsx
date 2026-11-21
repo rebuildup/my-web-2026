@@ -1,8 +1,10 @@
-import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
+import { css, cx } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import { noteSansMd } from '../../editorial/primitives/shared-styles';
 import {
 	CURRENT_LOCATION_CHANGE_MOTION,
 	usePrefersReducedMotion,
@@ -75,6 +77,17 @@ export interface CurrentProjectsProps {
 	 * clock, so the document is a pure function of (records, today).
 	 */
 	today: string;
+	/**
+	 * Issue #1108 — curated mode. When set, only the first `limit`
+	 * records of the ORDERED published list render (the ordering is
+	 * the component's own importance/freshness/weight order, so the
+	 * representative slice is never hand-picked). The summary still
+	 * reports the full published count, and `seeAllHref` renders a
+	 * "see all" link to the enumeration surface (`/now`). Omitted on
+	 * the index route, which exists to enumerate.
+	 */
+	limit?: number;
+	seeAllHref?: string;
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -112,6 +125,10 @@ const linkClassName = /* @__PURE__ */ css({
 	},
 });
 
+const seeAllLinkClassName = /* @__PURE__ */ css({
+	marginBlockStart: '1',
+});
+
 const summaryClassName = /* @__PURE__ */ css({
 	margin: '0',
 	marginBlockEnd: '8',
@@ -119,21 +136,6 @@ const summaryClassName = /* @__PURE__ */ css({
 	fontSize: 'sm',
 	color: 'text.muted',
 	lineHeight: '1.6',
-});
-
-const listClassName = /* @__PURE__ */ css({
-	display: 'flex',
-	flexDirection: 'column',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
-const groupClassName = /* @__PURE__ */ css({
-	display: 'block',
-	'&:not(:first-child)': {
-		marginBlockStart: '10',
-	},
 });
 
 const groupHeadingClassName = /* @__PURE__ */ css({
@@ -169,7 +171,7 @@ const rowHeaderClassName = /* @__PURE__ */ css({
 const nameClassName = /* @__PURE__ */ css({
 	margin: '0',
 	fontFamily: 'heading',
-	fontSize: 'xl',
+	fontSize: '2xl',
 	fontWeight: '700',
 	color: 'text.default',
 	lineHeight: '1.2',
@@ -226,13 +228,7 @@ const levelTagClassName = /* @__PURE__ */ css({
 	color: 'text.muted',
 });
 
-const emptyClassName = /* @__PURE__ */ css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	color: 'text.muted',
-	lineHeight: '1.6',
-});
+const emptyClassName = /* @__PURE__ */ css(noteSansMd);
 
 /** One measured line: label, value, and the word for where the value came from. */
 interface MetaRow {
@@ -390,9 +386,10 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 	}).length;
 }
 
-export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) {
+export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
-	const groups = groupByWeight(published);
+	const visible = limit === undefined ? published : published.slice(0, limit);
+	const groups = groupByWeight(visible);
 	const reducedMotion = usePrefersReducedMotion();
 	const changedIds = useChangedProjectIds(published);
 	const recent = recentlyUpdatedCount(published, today);
@@ -404,76 +401,90 @@ export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) 
 				}。`;
 
 	return (
-		<section
-			aria-labelledby="current-projects-heading"
-			data-testid="home-current-projects"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id="current-projects-heading"
-					eyebrow="00 — Now"
-					title="現在地 / Where I am now"
-					description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-					variant="spread"
-				>
-					{published.length === 0 ? (
-						<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-							現在、公開している進行中のプロジェクトはありません。
-						</p>
+		<PageSection labelledBy="current-projects-heading" testId="home-current-projects">
+			{/* v12/v13 review — `default`, not `spread`: the spread variant
+			    parks the whole project list in the 8/12 column beside a
+			    heading cluster that ends after three lines, which read as
+			    a dead zone on desktop. The list needs the full measure
+			    for its label/value rows, same as the Explore grid above. */}
+			<SectionHeading
+				id="current-projects-heading"
+				eyebrow="01 — Now"
+				title="現在地"
+				titleEn="Where I am now"
+				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+			/>
+			{published.length === 0 ? (
+				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+					現在、公開している進行中のプロジェクトはありません。
+				</p>
+			) : (
+				<>
+					<p data-testid="home-current-projects-summary" className={summaryClassName}>
+						{summary}
+					</p>
+					{groups ? (
+						<Stack
+							as="ul"
+							gap="10"
+							data-testid="home-current-projects-list"
+							className={listResetClassName}
+						>
+							{groups.map((group) => (
+								<li
+									key={group.level}
+									data-testid="home-current-project-group"
+									data-level={group.level}
+								>
+									<h3 className={groupHeadingClassName}>
+										<span>{group.label}</span>
+										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
+									</h3>
+									<Stack as="ul" gap="0" className={listResetClassName}>
+										{group.records.map((project) => (
+											<ProjectRow
+												key={project.id}
+												project={project}
+												today={today}
+												changed={changedIds.has(project.id)}
+												reducedMotion={reducedMotion}
+												grouped
+											/>
+										))}
+									</Stack>
+								</li>
+							))}
+						</Stack>
 					) : (
-						<>
-							<p data-testid="home-current-projects-summary" className={summaryClassName}>
-								{summary}
-							</p>
-							{groups ? (
-								<ul data-testid="home-current-projects-list" className={listClassName}>
-									{groups.map((group) => (
-										<li
-											key={group.level}
-											data-testid="home-current-project-group"
-											data-level={group.level}
-											className={groupClassName}
-										>
-											<h3 className={groupHeadingClassName}>
-												<span>{group.label}</span>
-												<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-											</h3>
-											<ul className={listClassName}>
-												{group.records.map((project) => (
-													<ProjectRow
-														key={project.id}
-														project={project}
-														today={today}
-														changed={changedIds.has(project.id)}
-														reducedMotion={reducedMotion}
-														grouped
-													/>
-												))}
-											</ul>
-										</li>
-									))}
-								</ul>
-							) : (
-								<ul data-testid="home-current-projects-list" className={listClassName}>
-									{published.map((project) => (
-										<ProjectRow
-											key={project.id}
-											project={project}
-											today={today}
-											changed={changedIds.has(project.id)}
-											reducedMotion={reducedMotion}
-											grouped={false}
-										/>
-									))}
-								</ul>
-							)}
-						</>
+						<Stack
+							as="ul"
+							gap="0"
+							data-testid="home-current-projects-list"
+							className={listResetClassName}
+						>
+							{visible.map((project) => (
+								<ProjectRow
+									key={project.id}
+									project={project}
+									today={today}
+									changed={changedIds.has(project.id)}
+									reducedMotion={reducedMotion}
+									grouped={false}
+								/>
+							))}
+						</Stack>
 					)}
-				</SectionHeading>
-			</Container>
-		</section>
+					{seeAllHref && published.length > visible.length ? (
+						<a
+							href={seeAllHref}
+							className={cx(linkClassName, seeAllLinkClassName)}
+							data-testid="home-current-projects-see-all"
+						>
+							すべて見る ({published.length} 件)
+						</a>
+					) : null}
+				</>
+			)}
+		</PageSection>
 	);
 }

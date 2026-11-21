@@ -3637,6 +3637,1702 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1053",
+			"pr": 1053,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-19",
+			"decision": "pending",
+			"fingerprint": "sha256:f5cd94fd2227dace69d8136e06f32a57438b585ff5599e6a4f5e649bdf72ada7",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "GitHub 活動カードの新規・変更公開日本語 copy 25 セグメントをレビュー。イベント type ラベルは GitHub Events API の値に対応する短い名詞で、測定値ブロックは authored commits / PRs の実測値のみを述べ、未測定を 0 と偽らない構成。時制を主張する語（現在/最新/今日/現時点）は含まない。",
+				"disposition": "提案は上記 comparisons の各 note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "コミット ${measure.commits} 件",
+					"text": "コミット ${measure.commits} 件",
+					"verdict": "intentional",
+					"note": "測定値の件数表記（コミット N 件 / PR N 件）。snapshot の activity.commits / prs の実測値のみを表示し、未測定は 0 ではなく欠落とする既存の正直な縮退規則に従う。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "PR ${measure.pullRequests} 件",
+					"text": "PR ${measure.pullRequests} 件",
+					"verdict": "intentional",
+					"note": "測定値の件数表記（コミット N 件 / PR N 件）。snapshot の activity.commits / prs の実測値のみを表示し、未測定は 0 ではなく欠落とする既存の正直な縮退規則に従う。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "・",
+					"text": "・",
+					"verdict": "intentional",
+					"note": "測定値行の区切り記号（コミット件数と PR 件数の併記）。装飾ではなく列挙の区切りで、意味を持たない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/GitHubActivityCard.tsx",
+					"before": null,
+					"after": "期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件",
+					"text": "期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件",
+					"verdict": "intentional",
+					"note": "Issue #967 の測定値（authored commits / PRs）をカードに表示するための小見出し。snapshot の windowDays に基づく期間表現で「現在」「最新」等の時制主張を含まない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "コミットコメント",
+					"text": "コミットコメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "作成",
+					"text": "作成",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "削除",
+					"text": "削除",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイキー",
+					"text": "デプロイキー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイ",
+					"text": "デプロイ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "デプロイ状態",
+					"text": "デプロイ状態",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ダウンロード",
+					"text": "ダウンロード",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "フォーク",
+					"text": "フォーク",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "Issue コメント",
+					"text": "Issue コメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ラベル",
+					"text": "ラベル",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "メンバー",
+					"text": "メンバー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "マイルストーン",
+					"text": "マイルストーン",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "公開",
+					"text": "公開",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "PR レビューコメント",
+					"text": "PR レビューコメント",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "PR レビュー",
+					"text": "PR レビュー",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "プッシュ",
+					"text": "プッシュ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "リリース",
+					"text": "リリース",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "リポジトリ",
+					"text": "リポジトリ",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "ステータス",
+					"text": "ステータス",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "チーム追加",
+					"text": "チーム追加",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "スター",
+					"text": "スター",
+					"verdict": "intentional",
+					"note": "Issue #319/#967 (Epic #928) で追加した GitHub 公開イベント type の日本語ラベル。GitHub Events API の type 値に対応する短い名詞で、既存の体言止め・簡潔な表示語彙に揃えた。未知の type は生の値にフォールバックするため推測した意味は表示されない。owner の公開 copy 承認は未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/319",
+						"note": "本 PR の実装対象（GitHub 公開活動の表示）。"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/967",
+						"note": "測定値（authored commits / PRs）の集計と表示の要件。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1053",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/GitHubActivityCard.tsx",
+						"note": "変更対象の公開 copy を持つカード。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/event-labels.ts",
+						"note": "変更対象のイベント type ラベル写像。"
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-1060",
+			"pr": 1060,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-19",
+			"decision": "pending",
+			"fingerprint": "sha256:e1854fcca8906336670bcad15877542d1a1e601f596bbb506bfefa35f2696e1e",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #519 のケーススタディ要素が追加する公開日本語 copy。claim class ラベル 3 件（確定事実 / 当時の推測 / 現在の評価）とその説明文、凡例見出し「読み方 / How to read」。いずれも Issue が名指しする区分語であり、新規の時制主張・権限主張を含まない短い名詞句。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "確定事実",
+					"text": "確定事実",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 1 つ目の class ラベル。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "記録・実測・公開物で確認できる事実。",
+					"text": "記録・実測・公開物で確認できる事実。",
+					"verdict": "intentional",
+					"note": "確定事実 class の凡例説明。Issue #519 の区分要件に対応する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "当時の推測",
+					"text": "当時の推測",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 2 つ目の class ラベル。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "制作当時の見積もりや推定。実績ではない。",
+					"text": "制作当時の見積もりや推定。実績ではない。",
+					"verdict": "intentional",
+					"note": "当時の推測 class の凡例説明。「実績ではない」と明示し、推定を事実と誤読させない否定を含む。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "現在の評価",
+					"text": "現在の評価",
+					"verdict": "intentional",
+					"note": "Issue #519 が要求する 3 区分の 3 つ目の class ラベル。時制を含むため quality/stale-content-review.json に agent-recorded / unconfirmed の記録を別途追加済み。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "公開時点の評価。時間とともに変わりうる。",
+					"text": "公開時点の評価。時間とともに変わりうる。",
+					"verdict": "intentional",
+					"note": "現在の評価 class の凡例説明。減衰する主張であることを明示する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+					"before": null,
+					"after": "<p className={legendLabelClassName}>読み方 / How to read</p>",
+					"text": "読み方 / How to read",
+					"verdict": "intentional",
+					"note": "凡例ブロックの見出し。日英併記で既存 surface の語彙（JA / EN 併記）に揃えた。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/519",
+						"note": "本 PR の実装対象。完了条件「確定事実・当時の推測・現在の評価を分ける」が class ラベルの語彙を規定する。"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/1060",
+						"note": "本修正を含む PR。"
+					},
+					{
+						"type": "document",
+						"reference": "src/portfolio/components/PortfolioCaseStudy.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-518",
+			"pr": null,
+			"base": "release-0-10-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f1b3f1704d0261c0c3fc82200946726f15fd3a5f8df3ffe3c7fcfddacfe3bf9b",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #518 の制作史タイムライン要素が追加する公開日本語 copy。kind ラベル 4 件（制作開始 / 改版 / 公開 / 補足）、basis ラベルと説明 2 件（記録 / 記憶）、「読み方 / How to read」「出典 / Sources」凡例見出し、月精度 marker「（月まで）」。いずれも Issue が名指しする区分語であり、新規の時制主張・権限主張を含まない短い名詞句と定義文。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "制作開始",
+					"text": "制作開始",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 1 つ目。Issue #518 が要求する制作開始イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "改版",
+					"text": "改版",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 2 つ目。Issue #518 が要求する改版イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "公開",
+					"text": "公開",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 3 つ目。Issue #518 が要求する公開イベントの区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "補足",
+					"text": "補足",
+					"verdict": "intentional",
+					"note": "chronology axis の kind ラベル 4 つ目。年表の文脈記述（見積もり・継続中の状態）を置くための区分。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "記録",
+					"text": "記録",
+					"verdict": "intentional",
+					"note": "epistemic axis の basis ラベル 1 つ目。コミット済み記録で確認できる事実の区分語。Issue #518 の fact/recollection 区別要件に対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "コミット済みの記録（文書・tag・検証記録・seed）で確認できる事実。",
+					"text": "コミット済みの記録（文書・tag・検証記録・seed）で確認できる事実。",
+					"verdict": "intentional",
+					"note": "記録 basis の凡例説明。確認手段を列挙する定義文で、新規の時制主張・権限主張を含まない。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "記憶",
+					"text": "記憶",
+					"verdict": "intentional",
+					"note": "epistemic axis の basis ラベル 2 つ目。制作当時の記憶・見積もりを事実と区別する区分語。Issue #518 の「制作の記憶を事実でない言葉に置き換えない」に直接対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "制作当時の記憶や見積もり。その時点の認識であり、確認済みの事実ではない。",
+					"text": "制作当時の記憶や見積もり。その時点の認識であり、確認済みの事実ではない。",
+					"verdict": "intentional",
+					"note": "記憶 basis の凡例説明。「確認済みの事実ではない」と明示する否定を含む定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<span className={precisionClassName}>（月まで）</span>",
+					"text": "（月まで）",
+					"verdict": "intentional",
+					"note": "月精度の日付に付く精度 marker。日付を補わないことを読者に示す注記。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<p className={sourcesLabelClassName}>出典 / Sources</p>",
+					"text": "出典 / Sources",
+					"verdict": "intentional",
+					"note": "各イベントの出典一覧の見出し。日英併記で既存 surface の語彙に揃えた。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
+					"before": null,
+					"after": "<p className={legendLabelClassName}>読み方 / How to read</p>",
+					"text": "読み方 / How to read",
+					"verdict": "intentional",
+					"note": "凡例ブロックの見出し。Issue #519 のケーススタディ要素と同じ語彙を再利用。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/518",
+						"note": "本 PR の実装対象。完了条件「制作の記憶を事実でない言葉に置き換えない」「出典つきで表示」が basis ラベルと出典一覧の語彙を規定する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/portfolio/components/PortfolioProjectHistory.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/portfolio/project-history.md",
+						"note": "採用 / 保留の判断と典拠を記録した検証文書。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-382",
+			"pr": null,
+			"base": "381-stack-page",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f27764331d958716c5c14403ac7a3e8141996c4655e1bfe6c7b50757f9b50cbd",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #382 の /stack「コード品質・Biome」節が追加する公開日本語 copy 27 セグメント。節見出し・説明・3 項目の name/responsibility/reason、DataTable の caption と列見出し、サンプルラベルと注記、サンプルコード内の日本語リテラル。新規の時制主張・権限主張を含まず、設定値は biome.json からの実行時読み取り、コードサンプルは実バイナリ出力または明示された未採用案として区別されている。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。base はスタック元の 381-stack-page。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "biome.json の設定値（リクエスト時にファイルから読み取り）",
+					"text": "biome.json の設定値（リクエスト時にファイルから読み取り）",
+					"verdict": "intentional",
+					"note": "DataTable の caption。設定値がリクエスト時に biome.json から読まれることを明示する表示名。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "設定",
+					"text": "設定",
+					"verdict": "intentional",
+					"note": "DataTable の列見出し「設定」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/StackPage.tsx",
+					"before": null,
+					"after": "値",
+					"text": "値",
+					"verdict": "intentional",
+					"note": "DataTable の列見出し「値」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "return `${item.name} — ${item.responsibility} (${item.version??\"未確定\"})`",
+					"text": "return `${item.name} — ${item.responsibility} (${item.version??\"未確定\"})`",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "export const SAMPLE=describeStackItem({name:\"Biome\",responsibility:\"format と lint を 1 つの binary で担う toolchain。\",reason:\"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。\",version:\"1.9.x\"})",
+					"text": "export const SAMPLE=describeStackItem({name:\"Biome\",responsibility:\"format と lint を 1 つの binary で担う toolchain。\",reason:\"Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。\",version:\"1.9.x\"})",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "treturn `${item.name} — ${item.responsibility} (${item.version ?? '未確定'})`;",
+					"text": "treturn `${item.name} — ${item.responsibility} (${item.version ?? '未確定'})`;",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "tresponsibility: 'format と lint を 1 つの binary で担う toolchain。',",
+					"text": "tresponsibility: 'format と lint を 1 つの binary で担う toolchain。',",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "treason: 'Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。',",
+					"text": "treason: 'Prettier と ESLint の 2 系統を 1 つの設定・1 回の実行に統合するため。',",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "export function describeStackItem(i:{name:string;responsibility:string;reason:string;version:string|null}):string{return`${i.name} — ${i.responsibility} (${i.version??\"未確定\"})`}",
+					"text": "export function describeStackItem(i:{name:string;responsibility:string;reason:string;version:string|null}):string{return`${i.name} — ${i.responsibility} (${i.version??\"未確定\"})`}",
+					"verdict": "intentional",
+					"note": "サンプルコード文字列内のリテラル。ページにはコードとしてそのまま表示され、新しい文章上の主張を行わない。内容は biome format の実出力または明示された案の提示で、docs/verification/stack/biome-formatting.md に再現記録がある。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "コード品質・Biome",
+					"text": "コード品質・Biome",
+					"verdict": "intentional",
+					"note": "新規セクション見出し「コード品質・Biome」。Issue #382 が要求する節名で、tool 名と責務範囲をそのまま示す名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。",
+					"text": "format と lint を担う Biome の実設定と、formatter の実出力による before / after、そして 1 行圧縮案との比較記録です。設定値はリクエスト時に `biome.json` から読み取ります。",
+					"verdict": "intentional",
+					"note": "節の説明文。掲載内容（実設定・実出力の before/after・圧縮案比較）と値の読み取り時点を述べる定義文。時制・権限の新規主張なし。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "biome.json の設定値",
+					"text": "biome.json の設定値",
+					"verdict": "intentional",
+					"note": "項目名「biome.json の設定値」。対象ファイル名をそのまま示す名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "formatter（indent・lineWidth・lineEnding）・JavaScript formatter（quote・semicolon・trailing comma）・linter rules・organizeImports の設定値を表で示します。",
+					"text": "formatter（indent・lineWidth・lineEnding）・JavaScript formatter（quote・semicolon・trailing comma）・linter rules・organizeImports の設定値を表で示します。",
+					"verdict": "intentional",
+					"note": "責務文。表が示すキー範囲を列挙する定義文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「コードをどう整形するか」の契約は `biome.json` 1 ファイルが所有し、`format:check` / `lint:check` がそれを機械的に強制するためです。表の値はページ表示時にファイルから読み取るので、記載が実設定からずれることはありません。",
+					"text": "「コードをどう整形するか」の契約は `biome.json` 1 ファイルが所有し、`format:check` / `lint:check` がそれを機械的に強制するためです。表の値はページ表示時にファイルから読み取るので、記載が実設定からずれることはありません。",
+					"verdict": "intentional",
+					"note": "採用理由。biome.json が整形契約の単一所有者で format:check / lint:check が機械強制する、という観測可能な事実の記述。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "整形の before / after",
+					"text": "整形の before / after",
+					"verdict": "intentional",
+					"note": "項目名「整形の before / after」。新規追加の名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「変換前」は整形していない TypeScript の入力、「Biome 適用後」は同じ入力を `biome format --stdin-file-path` に通した実際の出力です。",
+					"text": "「変換前」は整形していない TypeScript の入力、「Biome 適用後」は同じ入力を `biome format --stdin-file-path` に通した実際の出力です。",
+					"verdict": "intentional",
+					"note": "責務文。「変換前」「Biome 適用後」の各サンプルが何か（未整形入力と biome format --stdin-file-path の実出力）を定義する文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "設定値の列挙だけでは 100 桁での折り返し方が伝わらないため、実バイナリの出力をそのまま掲載しています。再現手順と採否の記録は根拠リンク先の検証記録にあります。",
+					"text": "設定値の列挙だけでは 100 桁での折り返し方が伝わらないため、実バイナリの出力をそのまま掲載しています。再現手順と採否の記録は根拠リンク先の検証記録にあります。",
+					"verdict": "intentional",
+					"note": "採用理由。実バイナリ出力を掲載する根拠と検証記録の在処を述べる文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "変換前（整形前の入力）",
+					"text": "変換前（整形前の入力）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「変換前（整形前の入力）」。新規追加の見出し語。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "Biome 適用後（biome format の実出力）",
+					"text": "Biome 適用後（biome format の実出力）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「Biome 適用後（biome format の実出力）」。出力が実コマンドの結果であることを明示。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。",
+					"text": "pnpm exec biome format --stdin-file-path=sample.ts < 入力.ts の stdout。末尾の改行を除き byte 一致。",
+					"verdict": "intentional",
+					"note": "サンプル注記。再現コマンドと byte 一致の条件を述べる技術注記。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "1行圧縮案との比較（保留）",
+					"text": "1行圧縮案との比較（保留）",
+					"verdict": "intentional",
+					"note": "項目名「1行圧縮案との比較（保留）」。Issue #382 の採否結果を名に含む名詞句。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。",
+					"text": "「改行とインデントを潰して 1 行に圧縮する」案と、現行の `lineWidth: 100` による整形を、同じコードで比較します。",
+					"verdict": "intentional",
+					"note": "責務文。比較対象の 2 案を定義する文。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。",
+					"text": "圧縮は formatter が維持する可読性 — 折り返し位置・trailing comma・字下げの一貫性 — と競合し、`lineWidth: 100` では Biome 自体がその形を再展開します。本番の format policy は変更せず、採否は保留として記録します。採用する場合は別 Issue で扱います。",
+					"verdict": "intentional",
+					"note": "採用理由。保留の根拠（可読性契約との競合・lineWidth 100 での再展開・format policy 不変更）を述べる文。採用は別 Issue と明記。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "1行圧縮案（未採用）",
+					"text": "1行圧縮案（未採用）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「1行圧縮案（未採用）」。案の提示であり採用を主張しないことを明示。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。",
+					"text": "この入力を `biome format --write` に掛けると、幅超過のため下の「現行の整形結果」と同じ整形に再展開されます（引数名の差のみ）。",
+					"verdict": "intentional",
+					"note": "サンプル注記。biome format --write が圧縮案を再展開する実測結果の説明（引数名の差のみで同じ整形になることを明記）。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "現行の整形結果（lineWidth: 100）",
+					"text": "現行の整形結果（lineWidth: 100）",
+					"verdict": "intentional",
+					"note": "サンプルラベル「現行の整形結果（lineWidth: 100）」。比較の基準側を示す見出し語。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "devin-subagent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					"units extracted by scripts/check-copy-editorial-approval.mjs --base=381-stack-page --format=json (27 units)",
+					"sample code strings verified byte-exact against `pnpm exec biome format --stdin-file-path=sample.ts` stdout (Biome 1.9.4)",
+					"docs/verification/stack/biome-formatting.md records reproduction commands and the defer decision"
+				]
+			}
+		},
+		{
+			"id": "issue-383",
+			"pr": null,
+			"base": "381-stack-page",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:c7912cbe289b650da381b3c5f15ad4715c8f99d1bac46c26e36adbfdfd8dc62d",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #383 の /stack Quality/Delivery 節が追加する公開日本語 copy 14 セグメント。節タイトル 1、節説明 1、6 項目の responsibility / reason 各 1。npm script 名・gate 名・deploy 主体・承認境界は quality/profile.yaml・package.json・docs/runbook/cloudflare-workers-builds.md・docs/release.md・docs/runbook/infisical-secrets.md の記述からの引用で、新規の時制主張・権限主張・secret 値を含まない。",
+				"disposition": "各セグメントの突合結果は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "品質ゲートとデリバリー",
+					"verdict": "intentional",
+					"note": "節タイトル。Issue #383 が要求する Quality/Delivery 節の日本語名。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "変更が本番に届くまでの経路です。ticket PR では `pnpm run validate:fast`、release PR と `main` への push では `pnpm run validate:integration` / `pnpm run validate:release` が走ります。release PR の merge・tag・Release 公開は owner の明示的な承認を経て、`main` への push を起点に Cloudflare Workers Builds が唯一の本番デプロイ主体として deploy します。",
+					"verdict": "intentional",
+					"note": "節の説明文。3 つの gate と deploy 主体・承認境界を 1 文で概説。script 名は package.json、deploy 権限は cloudflare-workers-builds.md / release.md の記述と一致。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "ローカルとすべての CI run で実行される高速 gate。`pnpm run validate:fast` が `run-quality-gates.mjs` 経由で `profile.yaml` の `gates.fast.components` を宣言された順に 1 コマンドずつ実行し、最初の失敗でその exit code のまま停止します。offline・read-only が契約です。",
+					"verdict": "intentional",
+					"note": "fast gate の責務。trigger・実行方式・停止条件は profile.yaml の gates.fast と scripts/run-quality-gates.mjs の契約どおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "gate の構成は `profile.yaml` が唯一の宣言元で、workflow YAML に hidden step を置かない方針のため。安い検証をすべての変更で先に済ませます。",
+					"verdict": "intentional",
+					"note": "採用理由。profile.yaml ヘッダの宣言と Issue #566 の runner 化の記述に一致。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "release candidate の検証。`fast` の全成分を展開した上で `pnpm run build:production`、bundle budget と server-only module の gate、build 済み artifact の secret scan、Build Output contract、Storybook build、artifact attestation までを実行します。trigger は release PR・frozen SHA への `workflow_dispatch`・`main` への push です。",
+					"verdict": "intentional",
+					"note": "integration gate の責務。components 列と trigger は profile.yaml gates.integration の記述どおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "重い検証を ticket ごとではなく release candidate ごとに 1 回だけ走らせるため。ticket PR は `validate:fast` で merge します。",
+					"verdict": "intentional",
+					"note": "採用理由。Issue #937 の集約方針を日本語で言い換えたもので、profile.yaml の trigger 記述と一致。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "`main` へ merge する前の最終検証。`validate:integration` の全成分に加えて `pnpm run cf-typegen:check` を実行し、再生成される Worker 型が commit 済みのものと byte 一致しなければ失敗します。",
+					"verdict": "intentional",
+					"note": "release gate の責務。gates.release は integration + cf-typegen:check のみで、cf-typegen:check の byte 一致契約は profile.yaml のコメントどおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "型の乖離を release 前に検出するため。",
+					"verdict": "intentional",
+					"note": "採用理由。短い目的文。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "唯一の本番デプロイ主体。`main` への push で Cloudflare 側の build 環境が `pnpm run build` → `pnpm run deploy:production:prepared` を実行します。build phase が `.cloudflare/output` の Build Output を作り、deploy phase は rebuild せずその artifact を検証して ship します。",
+					"verdict": "intentional",
+					"note": "Workers Builds の責務。deploy 権限・2 command・build/deploy phase の非対称は cloudflare-workers-builds.md の runbook 記述どおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "deploy に使う 2 つの command は runbook に記録され、`cf:config:drift:check` が package.json の script 名と記録の一致を fast gate で検査します。非 production branch の build は無効化されており、release PR の merge・tag push・GitHub Release 公開は owner の明示承認を要します。",
+					"verdict": "intentional",
+					"note": "採用理由と承認境界。cf:config:drift:check は profile.yaml gates.fast の実 component、非 production build 無効と human gate は runbook / release.md の記述どおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "本番デリバリーにおける検証専用の実行環境。`ci.yml` の validate job が format・lint・architecture・version・typecheck・test・build・wrangler dry-run を実行し、release PR と `ui-change` label の PR、`main` / release branch への push で Playwright E2E が走ります。`prod-smoke.yml` は operator が手動で起動する diagnostic で、push event には繋がっていません。",
+					"verdict": "intentional",
+					"note": "GitHub Actions のデリバリー側責務。ci.yml / prod-smoke.yml の実構成と cloudflare-workers-builds.md「GitHub Actions — validation only」節の記述どおり。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "本番デプロイ権限は Cloudflare Workers Builds に限定するため、deploy 用の workflow は意図的に存在しません。",
+					"verdict": "intentional",
+					"note": "採用理由。deploy-production.yml が存在しないことは runbook の明示的な契約。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "runtime secret value の source of truth（`prod` / `dev` environment）。Universal Auth の Machine Identity で deploy 経路が secret を取得し、operator 向けの照合は status-only 出力（`MATCH` / `DIFFER` / `MISSING` / `PRESENT`）に限定されます。secret 値は stdout・log・argv・commit のいずれにも出ません。",
+					"verdict": "intentional",
+					"note": "Infisical の責務。SoT 境界・Universal Auth・status-only 出力契約は infisical-secrets.md の runbook 記述どおり。secret 名・値は一切含まない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": null,
+					"after": "runtime secret は Cloudflare から再読できないため別 store が必要です。static な非 secret 変数と identifier は Wrangler config、Workers Builds の API token は Cloudflare UI に残す境界です。",
+					"verdict": "intentional",
+					"note": "採用理由。SoT 境界表は infisical-secrets.md §1.4 / ADR-0015 の記述どおり。新規追加。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/383",
+						"note": "本変更の実装対象。Quality/Delivery 節に fast/integration/release gate・Workers Builds・GitHub Actions・Infisical の責務を表現することを要求。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/stack/stack.ts",
+						"note": "変更対象の公開 copy を持つ committed 記事データ。"
+					},
+					{
+						"type": "document",
+						"reference": "quality/profile.yaml",
+						"note": "gate 名・component・trigger の宣言元。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/runbook/cloudflare-workers-builds.md",
+						"note": "deploy 権限・build/deploy phase・GitHub Actions の validation-only 境界の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/release.md",
+						"note": "release PR merge・tag・Release 公開の human approval gate の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/runbook/infisical-secrets.md",
+						"note": "Infisical の SoT 境界と status-only 出力契約の典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-390",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:3a279981318ab9ff79c2b40ba18a6264da170ac0c35474cd03fa9ca514f743e8",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #390 の /links 空状態が追加する公開日本語 copy 3 セグメント。空状態の見出し「公開しているリンクはまだありません」と、既存ヒーロー copy と同一の /contact 誘導文の分割 2 セグメント（「連絡先は」「に掲載している verified channel を参照してください。」— JSX の <a> 要素で分割されたテキストノード）。いずれも既存 surface の語彙の再利用で、新規の時制主張・権限主張・否定の変更を含まない。",
+				"disposition": "提案は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "公開しているリンクはまだありません",
+					"text": "公開しているリンクはまだありません",
+					"verdict": "intentional",
+					"note": "links が 1 件も publishable でない場合の空状態見出し。SkillsList「根拠となる制作記録が確認できた技術はまだありません。」/ CareerTimeline「公開が承認された経歴項目はまだありません。」と同じ「まだありません」語彙で、空であることを正直に述べ、リンクを捏造しない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "連絡先は",
+					"text": "連絡先は",
+					"verdict": "intentional",
+					"note": "空状態の補足文の前半。ヒーロー copy「連絡先は /contact に掲載している verified channel を参照してください。」と同一の文を <a> 要素の前で分割したテキストノード。既存語彙の再利用。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/about/components/LinksPage.tsx",
+					"before": null,
+					"after": "に掲載している verified channel を参照してください。",
+					"text": "に掲載している verified channel を参照してください。",
+					"verdict": "intentional",
+					"note": "空状態の補足文の後半。/contact への誘導で、private channel をこの surface に載せない Issue #390 の境界を維持する。ヒーロー copy と同一文の分割後半。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/390",
+						"note": "本変更の実装対象。「公開/無効/空のfixture」受入条件が空状態の存在を要求する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/about/components/LinksPage.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/identity/links-empty.png",
+						"note": "空状態の実描画を記録した検証画像 (scripts/capture-links-empty.mjs が生成)。"
+					}
+				]
+			}
+		},
+		{
+			"id": "510-parity-check",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:d4c75d256bf208af41e95969b91e18a4cff2aafba81035a57264ae52e5c47406",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #510 component-integration 節の check note 3 セグメントを、parity 検証の実測結果に合わせて更新。preview/route の record 集合差分（roster 4 件 + gh-* 12 件 = 16 件）、github-merge-parity の pass 判定根拠（src/home/current/parity.test.ts）、locale 非対応の根拠（locale 別 route 非存在・statusJa は契約上の日本語・HOME_LOCALES は Intl 整形専用）を記述。新規の時制主張・権限主張・数値の創作は無く、件数は parity.test.ts の実測値。",
+				"disposition": "各セグメントの突合結果は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は branch 名で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": "route はさらに live の GitHub activity snapshot（D1 優先、committed artefact に fallback）を merge するため、`currentProjectsFor` の結果と record 集合が一致しない場合があります。この差分は意図的で、完全一致は本例の保証範囲外です（保留）。",
+					"after": "route はさらに GitHub activity snapshot 由来の `gh-*` record を merge するため、record 集合全体は一致しません。実測では preview が roster 由来 4 件、route が 16 件（同一の 4 件 + `gh-*` 12 件）で、`src/home/current/parity.test.ts` が roster 由来 record の同一性（順序・公開 field を含む）を pin しています。集合全体の完全一致は意図的に保証範囲外です。",
+					"verdict": "intentional",
+					"note": "preview-route-identical-output の note。「保留」だった差分説明を parity.test.ts の実測値（4 vs 16 件）に置き換え。status は not-applicable のまま。件数は 2026-11-20 時点の committed artefact に対する実測で、roster / snapshot 更新で変わりうる記録値。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": "自動検証は roster + git の合成までを対象とし、live snapshot 由来の record を含む完全な route 出力との突合は未実施です。",
+					"after": "`parity.test.ts` が commit 済み activity snapshot を入力に route の merge 経路を実行し、preview の全 roster record が同じ順序・同じ公開 field で残り、追加分が `github` source の `gh-*` record のみであることを確認しています（roster 4 件 + `gh-*` 12 件 = 16 件）。live D1 snapshot の選択規則は `src/home/activity/live.test.ts` が担保します。",
+					"verdict": "intentional",
+					"note": "github-merge-parity の note。「未実施」から pass の根拠記述へ。parity.test.ts の 2 テスト（roster record 同一性・gh-* 追加分の source 限定）と live.test.ts の選択規則テストが典拠。status は not-run から pass へ。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/stack/stack.ts",
+					"before": "`statusJa` は日本語主体の文で、他言語 locale での表示確認は本例の対象外です。ページ統合や全言語対応を前提にしません。",
+					"after": "サイトに locale 別 route は存在せず（`src/routes/` は flat で `/fr` 等を持たない）、`statusJa` は契約上の日本語の文（`types.ts`）です。`src/i18n` の fr / de / pt / ru は見出し glyph の fixture で locale routing ではなく、`src/home/format.ts` の `HOME_LOCALES`（en / ja / ko）は Intl 整形専用で CurrentProjects はこれを使いません（`derive.ts` の整形は locale 非依存）。他言語 locale での描画という検査対象が存在しません。",
+					"verdict": "intentional",
+					"note": "other-locale-render の note。「対象外」の曖昧な表現を、locale 別 route 非存在・statusJa の契約・HOME_LOCALES の適用範囲という検査可能な根拠に置き換え。status は not-run から not-applicable へ。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/510",
+						"note": "本変更の実装対象。component-integration 実例の check verdict を検証済みの状態に更新する後続作業。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/stack/stack.ts",
+						"note": "変更対象の公開 copy を持つ committed 記事データ。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/parity.test.ts",
+						"note": "github-merge-parity = pass と record 集合の実測値（4 + 12 = 16）の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/types.ts",
+						"note": "statusJa が契約上の日本語の文であることの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/format.ts",
+						"note": "HOME_LOCALES が en / ja / ko の Intl 整形 opt-in であり prose 翻訳を持たないことの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/i18n/index.ts",
+						"note": "fr / de / pt / ru が glyph fixture であり locale routing でないことの典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-352",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:f10d3cab52f9ab634c145a935e002829661ed64324c46aeacdc7a79a64061e34",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #352 の活動タイムラインが追加する公開日本語 copy 12 セグメント。unavailable / empty / 全ソース失敗の 3 状態文、ソース状態フォールバック「不明」、観測日ラベル、ソース区切りの全角スペース、kind ラベル 3 件（リリース / 記事 / 作品）、ソース状態ラベル 3 件（観測中 / 未接続 / 取得失敗 — GitHubActivityCard と同一語彙）。いずれも Issue が要求する状態表示と区分語であり、新規の時制主張・権限主張・数値の創作を含まない。",
+				"disposition": "各セグメントの突合結果は comparisons の note に記録。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "活動タイムラインを読み込めませんでした。",
+					"text": "活動タイムラインを読み込めませんでした。",
+					"verdict": "intentional",
+					"note": "timeline === null（assembly 失敗）時の unavailable 文。GitHubActivityCard「GitHub 活動スナップショットを読み込めませんでした。」と同じ「読み込めませんでした」語彙で、失敗を空状態と区別する。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "不明",
+					"text": "不明",
+					"verdict": "intentional",
+					"note": "ソース状態ラベルのフォールバック。contract の union に無い status 値が来た場合に推測せず「不明」と出す防御的既定値。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "",
+					"text": "",
+					"verdict": "intentional",
+					"note": "ソース状態行の区切りに使う全角スペース（U+3000）リテラル。trim 後は空文字列になる区切り記号であり文ではない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
+					"text": "観測日 <span className={monoClassName}>{observedDay(timeline)}</span>",
+					"verdict": "intentional",
+					"note": "タイムラインヘッダの観測日ラベル。GitHubActivityCard「観測日」と同一語彙で、表示値はソースの observedAt か assembly 時刻のいずれか新しい方の日付部分のみ（鮮度を偽らない）。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "活動ソースを取得できませんでした。",
+					"text": "活動ソースを取得できませんでした。",
+					"verdict": "intentional",
+					"note": "items が 0 件かつ全ソースが ok 以外のときの文言。「空 = 活動なし」と誤読させないための失敗側の表示で、Issue の「取得失敗」状態要件に対応。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/routes/activity/Timeline.tsx",
+					"before": null,
+					"after": "掲載できる活動はまだありません。",
+					"text": "掲載できる活動はまだありません。",
+					"verdict": "intentional",
+					"note": "items が 0 件かつ少なくとも 1 ソースが ok のときの空状態文。捏造した項目を出さず「まだ何も無い」ことだけを述べる。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "観測中",
+					"text": "観測中",
+					"verdict": "intentional",
+					"note": "ソース状態 ok の日本語ラベル。GitHubActivityCard の SOURCE_STATUS_LABELS と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "未接続",
+					"text": "未接続",
+					"verdict": "intentional",
+					"note": "ソース状態 unconfigured の日本語ラベル（記事ソース未実装など）。GitHubActivityCard と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "取得失敗",
+					"text": "取得失敗",
+					"verdict": "intentional",
+					"note": "ソース状態 failed の日本語ラベル。GitHubActivityCard と同一語彙。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "リリース",
+					"text": "リリース",
+					"verdict": "intentional",
+					"note": "kind=release のバッジラベル。GitHub の ReleaseEvent に対応する区分語。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "記事",
+					"text": "記事",
+					"verdict": "intentional",
+					"note": "kind=article のバッジラベル。Issue #323 の記事ソースが将来供給する区分。現時点で live adapter は article 項目を出さない。新規追加。owner 承認未取得のため decision は pending。"
+				},
+				{
+					"path": "src/activity/contract.ts",
+					"before": null,
+					"after": "作品",
+					"text": "作品",
+					"verdict": "intentional",
+					"note": "kind=work のバッジラベル。portfolio の published+public プロジェクトに対応する区分語。新規追加。owner 承認未取得のため decision は pending。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/352",
+						"note": "本変更の実装対象。「更新時刻/取得失敗/空状態を表示」受入条件が状態文言を要求する。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/activity/Timeline.tsx",
+						"note": "変更対象の公開 copy を持つコンポーネント。"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/contract.ts",
+						"note": "kind / source / 状態ラベルの定義元。"
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/activity/README.md",
+						"note": "fixture ベースの実描画を記録した検証記録（timeline-desktop.png / timeline-mobile.png）。"
+					}
+				]
+			}
+		},
+		{
+			"id": "334-event-links",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:880b00e9fd5791c2724493fa46fde428dd3a38ccd3e6e75ffcaa0fe76e00d12d",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #334 residual の feed item ref 表示に伴い追加された日本語セグメント 3 件(オープン / クローズ / マージ済み)と、再生成スナップショット内の非公開プロジェクト表示名の removed+added ペアをレビュー。state ラベルは GitHub の open/closed/merged 語彙への対応辞書(src/home/activity/event-labels.ts の REF_STATE_LABELS_JA)で、イベント種別ラベルと同じ「短い名詞・未知値は raw fallback」の規則に従う。merged は PR のみが取りうる状態で generator が pull_request.merged/merged_at からのみ導出し、issue には出さない。新規の時制主張・権限主張・数値の創作は無い。",
+				"disposition": "3 つの state ラベルは contract.ts の ActivityFeedItemRef.state enum(open/closed/merged)と 1 対 1 で対応し、GitHub の Issue/PR state 語彙の一般的な日本語訳として一意。カードは ref.state が存在する場合のみ表示するため、state を持たないイベントに余計な主張を足さない。github-activity.json の 非公開プロジェクト ペアはジェネレータ再実行による同一文字列の再出力で、意味差分は無い。owner 判断の artefact は未取得のため decision は pending(Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は branch 名で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "オープン",
+					"verdict": "intentional",
+					"note": "GitHub issue/PR state 'open' の表示ラベル。state が open と確認できたイベントにのみ付く。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "クローズ",
+					"verdict": "intentional",
+					"note": "GitHub issue/PR state 'closed' の表示ラベル。open でも merged でもない終了状態をそのまま訳したもの。"
+				},
+				{
+					"path": "src/home/activity/event-labels.ts",
+					"before": null,
+					"after": "マージ済み",
+					"verdict": "intentional",
+					"note": "PR が merged === true または merged_at を持つ場合のみ generator が付与する state 'merged' の表示ラベル。issue には適用されない。"
+				},
+				{
+					"path": "src/home/activity/github-activity.json",
+					"before": "非公開プロジェクト",
+					"after": "非公開プロジェクト",
+					"verdict": "equivalent",
+					"note": "ジェネレータ再実行によるスナップショット再生成で、private repo エントリの匿名エイリアス name が diff 上 removed と added のペアとして現れた。両側とも同一文字列で、公開 copy の意味は変わらない。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/334",
+						"note": "本変更の実装対象。公開 Issue/PR の動きを読み取り専用で可視化する residual。"
+					},
+					{
+						"type": "commit",
+						"reference": "ae712a9f35bcbd44411d4f868f748ecd52416d0c",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/activity/contract.ts",
+						"note": "ActivityFeedItemRef.state の enum(open/closed/merged)がラベル辞書の値域であることの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "scripts/sync-github-activity.mjs",
+						"note": "merged は pull_request.merged / merged_at のみから導出し、state は payload が証明する場合のみ出力することの典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "352-activity-route",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-20",
+			"decision": "pending",
+			"fingerprint": "sha256:afde3d17af982dcf06cae64b2c7aa3983e3b4726143fb71ece1b39c8e32db164",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #352 の公開 route /activity 追加に伴う新規日本語セグメント 12 件をレビュー。route label・guide ledger の導線文・head の title/description・ページの lead 文と説明文で構成される。いずれも「GitHub の ReleaseEvent・公開記事・Portfolio の published+public 作品を日付降順に並べる読み取り専用一覧」という実装どおりの主張に限定し、日付を補わない・ソース状態を併記するという正直さの契約を文面にも反映した。記事ソースは未実装 (Issue #323) だが、ページ文は「公開記事」を将来の供給元として列挙するだけで存在を主張せず、Timeline 側は Content を 未接続 と表示する。新規の時制主張・権限主張・数値の創作は無い。",
+				"disposition": "各セグメントは route-labels / guide ledger / head / ActivityPage の実装文字列と 1 対 1 で対応し、src/activity/contract.ts の kind・source・status 語彙 (リリース/記事/作品、GitHub/Portfolio/Content、観測中/未接続/取得失敗) と Timeline.tsx の既存日本語ラベルに揃えた。「公開・掲載中」「日付の新しい順」「日付を補いません」などの限定表現は assemble.ts / sources.ts の実際のフィルタ・ソート規則と一致する。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。PR 番号は未採番のため pr は null、id は branch/issue 番号で記録する。"
+			},
+			"comparisons": [
+				{
+					"path": "src/editorial/nav/route-labels.ts",
+					"before": null,
+					"after": "活動タイムライン",
+					"verdict": "intentional",
+					"note": "/activity の route label。src/activity/contract.ts が timeline を「活動タイムライン」と呼ぶ語彙と一致。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "Activity — 公開アクティビティ",
+					"verdict": "intentional",
+					"note": "Home guide ledger の /activity 駅名。公開 route であることだけを述べ、副題の「公開アクティビティ」は sitemap 非掲載だが crawl/index 可能という境界方針と矛盾しない。"
+				},
+				{
+					"path": "src/home/guide/ledger.ts",
+					"before": null,
+					"after": "GitHub のリリースや公開作品を一つの時系列で振り返る読み取り専用の一覧。",
+					"verdict": "intentional",
+					"note": "ledger の副題。assemble.ts が実際に供給する 3 ソースのうち記事を「公開作品」に含めない簡潔な言い換えで、機能の誇張は無い。"
+				},
+				{
+					"path": "src/routes/activity.tsx",
+					"before": null,
+					"after": "活動タイムライン / Activity — rebuildup.dev",
+					"verdict": "intentional",
+					"note": "head() の title。他 route と同じ「和名 / 英名 — rebuildup.dev」規約。"
+				},
+				{
+					"path": "src/routes/activity.tsx",
+					"before": null,
+					"after": "GitHub のリリース、公開記事、Portfolio の公開作品を一つの時系列で読むページ。各項目はソースが記録した日付と出典を併記し、ソースごとの観測状態を表示します。",
+					"verdict": "intentional",
+					"note": "head() の description。OGP snapshot (test/integration/fixtures/ogp-card-snapshot.json) と同一文字列。ソース状態併記・日付はソース記録値のみという契約をそのまま述べる。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "本文へスキップ",
+					"verdict": "intentional",
+					"note": "skip link。他の公開 route と同一の定型文言。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "活動タイムライン / Activity",
+					"verdict": "intentional",
+					"note": "ページ h1。title と同じ和名/英名の併記。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "GitHub のリリース、公開された記事、Portfolio",
+					"verdict": "intentional",
+					"note": "lead 文の前半 (JSX テキストが要素境界で分割された片側)。公開記事はソース契約上の kind=article に対応し、現在 unconfigured として正直に表示される。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。ソースごとの観測状態は一覧の上に併記します。",
+					"verdict": "intentional",
+					"note": "lead 文の後半。日付補間をしない・ソース状態を併記するという Issue #352 の正直さ要件を文面で明示。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "公開アクティビティ",
+					"verdict": "intentional",
+					"note": "セクション見出し。route label の副題と同語彙。"
+				},
+				{
+					"path": "src/routes/activity/ActivityPage.tsx",
+					"before": null,
+					"after": "GitHub のリリースイベント、公開記事、公開・掲載中の Portfolio 作品を日付の新しい順に並べます。日付は各ソースが記録した値だけを使い、作品は期間ラベルをそのまま表示します。",
+					"verdict": "intentional",
+					"note": "セクション説明文。「公開・掲載中」は portfolioWorkItems の status==='published' && visibility==='public' フィルタの訳語で、「期間ラベルをそのまま表示」は periodStart/periodLabel を authored 値として使い created_at を公開日扱いしない規則と一致。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/352",
+						"note": "本変更の実装対象。release・記事・制作物を統合する活動タイムラインの公開 route 化。"
+					},
+					{
+						"type": "commit",
+						"reference": "620c1dd1",
+						"note": "the commit that introduced this copy (feat(activity): expose unified activity timeline at /activity)"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/contract.ts",
+						"note": "kind/source/status の語彙と Timeline の状態表示がページ文の根拠であることの典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/activity/sources.ts",
+						"note": "ReleaseEvent のみ採用・published+public のみ採用・created_at を公開日にしない規則の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/activity/assemble.ts",
+						"note": "ページ文が述べるフィルタ・ソート・状態併記の実装典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "pr-1115",
+			"pr": 1115,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-21",
+			"decision": "pending",
+			"fingerprint": "sha256:b7b736277084ed0dd39fb1600e1e4974fe344abd1721bd665fb612b93e4da056",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1108 の HOME 再構成 (ADR-0022) に伴う公開日本語 copy 33 セグメントをレビュー。変更の大半は既存セクション (status / reactions / page views / GitHub activity / Discord presence / contact) の文言を digest band「サイトの状態」の h3 サブブロックへ移動したもので、文字列自体の変更はほぼ無い。新規は digest band の見出し・説明文、「すべて見る (N 件)」の /now 導線、/now の head title/description。いずれも実装どおりの主張に限定され、否定・許可・数値の創作は無い。",
+				"disposition": "各セグメントは composer.tsx / CurrentProjects.tsx / now.tsx の実装文字列と 1 対 1 で対応。移動した文字列は同一バイトで verdict=equivalent、新しい面構成の説明と /now の head 文は実装の収録内容 (binding 到達性・ページビュー・反応・GitHub 活動・Discord presence、開始日・最終更新・活動量の出所付き全件一覧) と一致することを確認し verdict=intentional。diff のペアリング artifact (unit 23) は移動 2 件の見かけ上の書き換えとして注記した。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "サイトの状態",
+					"verdict": "equivalent",
+					"note": "旧「サイトの状態」見出しの削除側。digest band の h2 相当として同一文字列が unit 1 で再出現しており、内容の喪失ではなく再配置。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"verdict": "equivalent",
+					"note": "旧 status セクション説明文の削除側。unit 2 の新説明文に置き換わり、収録範囲の記述は新しい面構成に合わせて更新。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "プラットフォームの状態 / Platform health",
+					"verdict": "equivalent",
+					"note": "旧「プラットフォームの状態 / Platform health」見出しの削除側。unit 3 で digest 内サブブロックとして同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "みんなの反応 / Reactions",
+					"verdict": "equivalent",
+					"note": "旧「みんなの反応 / Reactions」見出しの削除側。unit 4 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明前半の削除側。unit 5 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明後半の削除側。unit 6 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "ページビュー / Page views",
+					"verdict": "equivalent",
+					"note": "旧「ページビュー / Page views」見出しの削除側。unit 7 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"verdict": "equivalent",
+					"note": "ページビュー説明の削除側。unit 8 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "サイトの状態",
+					"after": null,
+					"text": "サイトの状態",
+					"verdict": "equivalent",
+					"note": "旧「サイトの状態」見出しの削除側。digest band の h2 相当として同一文字列が unit 1 で再出現しており、内容の喪失ではなく再配置。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"after": null,
+					"text": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"verdict": "equivalent",
+					"note": "旧 status セクション説明文の削除側。unit 2 の新説明文に置き換わり、収録範囲の記述は新しい面構成に合わせて更新。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "プラットフォームの状態 / Platform health",
+					"after": null,
+					"text": "プラットフォームの状態 / Platform health",
+					"verdict": "equivalent",
+					"note": "旧「プラットフォームの状態 / Platform health」見出しの削除側。unit 3 で digest 内サブブロックとして同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "GitHub の活動 / GitHub activity",
+					"after": null,
+					"text": "GitHub の活動 / GitHub activity",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「GitHub の活動 / GitHub activity」。旧セクション見出しの移動で、説明文 (unit 22) と統計カード alt と対になる。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"after": null,
+					"text": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "equivalent",
+					"note": "GitHub 活動スナップショット説明。観測・保存・観測日とソース状態の併記という主張は src/home の activity projection の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"after": null,
+					"text": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"verdict": "intentional",
+					"note": "diff 上のペアリング artifact: before は Contact セクション見出し、after は GitHub 統計カードの alt 文。実際の変更は (a) Contact 見出しが contact セクションへ移動、(b) 統計カード alt が digest の GitHub 活動サブブロックへ移動、の 2 移動であり、文字列同士の意味的な書き換えではない。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "みんなの反応 / Reactions",
+					"after": null,
+					"text": "みんなの反応 / Reactions",
+					"verdict": "equivalent",
+					"note": "旧「みんなの反応 / Reactions」見出しの削除側。unit 4 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"after": null,
+					"text": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明前半の削除側。unit 5 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"after": null,
+					"text": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明後半の削除側。unit 6 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "ページビュー / Page views",
+					"after": null,
+					"text": "ページビュー / Page views",
+					"verdict": "equivalent",
+					"note": "旧「ページビュー / Page views」見出しの削除側。unit 7 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"after": null,
+					"text": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"verdict": "equivalent",
+					"note": "ページビュー説明の削除側。unit 8 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "Discord プレゼンス / Discord Presence",
+					"after": null,
+					"text": "Discord プレゼンス / Discord Presence",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「Discord プレゼンス / Discord Presence」。旧セクション見出しの移動。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "GitHub の活動 / GitHub activity",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「GitHub の活動 / GitHub activity」。旧セクション見出しの移動で、説明文 (unit 22) と統計カード alt と対になる。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "equivalent",
+					"note": "GitHub 活動スナップショット説明。観測・保存・観測日とソース状態の併記という主張は src/home の activity projection の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "Contact / お問い合わせ",
+					"after": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"verdict": "intentional",
+					"note": "diff 上のペアリング artifact: before は Contact セクション見出し、after は GitHub 統計カードの alt 文。実際の変更は (a) Contact 見出しが contact セクションへ移動、(b) 統計カード alt が digest の GitHub 活動サブブロックへ移動、の 2 移動であり、文字列同士の意味的な書き換えではない。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"after": null,
+					"text": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"verdict": "equivalent",
+					"note": "contact 説明文。re-verified channel のみ掲載という限定は src/home/contact の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "Discord プレゼンス / Discord Presence",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「Discord プレゼンス / Discord Presence」。旧セクション見出しの移動。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "<span lang=\"ja\">Contact を見る</span>",
+					"after": null,
+					"text": "<span lang=\"ja\">Contact を見る</span>",
+					"verdict": "equivalent",
+					"note": "「Contact を見る」リンク文言。href は /contact で、表示は日本語 + lang 属性付き。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "Contact / お問い合わせ",
+					"verdict": "intentional",
+					"note": "contact セクション見出し「Contact / お問い合わせ」。旧見出しの移動。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"verdict": "equivalent",
+					"note": "contact 説明文。re-verified channel のみ掲載という限定は src/home/contact の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "<span lang=\"ja\">Contact を見る</span>",
+					"verdict": "equivalent",
+					"note": "「Contact を見る」リンク文言。href は /contact で、表示は日本語 + lang 属性付き。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/current/CurrentProjects.tsx",
+					"before": null,
+					"after": "すべて見る ({published.length} 件)",
+					"verdict": "intentional",
+					"note": "「すべて見る ({published.length} 件)」— /now への導線文言。件数は公開済み project 数を動的に埋め込み、全件到達性を保つ。新規 copy。"
+				},
+				{
+					"path": "src/routes/now.tsx",
+					"before": null,
+					"after": "現在地 / Where I am now — rebuildup.dev",
+					"verdict": "intentional",
+					"note": "/now の head.title。ページ内容 (現在地の全件一覧) と一致する title で、既存 route title の語彙 (「現在地 / Where I am now」) を継承。"
+				},
+				{
+					"path": "src/routes/now.tsx",
+					"before": null,
+					"after": "続けているプロジェクトの全件一覧。開始日・最終更新・活動量を出所付きで掲載しています。",
+					"verdict": "intentional",
+					"note": "/now の head.description。全件一覧・掲載項目 (開始日・最終更新・活動量) ・出所付きという記述は CurrentProjects が実際に表示する項目と一致。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1108",
+						"note": "本変更の実装対象。HOME のキュレーション入口化と /now 全件 route。"
+					},
+					{
+						"type": "commit",
+						"reference": "927f4835",
+						"note": "feat(home): curated HOME composition per ADR-0022 (Issue #1108)"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/composer.tsx",
+						"note": "digest band と contact セクションの新しい構成の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/now.tsx",
+						"note": "/now の head title/description と loader が読むデータ源の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/CurrentProjects.tsx",
+						"note": "「すべて見る」導線と全件列挙の実装典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-1110-home-recompose",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-21",
+			"decision": "pending",
+			"fingerprint": "sha256:43b6bbabf348b216602963cb0bb2a99ce9af0451087f348199b9707af5eb94c3",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1110 の HOME 再構成イテレーション3。公開日本語 copy への実質的な変更は最小限: hero eyebrow を「現在地 / Where I am now」から英語のみの「Personal site」へ変更 (CurrentProjects h2 との重複解消)、CurrentProjects / Contact の見出しを title/titleEn 分割 (Issue #792) し JA 側は「現在地」「お問い合わせ」のまま、stale-content registry の hero eyebrow レコードを除去。残りの差分セグメントは #1109 の PageSection/Split/Panel/SkipLink 移行に伴う JSX の移動・再フォーマットで、文字列自体の変更はほぼ無い。",
+				"disposition": "hero eyebrow は JA 走査対象外の英語ラベル。見出し分割は表示上の JA/EN 併記を 2 ブロック化したもので、各言語の文字列は不変。stale-content-review.json 側では hero eyebrow の orphan レコードを削除し、CurrentProjects 見出しレコードの expression を「現在地」へ更新済み。semantic comparison の全セグメント走査は未実施のため comparisons は空 — owner 判断用の pending 記録として登録する。"
+			},
+			"comparisons": [],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1110",
+						"note": "本変更の実装対象。HOME 再構成の視覚品質収束イテレーション。"
+					},
+					{
+						"type": "commit",
+						"reference": "bbcd4ba1",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "commit",
+						"reference": "03fc2ca7",
+						"note": "Rebuild HOME composition and fix tone-surface rendering (Issues #1108, #1110)"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/hero.tsx",
+						"note": "hero eyebrow を英語のみの「Personal site」へ変更した実装典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/CurrentProjects.tsx",
+						"note": "見出しの title/titleEn 分割 (Issue #792) の実装典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "quality/stale-content-review.json",
+						"note": "hero eyebrow orphan レコード除去と CurrentProjects 見出しレコード更新の典拠。"
+					},
+					{
+						"type": "commit",
+						"reference": "f0c686c1",
+						"note": "Declare ToneMatrix as an inert design-system file for the publication surface"
+					},
+					{
+						"type": "commit",
+						"reference": "07930746",
+						"note": "Forbid invalid PageSection tone x Panel pairings at render time"
+					}
+				]
+			}
 		}
 	]
 }

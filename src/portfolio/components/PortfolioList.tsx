@@ -1,10 +1,26 @@
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
+import { Button } from '../../editorial/primitives/Button';
+import { listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
+import { PageSection } from '../../editorial/primitives/PageSection';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
+import {
+	bodySansMd,
+	eyebrowSans,
+	gridMin,
+	pageTitleFlush,
+	sizeDisplay,
+} from '../../editorial/primitives/shared-styles';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
+import { DEFAULT_PORTFOLIO_VIEW, type PortfolioView } from '../views';
+import { DesignView } from './DesignView';
+import { DevelopView } from './DevelopView';
 import { PortfolioEmptyState } from './EmptyState';
 import { FacetFilter } from './FacetFilter';
 import { ProjectCard } from './ProjectCard';
+import { VideoView } from './VideoView';
+import { ViewSwitcher } from './ViewSwitcher';
 
 /**
  * PortfolioList — `/portfolio` route surface (presentation only).
@@ -30,6 +46,22 @@ import { ProjectCard } from './ProjectCard';
 export interface PortfolioListProps {
 	initialPage: PortfolioListPage;
 	activeFacets: readonly PortfolioFacet[];
+	/**
+	 * The facet set the catalogue query actually ran with — the
+	 * visitor's explicit `?facets=` or, when absent, the view's
+	 * implied scope (Issue #1048). The empty-state branch reads this
+	 * rather than `activeFacets` so a view-scoped empty result is
+	 * reported as "no matching projects", not as an empty catalogue.
+	 */
+	queryFacets: readonly PortfolioFacet[];
+	/**
+	 * Exhibition mode (Issue #1048). `all` keeps the card grid this
+	 * component shipped with; `develop` / `video` / `design` render
+	 * the same filtered project set through the predecessor's three
+	 * gallery presentations. Optional so existing callers and tests
+	 * that predate the switcher keep compiling — absent means `all`.
+	 */
+	view?: PortfolioView;
 	hasMore: boolean;
 	busy: boolean;
 	error: string | null;
@@ -40,6 +72,8 @@ export interface PortfolioListProps {
 export function PortfolioList({
 	initialPage,
 	activeFacets,
+	queryFacets,
+	view = DEFAULT_PORTFOLIO_VIEW,
 	hasMore,
 	busy,
 	error,
@@ -50,225 +84,132 @@ export function PortfolioList({
 
 	return (
 		<>
-			<a href="#portfolio-list" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#portfolio-list" />
 			<main id="main">
-				<section
-					aria-labelledby="portfolio-heading"
-					// Issue #300: hero beat is 16/32 (layout-system.md §3.3).
-					className={css({ paddingBlock: { base: '16', lg: '32' } })}
-				>
-					<Container>
-						<header
+				<PageSection rhythm="hero" labelledBy="portfolio-heading">
+					<header
+						className={css({
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '4',
+							marginBlockEnd: '10',
+						})}
+					>
+						<span className={css(eyebrowSans)}>Portfolio</span>
+						<h1 id="portfolio-heading" className={css(pageTitleFlush)}>
+							主要な制作物 / Selected projects
+						</h1>
+						<p
 							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4',
-								marginBlockEnd: '10',
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: 'md',
+								color: 'text.muted',
+								lineHeight: '1.6',
+								maxWidth: '640px',
 							})}
 						>
-							<span
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									fontWeight: '600',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-									color: 'text.muted',
-								})}
-							>
-								Portfolio
-							</span>
-							<h1
-								id="portfolio-heading"
-								className={css({
-									margin: '0',
-									fontFamily: 'heading',
-									fontSize: { base: '3xl', lg: '4xl' },
-									fontWeight: '700',
-									color: 'text.default',
-									lineHeight: '1.05',
-									letterSpacing: '-0.03em',
-									maxWidth: '720px',
-								})}
-							>
-								主要な制作物 / Selected projects
-							</h1>
-							<p
-								className={css({
-									margin: '0',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									color: 'text.muted',
-									lineHeight: '1.6',
-									maxWidth: '640px',
-								})}
-							>
-								技術選定・設計・成果・振り返りを、第三者が URL
-								を渡されただけで辿れるように整理しています。 facet で絞り込み、各 project
-								の詳細ページから repository / release / 解説へ移動できます。
-							</p>
-						</header>
-						<FacetFilter value={activeFacets} />
-					</Container>
-				</section>
-				<section
-					id="portfolio-list"
-					aria-label="projects"
-					// Issue #300: canonical body-section beat 16/24 — the
-					// previous {8, 16} made the facet→status step 160px
-					// where every other page steps 224px.
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						{allProjects.length === 0 ? (
-							activeFacets.length > 0 ? (
-								<output
-									className={css({
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '3',
-										paddingBlock: '16',
-										color: 'text.muted',
-									})}
-								>
-									<h2
-										className={css({
-											margin: '0',
-											fontFamily: 'heading',
-											fontSize: 'xl',
-											color: 'text.default',
-										})}
-									>
-										該当する project はありません
-									</h2>
-									<p
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'md',
-											lineHeight: '1.6',
-										})}
-									>
-										別の facet を試すか、filter を外してください。
-									</p>
-								</output>
-							) : (
-								<PortfolioEmptyState />
-							)
-						) : (
-							<ol
-								className={css({
-									listStyle: 'none',
-									margin: '0',
-									padding: '0',
-									// Issue #912 round 2 (owner feedback
-									// 2026-11-05): the full-width vertical stack
-									// read as stretched-out ("間延びしててダサい").
-									// The list is now a card grid on the
-									// documented pattern (tools index / home
-									// capabilities): 2 columns at `md`, 3 at
-									// `lg` — the 3/12-column subdivision of the
-									// `Container` width — with the 24px gutter
-									// and the 40px row beat those surfaces use.
-									// `gridAutoRows: '1fr'` is the measured fix
-									// for uneven card heights (design #764):
-									// the tallest card in a row sets the height
-									// and the others stretch to it.
-									display: 'grid',
-									gridTemplateColumns: {
-										base: '1fr',
-										md: 'repeat(2, minmax(0, 1fr))',
-										lg: 'repeat(3, minmax(0, 1fr))',
-									},
-									columnGap: { base: '0', md: '6' },
-									rowGap: '10',
-									gridAutoRows: '1fr',
-								})}
-							>
-								{allProjects.map((project) => (
-									<li key={project.id} className={liStretchClass}>
-										<ProjectCard project={project} />
-									</li>
-								))}
-							</ol>
-						)}
-						{hasMore ? (
-							<div
+							技術選定・設計・成果・振り返りを、第三者が URL
+							を渡されただけで辿れるように整理しています。 facet で絞り込み、各 project
+							の詳細ページから repository / release / 解説へ移動できます。
+						</p>
+					</header>
+					<FacetFilter value={activeFacets} />
+					<ViewSwitcher value={view} />
+				</PageSection>
+				<PageSection id="portfolio-list" label="projects">
+					{allProjects.length === 0 ? (
+						queryFacets.length > 0 ? (
+							<output
 								className={css({
 									display: 'flex',
-									justifyContent: 'center',
-									marginBlockStart: '10',
+									flexDirection: 'column',
+									gap: '3',
+									paddingBlock: '16',
+									color: 'text.muted',
 								})}
 							>
-								<button
-									type="button"
-									onClick={onLoadMore}
-									disabled={busy}
-									aria-busy={busy}
+								<h2
 									className={css({
-										h: '10',
-										px: '6',
-										borderRadius: 'full',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.subtle',
-										backgroundColor: 'bg.surface',
+										margin: '0',
+										fontFamily: 'heading',
+										fontSize: 'xl',
 										color: 'text.default',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										fontWeight: '600',
-										cursor: 'pointer',
-										_disabled: {
-											cursor: 'not-allowed',
-											opacity: '0.6',
-										},
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
 									})}
 								>
-									{busy ? 'Loading…' : 'Load more'}
-								</button>
-							</div>
-						) : null}
-						{error ? (
-							<p
-								role="alert"
-								className={css({
-									marginBlockStart: '4',
-									color: 'text.muted',
-									fontFamily: 'sans',
-									fontSize: 'sm',
-								})}
+									該当する project はありません
+								</h2>
+								<p className={css(bodySansMd)}>別の facet を試すか、filter を外してください。</p>
+							</output>
+						) : (
+							<PortfolioEmptyState />
+						)
+					) : view === 'develop' ? (
+						<DevelopView projects={allProjects} />
+					) : view === 'video' ? (
+						<VideoView projects={allProjects} />
+					) : view === 'design' ? (
+						<DesignView projects={allProjects} />
+					) : (
+						// Issue #912 round 2 (owner feedback 2026-11-05): the
+						// full-width vertical stack read as stretched-out, so
+						// the list is a card grid on the documented pattern —
+						// `Grid` preset 5 (1/2/3 columns), the 24px gutter, the
+						// 40px row beat and `equalRows`, the measured fix for
+						// uneven card heights (design #764).
+						<Grid
+							as="ol"
+							columns={5}
+							columnGap="6"
+							rowGap="10"
+							equalRows
+							className={listResetClassName}
+						>
+							{allProjects.map((project) => (
+								<li key={project.id} className={liStretchClass}>
+									<ProjectCard project={project} />
+								</li>
+							))}
+						</Grid>
+					)}
+					{hasMore ? (
+						<div
+							className={css({
+								display: 'flex',
+								justifyContent: 'center',
+								marginBlockStart: '10',
+							})}
+						>
+							<Button
+								type="button"
+								variant="secondary"
+								onClick={onLoadMore}
+								disabled={busy}
+								aria-busy={busy}
+								className={css({ height: '10', paddingInline: '6', borderRadius: 'full' })}
 							>
-								{error}
-							</p>
-						) : null}
-					</Container>
-				</section>
+								{busy ? 'Loading…' : 'Load more'}
+							</Button>
+						</div>
+					) : null}
+					{error ? (
+						<p
+							role="alert"
+							className={css({
+								marginBlockStart: '4',
+								color: 'text.muted',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+							})}
+						>
+							{error}
+						</p>
+					) : null}
+				</PageSection>
 			</main>
 		</>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
 
 /**
  * Grid item behaviour for one card (same shape as the tools index's
@@ -276,7 +217,4 @@ const skipLinkStyle = css({
  * the list) and the card inside fills it, so every card in a row is the
  * same height.
  */
-const liStretchClass = css({
-	display: 'grid',
-	minWidth: '0',
-});
+const liStretchClass = css(gridMin);

@@ -2,9 +2,13 @@ import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { TextLink } from '../../editorial/primitives/TextLink';
+import { focusRing, vStackGap2 } from '../../editorial/primitives/shared-styles';
 import { ScrollRegion } from '../../editorial/table-code';
 import { formatDate, layerLabel, shortRef } from '../format';
 import { KEYBOARD_DEFAULT_LAYER } from '../types';
@@ -60,13 +64,6 @@ const GROUP_LABEL: Readonly<Record<KeyboardLayerGroup, string>> = {
 	extra: '追加',
 };
 
-const heroStyle = css({
-	paddingBlock: { base: '12', md: '16' },
-	borderBlockEndWidth: '1px',
-	borderBlockEndStyle: 'solid',
-	borderBlockEndColor: 'border.subtle',
-});
-
 const heroInnerStyle = css({
 	display: 'flex',
 	flexDirection: 'column',
@@ -111,13 +108,6 @@ const factRowStyle = css({
 	gap: '2',
 });
 
-const sectionStyle = css({
-	paddingBlock: { base: '10', md: '14' },
-	borderBlockEndWidth: '1px',
-	borderBlockEndStyle: 'solid',
-	borderBlockEndColor: 'border.subtle',
-});
-
 const bodyStyle = css({
 	marginBlockStart: '6',
 	display: 'flex',
@@ -153,12 +143,6 @@ const metaTextStyle = css({
 	color: 'text.muted',
 });
 
-const flowGridStyle = css({
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-	gap: '4',
-});
-
 const flowCardStyle = css({
 	display: 'flex',
 	flexDirection: 'column',
@@ -182,15 +166,6 @@ const flowTitleStyle = css({
 	color: 'text.default',
 });
 
-const flowListStyle = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
-
 const flowStepStyle = css({
 	display: 'flex',
 	gap: '2',
@@ -212,9 +187,6 @@ const flowIndexStyle = css({
 const noteListStyle = css({
 	margin: '0',
 	paddingInlineStart: '4',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
 	fontSize: 'xs',
 	lineHeight: '1.6',
 	color: 'text.muted',
@@ -245,21 +217,14 @@ const platformTabStyle = css({
 	fontWeight: '600',
 	cursor: 'pointer',
 	_hover: { borderColor: 'border.strong' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
 		backgroundColor: 'accent.surface',
 	},
 });
 
-const layerTablistStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
+const layerTablistStyle = css(vStackGap2);
 
 const layerGroupStyle = css({
 	display: 'flex',
@@ -291,10 +256,7 @@ const layerTabStyle = css({
 	fontSize: 'sm',
 	cursor: 'pointer',
 	_hover: { borderColor: 'border.strong' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 	'&[aria-selected="true"]': {
 		borderColor: 'border.strong',
 		backgroundColor: 'accent.surface',
@@ -394,9 +356,6 @@ const calloutStyle = css({
 const warningListStyle = css({
 	margin: '0',
 	paddingInlineStart: '4',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
 	fontSize: 'sm',
 	lineHeight: '1.6',
 	color: 'text.default',
@@ -433,27 +392,25 @@ export function KeyboardPage({ data }: KeyboardPageProps) {
 		// `main` landmarks where a reader meets one. The landmark now
 		// belongs to the page, and the branches are ordinary sections.
 		<main>
-			<section className={heroStyle} aria-labelledby={`${baseId}-title`}>
-				<Container>
-					<div className={heroInnerStyle}>
-						<p className={eyebrowStyle}>/keyboard · input</p>
-						<h1 id={`${baseId}-title`} className={titleStyle}>
-							{PAGE_TITLE}
-						</h1>
-						<p className={leadStyle}>
-							大西配列を土台にした macOS / Windows
-							のキーボード設定を、実際のキー位置に沿って表示します。macOS の hidutil
-							によるベース差し替えと、Kanata のレイヤーを分けて扱い、Space 長押しや Shift
-							長押しで変わる操作も確認できます。
-						</p>
-						<div className={factRowStyle}>
-							<Badge tone="neutral">大西配列 + QWERTY</Badge>
-							<Badge tone="neutral">macOS: hidutil + Kanata</Badge>
-							<Badge tone="neutral">Windows: Kanata</Badge>
-						</div>
+			<PageSection rhythm="hero" labelledBy={`${baseId}-title`}>
+				<div className={heroInnerStyle}>
+					<p className={eyebrowStyle}>/keyboard · input</p>
+					<h1 id={`${baseId}-title`} className={titleStyle}>
+						{PAGE_TITLE}
+					</h1>
+					<p className={leadStyle}>
+						大西配列を土台にした macOS / Windows
+						のキーボード設定を、実際のキー位置に沿って表示します。macOS の hidutil
+						によるベース差し替えと、Kanata のレイヤーを分けて扱い、Space 長押しや Shift
+						長押しで変わる操作も確認できます。
+					</p>
+					<div className={factRowStyle}>
+						<Badge tone="neutral">大西配列 + QWERTY</Badge>
+						<Badge tone="neutral">macOS: hidutil + Kanata</Badge>
+						<Badge tone="neutral">Windows: Kanata</Badge>
 					</div>
-				</Container>
-			</section>
+				</div>
+			</PageSection>
 			{data.status === 'ready' ? (
 				<KeyboardPageReady data={data} baseId={baseId} />
 			) : (
@@ -482,14 +439,12 @@ function KeyboardPageReady({
 
 	if (platform === undefined) {
 		return (
-			<section className={sectionStyle}>
-				<Container>
-					<SafePanel
-						title="表示できるプラットフォームがありません"
-						message="同期マニフェストに有効なプラットフォームが含まれていません。"
-					/>
-				</Container>
-			</section>
+			<PageSection>
+				<SafePanel
+					title="表示できるプラットフォームがありません"
+					message="同期マニフェストに有効なプラットフォームが含まれていません。"
+				/>
+			</PageSection>
 		);
 	}
 
@@ -537,311 +492,292 @@ function KeyboardPageReady({
 
 	return (
 		<div>
-			<section className={sectionStyle} aria-label="同期状態">
-				<Container>
-					<div className={statusStripStyle}>
-						<StateMark kind={data.freshness === 'fresh' ? 'ok' : 'degraded'} size="sm" />
-						<p className={statusTextStyle}>
-							{data.freshness === 'fresh'
-								? '公開リポジトリから取得した時点の内容を表示しています。ページはリクエスト時に外部へアクセスしません。'
-								: `最終同期から ${data.ageDays} 日経過しています。表示は取得時点の内容で、現在の設定と異なる可能性があります。`}
-						</p>
-						<p className={metaTextStyle}>
-							{formatDate(data.syncedAt)} 同期 / {data.manifest.sources.length} sources
-						</p>
-					</div>
-				</Container>
-			</section>
+			<PageSection separator label="同期状態">
+				<div className={statusStripStyle}>
+					<StateMark kind={data.freshness === 'fresh' ? 'ok' : 'degraded'} size="sm" />
+					<p className={statusTextStyle}>
+						{data.freshness === 'fresh'
+							? '公開リポジトリから取得した時点の内容を表示しています。ページはリクエスト時に外部へアクセスしません。'
+							: `最終同期から ${data.ageDays} 日経過しています。表示は取得時点の内容で、現在の設定と異なる可能性があります。`}
+					</p>
+					<p className={metaTextStyle}>
+						{formatDate(data.syncedAt)} 同期 / {data.manifest.sources.length} sources
+					</p>
+				</div>
+			</PageSection>
 
-			<section className={sectionStyle} aria-labelledby={`${baseId}-how`}>
-				<Container>
-					<SectionHeading
-						id={`${baseId}-how`}
-						eyebrow="01 — mechanism"
-						title="二段階で決まる"
-						description="macOS は OS 側のキー差し替えと Kanata のレイヤーが直列に重なります。Windows は Kanata の入力順そのものを表示します。"
-					/>
-					<div className={bodyStyle}>
-						<div className={flowGridStyle}>
-							{data.catalog.platforms.map((entry) => (
-								<PlatformFlow key={entry.id} platform={entry} />
-							))}
+			<PageSection separator labelledBy={`${baseId}-how`}>
+				<SectionHeading
+					id={`${baseId}-how`}
+					eyebrow="01 — mechanism"
+					title="二段階で決まる"
+					description="macOS は OS 側のキー差し替えと Kanata のレイヤーが直列に重なります。Windows は Kanata の入力順そのものを表示します。"
+				/>
+				<div className={bodyStyle}>
+					<Grid columns={2} gap="4">
+						{data.catalog.platforms.map((entry) => (
+							<PlatformFlow key={entry.id} platform={entry} />
+						))}
+					</Grid>
+				</div>
+			</PageSection>
+
+			<PageSection separator labelledBy={`${baseId}-layers`} id="keyboard-layers">
+				<SectionHeading
+					id={`${baseId}-layers`}
+					eyebrow="02 — layers"
+					title="配列とレイヤー"
+					description="プラットフォームを選び、次にレイヤーを選びます。キーを選ぶと、tap / hold の分岐と元の構文を表示します。"
+				/>
+				<div className={bodyStyle}>
+					<div>
+						<div role="tablist" aria-label="プラットフォーム" className={tabListStyle}>
+							{data.catalog.platforms.map((entry, index) => {
+								const selected = entry.id === platform.id;
+								return (
+									<button
+										key={entry.id}
+										ref={(node) => {
+											platformTabs.current[index] = node;
+										}}
+										type="button"
+										role="tab"
+										id={`${baseId}-platform-${entry.id}`}
+										aria-selected={selected}
+										aria-controls={`${baseId}-panel-${entry.id}`}
+										tabIndex={selected ? 0 : -1}
+										className={platformTabStyle}
+										onClick={() => selectPlatform(entry)}
+										onKeyDown={(event) => onPlatformKeyDown(event, index)}
+									>
+										{entry.status === 'ready' ? (
+											<StateMark kind="ok" size="sm" />
+										) : (
+											<StateMark kind="unreachable" size="sm" />
+										)}
+										{entry.label}
+										<span className={metaTextStyle}>
+											{entry.status === 'ready' ? `${entry.layers.length} layers` : '取得失敗'}
+										</span>
+									</button>
+								);
+							})}
 						</div>
-					</div>
-				</Container>
-			</section>
 
-			<section className={sectionStyle} aria-labelledby={`${baseId}-layers`} id="keyboard-layers">
-				<Container>
-					<SectionHeading
-						id={`${baseId}-layers`}
-						eyebrow="02 — layers"
-						title="配列とレイヤー"
-						description="プラットフォームを選び、次にレイヤーを選びます。キーを選ぶと、tap / hold の分岐と元の構文を表示します。"
-					/>
-					<div className={bodyStyle}>
-						<div>
-							<div role="tablist" aria-label="プラットフォーム" className={tabListStyle}>
-								{data.catalog.platforms.map((entry, index) => {
-									const selected = entry.id === platform.id;
-									return (
-										<button
-											key={entry.id}
-											ref={(node) => {
-												platformTabs.current[index] = node;
-											}}
-											type="button"
-											role="tab"
-											id={`${baseId}-platform-${entry.id}`}
-											aria-selected={selected}
-											aria-controls={`${baseId}-panel-${entry.id}`}
-											tabIndex={selected ? 0 : -1}
-											className={platformTabStyle}
-											onClick={() => selectPlatform(entry)}
-											onKeyDown={(event) => onPlatformKeyDown(event, index)}
-										>
-											{entry.status === 'ready' ? (
-												<StateMark kind="ok" size="sm" />
-											) : (
-												<StateMark kind="unreachable" size="sm" />
-											)}
-											{entry.label}
-											<span className={metaTextStyle}>
-												{entry.status === 'ready' ? `${entry.layers.length} layers` : '取得失敗'}
-											</span>
-										</button>
-									);
-								})}
-							</div>
-
-							<div
-								role="tabpanel"
-								id={`${baseId}-panel-${platform.id}`}
-								aria-labelledby={`${baseId}-platform-${platform.id}`}
-								className={css({ marginBlockStart: '5' })}
-							>
-								{platform.status === 'unavailable' || activeLayer === undefined ? (
-									<SafePanel
-										title={`${platform.label} の配列を表示できません`}
-										message={
-											platform.reason ?? 'このプラットフォームの設定を解析できませんでした。'
-										}
-									/>
-								) : (
-									<div>
-										<div
-											role="tablist"
-											aria-label={`${platform.label} のレイヤー`}
-											className={layerTablistStyle}
-										>
-											{groupedLayers.map((entry) => (
-												<div key={entry.group} role="presentation" className={layerGroupStyle}>
-													<p aria-hidden="true" className={layerGroupLabelStyle}>
-														{GROUP_LABEL[entry.group]}
-													</p>
-													{entry.layers.map((layer) => {
-														const index = flatLayers.indexOf(layer);
-														const selected = layer.id === activeLayer.id;
-														return (
-															<button
-																key={layer.id}
-																ref={(node) => {
-																	if (node) layerTabs.current.set(layer.id, node);
-																	else layerTabs.current.delete(layer.id);
-																}}
-																type="button"
-																role="tab"
-																id={`${baseId}-layer-${platform.id}-${layer.id}`}
-																aria-selected={selected}
-																aria-controls={`${baseId}-layer-panel-${platform.id}`}
-																tabIndex={selected ? 0 : -1}
-																aria-label={`${layerLabel(layer.id)}（${GROUP_LABEL[layer.group]}）`}
-																className={layerTabStyle}
-																onClick={() => selectLayer(layer)}
-																onKeyDown={(event) => onLayerKeyDown(event, index)}
-															>
-																{layerLabel(layer.id)}
-															</button>
-														);
-													})}
-												</div>
-											))}
-										</div>
-
-										<div
-											role="tabpanel"
-											id={`${baseId}-layer-panel-${platform.id}`}
-											aria-labelledby={`${baseId}-layer-${platform.id}-${activeLayer.id}`}
-											className={css({ marginBlockStart: '5' })}
-										>
-											<div className={diagramGridStyle}>
-												<div>
-													<p className={captionStyle}>{layerCaption(platform, activeLayer)}</p>
-													<div className={css({ marginBlockStart: '3' })}>
-														<KeyboardDiagram
-															platform={platform}
-															layer={activeLayer}
-															selectedIndex={selectedIndex}
-															onSelect={setSelectedIndex}
-														/>
-													</div>
-												</div>
-												<KeyDetail
-													platform={platform}
-													layer={activeLayer}
-													selectedIndex={selectedIndex}
-												/>
+						<div
+							role="tabpanel"
+							id={`${baseId}-panel-${platform.id}`}
+							aria-labelledby={`${baseId}-platform-${platform.id}`}
+							className={css({ marginBlockStart: '5' })}
+						>
+							{platform.status === 'unavailable' || activeLayer === undefined ? (
+								<SafePanel
+									title={`${platform.label} の配列を表示できません`}
+									message={platform.reason ?? 'このプラットフォームの設定を解析できませんでした。'}
+								/>
+							) : (
+								<div>
+									<div
+										role="tablist"
+										aria-label={`${platform.label} のレイヤー`}
+										className={layerTablistStyle}
+									>
+										{groupedLayers.map((entry) => (
+											<div key={entry.group} role="presentation" className={layerGroupStyle}>
+												<p aria-hidden="true" className={layerGroupLabelStyle}>
+													{GROUP_LABEL[entry.group]}
+												</p>
+												{entry.layers.map((layer) => {
+													const index = flatLayers.indexOf(layer);
+													const selected = layer.id === activeLayer.id;
+													return (
+														<button
+															key={layer.id}
+															ref={(node) => {
+																if (node) layerTabs.current.set(layer.id, node);
+																else layerTabs.current.delete(layer.id);
+															}}
+															type="button"
+															role="tab"
+															id={`${baseId}-layer-${platform.id}-${layer.id}`}
+															aria-selected={selected}
+															aria-controls={`${baseId}-layer-panel-${platform.id}`}
+															tabIndex={selected ? 0 : -1}
+															aria-label={`${layerLabel(layer.id)}（${GROUP_LABEL[layer.group]}）`}
+															className={layerTabStyle}
+															onClick={() => selectLayer(layer)}
+															onKeyDown={(event) => onLayerKeyDown(event, index)}
+														>
+															{layerLabel(layer.id)}
+														</button>
+													);
+												})}
 											</div>
+										))}
+									</div>
+
+									<div
+										role="tabpanel"
+										id={`${baseId}-layer-panel-${platform.id}`}
+										aria-labelledby={`${baseId}-layer-${platform.id}-${activeLayer.id}`}
+										className={css({ marginBlockStart: '5' })}
+									>
+										<div className={diagramGridStyle}>
+											<div>
+												<p className={captionStyle}>{layerCaption(platform, activeLayer)}</p>
+												<div className={css({ marginBlockStart: '3' })}>
+													<KeyboardDiagram
+														platform={platform}
+														layer={activeLayer}
+														selectedIndex={selectedIndex}
+														onSelect={setSelectedIndex}
+													/>
+												</div>
+											</div>
+											<KeyDetail
+												platform={platform}
+												layer={activeLayer}
+												selectedIndex={selectedIndex}
+											/>
 										</div>
 									</div>
-								)}
-							</div>
+								</div>
+							)}
 						</div>
-
-						{data.catalog.warnings.length > 0 ? (
-							<div>
-								<p className={metaTextStyle}>解析メモ</p>
-								<ul className={warningListStyle}>
-									{data.catalog.warnings.map((warning) => (
-										<li key={warning}>{warning}</li>
-									))}
-								</ul>
-							</div>
-						) : null}
 					</div>
-				</Container>
-			</section>
+
+					{data.catalog.warnings.length > 0 ? (
+						<div>
+							<p className={metaTextStyle}>解析メモ</p>
+							<Stack as="ul" gap="1" className={warningListStyle}>
+								{data.catalog.warnings.map((warning) => (
+									<li key={warning}>{warning}</li>
+								))}
+							</Stack>
+						</div>
+					) : null}
+				</div>
+			</PageSection>
 
 			{platform.status === 'ready' && platform.hidutil ? (
-				<section className={sectionStyle} aria-labelledby={`${baseId}-hidutil`}>
-					<Container>
-						<SectionHeading
-							id={`${baseId}-hidutil`}
-							eyebrow="03 — hidutil"
-							title="macOS のベース差し替え"
-							description="hidutil は物理キーの出力を先に変えます。Kanata はその後の入力をレイヤーで解釈します。"
-						/>
-						<div className={bodyStyle}>
-							<p className={captionStyle}>{platform.hidutil.note}</p>
-							<ScrollRegion
-								label="hidutil UserKeyMapping の対応表。横にスクロールできます。"
-								className={tableWrapStyle}
-							>
-								<table className={tableStyle}>
-									<caption>
-										hidutil UserKeyMapping（{platform.hidutil.mappings.length} 件、元の JSON の順）
-									</caption>
-									<thead>
-										<tr>
-											<th scope="col">物理キー</th>
-											<th scope="col">置き換え後</th>
-											<th scope="col">src usage</th>
-											<th scope="col">dst usage</th>
-										</tr>
-									</thead>
-									<tbody>
-										{platform.hidutil.mappings.map((mapping) => (
-											<tr key={`${mapping.fromUsage}-${mapping.toUsage}`}>
-												<td>{mapping.fromKey}</td>
-												<td>{mapping.toKey}</td>
-												<td>
-													<code>0x{mapping.fromUsage.toString(16)}</code>
-												</td>
-												<td>
-													<code>0x{mapping.toUsage.toString(16)}</code>
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</ScrollRegion>
-						</div>
-					</Container>
-				</section>
-			) : null}
-
-			<section className={sectionStyle} aria-labelledby={`${baseId}-sources`}>
-				<Container>
+				<PageSection separator labelledBy={`${baseId}-hidutil`}>
 					<SectionHeading
-						id={`${baseId}-sources`}
-						eyebrow="04 — provenance"
-						title="出典と同期"
-						description="表示しているのは公開リポジトリの特定 commit から取得したバイト列です。採用元と最新 head を分けて記録します。"
+						id={`${baseId}-hidutil`}
+						eyebrow="03 — hidutil"
+						title="macOS のベース差し替え"
+						description="hidutil は物理キーの出力を先に変えます。Kanata はその後の入力をレイヤーで解釈します。"
 					/>
 					<div className={bodyStyle}>
-						<AdoptionCallout manifest={data.manifest} />
+						<p className={captionStyle}>{platform.hidutil.note}</p>
 						<ScrollRegion
-							label="出典と最終同期の一覧。横にスクロールできます。"
+							label="hidutil UserKeyMapping の対応表。横にスクロールできます。"
 							className={tableWrapStyle}
 						>
 							<table className={tableStyle}>
 								<caption>
-									{syncedLine(data.syncedAt)} / stale 判定 {data.staleAfterDays} 日
+									hidutil UserKeyMapping（{platform.hidutil.mappings.length} 件、元の JSON の順）
 								</caption>
 								<thead>
 									<tr>
-										<th scope="col">用途</th>
-										<th scope="col">repository</th>
-										<th scope="col">ref</th>
-										<th scope="col">path</th>
-										<th scope="col">取得日</th>
+										<th scope="col">物理キー</th>
+										<th scope="col">置き換え後</th>
+										<th scope="col">src usage</th>
+										<th scope="col">dst usage</th>
 									</tr>
 								</thead>
 								<tbody>
-									{data.manifest.sources.map((source) => (
-										<tr key={source.id}>
+									{platform.hidutil.mappings.map((mapping) => (
+										<tr key={`${mapping.fromUsage}-${mapping.toUsage}`}>
+											<td>{mapping.fromKey}</td>
+											<td>{mapping.toKey}</td>
 											<td>
-												{source.platform === 'macos'
-													? 'macOS'
-													: source.platform === 'windows'
-														? 'Windows'
-														: '採用 ref'}
-												<br />
-												<span className={metaTextStyle}>
-													{source.role === 'repository-latest'
-														? 'repository latest'
-														: 'pc-setup adopted'}
-												</span>
+												<code>0x{mapping.fromUsage.toString(16)}</code>
 											</td>
 											<td>
-												{/* Issue #887: this anchor used to be recognised by
-												    the browser's link colour. The platform ink is
-												    achromatic now, so the underline is what says
-												    "this cell links to the source file". */}
-												<a
-													href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
-													rel="noreferrer"
-													className={css({
-														color: 'text.accent',
-														textDecoration: 'underline',
-														textUnderlineOffset: '0.18em',
-														textDecorationThickness: '1px',
-														_hover: { textDecorationThickness: '2px' },
-													})}
-												>
-													{source.repository}
-												</a>
+												<code>0x{mapping.toUsage.toString(16)}</code>
 											</td>
-											<td>
-												<code title={source.ref}>{shortRef(source.ref)}</code>
-											</td>
-											<td>
-												<code>{source.path}</code>
-											</td>
-											<td>{formatDate(source.fetchedAt)}</td>
 										</tr>
 									))}
 								</tbody>
 							</table>
 						</ScrollRegion>
-						<p className={calloutStyle}>
-							同期はローカルのスケジューラまたは release 手順で実行します。ページの表示時に GitHub
-							へ問い合わせることはありません。壊れた
-							source、未対応の構文、キー数の不一致は、そのプラットフォームだけを安全な状態に落とします。
-						</p>
 					</div>
-				</Container>
-			</section>
+				</PageSection>
+			) : null}
+
+			<PageSection separator labelledBy={`${baseId}-sources`}>
+				<SectionHeading
+					id={`${baseId}-sources`}
+					eyebrow="04 — provenance"
+					title="出典と同期"
+					description="表示しているのは公開リポジトリの特定 commit から取得したバイト列です。採用元と最新 head を分けて記録します。"
+				/>
+				<div className={bodyStyle}>
+					<AdoptionCallout manifest={data.manifest} />
+					<ScrollRegion
+						label="出典と最終同期の一覧。横にスクロールできます。"
+						className={tableWrapStyle}
+					>
+						<table className={tableStyle}>
+							<caption>
+								{syncedLine(data.syncedAt)} / stale 判定 {data.staleAfterDays} 日
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">用途</th>
+									<th scope="col">repository</th>
+									<th scope="col">ref</th>
+									<th scope="col">path</th>
+									<th scope="col">取得日</th>
+								</tr>
+							</thead>
+							<tbody>
+								{data.manifest.sources.map((source) => (
+									<tr key={source.id}>
+										<td>
+											{source.platform === 'macos'
+												? 'macOS'
+												: source.platform === 'windows'
+													? 'Windows'
+													: '採用 ref'}
+											<br />
+											<span className={metaTextStyle}>
+												{source.role === 'repository-latest'
+													? 'repository latest'
+													: 'pc-setup adopted'}
+											</span>
+										</td>
+										<td>
+											{/* Issue #887: this anchor used to be recognised by
+												    the browser's link colour. The platform ink is
+												    achromatic now, so the underline is what says
+												    "this cell links to the source file". */}
+											<TextLink
+												href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
+												rel="noreferrer"
+											>
+												{source.repository}
+											</TextLink>
+										</td>
+										<td>
+											<code title={source.ref}>{shortRef(source.ref)}</code>
+										</td>
+										<td>
+											<code>{source.path}</code>
+										</td>
+										<td>{formatDate(source.fetchedAt)}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</ScrollRegion>
+					<p className={calloutStyle}>
+						同期はローカルのスケジューラまたは release 手順で実行します。ページの表示時に GitHub
+						へ問い合わせることはありません。壊れた
+						source、未対応の構文、キー数の不一致は、そのプラットフォームだけを安全な状態に落とします。
+					</p>
+				</div>
+			</PageSection>
 		</div>
 	);
 }
@@ -877,23 +813,21 @@ function KeyboardPageUnavailable({
 	data: Extract<KeyboardPageData, { status: 'unavailable' }>;
 }) {
 	return (
-		<section className={sectionStyle}>
-			<Container>
-				<div className={bodyStyle}>
-					<SafePanel title="現在、配列を表示できません" message={data.message} />
-					<p className={captionStyle}>
-						同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。
-					</p>
-					<ul className={noteListStyle}>
-						{data.detailCodes.map((code) => (
-							<li key={code}>
-								<code>{code}</code>
-							</li>
-						))}
-					</ul>
-				</div>
-			</Container>
-		</section>
+		<PageSection>
+			<div className={bodyStyle}>
+				<SafePanel title="現在、配列を表示できません" message={data.message} />
+				<p className={captionStyle}>
+					同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。
+				</p>
+				<Stack as="ul" gap="1" className={noteListStyle}>
+					{data.detailCodes.map((code) => (
+						<li key={code}>
+							<code>{code}</code>
+						</li>
+					))}
+				</Stack>
+			</div>
+		</PageSection>
 	);
 }
 
@@ -928,7 +862,7 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 				<Badge tone="neutral">{platform.layout}</Badge>
 			</p>
 			{ready ? (
-				<ol className={flowListStyle}>
+				<Stack as="ol" gap="2" className={listResetClassName}>
 					{steps.map((step, index) => (
 						<li key={step} className={flowStepStyle}>
 							<span className={flowIndexStyle} aria-hidden="true">
@@ -937,7 +871,7 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 							<span>{step}</span>
 						</li>
 					))}
-				</ol>
+				</Stack>
 			) : (
 				<p className={captionStyle}>
 					{platform.reason ??
@@ -945,11 +879,11 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 				</p>
 			)}
 			{platform.notes.length > 0 ? (
-				<ul className={noteListStyle}>
+				<Stack as="ul" gap="1" className={noteListStyle}>
 					{platform.notes.map((note) => (
 						<li key={note}>{note}</li>
 					))}
-				</ul>
+				</Stack>
 			) : null}
 		</div>
 	);

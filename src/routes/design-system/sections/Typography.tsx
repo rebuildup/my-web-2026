@@ -1,4 +1,9 @@
 import { css } from '../../../../styled-system/css';
+import {
+	eyebrowMonoXsLoose,
+	vStackGap1,
+	vStackGap10,
+} from '../../../editorial/primitives/shared-styles';
 
 /**
  * Typography — heading / body / mono samples at every step of the size
@@ -36,13 +41,7 @@ const STEPS: ReadonlyArray<SizeStep> = [
 
 export function Typography() {
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '10',
-			})}
-		>
+		<div className={css(vStackGap10)}>
 			<FamilyBlock
 				family="heading"
 				familyName="Heading"
@@ -84,22 +83,8 @@ function FamilyBlock({ family, familyName, token, familyRole }: FamilyBlockProps
 				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
-			<header
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
+			<header className={css(vStackGap1)}>
+				<span className={css(eyebrowMonoXsLoose)}>
 					{familyName} — {token}
 				</span>
 				<p

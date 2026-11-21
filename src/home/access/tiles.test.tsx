@@ -129,7 +129,7 @@ describe('CounterTile', () => {
 		};
 		const html = renderToStaticMarkup(<CounterTile data={data} />);
 		expect(html).toContain('counter disabled');
-		expect(html).toContain('bootstrap-home-api-key');
+		expect(html).toContain('Page views are unavailable in this environment.');
 		expect(html).toContain('—');
 		// No digit images in the disabled path.
 		expect(html).not.toContain(`src="${digit0Url}"`);
@@ -292,7 +292,7 @@ describe('CounterTile — reduced motion (Issue #403)', () => {
 		// animate — and the reason the counter is unavailable still reads.
 		expect(reduced).not.toContain('<img');
 		expect(reduced).toContain('counter disabled');
-		expect(reduced).toContain('consumer API key not configured');
+		expect(reduced).toContain('Page views are unavailable in this environment.');
 	});
 
 	it('keeps the empty state (count 0, no hits yet) readable without motion', () => {

@@ -1,5 +1,8 @@
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { ToggleChip } from '../../editorial/primitives/ToggleChip';
+import { eyebrowSans } from '../../editorial/primitives/shared-styles';
 import type { PortfolioFacet } from '../schema';
 import { PORTFOLIO_FACETS } from '../schema';
 import { FACET_LABEL, FACET_LABEL_JA } from '../vocabulary';
@@ -40,7 +43,10 @@ export interface FacetFilterProps {
 
 export function FacetFilter({ value }: FacetFilterProps) {
 	const router = useRouter();
-	const search = useSearch({ strict: false }) as { facets?: string | undefined };
+	const search = useSearch({ strict: false }) as {
+		facets?: string | undefined;
+		view?: string | undefined;
+	};
 	const active = new Set(value);
 
 	const onToggle = (facet: PortfolioFacet) => () => {
@@ -50,7 +56,15 @@ export function FacetFilter({ value }: FacetFilterProps) {
 		else next.add(facet);
 		// Preserve canonical order to keep URLs stable for caching.
 		const ordered = PORTFOLIO_FACETS.filter((f) => next.has(f));
-		const nextSearch = ordered.length > 0 ? { facets: ordered.join(',') } : {};
+		// Issue #1048: `?view=` supplies the catalogue's default facet
+		// scope when no explicit facets are chosen, so the exhibition
+		// mode must survive a facet toggle (and `ViewSwitcher`
+		// preserves `?facets=` the same way in return).
+		const nextSearch: { facets?: string; view?: string } = {};
+		if (ordered.length > 0) nextSearch.facets = ordered.join(',');
+		if (typeof search.view === 'string' && search.view.length > 0) {
+			nextSearch.view = search.view;
+		}
 		router.navigate({
 			to: '/portfolio',
 			search: nextSearch,
@@ -59,120 +73,41 @@ export function FacetFilter({ value }: FacetFilterProps) {
 	};
 
 	const onClear = () => {
-		router.navigate({ to: '/portfolio', search: {}, replace: false });
+		// Clearing the facet filter keeps the exhibition view.
+		router.navigate({
+			to: '/portfolio',
+			search:
+				typeof search.view === 'string' && search.view.length > 0 ? { view: search.view } : {},
+			replace: false,
+		});
 	};
 
 	return (
-		<fieldset
-			className={css({
-				margin: '0',
-				padding: '0',
-				border: 'none',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
-			})}
-		>
-			<legend
-				className={css({
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					fontWeight: '600',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-					color: 'text.muted',
-				})}
-			>
-				Facet filter
-			</legend>
-			<div
-				aria-label="facet filter chips"
-				className={css({
-					display: 'flex',
-					flexWrap: 'wrap',
-					gap: '2',
-				})}
-			>
+		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
+			<legend className={css(eyebrowSans)}>Facet filter</legend>
+			<Cluster aria-label="facet filter chips" gap="2">
 				{PORTFOLIO_FACETS.map((facet) => {
 					const isActive = active.has(facet);
 					const label = { ja: FACET_LABEL_JA[facet], en: FACET_LABEL[facet] };
 					return (
-						<button
+						<ToggleChip
 							key={facet}
-							type="button"
-							aria-pressed={isActive}
+							active={isActive}
 							aria-label={`${label.ja} / ${label.en} facet${isActive ? ' selected' : ''}`}
 							onClick={onToggle(facet)}
-							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								h: '8',
-								px: '4',
-								borderRadius: 'full',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: isActive ? 'border.strong' : 'border.subtle',
-								backgroundColor: isActive ? 'bg.accent' : 'bg.surface',
-								color: isActive ? 'text.inverse' : 'text.default',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								cursor: 'pointer',
-								transition: 'background-color 120ms ease, color 120ms ease',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
+							sublabel={label.en}
 						>
-							<span aria-hidden="true">{isActive ? '✓' : ''}</span>
-							<span>{label.ja}</span>
-							<span
-								aria-hidden="true"
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									color: isActive ? 'text.inverse' : 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								{label.en}
-							</span>
-						</button>
+							{label.ja}
+						</ToggleChip>
 					);
 				})}
 				{active.size > 0 ? (
-					<button
-						type="button"
-						onClick={onClear}
-						className={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-							h: '8',
-							px: '4',
-							borderRadius: 'full',
-							borderWidth: '1px',
-							borderStyle: 'dashed',
-							borderColor: 'border.subtle',
-							backgroundColor: 'transparent',
-							color: 'text.muted',
-							fontFamily: 'sans',
-							fontSize: 'sm',
-							cursor: 'pointer',
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
-						})}
-					>
+					<ToggleChip tone="clear" onClick={onClear}>
 						Clear
-					</button>
+					</ToggleChip>
 				) : null}
-			</div>
-		</fieldset>
+			</Cluster>
+		</Stack>
 	);
 }
 

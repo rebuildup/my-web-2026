@@ -131,7 +131,12 @@ export const rawTokens = {
 				// Ink
 				text: { value: '#101012' },
 				secondary: { value: '#404047' },
-				muted: { value: '#5f5f68' },
+				// #54555e (Issue #1110 v12 review) — was #5f5f68, which
+				// measured 4.77:1 on `sunken`, inside the AA band the
+				// reviewers flagged as borderline. The darker step keeps
+				// the quiet-secondary character and lifts the worst
+				// surface pairing to 5.58:1.
+				muted: { value: '#54555e' },
 				disabledText: { value: '#a7a7ad' },
 				inverseText: { value: '#f6f6f2' },
 				// The monochrome ink PLACED ON a colour field.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import onishiSource from './sources/pc-setup/platforms/macos/keyboard/onishi.json?raw';
 import { OnishiParseError, hidUsageName, parseOnishiJson } from './parse-onishi';
+import onishiSource from './sources/pc-setup/platforms/macos/keyboard/onishi.json?raw';
 
 describe('onishi.json — hidutil mapping', () => {
 	const mappings = parseOnishiJson(onishiSource);

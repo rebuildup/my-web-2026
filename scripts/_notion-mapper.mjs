@@ -78,8 +78,14 @@ export const PORTFOLIO_LINK_KINDS = [
 	'other',
 ];
 
-/** Mirrors `SLUG_REGEX` in `src/portfolio/schema.ts`. */
-const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,127}$/;
+/**
+ * Mirrors `SLUG_REGEX` in `src/portfolio/schema.ts`.
+ *
+ * Exported so `test/integration/notion-mapper-parity.test.ts` can pin
+ * the mirror against the owner grammar — an unexported copy could
+ * drift silently (Issue #998 suspicion item).
+ */
+export const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,127}$/;
 
 /** Mirrors `NotionMediaSchema.media` (`z.array(...).max(32)`). */
 const MAX_MEDIA_PER_RECORD = 32;

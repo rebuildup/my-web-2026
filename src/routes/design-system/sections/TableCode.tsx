@@ -1,4 +1,5 @@
 import { css } from '../../../../styled-system/css';
+import { vStackGap10 } from '../../../editorial/primitives/shared-styles';
 import { TableCodeFixture } from '../../../editorial/table-code';
 
 /**
@@ -20,7 +21,7 @@ import { TableCodeFixture } from '../../../editorial/table-code';
  */
 export function TableCode() {
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '10' })}>
+		<div className={css(vStackGap10)}>
 			<TableCodeFixture />
 		</div>
 	);

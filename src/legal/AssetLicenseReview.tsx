@@ -1,6 +1,12 @@
 import { css, cx } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import {
+	bodySansSmLoose,
+	cols1to2,
+	listStackGap3,
+	noteSansSmLoose,
+} from '../editorial/primitives/shared-styles';
+import {
 	type AssetEvidenceStatus,
 	type AssetLicenseRecord,
 	type AssetReview,
@@ -123,25 +129,13 @@ const titleClassName = css({
 	margin: '0',
 });
 
-const summaryClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.muted',
-});
+const summaryClassName = css(noteSansSmLoose);
 
-const meaningClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.default',
-});
+const meaningClassName = css(bodySansSmLoose);
 
 const factsClassName = css({
 	display: 'grid',
-	gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+	gridTemplateColumns: cols1to2,
 	gap: '3',
 	margin: '0',
 });
@@ -185,14 +179,7 @@ const listClassName = css({
 	color: 'text.default',
 });
 
-const findingsListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
+const findingsListClassName = css(listStackGap3);
 
 const findingClassName = css({
 	borderInlineStartWidth: '2px',
@@ -203,13 +190,7 @@ const findingClassName = css({
 	gap: '1',
 });
 
-const findingMessageClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	lineHeight: '1.7',
-	color: 'text.default',
-});
+const findingMessageClassName = css(bodySansSmLoose);
 
 const findingRemedyClassName = css({
 	margin: '0',

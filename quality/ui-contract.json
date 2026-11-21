@@ -1,0 +1,1296 @@
+{
+	"schema_version": 1,
+	"issue": "#1105",
+	"gate": "ui:contract:check",
+	"contract": {
+		"adr": "docs/adr/ADR-0022-editorial-composition-contract.md",
+		"spec": "src/editorial/layout-system.md",
+		"review": "docs/runbook/ui-visual-review.md",
+		"notes": [
+			"The design system is a constraint system: this file is the machine-readable half of the composition contract. layout-system.md is the prose half; where they disagree the ADR wins.",
+			"Detection is property/context-aware, never a blanket text scan: a hex literal in a test fixture, a data file or an icon path table is not a violation. Only color-valued properties inside style objects (css({}), style props, cva variants) and the JSX patterns named per clause are inspected.",
+			"Every allowlist entry carries a reason. An entry that waives nothing fails. Growing an allowlist is a contract change reviewed like code; shrinking it is the migration tickets' job (#1109)."
+		]
+	},
+	"scope": {
+		"root": "src",
+		"extensions": [".tsx", ".ts"],
+		"exemptPrefixes": ["src/editorial/"],
+		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
+	},
+	"primitives": {
+		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split"],
+		"components": [
+			"SectionHeading",
+			"Button",
+			"TextLink",
+			"Panel",
+			"Badge",
+			"StateMark",
+			"ToggleChip",
+			"RecordList",
+			"RecordRow",
+			"Disclosure",
+			"MediaFrame",
+			"MaterialSymbol"
+		],
+		"notes": [
+			"Names are the L1/L2 vocabulary of layout-system.md §1. #1106 implements them; until a primitive exists its clause is enforced against the allowlist, not against the missing import.",
+			"SectionHeading is an L2 component that internally uses the split grid rule; it is NOT a Grid consumer violation."
+		]
+	},
+	"tones": [
+		"ground",
+		"sunken",
+		"raised",
+		"inverse",
+		"field.design",
+		"field.code",
+		"field.writing",
+		"field.tool"
+	],
+	"clauses": {
+		"C-1": {
+			"name": "section-surface-owner",
+			"summary": "Section-level rhythm, page background and section separators belong to PageSection alone.",
+			"detection": {
+				"styleProperties": [
+					"paddingBlock",
+					"paddingBlockStart",
+					"paddingBlockEnd",
+					"paddingTop",
+					"paddingBottom",
+					"marginBlock",
+					"marginBlockStart",
+					"marginBlockEnd"
+				],
+				"jsxPatterns": [
+					{
+						"element": "section",
+						"note": "a raw <section> outside editorial must be a PageSection or an allowlisted page-composition file"
+					}
+				],
+				"valueRules": [
+					{
+						"property": "background",
+						"note": "bg.canvas on a section-scale element is a page-background decision"
+					},
+					{
+						"property": "backgroundColor",
+						"values": ["bg.canvas"],
+						"note": "painting the page ground by hand"
+					},
+					{
+						"property": "borderTop",
+						"note": "section separators are PageSection's borderTop prop"
+					},
+					{
+						"property": "borderBottom",
+						"note": "same, for bottom separators"
+					}
+				]
+			},
+			"rationale": "Without this clause every section re-decides the page's vertical rhythm, which is how the current HOME became a stack of unrelated beats."
+		},
+		"C-2": {
+			"name": "semantic-color-only",
+			"summary": "Color-valued properties resolve to semantic tokens only.",
+			"colorProperties": [
+				"backgroundColor",
+				"background",
+				"backgroundImage",
+				"color",
+				"borderColor",
+				"borderTopColor",
+				"borderBottomColor",
+				"borderLeftColor",
+				"borderRightColor",
+				"outlineColor",
+				"fill",
+				"stroke",
+				"textDecorationColor",
+				"caretColor",
+				"accentColor",
+				"columnRuleColor",
+				"textEmphasisColor",
+				"textShadow",
+				"boxShadow"
+			],
+			"forbiddenValuePatterns": [
+				"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+				"^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\\(",
+				"^\\{colors\\.(?:brand|neutral|charcoal|positive|negative|warning|design|code|writing|tool|mono)\\.",
+				"^(?:black|white|red|green|blue|gray|grey|silver|maroon|purple|fuchsia|lime|olive|yellow|navy|teal|aqua|orange)$"
+			],
+			"semanticValuePrefixes": [
+				"bg.",
+				"text.",
+				"border.",
+				"accent.",
+				"mono.",
+				"{colors.semantic.",
+				"currentColor",
+				"transparent",
+				"inherit"
+			],
+			"rationale": "Raw palette references and literals bypass the semantic layer, so a palette change ripples through feature code and per-component color decisions drift (the current accent-color-on-some-cards failure mode)."
+		},
+		"C-3": {
+			"name": "section-tone-owner",
+			"summary": "Colored/shaded section bands are expressed only through PageSection tone.",
+			"detection": {
+				"styleProperties": ["backgroundColor", "background", "backgroundImage"],
+				"sectionScaleHeuristic": "a style object containing both a band surface property AND (paddingBlock* OR minHeight OR width:'100%' with block padding) is section-scale and must use PageSection tone",
+				"panelPath": "smaller classified surfaces use Panel variant=\"field.*\"; arbitrary backgroundColor on a non-allowlisted element is a violation"
+			},
+			"rationale": "Color must carry section-level meaning (classification or emphasis), assigned by the composition contract — not invented per component. Decorative color is a review failure even when undetectable statically (layout-system.md §4.2)."
+		},
+		"C-4": {
+			"name": "grid-presets-only",
+			"summary": "Grid track definitions live in editorial layout primitives or the page-composition allowlist.",
+			"styleProperties": [
+				"gridTemplateColumns",
+				"gridTemplateRows",
+				"gridTemplateAreas",
+				"gridAutoFlow",
+				"gridAutoColumns",
+				"gridAutoRows"
+			],
+			"rationale": "Every bespoke grid is a competing coordinate system. The measured 4/8 + container contract only holds if feature code cannot invent tracks."
+		},
+		"C-5": {
+			"name": "list-primitive-required",
+			"summary": "Repeated rows/lists use RecordList/RecordRow, Grid+Panel or Stack; no per-item boxes.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "li",
+						"forbiddenStyleProperties": [
+							"border",
+							"borderWidth",
+							"borderStyle",
+							"borderColor",
+							"backgroundColor",
+							"background",
+							"borderRadius"
+						],
+						"note": "a boxed <li> draws a redundant container the section already frames"
+					},
+					{
+						"element": "ul",
+						"elementAliases": ["ol"],
+						"forbiddenStyleProperties": ["display"],
+						"note": "list layout goes through Stack/Grid presets; listStyle:'none' resets stay allowed"
+					}
+				]
+			},
+			"rationale": "layout-system.md §4 (proximity, not boxes) and C-8 (bounded lists) both depend on lists being composed, not decorated per item."
+		},
+		"C-6": {
+			"name": "control-primitives-required",
+			"summary": "Button/link affordances use Button/TextLink variants; hand-styled lookalikes are forbidden.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"element": "a",
+						"elementAliases": ["button"],
+						"controlStyleProperties": [
+							"padding",
+							"paddingInline",
+							"paddingBlock",
+							"height",
+							"borderRadius",
+							"backgroundColor",
+							"background",
+							"borderWidth",
+							"borderStyle",
+							"borderColor",
+							"borderRadius"
+						],
+						"note": "an <a>/<button> styled as a control must be Button/TextLink or an allowlisted non-control (semantic row, tab, resize handle, swatch, editor surface)"
+					}
+				]
+			},
+			"rationale": "T3 Code's no-restyle rule: the same look needed twice is a variant on the primitive, not a third hand-rolled copy."
+		},
+		"C-7": {
+			"name": "no-duplicate-styling",
+			"summary": "The same normalized css({...}) literal in 3+ files is a missing primitive.",
+			"detection": {
+				"method": "normalize each css()/cva style object literal (sort keys, drop whitespace), hash it, group by hash across files; report hashes seen in >= minFiles files",
+				"minFiles": 3,
+				"exemptNote": "single-property resets (margin:0, padding:0, listStyle:none) below minProperties are ignored"
+			},
+			"rationale": "Duplication is the observable symptom of a missing abstraction; three copies is the promotion threshold (token-audit evidence rule)."
+		},
+		"C-8": {
+			"name": "curated-pages-enumerate-on-index",
+			"summary": "Public pages bound mapped collections; full sets live on dedicated index routes.",
+			"detection": {
+				"jsxPatterns": [
+					{
+						"pattern": ".map(",
+						"requiredNearby": [
+							".slice(",
+							"limit",
+							"Disclosure",
+							"ShowMore",
+							"showMore",
+							"SeeAll",
+							"すべて",
+							"href"
+						],
+						"scope": "src/home/**, src/routes/** page components",
+						"note": "a data collection rendered on a public page must bound the render or link to the index route that owns the enumeration"
+					}
+				],
+				"indexOwners": [
+					"/portfolio",
+					"/tools",
+					"/activity",
+					"/now",
+					"/projects/dotfiles",
+					"/stack",
+					"/links",
+					"/keyboard",
+					"/design-system"
+				]
+			},
+			"rationale": "HOME became a long list because every section mapped its whole collection. The full set must remain reachable — on the route whose obligation IS enumeration."
+		}
+	},
+	"allowlists": {
+		"notes": [
+			"Known-debt entries land here as the #1107 gate inventories current violations; migration tickets (#1108/#1109) shrink them. An allowlist entry is { path, clause, reason } and must still match a live violation.",
+			"colorAllowlist: files allowed raw color values (brand marks, icon assets, ad creatives).",
+			"gridAllowlist: files allowed bespoke gridTemplate* (page-composition files only, with reason).",
+			"sectionAllowlist: files allowed section-level properties outside PageSection (page chrome: masthead/footer/skip-link owned by editorial or composer).",
+			"controlAllowlist: elements intentionally not Button/TextLink (semantic rows, tabs, resize handles, swatches, editor surfaces).",
+			"listAllowlist: files allowed <li> boxes or unstyled list layout pending migration.",
+			"enumerationAllowlist: page files allowed unbounded .map pending the /now + index-route migration (#1108)."
+		]
+	},
+	"colorAllowlist": [
+		{
+			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-2"],
+			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
+			"signatures": {
+				"backgroundColor: \"#ffffff\"": 2,
+				"backgroundColor: \"rgba(255, 255, 255, 0.16)\"": 1,
+				"backgroundColor: \"rgba(255, 255, 255, 0.95)\"": 2,
+				"backgroundColor: \"rgba(5, 5, 5, 0.35)\"": 1,
+				"color: \"#ffffff\"": 9,
+				"color: \"rgba(255, 255, 255, 0.72)\"": 1,
+				"color: \"rgba(255, 255, 255, 0.75)\"": 1,
+				"color: \"rgba(255, 255, 255, 0.88)\"": 1,
+				"color: \"rgba(255,255,255,0.7)\"": 1
+			}
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-2"],
+			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
+			"signatures": {
+				"backgroundColor: \"rgba(0, 0, 0, 0.45)\"": 1
+			}
+		}
+	],
+	"gridAllowlist": [
+		{
+			"path": "src/about/components/AboutPage.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: key-value row uses auto/1fr tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/home/footer.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: footer uses an equal-thirds 4fr/4fr/4fr column split",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/home/status/tiles.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: service row uses a measured auto/1fr/auto 3-track dl grid (Issue #300)",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/legal/AssetLicenseReview.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/personal/melting-face/MeltingFace.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
+			"signatures": {
+				"gridTemplateColumns": 2
+			}
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
+			"signatures": {
+				"gridAutoFlow": 1,
+				"gridAutoRows": 1,
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/ProjectCard.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: provenance <dl> uses asymmetric 3fr/9fr label/value tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/admin.emoji-catalog.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 8
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ImageCls.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clauses": ["C-4"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"gridTemplateColumns": 1
+			}
+		}
+	],
+	"sectionAllowlist": [
+		{
+			"path": "src/admin/composer.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/admin/emoji-catalog/catalog.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/admin/images/images.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.accent": 1,
+				"paddingBlock on surface object": 1,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/admin/invitations/accept-view.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.accent": 1,
+				"paddingBlock on surface object": 1,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/admin/invitations/invitations.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/admin/keys/keys.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/admin/keys/step-up-panel.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.surface": 2,
+				"paddingBlock on surface object": 2,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
+			"signatures": {
+				"borderBottom: 8px solid transparent": 2,
+				"borderTop: 8px solid transparent": 2,
+				"marginBlockStart on surface object": 7,
+				"paddingBlock on surface object": 3,
+				"surface + block padding/min-height outside PageSection": 19
+			}
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
+			"signatures": {
+				"paddingBlock on surface object": 1,
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
+			"signatures": {
+				"backgroundColor: bg.canvas": 3,
+				"surface + block padding/min-height outside PageSection": 4
+			}
+		},
+		{
+			"path": "src/keyboard/components/KeyboardDiagram.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: diagram canvas surface and key caps are illustration chrome, not PageSection bands",
+			"signatures": {
+				"backgroundColor: bg.canvas": 1,
+				"paddingBlock on surface object": 1,
+				"surface + block padding/min-height outside PageSection": 3
+			}
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
+			"signatures": {
+				"backgroundColor: bg.canvas": 2,
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/legal/AssetLicenseReview.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
+			"signatures": {
+				"background: bg.canvas": 1,
+				"background: bg.subtle": 1,
+				"raw <section> element": 4
+			}
+		},
+		{
+			"path": "src/personal/engagement/Engagement.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
+			"signatures": {
+				"backgroundColor: bg.canvas": 1,
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 4
+			}
+		},
+		{
+			"path": "src/personal/handle-map/HandleMap.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/personal/melting-face/MeltingFace.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
+			"signatures": {
+				"paddingBlock on surface object": 1,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/PortfolioMedia.tsx",
+			"clauses": ["C-3"],
+			"reason": "justified: bg.subtle is the media well fill behind figures, not a Panel surface",
+			"signatures": {
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: provenance <dl> uses asymmetric 3fr/9fr label/value tracks, not a Grid preset",
+			"signatures": {
+				"paddingBlock on surface object": 2,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/routes/admin.emoji-catalog.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.surface": 2,
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/routes/admin.index.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: transparent": 1,
+				"paddingBlock on surface object": 1,
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/routes/admin.invitations.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.accent": 2,
+				"background: bg.surface": 1,
+				"paddingBlock on surface object": 3,
+				"surface + block padding/min-height outside PageSection": 3
+			}
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"background: bg.accent": 1,
+				"background: bg.surface": 2,
+				"paddingBlock on surface object": 3,
+				"surface + block padding/min-height outside PageSection": 3
+			}
+		},
+		{
+			"path": "src/routes/admin.login.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"raw <section> element": 6,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ImageCls.tsx",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clauses": ["C-1", "C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"paddingBlock on surface object": 2,
+				"raw <section> element": 1,
+				"surface + block padding/min-height outside PageSection": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clauses": ["C-3"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"raw <section> element": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"backgroundColor: bg.canvas": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clauses": ["C-1"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"borderTop: 1px solid {colors.border.subtle}": 1,
+				"raw <section> element": 1
+			}
+		},
+		{
+			"path": "src/routes/tools.index.tsx",
+			"clauses": ["C-3"],
+			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
+			"signatures": {
+				"surface + block padding/min-height outside PageSection": 1
+			}
+		}
+	],
+	"controlAllowlist": [
+		{
+			"path": "src/admin/images/images.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"<button> background": 1,
+				"<button> borderRadius": 1,
+				"<button> paddingBlock": 1,
+				"<button> paddingInline": 1
+			}
+		},
+		{
+			"path": "src/admin/invitations/accept-view.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"<button> background": 1,
+				"<button> borderRadius": 1,
+				"<button> paddingBlock": 1,
+				"<button> paddingInline": 1
+			}
+		},
+		{
+			"path": "src/home/ads/units.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: ad creatives keep a fixed light palette and self-contained chrome — they imitate ad-network units and must not inherit section tones (Issue #1117 review)",
+			"signatures": {
+				"<a> backgroundColor": 8,
+				"<a> borderColor": 4,
+				"<a> borderRadius": 8,
+				"<a> borderStyle": 4,
+				"<a> borderWidth": 4,
+				"<a> height": 3,
+				"<a> padding": 1,
+				"<a> paddingInline": 1,
+				"<button> backgroundColor": 1,
+				"<button> height": 1
+			}
+		},
+		{
+			"path": "src/home/guide/VisitTrail.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: mono xs path chip is a data affordance distinct from the TextLink chip variant",
+			"signatures": {
+				"<a> borderColor": 1,
+				"<a> borderRadius": 1,
+				"<a> borderStyle": 1,
+				"<a> borderWidth": 1,
+				"<a> paddingBlock": 1,
+				"<a> paddingInline": 1
+			}
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
+			"signatures": {
+				"<button> backgroundColor": 2,
+				"<button> borderColor": 4,
+				"<button> borderRadius": 2,
+				"<button> borderStyle": 2,
+				"<button> borderWidth": 2,
+				"<button> height": 2,
+				"<button> paddingInline": 2
+			}
+		},
+		{
+			"path": "src/keyboard/components/KeyboardDiagram.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: diagram canvas surface and key caps are illustration chrome, not PageSection bands",
+			"signatures": {
+				"<button> backgroundColor": 1,
+				"<button> borderColor": 1,
+				"<button> borderRadius": 1,
+				"<button> borderStyle": 1,
+				"<button> borderWidth": 1,
+				"<button> padding": 1
+			}
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
+			"signatures": {
+				"<button> backgroundColor": 2,
+				"<button> borderColor": 2,
+				"<button> borderRadius": 2,
+				"<button> borderStyle": 2,
+				"<button> borderWidth": 2,
+				"<button> paddingBlock": 2,
+				"<button> paddingInline": 2
+			}
+		},
+		{
+			"path": "src/personal/engagement/Engagement.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
+			"signatures": {
+				"<button> backgroundColor": 1,
+				"<button> borderColor": 1,
+				"<button> borderRadius": 1,
+				"<button> borderStyle": 1,
+				"<button> borderWidth": 1,
+				"<button> paddingBlock": 1,
+				"<button> paddingInline": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
+			"signatures": {
+				"<a> height": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
+			"signatures": {
+				"<a> borderRadius": 2,
+				"<a> paddingBlock": 2
+			}
+		},
+		{
+			"path": "src/portfolio/components/VideoView.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: circular play/close overlay media controls + cover/title link focus rings are not Button/TextLink vocabulary",
+			"signatures": {
+				"<button> backgroundColor": 2,
+				"<button> borderColor": 2,
+				"<button> borderRadius": 2,
+				"<button> borderStyle": 2,
+				"<button> borderWidth": 2
+			}
+		},
+		{
+			"path": "src/routes/admin.invitations.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"<button> background": 2,
+				"<button> borderRadius": 2,
+				"<button> paddingBlock": 2,
+				"<button> paddingInline": 2
+			}
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"<button> background": 1,
+				"<button> borderRadius": 1,
+				"<button> paddingBlock": 1,
+				"<button> paddingInline": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ReactionPicker.tsx",
+			"clauses": ["C-6"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"<button> backgroundColor": 3,
+				"<button> borderRadius": 1,
+				"<button> borderStyle": 1,
+				"<button> borderWidth": 1,
+				"<button> height": 1,
+				"<button> paddingInline": 1
+			}
+		}
+	],
+	"listAllowlist": [
+		{
+			"path": "src/legal/AssetLicenseReview.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: non-route publication-rights review document (rendered in Storybook and the license gate report only — no route imports it, verified Issue #497); its <section> elements are per-record document subsections and its grid/list are the review table layout, not page composition",
+			"signatures": {
+				"<ul> display": 1
+			}
+		},
+		{
+			"path": "src/personal/engagement/Engagement.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
+			"signatures": {
+				"<li> backgroundColor": 1,
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1,
+				"<ol> display": 1,
+				"<ul> display": 2
+			}
+		},
+		{
+			"path": "src/personal/handle-map/HandleMap.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); boxed rows are the document specimen, not page composition",
+			"signatures": {
+				"<li> backgroundColor": 1,
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1,
+				"<ul> display": 1
+			}
+		},
+		{
+			"path": "src/personal/melting-face/MeltingFace.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: Issue #709 personal-document preview — Storybook demo surface with no route importer (verified by import scan); specimen document layout, not page composition",
+			"signatures": {
+				"<li> backgroundColor": 1,
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1,
+				"<ol> display": 1,
+				"<ul> display": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
+			"signatures": {
+				"<ol> display": 1
+			}
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: role/period meta row uses auto auto tracks, not a Grid preset",
+			"signatures": {
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"<ul> display": 7
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"<ul> display": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"<ul> display": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SurfaceTreatments.tsx",
+			"clauses": ["C-5"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"<ul> display": 1
+			}
+		}
+	],
+	"enumerationAllowlist": [
+		{
+			"path": "src/home/access/tiles.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: digit strip length is bounded by the counter's own width",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/home/current/CurrentProjects.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/home/current/load.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: loader projection transform, not a rendered collection",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/home/current/source.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: roster/source projection transforms, not rendered collections",
+			"signatures": {
+				"unbounded .map(": 3
+			}
+		},
+		{
+			"path": "src/home/format.compare.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: locale-comparison fixture transform, not a rendered collection",
+			"signatures": {
+				"unbounded .map(": 3
+			}
+		},
+		{
+			"path": "src/home/presence/reader.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: presence projection transforms, not rendered collections",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/home/privacy-notice.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: closed published-lifecycle registry; per-entry senders are a fixed record set",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/home/reactions/emoji-catalog.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: projection transform over the reaction catalog (filter+map slug list), not a rendered collection",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/home/reactions/production-read.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: projection transform over production read rows, not a rendered collection",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/home/reactions/widget.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: reaction picker is a self-contained overlay widget with its own surface contract, not page composition",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/home/status/tiles.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: service row uses a measured auto/1fr/auto 3-track dl grid (Issue #300)",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/activity/Timeline.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: TODO",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/admin.keys.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: admin surface is outside the #1109 public-page migration scope (Epic #1104 acceptance excludes admin/tool-internal areas); admin chrome keeps its own composition pending a dedicated admin pass",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/CjkLineBreak.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ColorSwatches.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 6
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/InteractiveStates.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/SpacingRuler.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/StatusAccents.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/ToneMatrix.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/routes/design-system/sections/Typography.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /design-system specimen internals — the grids, lists, controls and h3 subsections ARE the demonstrated artifacts (token matrices, ramps, measurement fixtures); page-level bands now use PageSection in DesignSystemPage (Issue #1109)",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/design-system/tokens.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: closed token-path registry transforms (FAMILY_PATHS/LEDGER_PATHS/MONO_ROLES constants), not an open rendered collection",
+			"signatures": {
+				"unbounded .map(": 4
+			}
+		},
+		{
+			"path": "src/routes/portfolio/index.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: parseFacets is a query-param transform, not a rendered collection",
+			"signatures": {
+				"unbounded .map(": 1
+			}
+		},
+		{
+			"path": "src/routes/stack/resolve.ts",
+			"clauses": ["C-8"],
+			"reason": "justified: resolveItem/resolveSection are projection transforms, not rendered collections",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/routes/stack/StackPage.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: /stack is the index route that owns full stack enumeration (ADR-0022 C-8)",
+			"signatures": {
+				"unbounded .map(": 4
+			}
+		},
+		{
+			"path": "src/routes/tools.$slug.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: policy-violation list is a closed diagnostic vocabulary, not an open data collection",
+			"signatures": {
+				"unbounded .map(": 3
+			}
+		},
+		{
+			"path": "src/routes/tools.index.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
+			"signatures": {
+				"unbounded .map(": 2
+			}
+		}
+	],
+	"duplicateAllowlist": []
+}

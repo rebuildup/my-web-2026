@@ -1,5 +1,6 @@
 import { css } from '../../../../styled-system/css';
 import { CJK_MODES, CjkLineBreakShowcase } from '../../../editorial/cjk-line-break';
+import { vStackGap10 } from '../../../editorial/primitives/shared-styles';
 
 /**
  * CJK line-break verification blocks — the `/design-system` mirror of
@@ -18,7 +19,7 @@ import { CJK_MODES, CjkLineBreakShowcase } from '../../../editorial/cjk-line-bre
  */
 export function CjkLineBreak() {
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '10' })}>
+		<div className={css(vStackGap10)}>
 			{CJK_MODES.map((spec) => (
 				<CjkLineBreakShowcase key={spec.mode} spec={spec} />
 			))}

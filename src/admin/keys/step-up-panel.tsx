@@ -3,6 +3,13 @@ import { useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import {
+	buttonAccent,
+	eyebrowMonoSm,
+	noteSansSm,
+	noteSansSmBare,
+	rowWrapGap3,
+} from '../../editorial/primitives/shared-styles';
+import {
 	STEP_UP_MAX_AGE_SECONDS,
 	type StepUpStatus,
 	confirmStepUp,
@@ -164,25 +171,8 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 				background: 'bg.surface',
 			})}
 		>
-			<div
-				className={css({
-					display: 'flex',
-					flexWrap: 'wrap',
-					alignItems: 'center',
-					gap: '3',
-				})}
-			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-						letterSpacing: '0.04em',
-						textTransform: 'uppercase',
-					})}
-				>
-					Step-up check
-				</span>
+			<div className={css(rowWrapGap3)}>
+				<span className={css(eyebrowMonoSm)}>Step-up check</span>
 				{confirmed ? (
 					<Badge tone="accent">confirmed</Badge>
 				) : status.state === 'expired' ? (
@@ -192,16 +182,7 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 				)}
 			</div>
 
-			<output
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					color: 'text.muted',
-				})}
-			>
-				{summary}
-			</output>
+			<output className={css(noteSansSm)}>{summary}</output>
 
 			{!confirmed && (
 				<form
@@ -222,9 +203,7 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 							minWidth: '240px',
 						})}
 					>
-						<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-							Admin password
-						</span>
+						<span className={css(noteSansSmBare)}>Admin password</span>
 						<input
 							type="password"
 							name="password"
@@ -247,19 +226,7 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 					<button
 						type="submit"
 						disabled={busy || password.length === 0}
-						className={css({
-							fontFamily: 'sans',
-							fontSize: 'md',
-							fontWeight: '600',
-							color: 'text.inverse',
-							background: 'bg.accent',
-							border: 'none',
-							borderRadius: '4',
-							paddingBlock: '3',
-							paddingInline: '6',
-							cursor: 'pointer',
-							_disabled: { opacity: '0.5' },
-						})}
+						className={css(buttonAccent)}
 					>
 						{busy ? 'Confirming…' : `Confirm for ${STEP_UP_MAX_AGE_SECONDS / 60} min`}
 					</button>
@@ -267,15 +234,7 @@ export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps
 			)}
 
 			{(rejected || undetermined) && !confirmed && (
-				<p
-					role="alert"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+				<p role="alert" className={css(noteSansSm)}>
 					{undetermined
 						? '確認を完了できませんでした。セッションの有効性を確認して再試行してください。'
 						: 'パスワードを確認できませんでした。再入力してください。'}

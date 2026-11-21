@@ -248,13 +248,6 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 		note: 'Counter tile — the digit-strip access counter.',
 	},
 	{
-		file: 'src/home/capabilities/grid.stories.tsx',
-		title: 'home/CapabilitiesGrid',
-		exports: ['AllPlanned', 'OneLive', 'Single'],
-		expect: 'pass',
-		note: 'Capabilities grid — the capability list with one live entry.',
-	},
-	{
 		file: 'src/home/composer.stories.tsx',
 		title: 'home/HomePage',
 		exports: ['AllReachable', 'Degraded'],
@@ -319,6 +312,13 @@ export const AUDITED_STORY_FILES: readonly AuditedStoryFile[] = [
 		],
 		expect: 'pass',
 		note: 'Asset licence review — the publication-rights surface.',
+	},
+	{
+		file: 'src/portfolio/components/PortfolioCaseStudy.stories.tsx',
+		title: 'portfolio/CaseStudy',
+		exports: ['Default', 'Sparse', 'Empty'],
+		expect: 'pass',
+		note: 'Portfolio case study — the Issue #519 claim-class element (確定事実 / 当時の推測 / 現在の評価).',
 	},
 	{
 		file: 'src/portfolio/components/Markdown.stories.tsx',

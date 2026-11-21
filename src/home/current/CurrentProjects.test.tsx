@@ -51,7 +51,11 @@ describe('CurrentProjects — the section', () => {
 		const html = render([FULL]);
 		expect(html).toContain('aria-labelledby="current-projects-heading"');
 		expect(html).toContain('id="current-projects-heading"');
-		expect(html).toContain('現在地 / Where I am now');
+		// Issue #792 renders the bilingual title as two blocks, so the
+		// JA and EN halves are asserted separately rather than as one
+		// contiguous "現在地 / Where I am now" string.
+		expect(html).toContain('現在地');
+		expect(html).toContain('Where I am now');
 	});
 
 	it('states the total, the base date and the counting window', () => {

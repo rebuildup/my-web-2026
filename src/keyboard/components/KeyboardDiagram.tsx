@@ -1,5 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { eyebrowMonoXsReset, focusRing } from '../../editorial/primitives/shared-styles';
 import { ScrollRegion } from '../../editorial/table-code';
 import { actionDescription, actionLabel, actionRaw, formatDate, layerLabel } from '../format';
 import { resolveGeometry } from '../geometry';
@@ -30,10 +31,7 @@ const scrollChromeStyle = css({
 	paddingBlockEnd: '2',
 	// The primitive owns the scroll declaration; this only adds the
 	// focus ring the keyboard user sees when the region is reached.
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 });
 
 const canvasStyle = css({
@@ -71,10 +69,7 @@ const keyStyle = css({
 		borderColor: 'border.strong',
 		backgroundColor: 'bg.surface',
 	},
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 	'&[aria-pressed="true"]': {
 		borderColor: 'border.strong',
 		backgroundColor: 'accent.surface',
@@ -212,14 +207,7 @@ const detailShellStyle = css({
 	minHeight: '40',
 });
 
-const detailLabelStyle = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const detailLabelStyle = css(eyebrowMonoXsReset);
 
 const detailValueStyle = css({
 	margin: '0',

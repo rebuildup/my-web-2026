@@ -1,4 +1,9 @@
 import { css } from '../../../../styled-system/css';
+import {
+	noteSansXs,
+	spaceNoneTo6,
+	vStackGap1Min,
+} from '../../../editorial/primitives/shared-styles';
 import { spacingTokens } from '../../../editorial/tokens';
 
 /**
@@ -74,19 +79,12 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 				// `minmax(7.5rem, auto)` let a wide role sentence widen its own
 				// row, which is what made the left edges ragged (Issue #804).
 				gridTemplateColumns: { base: '1fr', md: '10rem minmax(0, 1fr)' },
-				columnGap: { base: '0', md: '6' },
+				columnGap: spaceNoneTo6,
 				rowGap: { base: '1', md: '0' },
 				alignItems: 'center',
 			})}
 		>
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-					minWidth: '0',
-				})}
-			>
+			<div className={css(vStackGap1Min)}>
 				<code
 					className={css({
 						fontFamily: 'mono',
@@ -99,15 +97,7 @@ function SpacingRow({ step }: { step: SpacingEntry }) {
 				>
 					spacing.{step.label} · {pxValue}
 				</code>
-				<span
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'xs',
-						color: 'text.muted',
-					})}
-				>
-					{step.role}
-				</span>
+				<span className={css(noteSansXs)}>{step.role}</span>
 			</div>
 			<div
 				aria-hidden="true"

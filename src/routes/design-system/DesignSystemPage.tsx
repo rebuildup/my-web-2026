@@ -1,6 +1,8 @@
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { eyebrowMonoSm, focusRing, pageTitle } from '../../editorial/primitives/shared-styles';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
 import { ImageCls } from './sections/ImageCls';
@@ -10,6 +12,7 @@ import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
 import { TableCode } from './sections/TableCode';
+import { ToneMatrix } from './sections/ToneMatrix';
 import { Typography } from './sections/Typography';
 import type { DesignSystemTokenData } from './tokens';
 
@@ -33,6 +36,10 @@ import type { DesignSystemTokenData } from './tokens';
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
+ *   - — Tone matrix         Issue #1110: the full 8-tone × 7-variant
+ *                            `PageSection`/`Panel` surface contract as
+ *                            real bands, measured by
+ *                            `e2e/design-system-tones.spec.ts`.
  *   - 05 Interactive states default / hover / focus / pressed on `<a>` + `<button>`.
  *                            It also carries the Issue #394 keyboard
  *                            fixture: the shipped reaction picker
@@ -86,6 +93,7 @@ export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenDa
 				<TypographySection />
 				<SpacingSection />
 				<SurfaceSection />
+				<ToneMatrix />
 				<InteractiveSection />
 				<StatusSection />
 				<ImageSection />
@@ -96,257 +104,196 @@ export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenDa
 	);
 }
 
-const sectionStyle = css({
-	// Issue #300: canonical body-section beat (layout-system.md §3.3).
-	// Was {12, 16} — a rhythm only /design-system used.
-	paddingBlock: { base: '16', lg: '24' },
-	borderTop: '1px solid {colors.border.subtle}',
-});
-
 function Hero() {
 	return (
-		<section
-			aria-labelledby="design-system-hero-title"
-			className={css({
-				paddingBlock: { base: '16', lg: '32' },
-			})}
-		>
-			<Container>
-				<div
+		<PageSection rhythm="hero" labelledBy="design-system-hero-title">
+			<Split rowGap="10" className={css({ alignItems: 'start' })}>
+				<aside
+					aria-hidden="true"
 					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-						columnGap: { base: '0', lg: '10' },
-						rowGap: { base: '10', lg: '0' },
-						alignItems: 'start',
+						display: { base: 'none', lg: 'flex' },
+						flexDirection: 'column',
+						gap: '1',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+						lineHeight: '1.6',
 					})}
 				>
-					<aside
-						aria-hidden="true"
+					<span lang="en">design system</span>
+					<span lang="en">samuido · editorial</span>
+					<span lang="en">color → typography → spacing → surface → states → status</span>
+				</aside>
+				<div
+					className={css({
+						display: 'flex',
+						flexDirection: 'column',
+						minWidth: '0',
+					})}
+				>
+					<span className={css(eyebrowMonoSm)}>/design-system · editorial showcase</span>
+					<h1 id="design-system-hero-title" className={css(pageTitle)}>
+						Design System
+					</h1>
+					<p
 						className={css({
-							display: { base: 'none', lg: 'flex' },
-							flexDirection: 'column',
-							gap: '1',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
+							margin: '0',
+							marginBlockStart: '4',
+							fontFamily: 'sans',
+							fontSize: 'lg',
 							lineHeight: '1.6',
+							color: 'text.default',
 						})}
 					>
-						<span lang="en">design system</span>
-						<span lang="en">samuido · editorial</span>
-						<span lang="en">color → typography → spacing → surface → states → status</span>
-					</aside>
-					<div
+						src/editorial/ の semantic token / primitive を type 層から読み直せる showcase。
+					</p>
+					<p
 						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							minWidth: '0',
+							margin: '0',
+							marginBlockStart: '4',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							lineHeight: '1.6',
+							color: 'text.muted',
 						})}
 					>
-						<span
+						すべての color / typography / spacing は editorial visual language の contract
+						を通ってレンダリングされます。
+						<a
+							href="https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md"
 							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
+								// Issue #887: `text.accent` is ink now, so the
+								// permanent underline is what marks this as a
+								// link; hover only fattens it.
+								color: 'text.accent',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								marginInlineStart: '1',
+								_hover: { textDecorationThickness: '2px' },
+								_focusVisible: focusRing,
 							})}
 						>
-							/design-system · editorial showcase
-						</span>
-						<h1
-							id="design-system-hero-title"
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								lineHeight: { base: '1.15', lg: '1.05' },
-								color: 'text.default',
-								letterSpacing: '-0.03em',
-							})}
-						>
-							Design System
-						</h1>
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								fontFamily: 'sans',
-								fontSize: 'lg',
-								lineHeight: '1.6',
-								color: 'text.default',
-							})}
-						>
-							src/editorial/ の semantic token / primitive を type 層から読み直せる showcase。
-						</p>
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-								color: 'text.muted',
-							})}
-						>
-							すべての color / typography / spacing は editorial visual language の contract
-							を通ってレンダリングされます。
-							<a
-								href="https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md"
-								className={css({
-									// Issue #887: `text.accent` is ink now, so the
-									// permanent underline is what marks this as a
-									// link; hover only fattens it.
-									color: 'text.accent',
-									textDecoration: 'underline',
-									textUnderlineOffset: '0.18em',
-									textDecorationThickness: '1px',
-									marginInlineStart: '1',
-									_hover: { textDecorationThickness: '2px' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								colors.md
-							</a>{' '}
-							が正本、 このページは視覚的な検証用 mirror。
-						</p>
-					</div>
+							colors.md
+						</a>{' '}
+						が正本、 このページは視覚的な検証用 mirror。
+					</p>
 				</div>
-			</Container>
-		</section>
+			</Split>
+		</PageSection>
 	);
 }
 
 function ColorSection({ tokenData }: { tokenData: DesignSystemTokenData }) {
 	return (
-		<section aria-labelledby="design-system-color" className={sectionStyle} data-colour-section>
-			<Container>
-				<SectionHeading
-					id="design-system-color"
-					eyebrow="01 — Color"
-					title="色 / Colour as surface"
-					description="色はモノクロの地の上にだけ載ります。分類は語・形・位置が担い、色面の文字は色ではなく地の墨（mono.ink）です。状態は分類色を借り、操作は墨です。"
-					variant="spread"
-				>
-					<ColorSwatches tokenData={tokenData} />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-color" separator>
+			<SectionHeading
+				id="design-system-color"
+				eyebrow="01 — Color"
+				title="色 / Colour as surface"
+				description="色はモノクロの地の上にだけ載ります。分類は語・形・位置が担い、色面の文字は色ではなく地の墨（mono.ink）です。状態は分類色を借り、操作は墨です。"
+				variant="spread"
+			>
+				<ColorSwatches tokenData={tokenData} />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function TypographySection() {
 	return (
-		<section aria-labelledby="design-system-typography" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-typography"
-					eyebrow="02 — Typography"
-					title="組版 / Type scale"
-					description="heading (Zen Kaku Gothic New) / body (Noto Sans JP) / mono (JetBrains Mono) を text.xs〜text.2xl の scale で並べます。"
-					variant="spread"
-				>
-					<Typography />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-typography" separator>
+			<SectionHeading
+				id="design-system-typography"
+				eyebrow="02 — Typography"
+				title="組版 / Type scale"
+				description="heading (Zen Kaku Gothic New) / body (Noto Sans JP) / mono (JetBrains Mono) を text.xs〜text.2xl の scale で並べます。"
+				variant="spread"
+			>
+				<Typography />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function SpacingSection() {
 	return (
-		<section aria-labelledby="design-system-spacing" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-spacing"
-					eyebrow="03 — Spacing"
-					title="余白 / Whitespace scale"
-					description="editorial の余白は ≈1.618x で段階を刻みます。 左端は固定のラベル列で揃え、バーは塗りの幅だけで示します。"
-					variant="spread"
-				>
-					<SpacingRuler />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-spacing" separator>
+			<SectionHeading
+				id="design-system-spacing"
+				eyebrow="03 — Spacing"
+				title="余白 / Whitespace scale"
+				description="editorial の余白は ≈1.618x で段階を刻みます。 左端は固定のラベル列で揃え、バーは塗りの幅だけで示します。"
+				variant="spread"
+			>
+				<SpacingRuler />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function SurfaceSection() {
 	return (
-		<section aria-labelledby="design-system-surface" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-surface"
-					eyebrow="04 — Surface"
-					title="面 / Surface treatments"
-					description="bg.canvas / bg.surface / accent.surface の三段を、border ではなく塗りの差だけで区別して示します。"
-					variant="spread"
-				>
-					<SurfaceTreatments />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-surface" separator>
+			<SectionHeading
+				id="design-system-surface"
+				eyebrow="04 — Surface"
+				title="面 / Surface treatments"
+				description="bg.canvas / bg.surface / accent.surface の三段を、border ではなく塗りの差だけで区別して示します。"
+				variant="spread"
+			>
+				<SurfaceTreatments />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function InteractiveSection() {
 	return (
-		<section aria-labelledby="design-system-states" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-states"
-					eyebrow="05 — Interactive"
-					title="状態 / Default · Hover · Focus · Pressed"
-					description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。secondary は border を持たず、塗りと反転で示します。"
-					variant="spread"
-				>
-					<InteractiveStates />
-					<ReactionPicker />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-states" separator>
+			<SectionHeading
+				id="design-system-states"
+				eyebrow="05 — Interactive"
+				title="状態 / Default · Hover · Focus · Pressed"
+				description="primary / secondary / link / button の四系統で、 default / hover / pressed / focus の状態差を semantic token だけで読みます。secondary は border を持たず、塗りと反転で示します。"
+				variant="spread"
+			>
+				<InteractiveStates />
+				<ReactionPicker />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function StatusSection() {
 	return (
-		<section aria-labelledby="design-system-status" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-status"
-					eyebrow="06 — Status"
-					title="識別子 / Status & category marks"
-					description="状態は形（StateMark）と語で示し、色では示しません。状態を示す色トークンはなく、印は見出しの墨（text.default）を継承します（Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
-					variant="spread"
-				>
-					<StatusAccents />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-status" separator>
+			<SectionHeading
+				id="design-system-status"
+				eyebrow="06 — Status"
+				title="識別子 / Status & category marks"
+				description="状態は形（StateMark）と語で示し、色では示しません。状態を示す色トークンはなく、印は見出しの墨（text.default）を継承します（Issue #887）。分類は design / code / writing / tool の 4 形と語で示し、色は 8px の印だけに載せます。"
+				variant="spread"
+			>
+				<StatusAccents />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function ImageSection() {
 	return (
-		<section aria-labelledby="design-system-image" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-image"
-					eyebrow="07 — Image"
-					title="画像 / CLS fixture"
-					description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.webp）。"
-					variant="spread"
-				>
-					<ImageCls />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-image" separator>
+			<SectionHeading
+				id="design-system-image"
+				eyebrow="07 — Image"
+				title="画像 / CLS fixture"
+				description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.webp）。"
+				variant="spread"
+			>
+				<ImageCls />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -361,36 +308,32 @@ function ImageSection() {
  */
 function CjkSection() {
 	return (
-		<section aria-labelledby="design-system-cjk" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-cjk"
-					eyebrow="08 — CJK line-break"
-					title="禁則処理 / Line breaking"
-					description="ja / zh-Hans / zh-Hant / ko の見出しと本文を 3 段階の opt-in（出荷状態 → lang のみ → lang + CJK タイポグラフィ）で並べます。表示用の検証文言であり、公開コピーの推敲ではありません。幅を狭くして禁則と折り返しの実挙動を確認してください。"
-					variant="spread"
-				>
-					<CjkLineBreak />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-cjk" separator>
+			<SectionHeading
+				id="design-system-cjk"
+				eyebrow="08 — CJK line-break"
+				title="禁則処理 / Line breaking"
+				description="ja / zh-Hans / zh-Hant / ko の見出しと本文を 3 段階の opt-in（出荷状態 → lang のみ → lang + CJK タイポグラフィ）で並べます。表示用の検証文言であり、公開コピーの推敲ではありません。幅を狭くして禁則と折り返しの実挙動を確認してください。"
+				variant="spread"
+			>
+				<CjkLineBreak />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
 function TableCodeSection() {
 	return (
-		<section aria-labelledby="design-system-table-code" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="design-system-table-code"
-					eyebrow="09 — table & code"
-					title="表とコードブロックの読みやすさ"
-					description="Issue #407 の fixture です。caption と scope 付きヘッダーセルで表構造を伝え、横スクロールはコンポーネント内部に閉じ込め、スクロール領域はキーボードから到達できます。正常 / 空 / 失敗 / 縮小表示の 4 状態をそのまま再現します。"
-					variant="spread"
-				>
-					<TableCode />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="design-system-table-code" separator>
+			<SectionHeading
+				id="design-system-table-code"
+				eyebrow="09 — table & code"
+				title="表とコードブロックの読みやすさ"
+				description="Issue #407 の fixture です。caption と scope 付きヘッダーセルで表構造を伝え、横スクロールはコンポーネント内部に閉じ込め、スクロール領域はキーボードから到達できます。正常 / 空 / 失敗 / 縮小表示の 4 状態をそのまま再現します。"
+				variant="spread"
+			>
+				<TableCode />
+			</SectionHeading>
+		</PageSection>
 	);
 }

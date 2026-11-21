@@ -66,9 +66,39 @@
 	"/": {
 		"ogType": "website",
 		"ogTitle": "my-web-2026 — rebuildup.dev",
-		"ogDescription": "開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。",
+		"ogDescription": "木村友亮 / samuido — ソフトウェアを作りながら、映像やデザインも作る developer / creator。After Effects 向けツールや Web アプリ、映像・デザインの制作物を公開しています。",
 		"ogUrl": "https://rebuildup.dev/",
 		"twitterCard": "summary"
+	},
+	"/links": {
+		"ogType": "website",
+		"ogTitle": "リンク集 / Links — rebuildup.dev",
+		"ogDescription": "公開している外部アカウントとサイト内ページの一覧。連絡先は /contact の verified channel を参照。",
+		"ogUrl": "https://rebuildup.dev/links"
+	},
+	"/now": {
+		"ogDescription": "続けているプロジェクトの全件一覧。開始日・最終更新・活動量を出所付きで掲載しています。",
+		"ogTitle": "現在地 / Where I am now — rebuildup.dev",
+		"ogType": "website",
+		"ogUrl": "https://rebuildup.dev/now"
+	},
+	"/commission": {
+		"ogType": "website",
+		"ogTitle": "制作依頼 / Commission — rebuildup.dev",
+		"ogDescription": "Web 開発・アプリケーション開発・映像制作の依頼案内。受付状況と依頼時に必要な情報を掲載しています。",
+		"ogUrl": "https://rebuildup.dev/commission"
+	},
+	"/stack": {
+		"ogType": "website",
+		"ogTitle": "開発スタック / Stack — rebuildup.dev",
+		"ogDescription": "my-web-2026 を動かしている runtime・framework・データ層・開発ツールの一覧。version は package.json と profile.yaml から読み取り、各項目に根拠 source へのリンクを付けています。",
+		"ogUrl": "https://rebuildup.dev/stack"
+	},
+	"/activity": {
+		"ogType": "website",
+		"ogTitle": "活動タイムライン / Activity — rebuildup.dev",
+		"ogDescription": "GitHub のリリース、公開記事、Portfolio の公開作品を一つの時系列で読むページ。各項目はソースが記録した日付と出典を併記し、ソースごとの観測状態を表示します。",
+		"ogUrl": "https://rebuildup.dev/activity"
 	},
 	"/contact": {
 		"ogType": "website",

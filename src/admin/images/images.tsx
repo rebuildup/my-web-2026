@@ -5,6 +5,19 @@ import { ErrorSummary, FileField } from '../../editorial/forms';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import {
+	buttonGhost,
+	eyebrowMonoSm,
+	listStackGap3,
+	noteMonoSm,
+	noteSansMdPlain,
+	rowGap3,
+	spaceCompact,
+	spaceSection,
+	vStackGap3Plain,
+	vStackGap4,
+	vStackGap10,
+} from '../../editorial/primitives/shared-styles';
 import { createAuditLogger } from '../../logging/logger';
 import { deleteReactionImage, uploadReactionImage } from './load';
 import type { AdminImage } from './load';
@@ -60,7 +73,7 @@ export function ImagesView({ images }: ImagesViewProps) {
 	return (
 		<section
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -70,55 +83,15 @@ export function ImagesView({ images }: ImagesViewProps) {
 					description="PNG / JPEG / WebP / GIF、256 KiB 以下。リアクションで参照されている画像は削除不可。"
 					variant="spread"
 				>
-					<div
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-						})}
-					>
+					<div className={css(vStackGap10)}>
 						<UploadForm />
 
-						<div
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4',
-							})}
-						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Library
-							</span>
+						<div className={css(vStackGap4)}>
+							<span className={css(eyebrowMonoSm)}>Library</span>
 							{images.length === 0 ? (
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										color: 'text.muted',
-									})}
-								>
-									まだ画像はありません。
-								</p>
+								<p className={css(noteSansMdPlain)}>まだ画像はありません。</p>
 							) : (
-								<ul
-									className={css({
-										margin: '0',
-										padding: '0',
-										listStyle: 'none',
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '3',
-									})}
-								>
+								<ul className={css(listStackGap3)}>
 									{images.map((img) => (
 										<ImageRow key={img.id} image={img} />
 									))}
@@ -188,10 +161,7 @@ function UploadForm() {
 	};
 
 	return (
-		<form
-			onSubmit={onSubmit}
-			className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
-		>
+		<form onSubmit={onSubmit} className={css(vStackGap3Plain)}>
 			{/* One live region per form: the summary announces the refusal
 			    and links to the control, so the per-field sentence is not a
 			    second announcement of the same fact. */}
@@ -257,7 +227,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 				display: 'grid',
 				gridTemplateColumns: { base: '1fr', md: 'auto minmax(0, 3fr) minmax(0, 4fr) auto' },
 				alignItems: 'center',
-				gap: { base: '2', md: '6' },
+				gap: spaceCompact,
 				paddingBlock: '4',
 				borderBlockStart: '1px solid {colors.border.subtle}',
 			})}
@@ -282,13 +252,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 					border: '1px solid {colors.border.subtle}',
 				})}
 			/>
-			<span
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-				})}
-			>
+			<span className={css(noteMonoSm)}>
 				{image.contentType} · {Math.round(image.size / 1024)} KiB
 			</span>
 			<span
@@ -301,7 +265,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 			>
 				{image.id}
 			</span>
-			<div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+			<div className={css(rowGap3)}>
 				{image.referenced ? <Badge tone="neutral">referenced</Badge> : null}
 				<button
 					type="button"
@@ -319,20 +283,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 							setBusy(false);
 						}
 					}}
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'xs',
-						fontWeight: '600',
-						color: 'text.muted',
-						background: 'transparent',
-						border: '1px solid {colors.border.subtle}',
-						borderRadius: 'full',
-						paddingInline: '3',
-						paddingBlock: '1',
-						cursor: 'pointer',
-						_hover: { color: 'text.default' },
-						_disabled: { opacity: '0.5' },
-					})}
+					className={css(buttonGhost)}
 				>
 					{busy ? '…' : 'delete'}
 				</button>

@@ -1,5 +1,7 @@
 import { type ReactEventHandler, useState } from 'react';
 import { css, cx } from '../../../styled-system/css';
+import { Stack } from '../../editorial/primitives/Flow';
+import { eyebrowMonoXsLoose } from '../../editorial/primitives/shared-styles';
 import type { PortfolioMedia as PortfolioMediaData } from '../schema';
 
 /**
@@ -146,7 +148,7 @@ export function PortfolioMediaFigure({
 	}
 
 	return (
-		<figure className={cx(figureStyle, className)}>
+		<Stack as="figure" gap="2" className={cx(css({ margin: '0' }), className)}>
 			<img
 				src={media.url}
 				alt={media.alt}
@@ -159,7 +161,7 @@ export function PortfolioMediaFigure({
 				style={aspectRatio ? { aspectRatio } : undefined}
 			/>
 			{media.caption ? <figcaption className={captionStyle}>{media.caption}</figcaption> : null}
-		</figure>
+		</Stack>
 	);
 }
 
@@ -174,20 +176,7 @@ const mediaFrameStyle = css({
 	borderRadius: '6px',
 });
 
-const mediaFrameLabel = css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
-
-const figureStyle = css({
-	margin: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
+const mediaFrameLabel = css(eyebrowMonoXsLoose);
 
 const imageStyle = css({
 	width: '100%',

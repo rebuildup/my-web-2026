@@ -177,19 +177,6 @@ export function AdToolRect() {
 	);
 }
 
-/** Portfolio variant so the display rect does not repeat the video spot's destination. */
-export function AdPortfolioRect({ project }: { readonly project: HomeAdProject }) {
-	return (
-		<AdRect
-			imageSrc={project.coverUrl}
-			imageAlt={project.coverAlt}
-			headline={project.title}
-			ctaLabel="作品を見る"
-			href={projectHref(project.slug)}
-		/>
-	);
-}
-
 // ---------------------------------------------------------------------------
 // App-install ad — store-listing anatomy, selling a Tool
 // ---------------------------------------------------------------------------
@@ -253,21 +240,6 @@ export function AdToolNative() {
 			description="ローカルファースト。文書は外へ出ません。"
 			domain="rebuildup.dev"
 			href="/tools/readmark"
-		/>
-	);
-}
-
-/** Second native unit so the rail stack fills the page height. */
-export function AdToolNativeCounter() {
-	return (
-		<AdNative
-			motion="none"
-			imageSrc={preview('text-counter')}
-			imageAlt="Text Counter の画面。入力テキストと文字数の計測結果。"
-			headline="テキストの文字数、秒で数えられます。"
-			description="文字数・バイト数・行数をブラウザだけで計測。"
-			domain="rebuildup.dev"
-			href="/tools/text-counter"
 		/>
 	);
 }

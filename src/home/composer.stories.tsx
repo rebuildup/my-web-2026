@@ -44,32 +44,6 @@ const degradedStatuses: HomePageData['statuses'] = [
 export const AllReachable: Story = {
 	args: {
 		data: {
-			capabilities: [
-				{
-					id: 'portfolio',
-					label: 'Portfolio',
-					labelJa: 'ポートフォリオ',
-					summary: 'Selected projects with short write-ups and source links.',
-					summaryJa: '主要な作品と、その解説・ソースへのリンク。',
-					status: 'planned',
-				},
-				{
-					id: 'content',
-					label: 'Content',
-					labelJa: 'コンテンツ',
-					summary: 'Long-form notes and posts, surfaced via RSS and JSON feed.',
-					summaryJa: '長めのノートや記事。RSS と JSON フィードで配信。',
-					status: 'planned',
-				},
-				{
-					id: 'activity',
-					label: 'Activity',
-					labelJa: 'アクティビティ',
-					summary: 'Recent commits, releases, and shipped work in one timeline.',
-					summaryJa: '最近のコミット・リリース・出荷した仕事を 1 本のタイムラインに。',
-					status: 'planned',
-				},
-			],
 			services: [
 				{
 					id: 'external-boundary',
@@ -139,6 +113,17 @@ export const AllReachable: Story = {
 						repoId: 'my-web-2026',
 						type: 'PushEvent',
 						at: '2026-09-17T14:30:00.000Z',
+						href: 'https://github.com/rebuildup/my-web-2026',
+					},
+				],
+				topRepos: [
+					{
+						id: 'rebuildup/example-repo',
+						name: 'example-repo',
+						href: 'https://github.com/rebuildup/example-repo',
+						commits: 128,
+						pullRequests: 14,
+						windowDays: 30,
 					},
 				],
 				repoCount: { public: 3, private: 1 },

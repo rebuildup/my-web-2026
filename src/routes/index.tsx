@@ -3,7 +3,6 @@ import type { HomeAdProject } from '../home/ads/placements';
 import { getPrivacyNoticeData } from '../home/privacy/load';
 import { getDiscordPresence } from '../home/public';
 import {
-	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
 	HomePage,
 	KNOWN_INCIDENTS,
@@ -83,7 +82,6 @@ export const Route = createFileRoute('/')({
 			getPrivacyNoticeData(),
 		]);
 		return {
-			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,
 			statuses,
 			observedAt,
@@ -125,11 +123,11 @@ export const Route = createFileRoute('/')({
 	 * public-route head gate (`test/integration/seo-head.test.ts`)
 	 * now fails on that, which is the point of the gate.
 	 *
-	 * The description restates the page's 現在地 statement rather
-	 * than inventing copy: `src/home/hero.tsx` and the Issue #925 ad
-	 * units say the same thing on the page, and the migration state
-	 * ("段階的に移行中") is the honest state, not a claim the site
-	 * cannot back.
+	 * The description restates the page's hero self-introduction
+	 * rather than inventing copy: `src/home/hero.tsx` says the same
+	 * thing on the page, and every claim in it is grounded in
+	 * `docs/personal/domain.md` §8–§9 and the published portfolio
+	 * (`src/portfolio/seed.ts`).
 	 *
 	 * Canonical is the origin WITH its trailing slash — `/` is the
 	 * home document and the gate derives the expected value from the
@@ -143,7 +141,7 @@ export const Route = createFileRoute('/')({
 	head: () => {
 		const title = 'my-web-2026 — rebuildup.dev';
 		const description =
-			'開発・制作・活動をまとめる Personal Web Platform。Portfolio / about は公開済みで、content / activity を段階的に移行中です。';
+			'木村友亮 / samuido — ソフトウェアを作りながら、映像やデザインも作る developer / creator。After Effects 向けツールや Web アプリ、映像・デザインの制作物を公開しています。';
 		const url = 'https://rebuildup.dev/';
 		return {
 			meta: [

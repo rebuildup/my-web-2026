@@ -114,6 +114,30 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		note: 'Keyboard — the read-only layout reference (Issue #620).',
 	},
 	{
+		path: '/links',
+		title: 'リンク集 / Links — rebuildup.dev',
+		expect: 'pass',
+		note: 'Links — the verified external-link inventory (Issue #390).',
+	},
+	{
+		path: '/commission',
+		title: '制作依頼 / Commission — rebuildup.dev',
+		expect: 'pass',
+		note: 'Commission — the parked intake-status surface (Issue #390).',
+	},
+	{
+		path: '/stack',
+		title: '開発スタック / Stack — rebuildup.dev',
+		expect: 'pass',
+		note: 'Stack — the development-stack reference (Issue #381).',
+	},
+	{
+		path: '/activity',
+		title: '活動タイムライン / Activity — rebuildup.dev',
+		expect: 'pass',
+		note: 'Activity — the unified activity timeline (Issue #352).',
+	},
+	{
 		path: '/contact',
 		title: 'Contact — rebuildup.dev',
 		expect: 'pass',
@@ -136,6 +160,12 @@ export const AUDITED_ROUTES: readonly AuditedRoute[] = [
 		title: 'dotfiles — rebuildup.dev',
 		expect: 'pass',
 		note: 'Project introduction — the committed snapshot surface (Issue #621).',
+	},
+	{
+		path: '/now',
+		title: '現在地 / Where I am now — rebuildup.dev',
+		expect: 'pass',
+		note: 'Now — the full current-project enumeration reached from the home see-all link (Issue #1108).',
 	},
 	{
 		path: '/tools',

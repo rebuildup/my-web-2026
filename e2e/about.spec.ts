@@ -42,16 +42,19 @@ test.describe('about — /about page', () => {
 		expect(body).toContain('samuido');
 	});
 
-	test('renders the five narrative sections in editorial order', async ({ page }) => {
+	test('renders the seven narrative sections in editorial order', async ({ page }) => {
 		await page.goto('/about');
-		// All five sections anchored by aria-labelledby, in order.
+		// All seven sections anchored by aria-labelledby, in order
+		// (skills #391 and career #389 joined the original five).
 		const sections = page.locator('section[aria-labelledby^="about-section-"]');
-		await expect(sections).toHaveCount(5);
+		await expect(sections).toHaveCount(7);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'about-section-identity');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'about-section-interests');
-		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'about-section-experience');
-		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'about-section-current');
-		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'about-section-future');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'about-section-skills');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'about-section-experience');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'about-section-career');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'about-section-current');
+		await expect(sections.nth(6)).toHaveAttribute('aria-labelledby', 'about-section-future');
 	});
 
 	test('experience subset renders at least one portfolio card', async ({ page }) => {

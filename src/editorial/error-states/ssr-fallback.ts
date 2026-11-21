@@ -208,11 +208,11 @@ export function renderSsrFailureDocument(options: SsrFailureDocumentOptions = {}
  */
 body { margin: 0; background: #edede8; color: #101012; font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 720px; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
-.eyebrow { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #5f5f68; }
+.eyebrow { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: #54555e; }
 h1 { margin: 0.5rem 0 0; font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.15; letter-spacing: -0.025em; }
-.description { margin: 1rem 0 0; line-height: 1.6; color: #5f5f68; }
+.description { margin: 1rem 0 0; line-height: 1.6; color: #54555e; }
 .meta { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #c9c9c2; }
-.status-line { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.875rem; color: #5f5f68; }
+.status-line { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.875rem; color: #54555e; }
 .status { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #101012; }
 /* The status hue is gone (Issue #887): severity is carried by the
    silhouette beside the label, by the words, and by strong ink. The
@@ -225,8 +225,8 @@ a:hover { border-color: #74747d; text-decoration: underline; text-underline-offs
 a:focus-visible { outline: 2px solid #101012; outline-offset: 2px; }
 .alternatives a { font-weight: 400; text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 .alternatives a:hover { text-decoration-thickness: 2px; }
-h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: #5f5f68; }
-.note { margin: 1.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: #5f5f68; }
+h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: #54555e; }
+.note { margin: 1.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: #54555e; }
 @media (prefers-color-scheme: dark) {
   body { background: #0a0a0c; color: #f2f2ef; }
   .description, .status-line { color: #8d8d96; }

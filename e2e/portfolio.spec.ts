@@ -119,11 +119,9 @@ test.describe('portfolio — list (/portfolio)', () => {
 		await expect(cards.first()).toBeVisible();
 	});
 
-	test('Home capabilities grid CTA navigates to /portfolio', async ({ page }) => {
+	test('Home explore card CTA navigates to /portfolio', async ({ page }) => {
 		await page.goto('/');
-		const cta = page.locator(
-			'section[aria-labelledby="capabilities-heading"] a[href="/portfolio"]',
-		);
+		const cta = page.locator('section[aria-labelledby="site-guide-heading"] a[href="/portfolio"]');
 		await expect(cta).toBeVisible();
 		await cta.first().click();
 		await expect(page).toHaveURL(/\/portfolio$/);

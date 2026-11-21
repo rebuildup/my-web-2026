@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { mapDocuments, toContractMedia } from '../../scripts/_notion-mapper.mjs';
+import {
+	SLUG_REGEX as MAPPER_SLUG_REGEX,
+	mapDocuments,
+	toContractMedia,
+} from '../../scripts/_notion-mapper.mjs';
 import fixture from '../../scripts/fixtures/notion-portfolio/portfolio.json';
 import { NOTION_SNAPSHOT_SCHEMA, parseSnapshot } from '../../src/portfolio/notion/contract';
 import { publicProjects } from '../../src/portfolio/notion/publish';
+import { SLUG_REGEX } from '../../src/portfolio/schema';
 
 /**
  * Parity between the offline mapper and the runtime contract (Issue #765).
@@ -94,6 +99,27 @@ describe('Notion fixture → runtime contract', () => {
 		// The third fixture page is a draft with unlisted visibility; it must
 		// not reach a public surface even though its slug is well-formed.
 		expect(published).not.toContain('sample-work-in-progress');
+	});
+});
+
+describe('slug grammar mirror (Issue #998)', () => {
+	// `scripts/_notion-mapper.mjs` cannot import the TypeScript owner
+	// module, so it restates `SLUG_REGEX` by hand. This is the pin that
+	// keeps the restatement honest: the ingest validator and the reader
+	// contract must accept and refuse exactly the same slugs.
+	it('uses the same pattern source and flags as the owner grammar', () => {
+		expect(MAPPER_SLUG_REGEX.source).toBe(SLUG_REGEX.source);
+		expect(MAPPER_SLUG_REGEX.flags).toBe(SLUG_REGEX.flags);
+	});
+
+	it('agrees on boundary slugs', () => {
+		for (const slug of ['a', 'a-b-c', '0-9-x', 'a'.repeat(128)]) {
+			expect(MAPPER_SLUG_REGEX.test(slug)).toBe(SLUG_REGEX.test(slug));
+		}
+		for (const slug of ['', '-lead', 'UPPER', 'has_underscore', 'a'.repeat(129), '日本語']) {
+			expect(MAPPER_SLUG_REGEX.test(slug)).toBe(SLUG_REGEX.test(slug));
+			expect(SLUG_REGEX.test(slug)).toBe(false);
+		}
 	});
 });
 

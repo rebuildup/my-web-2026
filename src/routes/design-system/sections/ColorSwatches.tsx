@@ -1,5 +1,13 @@
 import { css, cx } from '../../../../styled-system/css';
 import { StateMark } from '../../../editorial/primitives/StateMark';
+import {
+	cols1to2,
+	labelAction,
+	monoXsPlain,
+	noteMonoXs,
+	spaceNoneTo6,
+	vStackGap1Min,
+} from '../../../editorial/primitives/shared-styles';
 import type { DesignSystemMonoRole, DesignSystemTokenData } from '../tokens';
 
 /**
@@ -187,7 +195,7 @@ const monoLabelClassName = css({
 	textTransform: 'uppercase',
 });
 
-const monoCodeClassName = css({ fontFamily: 'mono', fontSize: 'xs' });
+const monoCodeClassName = css(monoXsPlain);
 
 const subSectionClassName = css({
 	display: 'flex',
@@ -286,7 +294,7 @@ export function ColorSwatches({ tokenData }: { tokenData: DesignSystemTokenData 
 						listResetClassName,
 						css({
 							display: 'grid',
-							gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+							gridTemplateColumns: cols1to2,
 							gap: '6',
 						}),
 					)}
@@ -458,17 +466,7 @@ export function ColorSwatches({ tokenData }: { tokenData: DesignSystemTokenData 
 									className={css({ marginBlockEnd: '3' })}
 									style={{ backgroundColor: family?.fieldHex, height: '2px' }}
 								/>
-								<span
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '2',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										fontWeight: '600',
-										color: 'text.default',
-									})}
-								>
+								<span className={css(labelAction)}>
 									<StateMark kind={specimen.mark} size="sm" />
 									{specimen.label}
 								</span>
@@ -609,7 +607,7 @@ function FamilyBand({
 			className={css({
 				display: 'grid',
 				gridTemplateColumns: { base: '1fr', md: 'minmax(0, 5fr) minmax(0, 7fr)' },
-				columnGap: { base: '0', md: '6' },
+				columnGap: spaceNoneTo6,
 				rowGap: '3',
 				alignItems: 'center',
 				paddingBlock: { base: '6', md: '7' },
@@ -619,14 +617,7 @@ function FamilyBand({
 		>
 			{/* Channel 3 (position) + channel 1 (word) + the semantic
 			    path. The word is the identifier; the colour is fourth. */}
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-					minWidth: '0',
-				})}
-			>
+			<div className={css(vStackGap1Min)}>
 				<span className={monoLabelClassName}>{ordinalLabel} · CONTENT CLASSIFICATION</span>
 				<span
 					className={css({
@@ -755,9 +746,7 @@ function MonoRolePair({
 				<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.default' })}>
 					{role.label}
 				</span>
-				<code className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'text.muted' })}>
-					{role.path}
-				</code>
+				<code className={css(noteMonoXs)}>{role.path}</code>
 			</span>
 			<div
 				className={css({
@@ -856,7 +845,7 @@ function MonoSwatch({
 					className={css({ display: 'block', width: 'full', height: '1' })}
 					style={{ backgroundColor: hex }}
 				/>
-				<span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>罫線</span>
+				<span className={css(monoXsPlain)}>罫線</span>
 			</div>
 		);
 	}

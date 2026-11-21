@@ -1,0 +1,11 @@
+[mcp_servers.notionApi]
+command = "infisical"
+args = [
+    "run",
+    "--log-destination",
+    "stderr",
+    "--env=dev",
+    "--path=/",
+    "--",
+    "./node_modules/.bin/notion-mcp-server",
+]

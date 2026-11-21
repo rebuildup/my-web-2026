@@ -216,6 +216,36 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 			'Public keyboard reference, linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed source snapshot is synchronised.',
 	},
 	{
+		route: '/links',
+		kind: 'route',
+		reason:
+			'Public verified external-link inventory (Issue #390), linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed link inventory is re-verified.',
+	},
+	{
+		route: '/commission',
+		kind: 'route',
+		reason:
+			'Public commission-intake status page (Issue #390), linked from /about, /contact and /links. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and while intake is parked the page is a status notice rather than a discovery surface.',
+	},
+	{
+		route: '/stack',
+		kind: 'route',
+		reason:
+			'Public development-stack reference (Issue #381), linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed stack inventory or the declared toolchain changes.',
+	},
+	{
+		route: '/now',
+		kind: 'route',
+		reason:
+			'Public full enumeration of the current-project records (Issue #1108), reached from the see-all link in the home 現在地 section. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content is a read model over the same committed snapshot the home section projects.',
+	},
+	{
+		route: '/activity',
+		kind: 'route',
+		reason:
+			'Public unified activity timeline (Issue #352), linked from the home site guide. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its entries are a read model over sources each of which already has its own canonical surface.',
+	},
+	{
 		route: '/projects/dotfiles',
 		kind: 'route',
 		reason:

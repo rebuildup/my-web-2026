@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadAbout } from './load';
 import { ABOUT_DATA } from './data';
+import { loadAbout } from './load';
 
 /**
  * About loader integration tests (Issue #102).
@@ -256,16 +256,18 @@ describe('about — loader DI seam (workerd pool, D1 binding)', () => {
 	});
 
 	it('falls back to ABOUT_DATA when no override is passed', async () => {
-		await seedOne('aulymo');
-		await seedOne('multi-slicer');
-		await seedOne('my-web-2026');
+		await seedOne('my-web-2025');
+		await seedOne('multislicer');
+		await seedOne('aulymo-v03');
+		await seedOne('reel-2025');
 		const data = await loadAbout(env);
-		// ABOUT_DATA.experienceSlugs is curated; the test seeds all three
+		// ABOUT_DATA.experienceSlugs is curated; the test seeds all four
 		// so they all resolve.
 		const slugs = data.experience.map((p) => p.slug);
-		expect(slugs).toContain('aulymo');
-		expect(slugs).toContain('multi-slicer');
-		expect(slugs).toContain('my-web-2026');
+		expect(slugs).toContain('my-web-2025');
+		expect(slugs).toContain('multislicer');
+		expect(slugs).toContain('aulymo-v03');
+		expect(slugs).toContain('reel-2025');
 	});
 
 	it('empty experienceSlugs yields empty experience (no fabrication)', async () => {

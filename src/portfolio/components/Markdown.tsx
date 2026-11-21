@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { css } from '../../../styled-system/css';
+import { Stack } from '../../editorial/primitives/Flow';
+import { focusRing, linkAccent } from '../../editorial/primitives/shared-styles';
 import { CodeBlock } from '../../editorial/table-code';
 import {
 	BLOCKED_LINK_CLASS,
@@ -89,17 +91,7 @@ const BLOCKED_LINK_NOTE_STYLE = {
  * focus ring. This is the same recipe the platform's other accent
  * links use (`src/projects/RichText.tsx`).
  */
-const LINK_CLASS_NAME = css({
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_hover: { textDecorationThickness: '2px' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
+const LINK_CLASS_NAME = css(linkAccent);
 
 export function PortfolioMarkdown({
 	source,
@@ -108,11 +100,7 @@ export function PortfolioMarkdown({
 	if (!source || source.trim() === '') return null;
 	const blocks = parseMarkdown(source);
 	const ctx = { siteOrigin };
-	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
-			{blocks.map((block, idx) => renderBlock(block, ctx, `md-${idx}`))}
-		</div>
-	);
+	return <Stack gap="6">{blocks.map((block, idx) => renderBlock(block, ctx, `md-${idx}`))}</Stack>;
 }
 
 /**
@@ -282,7 +270,9 @@ function renderBlock(
 					key={key}
 					className={css({
 						border: 'none',
-						borderTop: '1px solid {colors.border.subtle}',
+						borderBlockStartWidth: '1px',
+						borderBlockStartColor: 'border.subtle',
+						borderBlockStartStyle: 'solid',
 						maxWidth: '640px',
 					})}
 				/>

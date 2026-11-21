@@ -191,6 +191,35 @@ const ROUTE_INTENT = [
 		reason: 'Public contact channels.',
 	},
 	{
+		paths: ['/links'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public verified external-link inventory (Issue #390). Indexable and linked from /about, ' +
+			'but not a public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
+		paths: ['/now'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public full enumeration of the current-project records (Issue #1108). Indexable and ' +
+			'reached from the home 現在地 section see-all link, but not a public-nav destination ' +
+			'and therefore not listed in the sitemap.',
+	},
+	{
+		paths: ['/commission'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public commission-intake status and request-content page (Issue #390). Indexable and ' +
+			'linked from /about, /contact and /links, but not a public-nav destination and therefore ' +
+			'not listed in the sitemap.',
+	},
+	{
 		paths: ['/projects/dotfiles'],
 		zone: 'public',
 		crawl: 'allow',
@@ -199,6 +228,24 @@ const ROUTE_INTENT = [
 			'Public project introduction generated from a committed README snapshot. It is not a nav ' +
 			'destination and is deliberately not advertised in the sitemap; crawlers discover it from ' +
 			'the GitHub repository and other external links, never from a generated inventory entry.',
+	},
+	{
+		paths: ['/stack'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public development-stack reference (Issue #381). Indexable and linked from /about, but ' +
+			'not a public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
+		paths: ['/activity'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public unified activity timeline (Issue #352). Indexable and linked from the home site ' +
+			'guide, but not a public-nav destination and therefore not listed in the sitemap.',
 	},
 	{
 		paths: ['/design-system'],

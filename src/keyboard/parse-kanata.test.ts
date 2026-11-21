@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { KanataParseError, parseExpressions, parseKanata, splitChord } from './parse-kanata';
 import macSource from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
 import winSource from './sources/key-map-kanata/win/kay-map-win.kbd?raw';
-import { KanataParseError, parseExpressions, parseKanata, splitChord } from './parse-kanata';
 import type { KeyboardAction } from './types';
 
 function findLayer(source: ReturnType<typeof parseKanata>, id: string) {

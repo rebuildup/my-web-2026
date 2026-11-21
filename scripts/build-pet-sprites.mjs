@@ -4,9 +4,10 @@
  *
  * What this produces
  * ------------------
- * Two committed WebP files under `public/pets/melty/`:
+ * Committed WebP files under `public/pets/melty/`:
  *
- *   idle-rest.webp  192 x 208   1 frame   the resting character
+ *   idle.webp       1152 x 208  6 frames  the resting loop (breathing /
+ *                                   blink; Issue #1044)
  *   waving.webp     768 x 208   4 frames  the greeting strip (8 columns
  *                                         worth of cells, only the 4 the
  *                                         v2 contract defines)
@@ -81,10 +82,10 @@ export const CELL_HEIGHT = 208;
  */
 export const SPRITES = [
 	{
-		file: 'idle-rest.webp',
+		file: 'idle.webp',
 		row: 0,
-		frames: 1,
-		description: 'idle の 0 フレーム目（静止）',
+		frames: 6,
+		description: 'idle の 6 フレーム横ストリップ（待機の呼吸・まばたきループ）',
 	},
 	{
 		file: 'waving.webp',

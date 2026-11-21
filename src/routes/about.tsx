@@ -7,6 +7,8 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../editorial/social-card';
 import { PersonJsonLd } from '../editorial/structured-data';
+import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
 
@@ -55,11 +57,16 @@ export const ABOUT_REACTIONS_TARGET = 'about-page';
 
 export const Route = createFileRoute('/about')({
 	loader: async () => {
-		const [data, reactions] = await Promise.all([
+		const [data, reactions, privacyNotice] = await Promise.all([
 			loadAboutPage({ data: undefined }),
 			getHomeReactions({ data: { target: ABOUT_REACTIONS_TARGET } }),
+			// Issue #370 — the compact data-notice pointer. The widget
+			// below can issue `mw_actor_id` and write a `reactions` row,
+			// so the page carries the one-line disclosure that links to
+			// the full notice on `/`.
+			getCompactPrivacyNotice(),
 		]);
-		return { data, reactions };
+		return { data, reactions, privacyNotice };
 	},
 	head: ({ loaderData }) => {
 		const data = loaderData?.data;
@@ -108,7 +115,7 @@ export const Route = createFileRoute('/about')({
 });
 
 function AboutRoute() {
-	const { data, reactions } = Route.useLoaderData();
+	const { data, reactions, privacyNotice } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -117,6 +124,7 @@ function AboutRoute() {
 			<PersonJsonLd facts={personFactsFromAbout(data)} />
 			<AboutPage data={data} />
 			<ReactionsWidget data={reactions} />
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }

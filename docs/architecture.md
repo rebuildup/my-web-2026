@@ -232,6 +232,54 @@ entrypoint である。
 これらは technical name だが、単なる分類ではなく独立した外部契約を所有するため
 有効な obligation boundary である。
 
+#### 不変条件: loader の戻り値は公開ペイロードである (Issue #1009)
+
+`routes/**` の `loader` が返した値は、TanStack Start が `$_TSR` として SSR HTML
+へシリアライズし、そのまま訪問者のブラウザへ届く。**loader の戻り値 = 公開
+ペイロード** であり、narrow な公開 projection を返すことは route 側の責務で
+ある。registry / manifest / 生の DB row / 内部 JSON をそのまま返してはならない。
+
+- 内部オブジェクトを読む必要がある route は `createServerFn` 境界
+  (`src/tools/public.ts`, `src/portfolio/public.ts`, `src/about/public.ts` 等)
+  を通し、handler の戻り値を「その state が render する field だけ」の view 型
+  (例: `ToolPageData`, `ToolIndexEntry`) に絞る。manifest が client bundle にも
+  `$_TSR` にも入らないことは #836 / #994 / #1005 で 3 度踏んだ欠陥クラス。
+- loader が throw する error もペイロードの一部である:
+  `ShallowErrorPlugin` は失敗した match の `error.message` だけを
+  `$_TSR` にシリアライズする (`test/integration/error-states.test.ts` が
+  message-only を pin)。loader / server function が投げる error は
+  redact 済みの固定コード (例: `portfolio_unavailable (ref=…)`) でなければ
+  ならず、内部値を message に埋め込まない。
+- 例外として「そのまま返してよい」のは、commit 済みの artefact 自体が
+  公開用に書かれた来歴データで、page がその field をそのまま render する
+  場合だけである。現行の該当例は 2 件: `/keyboard` の provenance manifest
+  (`src/keyboard/sources/manifest.json` → `KeyboardPageData.manifest`) と
+  `/projects/dotfiles` の introduction snapshot
+  (`src/projects/snapshots/dotfiles.json` → `ProjectIntroductionView.snapshot`)。
+  どちらも公開 repo・commit SHA・取得日を「出典」として page 上に表示する
+  authored content であり、内部識別子ではない。
+- 残存する低リスク項目 — `PortfolioProject` の bookkeeping key
+  (`id`, `visibility`, `status`, `evidenceStatus`, `pinned`, `displayOrder`,
+  `createdAt`, `updatedAt`) や media の `r2Key` のように、render されないが
+  camelCase 公開 shape の一部として `$_TSR` に残る schema field 名 — は
+  Issue #1009 が「既知の低リスク項目」として baseline 記録を認めた分類で
+  ある。値が内部識別子 (repo path / Issue ref / release ref / 規定 field 名)
+  を含む場合はこの分類に入らず、fail-closed で narrow 化する。
+- `/admin/**` は認証境界の内側なので優先度は低いが、`route-coverage.json` が
+  `audience: public` と宣言する route (`/admin/login`) は他の public route と
+  同じ規則に従う。
+
+機械検査は 2 層で効く:
+
+- `test/integration/public-internal-identifier-surface.test.ts` —
+  `quality/route-coverage.json` の public addressable route 全件と
+  `/tools/<slug>` 全 manifest slug の SSR HTML、および error document
+  (unmatched / `notFound()` / `validateSearch` 失敗 / loader throw) に
+  `check-public-internal-identifiers.mjs` と同一の検出 rule を適用する。
+  roster 由来なので route 追加時の走査漏れは coverage test が fail させる。
+- `scripts/check-public-internal-identifiers.mjs` — copy surface 側の同一
+  rule。シリアライズ境界は別契約だが、検出語彙は共有する。
+
 ## Dependency direction
 
 ```text

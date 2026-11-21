@@ -1,8 +1,9 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { noteSansMd } from '../../editorial/primitives/shared-styles';
 import type { HomeLocale } from '../format';
 import { createHomeFormat } from '../format';
 import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
@@ -219,15 +220,7 @@ export function StatusTiles({
 									{service.binding}
 								</span>
 							</dt>
-							<dd
-								className={css({
-									margin: '0',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									color: 'text.muted',
-									lineHeight: '1.6',
-								})}
-							>
+							<dd className={css(noteSansMd)}>
 								{status?.detail ?? service.description}
 								{health === 'unobserved' ? (
 									<span
@@ -300,23 +293,16 @@ export function StatusTiles({
 		);
 	}
 	return (
-		<section
-			aria-labelledby={headingId}
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id={headingId}
-					eyebrow="System status"
-					title="プラットフォームの状態 / Platform health"
-					description={STATUS_DESCRIPTION}
-					variant="spread"
-				>
-					{body}
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy={headingId}>
+			<SectionHeading
+				id={headingId}
+				eyebrow="System status"
+				title="プラットフォームの状態 / Platform health"
+				description={STATUS_DESCRIPTION}
+				variant="spread"
+			>
+				{body}
+			</SectionHeading>
+		</PageSection>
 	);
 }

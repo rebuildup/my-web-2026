@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import {
 	AD_PULSE_MOTION,
@@ -32,6 +32,17 @@ import { SiteMark } from '../mark';
  * same captures the Tools index uses) and every destination is a real
  * route. Palette literals below are the observed ad chrome colours,
  * scoped to this file — not editorial tokens.
+ *
+ * Surface ownership (Issue #1110 v14): the split is deliberate.
+ * The CREATIVE — card, banner field, image scrim, CTA — keeps the
+ * fixed observed ad palette in both appearances, because it imitates
+ * an ad network's own light creative. The slot's AMBIENT chrome — the
+ * disclosure tag, the feed header row, body copy that sits on the
+ * host surface rather than inside a creative — reads semantic ink
+ * tokens (`text.*`) instead, so it stays AA-legible on whatever
+ * `PageSection` tone hosts the slot (`ground` / `sunken` / `inverse`)
+ * in either appearance. A literal `#65676b` tag measured 4.4:1 on the
+ * `sunken` band and failed the storybook axe scan.
  */
 
 // ---------------------------------------------------------------------------
@@ -57,7 +68,7 @@ function AdTag({ label }: { readonly label: string }) {
 				fontSize: '11px',
 				fontWeight: '600',
 				letterSpacing: '0.04em',
-				color: AD.inkSoft,
+				color: 'text.muted',
 			})}
 		>
 			{label}
@@ -481,7 +492,7 @@ export function AdLinkCard({
 				})}
 			>
 				<AdAvatarRow pageName={advertiser} />
-				<span className={css({ marginLeft: 'auto', color: AD.inkSoft, flexShrink: '0' })}>⋯</span>
+				<span className={css({ marginLeft: 'auto', color: 'text.muted', flexShrink: '0' })}>⋯</span>
 			</header>
 			<div className={css({ marginBlockStart: '1' })}>
 				<AdTag label="スポンサー広告" />
@@ -494,7 +505,7 @@ export function AdLinkCard({
 						fontSize: 'md',
 						fontWeight: '600',
 						lineHeight: '1.4',
-						color: AD.ink,
+						color: 'text.default',
 						whiteSpace: 'pre-line',
 					})}
 					data-testid="home-ad-linkcard-body"
@@ -778,13 +789,13 @@ export function AdNative({
 		<AdSlot testid="home-ad-native" motion={motion}>
 			<div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<AdTag label="PR" />
-				<span className={css({ color: AD.inkSoft })}>·</span>
+				<span className={css({ color: 'text.muted' })}>·</span>
 				<span
 					className={css({
 						fontSize: '11px',
 						fontWeight: '600',
 						letterSpacing: '0.04em',
-						color: AD.inkSoft,
+						color: 'text.muted',
 					})}
 				>
 					{domain}
@@ -886,7 +897,7 @@ function AdAvatarRow({ pageName }: { readonly pageName: string }) {
 					fontSize: 'md',
 					fontWeight: '700',
 					lineHeight: '1.3',
-					color: AD.ink,
+					color: 'text.default',
 				})}
 			>
 				{pageName}
@@ -921,7 +932,7 @@ export function AdCarousel({ items }: AdCarouselProps) {
 				<AdTag label="広告" />
 				<span
 					aria-hidden="true"
-					className={css({ fontSize: 'xs', fontWeight: '600', color: AD.inkSoft })}
+					className={css({ fontSize: 'xs', fontWeight: '600', color: 'text.muted' })}
 				>
 					‹ スワイプ ›
 				</span>

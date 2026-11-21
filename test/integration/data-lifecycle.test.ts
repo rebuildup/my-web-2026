@@ -7,6 +7,7 @@ import { DEDUP_WINDOW_MS } from '../../src/http/access-counter/schema';
 import { aggregateByTarget, deleteReaction, putReaction } from '../../src/http/reactions/reactions';
 import {
 	DELETION_REQUEST_CHANNEL,
+	PUBLIC_COMPACT_DATA_NOTICE,
 	findUnsupportedClaims,
 	getPublishedDataLifecycle,
 } from '../../src/privacy/data-lifecycle';
@@ -222,6 +223,22 @@ describe('the served document publishes the registry and claims nothing more', (
 		expect(html).toContain('データと保持期間');
 		expect(html).toContain('mw_actor_id');
 	}, 30_000);
+
+	it('every reaction surface serves the compact pointer to the full notice (Issue #370)', async () => {
+		// The widget can issue `mw_actor_id` and write a `reactions`
+		// row on each of these pages, so each one carries the one-line
+		// disclosure and a link to the `/#data-notice` anchor the home
+		// footer publishes.
+		for (const path of ['/about', '/contact', '/portfolio', '/projects/dotfiles', '/tools']) {
+			const html = await (await SELF.fetch(`https://example.com${path}`)).text();
+			expect(html, path).toContain('data-privacy-notice="compact"');
+			expect(html, path).toContain('href="/#data-notice"');
+			expect(html, path).toContain(PUBLIC_COMPACT_DATA_NOTICE.statement.ja);
+			expect(findUnsupportedClaims(html), path).toEqual([]);
+		}
+		const home = await (await SELF.fetch('https://example.com/')).text();
+		expect(home).toContain('id="data-notice"');
+	}, 60_000);
 });
 
 describe('non-public data stays out of the public surfaces', () => {

@@ -7,8 +7,8 @@
 
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import {
@@ -22,6 +22,7 @@ import {
 	TV_PATH,
 	VIDEOGAME_ASSET_PATH,
 } from '../../editorial/primitives/material-symbol-paths';
+import { rowWrapGap3, vStackGap4 } from '../../editorial/primitives/shared-styles';
 import type { HomeLocale } from '../format';
 import { createHomeFormat } from '../format';
 import type { DiscordPresenceCard } from './types';
@@ -62,18 +63,9 @@ const descriptionClassName = /*#__PURE__*/ css({
 	textWrap: 'pretty',
 });
 
-const cardClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-});
+const cardClassName = /*#__PURE__*/ css(vStackGap4);
 
-const statusRowClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	alignItems: 'center',
-	gap: '3',
-	flexWrap: 'wrap',
-});
+const statusRowClassName = /*#__PURE__*/ css(rowWrapGap3);
 
 const customStatusClassName = /*#__PURE__*/ css({
 	display: 'flex',
@@ -233,23 +225,18 @@ export function PresenceCard({
 
 		if (chrome === 'section') {
 			return (
-				<section
-					aria-labelledby={headingId}
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id={headingId}
-							eyebrow="Discord"
-							title="Discord プレゼンス"
-							titleEn="Discord Presence"
-							description={PRESENCE_DESCRIPTION}
-							variant="spread"
-						>
-							{content}
-						</SectionHeading>
-					</Container>
-				</section>
+				<PageSection labelledBy={headingId}>
+					<SectionHeading
+						id={headingId}
+						eyebrow="Discord"
+						title="Discord プレゼンス"
+						titleEn="Discord Presence"
+						description={PRESENCE_DESCRIPTION}
+						variant="spread"
+					>
+						{content}
+					</SectionHeading>
+				</PageSection>
 			);
 		}
 
@@ -331,7 +318,7 @@ export function PresenceCard({
 	const additionalActivitiesContent =
 		card.additionalActivities.length > 0 ? (
 			<div className={additionalActivitiesClassName}>
-				{card.additionalActivities.map((activity, index) => (
+				{card.additionalActivities.slice(0, 4).map((activity, index) => (
 					<div
 						key={`${activity.typeLabel}-${activity.name}-${index}`}
 						className={additionalActivityClassName}
@@ -358,6 +345,9 @@ export function PresenceCard({
 						</span>
 					</div>
 				))}
+				{/* Render limit: a Discord profile lists a handful of
+				    activities at most; the slice above keeps the card a
+				    summary — the profile itself owns the full list. */}
 			</div>
 		) : null;
 
@@ -389,23 +379,18 @@ export function PresenceCard({
 
 	if (chrome === 'section') {
 		return (
-			<section
-				aria-labelledby={headingId}
-				className={css({ paddingBlock: { base: '16', lg: '24' } })}
-			>
-				<Container>
-					<SectionHeading
-						id={headingId}
-						eyebrow="Discord"
-						title="Discord プレゼンス"
-						titleEn="Discord Presence"
-						description={PRESENCE_DESCRIPTION}
-						variant="spread"
-					>
-						{cardContent}
-					</SectionHeading>
-				</Container>
-			</section>
+			<PageSection labelledBy={headingId}>
+				<SectionHeading
+					id={headingId}
+					eyebrow="Discord"
+					title="Discord プレゼンス"
+					titleEn="Discord Presence"
+					description={PRESENCE_DESCRIPTION}
+					variant="spread"
+				>
+					{cardContent}
+				</SectionHeading>
+			</PageSection>
 		);
 	}
 

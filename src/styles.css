@@ -245,11 +245,13 @@
 	 * reserved space when it scrolls it into view. Each surface publishes
 	 * the height it occupies —
 	 * `--analytics-consent-offset` from the rendered height in
-	 * `src/editorial/analytics/AnalyticsConsent.tsx`, and
+	 * `src/editorial/analytics/AnalyticsConsent.tsx`,
 	 * `--pet-overlay-offset` from the resting inset plus the full frame in
-	 * `src/editorial/pet/PetSprite.tsx` — so the compensation follows the
-	 * surfaces instead of guessing a number. Without a surface on the page
-	 * its variable is absent and the fallback reserves nothing.
+	 * `src/editorial/pet/PetSprite.tsx`, and `--pet-summon-offset` from
+	 * the mobile summon control in `src/editorial/pet/PetCompanion.tsx`
+	 * — so the compensation follows the surfaces instead of guessing a
+	 * number. Without a surface on the page its variable is absent and
+	 * the fallback reserves nothing.
 	 *
 	 * `max()` rather than a sum: the character's resting band sits above
 	 * the consent toggle rather than stacking on it (see
@@ -272,7 +274,13 @@
 	 * declaration and fails the gate.
 	 */
 	:root {
-		scroll-padding: 0 0 max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px)) 0;
+		scroll-padding: 0 0
+			max(
+				var(--analytics-consent-offset, 0px),
+				var(--pet-overlay-offset, 0px),
+				var(--pet-summon-offset, 0px)
+			)
+			0;
 	}
 
 	body {
@@ -288,7 +296,11 @@
 		 * is a fixed overlay by the owner's instruction, and a fixed
 		 * bottom overlay must reserve its own footprint.
 		 */
-		padding-bottom: max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px));
+		padding-bottom: max(
+			var(--analytics-consent-offset, 0px),
+			var(--pet-overlay-offset, 0px),
+			var(--pet-summon-offset, 0px)
+		);
 	}
 
 	/*
@@ -398,17 +410,52 @@
 }
 
 /*
- * Layer 2, the companion character's greeting (`animation: petReaction`
- * in `src/editorial/pet/PetSprite.tsx`). The element does not exist in
- * a reduced-motion render — the component emits neither the strip nor
- * its trigger, so there is nothing to opt out. This selector is the
- * backstop for markup produced without a client preference read (an
- * SSR document replayed from cache, a Storybook build that pinned
- * nothing), and it is what makes the pairing verifiable by
- * `scripts/check-reduced-motion.mjs` rather than by inspection.
+ * Layer 2, the companion character's animations (`petReaction`,
+ * `petRun`, `petIdle` in `src/editorial/pet/PetSprite.tsx`, Issue
+ * #274 / #1044). The element does not exist animated in a
+ * reduced-motion render — the component emits neither the strip's
+ * `animation-name` nor its trigger, so there is nothing to opt out.
+ * This selector is the backstop for markup produced without a client
+ * preference read (an SSR document replayed from cache, a Storybook
+ * build that pinned nothing), and it is what makes the pairing
+ * verifiable by `scripts/check-reduced-motion.mjs` rather than by
+ * inspection.
  */
 @media (prefers-reduced-motion: reduce) {
 	:where([data-motion="pet-reaction"]) {
+		animation: none !important;
+	}
+}
+
+/*
+ * Layer 2, the melting-face motif's drip bob (Issue #522,
+ * `animationName: meltingFaceDrip` in
+ * `src/personal/melting-face/MeltingFace.tsx`). The drip group is the
+ * only animated part; the resting frame — head, eyes, mouth, alt text
+ * — is identical in both modes, so the opt-out removes decoration,
+ * never information. The component branch already emits no
+ * `animation-name` when the preference is on; this selector is the
+ * stylesheet half of the same decision, paired with the contract
+ * constant `MELTING_FACE_MOTION`.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="melting-face"]) [data-motion-part="drip"] {
+		animation: none !important;
+	}
+}
+
+/*
+ * Layer 2, the engagement preview's deck step (Issue #517,
+ * `animationName: engagementStep` in
+ * `src/personal/engagement/Engagement.tsx`). The step is decoration
+ * on a state swap the controls already announce — under the
+ * preference the component emits no `animation-name` and the swap is
+ * instant; this selector is the stylesheet half of the same decision
+ * for markup produced without a client preference read, paired with
+ * the contract constant `ENGAGEMENT_STEP_MOTION`.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="engagement-step"]) {
 		animation: none !important;
 	}
 }

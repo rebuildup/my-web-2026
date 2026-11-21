@@ -44,6 +44,7 @@ function renderList(overrides: Partial<Parameters<typeof PortfolioList>[0]> = {}
 		<PortfolioList
 			initialPage={firstPage}
 			activeFacets={[]}
+			queryFacets={[]}
 			hasMore={firstPage.nextCursor !== null}
 			busy={false}
 			error={null}
@@ -87,6 +88,7 @@ describe('PortfolioList — 100+ row pagination boundary', () => {
 			<PortfolioList
 				initialPage={firstPage}
 				activeFacets={[]}
+				queryFacets={[]}
 				hasMore={secondPage.nextCursor !== null}
 				busy={false}
 				error={null}

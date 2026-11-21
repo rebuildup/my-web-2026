@@ -1,6 +1,13 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
+import {
+	noteSansMd,
+	rowGap3,
+	tagMonoXsCaps,
+	vStackGap2,
+} from '../../editorial/primitives/shared-styles';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioProject } from '../schema';
 import { FACET_LABEL } from '../vocabulary';
@@ -169,20 +176,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
 					padding: '6',
 				})}
 			>
-				<header
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '2',
-					})}
-				>
-					<div
-						className={css({
-							display: 'flex',
-							alignItems: 'center',
-							gap: '3',
-						})}
-					>
+				<header className={css(vStackGap2)}>
+					<div className={css(rowGap3)}>
 						<span
 							aria-hidden="true"
 							className={css({
@@ -201,55 +196,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						</span>
 						{project.pinned ? <Badge tone="accent">Pinned</Badge> : null}
 					</div>
-					<h3
-						className={css({
-							margin: '0',
-							fontFamily: 'heading',
-							fontSize: 'xl',
-							fontWeight: '700',
-							color: 'text.default',
-							lineHeight: '1.25',
-							letterSpacing: '-0.01em',
-						})}
-					>
-						<a
-							href={`/portfolio/${project.slug}`}
-							className={css({
-								color: 'inherit',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								// The heading is the whole link, so a full-ink rule
-								// under every line would shout. The underline stays
-								// — with no hue left it is the only affordance — but
-								// is drawn in the identifying-rule tone.
-								textDecorationColor: 'border.strong',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '4px',
-									borderRadius: '2px',
-								},
-								_hover: {
-									textDecorationThickness: '2px',
-									textDecorationColor: 'currentColor',
-								},
-							})}
-						>
+					<h3 className={cardTitleClassName}>
+						<a href={`/portfolio/${project.slug}`} className={cardTitleLinkClassName}>
 							{project.title}
 						</a>
 					</h3>
 				</header>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.muted',
-						lineHeight: '1.6',
-					})}
-				>
-					{project.summary}
-				</p>
+				<p className={css(noteSansMd)}>{project.summary}</p>
 				<dl
 					className={css({
 						margin: '0',
@@ -264,31 +217,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				>
 					{hasRole ? (
 						<>
-							<dt
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Role
-							</dt>
+							<dt className={css(tagMonoXsCaps)}>Role</dt>
 							<dd className={css({ margin: '0' })}>{project.role}</dd>
 						</>
 					) : null}
 					{hasPeriod ? (
 						<>
-							<dt
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Period
-							</dt>
+							<dt className={css(tagMonoXsCaps)}>Period</dt>
 							<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
 						</>
 					) : null}

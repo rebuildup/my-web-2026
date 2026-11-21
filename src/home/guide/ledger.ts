@@ -101,6 +101,13 @@ export const GUIDE_LEDGER = [
 		],
 	},
 	{
+		id: 'activity',
+		kind: 'site',
+		href: '/activity',
+		titleJa: 'Activity — 公開アクティビティ',
+		summaryJa: 'GitHub のリリースや公開作品を一つの時系列で振り返る読み取り専用の一覧。',
+	},
+	{
 		id: 'dotfiles',
 		kind: 'site',
 		href: '/projects/dotfiles',

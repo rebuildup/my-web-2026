@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { Cluster, listResetClassName } from '../../editorial/primitives/Flow';
+import { focusRing } from '../../editorial/primitives/shared-styles';
 import { readVisitTrail } from './trail';
 
 /**
@@ -22,16 +24,6 @@ import { readVisitTrail } from './trail';
  *     page, and "you are here" is not a destination.
  */
 
-const trailClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexWrap: 'wrap',
-	alignItems: 'center',
-	gap: '2',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
 const trailLinkClassName = /*#__PURE__*/ css({
 	display: 'inline-flex',
 	alignItems: 'center',
@@ -46,10 +38,7 @@ const trailLinkClassName = /*#__PURE__*/ css({
 	color: 'text.default',
 	textDecoration: 'none',
 	_hover: { borderColor: 'border.strong', color: 'accent.interactive' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 });
 
 const trailLabelClassName = /*#__PURE__*/ css({
@@ -80,7 +69,7 @@ export function VisitTrail() {
 	return (
 		<nav aria-label="このブラウザで見たページ" data-testid="visit-trail">
 			<p className={trailLabelClassName}>このブラウザで見たページ</p>
-			<ul className={trailClassName}>
+			<Cluster as="ul" gap="2" className={listResetClassName}>
 				{destinations.map((path) => (
 					<li key={path}>
 						<a href={path} className={trailLinkClassName}>
@@ -88,7 +77,7 @@ export function VisitTrail() {
 						</a>
 					</li>
 				))}
-			</ul>
+			</Cluster>
 			<p className={trailNoteClassName}>
 				この一覧はあなたのブラウザの中だけに保存され、サーバーには送信されません。
 			</p>

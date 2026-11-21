@@ -136,7 +136,7 @@ operator が 2 つの半分を実行したら、本ファイル末尾に v0.8.1 
 | A | R2 key-set audit（production read-only） | `OK` | **PASS** |
 | B-1 | Infisical prod 契約観測（`check-cf-secrets --execute`） | `all checks OK` | **PASS** |
 | B-2 | secret 名 parity 分類（`secrets:status:check --observation`） | `OK`（drift_failures=0 / overdue=0 / advisory=6） | **PASS** |
-| B-3 | Cloudflare live Worker binding 観測（Tier 3） | - | **SKIP**（`CLOUDFLARE_API_TOKEN` 未供給。script 自身が skip を宣言。緑とは読み替えない） |
+| B-3 | Cloudflare live Worker binding 観測（Tier 3） | `final contract` 一致 | **PASS**（2026-11-19 追記2。`CLOUDFLARE_API_TOKEN` を Infisical `dev` env 経由で供給して再実行） |
 
 ## A. R2 key-set audit
 
@@ -170,6 +170,32 @@ $ INFISICAL_TOKEN=<CLI access token> node scripts/check-cf-secrets.mjs --execute
 
 transcript は `.tmp/cf-secrets-prod.txt` に保存（名前のみ、値を含まない）。
 `extra` の 5 名は operator 用 credential で契約の外側にある想定内の観測。
+
+## B-3. Cloudflare live Worker binding 観測（Tier 3、追記2で実施）
+
+初回実行時は `CLOUDFLARE_API_TOKEN` 未供給で script 自身が SKIP を宣言した。
+当該 token は deploy-time credential であり Infisical **`dev` env** の
+`/` path に格納されている（prod env の runtime 契約対象外・`secrets.required`
+非対象であることを名前一覧で確認）。`infisical run --env=dev` で子プロセスへ
+注入し、B-1/B-2 と同一の `--execute --environment=prod` 実行で Tier 3 を
+有効化した。
+
+```text
+$ infisical run --env=dev -- env INFISICAL_TOKEN=<CLI access token> \
+    node scripts/check-cf-secrets.mjs --execute --environment=prod
+[check-cf-secrets] environment=prod
+[check-cf-secrets] deploy-time secret bindings=[...] (from Build Output, mode=production)
+[execute] Using pre-authenticated INFISICAL_TOKEN from parent process
+[OK] Infisical runtime contract
+[OK] Build Output binding contract
+[check-cf-secrets] live Worker matches the "final" contract (auto-detected)
+[OK] Cloudflare Worker (live) final contract
+[execute] all checks OK
+```
+
+exit 0。live Worker の binding **名** が `final` contract と一致することを
+`wrangler secret list`（names only）で確認した。secret の値そのものは
+一切読んでいない。
 
 ## B-2. secret 名 parity 分類
 
@@ -206,16 +232,22 @@ PR #1011 の merge 契約修正は production データ上で有効。
 | 主張しない | 理由 |
 | --- | --- |
 | secret の value が正しい・安全 | value は一度も読んでいない。名前 parity と key 集合のみ |
-| #984 の露出 credential がローテーション済み | ledger の `last_rotated_at` は全行 null で、rotation 実施の記録がない。owner 専権操作が未実施 |
+| #984 の露出 credential がローテーション済み | owner より完了報告あり（2026-11-19）。`quality/secret-rotation-ledger.json` の status-only 記録追従は別途 |
 | #1008 の content gap が解消した | verify-portfolio は 11/11 checks PASS だが 44 content gap が残る（原本に素材が無い slug。owner の Notion 加筆待ち） |
-| Cloudflare live Worker の binding 名が一致する | Tier 3 は `CLOUDFLARE_API_TOKEN` 未供給で SKIP |
+| Cloudflare live Worker の binding 名が一致する | Tier 3 は追記2で実施し `final` contract 一致を確認済み。ただし binding の**値**の正しさは範囲外 |
 | release が shipped した | step 9 は手順の 1 工程。merge / tag / Release 公開は owner ゲート |
 
 ## 実行時の注意
 
-- `infisical user get token --silent` は CLI 0.45.8 で token に加え
-  `TTL:` 行を stdout に出す。`check-cf-secrets.mjs` の `Authorization`
-  header に混入すると `Invalid character in header content` で失敗するため、
-  JWT 部分のみを抽出して渡した。
+- `infisical user get token` の token 単体取得は `--plain` が正しい
+  flag。`--silent` は無効 flag として無視され、Session ID / Token /
+  TTL を含む整形済み表が stdout に出るため、そのまま `INFISICAL_TOKEN`
+  に渡すと `Invalid character in header content ["Authorization"]`
+  で失敗する（追記2で実測）。
+- 追記2の環境確認で `infisical secrets --env=dev --path=/`（`--plain`
+  なし）を一度実行し、`CLOUDFLARE_API_TOKEN` の値がエージェントの
+  実行 transcript に出力された。#984 と同種の露出として扱い、当該
+  token の revoke / rotation を owner へ要請する。以後は名前のみの
+  取得に `--plain | cut -d= -f1` を使う。
 - `pnpm run <script> -- --flag` の `--` 透過問題を避けるため、いずれも
   `node scripts/…` を直接実行した。

@@ -123,8 +123,13 @@ describe('public documents answer 200 and stay indexable (#419)', () => {
 	it('public-tools-index', async () => expectCase('public-tools-index', '/tools'));
 	it('public-design-system', async () => expectCase('public-design-system', '/design-system'));
 	it('public-keyboard', async () => expectCase('public-keyboard', '/keyboard'));
+	it('public-links', async () => expectCase('public-links', '/links'));
+	it('public-commission', async () => expectCase('public-commission', '/commission'));
+	it('public-stack', async () => expectCase('public-stack', '/stack'));
+	it('public-activity', async () => expectCase('public-activity', '/activity'));
 	it('public-projects-dotfiles', async () =>
 		expectCase('public-projects-dotfiles', '/projects/dotfiles'));
+	it('public-now', async () => expectCase('public-now', '/now'));
 });
 
 /**

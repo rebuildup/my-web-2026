@@ -9,11 +9,11 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 19 |
-| Publicly reachable surfaces | 12 |
+| Declared surfaces | 24 |
+| Publicly reachable surfaces | 17 |
 | Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 86 |
-| External hosts | 50 |
+| Publicly reachable URLs (surface + Static Assets) | 91 |
+| External hosts | 62 |
 | First-party hosts | 0 |
 | Approved transition | 2 finding(s) |
 | Verdict of the approved transition | **review** |
@@ -95,11 +95,15 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - `/`
 - `/about`
+- `/activity`
 - `/admin/invitations/accept`
 - `/admin/login`
+- `/commission`
 - `/contact`
 - `/design-system`
 - `/keyboard`
+- `/links`
+- `/now`
 - `/portfolio`
 - `/portfolio/alice`
 - `/portfolio/aulymo-v01`
@@ -163,6 +167,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/yukikate`
 - `/projects/dotfiles`
 - `/share/procon2026/`
+- `/stack`
 - `/tools`
 - `/tools/ae-expression`
 - `/tools/business-mail-block`
@@ -187,6 +192,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/` | `/` | public | yes | `src/routes/index.tsx` |
 | `/__root__` | — | internal | no | `src/routes/__root.tsx` |
 | `/about` | `/about` | public | yes | `src/routes/about.tsx` |
+| `/activity` | `/activity` | public | no | `src/routes/activity.tsx` |
 | `/admin` | `/admin` | internal | no | `src/routes/admin.tsx` |
 | `/admin/` | — | internal | no | `src/routes/admin.index.tsx` |
 | `/admin/emoji-catalog` | `/admin/emoji-catalog` | internal | no | `src/routes/admin.emoji-catalog.tsx` |
@@ -195,20 +201,24 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/admin/invitations/accept` | `/admin/invitations/accept` | public | no | `src/routes/admin.invitations_.accept.tsx` |
 | `/admin/keys` | `/admin/keys` | internal | no | `src/routes/admin.keys.tsx` |
 | `/admin/login` | `/admin/login` | public | no | `src/routes/admin.login.tsx` |
+| `/commission` | `/commission` | public | no | `src/routes/commission.tsx` |
 | `/contact` | `/contact` | public | yes | `src/routes/contact.tsx` |
 | `/design-system` | `/design-system` | public | yes | `src/routes/design-system.tsx` |
 | `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
+| `/links` | `/links` | public | no | `src/routes/links.tsx` |
+| `/now` | `/now` | public | no | `src/routes/now.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
+| `/stack` | `/stack` | public | no | `src/routes/stack.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
 | `/tools/$slug` | — | public | no | `src/routes/tools.$slug.tsx` |
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (1)
 
-- (none)
+- `/now`
 
 ### Removed public URLs (0)
 
@@ -218,9 +228,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Removed external hosts (1)
+### Removed external hosts (0)
 
-- ``
+- (none)
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -248,7 +258,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
-| `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
+| `https://361do.booth.pm` | `361do.booth.pm` | external | `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://361do.booth.pm/items/6403113` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/6472931` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://361do.booth.pm/items/6520211` | `361do.booth.pm` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -261,12 +271,16 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts` |
+| `https://atcoder.jp/users/rebuildup` | `atcoder.jp` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
+| `https://bsky.app/profile/361do.bsky.social` | `bsky.app` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
 | `https://cdn.jsdelivr.net/npm/p5@2.3/translations/ja/translation.json` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
+| `https://ch.tetr.io/u/samuido` | `ch.tetr.io` | external | `src/about/links.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
+| `https://discord.gg/qmCGSBmc28` | `discord.gg` | external | `src/about/links.ts` |
 | `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
@@ -505,11 +519,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=vue-dark` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&show_icons=true&hide=contribs,prs&theme=yeblu` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api?username=pranesh-2005&theme=dark&show_icons=true` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
-| `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
+| `https://github.com` | `github.com` | external | `src/home/activity/snapshot.ts`, `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/googlefonts/zen-kakugothic` | `github.com` | external | `public/fonts/zen-kaku-gothic-new-LICENSE.txt` |
-| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts` |
+| `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/about/links.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -524,9 +538,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
-| `https://github.com/rebuildup/ai-knowledge` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/atcoder-kit` | `github.com` | external | `src/home/activity/github-activity.json` |
-| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
@@ -542,19 +555,23 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/example-repo` | `github.com` | external | `src/home/composer.stories.tsx` |
 | `https://github.com/rebuildup/key-map-kanata` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/footer.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/activity/fixtures.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026/blob/main` | `github.com` | external | `src/routes/stack/stack.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
+| `https://github.com/rebuildup/my-web-2026/tree/main` | `github.com` | external | `src/routes/stack/stack.ts` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
-| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/readmark` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/rebuildup` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-ae-expression` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-ae-expression.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-business-mail-block` | `github.com` | external | `src/home/activity/github-activity.json` |
@@ -583,9 +600,14 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/writing-skills` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/tastile/tastile-android` | `github.com` | external | `src/activity/fixtures.ts` |
+| `https://gitty-code.com/user/rebuildup` | `gitty-code.com` | external | `src/about/links.ts` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
+| `https://note.com/alert_toad4443` | `note.com` | external | `src/about/links.ts` |
+| `https://osu.ppy.sh/users/36986836` | `osu.ppy.sh` | external | `src/about/links.ts` |
 | `https://pomodoro.yusuke-kim.com` | `pomodoro.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://prototype.yusuke-kim.com` | `prototype.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://qiita.com/samuido` | `qiita.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://raw.githubusercontent.com` | `raw.githubusercontent.com` | external | `src/keyboard/load.ts` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
@@ -593,7 +615,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://rebuildup.github.io` | `rebuildup.github.io` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
-| `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
+| `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts`, `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
 | `https://script.google.com` | `script.google.com` | external | `src/tools/manifest.json` |
 | `https://tiny.one/readme-stats` | `tiny.one` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
@@ -609,9 +631,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
+| `https://www.duolingo.com/profile/samuido` | `www.duolingo.com` | external | `src/about/links.ts` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com` | `www.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
+| `https://www.linkedin.com/in/yusuke-kimura-835055398` | `www.linkedin.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf` | `www.maff.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000148322.html` | `www.mhlw.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf` | `www.mlit.go.jp` | external | `public/share/procon2026/index.html` |
@@ -622,9 +646,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.tiktok.com/@harutoiizawa/video/7421877342030597384` | `www.tiktok.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
+| `https://www.wantedly.com/id/rebuildup` | `www.wantedly.com` | external | `src/about/links.ts` |
 | `https://www.youtube-nocookie.com/embed` | `www.youtube-nocookie.com` | external | `src/portfolio/video-facade.ts` |
 | `https://www.youtube.com` | `www.youtube.com` | external | `src/tools/manifest.json` |
 | `https://www.youtube.com/@%E8%9D%B6%E7%BE%BD%E3%83%98%E3%83%AC%E3%83%8A` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.youtube.com/@361do_sleep` | `www.youtube.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://www.youtube.com/@darupoi_` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/@hiyori_hiyoko` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/@snzkuo` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -706,12 +732,14 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/361do/_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do/_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do/_sleep/status/1955248758243070349` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design` | `x.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://x.com/361do_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/2079195581831156023?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep` | `x.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://x.com/361do_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1815006753144381874` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1832734742124609779` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -742,7 +770,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/morpho/_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/morpho_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/piyopiyo2424V` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
+| `https://x.com/samuido` | `x.com` | external | `src/about/data.ts`, `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://x.com/scalegif` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/snzkuo` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/susuyo_soot` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -787,10 +815,12 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://youtube.com/shorts/o9GxF/_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtube.com/shorts/o9GxF_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtube.com/shorts/rq2WlOQa9zE` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
+| `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json`, `src/personal/handle-map/HandleMap.preview.ts` |
+| `https://yusuke-kim.com/about` | `yusuke-kim.com` | external | `src/about/career.ts`, `src/about/skills.ts` |
+| `https://zenn.dev/361do_sleep` | `zenn.dev` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 
 ## Findings in the approved transition
 
-- **WARN** `W003 external-url-removed` External URL removed: https://
-- **WARN** `W001 external-host-removed` External host no longer referenced: 
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/now
+- **WARN** `W004 public-url-added` Public URL added: /now
 

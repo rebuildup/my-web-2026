@@ -1,7 +1,9 @@
-import { createD1PortfolioLoader } from '../portfolio/load';
 import type { PortfolioEnv, PortfolioLoader } from '../portfolio/contract';
+import { createD1PortfolioLoader } from '../portfolio/load';
 import type { PortfolioProject } from '../portfolio/schema';
+import { selectPublishableCareerEntries } from './career';
 import { ABOUT_DATA } from './data';
+import { SKILLS } from './skills';
 import type { AboutData, AboutPageData } from './types';
 
 /**
@@ -73,7 +75,9 @@ export const loadAbout: AboutLoader = async (env, data = ABOUT_DATA) => {
 	return {
 		identity: data.identity,
 		interests: data.interests,
+		skills: SKILLS,
 		experience,
+		career: selectPublishableCareerEntries(),
 		current: data.current,
 		future: data.future,
 		externalHandles: data.externalHandles,

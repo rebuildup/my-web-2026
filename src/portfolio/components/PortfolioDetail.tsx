@@ -1,11 +1,26 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { TextLink } from '../../editorial/primitives/TextLink';
+import {
+	eyebrowMonoXs,
+	eyebrowMonoXsLoose,
+	focusRing,
+	pageTitleFlush,
+	rowWrapGap3,
+	sizeDisplay,
+	tagMonoXsCaps,
+	vStackGap6,
+} from '../../editorial/primitives/shared-styles';
 import { isFacetDerivedRole } from '../kind-labels';
-import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
+import type { PortfolioAdjacent, PortfolioProject } from '../schema';
 import { selectPortfolioVideo } from '../video-facade';
-import { FACET_LABEL } from '../vocabulary';
+import { FACET_LABEL, LINK_LABEL } from '../vocabulary';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioEvidenceNotice } from './PortfolioEvidenceNotice';
 import { PortfolioMediaFigure } from './PortfolioMedia';
@@ -88,16 +103,6 @@ const SECTION_DEFINITIONS: ReadonlyArray<{
 	},
 ];
 
-const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
-	repo: 'Repository',
-	demo: 'Demo',
-	release: 'Release',
-	article: 'Article',
-	shop: 'Shop',
-	video: 'Video',
-	other: 'Link',
-};
-
 export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	// Issue #870: a `kind: 'video'` link whose URL this repository can
@@ -130,310 +135,183 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const hasPeriod = project.periodLabel !== null && project.periodLabel.trim() !== '';
 	return (
 		<>
-			<a href="#portfolio-detail" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#portfolio-detail" />
 			<main id="main">
 				<article id="portfolio-detail" aria-labelledby="portfolio-detail-heading">
-					<header
-						// Issue #300: hero beat is 16/32 (layout-system.md §3.3).
-						className={css({
-							paddingBlock: { base: '16', lg: '32' },
-						})}
-					>
-						<Container>
-							<div
+					<PageSection rhythm="hero" labelledBy="portfolio-detail-heading">
+						<div className={css(vStackGap6)}>
+							<div className={css(rowWrapGap3)}>
+								<a
+									href="/portfolio"
+									className={css({
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										letterSpacing: '0.04em',
+										textTransform: 'uppercase',
+										color: 'text.muted',
+										textDecoration: 'none',
+										_focusVisible: focusRing,
+										_hover: {
+											color: 'text.default',
+										},
+									})}
+								>
+									← Back to portfolio
+								</a>
+								{project.facets[0] ? (
+									<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
+										· {FACET_LABEL[project.facets[0]]}
+									</span>
+								) : null}
+							</div>
+							<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
+								{project.title}
+							</h1>
+							<p
 								className={css({
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '6',
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'lg',
+									color: 'text.muted',
+									lineHeight: '1.6',
+									maxWidth: '720px',
 								})}
 							>
-								<div
-									className={css({
-										display: 'flex',
-										alignItems: 'center',
-										gap: '3',
-										flexWrap: 'wrap',
-									})}
-								>
-									<a
-										href="/portfolio"
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-											color: 'text.muted',
-											textDecoration: 'none',
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
-											_hover: {
-												color: 'text.default',
-											},
-										})}
+								{project.summary}
+							</p>
+							<dl
+								className={css({
+									margin: '0',
+									display: 'grid',
+									gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
+									columnGap: '6',
+									rowGap: '2',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.muted',
+								})}
+							>
+								{hasRole ? (
+									<>
+										<dt className={css(tagMonoXsCaps)}>Role</dt>
+										<dd className={css({ margin: '0' })}>{project.role}</dd>
+									</>
+								) : null}
+								{hasPeriod ? (
+									<>
+										<dt className={css(tagMonoXsCaps)}>Period</dt>
+										<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
+									</>
+								) : null}
+							</dl>
+							<Cluster aria-label="facets" gap="2">
+								{project.facets.map((facet) => (
+									<Badge
+										key={facet}
+										tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
 									>
-										← Back to portfolio
-									</a>
-									{project.facets[0] ? (
-										<span
-											aria-hidden="true"
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'xs',
-												letterSpacing: '0.06em',
-												textTransform: 'uppercase',
-												color: 'text.muted',
-											})}
-										>
-											· {FACET_LABEL[project.facets[0]]}
-										</span>
-									) : null}
+										{FACET_LABEL[facet] ?? facet}
+									</Badge>
+								))}
+							</Cluster>
+							{cover ? (
+								<div className={css({ maxWidth: '720px' })}>
+									<PortfolioMediaFigure media={cover} loading="eager" />
 								</div>
-								<h1
-									id="portfolio-detail-heading"
-									className={css({
-										margin: '0',
-										fontFamily: 'heading',
-										fontSize: { base: '3xl', lg: '4xl' },
-										fontWeight: '700',
-										color: 'text.default',
-										lineHeight: '1.05',
-										letterSpacing: '-0.03em',
-										maxWidth: '720px',
-									})}
-								>
-									{project.title}
-								</h1>
+							) : null}
+							{video ? (
+								<div className={css({ maxWidth: '720px' })}>
+									<PortfolioVideoFacade video={video} />
+								</div>
+							) : null}
+							{primaryLink ? (
 								<p
 									className={css({
 										margin: '0',
 										fontFamily: 'sans',
-										fontSize: 'lg',
-										color: 'text.muted',
-										lineHeight: '1.6',
-										maxWidth: '720px',
+										fontSize: 'md',
 									})}
 								>
-									{project.summary}
+									<TextLink href={primaryLink.url} target="_blank" rel="noopener noreferrer">
+										{LINK_LABEL[primaryLink.kind]}
+										{primaryLink.label ? ` — ${primaryLink.label}` : ''}
+									</TextLink>
 								</p>
-								<dl
-									className={css({
-										margin: '0',
-										display: 'grid',
-										gridTemplateColumns: { base: '1fr', sm: 'auto auto auto auto' },
-										columnGap: '6',
-										rowGap: '2',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
-									{hasRole ? (
-										<>
-											<dt
-												className={css({
-													fontFamily: 'mono',
-													fontSize: 'xs',
-													letterSpacing: '0.04em',
-													textTransform: 'uppercase',
-												})}
-											>
-												Role
-											</dt>
-											<dd className={css({ margin: '0' })}>{project.role}</dd>
-										</>
-									) : null}
-									{hasPeriod ? (
-										<>
-											<dt
-												className={css({
-													fontFamily: 'mono',
-													fontSize: 'xs',
-													letterSpacing: '0.04em',
-													textTransform: 'uppercase',
-												})}
-											>
-												Period
-											</dt>
-											<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
-										</>
-									) : null}
-								</dl>
-								<div
-									aria-label="facets"
-									className={css({
-										display: 'flex',
-										flexWrap: 'wrap',
-										gap: '2',
-									})}
-								>
-									{project.facets.map((facet) => (
-										<Badge
-											key={facet}
-											tone={project.pinned && facet === project.facets[0] ? 'accent' : 'neutral'}
-										>
-											{FACET_LABEL[facet] ?? facet}
-										</Badge>
-									))}
-								</div>
-								{cover ? (
-									<div className={css({ maxWidth: '720px' })}>
-										<PortfolioMediaFigure media={cover} loading="eager" />
-									</div>
-								) : null}
-								{video ? (
-									<div className={css({ maxWidth: '720px' })}>
-										<PortfolioVideoFacade video={video} />
-									</div>
-								) : null}
-								{primaryLink ? (
-									<p
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'md',
-										})}
-									>
-										<a
-											href={primaryLink.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className={css({
-												color: 'text.accent',
-												textDecoration: 'underline',
-												textUnderlineOffset: '0.18em',
-												textDecorationThickness: '1px',
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
-												_hover: { textDecorationThickness: '2px' },
-											})}
-										>
-											{LINK_LABEL[primaryLink.kind]}
-											{primaryLink.label ? ` — ${primaryLink.label}` : ''}
-										</a>
-									</p>
-								) : null}
-							</div>
-							{/* ADR-0019 §2.5 — an asset published without a
+							) : null}
+						</div>
+						{/* ADR-0019 §2.5 — an asset published without a
 							    rights record says so, on the page that shows
 							    the asset. */}
-							<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
-						</Container>
-					</header>
+						<PortfolioEvidenceNotice evidenceStatus={project.evidenceStatus} />
+					</PageSection>
 					{SECTION_DEFINITIONS.map((section) => {
 						const body = project[section.field];
 						if (!body || body.trim() === '') return null;
 						return (
-							<section
+							<PageSection
 								key={section.id}
-								aria-labelledby={`portfolio-section-${section.id}`}
-								className={css({
-									paddingBlock: { base: '16', lg: '24' },
-									borderTop: '1px solid {colors.border.subtle}',
-								})}
+								labelledBy={`portfolio-section-${section.id}`}
+								separator
 							>
-								<Container>
-									<SectionHeading
-										id={`portfolio-section-${section.id}`}
-										eyebrow={section.eyebrow}
-										title={section.title}
-									/>
-									<PortfolioMarkdown source={body} />
-								</Container>
-							</section>
+								<SectionHeading
+									id={`portfolio-section-${section.id}`}
+									eyebrow={section.eyebrow}
+									title={section.title}
+								/>
+								<PortfolioMarkdown source={body} />
+							</PageSection>
 						);
 					})}
 					{project.links.length > 0 ? (
-						<section
-							aria-labelledby="portfolio-section-links"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
-							})}
-						>
-							<Container>
-								<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
-								<ul
-									className={css({
-										listStyle: 'none',
-										margin: '0',
-										padding: '0',
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '3',
-									})}
-								>
-									{project.links.map((link) => (
-										<li key={link.id}>
-											<a
-												href={link.url}
-												target="_blank"
-												rel="noopener noreferrer"
-												className={css({
-													display: 'inline-flex',
-													gap: '3',
-													alignItems: 'baseline',
-													// Issue #871: a URL with no break opportunity
-													// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
-													// is one unbreakable run. Without these three
-													// properties the anchor's max-content width
-													// exceeds the viewport at 390px and the WHOLE
-													// document scrolls sideways (measured
-													// 410 / 390). `flexWrap` lets the label and the
-													// URL sit on separate lines; `minWidth: 0` lets
-													// the flex item shrink below its content size;
-													// `overflowWrap` supplies the break opportunity
-													// inside the URL itself.
-													flexWrap: 'wrap',
-													minWidth: '0',
-													maxWidth: '100%',
-													overflowWrap: 'anywhere',
-													fontFamily: 'sans',
-													fontSize: 'md',
-													color: 'text.accent',
-													textDecoration: 'underline',
-													textUnderlineOffset: '0.18em',
-													textDecorationThickness: '1px',
-													_focusVisible: {
-														outline: '2px solid {colors.border.focus}',
-														outlineOffset: '2px',
-													},
-													_hover: { textDecorationThickness: '2px' },
-												})}
-											>
-												<span
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.04em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
-													{LINK_LABEL[link.kind]}
-												</span>
-												<span>{link.label ?? link.url}</span>
-											</a>
-										</li>
-									))}
-								</ul>
-							</Container>
-						</section>
+						<PageSection labelledBy="portfolio-section-links" separator>
+							<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
+							<Stack as="ul" gap="3" className={listResetClassName}>
+								{project.links.map((link) => (
+									<li key={link.id}>
+										<a
+											href={link.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className={css({
+												display: 'inline-flex',
+												gap: '3',
+												alignItems: 'baseline',
+												// Issue #871: a URL with no break opportunity
+												// (e.g. `https://github.com/rebuildup/Aulymo_v03`)
+												// is one unbreakable run. Without these three
+												// properties the anchor's max-content width
+												// exceeds the viewport at 390px and the WHOLE
+												// document scrolls sideways (measured
+												// 410 / 390). `flexWrap` lets the label and the
+												// URL sit on separate lines; `minWidth: 0` lets
+												// the flex item shrink below its content size;
+												// `overflowWrap` supplies the break opportunity
+												// inside the URL itself.
+												flexWrap: 'wrap',
+												minWidth: '0',
+												maxWidth: '100%',
+												overflowWrap: 'anywhere',
+												fontFamily: 'sans',
+												fontSize: 'md',
+												color: 'text.accent',
+												textDecoration: 'underline',
+												textUnderlineOffset: '0.18em',
+												textDecorationThickness: '1px',
+												_focusVisible: focusRing,
+												_hover: { textDecorationThickness: '2px' },
+											})}
+										>
+											<span className={css(eyebrowMonoXs)}>{LINK_LABEL[link.kind]}</span>
+											<span>{link.label ?? link.url}</span>
+										</a>
+									</li>
+								))}
+							</Stack>
+						</PageSection>
 					) : null}
 					{showAdjacent ? (
-						<nav
-							aria-labelledby="portfolio-section-adjacent"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-								borderTop: '1px solid {colors.border.subtle}',
-							})}
-						>
-							<Container>
+						<PageSection labelledBy="portfolio-section-adjacent" separator>
+							<nav aria-labelledby="portfolio-section-adjacent">
 								{/*
 								 * Issue #767 — no eyebrow here. The numbered
 								 * eyebrows belong to the body sections, and those
@@ -453,17 +331,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									title="隣接 project / Adjacent"
 									description="このプロジェクトの前後に並ぶ project。"
 								/>
-								<ul
-									className={css({
-										listStyle: 'none',
-										margin: '0',
-										padding: '0',
-										display: 'grid',
-										gridTemplateColumns: { base: '1fr', sm: '1fr 1fr' },
-										columnGap: '6',
-										rowGap: '4',
-									})}
-								>
+								<Grid as="ul" columns={2} columnGap="6" rowGap="4" className={listResetClassName}>
 									<li>
 										{adjacent.prev ? (
 											<a
@@ -485,16 +353,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													},
 												})}
 											>
-												<span
-													aria-hidden="true"
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.06em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
+												<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 													← Previous
 												</span>
 												<span
@@ -548,16 +407,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													},
 												})}
 											>
-												<span
-													aria-hidden="true"
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.06em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
+												<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 													Next →
 												</span>
 												<span
@@ -590,28 +440,12 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 											</span>
 										)}
 									</li>
-								</ul>
-							</Container>
-						</nav>
+								</Grid>
+							</nav>
+						</PageSection>
 					) : null}
 				</article>
 			</main>
 		</>
 	);
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});

@@ -55,6 +55,38 @@
 			"note": "Person は承認済み snapshot（identity + externalHandles）だけから組み立てる。"
 		},
 		{
+			"path": "/links",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/links",
+			"note": "リンク集は外部 URL の列挙であり、構造化データの主張を持たない。breadcrumb leaf のみ emit する（Issue #390）。"
+		},
+		{
+			"path": "/commission",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/commission",
+			"note": "制作依頼の案内。受付休止中の status notice が本文の契約であり、Service / Offer の構造化表現は料金・受付が owner 決定されるまで emit しない（Issue #390 / #368 / #369）。breadcrumb leaf のみ。"
+		},
+		{
+			"path": "/stack",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/stack",
+			"note": "開発スタックの参照ページ (Issue #381)。技術一覧の列挙であり schema.org の主張を持たない。breadcrumb leaf のみ emit する。"
+		},
+		{
+			"path": "/activity",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/activity",
+			"note": "統合アクティビティタイムライン (Issue #352)。公開イベントの時系列列挙であり schema.org の主張を持たない。breadcrumb leaf のみ emit する。"
+		},
+		{
 			"path": "/keyboard",
 			"public": true,
 			"status": "implemented",
@@ -125,6 +157,14 @@
 			"expectedTypes": [],
 			"samplePath": null,
 			"note": "認証必須の内部 surface。search 流入を意図していないため structured data の対象外。"
+		},
+		{
+			"path": "/now",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/now",
+			"note": "現在地の全件列挙ページ。breadcrumb leaf のみ emit し、プロジェクト列そのものを構造化データの主張にはしない（Issue #1108）。"
 		}
 	]
 }

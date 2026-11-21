@@ -78,6 +78,8 @@ test('parseReducedMotionBlocks finds the shipped blocks and keeps their line num
 		'ad-reveal',
 		'counter-roll',
 		'current-location-change',
+		'engagement-step',
+		'melting-face',
 		'pet-reaction',
 	]);
 });

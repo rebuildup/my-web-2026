@@ -55,6 +55,20 @@
 				"reason": "Public narrative surface; renders repo-controlled copy only."
 			},
 			{
+				"id": "/activity",
+				"path": "/activity",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/activity.tsx"
+				],
+				"urls": [
+					"/activity"
+				],
+				"reason": "Public unified activity timeline (Issue #352); composes the GitHub public projection and the public portfolio index through the src/activity adapters at request time, is linked from the home site guide, and is not a sitemap target."
+			},
+			{
 				"id": "/admin",
 				"path": "/admin",
 				"classification": "internal",
@@ -165,6 +179,20 @@
 				"reason": "PUBLIC BY NECESSITY: the sign-in waypoint has to be reachable before a session exists. Its loader only redirects already-signed-in users. Never a sitemap target."
 			},
 			{
+				"id": "/commission",
+				"path": "/commission",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/commission.tsx"
+				],
+				"urls": [
+					"/commission"
+				],
+				"reason": "Public commission-intake status page (Issue #390); renders the committed src/contact/commission.ts inventory, is linked from /about, /contact and /links, and is not a sitemap target while intake is parked."
+			},
+			{
 				"id": "/contact",
 				"path": "/contact",
 				"classification": "public",
@@ -205,6 +233,34 @@
 					"/keyboard"
 				],
 				"reason": "Read-only keyboard reference; renders the committed source snapshot and is linked from /about, but is not a sitemap target."
+			},
+			{
+				"id": "/links",
+				"path": "/links",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/links.tsx"
+				],
+				"urls": [
+					"/links"
+				],
+				"reason": "Public verified external-link inventory (Issue #390); renders the committed src/about/links.ts inventory and is linked from /about, but is not a sitemap target."
+			},
+			{
+				"id": "/now",
+				"path": "/now",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/now.tsx"
+				],
+				"urls": [
+					"/now"
+				],
+				"reason": "Public full enumeration of the current-project records (Issue #1108); renders the same committed snapshot the home 現在地 section projects, is reached from its see-all link, and is recorded in SITEMAP_EXCLUSIONS as a non-nav destination."
 			},
 			{
 				"id": "/portfolio/",
@@ -306,6 +362,20 @@
 					"/projects/dotfiles"
 				],
 				"reason": "Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory."
+			},
+			{
+				"id": "/stack",
+				"path": "/stack",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/stack.tsx"
+				],
+				"urls": [
+					"/stack"
+				],
+				"reason": "Public development-stack reference (Issue #381); renders the committed src/routes/stack/ article data with versions resolved from package.json and quality/profile.yaml, is linked from /about, and is not a sitemap target."
 			},
 			{
 				"id": "/tools/",
@@ -421,11 +491,15 @@
 		"publicUrls": [
 			"/",
 			"/about",
+			"/activity",
 			"/admin/invitations/accept",
 			"/admin/login",
+			"/commission",
 			"/contact",
 			"/design-system",
 			"/keyboard",
+			"/links",
+			"/now",
 			"/portfolio",
 			"/portfolio/alice",
 			"/portfolio/aulymo-v01",
@@ -489,6 +563,7 @@
 			"/portfolio/yukikate",
 			"/projects/dotfiles",
 			"/share/procon2026/",
+			"/stack",
 			"/tools",
 			"/tools/ae-expression",
 			"/tools/business-mail-block",
@@ -512,18 +587,26 @@
 			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
+			"atcoder.jp",
+			"bsky.app",
 			"cdn.jsdelivr.net",
+			"ch.tetr.io",
 			"design.google",
 			"developers.google.com",
+			"discord.gg",
 			"example.com",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github-readme-stats-fast.vercel.app",
 			"github.com",
+			"gitty-code.com",
 			"host.invalid",
 			"json-schema.org",
+			"note.com",
+			"osu.ppy.sh",
 			"pomodoro.yusuke-kim.com",
 			"prototype.yusuke-kim.com",
+			"qiita.com",
 			"raw.githubusercontent.com",
 			"rebuildup.github.io",
 			"redirect-guard.invalid",
@@ -537,8 +620,10 @@
 			"use.typekit.net",
 			"via.placeholder.com",
 			"www.apache.org",
+			"www.duolingo.com",
 			"www.facebook.com",
 			"www.googletagmanager.com",
+			"www.linkedin.com",
 			"www.maff.go.jp",
 			"www.mhlw.go.jp",
 			"www.mlit.go.jp",
@@ -550,13 +635,15 @@
 			"www.stat.go.jp",
 			"www.tiktok.com",
 			"www.w3.org",
+			"www.wantedly.com",
 			"www.youtube-nocookie.com",
 			"www.youtube.com",
 			"www2.ube-k.ac.jp",
 			"x.com",
 			"youtu.be",
 			"youtube.com",
-			"yusuke-kim.com"
+			"yusuke-kim.com",
+			"zenn.dev"
 		],
 		"firstPartyHosts": [],
 		"externalUrls": [
@@ -676,6 +763,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/personal/engagement/Engagement.preview.ts",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -788,6 +876,26 @@
 				]
 			},
 			{
+				"url": "https://atcoder.jp/users/rebuildup",
+				"host": "atcoder.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
+				]
+			},
+			{
+				"url": "https://bsky.app/profile/361do.bsky.social",
+				"host": "bsky.app",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
+				]
+			},
+			{
 				"url": "https://cdn.jsdelivr.net",
 				"host": "cdn.jsdelivr.net",
 				"kind": "external",
@@ -815,6 +923,15 @@
 				]
 			},
 			{
+				"url": "https://ch.tetr.io/u/samuido",
+				"host": "ch.tetr.io",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
+				]
+			},
+			{
 				"url": "https://design.google/library/expressive-material-design-google-research",
 				"host": "design.google",
 				"kind": "external",
@@ -839,6 +956,15 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/structured-data/validate.ts"
+				]
+			},
+			{
+				"url": "https://discord.gg/qmCGSBmc28",
+				"host": "discord.gg",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
 				]
 			},
 			{
@@ -2991,6 +3117,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/home/activity/snapshot.ts",
 					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},
@@ -3028,8 +3155,10 @@
 				"identifier": false,
 				"files": [
 					"src/about/data.ts",
+					"src/about/links.ts",
 					"src/contact/channels.json",
-					"src/home/guide/ledger.ts"
+					"src/home/guide/ledger.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -3161,15 +3290,6 @@
 				]
 			},
 			{
-				"url": "https://github.com/rebuildup/ai-knowledge",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/home/activity/github-activity.json"
-				]
-			},
-			{
 				"url": "https://github.com/rebuildup/atcoder-kit",
 				"host": "github.com",
 				"kind": "external",
@@ -3185,6 +3305,7 @@
 				"identifier": false,
 				"files": [
 					"src/home/activity/github-activity.json",
+					"src/personal/engagement/Engagement.preview.ts",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -3326,6 +3447,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/example-repo",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/composer.stories.tsx"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/key-map-kanata",
 				"host": "github.com",
 				"kind": "external",
@@ -3367,10 +3497,25 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"src/about/career.ts",
+					"src/about/skills.ts",
+					"src/activity/fixtures.ts",
 					"src/contact/channels.json",
 					"src/home/activity/github-activity.json",
+					"src/home/composer.stories.tsx",
 					"src/home/footer.tsx",
+					"src/personal/engagement/Engagement.preview.ts",
+					"src/personal/manifesto/Manifesto.preview.ts",
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/stack/stack.ts"
 				]
 			},
 			{
@@ -3403,6 +3548,15 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/tree/main",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/stack/stack.ts"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/pc-setup",
 				"host": "github.com",
 				"kind": "external",
@@ -3429,6 +3583,7 @@
 				"identifier": false,
 				"files": [
 					"src/home/activity/github-activity.json",
+					"src/personal/engagement/Engagement.preview.ts",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -3448,6 +3603,15 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/rebuildup",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/activity/github-activity.json"
 				]
 			},
 			{
@@ -3703,12 +3867,48 @@
 				]
 			},
 			{
+				"url": "https://github.com/tastile/tastile-android",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/activity/fixtures.ts"
+				]
+			},
+			{
+				"url": "https://gitty-code.com/user/rebuildup",
+				"host": "gitty-code.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
+				]
+			},
+			{
 				"url": "https://host.invalid",
 				"host": "host.invalid",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/tools/embed-policy.ts"
+				]
+			},
+			{
+				"url": "https://note.com/alert_toad4443",
+				"host": "note.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
+				]
+			},
+			{
+				"url": "https://osu.ppy.sh/users/36986836",
+				"host": "osu.ppy.sh",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
 				]
 			},
 			{
@@ -3727,6 +3927,16 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://qiita.com/samuido",
+				"host": "qiita.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -3806,6 +4016,24 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/activity",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/activity.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/commission",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/commission.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/contact",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -3833,12 +4061,32 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/links",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/links.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/now",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/now.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/portfolio",
 				"host": "rebuildup.dev",
 				"kind": "origin",
 				"identifier": false,
 				"files": [
+					"src/personal/engagement/Engagement.preview.ts",
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
+					"src/personal/manifesto/Manifesto.preview.ts",
 					"src/routes/portfolio/$slug.tsx",
 					"src/routes/portfolio/index.tsx"
 				]
@@ -3880,6 +4128,15 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/stack",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/stack.tsx"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/tools",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -3913,7 +4170,9 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/data.ts"
+					"src/about/data.ts",
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4054,6 +4313,15 @@
 				]
 			},
 			{
+				"url": "https://www.duolingo.com/profile/samuido",
+				"host": "www.duolingo.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
+				]
+			},
+			{
 				"url": "https://www.facebook.com/KosenProcon",
 				"host": "www.facebook.com",
 				"kind": "external",
@@ -4078,6 +4346,16 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/analytics/GoogleAnalytics.tsx"
+				]
+			},
+			{
+				"url": "https://www.linkedin.com/in/yusuke-kimura-835055398",
+				"host": "www.linkedin.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4172,6 +4450,15 @@
 				]
 			},
 			{
+				"url": "https://www.wantedly.com/id/rebuildup",
+				"host": "www.wantedly.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts"
+				]
+			},
+			{
 				"url": "https://www.youtube-nocookie.com/embed",
 				"host": "www.youtube-nocookie.com",
 				"kind": "external",
@@ -4196,6 +4483,16 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.youtube.com/@361do_sleep",
+				"host": "www.youtube.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -4928,6 +5225,16 @@
 				]
 			},
 			{
+				"url": "https://x.com/361do_design",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
+				]
+			},
+			{
 				"url": "https://x.com/361do_design/status/1893620585491792320",
 				"host": "x.com",
 				"kind": "external",
@@ -4979,6 +5286,16 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_sleep",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5257,7 +5574,9 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/about/data.ts"
+					"src/about/data.ts",
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			},
 			{
@@ -5662,35 +5981,56 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/contact/channels.json"
+					"src/contact/channels.json",
+					"src/personal/handle-map/HandleMap.preview.ts"
+				]
+			},
+			{
+				"url": "https://yusuke-kim.com/about",
+				"host": "yusuke-kim.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/career.ts",
+					"src/about/skills.ts"
+				]
+			},
+			{
+				"url": "https://zenn.dev/361do_sleep",
+				"host": "zenn.dev",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/links.ts",
+					"src/personal/handle-map/HandleMap.preview.ts"
 				]
 			}
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [],
+		"addedPublicUrls": [
+			"/now"
+		],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"https://"
+		"addedExternalUrls": [
+			"https://rebuildup.dev/now"
 		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [],
-		"removedExternalHosts": [
-			""
-		],
+		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://"
+				"message": "External URL added: https://rebuildup.dev/now"
 			},
 			{
-				"code": "W001 external-host-removed",
+				"code": "W004 public-url-added",
 				"severity": "warn",
-				"message": "External host no longer referenced: "
+				"message": "Public URL added: /now"
 			}
 		]
 	}

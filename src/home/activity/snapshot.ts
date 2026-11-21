@@ -24,6 +24,7 @@ import type {
 	ActivityRepoFacts,
 	GitHubActivitySnapshot,
 	HomeGitHubActivity,
+	HomeGitHubActivityRepoMeasure,
 } from './contract';
 import { ACTIVITY_OVERRIDES } from './overrides';
 
@@ -76,6 +77,22 @@ function validRepo(value: unknown): value is ActivityRepoFacts {
 	return true;
 }
 
+const REF_KINDS = new Set(['issue', 'pull']);
+const REF_STATES = new Set(['open', 'closed', 'merged']);
+
+/**
+ * The optional Issue/PR reference on a feed item (Issue #334). The
+ * shape is closed: an unknown kind/state or a non-positive number
+ * rejects the whole snapshot — a malformed ref is a malformed claim.
+ */
+function validFeedItemRef(value: unknown): boolean {
+	if (!isRecord(value)) return false;
+	if (!REF_KINDS.has(value.kind as string)) return false;
+	if (!Number.isInteger(value.number) || (value.number as number) < 1) return false;
+	if (value.state !== undefined && !REF_STATES.has(value.state as string)) return false;
+	return true;
+}
+
 function validFeedItem(value: unknown): value is ActivityFeedItem {
 	if (!isRecord(value)) return false;
 	return (
@@ -84,7 +101,8 @@ function validFeedItem(value: unknown): value is ActivityFeedItem {
 		typeof value.repoId === 'string' &&
 		typeof value.type === 'string' &&
 		typeof value.at === 'string' &&
-		RFC3339.test(value.at)
+		RFC3339.test(value.at) &&
+		(value.ref === undefined || validFeedItemRef(value.ref))
 	);
 }
 
@@ -129,7 +147,7 @@ function applyOverride(repo: ActivityRepoFacts): ActivityRepoFacts | null {
 
 const SAFE_DEFAULT_SUMMARY: Readonly<Record<ActivityRepoFacts['kind'], string>> = {
 	public: 'GitHub 上で活動が観測された公開リポジトリ。',
-	private: 'GitHub 上で活動が観測された非公開リポジトリ（名称・URL は非表示）。',
+	private: 'GitHub 上で活動が観測された非公開リポジトリ。',
 };
 
 /**
@@ -244,22 +262,99 @@ export function activityProjectRecords(
 }
 
 /**
- * The public projection for the status card (#319). Private feed
- * items and private repo counts describe ONLY the anonymous ids —
- * counts are publishable aggregates, identities are not.
+ * How many measured repos the card lists (#967). The card is a
+ * summary surface, not the ranked project list — five rows carry
+ * the "where the measured work is" signal without re-enumerating
+ * the snapshot.
+ */
+export const MAX_ACTIVITY_TOP_REPOS = 5;
+
+function measureScore(measure: HomeGitHubActivityRepoMeasure): number {
+	return measure.commits + (measure.pullRequests ?? 0);
+}
+
+function compareMeasures(
+	a: HomeGitHubActivityRepoMeasure,
+	b: HomeGitHubActivityRepoMeasure,
+): number {
+	const byScore = measureScore(b) - measureScore(a);
+	if (byScore !== 0) return byScore;
+	const byCommits = b.commits - a.commits;
+	if (byCommits !== 0) return byCommits;
+	if (a.id === b.id) return 0;
+	return a.id < b.id ? -1 : 1;
+}
+
+/**
+ * The link target for one PUBLIC feed item (Issue #334). A `ref`
+ * produces the event permalink built from `repoId` — but only when
+ * `repoId` matches the `owner/name` grammar, so a malformed id can
+ * never become a URL. Without a usable `ref`, the public repo's
+ * `htmlUrl` is the fallback; `undefined` means "no provable link".
+ */
+function feedItemHref(
+	item: ActivityFeedItem,
+	urlByRepoId: ReadonlyMap<string, string>,
+): string | undefined {
+	if (item.ref && REPO_ID.test(item.repoId)) {
+		const segment = item.ref.kind === 'pull' ? 'pull' : 'issues';
+		return `https://github.com/${item.repoId}/${segment}/${item.ref.number}`;
+	}
+	return urlByRepoId.get(item.repoId);
+}
+
+/**
+ * The public projection for the status card (#319 / #967).
+ *
+ * Private feed items and private repo counts describe ONLY the
+ * anonymous ids — counts are publishable aggregates, identities are
+ * not. Feed items gain `href` from data the snapshot can prove
+ * (Issue #334): when the item carries `ref`, the permalink is built
+ * from the `owner/name` `repoId` the public events API returned —
+ * `…/issues/<n>` or `…/pull/<n>` — which also covers event repos the
+ * owner does not own; otherwise the link falls back to the PUBLIC
+ * repo's `htmlUrl`. A private-kind item is filtered before any href
+ * is derived, and `repoId` must match the `owner/name` grammar before
+ * it is interpolated into a URL — nothing is fabricated.
+ * `topRepos` carries the measured
+ * authored commits / PRs per public repo, ranked by contribution —
+ * the semantic aggregate the card leads with.
  */
 export function publicGitHubActivity(snapshot: GitHubActivitySnapshot): HomeGitHubActivity {
-	const publicRepos = snapshot.repos.filter(
-		(r) => r.kind === 'public' && !ACTIVITY_OVERRIDES[r.id]?.exclude,
-	);
-	const privateRepos = snapshot.repos.filter(
-		(r) => r.kind === 'private' && !ACTIVITY_OVERRIDES[r.id]?.exclude,
-	);
+	const visibleRepos = snapshot.repos.filter((r) => !ACTIVITY_OVERRIDES[r.id]?.exclude);
+	const publicRepos = visibleRepos.filter((r) => r.kind === 'public');
+	const privateRepos = visibleRepos.filter((r) => r.kind === 'private');
+	const urlByRepoId = new Map<string, string>();
+	for (const repo of publicRepos) {
+		if (repo.htmlUrl) urlByRepoId.set(repo.id, repo.htmlUrl);
+	}
+	const feed = snapshot.feed
+		.filter((item) => item.kind === 'public')
+		.map((item) => {
+			const href = feedItemHref(item, urlByRepoId);
+			return href ? { ...item, href } : { ...item };
+		});
+	const topRepos = publicRepos
+		.filter((repo) => repo.activity?.commits !== undefined)
+		.map((repo): HomeGitHubActivityRepoMeasure => {
+			const activity = repo.activity;
+			return {
+				id: repo.id,
+				name: repo.name,
+				...(repo.htmlUrl ? { href: repo.htmlUrl } : {}),
+				commits: activity?.commits ?? 0,
+				...(activity?.prs !== undefined ? { pullRequests: activity.prs } : {}),
+				windowDays: activity?.windowDays ?? snapshot.windowDays,
+			};
+		})
+		.sort(compareMeasures)
+		.slice(0, MAX_ACTIVITY_TOP_REPOS);
 	return {
 		generatedOn: snapshot.generatedOn,
 		windowDays: snapshot.windowDays,
 		sources: snapshot.sources,
-		feed: snapshot.feed.filter((item) => item.kind === 'public'),
+		feed,
+		topRepos,
 		repoCount: { public: publicRepos.length, private: privateRepos.length },
 	};
 }

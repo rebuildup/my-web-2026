@@ -3,8 +3,8 @@ import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { composeSocialCard } from '../editorial/social-card';
-import { KeyboardPage } from '../keyboard/components';
 import { KEYBOARD_SOURCES, loadKeyboardPage } from '../keyboard';
+import { KeyboardPage } from '../keyboard/components';
 
 /**
  * `/keyboard` — read-only keyboard-layout surface (Issue #620).

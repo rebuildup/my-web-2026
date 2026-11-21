@@ -89,6 +89,13 @@ personal -> editorial (Issue #709 — the personal-document preview owner
                    ALLOWLIST: every other owner directory under `src/`
                    is forbidden, including one that does not exist yet)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+routes -> activity (Issue #352 — the `/activity` page is a follow-up
+                   integration; the route will compose the timeline
+                   from the home GitHub-activity projection and the
+                   public portfolio index. `activity` itself declares
+                   NO outgoing owner edge — its adapters take narrow
+                   structural inputs — so the edge is one-directional
+                   and enforced as an EMPTY allowlist)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
                  fixture is policy data: which code points a heading
@@ -379,6 +386,23 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   a demo surface, so it stays outside the public-Japanese-copy gate for
   the same reason `**/*.stories.tsx` does. See
   `src/personal/README.md`.
+- `src/activity/**` (Issue #352) owns the **unified activity-timeline
+  read model**: the merged chronology contract (`contract.ts`), the
+  date-descending merge (`merge.ts`), the per-source adapters
+  (`sources.ts`) and the committed fixtures. It answers "what did the
+  owner publish, and when" across GitHub releases, published articles
+  and approved portfolio works — each item keeps its 種別 / 出典 /
+  日付 / 詳細 URL, and unknown dates are never interpolated (a work
+  contributes its authored `periodStart` / `periodLabel`; the
+  portfolio model has no publication-date field, so none is claimed).
+  Its adapters take narrow STRUCTURAL inputs, so the obligation
+  imports no peer owner, no route, no binding and no boundary —
+  `allowedOwnerDependencies` in `scripts/check-architecture.mjs`
+  registers it with an EMPTY allowlist. The timeline's display
+  component lives in `src/routes/activity/Timeline.tsx` instead: a
+  presentational surface must compose `editorial` primitives, and
+  `activity` declares no outgoing edge, so the route layer owns the
+  composition while `activity` keeps the read model (Issue #1109).
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
@@ -588,6 +612,28 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `scripts/lint-ci.mjs`) + `build-storybook` + artifact attestation)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
+
+### Committed-text contamination (Issue #1038)
+
+- Agent tool-call serialisation fragments were once concatenated onto
+  the EOF of three committed verification documents; `tail`-style
+  inspection missed them because no newline preceded the bytes. Only
+  a byte-level scan finds them, so `pnpm run
+  docs:contamination:check` (a `validate:fast` component) scans every
+  file `git ls-files` reports for the prohibited marker set. The set
+  lives in ONE place —
+  `scripts/check-doc-contamination.mjs` (`CONTAMINATION_MARKERS` +
+  `CONTAMINATION_PATTERNS`). **Never spell a marker literally in
+  prose, docs or code** — this repository is itself scanned, and the
+  script builds its own needles by concatenation for exactly that
+  reason.
+- **Before committing staged text** (docs, JSON, source — anything
+  the gate scans), byte-check the staged content for those markers:
+  `git diff --cached` piped through `grep -F` against the constant,
+  or simply run `pnpm run docs:contamination:check` on the tree.
+  Re-run it after pushing as well. A tracked file the gate cannot
+  read fails loudly — that is a broken checkout to fix, never a
+  reason to remove the path from the index.
 
 Issue #937 split the CI triggers so heavy verification runs once per
 candidate instead of once per ticket merge:

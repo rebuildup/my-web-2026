@@ -59,6 +59,38 @@
 			"note": "Home はこの release で declare した card 画像を持たない。og:title / description / url と twitter:card=summary は出ており、card 画像だけが無い — cardPolicy 'none' はその状態を宣言したもので、og:image が後から増えた時点で drift finding になる。fallbackCard をそのまま出すか別の decision にするかは Home の card design 問題であり、この Issue の範囲外。"
 		},
 		{
+			"path": "/links",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/links",
+			"note": "リンク集 (Issue #390)。og:title / description / url を出すが代表画像を declare していない — 外部アカウントの列挙にこのサイトの card 画像を被せない。"
+		},
+		{
+			"path": "/commission",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/commission",
+			"note": "制作依頼の案内 (Issue #390)。受付休止中の status surface であり、og:title / description / url を出すが card 画像は declare しない。"
+		},
+		{
+			"path": "/stack",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/stack",
+			"note": "開発スタックの参照ページ (Issue #381)。og:title / description / url を出すが、技術一覧の列挙にこのサイトの card 画像を被せないため og:image は declare しない。"
+		},
+		{
+			"path": "/activity",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/activity",
+			"note": "統合アクティビティタイムライン (Issue #352)。og:title / description / url を出すが、時系列項目の列挙にこのサイトの card 画像を被せないため og:image は declare しない。"
+		},
+		{
 			"path": "/contact",
 			"public": true,
 			"status": "not-implemented",
@@ -97,6 +129,14 @@
 			"cardPolicy": "none",
 			"samplePath": "/projects/dotfiles",
 			"note": "README から生成した introduction を表示する surface。代表画像を持たず、上流 README の画像を hotlink しない方針のため og:image は宣言しない。og:title / description / url は route が出す。"
+		},
+		{
+			"path": "/now",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/now",
+			"note": "現在地の全件一覧 surface（Issue #1108）。HOME の代表スライスの全量到達先。代表画像を持たず、og:title / description / url だけを route が出す — cardPolicy 'none' はその状態の宣言であり、og:image が後から増えた時点で drift finding になる。"
 		}
 	],
 	"deferredSurfaces": [

@@ -96,6 +96,42 @@ export const SURFACE_DECLARATIONS = [
 			'Public contact surface; renders only channels that pass the fail-closed freshness gate.',
 	},
 	{
+		id: '/links',
+		path: '/links',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/links.tsx'],
+		reason:
+			'Public verified external-link inventory (Issue #390); renders the committed src/about/links.ts inventory and is linked from /about, but is not a sitemap target.',
+	},
+	{
+		id: '/commission',
+		path: '/commission',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/commission.tsx'],
+		reason:
+			'Public commission-intake status page (Issue #390); renders the committed src/contact/commission.ts inventory, is linked from /about, /contact and /links, and is not a sitemap target while intake is parked.',
+	},
+	{
+		id: '/stack',
+		path: '/stack',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/stack.tsx'],
+		reason:
+			'Public development-stack reference (Issue #381); renders the committed src/routes/stack/ article data with versions resolved from package.json and quality/profile.yaml, is linked from /about, and is not a sitemap target.',
+	},
+	{
+		id: '/activity',
+		path: '/activity',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/activity.tsx'],
+		reason:
+			'Public unified activity timeline (Issue #352); composes the GitHub public projection and the public portfolio index through the src/activity adapters at request time, is linked from the home site guide, and is not a sitemap target.',
+	},
+	{
 		id: '/projects/dotfiles',
 		path: '/projects/dotfiles',
 		classification: 'public',
@@ -103,6 +139,15 @@ export const SURFACE_DECLARATIONS = [
 		files: ['src/routes/projects.dotfiles.tsx'],
 		reason:
 			'Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory.',
+	},
+	{
+		id: '/now',
+		path: '/now',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/now.tsx'],
+		reason:
+			'Public full enumeration of the current-project records (Issue #1108); renders the same committed snapshot the home 現在地 section projects, is reached from its see-all link, and is recorded in SITEMAP_EXCLUSIONS as a non-nav destination.',
 	},
 	{
 		id: '/portfolio/',
@@ -231,8 +276,9 @@ export const SURFACE_DECLARATIONS = [
 
 /**
  * Files inside `src/routes/**` that the file-route generator does
- * NOT turn into routes (colocated components and barrels under the
- * `design-system/` directory). Declared explicitly rather than
+ * NOT turn into routes (colocated components, data modules and
+ * barrels under the `design-system/` and `stack/` directories).
+ * Declared explicitly rather than
  * matched by a glob so an exception has to be justified in review.
  */
 export const ROUTE_DIR_INERT_FILES = [
@@ -250,7 +296,20 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/StatusAccents.tsx',
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',
 	'src/routes/design-system/sections/TableCode.tsx',
+	'src/routes/design-system/sections/ToneMatrix.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
+	'src/routes/stack/StackPage.tsx',
+	'src/routes/stack/biome-facts.ts',
+	'src/routes/stack/biome-settings-table.ts',
+	'src/routes/stack/load.ts',
+	'src/routes/stack/profile-stack.ts',
+	'src/routes/stack/resolve.ts',
+	'src/routes/stack/stack.ts',
+	'src/routes/activity/ActivityPage.tsx',
+	'src/routes/activity/Timeline.tsx',
+	'src/routes/activity/Timeline.stories.tsx',
+	'src/routes/activity/assemble.ts',
+	'src/routes/activity/load.ts',
 ];
 
 /**

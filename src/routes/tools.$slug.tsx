@@ -7,6 +7,7 @@ import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { focusRing, linkAccent } from '../editorial/primitives/shared-styles';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
@@ -310,23 +311,7 @@ function ToolNotFound() {
 							color: 'text.default',
 						})}
 					>
-						<a
-							href="/tools"
-							className={css({
-								// Issue #887: `text.accent` is ink now, so the
-								// underline carries the affordance and hover
-								// fattens it instead of repainting the ink.
-								color: 'text.accent',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_hover: { textDecorationThickness: '2px' },
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
-						>
+						<a href="/tools" className={css(linkAccent)}>
 							ツール一覧に戻る / Back to the Tool list
 						</a>
 					</p>
@@ -571,23 +556,7 @@ function BlockedPlaceholder({
 							color: 'text.default',
 						})}
 					>
-						<Link
-							to="/tools"
-							className={css({
-								// Issue #887: `text.accent` is ink now, so the
-								// underline carries the affordance and hover
-								// fattens it instead of repainting the ink.
-								color: 'text.accent',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_hover: { textDecorationThickness: '2px' },
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
-						>
+						<Link to="/tools" className={css(linkAccent)}>
 							ツール一覧に戻る / Back to the Tool list
 						</Link>
 					</p>
@@ -640,23 +609,7 @@ function DisabledPlaceholder({ tool }: { tool: DisabledToolView }) {
 							color: 'text.default',
 						})}
 					>
-						<Link
-							to="/tools"
-							className={css({
-								// Issue #887: `text.accent` is ink now, so the
-								// underline carries the affordance and hover
-								// fattens it instead of repainting the ink.
-								color: 'text.accent',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_hover: { textDecorationThickness: '2px' },
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
-						>
+						<Link to="/tools" className={css(linkAccent)}>
 							ツール一覧に戻る / Back to the Tool list
 						</Link>
 					</p>

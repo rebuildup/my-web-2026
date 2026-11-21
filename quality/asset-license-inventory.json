@@ -411,11 +411,11 @@
 		{
 			"id": "pet-melty-sprites",
 			"kind": "artwork",
-			"title": "相棒キャラクター Melty のスプライト（Web 配信用ストリップ / 静止フレーム）",
-			"summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから静止フレーム、waving の 4 フレームストリップ、ドラッグ用 running の 8 フレームストリップ、look 方向の静止セル 4 種を導出する。",
+			"title": "相棒キャラクター Melty のスプライト（Web 配信用ストリップ）",
+			"summary": "owner のオリジナルキャラクター Melty。元アトラスは owner の依頼文から画像生成モデルが描画した 1536x2288 の 1 点物で、scripts/build-pet-sprites.mjs がそのバイトから idle の 6 フレームストリップ、waving の 4 フレームストリップ、ドラッグ用 running の 8 フレームストリップ、look 方向の静止セル 4 種を導出する。",
 			"covers": ["public/pets/melty/**"],
 			"publicPaths": [
-				"/pets/melty/idle-rest.webp",
+				"/pets/melty/idle.webp",
 				"/pets/melty/waving.webp",
 				"/pets/melty/running-right.webp",
 				"/pets/melty/running-left.webp",
@@ -447,7 +447,7 @@
 				{
 					"kind": "repository-file",
 					"path": "docs/verification/legal/pet-melty-rights-review.md",
-					"sha256": "c5a224f33d6fab2b6d1758d11ea0b77c47516649c80b07e977706afa76e03566"
+					"sha256": "2379282a73b74ee6e84244e8c4acedc50c2fe2cadad96068b7f3afdd4e495b5a"
 				},
 				{
 					"kind": "repository-file",

@@ -87,6 +87,16 @@ export default defineConfig({
 					from: { transform: 'translateX(0)' },
 					to: { transform: 'translateX(-87.5%)' },
 				},
+				// Issue #1044 — the resting idle loop
+				// (`idle.webp`, `src/editorial/pet/PetSprite.tsx`). Six
+				// 96 px frames in a 576 px strip: -83.3333 % is five
+				// frame widths, so `steps(6, jump-none)` lands on each
+				// frame once and the infinite loop returns to the
+				// breathing frame.
+				petIdle: {
+					from: { transform: 'translateX(0)' },
+					to: { transform: 'translateX(-83.3333%)' },
+				},
 				// Issue #925 — the home ad units. The entrance variants
 				// animate transform / clip-path only, never opacity: an
 				// opacity fade leaves every descendant blended toward
@@ -140,6 +150,31 @@ export default defineConfig({
 				adWipeLeft: {
 					'0%': { clipPath: 'inset(0 100% 0 0)' },
 					'100%': { clipPath: 'inset(0 0 0 0)' },
+				},
+				// Issue #522 — the melting-face motif's drip bob
+				// (`src/personal/melting-face/MeltingFace.tsx`). A slow
+				// two-pixel sink on the drip shapes only: the head,
+				// eyes and mouth never move, so the resting frame
+				// carries the whole meaning. Opt-out at render time
+				// through `usePrefersReducedMotion` and at the
+				// stylesheet layer through the `melting-face`
+				// data-motion hook.
+				meltingFaceDrip: {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(2.5px)' },
+				},
+				// Issue #517 — the engagement preview's deck step
+				// (`src/personal/engagement/Engagement.tsx`). A short
+				// transform-only arrival for the swapped-in work panel:
+				// no opacity (the axe contrast scan reads a translucent
+				// entrance as a violation) and no layout property, so
+				// the step can never move the deck's height. Opt-out at
+				// render time through `usePrefersReducedMotion` and at
+				// the stylesheet layer through the `engagement-step`
+				// data-motion hook.
+				engagementStep: {
+					'0%': { transform: 'translateY(8px)' },
+					'100%': { transform: 'translateY(0)' },
 				},
 			},
 		},

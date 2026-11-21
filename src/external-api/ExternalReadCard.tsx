@@ -1,7 +1,14 @@
 import { type ReactNode, useEffect, useState } from 'react';
-import { css } from '../../styled-system/css';
+import { css, cx } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
+import { Button } from '../editorial/primitives/Button';
+import { Panel } from '../editorial/primitives/Panel';
 import { StateMark } from '../editorial/primitives/StateMark';
+import {
+	bodySansMdReset,
+	noteMonoSm,
+	noteMonoSmFlush,
+} from '../editorial/primitives/shared-styles';
 import {
 	EXTERNAL_FAILURE_LABEL,
 	type ExternalBreakerState,
@@ -218,23 +225,26 @@ export function ExternalReadCard<T>({
 	}, [affordance.retryAt, clock]);
 
 	return (
-		<section
+		<Panel
+			as="section"
+			variant="surface"
+			padding="4"
+			radius="md"
 			data-testid="external-read-card"
 			data-status={snapshot.status}
 			data-freshness={snapshot.status === 'value' ? snapshot.freshness : null}
 			data-breaker={degraded?.breaker ?? null}
 			aria-busy={snapshot.status === 'loading' || busy}
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '3',
-				padding: '4',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: degraded?.breaker === 'open' ? 'border.strong' : 'border.subtle',
-				bg: 'bg.surface',
-			})}
+			className={cx(
+				css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '3',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: degraded?.breaker === 'open' ? 'border.strong' : 'border.subtle',
+				}),
+			)}
 		>
 			<header
 				className={css({
@@ -299,15 +309,7 @@ export function ExternalReadCard<T>({
 			) : null}
 
 			{degraded !== null && value === null ? (
-				<p
-					data-testid="external-read-empty"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-					})}
-				>
+				<p data-testid="external-read-empty" className={css(bodySansMdReset)}>
 					{UNAVAILABLE_LABEL}
 				</p>
 			) : null}
@@ -347,54 +349,27 @@ export function ExternalReadCard<T>({
 					gap: '2',
 				})}
 			>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{timelineLine(snapshot)}
-				</p>
+				<p className={css(noteMonoSmFlush)}>{timelineLine(snapshot)}</p>
 				{degraded === null ? null : (
 					<span className={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}>
 						{affordance.retryable ? null : (
-							<span
-								data-testid="external-read-blocked"
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-								})}
-							>
+							<span data-testid="external-read-blocked" className={css(noteMonoSm)}>
 								{NEXT_ATTEMPT_LABEL} {formatInstant(affordance.retryAt)}
 							</span>
 						)}
 						{onRetry === undefined ? null : (
-							<button
-								type="button"
+							<Button
+								size="sm"
 								data-testid="external-read-retry"
 								disabled={retryDisabled || busy}
 								onClick={onRetry}
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									fontWeight: '600',
-									color: retryDisabled || busy ? 'text.muted' : 'text.inverse',
-									bg: retryDisabled || busy ? 'bg.subtle' : 'bg.accent',
-									borderRadius: 'full',
-									paddingInline: '3',
-									paddingBlock: '1',
-									cursor: retryDisabled || busy ? 'not-allowed' : 'pointer',
-								})}
 							>
 								{RETRY_LABEL}
-							</button>
+							</Button>
 						)}
 					</span>
 				)}
 			</footer>
-		</section>
+		</Panel>
 	);
 }

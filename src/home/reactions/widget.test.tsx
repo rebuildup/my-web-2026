@@ -1,4 +1,4 @@
-import { EmojiStyle, Theme, type EmojiClickData } from 'emoji-picker-react';
+import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CatalogEntry } from './emoji-catalog';
@@ -62,8 +62,7 @@ describe('ReactionsWidget', () => {
 			enabled: false,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
-		expect(html).toContain('reactions disabled');
-		expect(html).toContain('bootstrap-home-api-key');
+		expect(html).toContain('Reactions disabled in this environment.');
 	});
 
 	it('renders aggregate chips with the resolved emoji when data.enabled is true and aggregates are non-empty', () => {

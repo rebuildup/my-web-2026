@@ -127,6 +127,10 @@ function sameOriginHeaders(): Record<string, string> {
 }
 
 test.describe('admin UI routes — anonymous', () => {
+	// Six admin routes are probed serially, each a full SSR document —
+	// under full-suite parallel load the 30 s default proved too tight.
+	test.setTimeout(90_000);
+
 	test('every admin-only route lands on the sign-in form and shows no private data', async ({
 		page,
 	}) => {
@@ -169,6 +173,8 @@ test.describe('admin UI routes — anonymous', () => {
 });
 
 test.describe('admin UI routes — signed in without the admin role', () => {
+	test.setTimeout(90_000);
+
 	test('a non-admin is bounced off every admin-only route to the dashboard', async ({
 		browser,
 		baseURL,
@@ -241,6 +247,8 @@ test.describe('internal APIs — API key scopes', () => {
 });
 
 test.describe('admin UI routes — admin role', () => {
+	test.setTimeout(90_000);
+
 	test('the dashboard and every admin-only route render private rows for an admin', async ({
 		browser,
 		baseURL,

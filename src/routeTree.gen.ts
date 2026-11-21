@@ -11,10 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CommissionRouteImport } from './routes/commission'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as KeyboardRouteImport } from './routes/keyboard'
+import { Route as LinksRouteImport } from './routes/links'
+import { Route as NowRouteImport } from './routes/now'
+import { Route as StackRouteImport } from './routes/stack'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminEmojiCatalogRouteImport } from './routes/admin.emoji-catalog'
 import { Route as AdminImagesRouteImport } from './routes/admin.images'
@@ -38,9 +43,19 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommissionRoute = CommissionRouteImport.update({
+  id: '/commission',
+  path: '/commission',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -56,6 +71,21 @@ const DesignSystemRoute = DesignSystemRouteImport.update({
 const KeyboardRoute = KeyboardRouteImport.update({
   id: '/keyboard',
   path: '/keyboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksRoute = LinksRouteImport.update({
+  id: '/links',
+  path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NowRoute = NowRouteImport.update({
+  id: '/now',
+  path: '/now',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StackRoute = StackRouteImport.update({
+  id: '/stack',
+  path: '/stack',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -122,10 +152,15 @@ const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/commission': typeof CommissionRoute
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
+  '/links': typeof LinksRoute
+  '/now': typeof NowRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -142,9 +177,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
+  '/commission': typeof CommissionRoute
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
+  '/links': typeof LinksRoute
+  '/now': typeof NowRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -162,10 +202,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/commission': typeof CommissionRoute
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
   '/keyboard': typeof KeyboardRoute
+  '/links': typeof LinksRoute
+  '/now': typeof NowRoute
+  '/stack': typeof StackRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRoute
@@ -184,10 +229,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/activity'
     | '/admin'
+    | '/commission'
     | '/contact'
     | '/design-system'
     | '/keyboard'
+    | '/links'
+    | '/now'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -204,9 +254,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/activity'
+    | '/commission'
     | '/contact'
     | '/design-system'
     | '/keyboard'
+    | '/links'
+    | '/now'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -223,10 +278,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/activity'
     | '/admin'
+    | '/commission'
     | '/contact'
     | '/design-system'
     | '/keyboard'
+    | '/links'
+    | '/now'
+    | '/stack'
     | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
@@ -244,10 +304,15 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRouteWithChildren
+  CommissionRoute: typeof CommissionRoute
   ContactRoute: typeof ContactRoute
   DesignSystemRoute: typeof DesignSystemRoute
   KeyboardRoute: typeof KeyboardRoute
+  LinksRoute: typeof LinksRoute
+  NowRoute: typeof NowRoute
+  StackRoute: typeof StackRoute
   PortfolioSlugRoute: typeof PortfolioSlugRoute
   ProjectsDotfilesRoute: typeof ProjectsDotfilesRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
@@ -271,11 +336,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/commission': {
+      id: '/commission'
+      path: '/commission'
+      fullPath: '/commission'
+      preLoaderRoute: typeof CommissionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -297,6 +376,27 @@ declare module '@tanstack/react-router' {
       path: '/keyboard'
       fullPath: '/keyboard'
       preLoaderRoute: typeof KeyboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/now': {
+      id: '/now'
+      path: '/now'
+      fullPath: '/now'
+      preLoaderRoute: typeof NowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stack': {
+      id: '/stack'
+      path: '/stack'
+      fullPath: '/stack'
+      preLoaderRoute: typeof StackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -411,10 +511,15 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ActivityRoute: ActivityRoute,
   AdminRoute: AdminRouteWithChildren,
+  CommissionRoute: CommissionRoute,
   ContactRoute: ContactRoute,
   DesignSystemRoute: DesignSystemRoute,
   KeyboardRoute: KeyboardRoute,
+  LinksRoute: LinksRoute,
+  NowRoute: NowRoute,
+  StackRoute: StackRoute,
   PortfolioSlugRoute: PortfolioSlugRoute,
   ProjectsDotfilesRoute: ProjectsDotfilesRoute,
   ToolsSlugRoute: ToolsSlugRoute,

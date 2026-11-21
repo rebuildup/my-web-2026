@@ -3,8 +3,11 @@ import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
-import { Container } from '../editorial/primitives/Container';
+import { Badge } from '../editorial/primitives/Badge';
+import { listResetClassName } from '../editorial/primitives/Flow';
+import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
 import {
@@ -25,6 +28,15 @@ import {
 	TEXT_FIELDS_PATH,
 	TIMER_PATH,
 } from '../editorial/primitives/material-symbol-tool-paths';
+import {
+	eyebrowMonoSm,
+	gridMin,
+	noteSansMdPlain,
+	pageTitleFlush,
+	sizeDisplay,
+} from '../editorial/primitives/shared-styles';
+import { PrivacyNoticeCompact } from '../home/privacy-notice-compact';
+import { getCompactPrivacyNotice } from '../home/privacy/load';
 import { getHomeReactions } from '../home/public';
 import { ReactionsWidget } from '../home/reactions/widget';
 import { listToolIndexEntries } from '../tools/public';
@@ -81,10 +93,15 @@ export const Route = createFileRoute('/tools/')({
 		// boundary (`src/tools/public.ts`) — the client bundle and the
 		// hydration payload only ever see `ToolIndexEntry` card fields.
 		const { available, planned } = await listToolIndexEntries();
-		const reactions = await getHomeReactions({
-			data: { target: TOOLS_INDEX_REACTIONS_TARGET },
-		});
-		return { available, planned, reactions };
+		const [reactions, privacyNotice] = await Promise.all([
+			getHomeReactions({
+				data: { target: TOOLS_INDEX_REACTIONS_TARGET },
+			}),
+			// Issue #370 — compact data-notice pointer for the reaction
+			// surface below (see `src/routes/about.tsx`).
+			getCompactPrivacyNotice(),
+		]);
+		return { available, planned, reactions, privacyNotice };
 	},
 	head: () => {
 		const title = 'Tools — my-web-2026';
@@ -289,7 +306,7 @@ const TOOL_PREVIEWS: Readonly<
 };
 
 function ToolsIndexRoute() {
-	const { available, planned, reactions } = Route.useLoaderData();
+	const { available, planned, reactions, privacyNotice } = Route.useLoaderData();
 	return (
 		<>
 			<PublicNav />
@@ -297,159 +314,98 @@ function ToolsIndexRoute() {
 			<BreadcrumbJsonLd />
 			{/* Issue #300: hero beat (16/32), same Container and left axis
 			    as every other public page. */}
-			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
-				<Container>
-					<header
+			<PageSection rhythm="hero">
+				<header
+					className={css({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '4',
+						marginBlockEnd: '0',
+					})}
+				>
+					<span className={css(eyebrowMonoSm)}>Tools</span>
+					<h1 className={css(pageTitleFlush)}>ツール</h1>
+					<p
 						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '4',
-							marginBlockEnd: '0',
+							margin: '0',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.muted',
+							lineHeight: '1.6',
+							maxWidth: '640px',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
-							Tools
-						</span>
-						<h1
-							className={css({
-								margin: '0',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								color: 'text.default',
-								lineHeight: '1.05',
-								letterSpacing: '-0.03em',
-								maxWidth: '720px',
-							})}
-						>
-							ツール
-						</h1>
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								color: 'text.muted',
-								lineHeight: '1.6',
-								maxWidth: '640px',
-							})}
-						>
-							ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
-							repository で開発し、同じ origin から配信しています。
-						</p>
-					</header>
-				</Container>
-			</section>
+						ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
+						repository で開発し、同じ origin から配信しています。
+					</p>
+				</header>
+			</PageSection>
 			{available.length === 0 && planned.length === 0 ? (
-				<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
-					<Container>
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								color: 'text.muted',
-							})}
-						>
-							登録されているツールはまだありません。
-						</p>
-					</Container>
-				</section>
+				<PageSection>
+					<p className={css(noteSansMdPlain)}>登録されているツールはまだありません。</p>
+				</PageSection>
 			) : null}
 			{available.length > 0 ? (
-				<section
-					aria-labelledby="tools-available-heading"
-					data-route="tools-available"
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id="tools-available-heading"
-							description="このページから開けます。カードを選ぶとツールが開きます。"
-							eyebrow="01 — Available"
-							title="使えるツール"
-						/>
-						<ul className={cardGrid}>
-							{available.map((tool) => (
-								<ToolCard key={tool.slug} tool={tool} />
-							))}
-						</ul>
-					</Container>
-				</section>
+				<PageSection labelledBy="tools-available-heading">
+					<SectionHeading
+						id="tools-available-heading"
+						description="このページから開けます。カードを選ぶとツールが開きます。"
+						eyebrow="01 — Available"
+						title="使えるツール"
+					/>
+					<Grid
+						as="ul"
+						columns={2}
+						columnGap="6"
+						rowGap="10"
+						equalRows
+						className={listResetClassName}
+					>
+						{available.map((tool) => (
+							<ToolCard key={tool.slug} tool={tool} />
+						))}
+					</Grid>
+				</PageSection>
 			) : null}
 			{planned.length > 0 ? (
-				<section
-					aria-labelledby="tools-planned-heading"
-					data-route="tools-planned"
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
-				>
-					<Container>
-						<SectionHeading
-							id="tools-planned-heading"
-							description="公開に向けて準備しているツールです。開けるようになるまで、分かっている内容だけを載せています。"
-							eyebrow="02 — Planned"
-							title="準備中"
-						/>
-						<ul className={plannedGrid}>
-							{planned.map((tool) => (
-								<PlannedToolItem key={tool.slug} tool={tool} />
-							))}
-						</ul>
-					</Container>
-				</section>
+				<PageSection labelledBy="tools-planned-heading">
+					<SectionHeading
+						id="tools-planned-heading"
+						description="公開に向けて準備しているツールです。開けるようになるまで、分かっている内容だけを載せています。"
+						eyebrow="02 — Planned"
+						title="準備中"
+					/>
+					<Grid
+						as="ul"
+						columns={2}
+						columnGap="6"
+						rowGap="6"
+						equalRows
+						className={listResetClassName}
+					>
+						{planned.map((tool) => (
+							<PlannedToolItem key={tool.slug} tool={tool} />
+						))}
+					</Grid>
+				</PageSection>
 			) : null}
 			<ReactionsWidget data={reactions} />
+			<PrivacyNoticeCompact {...privacyNotice} />
 		</>
 	);
 }
 
 /**
- * The body grid for the two sections.
- *
- * `repeat(2, minmax(0, 1fr))` is the 6/6 placement of the documented
- * 12-column contract (column 58 px + gutter 24 px at the 960 px
- * `Container`), and it is the same declaration the home capabilities
- * grid uses. `gridAutoRows: '1fr'` is the measured fix for uneven card
- * heights: with a row track of `1fr` the tallest card in the row sets
- * the height and the other one stretches to it, so two cards cannot have
- * two different heights (design #764 measured the before/after of this
- * exact change at 22.4 px → 0 px).
+ * The two tool sections share the `Grid` 2-column preset (the 6/6
+ * placement of the documented 12-column contract) with `equalRows`,
+ * so two cards never have two different heights — the measured fix
+ * for uneven card heights (design #764: 22.4 px → 0 px). The roadmap
+ * section uses the same columns with a tighter row beat. List
+ * semantics stay on the `<ul>` via `as="ul"`; the reset comes from
+ * the shared `listResetClassName` because `display` belongs to the
+ * primitive (C-5).
  */
-const cardGrid = css({
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
-	columnGap: { base: '0', md: '6' },
-	rowGap: '10',
-	gridAutoRows: '1fr',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
-/** The roadmap list: same columns, denser rows, nothing to click. */
-const plannedGrid = css({
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
-	columnGap: { base: '0', md: '6' },
-	rowGap: '6',
-	gridAutoRows: '1fr',
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
-const cardItem = css({
-	display: 'grid',
-	minWidth: '0',
-});
+const cardItem = css(gridMin);
 
 /**
  * The whole card is the link. `height: 100%` lets it fill the `1fr` row
@@ -565,18 +521,6 @@ const cta = css({
 	textDecorationThickness: '1px',
 });
 
-const badge = css({
-	flexShrink: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	color: 'text.muted',
-	paddingBlock: '1',
-	paddingInline: '2',
-	backgroundColor: 'bg.subtle',
-	borderRadius: 'full',
-});
-
 const plannedItem = css({
 	display: 'flex',
 	flexDirection: 'column',
@@ -662,9 +606,12 @@ function PlannedToolItem({ tool }: { tool: ToolIndexEntry }) {
 				{/* `data-tool-badge` is the hook e2e/tools-index.spec.ts
 				    asserts a host_disabled row by (Issue #195); the
 				    visible word stays Japanese. */}
-				<span data-tool-badge="coming-soon" className={badge}>
+				<Badge
+					data-tool-badge="coming-soon"
+					className={css({ flexShrink: '0', fontFamily: 'mono', letterSpacing: '0.06em' })}
+				>
 					準備中
-				</span>
+				</Badge>
 			</span>
 			<span className={plannedDescription}>{tool.description_ja}</span>
 		</li>

@@ -155,8 +155,32 @@ export const PAGE_UNITS = [
 	{
 		id: 'about',
 		kind: 'page',
-		files: ['src/routes/about.tsx', 'src/about/**'],
+		files: ['src/routes/about.tsx', 'src/about/components/AboutPage.tsx'],
 		note: 'the approved person identity surface',
+	},
+	{
+		id: 'links',
+		kind: 'page',
+		files: ['src/routes/links.tsx', 'src/about/components/LinksPage.tsx'],
+		note: 'the verified external-link inventory (Issue #390) — a separate page that shares the about obligation, so it is its own unit rather than folded into the about glob',
+	},
+	{
+		id: 'commission',
+		kind: 'page',
+		files: ['src/routes/commission.tsx', 'src/contact/commission-page.tsx'],
+		note: 'the commission-intake status page (Issue #390) — shares the contact obligation but is a different page outline',
+	},
+	{
+		id: 'stack',
+		kind: 'page',
+		files: ['src/routes/stack.tsx', 'src/routes/stack/**'],
+		note: 'the development-stack reference (Issue #381) — a routes-owned page, so the route file and its colocated modules are one unit',
+	},
+	{
+		id: 'activity',
+		kind: 'page',
+		files: ['src/routes/activity.tsx', 'src/routes/activity/**'],
+		note: 'the unified activity timeline (Issue #352) — a routes-owned page, so the route file and its colocated modules are one unit',
 	},
 	{
 		id: 'keyboard',
@@ -278,7 +302,7 @@ export const OUT_OF_SCOPE = [
 			'the gallery composes many surfaces into one screen; the page composition itself IS scanned as the design-system page unit',
 	},
 	{
-		area: 'src/contact/** (except page.tsx), src/projects/** (except DotfilesIntroductionPage.tsx), src/tools/**',
+		area: 'src/contact/** (except page.tsx and commission-page.tsx), src/projects/** (except DotfilesIntroductionPage.tsx), src/tools/**',
 		reason:
 			'those pages own their own obligation; this Issue scanned the page compositions above, so their remaining modules are not checked here yet',
 	},

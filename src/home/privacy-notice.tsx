@@ -1,4 +1,5 @@
 import { css } from '../../styled-system/css';
+import { emphasisDefault, focusRing } from '../editorial/primitives/shared-styles';
 import type { BilingualText, PublicDataLifecycleEntry } from '../privacy/data-lifecycle';
 
 /**
@@ -20,6 +21,11 @@ import type { BilingualText, PublicDataLifecycleEntry } from '../privacy/data-li
  * block keeps the footer's three-column spread intact while making every
  * fact one click away on every page, including the ones that need
  * explaining rather than scrolling past.
+ *
+ * Issue #370 — the `<details>` carries `id="data-notice"` so the
+ * compact one-line pointer the other reaction surfaces render
+ * (`PrivacyNoticeCompact`) can link to `/#data-notice` and land on
+ * this notice.
  *
  * Fail-closed publication
  * -----------------------
@@ -57,6 +63,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 	const published = entries;
 	return (
 		<details
+			id="data-notice"
 			className={css({
 				marginBlockStart: '10',
 				paddingBlockStart: '6',
@@ -74,10 +81,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 					cursor: 'pointer',
 					fontWeight: '600',
 					color: 'text.default',
-					_focusVisible: {
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
+					_focusVisible: focusRing,
 				})}
 			>
 				データと保持期間 / <span lang="en">Data and retention</span>
@@ -101,12 +105,7 @@ export function PrivacyNotice({ entries, deletionRequestChannel }: PrivacyNotice
 			>
 				{published.map((entry) => (
 					<div key={entry.id} data-lifecycle-id={entry.id}>
-						<dt
-							className={css({
-								fontWeight: '600',
-								color: 'text.default',
-							})}
-						>
+						<dt className={css(emphasisDefault)}>
 							{entry.label.ja}
 							<span lang="en"> {entry.label.en}</span>
 						</dt>

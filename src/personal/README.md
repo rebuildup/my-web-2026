@@ -4,7 +4,8 @@ This directory is an **obligation**, not a classifier folder. It was
 born because a set of document Issues needed a place to hold the
 *structured display data* and the *standalone preview* of the personal
 documents — the philosophy, the making motivation, the brand naming
-record, the influence notes — and no existing owner could hold them
+record, the melting-face motif (Issue #522), the influence notes —
+and no existing owner could hold them
 without breaking its own contract.
 
 - `src/editorial/**` owns the **shipped editorial visual language**.

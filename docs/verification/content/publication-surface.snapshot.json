@@ -726,6 +726,7 @@
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
 					"src/tools/manifest.json",
+					"src/vendor/github-readme-stats-fast/cards/streak-card.ts",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",
 					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
@@ -6010,27 +6011,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: http://www.w3.org/1999/xlink"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-			}
-		]
+		"findings": []
 	}
 }

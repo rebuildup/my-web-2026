@@ -16,7 +16,7 @@ import { type SectionTone, SectionToneContext, toneRebinds } from './tone-styles
  * page background or a section-separating rule by hand.
  */
 
-export type SectionRhythm = 'hero' | 'body' | 'closing';
+export type SectionRhythm = 'hero' | 'body' | 'feature' | 'closing';
 
 export interface PageSectionProps {
 	/** Surface tone — closed vocabulary, see `tone-styles.ts`. */
@@ -32,6 +32,13 @@ export interface PageSectionProps {
 	 * `SectionHeading`'s `id` prop to wire `aria-labelledby`.
 	 */
 	labelledBy?: string;
+	/**
+	 * Semantic section name emitted as `data-section` (ADR-0023 §3).
+	 * Lets the composition lint classify sections by meaning
+	 * (`now`, `sponsored`, `contact`, …) instead of guessing from
+	 * styles. Optional; absent means "unclassified".
+	 */
+	name?: string;
 	/** `aria-label` for sections with no heading element (mutually exclusive with `labelledBy`). */
 	label?: string;
 	/** Anchor `id` for in-page links (e.g. `#keyboard-layers`). */
@@ -47,6 +54,10 @@ export interface PageSectionProps {
 const RHYTHM_PADDING: Record<SectionRhythm, { base: string; lg: string }> = {
 	hero: { base: '16', lg: '32' },
 	body: { base: '16', lg: '24' },
+	// ADR-0023 §3: `feature` is the deliberate rhythm change — a larger
+	// beat for a section whose role earns it. Consecutive `feature`
+	// sections are a review finding (layout-system.md §3).
+	feature: { base: '24', lg: '32' },
 	closing: { base: '16', lg: '24' },
 };
 
@@ -76,6 +87,7 @@ export function PageSection({
 	rhythm = 'body',
 	labelledBy,
 	label,
+	name,
 	id,
 	separator = false,
 	testId,
@@ -89,6 +101,9 @@ export function PageSection({
 			aria-labelledby={labelledBy}
 			aria-label={labelledBy === undefined ? label : undefined}
 			data-testid={testId}
+			data-tone={tone}
+			data-rhythm={rhythm}
+			data-section={name}
 			className={cx(
 				css({
 					paddingBlock: RHYTHM_PADDING[rhythm],

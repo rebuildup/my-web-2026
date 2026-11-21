@@ -45,10 +45,11 @@ import { selectGuideRows } from '../guide/select';
  *
  * Capabilities merge in honestly: the ledger owns site destinations;
  * the capabilities registry owns lifecycle status. A capability with
- * no published surface (`content`, `planned`) becomes a muted card
- * with a `planned` badge and NO link — the same fail-closed rule the
- * old grid kept. Live capabilities are already ledger destinations,
- * so no second link is invented for them.
+ * no published surface (`planned`) is NOT a destination — v12/v13
+ * review showed a full-size muted card reading as a dead-end peer of
+ * the live cards, so planned capabilities leave the grid and render
+ * as one quiet line under it. Live capabilities are already ledger
+ * destinations, so no second link is invented for them.
  *
  * The promotion window still works: `selectGuideRows` marks at most
  * one featured entry and the card carries the `注目` badge — emphasis,
@@ -88,7 +89,6 @@ interface ExploreDestination {
 	/** Small printed classification label (never colour alone). */
 	readonly classLabel: string;
 	readonly featured: boolean;
-	readonly planned: boolean;
 }
 
 function destinationFor(entry: GuideEntry, featured: boolean): ExploreDestination {
@@ -102,7 +102,6 @@ function destinationFor(entry: GuideEntry, featured: boolean): ExploreDestinatio
 		variant: external ? 'inverse' : entry.category ? CATEGORY_VARIANTS[entry.category] : 'subtle',
 		classLabel: external ? 'External' : entry.category ? CATEGORY_LABELS[entry.category] : 'Site',
 		featured,
-		planned: false,
 	};
 }
 
@@ -113,21 +112,8 @@ function destinationFor(entry: GuideEntry, featured: boolean): ExploreDestinatio
  * NOT a ledger entry is a composition bug the contract test catches,
  * not something this function papers over.
  */
-function plannedDestinations(): readonly ExploreDestination[] {
-	return CAPABILITIES.filter((capability) => capability.status === 'planned').map(
-		// Planned capabilities publish no `href` — the `planned` badge
-		// is the whole affordance, so the card renders no link.
-		(capability) => ({
-			id: `capability-${capability.id}`,
-			titleJa: `${capability.label} — ${capability.labelJa}`,
-			summaryJa: capability.summaryJa,
-			external: false,
-			variant: 'subtle' as const,
-			classLabel: 'Site',
-			featured: false,
-			planned: true,
-		}),
-	);
+function plannedCapabilities() {
+	return CAPABILITIES.filter((capability) => capability.status === 'planned');
 }
 
 const cardListClassName = /*#__PURE__*/ css({
@@ -154,6 +140,19 @@ const cardSummaryClassName = /*#__PURE__*/ css({
 	textWrap: 'pretty',
 });
 
+const plannedClassName = /*#__PURE__*/ css({
+	display: 'flex',
+	flexWrap: 'wrap',
+	alignItems: 'baseline',
+	gap: '2',
+	margin: '0',
+	marginBlockStart: '6',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	lineHeight: '1.6',
+	color: 'text.muted',
+});
+
 const cardLinkClassName = /*#__PURE__*/ css({
 	display: 'inline-flex',
 	alignItems: 'center',
@@ -167,7 +166,6 @@ function ExploreCard({ destination }: { readonly destination: ExploreDestination
 				<Cluster gap="2">
 					<span className={classLabelClassName}>{destination.classLabel}</span>
 					{destination.featured ? <Badge tone="accent">注目</Badge> : null}
-					{destination.planned ? <Badge tone="neutral">planned</Badge> : null}
 				</Cluster>
 				<h3 className={cardTitleClassName}>
 					{destination.href ? (
@@ -208,10 +206,10 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 	// the C-8 contract asks every public enumeration to declare. If the
 	// ledger outgrows the grid, the overflow belongs on a dedicated
 	// index route, not in a taller home page.
-	const destinations: readonly ExploreDestination[] = [
-		...rows.map(({ entry, featured }) => destinationFor(entry, featured)),
-		...plannedDestinations(),
-	].slice(0, EXPLORE_DESTINATION_LIMIT);
+	const destinations: readonly ExploreDestination[] = rows
+		.map(({ entry, featured }) => destinationFor(entry, featured))
+		.slice(0, EXPLORE_DESTINATION_LIMIT);
+	const planned = plannedCapabilities();
 	return (
 		<PageSection labelledBy="site-guide-heading">
 			<SectionHeading
@@ -226,6 +224,17 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 					<ExploreCard key={destination.id} destination={destination} />
 				))}
 			</Grid>
+			{planned.length > 0 ? (
+				<p className={plannedClassName} data-testid="explore-planned">
+					<Badge tone="neutral">planned</Badge>{' '}
+					{planned
+						.map(
+							(capability) =>
+								`${capability.label} — ${capability.labelJa}: ${capability.summaryJa}`,
+						)
+						.join(' / ')}
+				</p>
+			) : null}
 			{/* Issue #936 — the visitor's own recently-visited
 			    destinations. Renders nothing on SSR, first visit
 			    or blocked storage; the grid above is complete

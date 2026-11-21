@@ -433,10 +433,16 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					</Disclosure>
 				</PageSection>
 				{/* ad slot: sponsored pair — native + product units share one
-				    labelled region instead of a sticky rail. */}
-				<section aria-label="Sponsored">
+				    labelled region instead of a sticky rail. v13 review: the
+				    bare section blurred into the content flow, so the zone
+				    takes the `sunken` tone — an ad break should read as a
+				    different surface, not as more article. */}
+				<PageSection labelledBy="sponsored-heading" tone="sunken">
+					<h2 id="sponsored-heading" className={css({ srOnly: true })}>
+						Sponsored
+					</h2>
 					<Container>
-						<Grid columns={2} gap="6" className={css({ marginBlock: '10' })}>
+						<Grid columns={2} gap="6" className={css({ paddingBlock: '10' })}>
 							<div>
 								{data.adProjects?.[0] ? (
 									<AdPortfolioNative project={data.adProjects[0]} />
@@ -453,7 +459,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							</div>
 						</Grid>
 					</Container>
-				</section>
+				</PageSection>
 				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="inverse" separator>
 					<SectionHeading
 						id="contact-cta-heading"

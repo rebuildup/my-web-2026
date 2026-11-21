@@ -421,77 +421,80 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 
 	return (
 		<PageSection labelledBy="current-projects-heading" testId="home-current-projects">
+			{/* v12/v13 review — `default`, not `spread`: the spread variant
+			    parks the whole project list in the 8/12 column beside a
+			    heading cluster that ends after three lines, which read as
+			    a dead zone on desktop. The list needs the full measure
+			    for its label/value rows, same as the Explore grid above. */}
 			<SectionHeading
 				id="current-projects-heading"
 				eyebrow="01 — Now"
 				title="現在地"
 				titleEn="Where I am now"
 				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-				variant="spread"
-			>
-				{published.length === 0 ? (
-					<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-						現在、公開している進行中のプロジェクトはありません。
+			/>
+			{published.length === 0 ? (
+				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+					現在、公開している進行中のプロジェクトはありません。
+				</p>
+			) : (
+				<>
+					<p data-testid="home-current-projects-summary" className={summaryClassName}>
+						{summary}
 					</p>
-				) : (
-					<>
-						<p data-testid="home-current-projects-summary" className={summaryClassName}>
-							{summary}
-						</p>
-						{groups ? (
-							<ul data-testid="home-current-projects-list" className={listClassName}>
-								{groups.map((group) => (
-									<li
-										key={group.level}
-										data-testid="home-current-project-group"
-										data-level={group.level}
-										className={groupClassName}
-									>
-										<h3 className={groupHeadingClassName}>
-											<span>{group.label}</span>
-											<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-										</h3>
-										<ul className={listClassName}>
-											{group.records.map((project) => (
-												<ProjectRow
-													key={project.id}
-													project={project}
-													today={today}
-													changed={changedIds.has(project.id)}
-													reducedMotion={reducedMotion}
-													grouped
-												/>
-											))}
-										</ul>
-									</li>
-								))}
-							</ul>
-						) : (
-							<ul data-testid="home-current-projects-list" className={listClassName}>
-								{visible.map((project) => (
-									<ProjectRow
-										key={project.id}
-										project={project}
-										today={today}
-										changed={changedIds.has(project.id)}
-										reducedMotion={reducedMotion}
-										grouped={false}
-									/>
-								))}
-							</ul>
-						)}
-						{seeAllHref && published.length > visible.length ? (
-							<a
-								href={seeAllHref}
-								className={cx(linkClassName, seeAllLinkClassName)}
-								data-testid="home-current-projects-see-all"
-							>
-								すべて見る ({published.length} 件)
-							</a>
-						) : null}
-					</>
-				)}
-			</SectionHeading>
+					{groups ? (
+						<ul data-testid="home-current-projects-list" className={listClassName}>
+							{groups.map((group) => (
+								<li
+									key={group.level}
+									data-testid="home-current-project-group"
+									data-level={group.level}
+									className={groupClassName}
+								>
+									<h3 className={groupHeadingClassName}>
+										<span>{group.label}</span>
+										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
+									</h3>
+									<ul className={listClassName}>
+										{group.records.map((project) => (
+											<ProjectRow
+												key={project.id}
+												project={project}
+												today={today}
+												changed={changedIds.has(project.id)}
+												reducedMotion={reducedMotion}
+												grouped
+											/>
+										))}
+									</ul>
+								</li>
+							))}
+						</ul>
+					) : (
+						<ul data-testid="home-current-projects-list" className={listClassName}>
+							{visible.map((project) => (
+								<ProjectRow
+									key={project.id}
+									project={project}
+									today={today}
+									changed={changedIds.has(project.id)}
+									reducedMotion={reducedMotion}
+									grouped={false}
+								/>
+							))}
+						</ul>
+					)}
+					{seeAllHref && published.length > visible.length ? (
+						<a
+							href={seeAllHref}
+							className={cx(linkClassName, seeAllLinkClassName)}
+							data-testid="home-current-projects-see-all"
+						>
+							すべて見る ({published.length} 件)
+						</a>
+					) : null}
+				</>
+			)}
 		</PageSection>
 	);
 }

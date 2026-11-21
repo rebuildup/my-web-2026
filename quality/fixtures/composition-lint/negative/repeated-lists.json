@@ -74,7 +74,8 @@
       "contentWidthRatio": 0.9,
       "emptyAreaRatio": 0.1,
       "repeatUnits": 6,
-      "repeatKind": "article"
+      "repeatKind": "article",
+      "repeatProfile": "article|40x3"
     },
     {
       "tone": "ground",
@@ -115,7 +116,8 @@
       "contentWidthRatio": 0.9,
       "emptyAreaRatio": 0.1,
       "repeatUnits": 6,
-      "repeatKind": "article"
+      "repeatKind": "article",
+      "repeatProfile": "article|40x3"
     },
     {
       "tone": "ground",
@@ -151,7 +153,8 @@
       "contentWidthRatio": 0.9,
       "emptyAreaRatio": 0.1,
       "repeatUnits": 5,
-      "repeatKind": "li"
+      "repeatKind": "li",
+      "repeatProfile": "li|80x4"
     }
   ],
   "media": {

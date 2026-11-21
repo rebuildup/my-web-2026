@@ -184,7 +184,8 @@
       "contentWidthRatio": 0.67,
       "emptyAreaRatio": 0,
       "repeatUnits": 8,
-      "repeatKind": "li"
+      "repeatKind": "li",
+      "repeatProfile": "li|40x3"
     },
     {
       "tone": "ground",
@@ -227,7 +228,8 @@
       "contentWidthRatio": 0.67,
       "emptyAreaRatio": 0,
       "repeatUnits": 5,
-      "repeatKind": "li"
+      "repeatKind": "li",
+      "repeatProfile": "li|40x3"
     },
     {
       "tone": "sunken",
@@ -291,7 +293,8 @@
       "contentWidthRatio": 0.67,
       "emptyAreaRatio": 0,
       "repeatUnits": 8,
-      "repeatKind": "li"
+      "repeatKind": "li",
+      "repeatProfile": "li|40x3"
     },
     {
       "tone": "sunken",

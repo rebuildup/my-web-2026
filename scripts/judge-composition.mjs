@@ -283,14 +283,24 @@ function checkCL10(model, rule, route) {
 	// The defect is repetition DOMINATING the page, not the mere
 	// presence of lists — two catalog sections on a six-section page
 	// are legitimate parallel structure.
-	const dominance = repeaters.length / Math.max(1, sections.length);
-	if (dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)) {
-		const kinds = [...new Set(repeaters.map((s) => s.repeatKind).filter(Boolean))];
+	// Repetition only counts as ONE defect when the repeated units are
+	// the same kind of thing: a card grid, a record list and a widget
+	// wall all render <li> runs but are different compositions. Group
+	// repeaters by their measured unit profile (tag + geometry bucket)
+	// and require the largest same-profile group to dominate.
+	const byProfile = new Map();
+	for (const s of repeaters) {
+		const key = s.repeatProfile ?? s.repeatKind ?? 'unknown';
+		byProfile.set(key, (byProfile.get(key) ?? 0) + 1);
+	}
+	const [topProfile, topCount] = [...byProfile.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+	const dominance = topCount / Math.max(1, sections.length);
+	if (topCount >= rule.detection.minRepeaterSections && dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)) {
 		return {
 			rule: 'CL-10',
 			severity: rule.severity,
 			verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
-			detail: `${repeaters.length}/${sections.length} sections each repeat >=${minUnits} identical units (${kinds.join('/')}) — repetition dominates the composition`,
+			detail: `${topCount}/${sections.length} sections repeat the same unit profile (${topProfile}) >=${minUnits}x — repetition dominates the composition`,
 		};
 	}
 	return null;

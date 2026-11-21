@@ -163,6 +163,7 @@ const COLLECTOR = () => {
 		// with near-identical geometry — the "monotonous list" signal.
 		let maxRepeatUnits = 0;
 		let repeatKind = null;
+		let repeatProfile = null;
 		for (const parent of section.querySelectorAll('ul, ol, div, article, section, main')) {
 			const kids = [...parent.children].filter(
 				(k) => visible(k) && area(k.getBoundingClientRect()) > 2000,
@@ -178,6 +179,7 @@ const COLLECTOR = () => {
 				if (count > maxRepeatUnits) {
 					maxRepeatUnits = count;
 					repeatKind = key.split('|')[0].toLowerCase();
+					repeatProfile = key.toLowerCase();
 				}
 			}
 		}
@@ -215,6 +217,7 @@ const COLLECTOR = () => {
 					: Math.min(1, Math.round((1 - contentW / r.width) * 100) / 100),
 			repeatUnits: maxRepeatUnits,
 			repeatKind: repeatKind ?? undefined,
+			repeatProfile: repeatProfile ?? undefined,
 		};
 	});
 

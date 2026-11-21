@@ -278,7 +278,7 @@ export function CounterTile({ data, locale, now, reducedMotion }: CounterTilePro
 							color: 'text.muted',
 						})}
 					>
-						consumer API key not configured (run scripts/bootstrap-home-api-key.mjs)
+						Page views are unavailable in this environment.
 					</span>
 				) : null}
 			</div>

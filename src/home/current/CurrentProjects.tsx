@@ -1,6 +1,6 @@
 import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import {
@@ -75,6 +75,17 @@ export interface CurrentProjectsProps {
 	 * clock, so the document is a pure function of (records, today).
 	 */
 	today: string;
+	/**
+	 * Issue #1108 — curated mode. When set, only the first `limit`
+	 * records of the ORDERED published list render (the ordering is
+	 * the component's own importance/freshness/weight order, so the
+	 * representative slice is never hand-picked). The summary still
+	 * reports the full published count, and `seeAllHref` renders a
+	 * "see all" link to the enumeration surface (`/now`). Omitted on
+	 * the index route, which exists to enumerate.
+	 */
+	limit?: number;
+	seeAllHref?: string;
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -390,9 +401,10 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 	}).length;
 }
 
-export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) {
+export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
-	const groups = groupByWeight(published);
+	const visible = limit === undefined ? published : published.slice(0, limit);
+	const groups = groupByWeight(visible);
 	const reducedMotion = usePrefersReducedMotion();
 	const changedIds = useChangedProjectIds(published);
 	const recent = recentlyUpdatedCount(published, today);
@@ -404,76 +416,78 @@ export function CurrentProjects({ projects = [], today }: CurrentProjectsProps) 
 				}。`;
 
 	return (
-		<section
-			aria-labelledby="current-projects-heading"
-			data-testid="home-current-projects"
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id="current-projects-heading"
-					eyebrow="00 — Now"
-					title="現在地 / Where I am now"
-					description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-					variant="spread"
-				>
-					{published.length === 0 ? (
-						<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-							現在、公開している進行中のプロジェクトはありません。
+		<PageSection labelledBy="current-projects-heading" testId="home-current-projects">
+			<SectionHeading
+				id="current-projects-heading"
+				eyebrow="01 — Now"
+				title="現在地"
+				titleEn="Where I am now"
+				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+				variant="spread"
+			>
+				{published.length === 0 ? (
+					<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+						現在、公開している進行中のプロジェクトはありません。
+					</p>
+				) : (
+					<>
+						<p data-testid="home-current-projects-summary" className={summaryClassName}>
+							{summary}
 						</p>
-					) : (
-						<>
-							<p data-testid="home-current-projects-summary" className={summaryClassName}>
-								{summary}
-							</p>
-							{groups ? (
-								<ul data-testid="home-current-projects-list" className={listClassName}>
-									{groups.map((group) => (
-										<li
-											key={group.level}
-											data-testid="home-current-project-group"
-											data-level={group.level}
-											className={groupClassName}
-										>
-											<h3 className={groupHeadingClassName}>
-												<span>{group.label}</span>
-												<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-											</h3>
-											<ul className={listClassName}>
-												{group.records.map((project) => (
-													<ProjectRow
-														key={project.id}
-														project={project}
-														today={today}
-														changed={changedIds.has(project.id)}
-														reducedMotion={reducedMotion}
-														grouped
-													/>
-												))}
-											</ul>
-										</li>
-									))}
-								</ul>
-							) : (
-								<ul data-testid="home-current-projects-list" className={listClassName}>
-									{published.map((project) => (
-										<ProjectRow
-											key={project.id}
-											project={project}
-											today={today}
-											changed={changedIds.has(project.id)}
-											reducedMotion={reducedMotion}
-											grouped={false}
-										/>
-									))}
-								</ul>
-							)}
-						</>
-					)}
-				</SectionHeading>
-			</Container>
-		</section>
+						{groups ? (
+							<ul data-testid="home-current-projects-list" className={listClassName}>
+								{groups.map((group) => (
+									<li
+										key={group.level}
+										data-testid="home-current-project-group"
+										data-level={group.level}
+										className={groupClassName}
+									>
+										<h3 className={groupHeadingClassName}>
+											<span>{group.label}</span>
+											<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
+										</h3>
+										<ul className={listClassName}>
+											{group.records.map((project) => (
+												<ProjectRow
+													key={project.id}
+													project={project}
+													today={today}
+													changed={changedIds.has(project.id)}
+													reducedMotion={reducedMotion}
+													grouped
+												/>
+											))}
+										</ul>
+									</li>
+								))}
+							</ul>
+						) : (
+							<ul data-testid="home-current-projects-list" className={listClassName}>
+								{visible.map((project) => (
+									<ProjectRow
+										key={project.id}
+										project={project}
+										today={today}
+										changed={changedIds.has(project.id)}
+										reducedMotion={reducedMotion}
+										grouped={false}
+									/>
+								))}
+							</ul>
+						)}
+						{seeAllHref && published.length > visible.length ? (
+							<a
+								href={seeAllHref}
+								className={linkClassName}
+								data-testid="home-current-projects-see-all"
+							>
+								すべて見る ({published.length} 件)
+							</a>
+						) : null}
+					</>
+				)}
+			</SectionHeading>
+		</PageSection>
 	);
 }

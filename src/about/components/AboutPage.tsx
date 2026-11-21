@@ -2,9 +2,13 @@ import { Fragment } from 'react';
 import { css } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
+import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
@@ -100,29 +104,6 @@ const siteReferenceLinkStyle = css({
 	},
 });
 
-const sectionStyle = css({
-	// Issue #300: canonical body-section beat (layout-system.md §3.3).
-	// Was {12, 16} — a rhythm only /about used.
-	paddingBlock: { base: '16', lg: '24' },
-	borderTop: '1px solid {colors.border.subtle}',
-});
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
-
 export function AboutPage({ data }: AboutPageProps) {
 	const { identity, interests, skills, experience, career, current, future, externalHandles } =
 		data;
@@ -131,9 +112,7 @@ export function AboutPage({ data }: AboutPageProps) {
 		// corner; the page reserves that corridor so its text never
 		// scrolls underneath. See `src/editorial/pet/safe-area.ts`.
 		<div className={petSafeAreaStyle}>
-			<a href="#about-main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
+			<SkipLink href="#about-main" />
 			<Hero identity={identity} />
 			<main id="about-main">
 				<IdentitySection identity={identity} />
@@ -174,95 +153,95 @@ const NARRATIVE_ORDER = [
 
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
-		<section
-			aria-labelledby="about-hero-title"
-			className={css({
-				paddingBlock: { base: '16', lg: '32' },
-			})}
-		>
-			<Container>
-				<div
+		<PageSection rhythm="hero" labelledBy="about-hero-title">
+			<Split rowGap="10" className={css({ alignItems: 'start' })}>
+				<aside
+					aria-hidden="true"
 					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-						columnGap: { base: '0', lg: '10' },
-						rowGap: { base: '10', lg: '0' },
-						alignItems: 'start',
+						display: { base: 'none', lg: 'flex' },
+						flexDirection: 'column',
+						gap: '1',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+						lineHeight: '1.6',
 					})}
 				>
-					<aside
-						aria-hidden="true"
+					<span lang="en">about</span>
+					<span lang="en">samuido · profile</span>
+					<span lang="en">
+						{NARRATIVE_ORDER.map((step, index) => (
+							<Fragment key={step}>
+								{index > 0 ? (
+									<>
+										{' '}
+										<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
+									</>
+								) : null}
+								{step}
+							</Fragment>
+						))}
+					</span>
+				</aside>
+				<div
+					className={css({
+						display: 'flex',
+						flexDirection: 'column',
+						minWidth: '0',
+					})}
+				>
+					<span
 						className={css({
-							display: { base: 'none', lg: 'flex' },
-							flexDirection: 'column',
-							gap: '1',
 							fontFamily: 'mono',
 							fontSize: 'sm',
 							color: 'text.muted',
-							lineHeight: '1.6',
 						})}
 					>
-						<span lang="en">about</span>
-						<span lang="en">samuido · profile</span>
-						<span lang="en">
-							{NARRATIVE_ORDER.map((step, index) => (
-								<Fragment key={step}>
-									{index > 0 ? (
-										<>
-											{' '}
-											<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
-										</>
-									) : null}
-									{step}
-								</Fragment>
-							))}
-						</span>
-					</aside>
-					<div
+						/about · profile
+					</span>
+					<h1
+						id="about-hero-title"
+						lang="ja"
 						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							minWidth: '0',
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'heading',
+							fontSize: { base: '3xl', lg: '4xl' },
+							fontWeight: '700',
+							lineHeight: { base: '1.15', lg: '1.05' },
+							color: 'text.default',
+							letterSpacing: '-0.03em',
 						})}
 					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-							})}
-						>
-							/about · profile
-						</span>
-						<h1
-							id="about-hero-title"
-							lang="ja"
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								lineHeight: { base: '1.15', lg: '1.05' },
-								color: 'text.default',
-								letterSpacing: '-0.03em',
-							})}
-						>
-							{identity.name}
-						</h1>
-						<p
-							lang="ja"
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								fontFamily: 'sans',
-								fontSize: 'lg',
-								lineHeight: '1.6',
-								color: 'text.default',
-							})}
-						>
-							{identity.role}
-						</p>
+						{identity.name}
+					</h1>
+					<p
+						lang="ja"
+						className={css({
+							margin: '0',
+							marginBlockStart: '4',
+							fontFamily: 'sans',
+							fontSize: 'lg',
+							lineHeight: '1.6',
+							color: 'text.default',
+						})}
+					>
+						{identity.role}
+					</p>
+					<p
+						lang="ja"
+						className={css({
+							margin: '0',
+							marginBlockStart: '4',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							lineHeight: '1.6',
+							color: 'text.muted',
+						})}
+					>
+						{identity.lead}
+					</p>
+					{identity.secondary ? (
 						<p
 							lang="ja"
 							className={css({
@@ -274,27 +253,12 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 								color: 'text.muted',
 							})}
 						>
-							{identity.lead}
+							{identity.secondary}
 						</p>
-						{identity.secondary ? (
-							<p
-								lang="ja"
-								className={css({
-									margin: '0',
-									marginBlockStart: '4',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									lineHeight: '1.6',
-									color: 'text.muted',
-								})}
-							>
-								{identity.secondary}
-							</p>
-						) : null}
-					</div>
+					) : null}
 				</div>
-			</Container>
-		</section>
+			</Split>
+		</PageSection>
 	);
 }
 
@@ -309,49 +273,47 @@ function IdentitySection({ identity }: { identity: AboutPageData['identity'] }) 
 		{ label: 'Role', value: identity.role },
 	];
 	return (
-		<section aria-labelledby="about-section-identity" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-identity"
-					eyebrow="01 — Identity"
-					title="人物像 / Identity"
-					description="学校・制作・開発の surface が分かれても、一人の人物から自然に生えているように。"
-					variant="spread"
+		<PageSection labelledBy="about-section-identity" separator>
+			<SectionHeading
+				id="about-section-identity"
+				eyebrow="01 — Identity"
+				title="人物像 / Identity"
+				description="学校・制作・開発の surface が分かれても、一人の人物から自然に生えているように。"
+				variant="spread"
+			>
+				<dl
+					className={css({
+						margin: '0',
+						display: 'grid',
+						gridTemplateColumns: 'auto 1fr',
+						columnGap: '6',
+						rowGap: '3',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						color: 'text.default',
+					})}
 				>
-					<dl
-						className={css({
-							margin: '0',
-							display: 'grid',
-							gridTemplateColumns: 'auto 1fr',
-							columnGap: '6',
-							rowGap: '3',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.default',
-						})}
-					>
-						{rows.map((row) => (
-							<Fragment key={row.label}>
-								<dt
-									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										letterSpacing: '0.04em',
-										textTransform: 'uppercase',
-										color: 'text.muted',
-									})}
-								>
-									{row.label}
-								</dt>
-								<dd lang="ja" className={css({ margin: '0' })}>
-									{row.value}
-								</dd>
-							</Fragment>
-						))}
-					</dl>
-				</SectionHeading>
-			</Container>
-		</section>
+					{rows.map((row) => (
+						<Fragment key={row.label}>
+							<dt
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									letterSpacing: '0.04em',
+									textTransform: 'uppercase',
+									color: 'text.muted',
+								})}
+							>
+								{row.label}
+							</dt>
+							<dd lang="ja" className={css({ margin: '0' })}>
+								{row.value}
+							</dd>
+						</Fragment>
+					))}
+				</dl>
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -361,88 +323,86 @@ function IdentitySection({ identity }: { identity: AboutPageData['identity'] }) 
 
 function InterestsSection({ interests }: { interests: AboutPageData['interests'] }) {
 	return (
-		<section aria-labelledby="about-section-interests" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-interests"
-					eyebrow="02 — Interests"
-					title="興味 / Throughlines"
-					description="バラバラに見える活動が同じ人物から出てくる理由。プロジェクトを貫く throughline。"
-					variant="spread"
+		<PageSection labelledBy="about-section-interests" separator>
+			<SectionHeading
+				id="about-section-interests"
+				eyebrow="02 — Interests"
+				title="興味 / Throughlines"
+				description="バラバラに見える活動が同じ人物から出てくる理由。プロジェクトを貫く throughline。"
+				variant="spread"
+			>
+				<ol
+					className={css({
+						margin: '0',
+						padding: '0',
+						listStyle: 'none',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '10',
+					})}
 				>
-					<ol
-						className={css({
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-						})}
-					>
-						{interests.map((interest, index) => (
-							<li
-								key={interest.title}
+					{interests.map((interest, index) => (
+						<li
+							key={interest.title}
+							className={css({
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '2',
+								borderBlockStartWidth: '1px',
+								borderBlockStartStyle: 'solid',
+								borderBlockStartColor: 'border.subtle',
+								paddingBlockStart: '4',
+							})}
+						>
+							<header
 								className={css({
 									display: 'flex',
-									flexDirection: 'column',
-									gap: '2',
-									borderBlockStartWidth: '1px',
-									borderBlockStartStyle: 'solid',
-									borderBlockStartColor: 'border.subtle',
-									paddingBlockStart: '4',
+									alignItems: 'baseline',
+									gap: '3',
 								})}
 							>
-								<header
+								<span
+									aria-hidden="true"
 									className={css({
-										display: 'flex',
-										alignItems: 'baseline',
-										gap: '3',
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										letterSpacing: '0.06em',
+										textTransform: 'uppercase',
+										color: 'text.muted',
 									})}
 								>
-									<span
-										aria-hidden="true"
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.06em',
-											textTransform: 'uppercase',
-											color: 'text.muted',
-										})}
-									>
-										{String(index + 1).padStart(2, '0')}
-									</span>
-									<h3
-										className={css({
-											margin: '0',
-											fontFamily: 'heading',
-											fontSize: 'lg',
-											fontWeight: '700',
-											color: 'text.default',
-											letterSpacing: '-0.01em',
-										})}
-									>
-										{interest.title}
-									</h3>
-								</header>
-								<p
-									lang="ja"
+									{String(index + 1).padStart(2, '0')}
+								</span>
+								<h3
 									className={css({
 										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										lineHeight: '1.6',
+										fontFamily: 'heading',
+										fontSize: 'lg',
+										fontWeight: '700',
 										color: 'text.default',
+										letterSpacing: '-0.01em',
 									})}
 								>
-									{interest.description}
-								</p>
-							</li>
-						))}
-					</ol>
-				</SectionHeading>
-			</Container>
-		</section>
+									{interest.title}
+								</h3>
+							</header>
+							<p
+								lang="ja"
+								className={css({
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									lineHeight: '1.6',
+									color: 'text.default',
+								})}
+							>
+								{interest.description}
+							</p>
+						</li>
+					))}
+				</ol>
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -452,19 +412,17 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 
 function SkillsSection({ skills }: { skills: readonly SkillEntry[] }) {
 	return (
-		<section aria-labelledby="about-section-skills" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-skills"
-					eyebrow="03 — Skills"
-					title="技術 / Skills"
-					description="制作記録で裏付けられた技術だけを掲載。習熟度の数値化はしません。"
-					variant="spread"
-				>
-					<SkillsList skills={skills} />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="about-section-skills" separator>
+			<SectionHeading
+				id="about-section-skills"
+				eyebrow="03 — Skills"
+				title="技術 / Skills"
+				description="制作記録で裏付けられた技術だけを掲載。習熟度の数値化はしません。"
+				variant="spread"
+			>
+				<SkillsList skills={skills} />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -474,85 +432,83 @@ function SkillsSection({ skills }: { skills: readonly SkillEntry[] }) {
 
 function ExperienceSection({ projects }: { projects: readonly PortfolioProject[] }) {
 	return (
-		<section aria-labelledby="about-section-experience" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-experience"
-					eyebrow="04 — Experience"
-					title="経験 / Selected work"
-					description="公開作品の中から語り順で選んだ subset。canonical list は /portfolio 側。"
-					variant="spread"
-				>
-					{projects.length === 0 ? (
-						<output
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '3',
-								paddingBlock: '8',
-								color: 'text.muted',
-							})}
-						>
-							<p
-								className={css({
-									margin: '0',
-									fontFamily: 'sans',
-									fontSize: 'md',
-									lineHeight: '1.6',
-								})}
-							>
-								現在、narrative subset に該当する公開作品はありません。
-							</p>
-						</output>
-					) : (
-						<ol
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'flex',
-								flexDirection: 'column',
-							})}
-						>
-							{projects.map((project) => (
-								<li key={project.id}>
-									<ExperienceCard project={project} />
-								</li>
-							))}
-						</ol>
-					)}
-					<p
-						lang="ja"
+		<PageSection labelledBy="about-section-experience" separator>
+			<SectionHeading
+				id="about-section-experience"
+				eyebrow="04 — Experience"
+				title="経験 / Selected work"
+				description="公開作品の中から語り順で選んだ subset。canonical list は /portfolio 側。"
+				variant="spread"
+			>
+				{projects.length === 0 ? (
+					<output
 						className={css({
-							margin: '0',
-							marginBlockStart: '6',
-							fontFamily: 'sans',
-							fontSize: 'sm',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '3',
+							paddingBlock: '8',
 							color: 'text.muted',
 						})}
 					>
-						すべての作品と解説は{' '}
-						<a
-							href="/portfolio"
+						<p
 							className={css({
-								color: 'text.accent',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-								_hover: { textDecorationThickness: '2px' },
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: 'md',
+								lineHeight: '1.6',
 							})}
 						>
-							/portfolio
-						</a>{' '}
-						にあります。
-					</p>
-				</SectionHeading>
-			</Container>
-		</section>
+							現在、narrative subset に該当する公開作品はありません。
+						</p>
+					</output>
+				) : (
+					<ol
+						className={css({
+							listStyle: 'none',
+							margin: '0',
+							padding: '0',
+							display: 'flex',
+							flexDirection: 'column',
+						})}
+					>
+						{projects.map((project) => (
+							<li key={project.id}>
+								<ExperienceCard project={project} />
+							</li>
+						))}
+					</ol>
+				)}
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					すべての作品と解説は{' '}
+					<a
+						href="/portfolio"
+						className={css({
+							color: 'text.accent',
+							textDecoration: 'underline',
+							textUnderlineOffset: '0.18em',
+							textDecorationThickness: '1px',
+							_focusVisible: {
+								outline: '2px solid {colors.border.focus}',
+								outlineOffset: '2px',
+							},
+							_hover: { textDecorationThickness: '2px' },
+						})}
+					>
+						/portfolio
+					</a>{' '}
+					にあります。
+				</p>
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -603,17 +559,7 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 					</span>
 				) : null}
 			</header>
-			<h3
-				className={css({
-					margin: '0',
-					fontFamily: 'heading',
-					fontSize: 'xl',
-					fontWeight: '700',
-					color: 'text.default',
-					lineHeight: '1.25',
-					letterSpacing: '-0.01em',
-				})}
-			>
+			<h3 className={cardTitleClassName}>
 				<a
 					href={`/portfolio/${project.slug}`}
 					className={css({
@@ -675,19 +621,17 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 
 function CareerSection({ entries }: { entries: readonly CareerEntry[] }) {
 	return (
-		<section aria-labelledby="about-section-career" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-career"
-					eyebrow="05 — Career"
-					title="経歴 / History"
-					description="旧サイトの年表を出典つきで再構成し、確認済みの項目だけを掲載しています。"
-					variant="spread"
-				>
-					<CareerTimeline entries={entries} />
-				</SectionHeading>
-			</Container>
-		</section>
+		<PageSection labelledBy="about-section-career" separator>
+			<SectionHeading
+				id="about-section-career"
+				eyebrow="05 — Career"
+				title="経歴 / History"
+				description="旧サイトの年表を出典つきで再構成し、確認済みの項目だけを掲載しています。"
+				variant="spread"
+			>
+				<CareerTimeline entries={entries} />
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -697,57 +641,55 @@ function CareerSection({ entries }: { entries: readonly CareerEntry[] }) {
 
 function CurrentSection({ items }: { items: readonly string[] }) {
 	return (
-		<section aria-labelledby="about-section-current" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-current"
-					eyebrow="06 — Current"
-					title="現在 / Today"
-					description="今、時間を割いていること。半年程度の freshness を想定。"
-					variant="spread"
+		<PageSection labelledBy="about-section-current" separator>
+			<SectionHeading
+				id="about-section-current"
+				eyebrow="06 — Current"
+				title="現在 / Today"
+				description="今、時間を割いていること。半年程度の freshness を想定。"
+				variant="spread"
+			>
+				<ul
+					className={css({
+						margin: '0',
+						padding: '0',
+						listStyle: 'none',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '4',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						color: 'text.default',
+						lineHeight: '1.6',
+					})}
 				>
-					<ul
-						className={css({
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '4',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.default',
-							lineHeight: '1.6',
-						})}
-					>
-						{items.map((item) => (
-							<li
-								key={item}
+					{items.map((item) => (
+						<li
+							key={item}
+							className={css({
+								display: 'flex',
+								gap: '3',
+								alignItems: 'baseline',
+								borderBlockStartWidth: '1px',
+								borderBlockStartStyle: 'solid',
+								borderBlockStartColor: 'border.subtle',
+								paddingBlockStart: '3',
+							})}
+						>
+							<MaterialSymbol
 								className={css({
-									display: 'flex',
-									gap: '3',
-									alignItems: 'baseline',
-									borderBlockStartWidth: '1px',
-									borderBlockStartStyle: 'solid',
-									borderBlockStartColor: 'border.subtle',
-									paddingBlockStart: '3',
+									flexShrink: '0',
+									color: 'text.muted',
 								})}
-							>
-								<MaterialSymbol
-									className={css({
-										flexShrink: '0',
-										color: 'text.muted',
-									})}
-									d={ARROW_FORWARD_PATH}
-									size={12}
-								/>
-								<span>{item}</span>
-							</li>
-						))}
-					</ul>
-				</SectionHeading>
-			</Container>
-		</section>
+								d={ARROW_FORWARD_PATH}
+								size={12}
+							/>
+							<span>{item}</span>
+						</li>
+					))}
+				</ul>
+			</SectionHeading>
+		</PageSection>
 	);
 }
 
@@ -763,29 +705,27 @@ function FutureSection({
 	parked: readonly string[];
 }) {
 	return (
-		<section aria-labelledby="about-section-future" className={sectionStyle}>
-			<Container>
-				<SectionHeading
-					id="about-section-future"
-					eyebrow="07 — Future"
-					title="今後 / Active & parked"
-					description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
-					variant="spread"
+		<PageSection labelledBy="about-section-future" separator>
+			<SectionHeading
+				id="about-section-future"
+				eyebrow="07 — Future"
+				title="今後 / Active & parked"
+				description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
+				variant="spread"
+			>
+				<div
+					className={css({
+						display: 'grid',
+						gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+						columnGap: '6',
+						rowGap: '6',
+					})}
 				>
-					<div
-						className={css({
-							display: 'grid',
-							gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
-							columnGap: '6',
-							rowGap: '6',
-						})}
-					>
-						<FutureColumn tone="active" label="Active" items={active} />
-						<FutureColumn tone="parked" label="Parked" items={parked} />
-					</div>
-				</SectionHeading>
-			</Container>
-		</section>
+					<FutureColumn tone="active" label="Active" items={active} />
+					<FutureColumn tone="parked" label="Parked" items={parked} />
+				</div>
+			</SectionHeading>
+		</PageSection>
 	);
 }
 

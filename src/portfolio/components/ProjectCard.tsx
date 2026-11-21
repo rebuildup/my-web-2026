@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioProject } from '../schema';
@@ -201,17 +202,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						</span>
 						{project.pinned ? <Badge tone="accent">Pinned</Badge> : null}
 					</div>
-					<h3
-						className={css({
-							margin: '0',
-							fontFamily: 'heading',
-							fontSize: 'xl',
-							fontWeight: '700',
-							color: 'text.default',
-							lineHeight: '1.25',
-							letterSpacing: '-0.01em',
-						})}
-					>
+					<h3 className={cardTitleClassName}>
 						<a
 							href={`/portfolio/${project.slug}`}
 							className={css({

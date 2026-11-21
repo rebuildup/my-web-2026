@@ -3,7 +3,6 @@ import type { HomeAdProject } from '../home/ads/placements';
 import { getPrivacyNoticeData } from '../home/privacy/load';
 import { getDiscordPresence } from '../home/public';
 import {
-	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
 	HomePage,
 	KNOWN_INCIDENTS,
@@ -83,7 +82,6 @@ export const Route = createFileRoute('/')({
 			getPrivacyNoticeData(),
 		]);
 		return {
-			capabilities: CAPABILITIES,
 			services: SYSTEM_SERVICES,
 			statuses,
 			observedAt,

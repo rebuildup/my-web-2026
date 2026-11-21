@@ -74,6 +74,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLElement> {
 	size?: ButtonSize;
 	/** Render as another element (e.g. `a` for a link-button). */
 	as?: ElementType;
+	/** Anchor target when `as="a"` — forwarded through `...rest`. */
+	href?: string;
 	children?: ReactNode;
 }
 

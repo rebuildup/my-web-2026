@@ -18,7 +18,6 @@ describe('pet safe area (Issue #767)', () => {
 	});
 
 	it.each([
-		['base', 16],
 		['md', 24],
 		['lg', 32],
 	] as const)(
@@ -28,6 +27,12 @@ describe('pet safe area (Issue #767)', () => {
 			expect(PET_SAFE_AREA_INLINE_END[breakpoint]).toBe(`${PET_RESERVED_FOOTPRINT_PX - padding}px`);
 		},
 	);
+
+	it('reserves nothing below md, where the companion does not mount', () => {
+		// Issue #1110 — PetCompanion gates on `(width >= 768px)`; a
+		// corridor on a phone viewport would consume ~20% of the measure.
+		expect(PET_SAFE_AREA_INLINE_END.base).toBe('0px');
+	});
 
 	it('needs no extra corridor once the centred column clears the box', () => {
 		expect(PET_SAFE_AREA_INLINE_END.xl).toBe('0px');

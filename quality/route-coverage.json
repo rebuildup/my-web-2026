@@ -51,7 +51,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the home canonical / Open Graph metadata; the surface is asserted for composition only."
@@ -80,8 +83,14 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/about.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/about.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -106,8 +115,14 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/keyboard.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/keyboard.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/keyboard.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -132,7 +147,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the contact canonical / Open Graph metadata."
@@ -316,12 +334,47 @@
 			}
 		},
 		{
+			"source": "src/routes/now.tsx",
+			"path": "/now",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/now.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/seo-status.spec.ts", "e2e/now.spec.ts"]
+				},
+				"a11y": {
+					"status": "covered",
+					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
 			"source": "src/routes/portfolio/index.tsx",
 			"path": "/portfolio",
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "Only the detail route's canonical / Open Graph metadata is asserted; the list route is not."
@@ -351,8 +404,14 @@
 			"addressable": true,
 			"sample_path": "/portfolio/my-web-2026",
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
-				"seo": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts"]
+				},
+				"seo": {
+					"status": "covered",
+					"evidence": ["e2e/portfolio.spec.ts"]
+				},
 				"a11y": {
 					"status": "covered",
 					"evidence": ["e2e/a11y/axe-public-routes.spec.ts"]
@@ -377,7 +436,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "No spec pins the Tool index canonical / Open Graph metadata."
@@ -439,7 +501,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/nav.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "Internal design-system showcase; no spec pins its canonical / Open Graph metadata."
@@ -533,7 +598,10 @@
 			"audience": "public",
 			"addressable": true,
 			"gates": {
-				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"] },
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"]
+				},
 				"seo": {
 					"status": "excluded",
 					"reason": "The sign-in document publishes no canonical / Open Graph metadata that a spec pins."

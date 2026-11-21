@@ -129,6 +129,14 @@
 			"cardPolicy": "none",
 			"samplePath": "/projects/dotfiles",
 			"note": "README から生成した introduction を表示する surface。代表画像を持たず、上流 README の画像を hotlink しない方針のため og:image は宣言しない。og:title / description / url は route が出す。"
+		},
+		{
+			"path": "/now",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/now",
+			"note": "現在地の全件一覧 surface（Issue #1108）。HOME の代表スライスの全量到達先。代表画像を持たず、og:title / description / url だけを route が出す — cardPolicy 'none' はその状態の宣言であり、og:image が後から増えた時点で drift finding になる。"
 		}
 	],
 	"deferredSurfaces": [

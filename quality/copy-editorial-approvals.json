@@ -4981,6 +4981,358 @@
 					}
 				]
 			}
+		},
+		{
+			"id": "pr-1115",
+			"pr": 1115,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-21",
+			"decision": "pending",
+			"fingerprint": "sha256:b7b736277084ed0dd39fb1600e1e4974fe344abd1721bd665fb612b93e4da056",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1108 の HOME 再構成 (ADR-0022) に伴う公開日本語 copy 33 セグメントをレビュー。変更の大半は既存セクション (status / reactions / page views / GitHub activity / Discord presence / contact) の文言を digest band「サイトの状態」の h3 サブブロックへ移動したもので、文字列自体の変更はほぼ無い。新規は digest band の見出し・説明文、「すべて見る (N 件)」の /now 導線、/now の head title/description。いずれも実装どおりの主張に限定され、否定・許可・数値の創作は無い。",
+				"disposition": "各セグメントは composer.tsx / CurrentProjects.tsx / now.tsx の実装文字列と 1 対 1 で対応。移動した文字列は同一バイトで verdict=equivalent、新しい面構成の説明と /now の head 文は実装の収録内容 (binding 到達性・ページビュー・反応・GitHub 活動・Discord presence、開始日・最終更新・活動量の出所付き全件一覧) と一致することを確認し verdict=intentional。diff のペアリング artifact (unit 23) は移動 2 件の見かけ上の書き換えとして注記した。owner 判断の artefact は未取得のため decision は pending (Issue #754 の語彙)。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "サイトの状態",
+					"verdict": "equivalent",
+					"note": "旧「サイトの状態」見出しの削除側。digest band の h2 相当として同一文字列が unit 1 で再出現しており、内容の喪失ではなく再配置。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"verdict": "equivalent",
+					"note": "旧 status セクション説明文の削除側。unit 2 の新説明文に置き換わり、収録範囲の記述は新しい面構成に合わせて更新。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "プラットフォームの状態 / Platform health",
+					"verdict": "equivalent",
+					"note": "旧「プラットフォームの状態 / Platform health」見出しの削除側。unit 3 で digest 内サブブロックとして同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "みんなの反応 / Reactions",
+					"verdict": "equivalent",
+					"note": "旧「みんなの反応 / Reactions」見出しの削除側。unit 4 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明前半の削除側。unit 5 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明後半の削除側。unit 6 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "ページビュー / Page views",
+					"verdict": "equivalent",
+					"note": "旧「ページビュー / Page views」見出しの削除側。unit 7 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"verdict": "equivalent",
+					"note": "ページビュー説明の削除側。unit 8 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "サイトの状態",
+					"after": null,
+					"text": "サイトの状態",
+					"verdict": "equivalent",
+					"note": "旧「サイトの状態」見出しの削除側。digest band の h2 相当として同一文字列が unit 1 で再出現しており、内容の喪失ではなく再配置。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"after": null,
+					"text": "このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。",
+					"verdict": "equivalent",
+					"note": "旧 status セクション説明文の削除側。unit 2 の新説明文に置き換わり、収録範囲の記述は新しい面構成に合わせて更新。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "プラットフォームの状態 / Platform health",
+					"after": null,
+					"text": "プラットフォームの状態 / Platform health",
+					"verdict": "equivalent",
+					"note": "旧「プラットフォームの状態 / Platform health」見出しの削除側。unit 3 で digest 内サブブロックとして同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "GitHub の活動 / GitHub activity",
+					"after": null,
+					"text": "GitHub の活動 / GitHub activity",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「GitHub の活動 / GitHub activity」。旧セクション見出しの移動で、説明文 (unit 22) と統計カード alt と対になる。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"after": null,
+					"text": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "equivalent",
+					"note": "GitHub 活動スナップショット説明。観測・保存・観測日とソース状態の併記という主張は src/home の activity projection の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"after": null,
+					"text": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"verdict": "intentional",
+					"note": "diff 上のペアリング artifact: before は Contact セクション見出し、after は GitHub 統計カードの alt 文。実際の変更は (a) Contact 見出しが contact セクションへ移動、(b) 統計カード alt が digest の GitHub 活動サブブロックへ移動、の 2 移動であり、文字列同士の意味的な書き換えではない。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "みんなの反応 / Reactions",
+					"after": null,
+					"text": "みんなの反応 / Reactions",
+					"verdict": "equivalent",
+					"note": "旧「みんなの反応 / Reactions」見出しの削除側。unit 4 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"after": null,
+					"text": "リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明前半の削除側。unit 5 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"after": null,
+					"text": "を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。",
+					"verdict": "equivalent",
+					"note": "reactions Cookie 説明後半の削除側。unit 6 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "ページビュー / Page views",
+					"after": null,
+					"text": "ページビュー / Page views",
+					"verdict": "equivalent",
+					"note": "旧「ページビュー / Page views」見出しの削除側。unit 7 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"after": null,
+					"text": "各リクエストは短時間ウィンドウ内で重複加算されません。",
+					"verdict": "equivalent",
+					"note": "ページビュー説明の削除側。unit 8 で同一文字列が再出現。 同一文字列が別位置で再出現しており内容の喪失なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "Discord プレゼンス / Discord Presence",
+					"after": null,
+					"text": "Discord プレゼンス / Discord Presence",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「Discord プレゼンス / Discord Presence」。旧セクション見出しの移動。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "GitHub の活動 / GitHub activity",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「GitHub の活動 / GitHub activity」。旧セクション見出しの移動で、説明文 (unit 22) と統計カード alt と対になる。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。",
+					"verdict": "equivalent",
+					"note": "GitHub 活動スナップショット説明。観測・保存・観測日とソース状態の併記という主張は src/home の activity projection の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "Contact / お問い合わせ",
+					"after": "rebuildup の GitHub 統計カード (コミット・PR・スター数など)",
+					"verdict": "intentional",
+					"note": "diff 上のペアリング artifact: before は Contact セクション見出し、after は GitHub 統計カードの alt 文。実際の変更は (a) Contact 見出しが contact セクションへ移動、(b) 統計カード alt が digest の GitHub 活動サブブロックへ移動、の 2 移動であり、文字列同士の意味的な書き換えではない。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"after": null,
+					"text": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"verdict": "equivalent",
+					"note": "contact 説明文。re-verified channel のみ掲載という限定は src/home/contact の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "Discord プレゼンス / Discord Presence",
+					"verdict": "equivalent",
+					"note": "digest 内サブブロック見出し「Discord プレゼンス / Discord Presence」。旧セクション見出しの移動。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": "<span lang=\"ja\">Contact を見る</span>",
+					"after": null,
+					"text": "<span lang=\"ja\">Contact を見る</span>",
+					"verdict": "equivalent",
+					"note": "「Contact を見る」リンク文言。href は /contact で、表示は日本語 + lang 属性付き。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "Contact / お問い合わせ",
+					"verdict": "intentional",
+					"note": "contact セクション見出し「Contact / お問い合わせ」。旧見出しの移動。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+					"verdict": "equivalent",
+					"note": "contact 説明文。re-verified channel のみ掲載という限定は src/home/contact の実装どおり。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/composer.tsx",
+					"before": null,
+					"after": "<span lang=\"ja\">Contact を見る</span>",
+					"verdict": "equivalent",
+					"note": "「Contact を見る」リンク文言。href は /contact で、表示は日本語 + lang 属性付き。 同一文字列の移動で内容の変更なし。"
+				},
+				{
+					"path": "src/home/current/CurrentProjects.tsx",
+					"before": null,
+					"after": "すべて見る ({published.length} 件)",
+					"verdict": "intentional",
+					"note": "「すべて見る ({published.length} 件)」— /now への導線文言。件数は公開済み project 数を動的に埋め込み、全件到達性を保つ。新規 copy。"
+				},
+				{
+					"path": "src/routes/now.tsx",
+					"before": null,
+					"after": "現在地 / Where I am now — rebuildup.dev",
+					"verdict": "intentional",
+					"note": "/now の head.title。ページ内容 (現在地の全件一覧) と一致する title で、既存 route title の語彙 (「現在地 / Where I am now」) を継承。"
+				},
+				{
+					"path": "src/routes/now.tsx",
+					"before": null,
+					"after": "続けているプロジェクトの全件一覧。開始日・最終更新・活動量を出所付きで掲載しています。",
+					"verdict": "intentional",
+					"note": "/now の head.description。全件一覧・掲載項目 (開始日・最終更新・活動量) ・出所付きという記述は CurrentProjects が実際に表示する項目と一致。"
+				}
+			],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1108",
+						"note": "本変更の実装対象。HOME のキュレーション入口化と /now 全件 route。"
+					},
+					{
+						"type": "commit",
+						"reference": "927f4835",
+						"note": "feat(home): curated HOME composition per ADR-0022 (Issue #1108)"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/composer.tsx",
+						"note": "digest band と contact セクションの新しい構成の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/now.tsx",
+						"note": "/now の head title/description と loader が読むデータ源の典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/CurrentProjects.tsx",
+						"note": "「すべて見る」導線と全件列挙の実装典拠。"
+					}
+				]
+			}
+		},
+		{
+			"id": "issue-1110-home-recompose",
+			"pr": null,
+			"base": "release-0-11-0",
+			"reviewer": null,
+			"reviewedAt": "2026-11-21",
+			"decision": "pending",
+			"fingerprint": "sha256:43b6bbabf348b216602963cb0bb2a99ce9af0451087f348199b9707af5eb94c3",
+			"proposal": {
+				"tool": "agent editorial pass (Devin)",
+				"ran": true,
+				"summary": "Issue #1110 の HOME 再構成イテレーション3。公開日本語 copy への実質的な変更は最小限: hero eyebrow を「現在地 / Where I am now」から英語のみの「Personal site」へ変更 (CurrentProjects h2 との重複解消)、CurrentProjects / Contact の見出しを title/titleEn 分割 (Issue #792) し JA 側は「現在地」「お問い合わせ」のまま、stale-content registry の hero eyebrow レコードを除去。残りの差分セグメントは #1109 の PageSection/Split/Panel/SkipLink 移行に伴う JSX の移動・再フォーマットで、文字列自体の変更はほぼ無い。",
+				"disposition": "hero eyebrow は JA 走査対象外の英語ラベル。見出し分割は表示上の JA/EN 併記を 2 ブロック化したもので、各言語の文字列は不変。stale-content-review.json 側では hero eyebrow の orphan レコードを削除し、CurrentProjects 見出しレコードの expression を「現在地」へ更新済み。semantic comparison の全セグメント走査は未実施のため comparisons は空 — owner 判断用の pending 記録として登録する。"
+			},
+			"comparisons": [],
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1110",
+						"note": "本変更の実装対象。HOME 再構成の視覚品質収束イテレーション。"
+					},
+					{
+						"type": "commit",
+						"reference": "bbcd4ba1",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "commit",
+						"reference": "03fc2ca7",
+						"note": "Rebuild HOME composition and fix tone-surface rendering (Issues #1108, #1110)"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/hero.tsx",
+						"note": "hero eyebrow を英語のみの「Personal site」へ変更した実装典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "src/home/current/CurrentProjects.tsx",
+						"note": "見出しの title/titleEn 分割 (Issue #792) の実装典拠。"
+					},
+					{
+						"type": "document",
+						"reference": "quality/stale-content-review.json",
+						"note": "hero eyebrow orphan レコード除去と CurrentProjects 見出しレコード更新の典拠。"
+					},
+					{
+						"type": "commit",
+						"reference": "f0c686c1",
+						"note": "Declare ToneMatrix as an inert design-system file for the publication surface"
+					},
+					{
+						"type": "commit",
+						"reference": "07930746",
+						"note": "Forbid invalid PageSection tone x Panel pairings at render time"
+					}
+				]
+			}
 		}
 	]
 }

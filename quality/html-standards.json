@@ -40,6 +40,13 @@
 			"why": "public verified external-link inventory (Issue #390); grouped link rows with external-link attributes."
 		},
 		{
+			"route_id": "/now",
+			"path": "/now",
+			"source": "src/routes/now.tsx",
+			"mode": "render",
+			"why": "public full enumeration of current-project records (Issue #1108); heading tree and see-all reachability from HOME."
+		},
+		{
 			"route_id": "/commission",
 			"path": "/commission",
 			"source": "src/routes/commission.tsx",

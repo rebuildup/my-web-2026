@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
@@ -10,6 +11,7 @@ import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
 import { SurfaceTreatments } from './sections/SurfaceTreatments';
 import { TableCode } from './sections/TableCode';
+import { ToneMatrix } from './sections/ToneMatrix';
 import { Typography } from './sections/Typography';
 import type { DesignSystemTokenData } from './tokens';
 
@@ -33,6 +35,10 @@ import type { DesignSystemTokenData } from './tokens';
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
+ *   - — Tone matrix         Issue #1110: the full 8-tone × 7-variant
+ *                            `PageSection`/`Panel` surface contract as
+ *                            real bands, measured by
+ *                            `e2e/design-system-tones.spec.ts`.
  *   - 05 Interactive states default / hover / focus / pressed on `<a>` + `<button>`.
  *                            It also carries the Issue #394 keyboard
  *                            fixture: the shipped reaction picker
@@ -86,6 +92,7 @@ export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenDa
 				<TypographySection />
 				<SpacingSection />
 				<SurfaceSection />
+				<ToneMatrix />
 				<InteractiveSection />
 				<StatusSection />
 				<ImageSection />
@@ -112,15 +119,7 @@ function Hero() {
 			})}
 		>
 			<Container>
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-						columnGap: { base: '0', lg: '10' },
-						rowGap: { base: '10', lg: '0' },
-						alignItems: 'start',
-					})}
-				>
+				<Split rowGap="10" className={css({ alignItems: 'start' })}>
 					<aside
 						aria-hidden="true"
 						className={css({
@@ -217,7 +216,7 @@ function Hero() {
 							が正本、 このページは視覚的な検証用 mirror。
 						</p>
 					</div>
-				</div>
+				</Split>
 			</Container>
 		</section>
 	);

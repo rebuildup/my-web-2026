@@ -175,7 +175,7 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'home-default',
 				description:
-					'all six default sections render and the reactions widget is configured (no disabled placeholder)',
+					'all five default sections render and the reactions widget is configured (no disabled placeholder)',
 				probes: Object.freeze({ homeSections: true, reactionsDisabled: false }),
 			}),
 		]),
@@ -326,7 +326,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * instead of as literals inside the Playwright adapter: one place to
  * edit when `/` or `/about` changes shape, and the same prose the
  * failure report names. The local Playwright suites pin the same facts
- * against a real render (`e2e/smoke.spec.ts` for the six home sections,
+ * against a real render (`e2e/smoke.spec.ts` for the five home sections,
  * `e2e/about.spec.ts` for the seven narrative sections), so a composition
  * change is caught locally long before a production smoke can see it.
  *
@@ -349,7 +349,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 6 }),
+	'/': Object.freeze({ labelled: 5 }),
 	'/about': Object.freeze({ narrative: 7 }),
 });
 
@@ -390,7 +390,7 @@ export const ONE_CLICK_ENTRIES = Object.freeze([
 	Object.freeze({
 		from: '/',
 		to: '/tools',
-		selector: 'section[aria-labelledby="capabilities-heading"] a[href="/tools"]',
+		selector: 'section[aria-labelledby="site-guide-heading"] a[href="/tools"]',
 	}),
 ]);
 

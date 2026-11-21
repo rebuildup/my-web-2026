@@ -1,9 +1,15 @@
 import { css } from '../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../editorial/pet';
+import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
+import { Disclosure } from '../editorial/primitives/Disclosure';
+import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { SkipLink } from '../editorial/primitives/SkipLink';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
+import { useMediaQuery } from '../editorial/use-media-query';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import { GitHubActivityCard } from './activity/GitHubActivityCard';
@@ -11,27 +17,18 @@ import type { HomeGitHubActivity } from './activity/contract';
 import {
 	AdPortfolioNative,
 	AdPortfolioProduct,
-	AdPortfolioRect,
-	AdToolCarousel,
-	AdToolInstall,
 	AdToolLinkCard,
 	AdToolNative,
-	AdToolNativeCounter,
-	AdToolPlayable,
 	AdToolProduct,
-	AdToolRect,
-	AdToolVideo,
 	AdTopBanner,
 	type HomeAdProject,
 } from './ads/placements';
-import type { Capability } from './capabilities/capability';
-import { CapabilitiesGrid } from './capabilities/grid';
 import { CurrentProjects } from './current/CurrentProjects';
 import type { CurrentProjectRecord } from './current/types';
 import { DataSourceBadge } from './data-source-badge';
+import { ExploreSection } from './explore/ExploreSection';
 import { Footer } from './footer';
 import type { HomeLocale } from './format';
-import { GuideSection } from './guide/GuideSection';
 import { Hero } from './hero';
 import { PresenceCard } from './presence/PresenceCard';
 import type { DiscordPresenceCard } from './presence/types';
@@ -44,7 +41,6 @@ import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
 
 export interface HomePageData {
-	capabilities: readonly Capability[];
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
@@ -168,10 +164,13 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * Individual sections keep their own change reasons below src/home/.
  *
  * Reading order (Issue #31 spread; Issue #884 merged the three
- * "is this site up right now" blocks into one section):
+ * "is this site up right now" blocks into one section; Issue #1108
+ * second pass merged the site guide and the capabilities grid into
+ * one explore section):
  *   - Hero             (page entry; own 4/8 grid)
  *   - 00 — Now         (current projects; committed snapshot, Issue #316)
- *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
+ *   - 01 — Explore     (merged site guide + capabilities; classified
+ *                       destination grid, Epic #1104)
  *   - 02 — Status      (site status; spread SectionHeading with three
  *                       `h3` blocks: platform health / reactions /
  *                       page views). The three blocks answer ONE
@@ -195,31 +194,23 @@ const subsectionDescriptionClassName = /*#__PURE__*/ css({
  * section — they are `h3` sub-blocks of "サイトの状態".
  */
 export function HomePage({ data, locale, timeZone }: HomePageProps) {
+	// Issue #1110 — the two ambient-signal widgets (GitHub activity,
+	// Discord presence) collapse behind a disclosure on narrow
+	// viewports: they are secondary signals, and stacking all five
+	// widgets made the status section a third of the mobile page.
+	// Desktop keeps them expanded. `useMediaQuery` resolves to the
+	// desktop snapshot during SSR and hydration, so the server
+	// document renders them open; a narrow client closes the
+	// disclosure once mounted. With JavaScript disabled the details
+	// stays open on every viewport — the ambient signals remain
+	// reachable through the native summary toggle.
+	const isDesktop = useMediaQuery('(width >= 1024px)');
 	return (
 		// Issue #767 — the page reserves the bottom-right corridor the
 		// fixed companion occupies, so the reading column never scrolls
 		// under it. See `src/editorial/pet/safe-area.ts`.
 		<div className={petSafeAreaStyle}>
-			<a
-				href="#main"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					padding: '2',
-					backgroundColor: 'bg.canvas',
-					color: 'text.default',
-					textDecoration: 'none',
-					transform: 'translateY(-200%)',
-					_focusVisible: {
-						transform: 'translateY(0)',
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
-				})}
-			>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			{/* Issue #925 — publisher masthead. Real ad surfaces never show
 			    a leaderboard without the site chrome it belongs to; the
 			    wordmark + section links are what make the banner below
@@ -228,323 +219,256 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 			<header
 				className={css({
 					paddingBlock: '4',
-					paddingInline: { base: '4', lg: '6' },
 					borderBottomWidth: '1px',
 					borderBottomStyle: 'solid',
 					borderBottomColor: 'border.subtle',
 				})}
 			>
-				<div
-					className={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '4',
-					})}
-				>
-					<a
-						href="/"
+				<Container>
+					<div
 						className={css({
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							fontWeight: '800',
-							letterSpacing: '-0.02em',
-							color: 'text.default',
-							textDecoration: 'none',
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: '4',
 						})}
 					>
-						rebuildup
-					</a>
-					<nav aria-label="Site">
-						<ul
+						<a
+							href="/"
 							className={css({
-								display: 'flex',
-								alignItems: 'center',
-								gap: { base: '3', sm: '5' },
-								margin: '0',
-								padding: '0',
-								listStyle: 'none',
 								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
+								fontSize: 'lg',
+								fontWeight: '800',
+								letterSpacing: '-0.02em',
+								color: 'text.default',
+								textDecoration: 'none',
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
 							})}
 						>
-							{[
-								{ href: '/tools', label: 'Tools' },
-								{ href: '/portfolio', label: 'Portfolio' },
-								{ href: '/about', label: 'About' },
-							].map((item) => (
-								<li key={item.href}>
-									<a
-										href={item.href}
-										className={css({
-											color: 'text.muted',
-											textDecoration: 'none',
-											_hover: { color: 'text.default' },
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
-										})}
-									>
-										{item.label}
-									</a>
-								</li>
-							))}
-						</ul>
-					</nav>
-				</div>
-			</header>
-			<div className={css({ paddingBlock: '6', paddingInline: { base: '4', lg: '6' } })}>
-				<AdTopBanner />
-			</div>
-			<Hero />
-			<main id="main">
-				{/* Issue #925 — the body grid is ad-defined, the way real
-				    publisher pages compose: the editorial sections read down
-				    a narrow article column while a sponsored rail runs the
-				    full height of the page beside them (sticky on lg). The
-				    rail is a sibling of the whole flow, not a block dropped
-				    between sections — that persistent occupancy is what
-				    makes a page read as an ad surface. On base the rail
-				    stacks after the article in reading order. */}
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', xl: 'minmax(0, 1fr) 22rem' },
-						columnGap: '10',
-						alignItems: 'start',
-						paddingInline: { base: '4', lg: '6' },
-					})}
-				>
-					<div className={css({ display: 'flex', flexDirection: 'column', minWidth: '0' })}>
-						{/* Issue #930 / Epic #928 — the site guide is the FIRST
-						    body section: a first-time visitor's primary
-						    question is "what exists here and how do I reach
-						    it". */}
-						<GuideSection today={data.observedAt.slice(0, 10)} />
-						<div className={css({ paddingBlock: { base: '16', lg: '24' } })} />
-						<CurrentProjects projects={data.projects} today={data.observedAt.slice(0, 10)} />
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolLinkCard />
-							</div>
-						</Container>
-						{data.dataSource ? (
-							<Container>
-								<DataSourceBadge source={data.dataSource} />
-							</Container>
-						) : null}
-						<CapabilitiesGrid capabilities={data.capabilities} />
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolCarousel projects={data.adProjects ?? []} />
-								<div className={css({ marginBlockStart: '10' })}>
-									<AdToolVideo />
-								</div>
-							</div>
-						</Container>
-						<section
-							aria-labelledby="site-status-heading"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-							})}
-						>
-							<Container>
-								<SectionHeading
-									id="site-status-heading"
-									eyebrow="02 — Status"
-									title="サイトの状態"
-									titleEn="Site status"
-									description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
-									variant="spread"
-								>
-									<div
-										className={css({
-											display: 'flex',
-											flexDirection: 'column',
-											gap: { base: '14', lg: '16' },
-										})}
-									>
-										<div>
-											<h3 id="status-heading" className={subsectionTitleClassName}>
-												プラットフォームの状態 / Platform health
-											</h3>
-											<StatusTiles
-												chrome="body"
-												services={data.services}
-												statuses={data.statuses}
-												observedAt={data.observedAt}
-												incidents={data.incidents}
-												locale={locale}
-												timeZone={timeZone}
-											/>
-										</div>
-										<div>
-											<h3 id="github-activity-heading" className={subsectionTitleClassName}>
-												GitHub の活動 / GitHub activity
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												GitHub
-												から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
-											</p>
-											<GitHubActivityCard activity={data.githubActivity ?? null} />
-											{/* Issue #933 — the self-hosted stats card
-											    supplements the committed-activity feed
-											    with the same GitHub numbers the profile
-											    README advertises. It is decorative
-											    support: `lazy` + `async` because the
-											    block sits well below the fold, and a
-											    Japanese alt that names what the image
-											    shows rather than "image". */}
-											<img
-												src={GITHUB_STATS_IMAGE_URL}
-												alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
-												loading="lazy"
-												decoding="async"
-												className={css({
-													display: 'block',
-													maxWidth: '100%',
-													height: 'auto',
-													marginBlockStart: '4',
-												})}
-											/>
-										</div>
-										<div>
-											<h3 id="reactions-heading" className={subsectionTitleClassName}>
-												みんなの反応 / Reactions
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
-												を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
-											</p>
-											<ReactionsWidget data={data.reactions} />
-										</div>
-										<div>
-											<h3 id="access-counter-heading" className={subsectionTitleClassName}>
-												ページビュー / Page views
-											</h3>
-											<p className={subsectionDescriptionClassName}>
-												各リクエストは短時間ウィンドウ内で重複加算されません。
-											</p>
-											<CounterTile data={data.counter} locale={locale} />
-										</div>
-										<div>
-											<h3 id="discord-presence-heading" className={subsectionTitleClassName}>
-												Discord プレゼンス / Discord Presence
-											</h3>
-											{data.discordPresence && (
-												<PresenceCard
-													card={data.discordPresence}
-													locale={locale}
-													timeZone={timeZone}
-													chrome="body"
-													headingId="discord-presence-card-heading"
-												/>
-											)}
-										</div>
-									</div>
-								</SectionHeading>
-							</Container>
-						</section>
-						<Container>
-							<div className={css({ marginBlock: '10' })}>
-								<AdToolPlayable />
-								<div className={css({ marginBlockStart: '10' })}>
-									{data.adProjects?.[3] ? (
-										<AdPortfolioRect project={data.adProjects[3]} />
-									) : (
-										<AdToolRect />
-									)}
-								</div>
-							</div>
-						</Container>
-						<section
-							aria-labelledby="contact-cta-heading"
-							className={css({
-								paddingBlock: { base: '16', lg: '24' },
-							})}
-						>
-							<Container>
-								<SectionHeading
-									id="contact-cta-heading"
-									eyebrow="03 — Contact"
-									title="Contact / お問い合わせ"
-									description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
-									variant="spread"
-								>
-									<div
-										data-testid="home-contact-cta"
-										className={css({
-											display: 'flex',
-											flexWrap: 'wrap',
-											gap: '4',
-										})}
-									>
+							rebuildup
+						</a>
+						<nav aria-label="Site">
+							<ul
+								className={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: { base: '3', sm: '5' },
+									margin: '0',
+									padding: '0',
+									listStyle: 'none',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									fontWeight: '600',
+								})}
+							>
+								{[
+									{ href: '/tools', label: 'Tools' },
+									{ href: '/portfolio', label: 'Portfolio' },
+									{ href: '/about', label: 'About' },
+								].map((item) => (
+									<li key={item.href}>
 										<a
-											href="/contact"
-											data-testid="home-contact-link"
+											href={item.href}
 											className={css({
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: '2',
-												paddingInline: '4',
-												height: '10',
-												borderRadius: 'md',
-												backgroundColor: 'bg.accent',
-												color: 'text.inverse',
-												fontFamily: 'sans',
-												fontSize: 'md',
-												fontWeight: '600',
+												color: 'text.muted',
 												textDecoration: 'none',
-												transition: 'background-color 120ms ease',
-												_hover: { backgroundColor: 'accent.interactive' },
+												_hover: { color: 'text.default' },
 												_focusVisible: {
 													outline: '2px solid {colors.border.focus}',
 													outlineOffset: '2px',
 												},
 											})}
 										>
-											<span lang="ja">Contact を見る</span>
-											<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+											{item.label}
 										</a>
-									</div>
-								</SectionHeading>
-							</Container>
-						</section>
+									</li>
+								))}
+							</ul>
+						</nav>
 					</div>
-					<aside
-						aria-label="Sponsored"
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '6',
-							position: { xl: 'sticky' },
-							top: { xl: '6' },
-						})}
+				</Container>
+			</header>
+			<Hero />
+			<main id="main">
+				{/* Issue #1108 — the page is a single editorial column again.
+				    The old xl sticky ad rail is gone: sponsored units are
+				    named inline slots between content sections, the way the
+				    contract's ad-independence clause requires. Issue #1110
+				    review: ad moments are consolidated to three (masthead
+				    leaderboard, one in-feed link card, one sponsored pair) —
+				    six interruptions made the page read as an ad inventory,
+				    not a composition. */}
+				{/* Site guide + capabilities — one merged destination grid
+				    (Epic #1104 second pass; the transit-map station list and
+				    the separate capabilities cards answered the same question).
+				    v11 review: the destination index now opens the page —
+				    "what exists here" precedes "what I am doing", so the
+				    classified grid is the first content claim after the hero. */}
+				<ExploreSection today={data.observedAt.slice(0, 10)} />
+				{/* Now records — curated representative slice; the full ordered
+				    enumeration lives at /now (ADR-0022 C-8). */}
+				<CurrentProjects
+					projects={data.projects}
+					today={data.observedAt.slice(0, 10)}
+					limit={4}
+					seeAllHref="/now"
+				/>
+				{/* ad slot: in-feed link card */}
+				<Container>
+					<div className={css({ marginBlock: '10' })}>
+						<AdToolLinkCard />
+					</div>
+				</Container>
+				{data.dataSource ? (
+					<Container>
+						<DataSourceBadge source={data.dataSource} />
+					</Container>
+				) : null}
+				{/* Issue #1110 v10 review — the leaderboard's high-contrast
+				    creative still out-weighed the hero + site guide when it
+				    sat between them, so the masthead slot now follows the
+				    explore grid: the identity statement and the destination
+				    index keep the opening of the page, and the ad reads as
+				    an in-content break before the status section. */}
+				<Container>
+					<div className={css({ paddingBlock: '4' })}>
+						<AdTopBanner />
+					</div>
+				</Container>
+				<PageSection labelledBy="site-status-heading" tone="sunken">
+					{/* Issue #1110 — this section aggregates five widgets, so it
+					    takes the `default` heading and the full measure: the
+					    spread variant's 8/12 content column left every widget
+					    ~290px wide and tripled the section's height. Density
+					    is a section-role decision (layout-system.md §9). */}
+					<SectionHeading
+						id="site-status-heading"
+						eyebrow="02 — Status"
+						title="サイトの状態"
+						titleEn="Site status"
+						description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
+					/>
+					<Grid columns={2} gap="10">
+						<div>
+							<h3 id="status-heading" className={subsectionTitleClassName}>
+								プラットフォームの状態 / Platform health
+							</h3>
+							<StatusTiles
+								chrome="body"
+								services={data.services}
+								statuses={data.statuses}
+								observedAt={data.observedAt}
+								incidents={data.incidents}
+								locale={locale}
+								timeZone={timeZone}
+							/>
+						</div>
+						<div>
+							<h3 id="reactions-heading" className={subsectionTitleClassName}>
+								みんなの反応 / Reactions
+							</h3>
+							<p className={subsectionDescriptionClassName}>
+								リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie
+								を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
+							</p>
+							<ReactionsWidget data={data.reactions} />
+
+							<div className={css({ marginBlockStart: '8' })}>
+								<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+									ページビュー / Page views
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									各リクエストは短時間ウィンドウ内で重複加算されません。
+								</p>
+								<CounterTile data={data.counter} locale={locale} />
+							</div>
+						</div>
+					</Grid>
+					<Disclosure
+						open={isDesktop}
+						summary="補助的な稼働シグナル / Ambient signals"
+						className={css({ marginBlockStart: '10' })}
 					>
-						{data.adProjects?.[0] ? (
-							<AdPortfolioNative project={data.adProjects[0]} />
-						) : (
-							<AdToolNative />
-						)}
-						<AdToolInstall />
-						{data.adProjects?.[1] ? (
-							<AdPortfolioProduct project={data.adProjects[1]} />
-						) : (
-							<AdToolProduct />
-						)}
-						{data.adProjects?.[2] ? (
-							<AdPortfolioNative project={data.adProjects[2]} />
-						) : (
-							<AdToolNativeCounter />
-						)}
-					</aside>
-				</div>
+						<Grid columns={2} gap="10">
+							<div>
+								<h3 id="github-activity-heading" className={subsectionTitleClassName}>
+									GitHub の活動 / GitHub activity
+								</h3>
+								<p className={subsectionDescriptionClassName}>
+									GitHub
+									から観測して保存した公開アクティビティのスナップショット。観測日とソース状態を併記します。
+								</p>
+								<GitHubActivityCard activity={data.githubActivity ?? null} />
+								<img
+									src={GITHUB_STATS_IMAGE_URL}
+									alt="rebuildup の GitHub 統計カード (コミット・PR・スター数など)"
+									loading="lazy"
+									decoding="async"
+									className={css({
+										display: 'block',
+										maxWidth: '100%',
+										height: 'auto',
+										marginBlockStart: '4',
+									})}
+								/>
+							</div>
+							<div>
+								{/* PresenceCard owns its own h3 + description
+								    (`chrome="body"`); a second heading here
+								    duplicated the block's name. */}
+								{data.discordPresence ? (
+									<PresenceCard
+										card={data.discordPresence}
+										locale={locale}
+										timeZone={timeZone}
+										chrome="body"
+										headingId="discord-presence-card-heading"
+									/>
+								) : null}
+							</div>
+						</Grid>
+					</Disclosure>
+				</PageSection>
+				{/* ad slot: sponsored pair — native + product units share one
+				    labelled region instead of a sticky rail. */}
+				<section aria-label="Sponsored">
+					<Container>
+						<Grid columns={2} gap="6" className={css({ marginBlock: '10' })}>
+							<div>
+								{data.adProjects?.[0] ? (
+									<AdPortfolioNative project={data.adProjects[0]} />
+								) : (
+									<AdToolNative />
+								)}
+							</div>
+							<div>
+								{data.adProjects?.[1] ? (
+									<AdPortfolioProduct project={data.adProjects[1]} />
+								) : (
+									<AdToolProduct />
+								)}
+							</div>
+						</Grid>
+					</Container>
+				</section>
+				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="inverse" separator>
+					<SectionHeading
+						id="contact-cta-heading"
+						eyebrow="03 — Contact"
+						title="お問い合わせ"
+						titleEn="Contact"
+						description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。"
+						variant="spread"
+					>
+						<Button as="a" href="/contact" variant="primary" data-testid="home-contact-link">
+							<span lang="ja">Contact を見る</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={18} />
+						</Button>
+					</SectionHeading>
+				</PageSection>
 			</main>
 			<Footer privacyNotice={data.privacyNotice} />
 			<PetCompanion />

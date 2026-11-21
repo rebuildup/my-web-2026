@@ -200,6 +200,16 @@ const ROUTE_INTENT = [
 			'but not a public-nav destination and therefore not listed in the sitemap.',
 	},
 	{
+		paths: ['/now'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public full enumeration of the current-project records (Issue #1108). Indexable and ' +
+			'reached from the home 現在地 section see-all link, but not a public-nav destination ' +
+			'and therefore not listed in the sitemap.',
+	},
+	{
 		paths: ['/commission'],
 		zone: 'public',
 		crawl: 'allow',

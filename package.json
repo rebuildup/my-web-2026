@@ -92,6 +92,8 @@
 		"capture:activity-334": "node scripts/capture-activity-334.mjs",
 		"capture:activity-timeline": "node scripts/capture-activity-timeline.mjs",
 		"capture:project-card-category": "node scripts/capture-project-card-category-bar.mjs",
+		"capture:design-matrix": "node scripts/capture-design-matrix.mjs",
+		"measure:chromatic-share": "node scripts/measure-chromatic-share.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
 		"capture:dev-data-source": "node scripts/capture-dev-data-source.mjs",
 		"verify:status-incident-screenshot": "node scripts/capture-status-incident-context.mjs",

@@ -245,11 +245,13 @@
 	 * reserved space when it scrolls it into view. Each surface publishes
 	 * the height it occupies —
 	 * `--analytics-consent-offset` from the rendered height in
-	 * `src/editorial/analytics/AnalyticsConsent.tsx`, and
+	 * `src/editorial/analytics/AnalyticsConsent.tsx`,
 	 * `--pet-overlay-offset` from the resting inset plus the full frame in
-	 * `src/editorial/pet/PetSprite.tsx` — so the compensation follows the
-	 * surfaces instead of guessing a number. Without a surface on the page
-	 * its variable is absent and the fallback reserves nothing.
+	 * `src/editorial/pet/PetSprite.tsx`, and `--pet-summon-offset` from
+	 * the mobile summon control in `src/editorial/pet/PetCompanion.tsx`
+	 * — so the compensation follows the surfaces instead of guessing a
+	 * number. Without a surface on the page its variable is absent and
+	 * the fallback reserves nothing.
 	 *
 	 * `max()` rather than a sum: the character's resting band sits above
 	 * the consent toggle rather than stacking on it (see
@@ -272,7 +274,13 @@
 	 * declaration and fails the gate.
 	 */
 	:root {
-		scroll-padding: 0 0 max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px)) 0;
+		scroll-padding: 0 0
+			max(
+				var(--analytics-consent-offset, 0px),
+				var(--pet-overlay-offset, 0px),
+				var(--pet-summon-offset, 0px)
+			)
+			0;
 	}
 
 	body {
@@ -288,7 +296,11 @@
 		 * is a fixed overlay by the owner's instruction, and a fixed
 		 * bottom overlay must reserve its own footprint.
 		 */
-		padding-bottom: max(var(--analytics-consent-offset, 0px), var(--pet-overlay-offset, 0px));
+		padding-bottom: max(
+			var(--analytics-consent-offset, 0px),
+			var(--pet-overlay-offset, 0px),
+			var(--pet-summon-offset, 0px)
+		);
 	}
 
 	/*

@@ -2,6 +2,7 @@ import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { SkipLink } from '../editorial/primitives/SkipLink';
 import { StateMark } from '../editorial/primitives/StateMark';
 import { RichText } from './RichText';
 import type {
@@ -119,26 +120,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 	const { snapshot, freshness } = view;
 	return (
 		<>
-			<a
-				href="#main"
-				className={css({
-					position: 'absolute',
-					left: '0',
-					top: '0',
-					padding: '2',
-					backgroundColor: 'bg.canvas',
-					color: 'text.default',
-					textDecoration: 'none',
-					transform: 'translateY(-200%)',
-					_focusVisible: {
-						transform: 'translateY(0)',
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
-				})}
-			>
-				本文へスキップ
-			</a>
+			<SkipLink />
 			<main id="main">
 				<section
 					aria-labelledby="dotfiles-hero-title"

@@ -17,7 +17,9 @@ import { composeRecords, selectPublishedProjects } from '../src/home/current/sou
  * and the GitHub activity snapshot (Issues #316 / #932) — so the browser
  * contract is exact:
  *
- *   - every roster project appears, with its name and its Japanese one-liner;
+ *   - HOME publishes a bounded curated slice (Issue #1110 / ADR-0022
+ *     C-8) — the first published records, with the complete
+ *     enumeration deferred to `/now` behind the see-all link;
  *   - the GitHub-observed projects (`gh-` ids) are published alongside them;
  *   - a measured value is never shown without the word for its source, and a
  *     value the record does not carry is absent rather than filled with a
@@ -39,7 +41,7 @@ function readJsonArtifact(path: string): unknown {
  * freezes the number, it re-derives it, so an honest roster or snapshot
  * edit moves both sides together.
  */
-function expectedPublishedCount(): number {
+function expectedPublishedProjects() {
 	const today = new Date().toISOString().slice(0, 10);
 	const gitFacts = readJsonArtifact('../src/home/current/git-facts.json') as GitFactsSnapshot;
 	const githubJson = readJsonArtifact('../src/home/activity/github-activity.json');
@@ -50,7 +52,11 @@ function expectedPublishedCount(): number {
 		[handwrittenFacts(PROJECT_ROSTER), gitSnapshotFacts(gitFacts)],
 		today,
 	);
-	return selectPublishedProjects([...rosterRecords, ...githubProjects], today).length;
+	return selectPublishedProjects([...rosterRecords, ...githubProjects], today);
+}
+
+function expectedPublishedCount(): number {
+	return expectedPublishedProjects().length;
 }
 test.describe('home — current projects section (Issue #316)', () => {
 	test('publishes the section with its own heading', async ({ page }) => {
@@ -59,32 +65,34 @@ test.describe('home — current projects section (Issue #316)', () => {
 
 		const section = page.locator('[data-testid="home-current-projects"]');
 		await expect(section).toHaveCount(1);
-		await expect(section.locator('#current-projects-heading')).toHaveText(
-			'現在地 / Where I am now',
-		);
+		await expect(section.locator('#current-projects-heading')).toHaveText('現在地 Where I am now');
 	});
 
-	test('publishes every roster project with its name and one-liner', async ({ page }) => {
+	test('publishes the curated slice and defers the full list to /now', async ({ page }) => {
 		await page.goto('/');
 
+		// Issue #1110 — HOME is a curated surface (ADR-0022 C-8): it
+		// renders `published.slice(0, 4)` and links to `/now` for the
+		// complete enumeration, which `e2e/now.spec.ts` covers.
+		const published = expectedPublishedProjects();
+		const visible = published.slice(0, 4);
 		const items = page.locator('[data-testid="home-current-project"]');
-		await expect(items).toHaveCount(expectedPublishedCount());
+		await expect(items).toHaveCount(visible.length);
 
-		// Issue #932 — the GitHub-observed projects share the section under
-		// `gh-` ids; at least one must be published while the committed
-		// snapshot validates.
-		const githubItems = page.locator(
-			'[data-testid="home-current-project"][data-project-id^="gh-"]',
-		);
-		expect(await githubItems.count()).toBeGreaterThan(0);
-
-		for (const project of PROJECT_ROSTER) {
+		for (const project of visible) {
 			const item = page.locator(
 				`[data-testid="home-current-project"][data-project-id="${project.id}"]`,
 			);
 			await expect(item).toHaveCount(1);
 			await expect(item).toContainText(project.name);
 			await expect(item).toContainText(project.statusJa);
+		}
+
+		const seeAll = page.locator('[data-testid="home-current-projects-see-all"]');
+		if (published.length > visible.length) {
+			await expect(seeAll).toHaveAttribute('href', '/now');
+		} else {
+			await expect(seeAll).toHaveCount(0);
 		}
 	});
 

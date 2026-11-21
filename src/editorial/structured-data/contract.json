@@ -157,6 +157,14 @@
 			"expectedTypes": [],
 			"samplePath": null,
 			"note": "認証必須の内部 surface。search 流入を意図していないため structured data の対象外。"
+		},
+		{
+			"path": "/now",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/now",
+			"note": "現在地の全件列挙ページ。breadcrumb leaf のみ emit し、プロジェクト列そのものを構造化データの主張にはしない（Issue #1108）。"
 		}
 	]
 }

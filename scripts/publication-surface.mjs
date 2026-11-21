@@ -141,6 +141,15 @@ export const SURFACE_DECLARATIONS = [
 			'Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory.',
 	},
 	{
+		id: '/now',
+		path: '/now',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/now.tsx'],
+		reason:
+			'Public full enumeration of the current-project records (Issue #1108); renders the same committed snapshot the home 現在地 section projects, is reached from its see-all link, and is recorded in SITEMAP_EXCLUSIONS as a non-nav destination.',
+	},
+	{
 		id: '/portfolio/',
 		path: '/portfolio',
 		classification: 'public',
@@ -287,6 +296,7 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/sections/StatusAccents.tsx',
 	'src/routes/design-system/sections/SurfaceTreatments.tsx',
 	'src/routes/design-system/sections/TableCode.tsx',
+	'src/routes/design-system/sections/ToneMatrix.tsx',
 	'src/routes/design-system/sections/Typography.tsx',
 	'src/routes/stack/StackPage.tsx',
 	'src/routes/stack/biome-facts.ts',

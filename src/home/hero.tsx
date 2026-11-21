@@ -24,7 +24,7 @@ export function Hero() {
 		<section
 			aria-labelledby="hero-title"
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: { base: '12', lg: '20' },
 			})}
 		>
 			<Container>
@@ -39,7 +39,7 @@ export function Hero() {
 						color: 'text.muted',
 					})}
 				>
-					現在地 / Where I am now
+					Personal site
 				</p>
 				<h1 id="hero-title" className={css({ margin: '0' })}>
 					<SiteMark className={css({ height: '16', width: 'auto' })} />
@@ -72,7 +72,7 @@ export function Hero() {
 						fontFamily: 'sans',
 						fontSize: 'md',
 						lineHeight: '1.7',
-						color: 'text.muted',
+						color: 'text.default',
 						textWrap: 'pretty',
 					})}
 				>

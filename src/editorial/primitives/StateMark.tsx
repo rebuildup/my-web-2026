@@ -133,24 +133,6 @@ const SHAPE_CLIP: Readonly<Record<StateMarkKind, string | null>> = {
 	tool: 'polygon(30% 12%, 55% 12%, 85% 50%, 55% 88%, 30% 88%, 60% 50%)',
 };
 
-/**
- * The category silhouette clip-paths, exported so a second surface
- * that marks the same four content classes — the home site guide's
- * station nodes (Issue #968) — draws the SAME shapes instead of
- * inventing a parallel vocabulary. `null` means "no clip": the
- * kind's silhouette is the element's own box (the axis-aligned
- * square). Status kinds are deliberately absent — a status mark and
- * a category mark are never mixed on one surface.
- */
-export const CATEGORY_SILHOUETTE_CLIP_PATH: Readonly<
-	Record<'design' | 'code' | 'writing' | 'tool', string | null>
-> = {
-	design: SHAPE_CLIP.design,
-	code: SHAPE_CLIP.code,
-	writing: SHAPE_CLIP.writing,
-	tool: SHAPE_CLIP.tool,
-};
-
 export function StateMark({ kind, size = 'md', className }: StateMarkProps) {
 	const clip = SHAPE_CLIP[kind];
 	return (

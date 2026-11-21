@@ -1509,7 +1509,12 @@ function checkAttributes(element, messages) {
 		}
 
 		const enumValues = ENUMERATED_ATTRIBUTES.get(`${element.tag}:${name}`);
-		if (enumValues && attr.value !== null) {
+		// Boolean attributes (`open`, `checked`, …) are fully decided by
+		// the BOOLEAN_ATTRIBUTES check above: their enumerated entries
+		// exist only to document that `""`/self-name are the legal
+		// values, and running the token-list rule on them rejects the
+		// valid empty form (`<details open="">`).
+		if (enumValues && attr.value !== null && !BOOLEAN_ATTRIBUTES.has(name)) {
 			// `type` on a <script> is either a keyword or a MIME type: this
 			// project emits `application/ld+json` for structured data, so a
 			// well-formed MIME string is accepted and anything else is not.

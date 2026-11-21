@@ -133,7 +133,6 @@
 		"types src/editorial/structured-data/index.ts StructuredDataValidation",
 		"types src/home/access/load.ts GetCountOutput",
 		"types src/home/access/load.ts RecordHitOutput",
-		"types src/home/public.ts Capability",
 		"types src/home/public.ts HomeCounterData",
 		"types src/home/public.ts HomePageData",
 		"types src/home/public.ts HomeReactionMutationResult",

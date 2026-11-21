@@ -1,7 +1,9 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Container } from '../../editorial/primitives/Container';
+import { Split } from '../../editorial/primitives/Grid';
+import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
@@ -27,55 +29,51 @@ import type { StackCheckStatus, StackFactRow } from './stack';
 export function StackPage({ data }: { data: StackPageData }) {
 	return (
 		<>
-			<a href="#main" className={skipLinkStyle}>
-				本文へスキップ
-			</a>
-			<section aria-labelledby="stack-hero-title" className={heroStyle}>
-				<Container>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						my-web-2026 · /stack
-					</span>
-					<h1
-						id="stack-hero-title"
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '2',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							color: 'text.default',
-							letterSpacing: '-0.03em',
-						})}
-					>
-						開発スタック / Stack
-					</h1>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '6',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-							maxWidth: '640px',
-						})}
-					>
-						このサイトを動かしている技術の一覧です。version は{' '}
-						<code className={inlineCodeStyle}>package.json</code> と{' '}
-						<code className={inlineCodeStyle}>profile.yaml</code> から読み取り、根拠となる source
-						へのリンクを各項目に付けています。開発記事や整備 PR の 参照先として使えます。
-					</p>
-				</Container>
-			</section>
+			<SkipLink />
+			<PageSection rhythm="hero" labelledBy="stack-hero-title">
+				<span
+					className={css({
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					my-web-2026 · /stack
+				</span>
+				<h1
+					id="stack-hero-title"
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '2',
+						fontFamily: 'heading',
+						fontSize: { base: '3xl', lg: '4xl' },
+						fontWeight: '700',
+						lineHeight: { base: '1.15', lg: '1.05' },
+						color: 'text.default',
+						letterSpacing: '-0.03em',
+					})}
+				>
+					開発スタック / Stack
+				</h1>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '6',
+						fontFamily: 'sans',
+						fontSize: 'lg',
+						lineHeight: '1.6',
+						color: 'text.default',
+						maxWidth: '640px',
+					})}
+				>
+					このサイトを動かしている技術の一覧です。version は{' '}
+					<code className={inlineCodeStyle}>package.json</code> と{' '}
+					<code className={inlineCodeStyle}>profile.yaml</code> から読み取り、根拠となる source
+					へのリンクを各項目に付けています。開発記事や整備 PR の 参照先として使えます。
+				</p>
+			</PageSection>
 			<main id="main">
 				{data.sections.map((section, index) => (
 					<StackSectionBlock key={section.id} section={section} index={index + 1} />
@@ -93,60 +91,41 @@ function StackSectionBlock({
 	index: number;
 }) {
 	return (
-		<section
-			aria-labelledby={`stack-section-${section.id}`}
-			data-testid={`stack-section-${section.id}`}
-			className={css({
-				paddingBlock: { base: '16', lg: '24' },
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.subtle',
-			})}
+		<PageSection
+			labelledBy={`stack-section-${section.id}`}
+			separator
+			testId={`stack-section-${section.id}`}
 		>
-			<Container>
-				<SectionHeading
-					id={`stack-section-${section.id}`}
-					eyebrow={`${String(index).padStart(2, '0')} — ${section.titleEn}`}
-					title={section.title}
-					description={section.description}
-					variant="default"
-				/>
-				<ul
-					data-testid={`stack-items-${section.id}`}
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '0',
-						margin: '0',
-						marginBlockStart: '10',
-						padding: '0',
-						listStyle: 'none',
-					})}
-				>
-					{section.items.map((item) => (
-						<StackItemRow key={item.id} item={item} />
-					))}
-				</ul>
-			</Container>
-		</section>
+			<SectionHeading
+				id={`stack-section-${section.id}`}
+				eyebrow={`${String(index).padStart(2, '0')} — ${section.titleEn}`}
+				title={section.title}
+				description={section.description}
+				variant="default"
+			/>
+			<ul
+				data-testid={`stack-items-${section.id}`}
+				className={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '0',
+					margin: '0',
+					marginBlockStart: '10',
+					padding: '0',
+					listStyle: 'none',
+				})}
+			>
+				{section.items.map((item) => (
+					<StackItemRow key={item.id} item={item} />
+				))}
+			</ul>
+		</PageSection>
 	);
 }
 
 function StackItemRow({ item }: { item: StackItemView }) {
 	return (
-		<li
-			data-testid={`stack-item-${item.id}`}
-			className={css({
-				display: 'grid',
-				gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
-				columnGap: { base: '0', lg: '10' },
-				rowGap: '3',
-				paddingBlock: '6',
-				borderBlockStartWidth: '1px',
-				borderBlockStartColor: 'border.subtle',
-				borderBlockStartStyle: 'solid',
-			})}
-		>
+		<Split as="li" rowGap="4" separated data-testid={`stack-item-${item.id}`}>
 			<div
 				className={css({
 					display: 'flex',
@@ -283,7 +262,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					</ul>
 				) : null}
 			</div>
-		</li>
+		</Split>
 	);
 }
 
@@ -404,26 +383,6 @@ function biomeSettingsRows(settings: readonly StackFactRow[]): TableRow[] {
 		cells: { value: row.value },
 	}));
 }
-
-const skipLinkStyle = css({
-	position: 'absolute',
-	left: '0',
-	top: '0',
-	padding: '2',
-	backgroundColor: 'bg.canvas',
-	color: 'text.default',
-	textDecoration: 'none',
-	transform: 'translateY(-200%)',
-	_focusVisible: {
-		transform: 'translateY(0)',
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-});
-
-const heroStyle = css({
-	paddingBlock: { base: '16', lg: '32' },
-});
 
 const inlineCodeStyle = css({
 	fontFamily: 'mono',

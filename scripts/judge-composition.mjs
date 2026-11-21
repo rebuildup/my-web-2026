@@ -244,9 +244,20 @@ export function checkCL7(desktopModel, mobileModel, rule) {
 		mobileModel.document?.height && desktopModel.document?.height
 			? mobileModel.document.height / desktopModel.document.height
 			: null;
+	// Recomposition evidence, strongest first: declared features, then
+	// a measurable reorder of the (tone, rhythm) section sequence —
+	// signatures themselves differ across breakpoints by design.
+	const orderKey = (s) => `${s.tone ?? 'ground'}|${s.rhythm ?? 'body'}`;
+	const dOrder = dSections.map(orderKey);
+	const mOrder = mSections.map(orderKey);
+	const sameLen = dOrder.length === mOrder.length && dOrder.length > 0;
+	const orderDiff = sameLen
+		? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length
+		: 0;
 	const recomposed =
 		(mobileModel.features ?? []).some((f) => f === 'reorder' || f === 'disclosure') ||
-		(mobileModel.metrics?.recompositionScore ?? 0) > 0;
+		(mobileModel.metrics?.recompositionScore ?? 0) > 0 ||
+		orderDiff > 0.3;
 	if (
 		!recomposed &&
 		heightRatio !== null &&
@@ -256,7 +267,30 @@ export function checkCL7(desktopModel, mobileModel, rule) {
 			rule: 'CL-7',
 			severity: rule.severity,
 			verdict: 'warn',
-			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x and no recomposition signal`,
+			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x, order preserved, no recomposition signal`,
+		};
+	}
+	return null;
+}
+
+/** CL-10 — monotonous intra-section repetition across the page. */
+function checkCL10(model, rule, route) {
+	if (route?.indexRoute) return null;
+	const minUnits = rule.detection.minRepeatUnits;
+	const sections = bodySections(model);
+	const repeaters = sections.filter((s) => (s.repeatUnits ?? 0) >= minUnits);
+	if (repeaters.length < rule.detection.minRepeaterSections) return null;
+	// The defect is repetition DOMINATING the page, not the mere
+	// presence of lists — two catalog sections on a six-section page
+	// are legitimate parallel structure.
+	const dominance = repeaters.length / Math.max(1, sections.length);
+	if (dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)) {
+		const kinds = [...new Set(repeaters.map((s) => s.repeatKind).filter(Boolean))];
+		return {
+			rule: 'CL-10',
+			severity: rule.severity,
+			verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
+			detail: `${repeaters.length}/${sections.length} sections each repeat >=${minUnits} identical units (${kinds.join('/')}) — repetition dominates the composition`,
 		};
 	}
 	return null;
@@ -327,6 +361,7 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL6(model, ruleById(contract, 'CL-6'), route));
 	push(checkCL8(model, ruleById(contract, 'CL-8'), route));
 	push(checkCL9(model, ruleById(contract, 'CL-9')));
+	push(checkCL10(model, ruleById(contract, 'CL-10'), route));
 	return verdicts;
 }
 

@@ -82,6 +82,8 @@ const NEGATIVE_EXPECT = {
 	'mobile-naive-stack': ['CL-7'],
 	'no-tone-variation': ['CL-8'],
 	'no-focal': ['CL-9'],
+	'repeated-lists': ['CL-10'],
+	'home-list-stack': ['CL-10'],
 };
 
 describe('composition lint judge — negative fixtures must fire their rule', () => {

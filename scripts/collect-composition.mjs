@@ -95,6 +95,12 @@ const COLLECTOR = () => {
 			blocks.push({
 				kind,
 				area: area(br),
+				rect: {
+					x: Math.round(br.left),
+					y: Math.round(br.top + window.scrollY),
+					w: Math.round(br.width),
+					h: Math.round(br.height),
+				},
 				fontSize: kind === 'media' ? undefined : px(bs.fontSize),
 			});
 		};
@@ -121,21 +127,60 @@ const COLLECTOR = () => {
 			if (tracks.length < 2) continue;
 			const kids = [...el.children].filter(visible);
 			if (kids.length < 2) continue;
-			const lefts = kids.map((k) => Math.round(k.getBoundingClientRect().left)).sort((a, b) => a - b);
-			const uniq = [...new Set(lefts)];
+			const lefts = [...new Set(kids.map((k) => Math.round(k.getBoundingClientRect().left)))].sort(
+				(a, b) => a - b,
+			);
+			const gridRight = Math.round(el.getBoundingClientRect().right);
+			// Column widths from left-edge boundaries; last column runs
+			// to the grid's right edge. Normalized to sum = column count
+			// so equal tracks read as equal ratios.
+			const widths = lefts.map((l, i) =>
+				(i + 1 < lefts.length ? lefts[i + 1] : gridRight) - l,
+			);
+			const wsum = widths.reduce((a, b) => a + b, 0) || 1;
 			grid = {
 				tracks: tracks.slice(0, 16),
-				columnCount: uniq.length,
-				columnRatio: uniq.length > 1 ? uniq.map((_, i) => (i === 0 ? 1 : 0)) : [1],
+				columnCount: lefts.length,
+				columnRatio: widths.map((w) => Math.round((w / wsum) * lefts.length * 100) / 100),
 			};
 			break;
 		}
 
-		// Alignment axis: cluster of left edges among blocks.
-		const leftEdges = blocks.length
-			? [...new Set(blocks.map(() => 0))]
-			: [];
-		void leftEdges;
+		// Content column: union width of text-flow blocks (heading /
+		// text / list). A genuinely narrow column shows up here; a
+		// multi-column grid spans wide and reads as full-width.
+		const textBlocks = blocks.filter((b) =>
+			['heading', 'text', 'list'].includes(b.kind),
+		);
+		let contentW = r.width;
+		if (textBlocks.length >= 2) {
+			const minX = Math.min(...textBlocks.map((b) => b.rect.x));
+			const maxX = Math.max(...textBlocks.map((b) => b.rect.x + b.rect.w));
+			contentW = Math.min(r.width, maxX - minX);
+		}
+
+		// Intra-section repetition: sibling elements of the same tag
+		// with near-identical geometry — the "monotonous list" signal.
+		let maxRepeatUnits = 0;
+		let repeatKind = null;
+		for (const parent of section.querySelectorAll('ul, ol, div, article, section, main')) {
+			const kids = [...parent.children].filter(
+				(k) => visible(k) && area(k.getBoundingClientRect()) > 2000,
+			);
+			if (kids.length < 3) continue;
+			const groups = new Map();
+			for (const k of kids) {
+				const kr = k.getBoundingClientRect();
+				const key = `${k.tagName}|${Math.round(kr.width / 24)}x${Math.round(kr.height / 24)}`;
+				groups.set(key, (groups.get(key) ?? 0) + 1);
+			}
+			for (const [key, count] of groups) {
+				if (count > maxRepeatUnits) {
+					maxRepeatUnits = count;
+					repeatKind = key.split('|')[0].toLowerCase();
+				}
+			}
+		}
 
 		const mediaArea = mediaAreaOf(section);
 		const heading = section.querySelector('h1,h2,h3');
@@ -162,8 +207,14 @@ const COLLECTOR = () => {
 			grid,
 			mediaArea,
 			textArea: Math.max(0, area(r) - mediaArea),
-			contentWidthRatio: r.width > 0 ? Math.min(1, Math.round((r.width / vw) * 100) / 100) : 0,
-			emptyAreaRatio: 0, // refined below at document level if needed
+			contentWidthRatio:
+				vw > 0 ? Math.min(1, Math.round((contentW / vw) * 100) / 100) : 0,
+			emptyAreaRatio:
+				grid || r.width <= 0
+					? 0
+					: Math.min(1, Math.round((1 - contentW / r.width) * 100) / 100),
+			repeatUnits: maxRepeatUnits,
+			repeatKind: repeatKind ?? undefined,
 		};
 	});
 
@@ -187,6 +238,7 @@ const COLLECTOR = () => {
 	return {
 		version: 'composition-model/v1',
 		document: { width: vw, height: docHeight },
+		sectionOrder: sections.map((s) => s.signature),
 		sections,
 		media: { totalArea: mediaTotal, byKind: mediaByKind },
 		metrics: {
@@ -246,16 +298,16 @@ async function main() {
 					// settle back at the top before measuring geometry.
 					await page.evaluate(async () => {
 						const step = window.innerHeight;
-						for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
+						const limit = Math.min(document.documentElement.scrollHeight, step * 60);
+						for (let y = 0; y < limit; y += step) {
 							window.scrollTo(0, y);
-							await new Promise((r) => setTimeout(r, 60));
+							await new Promise((r) => setTimeout(r, 50));
 						}
 						window.scrollTo(0, 0);
-						await Promise.all(
-							[...document.images].map((img) => img.decode?.().catch(() => {})),
-						);
 					});
-					await page.waitForTimeout(300);
+					// Bounded settle: lazy media has had its chance; never
+					// wait on decode() — a hung image must not hang the cell.
+					await page.waitForTimeout(1200);
 					const model = await page.evaluate(COLLECTOR);
 					model.route = route.slug;
 					model.viewport = { width: vp.width, height: vp.height, stem: vp.stem };

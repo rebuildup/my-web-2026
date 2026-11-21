@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PageSection } from './PageSection';
 import { Panel, type PanelVariant } from './Panel';
-import { type SectionTone, toneRebinds } from './tone-styles';
+import { type SectionTone, panelVariantAllowedOnTone, toneRebinds } from './tone-styles';
 
 /**
  * Tone / variant rendering contract (Issue #1110, Epic #1104).
@@ -190,6 +190,49 @@ describe('Panel — variant surface contract', () => {
 			}
 		});
 	}
+});
+
+describe('Panel × tone pairing — invalid combinations are forbidden', () => {
+	// The matrix from layout-system.md §4.3, asserted against the same
+	// predicate `Panel` enforces at render time.
+	const EXPECTED: Record<SectionTone, PanelVariant[]> = {
+		ground: PANEL_VARIANTS,
+		sunken: PANEL_VARIANTS,
+		raised: PANEL_VARIANTS,
+		inverse: ['plain', 'field.design', 'field.code', 'field.writing'],
+		'field.design': ['plain', 'inverse', 'field.design', 'field.code', 'field.writing'],
+		'field.code': ['plain', 'inverse', 'field.design', 'field.code', 'field.writing'],
+		'field.writing': ['plain', 'inverse', 'field.design', 'field.code', 'field.writing'],
+		'field.tool': PANEL_VARIANTS,
+	};
+
+	for (const tone of SECTION_TONES) {
+		for (const variant of PANEL_VARIANTS) {
+			const allowed = EXPECTED[tone].includes(variant);
+			it(`tone="${tone}" × variant="${variant}" → ${allowed ? 'renders' : 'throws'}`, () => {
+				const render = () =>
+					renderToStaticMarkup(
+						<PageSection tone={tone}>
+							<Panel variant={variant}>probe</Panel>
+						</PageSection>,
+					);
+				if (allowed) {
+					expect(render()).toContain('probe');
+				} else {
+					expect(render).toThrow(
+						`Panel variant="${variant}" is not allowed inside PageSection tone="${tone}"`,
+					);
+				}
+				expect(panelVariantAllowedOnTone(tone, variant)).toBe(allowed);
+			});
+		}
+	}
+
+	it('a Panel outside any PageSection sits on ground — every variant valid', () => {
+		for (const variant of PANEL_VARIANTS) {
+			expect(() => renderToStaticMarkup(<Panel variant={variant}>x</Panel>)).not.toThrow();
+		}
+	});
 });
 
 describe('tone machinery — closed vocabulary', () => {

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { css, cva, cx } from '../../../styled-system/css';
 import { Container } from './Container';
-import { type SectionTone, toneRebinds } from './tone-styles';
+import { type SectionTone, SectionToneContext, toneRebinds } from './tone-styles';
 
 /**
  * PageSection — the only owner of section-level surface decisions
@@ -95,8 +95,11 @@ export function PageSection({
 			    itself: several rebinds retarget the very vars the tone's
 			    own `backgroundColor` reads (`bg.inverse` → ink-inverse),
 			    so applying them here painted the plate in its own ink —
-			    light-on-light (Issue #1110). */}
-			{tone === 'ground' ? content : <div style={toneRebinds(tone)}>{content}</div>}
+			    light-on-light (Issue #1110). The tone context lets `Panel`
+			    refuse pairings the contract forbids (layout-system.md §4.3). */}
+			<SectionToneContext.Provider value={tone}>
+				{tone === 'ground' ? content : <div style={toneRebinds(tone)}>{content}</div>}
+			</SectionToneContext.Provider>
 		</section>
 	);
 }

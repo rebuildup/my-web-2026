@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, createContext } from 'react';
 
 /**
  * Section / panel tone machinery (ADR-0022 §4.2, layout-system.md §4.2).
@@ -133,4 +133,44 @@ const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, ToneRebinds> = {
 export function toneRebinds(tone: SectionTone): CSSProperties {
 	if (tone === 'ground') return {};
 	return TONE_REBINDS[tone] as CSSProperties;
+}
+
+/**
+ * The tone of the `PageSection` a subtree renders inside. `Panel`
+ * reads it to enforce the pairing contract (layout-system.md §4.3):
+ * a panel variant that cannot carry its ink on the section's tone is
+ * a programming error, not a styling choice, so `Panel` throws.
+ * Defaults to `ground` — a panel outside any section sits on the
+ * page ladder and every variant is valid there.
+ */
+export const SectionToneContext = createContext<SectionTone>('ground');
+
+/** Panel variant names — mirrors `PanelVariant` in `Panel.tsx`. */
+export type PanelSurfaceVariant =
+	| 'surface'
+	| 'subtle'
+	| 'plain'
+	| 'inverse'
+	| 'field.design'
+	| 'field.code'
+	| 'field.writing';
+
+/**
+ * Whether `variant` may render inside a section of `tone`
+ * (layout-system.md §4.3 "Panel × tone pairing"):
+ *
+ * - `plain` and `field.*` are valid on every tone;
+ * - `inverse` is invalid on `inverse` (plate-on-plate);
+ * - `surface` / `subtle` need the page ladder + normal ink, so they
+ *   are invalid on `inverse` and on the vivid `field.*` tones
+ *   (`field.tool` shares the sunken map and stays valid).
+ */
+export function panelVariantAllowedOnTone(
+	tone: SectionTone,
+	variant: PanelSurfaceVariant,
+): boolean {
+	if (variant === 'plain' || variant.startsWith('field.')) return true;
+	if (variant === 'inverse') return tone !== 'inverse';
+	// surface / subtle
+	return tone === 'ground' || tone === 'sunken' || tone === 'raised' || tone === 'field.tool';
 }

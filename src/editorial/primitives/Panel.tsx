@@ -1,7 +1,13 @@
-import type { ElementType, ReactNode } from 'react';
+import { type ElementType, type ReactNode, useContext } from 'react';
 import { cva, cx } from '../../../styled-system/css';
 import type { FlowGap } from './Grid';
-import { type FieldTone, type SectionTone, toneRebinds } from './tone-styles';
+import {
+	type FieldTone,
+	type SectionTone,
+	SectionToneContext,
+	panelVariantAllowedOnTone,
+	toneRebinds,
+} from './tone-styles';
 
 /**
  * Panel — the classified surface inside a section (ADR-0022 C-3,
@@ -94,6 +100,12 @@ export function Panel({
 	...rest
 }: PanelProps) {
 	const Tag: ElementType = as ?? 'div';
+	const sectionTone = useContext(SectionToneContext);
+	if (!panelVariantAllowedOnTone(sectionTone, variant)) {
+		throw new Error(
+			`Panel variant="${variant}" is not allowed inside PageSection tone="${sectionTone}" (layout-system.md §4.3)`,
+		);
+	}
 	const tone: SectionTone =
 		variant === 'inverse'
 			? 'inverse'

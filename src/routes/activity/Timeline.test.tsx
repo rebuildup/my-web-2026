@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { activityTimelineFixture, emptyActivityTimelineFixture } from '../../activity/fixtures';
+import { sortActivityTimelineItems } from '../../activity/merge';
 import { ActivityTimelineView } from './Timeline';
-import { activityTimelineFixture, emptyActivityTimelineFixture } from './fixtures';
-import { sortActivityTimelineItems } from './merge';
 
 describe('ActivityTimelineView', () => {
 	it('renders the unavailable state when the timeline could not be assembled', () => {

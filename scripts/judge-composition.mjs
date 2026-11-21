@@ -57,7 +57,8 @@ function blockArea(section, kinds) {
 }
 
 function maxBlockAreaRatio(model) {
-	const content = model.metrics?.contentArea ?? model.document?.height * (model.document?.width ?? 1);
+	const content =
+		model.metrics?.contentArea ?? model.document?.height * (model.document?.width ?? 1);
 	if (!content) return 0;
 	let max = 0;
 	for (const s of bodySections(model)) {
@@ -206,9 +207,7 @@ function checkCL5(model, rule, route) {
 		const mean = ratio.reduce((a, b) => a + b, 0) / ratio.length;
 		return ratio.every((r) => Math.abs(r - mean) <= rule.detection.equalRatioTolerance * mean);
 	});
-	const hasVariation = grids.some(
-		(g) => (g.columnRatio ?? []).length > 0 && !uniform.includes(g),
-	);
+	const hasVariation = grids.some((g) => (g.columnRatio ?? []).length > 0 && !uniform.includes(g));
 	if (uniform.length > 0 && !hasVariation && !hasBreakoutOrOverlap(model)) {
 		return {
 			rule: 'CL-5',
@@ -263,7 +262,9 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 	if (route?.indexRoute) return null;
 	const dSections = bodySections(desktopModel);
 	const mSections = bodySections(mobileModel);
-	const multiColDesktop = dSections.filter((s) => (s.grid?.tracks?.length ?? 0) >= rule.detection.minDesktopColumns);
+	const multiColDesktop = dSections.filter(
+		(s) => (s.grid?.tracks?.length ?? 0) >= rule.detection.minDesktopColumns,
+	);
 	if (multiColDesktop.length === 0) return null;
 	const heightRatio =
 		mobileModel.document?.height && desktopModel.document?.height
@@ -276,9 +277,7 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 	const dOrder = dSections.map(orderKey);
 	const mOrder = mSections.map(orderKey);
 	const sameLen = dOrder.length === mOrder.length && dOrder.length > 0;
-	const orderDiff = sameLen
-		? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length
-		: 0;
+	const orderDiff = sameLen ? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length : 0;
 	// Block-level order check: pair sections by index and compare
 	// their block-kind sequences. A naive stack preserves every
 	// sequence verbatim; real recomposition reorders at least one.
@@ -297,11 +296,7 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 		(mobileModel.metrics?.recompositionScore ?? 0) > 0 ||
 		orderDiff > 0.3 ||
 		!orderPreserved;
-	if (
-		!recomposed &&
-		heightRatio !== null &&
-		heightRatio > rule.detection.heightGrowthMax
-	) {
+	if (!recomposed && heightRatio !== null && heightRatio > rule.detection.heightGrowthMax) {
 		return {
 			rule: 'CL-7',
 			severity: rule.severity,
@@ -334,7 +329,10 @@ function checkCL10(model, rule, route) {
 	}
 	const [topProfile, topCount] = [...byProfile.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
 	const dominance = topCount / Math.max(1, sections.length);
-	if (topCount >= rule.detection.minRepeaterSections && dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)) {
+	if (
+		topCount >= rule.detection.minRepeaterSections &&
+		dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)
+	) {
 		return {
 			rule: 'CL-10',
 			severity: rule.severity,
@@ -371,8 +369,14 @@ function checkCL9(model, rule) {
 	const hasToneContrast = toneTransitions(model) > 0;
 	const hasDisplay =
 		bodyMedian !== null && maxSize >= bodyMedian * rule.detection.displayFontRatioMin;
-	const hasMediaAnchor = (model.media?.totalArea ?? 0) > 0 && dominance >= rule.detection.dominantAreaMin;
-	if (dominance < rule.detection.dominantAreaMin && !hasDisplay && !hasToneContrast && !hasMediaAnchor) {
+	const hasMediaAnchor =
+		(model.media?.totalArea ?? 0) > 0 && dominance >= rule.detection.dominantAreaMin;
+	if (
+		dominance < rule.detection.dominantAreaMin &&
+		!hasDisplay &&
+		!hasToneContrast &&
+		!hasMediaAnchor
+	) {
 		return {
 			rule: 'CL-9',
 			severity: rule.severity,
@@ -382,7 +386,6 @@ function checkCL9(model, rule) {
 	}
 	return null;
 }
-
 
 /** CL-11 — page-level stack monotony.
  *
@@ -509,9 +512,7 @@ export function judgeRoute(modelsByViewport, contract, route) {
 /** Aggregate verdicts into a cell verdict. */
 export function aggregateVerdict(verdicts) {
 	if (verdicts.length === 0) return 'pass';
-	return verdicts.some((v) => v.verdict === 'fail' && v.severity === 'blocking')
-		? 'fail'
-		: 'warn';
+	return verdicts.some((v) => v.verdict === 'fail' && v.severity === 'blocking') ? 'fail' : 'warn';
 }
 
 export { SEVERITY_RANK };

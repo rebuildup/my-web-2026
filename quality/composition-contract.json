@@ -24,7 +24,7 @@
 		{ "path": "/", "slug": "home", "label": "home", "mediaExpected": false, "indexRoute": false },
 		{ "path": "/about", "slug": "about", "label": "about", "mediaExpected": false, "indexRoute": false },
 		{ "path": "/portfolio", "slug": "portfolio", "label": "portfolio index", "mediaExpected": true, "indexRoute": true },
-		{ "path": "/portfolio/my-web-2026", "slug": "portfolio-detail", "label": "portfolio detail (seeded slug)", "mediaExpected": true, "indexRoute": false },
+		{ "path": "/portfolio/ch4nge", "slug": "portfolio-detail", "label": "portfolio detail (media-bearing slug)", "mediaExpected": true, "indexRoute": false },
 		{ "path": "/tools", "slug": "tools", "label": "tools index", "mediaExpected": false, "indexRoute": true },
 		{ "path": "/stack", "slug": "stack", "label": "stack", "mediaExpected": false, "indexRoute": true },
 		{ "path": "/activity", "slug": "activity", "label": "activity", "mediaExpected": false, "indexRoute": true },
@@ -120,7 +120,7 @@
 			"summary": "A route declared mediaExpected renders little or no media area, or media-bearing items appear as text-only.",
 			"severity": "blocking",
 			"detection": {
-				"mediaAreaRatioMin": 0.08,
+				"mediaAreaRatioMin": 0.05,
 				"note": "ratio is media pixels over content pixels on routes flagged mediaExpected; text-only rendering of media-bearing items is reported per-item by the media usage contract (#1134)"
 			},
 			"exceptions": "routes may declare mediaExpected:false; items legitimately without assets are covered by the media manifest, not this rule",

@@ -95,7 +95,7 @@ const COLLECTOR = () => {
 			blocks.push({
 				kind,
 				area: area(br),
-				fontSize: kind === 'heading' || kind === 'text' ? px(bs.fontSize) : undefined,
+				fontSize: kind === 'media' ? undefined : px(bs.fontSize),
 			});
 		};
 		for (const el of section.querySelectorAll('h1,h2,h3,h4,h5,h6,img,video,canvas,svg,ul,ol,a,button')) {
@@ -242,6 +242,20 @@ async function main() {
 						continue;
 					}
 					await page.waitForTimeout(400);
+					// Scroll through the document so lazy media loads, then
+					// settle back at the top before measuring geometry.
+					await page.evaluate(async () => {
+						const step = window.innerHeight;
+						for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
+							window.scrollTo(0, y);
+							await new Promise((r) => setTimeout(r, 60));
+						}
+						window.scrollTo(0, 0);
+						await Promise.all(
+							[...document.images].map((img) => img.decode?.().catch(() => {})),
+						);
+					});
+					await page.waitForTimeout(300);
 					const model = await page.evaluate(COLLECTOR);
 					model.route = route.slug;
 					model.viewport = { width: vp.width, height: vp.height, stem: vp.stem };

@@ -1,0 +1,330 @@
+{
+	"schema_version": 1,
+	"issue": "#1129",
+	"adr": "docs/adr/ADR-0023-composition-lint-rendered-contract.md",
+	"principles_doc": "docs/visual/composition-principles.md",
+	"gate": "composition:lint",
+	"notes": [
+		"Machine-readable half of the rendered-composition contract. docs/visual/composition-principles.md is the prose half; where they disagree the ADR wins.",
+		"The collector emits composition-model/v1 JSON; the judge is a pure function over that model. Detection is structure/geometry only — never content strings, never personal data.",
+		"severity: blocking stops integration, warning feeds the L-C visual review as a required input, info is an observation with no verdict.",
+		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job."
+	],
+	"model": {
+		"version": "composition-model/v1",
+		"sections": "document-order <section> elements; PageSection-derived ones carry data-tone / data-rhythm / data-section",
+		"blockKinds": [
+			"heading",
+			"text",
+			"media",
+			"list",
+			"panel",
+			"control",
+			"ad",
+			"other"
+		],
+		"signature": "quantized composition vector: tone + column count + media presence + heading style + dominant block kinds. Component names are irrelevant; identical rendered structure yields identical signatures."
+	},
+	"viewports": [
+		{
+			"width": 1440,
+			"height": 900,
+			"label": "desktop",
+			"stem": "w1440"
+		},
+		{
+			"width": 390,
+			"height": 844,
+			"label": "mobile",
+			"stem": "w390"
+		}
+	],
+	"routes": [
+		{
+			"path": "/",
+			"slug": "home",
+			"label": "home",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/about",
+			"slug": "about",
+			"label": "about",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/portfolio",
+			"slug": "portfolio",
+			"label": "portfolio index",
+			"mediaExpected": true,
+			"indexRoute": true
+		},
+		{
+			"path": "/portfolio/ch4nge",
+			"slug": "portfolio-detail",
+			"label": "portfolio detail (media-bearing slug)",
+			"mediaExpected": true,
+			"indexRoute": false
+		},
+		{
+			"path": "/tools",
+			"slug": "tools",
+			"label": "tools index",
+			"mediaExpected": false,
+			"indexRoute": true
+		},
+		{
+			"path": "/stack",
+			"slug": "stack",
+			"label": "stack",
+			"mediaExpected": false,
+			"indexRoute": true
+		},
+		{
+			"path": "/activity",
+			"slug": "activity",
+			"label": "activity",
+			"mediaExpected": false,
+			"indexRoute": true
+		},
+		{
+			"path": "/contact",
+			"slug": "contact",
+			"label": "contact",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/links",
+			"slug": "links",
+			"label": "links",
+			"mediaExpected": false,
+			"indexRoute": true
+		},
+		{
+			"path": "/now",
+			"slug": "now",
+			"label": "now",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/keyboard",
+			"slug": "keyboard",
+			"label": "keyboard",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/projects/dotfiles",
+			"slug": "projects-dotfiles",
+			"label": "dotfiles project",
+			"mediaExpected": false,
+			"indexRoute": false
+		},
+		{
+			"path": "/design-system",
+			"slug": "design-system",
+			"label": "design system",
+			"mediaExpected": false,
+			"indexRoute": true
+		}
+	],
+	"rules": [
+		{
+			"id": "CL-1",
+			"principle": "proximity-unity",
+			"name": "monotone-section-stack",
+			"summary": "Every section shares one tone and one composition signature — the page reads as an undifferentiated vertical stack.",
+			"severity": "blocking",
+			"detection": {
+				"minSections": 4,
+				"sameToneRatio": 1.0,
+				"sameSignatureRatio": 1.0,
+				"note": "fires when ALL in-flow sections collapse to a single (tone, signature) pair"
+			},
+			"exceptions": "pages whose obligation IS a uniform index (e.g. a pure chronological list) may register a route-level exception with reason",
+			"falsePositives": "a deliberately austere monochrome page — mitigated by CL-8 staying warning-level and exceptions requiring a recorded reason",
+			"fixture": [
+				"negative/monotone-stack",
+				"positive/mono-editorial"
+			]
+		},
+		{
+			"id": "CL-2",
+			"principle": "repetition-variation",
+			"name": "repeated-section-structure",
+			"summary": "Three or more consecutive sections share an identical composition signature and the page shows no structural variation.",
+			"severity": "blocking",
+			"detection": {
+				"minRunLength": 3,
+				"distinctSignaturesRequired": 2,
+				"note": "repetition INSIDE one section (card grids, lists) is legitimate; this rule compares section-level signatures only"
+			},
+			"exceptions": "index routes where repetition is the content (activity timeline, links list) — route.indexRoute suppresses unless the run spans heterogeneous content types",
+			"falsePositives": "a page that genuinely has three same-shaped sections by meaning — requires exception entry",
+			"fixture": [
+				"negative/repeated-structure",
+				"positive/list-with-rhythm"
+			]
+		},
+		{
+			"id": "CL-3",
+			"principle": "visual-hierarchy",
+			"name": "missing-weight-hierarchy",
+			"summary": "No measurable difference in visual weight between primary and secondary content — everything competes equally.",
+			"severity": "blocking",
+			"detection": {
+				"fontRatioMin": 1.6,
+				"areaDominanceMin": 0.25,
+				"note": "fires when max heading fontSize < fontRatioMin × median body fontSize AND no single block holds areaDominanceMin of content area AND surface contrast between sections is absent"
+			},
+			"exceptions": "tool/utility pages may declare reduced hierarchy expectations",
+			"falsePositives": "pages whose hierarchy is carried by tone rather than type scale — tone transitions count as hierarchy evidence",
+			"fixture": [
+				"negative/no-hierarchy",
+				"positive/clear-hierarchy"
+			]
+		},
+		{
+			"id": "CL-4",
+			"principle": "white-space",
+			"name": "unmotivated-narrow-column",
+			"summary": "On desktop the content column uses far less than the measure while large areas stay empty without breakout, media or a second column.",
+			"severity": "warning",
+			"detection": {
+				"viewportMinWidth": 1024,
+				"contentWidthRatioMax": 0.6,
+				"emptyAreaRatioMin": 0.4,
+				"note": "contentWidthRatio is the union width of text-flow blocks over viewport width; emptyAreaRatio is the horizontal whitespace fraction of non-grid sections. Fires on a genuinely narrow text column, not on container padding."
+			},
+			"exceptions": "intentional whitespace compositions (positive fixture) register a route or section exception",
+			"falsePositives": "editorial measure pages — the canonical 1024 container is itself the contract, so this rule measures blocks INSIDE sections that further narrow themselves",
+			"fixture": [
+				"negative/narrow-column",
+				"positive/whitespace-led"
+			]
+		},
+		{
+			"id": "CL-5",
+			"principle": "grid-asymmetry",
+			"name": "uniform-grid-no-variation",
+			"summary": "A multi-column grid repeats equal tracks with no span/offset/breakout variation anywhere on the page.",
+			"severity": "warning",
+			"detection": {
+				"minTracks": 3,
+				"equalRatioTolerance": 0.05,
+				"note": "card indexes legitimately use equal tracks; the rule fires only when NO grid on the page shows intentional variation AND no Breakout/Overlap exists"
+			},
+			"exceptions": "dense index pages (portfolio grid) are expected-equal; declare per-route",
+			"falsePositives": "homogeneous data genuinely wants equal cells — warning level only",
+			"fixture": [
+				"negative/uniform-grid",
+				"positive/asymmetric-grid"
+			]
+		},
+		{
+			"id": "CL-6",
+			"principle": "media-art-direction",
+			"name": "media-neglect",
+			"summary": "A route declared mediaExpected renders little or no media area, or media-bearing items appear as text-only.",
+			"severity": "blocking",
+			"detection": {
+				"mediaAreaRatioMin": 0.05,
+				"note": "ratio is media pixels over content pixels on routes flagged mediaExpected; text-only rendering of media-bearing items is reported per-item by the media usage contract (#1134)"
+			},
+			"exceptions": "routes may declare mediaExpected:false; items legitimately without assets are covered by the media manifest, not this rule",
+			"falsePositives": "a mediaExpected route in a data-empty state — the empty state itself is a separate contract",
+			"fixture": [
+				"negative/text-only-portfolio",
+				"positive/media-led-detail"
+			]
+		},
+		{
+			"id": "CL-7",
+			"principle": "responsive-composition",
+			"name": "mobile-naive-stack",
+			"summary": "Desktop multi-column composition collapses to an unmodified vertical stack on mobile — same order, same blocks, no recomposition.",
+			"severity": "warning",
+			"detection": {
+				"minDesktopColumns": 2,
+				"stackOrderPreserved": true,
+				"heightGrowthMax": 2.4,
+				"note": "stacking IS the correct mobile transform; the defect is stacking with zero recomposition signals. Recomposition evidence: declared reorder/disclosure features, recompositionScore, or a >30% change in the (tone,rhythm) section order."
+			},
+			"exceptions": "reading-order preservation is an accessibility requirement — reordering for effect must keep DOM order meaningful",
+			"falsePositives": "content that is legitimately sequential — warning level only",
+			"fixture": [
+				"negative/mobile-naive-stack",
+				"positive/mobile-recomposed"
+			]
+		},
+		{
+			"id": "CL-8",
+			"principle": "color-surface",
+			"name": "zero-tone-variation",
+			"summary": "A page with four or more body sections uses no non-ground tone anywhere — surfaces carry no classification or emphasis.",
+			"severity": "warning",
+			"detection": {
+				"minBodySections": 4,
+				"nonGroundTonesRequired": 1,
+				"note": "intentional monochrome is legitimate; this is a review prompt, not a defect verdict"
+			},
+			"exceptions": "route-level declaration for deliberately monochrome pages",
+			"falsePositives": "high — this is why it is warning-level",
+			"fixture": [
+				"negative/no-tone-variation",
+				"positive/intentional-mono"
+			]
+		},
+		{
+			"id": "CL-9",
+			"principle": "focal-point",
+			"name": "no-focal-point",
+			"summary": "No block, display type size or surface contrast establishes a visual anchor — the eye has nowhere to land first.",
+			"severity": "warning",
+			"detection": {
+				"dominantAreaMin": 0.3,
+				"displayFontRatioMin": 2.0,
+				"note": "fires when no block holds dominantAreaMin of content area AND no font reaches displayFontRatioMin × body AND no tone/surface transition exists"
+			},
+			"exceptions": "utility pages (contact form, keyboard reference) may have diffuse hierarchy by nature",
+			"falsePositives": "pages whose focal point is an image measured under CL-6's mediaArea instead",
+			"fixture": [
+				"negative/no-focal",
+				"positive/anchored-hero"
+			]
+		},
+		{
+			"id": "CL-10",
+			"principle": "repetition-variation",
+			"name": "monotonous-lists",
+			"summary": "Multiple sections each render runs of near-identical units (cards, rows, tiles) and repetition DOMINATES the page — the 'same list stacked repeatedly' defect that reduces a page to a vertical stack of lists.",
+			"severity": "blocking",
+			"detection": {
+				"minRepeatUnits": 4,
+				"minRepeaterSections": 2,
+				"repeaterDominanceMin": 0.5,
+				"note": "repeatUnits counts sibling elements of near-identical geometry inside one section; the verdict requires repeater sections to dominate the page (>=50% of in-flow sections). Repetition inside ONE section is legitimate and never fires."
+			},
+			"exceptions": "index routes are exempt (a catalog IS a list); a minority of list sections on a varied page is legitimate parallel structure; intentional repetition with variation is judged by the distinct-signature evidence in the detail string",
+			"falsePositives": "a page genuinely built from parallel catalogs — warning level feeds L-C review, never blocks",
+			"fixture": [
+				"negative/repeated-lists",
+				"positive/list-with-rhythm"
+			]
+		}
+	],
+	"allowlists": [],
+	"allowlistSchema": {
+		"routeOrFile": "route slug or source path the exception covers",
+		"rules": [
+			"CL-* ids the entry waives"
+		],
+		"reason": "why the composition is legitimate despite the rule",
+		"signatures": "optional set of section signatures the entry covers — an entry matching nothing is stale and fails",
+		"verification": "how the exception was checked (fixture id, review doc, issue number)"
+	}
+}

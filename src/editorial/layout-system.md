@@ -145,6 +145,7 @@ density):
 | --- | --- | --- |
 | `hero` | `16 / 32` | page entry only — one per page |
 | `body` | `16 / 24` | every content section |
+| `feature` | `24 / 32` | deliberate rhythm change — a section whose role earns a larger beat (ADR-0023 §3). Consecutive `feature` sections are a review finding, not a defect per se |
 | `closing` | `16 / 24` | footer-adjacent / final CTA band |
 
 ## 4. Surface and tone
@@ -260,6 +261,43 @@ The 4/12 + 8/12 editorial split for content that is not a
 when the left column carries a label cluster and the right carries
 content (contact channel rows, detail pages).
 
+### 5.4a Editorial composition primitives (ADR-0023 §3)
+
+The preset grids above cover uniform and split compositions. When a
+section's meaning calls for asymmetry, intentional grid departure,
+media-led structure or layered figure/ground, use the composition
+primitives — never a hand-written `gridTemplateColumns` (C-4 still
+applies) and never an arbitrary negative margin.
+
+- **`Grid template="12"`** — a 12-track coordinate grid
+  (`repeat(12, minmax(0, 1fr))`). Children are `GridItem`s carrying
+  `span` / `start` / `end` (1–12, responsive `{base, md, lg}`
+  objects allowed). `span` defaults to full width on `base`, so a
+  composition designed for desktop recomposes to a single column on
+  mobile by contract, not by accident. Asymmetric spans, deliberate
+  empty tracks and offset placements are the point; uniform
+  `span=4`-style repetition is what CL-5 warns about.
+- **`Breakout`** — lets ONE block inside a `PageSection` exceed the
+  canonical 1024 px measure (full viewport width or a declared wider
+  measure). Intended for media, figures and large display type only.
+  It is a declaration, not a margin hack: the escape is owned by the
+  primitive and the block still sits inside the section's tone.
+- **`Overlap`** — places children into the same grid cell
+  (`grid-area` sharing) with declarative `align`/`justify` per layer.
+  For figure/ground inversion (text over image, caption over media).
+  Arbitrary `z-index`/`position` is not exposed.
+- **`PageSection` observability** — every `PageSection` emits
+  `data-tone` / `data-rhythm` / `data-section` so the composition
+  lint collector can classify sections without guessing from styles.
+
+"When to use" rules: reach for `template="12"` when the content has a
+real asymmetric relationship (lead story + supporting index, media +
+caption rail); `Breakout` when the media IS the section's subject;
+`Overlap` when figure and ground are meant to fuse. If none of these
+apply, the preset grids are the right answer — the primitives exist
+to make intentional composition possible, not to make every section
+different.
+
 ### 5.5 SectionHeading
 
 `default` (single column) and `spread` (4/8 split via the same rule)
@@ -362,3 +400,7 @@ Before a public surface PR merges:
    proximity, contrast, repetition, eye flow, density and color-field
    composition judged on desktop/mobile × light/dark captures, not
    on code or axe output alone.
+10. `pnpm run composition:lint` (ADR-0023, Issue #1133) reports no
+    Blocking Error for the changed routes, and every Warning it
+    raises is either resolved or carried into the visual review as
+    a required input (`docs/visual/composition-principles.md`).

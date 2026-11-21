@@ -1,8 +1,17 @@
-# UI 実画面レビュー runbook (Issue #1105, Epic #1104)
+# UI 実画面レビュー runbook (Issue #1105, Epic #1104 / ADR-0023)
 
 > デザインの良否をコードや axe の結果だけで判定しないための手順。
 > `src/editorial/layout-system.md`（構成契約）と対になる運用正本。
-> ADR-0022 §5.2 の実装。
+> ADR-0022 §5.2 + ADR-0023（composition lint）の実装。
+
+**検査の 3 層分担**（ADR-0023 §2）: L-A 静的契約
+（`ui:contract:check`）は「誰が何を書いてよいか」を、L-B レンダリング
+構図 lint（`composition:lint`、Issue #1133）は「レンダリング結果に
+構造的欠陥があるか」を機械判定する。**本 runbook（L-C）が担うのは
+そのどちらも判定できない文脈依存の評価** — 構図の意図の妥当性、
+brand への適合、モデルが「問題ない」と言っても人間が違和感を持つ
+領域である。`composition:lint` の Warning は本レビューの**必須入力**
+であり、機械 PASS は品質の証明ではない。
 
 **原則**: レンダリングされた画面を desktop/mobile × light/dark で
 実際に見て、余白・整列・近接・対比・反復・視線誘導・情報密度・
@@ -48,10 +57,12 @@ route × viewport × appearance の matrix を `.tmp/` に生成する。
 ## 3. チェックリスト
 
 各 capture について以下を評価する。1 つでも「No」なら差し戻し。
+機械判定（L-B）が担当する項目は `docs/visual/composition-principles.md`
+の対応表を参照し、本チェックリストはその残り — 意図と文脈 — を見る。
 
 ### 構造・リズム
 
-- [ ] セクションの縦リズムが役割（hero/body/closing）どおりで、
+- [ ] セクションの縦リズムが役割（hero/body/feature/closing）どおりで、
       隣接セクションが同一 tone・同一密度で単調になっていない。
 - [ ] 余白が「関連情報のまとまり」と「異なる情報の分離」を
       表現している。全 gap が同じ値の均等割りになっていない。

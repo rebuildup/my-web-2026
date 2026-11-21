@@ -1,0 +1,105 @@
+{
+  "version": "composition-model/v1",
+  "document": {
+    "width": 1440,
+    "height": 4000
+  },
+  "sections": [
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "narrow-a",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 10000,
+          "fontSize": 28
+        },
+        {
+          "kind": "text",
+          "area": 30000,
+          "fontSize": 15
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.45,
+      "emptyAreaRatio": 0.55
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "narrow-b",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 10000,
+          "fontSize": 28
+        },
+        {
+          "kind": "text",
+          "area": 30000,
+          "fontSize": 15
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.5,
+      "emptyAreaRatio": 0.5
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "narrow-c",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "heading",
+          "area": 10000,
+          "fontSize": 28
+        },
+        {
+          "kind": "text",
+          "area": 30000,
+          "fontSize": 15
+        }
+      ],
+      "grid": null,
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    }
+  ],
+  "media": {
+    "totalArea": 0,
+    "byKind": {}
+  },
+  "metrics": {
+    "contentArea": 5760000,
+    "elementsPerPixel": 0.002
+  },
+  "features": []
+}

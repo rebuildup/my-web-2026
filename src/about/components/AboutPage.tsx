@@ -1,14 +1,16 @@
 import { Fragment } from 'react';
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { Container } from '../../editorial/primitives/Container';
-import { Split } from '../../editorial/primitives/Grid';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Grid, Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import { TextLink } from '../../editorial/primitives/TextLink';
+import { cardTitleClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
@@ -77,31 +79,17 @@ const SITE_REFERENCE_LINKS: ReadonlyArray<{ href: string; label: string }> = [
 	{ href: '/stack', label: '開発スタック / Stack' },
 ];
 
-const siteReferenceLinkStyle = css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: '2',
-	paddingBlock: '2',
-	paddingInline: '4',
-	borderRadius: 'full',
-	borderWidth: '1px',
-	borderStyle: 'solid',
-	borderColor: 'border.subtle',
-	color: 'text.accent',
+const listReset = css({
+	margin: '0',
+	padding: '0',
+	listStyle: 'none',
+});
+
+const bodyText = css({
 	fontFamily: 'sans',
-	fontSize: 'sm',
-	fontWeight: '600',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_hover: {
-		borderColor: 'border.strong',
-		textDecorationThickness: '2px',
-	},
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	fontSize: 'md',
+	color: 'text.default',
+	lineHeight: '1.6',
 });
 
 export function AboutPage({ data }: AboutPageProps) {
@@ -331,16 +319,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 				description="バラバラに見える活動が同じ人物から出てくる理由。プロジェクトを貫く throughline。"
 				variant="spread"
 			>
-				<ol
-					className={css({
-						margin: '0',
-						padding: '0',
-						listStyle: 'none',
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '10',
-					})}
-				>
+				<Stack as="ol" gap="10" className={listReset}>
 					{interests.map((interest, index) => (
 						<li
 							key={interest.title}
@@ -400,7 +379,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 							</p>
 						</li>
 					))}
-				</ol>
+				</Stack>
 			</SectionHeading>
 		</PageSection>
 	);
@@ -462,21 +441,13 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 						</p>
 					</output>
 				) : (
-					<ol
-						className={css({
-							listStyle: 'none',
-							margin: '0',
-							padding: '0',
-							display: 'flex',
-							flexDirection: 'column',
-						})}
-					>
+					<Stack as="ol" gap="0" className={listReset}>
 						{projects.map((project) => (
 							<li key={project.id}>
 								<ExperienceCard project={project} />
 							</li>
 						))}
-					</ol>
+					</Stack>
 				)}
 				<p
 					lang="ja"
@@ -488,24 +459,7 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 						color: 'text.muted',
 					})}
 				>
-					すべての作品と解説は{' '}
-					<a
-						href="/portfolio"
-						className={css({
-							color: 'text.accent',
-							textDecoration: 'underline',
-							textUnderlineOffset: '0.18em',
-							textDecorationThickness: '1px',
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
-							_hover: { textDecorationThickness: '2px' },
-						})}
-					>
-						/portfolio
-					</a>{' '}
-					にあります。
+					すべての作品と解説は <TextLink href="/portfolio">/portfolio</TextLink> にあります。
 				</p>
 			</SectionHeading>
 		</PageSection>
@@ -649,20 +603,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 				description="今、時間を割いていること。半年程度の freshness を想定。"
 				variant="spread"
 			>
-				<ul
-					className={css({
-						margin: '0',
-						padding: '0',
-						listStyle: 'none',
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '4',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-						lineHeight: '1.6',
-					})}
-				>
+				<Stack as="ul" gap="4" className={cx(listReset, bodyText)}>
 					{items.map((item) => (
 						<li
 							key={item}
@@ -687,7 +628,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 							<span>{item}</span>
 						</li>
 					))}
-				</ul>
+				</Stack>
 			</SectionHeading>
 		</PageSection>
 	);
@@ -713,17 +654,10 @@ function FutureSection({
 				description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
 				variant="spread"
 			>
-				<div
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
-						columnGap: '6',
-						rowGap: '6',
-					})}
-				>
+				<Grid columns={2} columnGap="6" rowGap="6">
 					<FutureColumn tone="active" label="Active" items={active} />
 					<FutureColumn tone="parked" label="Parked" items={parked} />
-				</div>
+				</Grid>
 			</SectionHeading>
 		</PageSection>
 	);
@@ -739,13 +673,7 @@ function FutureColumn({
 	items: readonly string[];
 }) {
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '4',
-			})}
-		>
+		<Stack gap="4">
 			<header
 				className={css({
 					display: 'flex',
@@ -755,20 +683,7 @@ function FutureColumn({
 			>
 				<Badge tone={tone === 'active' ? 'accent' : 'neutral'}>{label}</Badge>
 			</header>
-			<ul
-				className={css({
-					margin: '0',
-					padding: '0',
-					listStyle: 'none',
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '4',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					color: 'text.default',
-					lineHeight: '1.6',
-				})}
-			>
+			<Stack as="ul" gap="4" className={cx(listReset, bodyText)}>
 				{items.map((item) => (
 					<li
 						key={item}
@@ -797,8 +712,8 @@ function FutureColumn({
 						<span>{item}</span>
 					</li>
 				))}
-			</ul>
-		</div>
+			</Stack>
+		</Stack>
 	);
 }
 
@@ -819,20 +734,8 @@ function ExternalHandlesFooter({
 			})}
 		>
 			<Container>
-				<div
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '6',
-					})}
-				>
-					<header
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '2',
-						})}
-					>
+				<Stack gap="6">
+					<Stack gap="2">
 						<span
 							aria-hidden="true"
 							className={css({
@@ -859,78 +762,35 @@ function ExternalHandlesFooter({
 						>
 							他の場所で見つける / Elsewhere
 						</h2>
-					</header>
-					<ul
-						className={css({
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '3',
-						})}
-					>
+					</Stack>
+					<Cluster as="ul" gap="3" className={listReset}>
 						{handles.map((handle) => (
 							<li key={handle.href}>
-								<a
+								<TextLink
+									variant="chip"
 									href={handle.href}
 									target="_blank"
 									rel="noopener noreferrer"
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '2',
-										paddingBlock: '2',
-										paddingInline: '4',
-										borderRadius: 'full',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.subtle',
-										color: 'text.accent',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										fontWeight: '600',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: {
-											borderColor: 'border.strong',
-											textDecorationThickness: '2px',
-										},
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
 								>
 									{handle.label}
 									<span aria-hidden="true">↗</span>
-								</a>
+								</TextLink>
 							</li>
 						))}
-					</ul>
+					</Cluster>
 					<nav aria-label="サイト内リファレンス">
-						<ul
-							className={css({
-								margin: '0',
-								padding: '0',
-								listStyle: 'none',
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '3',
-							})}
-						>
+						<Cluster as="ul" gap="3" className={listReset}>
 							{SITE_REFERENCE_LINKS.map((item) => (
 								<li key={item.href}>
-									<a href={item.href} className={siteReferenceLinkStyle}>
+									<TextLink variant="chip" href={item.href}>
 										{item.label}
 										<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
-									</a>
+									</TextLink>
 								</li>
 							))}
-						</ul>
+						</Cluster>
 					</nav>
-				</div>
+				</Stack>
 			</Container>
 		</footer>
 	);

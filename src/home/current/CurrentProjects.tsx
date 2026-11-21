@@ -408,21 +408,7 @@ function ProjectRow({ project, today, changed, reducedMotion, grouped, index }: 
 					start={{ base: 1, md: 7 }}
 					className={factsColumnClassName}
 				>
-					{rows.length === 0 ? null : (
-						<dl data-testid="home-current-project-meta" className={metaListClassName}>
-							{rows.map((row) => (
-								<div key={row.label} className={css({ display: 'contents' })}>
-									<dt className={metaLabelClassName}>{row.label}</dt>
-									<dd className={metaValueClassName}>
-										<span>{row.value}</span>
-										<span data-testid="home-current-project-source" className={sourceTagClassName}>
-											{SOURCE_LABELS[row.source]}
-										</span>
-									</dd>
-								</div>
-							))}
-						</dl>
-					)}
+					<ProjectFacts rows={rows} />
 				</GridItem>
 			</Grid>
 		</li>
@@ -437,6 +423,35 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 		if (!Number.isFinite(days) || days < 0) return false;
 		return days <= RECENT_UPDATE_WINDOW_DAYS;
 	}).length;
+}
+
+/**
+ * The measured facts of one project.
+ *
+ * Issue #1135 — the facts live in their own component so the row stays
+ * readable: the record is a two-column composition (name + sentence on
+ * the left, measurements on the right) and the measurement list is a
+ * separate concern from the record's identity. The list holds at most
+ * three rows (start / last update / measured window), and a row the
+ * record does not carry is omitted rather than filled in.
+ */
+function ProjectFacts({ rows }: { readonly rows: readonly MetaRow[] }) {
+	if (rows.length === 0) return null;
+	return (
+		<dl data-testid="home-current-project-meta" className={metaListClassName}>
+			{rows.map((row) => (
+				<div key={row.label} className={css({ display: 'contents' })}>
+					<dt className={metaLabelClassName}>{row.label}</dt>
+					<dd className={metaValueClassName}>
+						<span>{row.value}</span>
+						<span data-testid="home-current-project-source" className={sourceTagClassName}>
+							{SOURCE_LABELS[row.source]}
+						</span>
+					</dd>
+				</div>
+			))}
+		</dl>
+	);
 }
 
 export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
@@ -456,7 +471,10 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 	// ORDERED published list, so the number a reader sees is the
 	// order the section itself published, not a counter of the
 	// rendered slice.
-	const orderIndex = new Map(visible.map((project, position) => [project.id, position + 1]));
+	const orderIndex = new Map<string, number>();
+	visible.forEach((project, position) => {
+		orderIndex.set(project.id, position + 1);
+	});
 
 	return (
 		<PageSection

@@ -155,7 +155,10 @@ const cardLinkClassName = /*#__PURE__*/ css({
 	display: 'inline-flex',
 	alignItems: 'center',
 	gap: '1',
+	maxWidth: '100%',
 });
+
+const cardLinkTextClassName = /*#__PURE__*/ css({ minWidth: '0' });
 
 function ExploreCard({ destination }: { readonly destination: ExploreDestination }) {
 	return (
@@ -172,7 +175,7 @@ function ExploreCard({ destination }: { readonly destination: ExploreDestination
 							className={cx(cardTitleClassName, cardLinkClassName)}
 							{...(destination.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
 						>
-							{destination.titleJa}
+							<span className={cardLinkTextClassName}>{destination.titleJa}</span>
 							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
 						</TextLink>
 					) : (

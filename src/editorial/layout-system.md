@@ -198,6 +198,31 @@ not ship.
 - An ad unit's own palette is the ad contract's business (Issue #925);
   it sits inside a named ad slot and does not set the section tone.
 
+#### Panel × tone pairing
+
+Not every `Panel` variant is meaningful on every `PageSection` tone.
+The tone rebind replaces the page surface/ink ladder for its whole
+subtree, so a panel is only valid where its own ink rule still
+resolves at 4.5:1 in BOTH appearances:
+
+- `plain` is valid everywhere — it paints no surface and inherits the
+  section's ink by definition.
+- `field.*` is valid everywhere — the variant carries its own measured
+  `mono.ink.onColour` rebind, independent of the section tone.
+- `inverse` is valid on every tone **except `inverse`** — inside an
+  inverse band `bg.inverse` is retargeted to the operation fill, so
+  the panel would paint plate-on-plate.
+- `surface` / `subtle` are valid only on `ground`, `sunken`,
+  `raised` and `field.tool` — the tones that keep the page surface
+  ladder and normal ink. On `inverse` the ladder is retired and the
+  only ink (`mono.ink.inverse`) reaches 4.5:1 on no surviving
+  surface step; on `field.*` the section ink is `mono.ink.onColour`,
+  which is dark in both appearances and fails against the dark-mode
+  card steps. There is no token for "one step off the plate/field",
+  and ADR-0022 §3.3 forbids adding one — the pairings are invalid by
+  contract, not by accident.
+  `e2e/design-system-tones.spec.ts` measures exactly this matrix.
+
 ## 5. Grid and flow
 
 ### 5.1 `Container`

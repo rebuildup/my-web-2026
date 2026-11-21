@@ -61,6 +61,9 @@ const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, ToneRebinds> = {
 	// appearances; surfaces step to `control` / `sunken`, the operation
 	// fill swaps to the plate-contrasting ink, and its label swaps to
 	// the plate colour so Button/TextLink stay correct inside.
+	// `mono.ink.onColour*` is deliberately NOT retargeted: colour-field
+	// panels carry their own measured ink, and rebinding the role here
+	// left `field.*` panels on the plate at 3.3:1 (Issue #1110).
 	inverse: {
 		'--colors-bg-canvas': 'var(--colors-mono-surface-inverse)',
 		'--colors-bg-surface': 'var(--colors-mono-surface-control)',
@@ -76,8 +79,6 @@ const TONE_REBINDS: Record<Exclude<SectionTone, 'ground'>, ToneRebinds> = {
 		'--colors-mono-ink-text': 'var(--colors-mono-ink-inverse)',
 		'--colors-mono-ink-secondary': 'var(--colors-mono-ink-inverse)',
 		'--colors-mono-ink-muted': 'var(--colors-mono-ink-inverse)',
-		'--colors-mono-ink-on-colour': 'var(--colors-mono-ink-inverse)',
-		'--colors-mono-ink-on-colour-inverse': 'var(--colors-mono-ink-inverse)',
 		'--colors-border-strong': 'var(--colors-mono-ink-inverse)',
 		'--colors-border-focus': 'var(--colors-mono-ink-inverse)',
 	},

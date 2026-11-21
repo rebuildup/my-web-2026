@@ -1881,6 +1881,14 @@
 				"unbounded .map(": 2
 			},
 			"clause": "C-8"
+		},
+		{
+			"path": "src/routes/design-system/sections/ToneMatrix.tsx",
+			"reason": "closed tone/variant vocabulary enumeration on the design-system measurement fixture — bounded by the contract's 8-tone × Panel-variant matrix, not a data collection (Issue #1110)",
+			"signatures": {
+				"unbounded .map(": 2
+			},
+			"clause": "C-8"
 		}
 	],
 	"duplicateAllowlist": [

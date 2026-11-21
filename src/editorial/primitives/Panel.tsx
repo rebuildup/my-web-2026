@@ -13,6 +13,11 @@ import { type FieldTone, type SectionTone, toneRebinds } from './tone-styles';
  * `field.*` variants re-bind ink to `mono.ink.onColour` inside the
  * panel subtree, the same mechanism `PageSection` uses for tones.
  *
+ * Pairing contract (layout-system.md §4.3): `surface` / `subtle`
+ * are valid only on tones that keep the page ladder and normal ink
+ * (`ground` / `sunken` / `raised` / `field.tool`); `inverse` is
+ * invalid inside a `tone="inverse"` section (plate-on-plate).
+ *
  * The variant → surface map is a `cva` recipe, not a lookup record:
  * Panda resolves recipe variants statically, while a
  * `RECORD[prop]` indirection emits the class name with no rule

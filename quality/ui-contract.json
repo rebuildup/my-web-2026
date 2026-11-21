@@ -1401,7 +1401,7 @@
 		},
 		{
 			"path": "src/routes/portfolio/index.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: parseFacets is a query-param transform, not a rendered collection",
 			"signatures": {
 				"unbounded .map(": 1
 			},
@@ -1409,7 +1409,7 @@
 		},
 		{
 			"path": "src/routes/stack/resolve.ts",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: resolveItem/resolveSection are projection transforms, not rendered collections",
 			"signatures": {
 				"unbounded .map(": 2
 			},
@@ -1417,7 +1417,7 @@
 		},
 		{
 			"path": "src/routes/stack/StackPage.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: /stack is the index route that owns full stack enumeration (ADR-0022 C-8)",
 			"signatures": {
 				"unbounded .map(": 5
 			},
@@ -1425,7 +1425,7 @@
 		},
 		{
 			"path": "src/routes/tools.$slug.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: policy-violation list is a closed diagnostic vocabulary, not an open data collection",
 			"signatures": {
 				"unbounded .map(": 3
 			},
@@ -1433,7 +1433,7 @@
 		},
 		{
 			"path": "src/routes/tools.index.tsx",
-			"reason": "legacy debt pending #1108 HOME/index-route curation",
+			"reason": "justified: /tools is the index route that owns full tool enumeration (ADR-0022 C-8)",
 			"signatures": {
 				"unbounded .map(": 2
 			},

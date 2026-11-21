@@ -187,6 +187,26 @@ describe('composition lint judge — rule-level expectations', () => {
 		assert.ok(!verdicts.some((v) => v.rule === 'CL-6'));
 	});
 
+	it('heroMediaMinRatio fails a media-bearing route rendered text-only (#1134)', () => {
+		const verdicts = judgeCompositionModel(
+			loadFixture('negative', 'text-only-portfolio.json'),
+			CONTRACT,
+			{ mediaExpected: true, heroMediaMinRatio: 0.15, indexRoute: false },
+			CONTRACT.viewports[0],
+		);
+		assert.ok(verdicts.some((v) => v.rule === 'CL-6' && v.verdict === 'fail'));
+	});
+
+	it('heroMediaMinRatio passes when the hero dedicates media area', () => {
+		const verdicts = judgeCompositionModel(
+			loadFixture('positive', 'media-led-detail.json'),
+			CONTRACT,
+			{ mediaExpected: true, heroMediaMinRatio: 0.15, indexRoute: false },
+			CONTRACT.viewports[0],
+		);
+		assert.ok(!verdicts.some((v) => v.rule === 'CL-6' && v.verdict === 'fail'));
+	});
+
 	it('rejects an unknown model version (fail-closed)', () => {
 		const verdicts = judgeCompositionModel(
 			{ version: 'composition-model/v0', sections: [] },

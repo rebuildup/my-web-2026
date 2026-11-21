@@ -1,7 +1,10 @@
 import { css } from '../../styled-system/css';
+import { Stack } from '../editorial/primitives/Flow';
+import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
+import { TextLink } from '../editorial/primitives/TextLink';
 import {
 	COMMISSION_REQUIREMENTS,
 	COMMISSION_SERVICE_GROUPS,
@@ -129,9 +132,7 @@ function StatusSection() {
 					})}
 				>
 					以下は依頼内容の案内です。受付を再開した場合は、このページと
-					<a href="/contact" className={inlineLinkStyle}>
-						/contact
-					</a>
+					<TextLink href="/contact">/contact</TextLink>
 					の掲載 channel でお知らせします。休止中のため、依頼フォームや料金表は公開していません。
 				</p>
 			</div>
@@ -148,14 +149,7 @@ function ServicesSection() {
 				title="依頼できる内容"
 				titleEn="What can be requested"
 			/>
-			<div
-				className={css({
-					display: 'grid',
-					gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-					gap: '10',
-					marginBlockStart: '10',
-				})}
-			>
+			<Grid columns={2} gap="10" className={css({ marginBlockStart: '10' })}>
 				{COMMISSION_SERVICE_GROUPS.map((group) => (
 					<div key={group.id}>
 						<h3
@@ -173,15 +167,14 @@ function ServicesSection() {
 								/ {group.titleEn}
 							</span>
 						</h3>
-						<ul
+						<Stack
+							as="ul"
+							gap="4"
 							className={css({
 								margin: '0',
 								marginBlockStart: '4',
 								padding: '0',
 								listStyle: 'none',
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4',
 							})}
 						>
 							{group.services.map((service) => (
@@ -210,15 +203,14 @@ function ServicesSection() {
 										</p>
 									) : null}
 									{service.items ? (
-										<ul
+										<Stack
+											as="ul"
+											gap="1"
 											className={css({
 												margin: '0',
 												marginBlockStart: '2',
 												padding: '0',
 												listStyle: 'none',
-												display: 'flex',
-												flexDirection: 'column',
-												gap: '1',
 											})}
 										>
 											{service.items.map((item) => (
@@ -233,14 +225,14 @@ function ServicesSection() {
 													{item}
 												</li>
 											))}
-										</ul>
+										</Stack>
 									) : null}
 								</li>
 							))}
-						</ul>
+						</Stack>
 					</div>
 				))}
-			</div>
+			</Grid>
 		</PageSection>
 	);
 }
@@ -254,15 +246,14 @@ function ProcessSection() {
 				title="依頼の流れ"
 				titleEn="How a request flows"
 			/>
-			<ol
+			<Stack
+				as="ol"
+				gap="4"
 				className={css({
 					margin: '0',
 					marginBlockStart: '8',
 					padding: '0',
 					listStyle: 'none',
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '4',
 					maxWidth: '720px',
 				})}
 			>
@@ -325,7 +316,7 @@ function ProcessSection() {
 						</div>
 					</li>
 				))}
-			</ol>
+			</Stack>
 		</PageSection>
 	);
 }
@@ -361,15 +352,14 @@ function RequirementsSection() {
 				>
 					受付再開後、依頼時に以下を伺います:
 				</p>
-				<ul
+				<Stack
+					as="ul"
+					gap="2"
 					className={css({
 						margin: '0',
 						marginBlockStart: '4',
 						padding: '0',
 						listStyle: 'none',
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '2',
 					})}
 				>
 					{COMMISSION_REQUIREMENTS.map((item) => (
@@ -384,7 +374,7 @@ function RequirementsSection() {
 							{item}
 						</li>
 					))}
-				</ul>
+				</Stack>
 				<p
 					lang="ja"
 					className={css({
@@ -411,17 +401,7 @@ function SoftwareSection() {
 				title="使用ソフトウェア"
 				titleEn="Software used"
 			/>
-			<div
-				className={css({
-					display: 'grid',
-					gridTemplateColumns: {
-						base: '1fr',
-						lg: 'repeat(auto-fit, minmax(200px, 1fr))',
-					},
-					gap: '6',
-					marginBlockStart: '8',
-				})}
-			>
+			<Grid columns={4} gap="6" className={css({ marginBlockStart: '8' })}>
 				{COMMISSION_SOFTWARE.map((group) => (
 					<div key={group.title}>
 						<h3
@@ -439,15 +419,14 @@ function SoftwareSection() {
 								/ {group.titleEn}
 							</span>
 						</h3>
-						<ul
+						<Stack
+							as="ul"
+							gap="1"
 							className={css({
 								margin: '0',
 								marginBlockStart: '2',
 								padding: '0',
 								listStyle: 'none',
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '1',
 							})}
 						>
 							{group.tools.map((tool) => (
@@ -462,10 +441,10 @@ function SoftwareSection() {
 									{tool}
 								</li>
 							))}
-						</ul>
+						</Stack>
 					</div>
 				))}
-			</div>
+			</Grid>
 		</PageSection>
 	);
 }
@@ -500,9 +479,7 @@ function ContactSection() {
 					})}
 				>
 					連絡は
-					<a href="/contact" className={inlineLinkStyle}>
-						/contact
-					</a>
+					<TextLink href="/contact">/contact</TextLink>
 					に掲載している verified channel
 					経由で行います。このページにはメールアドレスを直接掲載していません。
 				</p>
@@ -522,9 +499,3 @@ function ContactSection() {
 		</PageSection>
 	);
 }
-
-const inlineLinkStyle = css({
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-});

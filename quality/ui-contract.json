@@ -337,14 +337,6 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/contact/commission-page.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/home/current/CurrentProjects.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
@@ -1369,19 +1361,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/contact/commission-page.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<li> borderColor": 1,
-				"<li> borderRadius": 1,
-				"<li> borderStyle": 1,
-				"<li> borderWidth": 1,
-				"<ol> display": 1,
-				"<ul> display": 4
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/home/activity/GitHubActivityCard.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -1582,6 +1561,17 @@
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
 				"<ul> display": 1
+			},
+			"clause": "C-5"
+		},
+		{
+			"path": "src/contact/commission-page.tsx",
+			"reason": "legacy debt pending #1109 list-primitive migration",
+			"signatures": {
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1
 			},
 			"clause": "C-5"
 		}
@@ -2297,14 +2287,6 @@
 				"src/routes/admin.emoji-catalog.tsx",
 				"src/routes/admin.keys.tsx",
 				"src/routes/admin.login.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/contact/commission-page.tsx",
-				"src/keyboard/components/KeyboardPage.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},

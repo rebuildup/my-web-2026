@@ -152,7 +152,9 @@ test.describe('home page composition', () => {
 		// Domain contract after the Epic #1104 merge — the explore grid
 		// unifies the former capabilities cards with the site guide:
 		//   - Portfolio / Tools / Activity → linked destinations
-		//   - Content → planned, no link (no published surface yet)
+		//   - Content → planned: NOT a grid card (it is not a
+		//     destination); it renders as the quiet `planned` line
+		//     under the grid with no link.
 		// The test names each card by its title text so it survives any
 		// badge or label revision.
 		await page.goto('/');
@@ -166,10 +168,13 @@ test.describe('home page composition', () => {
 		const toolsCard = section.locator('li').filter({ hasText: 'Tools — ブラウザで使える小物' });
 		await expect(toolsCard.locator('a[href="/tools"]')).toBeVisible();
 
-		// Content — PLANNED, no link.
-		const contentCard = section.locator('li').filter({ hasText: 'Content — コンテンツ' });
-		await expect(contentCard.locator('text=planned')).toBeVisible();
-		await expect(contentCard.locator('a[href^="/"]')).toHaveCount(0);
+		// Content — PLANNED: absent from the destination grid, present
+		// as the single planned line, and never a link.
+		const plannedLine = section.locator('[data-testid="explore-planned"]');
+		await expect(plannedLine.locator('text=planned')).toBeVisible();
+		await expect(plannedLine).toContainText('Content');
+		await expect(section.locator('li').filter({ hasText: 'Content — コンテンツ' })).toHaveCount(0);
+		await expect(plannedLine.locator('a')).toHaveCount(0);
 
 		// Activity — linked destination.
 		const activityCard = section.locator('li').filter({

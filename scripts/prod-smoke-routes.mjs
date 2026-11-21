@@ -340,7 +340,11 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * sub-blocks inside it, and `e2e/smoke.spec.ts` pins their ids there.
  * Epic #928 / Issue #930 added `site-guide-heading` as the FIRST body
  * section ("what exists here and how do I reach it"), so the count went
- * 5 -> 6.
+ * 5 -> 6. Issue #1110's v13 visual review then added the labelled
+ * `sponsored-heading` ad zone between the status section and the
+ * closing contact CTA, so the count went 5 -> 6 labelled page
+ * sections (the guide/capabilities merge had already netted the
+ * earlier 6 -> 5 in `e2e/smoke.spec.ts`'s own trail).
  *
  * `/about` gained two narrative sections — `about-section-skills`
  * (Issue #391) and `about-section-career` (Issue #389) — so its count
@@ -349,7 +353,7 @@ export const PAGE_CONTENT_SECTIONS = '#app-root section[aria-labelledby]';
  * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
  */
 export const EXPECTED_SECTION_COUNTS = Object.freeze({
-	'/': Object.freeze({ labelled: 5 }),
+	'/': Object.freeze({ labelled: 6 }),
 	'/about': Object.freeze({ narrative: 7 }),
 });
 

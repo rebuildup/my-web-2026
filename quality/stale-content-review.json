@@ -35,9 +35,9 @@
 	],
 	"expressions": [
 		{
-			"id": "about-narrative-subset-empty",
+			"id": "about-active-parked-legend",
 			"path": "src/about/components/AboutPage.tsx",
-			"expression": "現在、narrative subset に該当する公開作品はありません。",
+			"expression": "active = 今、方向として進めていること。parked = 意図的に保留しているもの。",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
@@ -60,35 +60,7 @@
 					}
 				]
 			},
-			"note": "Rendered only when no slug of `experienceSlugs` (src/about/data.ts:73) resolves to a public project (src/about/load.ts, resolveExperience). The three slugs are seeded in src/portfolio/seed.ts, so while those D1 rows stay public this sentence is not the rendered one. Which sentence is rendered cannot be confirmed from the repository alone — the D1 rows are the source of truth."
-		},
-		{
-			"id": "about-current-heading",
-			"path": "src/about/components/AboutPage.tsx",
-			"expression": "現在 / Today",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Heading of the `/about` \"Current\" section (src/about/components/AboutPage.tsx:561). Its content is `ABOUT_DATA.current` (src/about/data.ts:74-80) — the list of what the owner is working on at the time of reading. The wording is the owner's; the mixed Japanese / English label is not a typography question."
+			"note": "Legend under the \"Current\" section (src/about/components/AboutPage.tsx:632). The two lists it explains are `ABOUT_DATA.future.active` and `ABOUT_DATA.future.parked` (src/about/data.ts:81-90)."
 		},
 		{
 			"id": "about-current-description",
@@ -119,9 +91,9 @@
 			"note": "Description of the same section (src/about/components/AboutPage.tsx:562). The half-year horizon matches the freshness guidance of src/about/data.ts:28-33, where the `current` / `future` rows carry the lowest stability of the three horizons."
 		},
 		{
-			"id": "about-active-parked-legend",
+			"id": "about-current-heading",
 			"path": "src/about/components/AboutPage.tsx",
-			"expression": "active = 今、方向として進めていること。parked = 意図的に保留しているもの。",
+			"expression": "現在 / Today",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
@@ -144,7 +116,35 @@
 					}
 				]
 			},
-			"note": "Legend under the \"Current\" section (src/about/components/AboutPage.tsx:632). The two lists it explains are `ABOUT_DATA.future.active` and `ABOUT_DATA.future.parked` (src/about/data.ts:81-90)."
+			"note": "Heading of the `/about` \"Current\" section (src/about/components/AboutPage.tsx:561). Its content is `ABOUT_DATA.current` (src/about/data.ts:74-80) — the list of what the owner is working on at the time of reading. The wording is the owner's; the mixed Japanese / English label is not a typography question."
+		},
+		{
+			"id": "about-narrative-subset-empty",
+			"path": "src/about/components/AboutPage.tsx",
+			"expression": "現在、narrative subset に該当する公開作品はありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "Rendered only when no slug of `experienceSlugs` (src/about/data.ts:73) resolves to a public project (src/about/load.ts, resolveExperience). The three slugs are seeded in src/portfolio/seed.ts, so while those D1 rows stay public this sentence is not the rendered one. Which sentence is rendered cannot be confirmed from the repository alone — the D1 rows are the source of truth."
 		},
 		{
 			"id": "about-video-commission-parked",
@@ -175,995 +175,9 @@
 			"note": "First entry of `ABOUT_DATA.future.parked` (src/about/data.ts:88). The state it claims — the commissioned video / design production mode is parked — is a decision record rather than a measurement, and it changes when the owner reopens the mode."
 		},
 		{
-			"id": "contact-intro-current-only",
-			"path": "src/contact/page.tsx",
-			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Intro paragraph of `/contact` (src/contact/page.tsx:107). True against src/contact/channels.json and the freshness gate of src/contact/schema.ts:67 (FRESHNESS_WINDOW_DAYS = 30). On 2026-10-22 the GitHub channels are still inside that window (verified_at 2026-09-27), so the sentence holds until 2026-10-27 unless the channels are re-verified."
-		},
-		{
-			"id": "contact-intro-unpublished-excluded",
-			"path": "src/contact/page.tsx",
-			"expression": "は現在 re-verified されていないため、ここには載せていません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
-		},
-		{
-			"id": "contact-channels-heading-title",
-			"path": "src/contact/page.tsx",
-			"expression": "現在利用可能な channel",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Section title of the channel list (src/contact/page.tsx:139). The list it titles is `getVisibleChannels()` (src/contact/public.ts:52), i.e. the entries that pass the 30-day gate of src/contact/schema.ts:67."
-		},
-		{
-			"id": "home-status-latest-reachability",
-			"path": "src/home/status/tiles.tsx",
-			"expression": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "5232039589d71f63983f22e2e9d879b3810ed515",
-						"note": "the commit that refreshed this record"
-					},
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "status セクション (SectionHeading) の説明文 (src/home/status/tiles.tsx:129)。各 binding と外部境界の最新到達性を createServerFn で観測したスナップショットとして示し、観測できなかった状態を「未観測」として到達障害と区別して表示することを述べる。実装が保証しているのは観測値が得られない state が unreachable とは別に存在すること (src/home/status/health.ts の health = 'unobserved'、src/home/status/tiles.tsx の 'unobserved' ラベル) で、この文はその区別を人に伝える表現になっている。"
-		},
-		{
-			"id": "portfolio-seed-evidence-current-sale",
-			"path": "src/portfolio/seed.ts",
-			"expression": "累計販売 500 本以上 (as_of: ${new Date(EVIDENCE_AS_OF_2026_01).toISOString().slice(0, 7)})。download 数や現在販売状況は時間で変わるため、site 上で live に出す場合は別途 source を確認する必要がある。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Evidence note of the `my-web-2026` seed entry (src/portfolio/seed.ts:140). The published text interpolates `EVIDENCE_AS_OF_2026_01` (src/portfolio/seed.ts:71), i.e. 2026-01, and the sentence itself says the download count and the current sale status change over time. The recorded expression is the source text, so the interpolation placeholder is part of the match; the rendered month changes with the constant, not with the copy."
-		},
-		{
-			"id": "projects-dotfiles-freshness-unavailable",
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"expression": "unavailable — 上流の現在の状態を反映していない",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "鮮度ラベルの unavailable の表示 (src/projects/DotfilesIntroductionPage.tsx:50)。鮮度は evaluateFreshness (src/projects/snapshot.ts:105) が判定し、snapshot の availability が public でない場合に unavailable を返す。このラベルが述べるのは snapshot が上流の現在の状態を反映していないという状態そのものであり、公開されている内容の正誤や件数には言及しない。"
-		},
-		{
-			"id": "projects-dotfiles-stale-notice",
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"expression": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "鮮度が stale のときの注記 (src/projects/DotfilesIntroductionPage.tsx:719)。stale は verify 済みの日時から MAX_AGE_HOURS (src/projects/types.ts:24、336 時間) を超えた場合に判定される (src/projects/snapshot.ts:113)。この文は表示している内容が最新ではない可能性があると述べるだけで、snapshot の中身が誤っているとは述べていない。"
-		},
-		{
-			"id": "projects-dotfiles-missing-snapshot",
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"expression": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "snapshot を読み込めない場合の本文 (src/projects/DotfilesIntroductionPage.tsx:749)。読み込みに失敗したときだけ描画される節で、再同期が終わるまで内容を出さないことと、最新の情報は上流リポジトリで確認できることを述べている。取得の失敗という状態についての説明であり、公開されている内容そのものが古いということではない。"
-		},
-		{
-			"id": "projects-unavailable-not-public",
-			"path": "src/projects/unavailable-copy.ts",
-			"expression": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "reason が not-found / not-public の場合の表示 (src/projects/unavailable-copy.ts:11-12、NOT_PUBLIC)。リポジトリが公開されていないという状態と、表示している内容が最新ではないという状態の 2 つを述べている。公開状態は同期が記録した availability が根拠であり、この文だけからリポジトリの実状態は確認できない。"
-		},
-		{
-			"id": "projects-unavailable-not-current-suffix",
-			"path": "src/projects/unavailable-copy.ts",
-			"expression": "最後に確認できた内容を表示しています。最新の内容ではありません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "archived / ref-mismatch / readme-shape の reason と、理由が記録されていない場合の fallback が共通で使う接尾句 (src/projects/unavailable-copy.ts:14、NOT_CURRENT_SUFFIX)。表示している内容が最新ではないという状態だけを述べており、その理由や影響範囲は含まない。"
-		},
-		{
-			"id": "projects-unavailable-fallback-notice",
-			"path": "src/projects/unavailable-copy.ts",
-			"expression": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
-		},
-		{
-			"id": "home-current-projects-heading",
-			"path": "src/home/current/CurrentProjects.tsx",
+			"id": "breadcrumb-now-label-1109",
+			"path": "src/editorial/nav/route-labels.ts",
 			"expression": "現在地",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
-						"note": "the commit that introduced the section this expression belongs to"
-					},
-					{
-						"type": "pull-request",
-						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
-						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
-					}
-				]
-			},
-			"note": "The JA half of the home current-projects heading (src/home/current/CurrentProjects.tsx). Issue #1110 split the bilingual title into title/titleEn blocks (Issue #792 pattern) so the JA title and its EN rendering never share a line; the EN half \"Where I am now\" is not a ja-locale expression. The section publishes a committed snapshot of the projects the owner is working on, so the heading itself is a claim about *now* and decays with it. OWNER REVIEW PENDING: the owner has not read this wording yet."
-		},
-		{
-			"id": "home-current-projects-empty",
-			"path": "src/home/current/CurrentProjects.tsx",
-			"expression": "現在、公開している進行中のプロジェクトはありません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
-						"note": "the commit that introduced the section this expression belongs to"
-					},
-					{
-						"type": "pull-request",
-						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
-						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
-					}
-				]
-			},
-			"note": "The fail-closed sentence of the home current-projects section (src/home/current/CurrentProjects.tsx:105): when the snapshot publishes nothing, the section says so in one sentence instead of rendering an empty list. It mirrors the about page's own empty sentence (src/about/components/AboutPage.tsx). OWNER REVIEW PENDING: the owner has not read this wording yet."
-		},
-		{
-			"id": "keyboard-sync-age-warning",
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"expression": "最終同期から ${data.ageDays} 日経過しています。表示は取得時点の内容で、現在の設定と異なる可能性があります。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The freshness sentence of the /keyboard status strip (src/keyboard/components/KeyboardPage.tsx:542), rendered when the committed snapshot is older than the stale window. It points at 'now' by design: the number of days is computed from the snapshot's syncedAt, and the wording tells the reader that the page shows the state at the time of the sync."
-		},
-		{
-			"id": "keyboard-provenance-description",
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"expression": "表示しているのは公開リポジトリの特定 commit から取得したバイト列です。採用元と最新 head を分けて記録します。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The description of the /keyboard provenance section (src/keyboard/components/KeyboardPage.tsx:764). The word 'latest' is the now-word the detector sees; the sentence distinguishes the adopted ref from the repository's latest head, which is exactly the distinction the section makes."
-		},
-		{
-			"id": "keyboard-unavailable-title",
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"expression": "現在、配列を表示できません",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The title of the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:867), rendered when the committed manifest fails validation. '現在' states that the page cannot show the layout right now, not that the layout never existed."
-		},
-		{
-			"id": "keyboard-unavailable-description",
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"expression": "同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The description under the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:869). It states what the page does NOT do (it does not show stale or incomplete data as the current configuration) and what it does instead (it records diagnostic codes only)."
-		},
-		{
-			"id": "keyboard-manifest-provenance-unverified",
-			"path": "src/keyboard/load.ts",
-			"expression": "同期マニフェストの来歴を検証できませんでした。ページは古い内容を現在のものとして表示しません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The message of the /keyboard unavailable state (src/keyboard/load.ts:186), rendered as the safe panel's message when the committed manifest's provenance cannot be verified. The registry that carries this record is the same one that owns the committed snapshot."
-		},
-		{
-			"id": "keyboard-adoption-note",
-			"path": "src/keyboard/sources/manifest.json",
-			"expression": "macOS の Kanata 設定は key-map-kanata の最新 head ではなく、pc-setup installer が pin する config_ref を採用する。installer が更新されるまで自動追随しない。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
-						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
-						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
-					}
-				]
-			},
-			"note": "The adoption note of the committed keyboard snapshot (src/keyboard/sources/manifest.json:62), rendered by the /keyboard provenance callout (src/keyboard/components/KeyboardPage.tsx:956). It names the ref the macOS configuration adopts and says the snapshot does not follow the repository's latest head until the installer changes."
-		},
-		{
-			"id": "contact-empty-state-832",
-			"path": "src/contact/page.tsx",
-			"expression": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "9068b013",
-						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
-					},
-					{
-						"type": "document",
-						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
-						"note": "the measured reachability / contactability result behind the statement this sentence makes."
-					}
-				]
-			},
-			"note": "Empty state of `/contact`. True while every channel in src/contact/channels.json is retired; the sentence makes no claim about why. (src/contact/page.tsx:330)"
-		},
-		{
-			"id": "contact-audit-due-notice",
-			"path": "src/contact/page.tsx",
-			"expression": "経路の実在は確認済みですが、最新の状態は未確認です。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-18",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
-						"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
-					}
-				]
-			},
-			"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
-		},
-		{
-			"id": "contact-empty-unverifiable",
-			"path": "src/contact/page.tsx",
-			"expression": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-18",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
-						"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
-					}
-				]
-			},
-			"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
-		},
-		{
-			"id": "home-contact-cta-832",
-			"path": "src/home/composer.tsx",
-			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "9068b013",
-						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
-					},
-					{
-						"type": "document",
-						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
-						"note": "the measured reachability / contactability result behind the statement this sentence makes."
-					}
-				]
-			},
-			"note": "Home CTA into `/contact`. True against src/contact/channels.json: only channels inside the 30-day freshness window of src/contact/schema.ts are rendered, and each row carries its purpose label. (src/home/composer.tsx:186)"
-		},
-		{
-			"id": "contact-meta-832",
-			"path": "src/routes/contact.tsx",
-			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途別に明示しています。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "9068b013",
-						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
-					},
-					{
-						"type": "document",
-						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
-						"note": "the measured reachability / contactability result behind the statement this sentence makes."
-					}
-				]
-			},
-			"note": "Head description of `/contact`. Same data basis as the home CTA: the freshness gate plus the per-row purpose label. (src/routes/contact.tsx:41)"
-		},
-		{
-			"id": "home-ad-video-play-cta",
-			"path": "src/home/ads/placements.tsx",
-			"expression": "今すぐプレイ",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-02",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "bb85e033c0b8277d921b8e93d5a35c284992d725",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/925",
-						"note": "CTA on the playable-style video spot; the whole unit links to /tools/prototype which the visitor can actually play in the browser"
-					}
-				]
-			},
-			"note": "動画スポット型広告ユニットの CTA (src/home/ads/placements.tsx:141)。遷移先 /tools/prototype はブラウザで実際に遊べるタイピングゲームであり、「今すぐプレイ」はその行動をそのまま述べる。緊急性・期限・数量の主張は含まない。"
-		},
-		{
-			"id": "guide-keyboard-reference",
-			"path": "src/home/guide/ledger.ts",
-			"expression": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-16",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
-						"note": "site-guide ledger entry for /keyboard (Issue #930, Epic #928)"
-					}
-				]
-			},
-			"note": "「現在使っている」はキーボード配列リファレンスページの恒常的な用途説明であり、日付・期限・数量の主張を含まない。陳腐化しない記述。"
-		},
-		{
-			"id": "guide-github-current-location",
-			"path": "src/home/guide/ledger.ts",
-			"expression": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-16",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
-						"note": "external guide entry for github.com/rebuildup (Issue #930, Epic #928)"
-					}
-				]
-			},
-			"note": "「現在地」は Epic #928 のテーマ名であり、特定の日付や時点に依存する事実主張ではない。陳腐化しない記述。"
-		},
-		{
-			"id": "github-activity-snapshot-retention",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-16",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
-						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
-					},
-					{
-						"type": "pull-request",
-						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
-						"note": "the change set that introduced this wording"
-					}
-				]
-			},
-			"note": "上書き・フォールバック・手動削除の保持規則の記述。公開文の承認待ち (pending) でレンダリングされない。"
-		},
-		{
-			"id": "current-projects-signature-label",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "現在地セクションの前回表示署名（ブラウザの localStorage `mw_home_current_projects_v1`）",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "current-projects-signature entry (approved 2026-11-17, owner decision on PR #926). Label of the localStorage signature store; matches src/home/current/use-changed-projects.ts key mw_home_current_projects_v1."
-		},
-		{
-			"id": "current-projects-signature-stores-ja",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "ホームの「現在地」に並ぶ各プロジェクトについて、識別子・名称・一行説明・保存された事実（日付・段階・計測値）とその出所を連結した文字列 1 本ずつ。訪問者の識別子、IP、閲覧履歴、端末情報は含みません。導出値（「1 か月」「12 日前」など）は保存しません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "Same entry, ja stores sentence. Claims checked against use-changed-projects.ts: stores per-project signature strings only; no visitor id, IP, history or device data; derived values excluded (pinned by use-changed-projects.test.ts)."
-		},
-		{
-			"id": "current-projects-signature-stores-en",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.",
-			"locale": "en",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "Same entry, en stores sentence — same checks as the ja record."
-		},
-		{
-			"id": "discord-presence-snapshot-stores",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "discord-presence-snapshot entry (approved 2026-11-17). Claims checked against src/http/presence/schema.ts allowlist and scripts/sync-discord-presence.mjs (owner-only tracking, no message content, no other members, no token)."
-		},
-		{
-			"id": "discord-presence-snapshot-retention",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "Same entry, ja retention sentence. Single-row upsert (src/http/presence/store.ts) and generatedAt freshness fail-closed (src/home/presence/reader.ts) match the wording."
-		},
-		{
-			"id": "github-activity-snapshot-stores",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "github-activity-snapshot entry (approved 2026-11-17). Wording corrected from 匿名 to 名称非公開 before publication (UNSUPPORTED_PUBLIC_CLAIMS); claims checked against src/http/activity/schema.ts private-id contract and scripts/sync-github-activity.mjs anonymization-before-serialize."
-		},
-		{
-			"id": "github-activity-snapshot-visibility",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "Same entry, ja visibility sentence (名称非公開 wording). Render scope matches src/home/activity/live.ts + GitHubActivityCard.tsx."
-		},
-		{
-			"id": "github-activity-snapshot-visibility-en",
-			"path": "src/privacy/data-lifecycle.ts",
-			"expression": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.",
-			"locale": "en",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-17",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
-						"note": "the commit that published the entry and introduced this record text"
-					}
-				]
-			},
-			"note": "Same entry, en visibility sentence (name-hidden ids). Same checks as the ja record."
-		},
-		{
-			"id": "portfolio-empty-state-description",
-			"path": "src/portfolio/components/EmptyState.tsx",
-			"expression": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-18",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
-						"note": "Issue #838 measured the migration state and replaced the stale import-in-progress wording; this record covers the replacement expression and awaits owner confirmation like every agent-recorded row."
-					}
-				]
-			},
-			"note": "Empty-state description of /portfolio. The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact per docs/verification/copy/migration-state-measurement-2026-11-18.md."
-		},
-		{
-			"id": "home-hero-secondary-current-status",
-			"path": "src/home/hero.tsx",
-			"expression": "などの映像制作も受けてきた。今は宇部高専 制御情報工学科の4年生として、Web",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-11-19",
@@ -1175,18 +189,13 @@
 				"ownerConfirmation": "unconfirmed",
 				"evidence": [
 					{
-						"type": "commit",
-						"reference": "01605e347e16d7e4e8bbb342c7fd0978a63834ce",
-						"note": "the commit that introduced this record"
-					},
-					{
 						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/388",
-						"note": "the Issue tracking the About self-introduction migration this hero copy belongs to"
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1109",
+						"note": "Breadcrumb label registered for /now so BreadcrumbJsonLd emits the BreadcrumbList the route-coverage contract declares. Awaiting owner confirmation like every agent-recorded row."
 					}
 				]
 			},
-			"note": "The time-sensitive claim is the current student status in the hero secondary paragraph (src/home/hero.tsx, the JSX text node that biome wraps across two lines, so the recorded expression is the first wrapped fragment). Checked against docs/personal/domain.md §1 (宇部工業高等専門学校 制御情報工学科 本科4年, 卒業予定 2028-03) and the predecessor site history (my-web-2025 /tmp source, 宇部高専 在学中). The status decays at graduation, which is exactly what this registry exists to catch; owner confirmation is still pending."
+			"note": "Breadcrumb leaf label for /now (src/editorial/nav/route-labels.ts). Short form of the page title 「現在地 / Where I am now」; names the same destination the home section links to."
 		},
 		{
 			"id": "career-state-current-date-label",
@@ -1258,6 +267,1122 @@
 			"note": "Kind badge label for Temporal State entries. Fixed vocabulary (event/state/planned), not a time-sensitive claim."
 		},
 		{
+			"id": "commission-intake-paused-status",
+			"path": "src/contact/commission-page.tsx",
+			"expression": "現在、制作依頼の受付は休止しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/390",
+						"note": "Issue #390 restores the commission surface; the paused wording is bound to the approved parked fact in src/about/data.ts (future.parked: 依頼制の制作 mode は現時点では parked). The record awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Status line of the /commission intake notice. It states the parked state the approved /about narrative already publishes; it must change in the same PR that un-parks the mode."
+		},
+		{
+			"id": "contact-audit-due-notice",
+			"path": "src/contact/page.tsx",
+			"expression": "経路の実在は確認済みですが、最新の状態は未確認です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Audit-due notice added by Issue #833 (display validity / audit freshness split). Awaiting owner confirmation like every agent-recorded row."
+		},
+		{
+			"id": "contact-channels-heading-title",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な channel",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "Section title of the channel list (src/contact/page.tsx:139). The list it titles is `getVisibleChannels()` (src/contact/public.ts:52), i.e. the entries that pass the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "contact-empty-state-832",
+			"path": "src/contact/page.tsx",
+			"expression": "現在、掲載している連絡先はありません。再開したときはこのページでお知らせします。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "9068b013",
+						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
+						"note": "the measured reachability / contactability result behind the statement this sentence makes."
+					}
+				]
+			},
+			"note": "Empty state of `/contact`. True while every channel in src/contact/channels.json is retired; the sentence makes no claim about why. (src/contact/page.tsx:330)"
+		},
+		{
+			"id": "contact-empty-unverifiable",
+			"path": "src/contact/page.tsx",
+			"expression": "現在、確認できる連絡先はありません。 記録されている channel は要再検証の状態のため掲載していません。 再開したときはこのページでお知らせします。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/833",
+						"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
+					}
+				]
+			},
+			"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
+		},
+		{
+			"id": "contact-intro-current-only",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "Intro paragraph of `/contact` (src/contact/page.tsx:107). True against src/contact/channels.json and the freshness gate of src/contact/schema.ts:67 (FRESHNESS_WINDOW_DAYS = 30). On 2026-10-22 the GitHub channels are still inside that window (verified_at 2026-09-27), so the sentence holds until 2026-10-27 unless the channels are re-verified."
+		},
+		{
+			"id": "contact-intro-unpublished-excluded",
+			"path": "src/contact/page.tsx",
+			"expression": "は現在 re-verified されていないため、ここには載せていません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
+		},
+		{
+			"id": "contact-meta-832",
+			"path": "src/routes/contact.tsx",
+			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途別に明示しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "9068b013",
+						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
+						"note": "the measured reachability / contactability result behind the statement this sentence makes."
+					}
+				]
+			},
+			"note": "Head description of `/contact`. Same data basis as the home CTA: the freshness gate plus the per-row purpose label. (src/routes/contact.tsx:41)"
+		},
+		{
+			"id": "current-projects-signature-label",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "現在地セクションの前回表示署名（ブラウザの localStorage `mw_home_current_projects_v1`）",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "current-projects-signature entry (approved 2026-11-17, owner decision on PR #926). Label of the localStorage signature store; matches src/home/current/use-changed-projects.ts key mw_home_current_projects_v1."
+		},
+		{
+			"id": "current-projects-signature-stores-en",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "For each project in the home page’s “現在地” section, one string joining its id, name, one-line description, stored facts (dates, level, measured activity) and where each fact came from. No visitor identifier, IP address, browsing history or device data. Derived values (such as “1 か月” or “12 日前”) are not stored.",
+			"locale": "en",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, en stores sentence — same checks as the ja record."
+		},
+		{
+			"id": "current-projects-signature-stores-ja",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」に並ぶ各プロジェクトについて、識別子・名称・一行説明・保存された事実（日付・段階・計測値）とその出所を連結した文字列 1 本ずつ。訪問者の識別子、IP、閲覧履歴、端末情報は含みません。導出値（「1 か月」「12 日前」など）は保存しません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja stores sentence. Claims checked against use-changed-projects.ts: stores per-project signature strings only; no visitor id, IP, history or device data; derived values excluded (pinned by use-changed-projects.test.ts)."
+		},
+		{
+			"id": "discord-presence-snapshot-retention",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "単一行を最新スナップショットで上書きします。フィードが止まっても行は残り、公開側は `generatedAt` の鮮度チェックで「不明」表示に落ちます。行の削除は運営者の手作業です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja retention sentence. Single-row upsert (src/http/presence/store.ts) and generatedAt freshness fail-closed (src/home/presence/reader.ts) match the wording."
+		},
+		{
+			"id": "discord-presence-snapshot-stores",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者本人の Discord アカウントの最新プレゼンス 1 件分:ステータス（online/idle/dnd/offline/unknown）、カスタムステータスの本文と絵文字、アクティビティ/リッチプレゼンスの名前・詳細・状態・時刻・画像キー・パーティ情報、クライアント種別。メッセージ本文・他のギルド参加者のプレゼンス・トークンは含まれません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "discord-presence-snapshot entry (approved 2026-11-17). Claims checked against src/http/presence/schema.ts allowlist and scripts/sync-discord-presence.mjs (owner-only tracking, no message content, no other members, no token)."
+		},
+		{
+			"id": "github-activity-snapshot-retention",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "単一行を最新スナップショットで上書きします。同期ジョブが止まっても行は残り、公開側はコミット済みスナップショット（レビュー済みのフォールバック）へ切り替わるか、観測日時の比較で新しい方を表示します。行の削除は運営者の手作業です。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-16",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/932",
+						"note": "D1 ingest snapshot ledger entry added by PR #957 (Issues #316/#319/#932)"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/957",
+						"note": "the change set that introduced this wording"
+					}
+				]
+			},
+			"note": "上書き・フォールバック・手動削除の保持規則の記述。公開文の承認待ち (pending) でレンダリングされない。"
+		},
+		{
+			"id": "github-activity-snapshot-stores",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "運営者の GitHub アクティビティの最新スナップショット 1 件分:公開リポジトリの名前・URL・直近の活動集計とフィード項目、非公開リポジトリは `private-` に続く12桁の16進文字列による安定 ID（名称は公開しません）と集計値のみ（実名・URL・owner・ブランチ・コミットメッセージ・Issue 本文・ハッシュは含まれません）。訪問者の識別子は含まれません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "github-activity-snapshot entry (approved 2026-11-17). Wording corrected from 匿名 to 名称非公開 before publication (UNSUPPORTED_PUBLIC_CLAIMS); claims checked against src/http/activity/schema.ts private-id contract and scripts/sync-github-activity.mjs anonymization-before-serialize."
+		},
+		{
+			"id": "github-activity-snapshot-visibility",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "ホームの「現在地」セクションに、公開を意図した範囲で表示されます（公開リポジトリの活動と、非公開リポジトリの名称非公開 ID・集計値）。API キー・トークン・非公開リポジトリの実名は公開されません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, ja visibility sentence (名称非公開 wording). Render scope matches src/home/activity/live.ts + GitHubActivityCard.tsx."
+		},
+		{
+			"id": "github-activity-snapshot-visibility-en",
+			"path": "src/privacy/data-lifecycle.ts",
+			"expression": "Rendered on the home “現在地” section within the scope the owner intends to publish (public-repository activity and private-repository name-hidden ids / aggregates). API keys, tokens and private repository names are never published.",
+			"locale": "en",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-17",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "d6e2768319952324b6f095e331ea9308d96b318a",
+						"note": "the commit that published the entry and introduced this record text"
+					}
+				]
+			},
+			"note": "Same entry, en visibility sentence (name-hidden ids). Same checks as the ja record."
+		},
+		{
+			"id": "guide-github-current-location",
+			"path": "src/home/guide/ledger.ts",
+			"expression": "リポジトリとコミット履歴の一次情報。サイト内の「現在地」はここから要約している。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-16",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
+						"note": "external guide entry for github.com/rebuildup (Issue #930, Epic #928)"
+					}
+				]
+			},
+			"note": "「現在地」は Epic #928 のテーマ名であり、特定の日付や時点に依存する事実主張ではない。陳腐化しない記述。"
+		},
+		{
+			"id": "guide-keyboard-reference",
+			"path": "src/home/guide/ledger.ts",
+			"expression": "現在使っているキーボード配列の一覧と、その配置を確認するリファレンス。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-16",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/930",
+						"note": "site-guide ledger entry for /keyboard (Issue #930, Epic #928)"
+					}
+				]
+			},
+			"note": "「現在使っている」はキーボード配列リファレンスページの恒常的な用途説明であり、日付・期限・数量の主張を含まない。陳腐化しない記述。"
+		},
+		{
+			"id": "home-ad-video-play-cta",
+			"path": "src/home/ads/placements.tsx",
+			"expression": "今すぐプレイ",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "bb85e033c0b8277d921b8e93d5a35c284992d725",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/925",
+						"note": "CTA on the playable-style video spot; the whole unit links to /tools/prototype which the visitor can actually play in the browser"
+					}
+				]
+			},
+			"note": "動画スポット型広告ユニットの CTA (src/home/ads/placements.tsx:141)。遷移先 /tools/prototype はブラウザで実際に遊べるタイピングゲームであり、「今すぐプレイ」はその行動をそのまま述べる。緊急性・期限・数量の主張は含まない。"
+		},
+		{
+			"id": "home-contact-cta-832",
+			"path": "src/home/composer.tsx",
+			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel には用途別の説明が添えてあります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "9068b013",
+						"note": "Issue #832 — the commit that introduced this record (contact channel two-axis verification)."
+					},
+					{
+						"type": "document",
+						"reference": "docs/verification/contact/channel-verification-2026-11-03.md",
+						"note": "the measured reachability / contactability result behind the statement this sentence makes."
+					}
+				]
+			},
+			"note": "Home CTA into `/contact`. True against src/contact/channels.json: only channels inside the 30-day freshness window of src/contact/schema.ts are rendered, and each row carries its purpose label. (src/home/composer.tsx:186)"
+		},
+		{
+			"id": "home-current-projects-empty",
+			"path": "src/home/current/CurrentProjects.tsx",
+			"expression": "現在、公開している進行中のプロジェクトはありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
+						"note": "the commit that introduced the section this expression belongs to"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
+						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
+					}
+				]
+			},
+			"note": "The fail-closed sentence of the home current-projects section (src/home/current/CurrentProjects.tsx:105): when the snapshot publishes nothing, the section says so in one sentence instead of rendering an empty list. It mirrors the about page's own empty sentence (src/about/components/AboutPage.tsx). OWNER REVIEW PENDING: the owner has not read this wording yet."
+		},
+		{
+			"id": "home-current-projects-heading",
+			"path": "src/home/current/CurrentProjects.tsx",
+			"expression": "現在地",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "784c31e891cbf5de280e65446b38a049410cfb12",
+						"note": "the commit that introduced the section this expression belongs to"
+					},
+					{
+						"type": "pull-request",
+						"reference": "https://github.com/rebuildup/my-web-2026/pull/776",
+						"note": "the draft pull request that adds the home current-projects section (Issue #316)"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them. This record follows that pattern: it is agent-recorded and AWAITS the owner's review."
+					}
+				]
+			},
+			"note": "The JA half of the home current-projects heading (src/home/current/CurrentProjects.tsx). Issue #1110 split the bilingual title into title/titleEn blocks (Issue #792 pattern) so the JA title and its EN rendering never share a line; the EN half \"Where I am now\" is not a ja-locale expression. The section publishes a committed snapshot of the projects the owner is working on, so the heading itself is a claim about *now* and decays with it. OWNER REVIEW PENDING: the owner has not read this wording yet."
+		},
+		{
+			"id": "home-hero-index-current",
+			"path": "src/home/hero.tsx",
+			"expression": "現在地",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-21",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1135",
+						"note": "Issue #1135 added the hero's section index rail; this row covers the 「現在地」 label it renders."
+					}
+				]
+			},
+			"note": "The hero's section index rail (src/home/hero.tsx) restates the titles of the sections the page itself renders. 「現在地」 is the literal name of the home current-projects section (src/home/current/CurrentProjects.tsx) — a destination label, not a freshness claim; the rail introduces no date, count or period. The rail carries no wording of its own: each label is the section's published title. OWNER REVIEW PENDING: the owner has not read this wording yet."
+		},
+		{
+			"id": "home-hero-secondary-current-status",
+			"path": "src/home/hero.tsx",
+			"expression": "などの映像制作も受けてきた。今は宇部高専 制御情報工学科の4年生として、Web",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "01605e347e16d7e4e8bbb342c7fd0978a63834ce",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/388",
+						"note": "the Issue tracking the About self-introduction migration this hero copy belongs to"
+					}
+				]
+			},
+			"note": "The time-sensitive claim is the current student status in the hero secondary paragraph (src/home/hero.tsx, the JSX text node that biome wraps across two lines, so the recorded expression is the first wrapped fragment). Checked against docs/personal/domain.md §1 (宇部工業高等専門学校 制御情報工学科 本科4年, 卒業予定 2028-03) and the predecessor site history (my-web-2025 /tmp source, 宇部高専 在学中). The status decays at graduation, which is exactly what this registry exists to catch; owner confirmation is still pending."
+		},
+		{
+			"id": "home-status-latest-reachability",
+			"path": "src/home/status/tiles.tsx",
+			"expression": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "5232039589d71f63983f22e2e9d879b3810ed515",
+						"note": "the commit that refreshed this record"
+					},
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "status セクション (SectionHeading) の説明文 (src/home/status/tiles.tsx:129)。各 binding と外部境界の最新到達性を createServerFn で観測したスナップショットとして示し、観測できなかった状態を「未観測」として到達障害と区別して表示することを述べる。実装が保証しているのは観測値が得られない state が unreachable とは別に存在すること (src/home/status/health.ts の health = 'unobserved'、src/home/status/tiles.tsx の 'unobserved' ラベル) で、この文はその区別を人に伝える表現になっている。"
+		},
+		{
+			"id": "keyboard-adoption-note",
+			"path": "src/keyboard/sources/manifest.json",
+			"expression": "macOS の Kanata 設定は key-map-kanata の最新 head ではなく、pc-setup installer が pin する config_ref を採用する。installer が更新されるまで自動追随しない。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The adoption note of the committed keyboard snapshot (src/keyboard/sources/manifest.json:62), rendered by the /keyboard provenance callout (src/keyboard/components/KeyboardPage.tsx:956). It names the ref the macOS configuration adopts and says the snapshot does not follow the repository's latest head until the installer changes."
+		},
+		{
+			"id": "keyboard-manifest-provenance-unverified",
+			"path": "src/keyboard/load.ts",
+			"expression": "同期マニフェストの来歴を検証できませんでした。ページは古い内容を現在のものとして表示しません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The message of the /keyboard unavailable state (src/keyboard/load.ts:186), rendered as the safe panel's message when the committed manifest's provenance cannot be verified. The registry that carries this record is the same one that owns the committed snapshot."
+		},
+		{
+			"id": "keyboard-provenance-description",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "表示しているのは公開リポジトリの特定 commit から取得したバイト列です。採用元と最新 head を分けて記録します。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The description of the /keyboard provenance section (src/keyboard/components/KeyboardPage.tsx:764). The word 'latest' is the now-word the detector sees; the sentence distinguishes the adopted ref from the repository's latest head, which is exactly the distinction the section makes."
+		},
+		{
+			"id": "keyboard-sync-age-warning",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "最終同期から ${data.ageDays} 日経過しています。表示は取得時点の内容で、現在の設定と異なる可能性があります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The freshness sentence of the /keyboard status strip (src/keyboard/components/KeyboardPage.tsx:542), rendered when the committed snapshot is older than the stale window. It points at 'now' by design: the number of days is computed from the snapshot's syncedAt, and the wording tells the reader that the page shows the state at the time of the sync."
+		},
+		{
+			"id": "keyboard-unavailable-description",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The description under the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:869). It states what the page does NOT do (it does not show stale or incomplete data as the current configuration) and what it does instead (it records diagnostic codes only)."
+		},
+		{
+			"id": "keyboard-unavailable-title",
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"expression": "現在、配列を表示できません",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-02",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567378693",
+						"note": "The owner-account comment of Issue #672 states that the copy of the three surfaces (src/keyboard/**, src/legal/**, src/privacy/**) was reviewed and approved as it stands, and names the rendered copy of each surface. The agent transcribed the owner's words, so the record below is agent-written and its owner confirmation is still pending."
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/672#issuecomment-6567572805",
+						"note": "The owner-account comment of Issue #672 that decides the scope: the visitor-facing Japanese of /keyboard, the rights/licence display and the privacy notice enter the copy gate, and the wording review stays separate from the declaration change."
+					}
+				]
+			},
+			"note": "The title of the /keyboard safe state (src/keyboard/components/KeyboardPage.tsx:867), rendered when the committed manifest fails validation. '現在' states that the page cannot show the layout right now, not that the layout never existed."
+		},
+		{
+			"id": "now-route-title-1108",
+			"path": "src/routes/now.tsx",
+			"expression": "現在地 / Where I am now — rebuildup.dev",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1108",
+						"note": "本変更の実装対象。HOME のキュレーション入口化と /now 全件 route。"
+					},
+					{
+						"type": "commit",
+						"reference": "927f4835",
+						"note": "the commit that introduced this record (feat(home): curated HOME composition per ADR-0022)."
+					},
+					{
+						"type": "document",
+						"reference": "src/routes/now.tsx",
+						"note": "head.title の典拠。ページ内容 (現在地の全件一覧) と一致する title。"
+					}
+				]
+			},
+			"note": "/now の head.title。「現在地 / Where I am now」は home の CurrentProjects セクション見出しと同一の語彙で、ページが全件列挙 surface であることを表す。日付・件数などの時制主張を含まない。"
+		},
+		{
+			"id": "portfolio-case-study-current-evaluation-label",
+			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
+			"expression": "現在の評価",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-19",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/519",
+						"note": "Issue #519 requires the case-study element to separate 確定事実 / 当時の推測 / 現在の評価; this record covers the third class label and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Claim-class label of the portfolio case-study element (src/portfolio/components/PortfolioCaseStudy.tsx). It names the third epistemic class the Issue #519 element must distinguish; it is a fixed vocabulary word, not a live status claim — re-check only if the class vocabulary changes."
+		},
+		{
+			"id": "portfolio-empty-state-description",
+			"path": "src/portfolio/components/EmptyState.tsx",
+			"expression": "公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-18",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/838",
+						"note": "Issue #838 measured the migration state and replaced the stale import-in-progress wording; this record covers the replacement expression and awaits owner confirmation like every agent-recorded row."
+					}
+				]
+			},
+			"note": "Empty-state description of /portfolio. The previous wording claimed an in-progress my-web-2025 import; the import is complete (60 published works verified by verify-portfolio), so the sentence now states the measured fact per docs/verification/copy/migration-state-measurement-2026-11-18.md."
+		},
+		{
+			"id": "portfolio-seed-evidence-current-sale",
+			"path": "src/portfolio/seed.ts",
+			"expression": "累計販売 500 本以上 (as_of: ${new Date(EVIDENCE_AS_OF_2026_01).toISOString().slice(0, 7)})。download 数や現在販売状況は時間で変わるため、site 上で live に出す場合は別途 source を確認する必要がある。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "6db891ada9c5b596380d82019bf112223e831650",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "Evidence note of the `my-web-2026` seed entry (src/portfolio/seed.ts:140). The published text interpolates `EVIDENCE_AS_OF_2026_01` (src/portfolio/seed.ts:71), i.e. 2026-01, and the sentence itself says the download count and the current sale status change over time. The recorded expression is the source text, so the interpolation placeholder is part of the match; the rendered month changes with the constant, not with the copy."
+		},
+		{
+			"id": "projects-dotfiles-freshness-unavailable",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "unavailable — 上流の現在の状態を反映していない",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "鮮度ラベルの unavailable の表示 (src/projects/DotfilesIntroductionPage.tsx:50)。鮮度は evaluateFreshness (src/projects/snapshot.ts:105) が判定し、snapshot の availability が public でない場合に unavailable を返す。このラベルが述べるのは snapshot が上流の現在の状態を反映していないという状態そのものであり、公開されている内容の正誤や件数には言及しない。"
+		},
+		{
+			"id": "projects-dotfiles-missing-snapshot",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "snapshot を読み込めない場合の本文 (src/projects/DotfilesIntroductionPage.tsx:749)。読み込みに失敗したときだけ描画される節で、再同期が終わるまで内容を出さないことと、最新の情報は上流リポジトリで確認できることを述べている。取得の失敗という状態についての説明であり、公開されている内容そのものが古いということではない。"
+		},
+		{
+			"id": "projects-dotfiles-stale-notice",
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"expression": "最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "鮮度が stale のときの注記 (src/projects/DotfilesIntroductionPage.tsx:719)。stale は verify 済みの日時から MAX_AGE_HOURS (src/projects/types.ts:24、336 時間) を超えた場合に判定される (src/projects/snapshot.ts:113)。この文は表示している内容が最新ではない可能性があると述べるだけで、snapshot の中身が誤っているとは述べていない。"
+		},
+		{
+			"id": "projects-unavailable-fallback-notice",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流の現在の状態を確認できなかったため、${NOT_CURRENT_SUFFIX}",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "理由が記録されていない場合の fallback (src/projects/unavailable-copy.ts:36、unavailableNotice)。上流の状態を確認できなかったことと、そのため最後に確認できた内容を表示していることを述べる。原因を断定していない表現であり、確認できなかった理由を特定しているわけではない。"
+		},
+		{
+			"id": "projects-unavailable-not-current-suffix",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "archived / ref-mismatch / readme-shape の reason と、理由が記録されていない場合の fallback が共通で使う接尾句 (src/projects/unavailable-copy.ts:14、NOT_CURRENT_SUFFIX)。表示している内容が最新ではないという状態だけを述べており、その理由や影響範囲は含まない。"
+		},
+		{
+			"id": "projects-unavailable-not-public",
+			"path": "src/projects/unavailable-copy.ts",
+			"expression": "上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-10-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "commit",
+						"reference": "ba90980cb71c57115a1dead41b32a49d33a36500",
+						"note": "the commit that introduced this record"
+					},
+					{
+						"type": "owner-comment",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
+						"note": "the owner-account comment names 15 records and does not name this one. It states that an agent filled some of the registry review dates in on the basis of merge permission and that the owner is yet to check and correct them."
+					}
+				]
+			},
+			"note": "reason が not-found / not-public の場合の表示 (src/projects/unavailable-copy.ts:11-12、NOT_PUBLIC)。リポジトリが公開されていないという状態と、表示している内容が最新ではないという状態の 2 つを述べている。公開状態は同期が記録した availability が根拠であり、この文だけからリポジトリの実状態は確認できない。"
+		},
+		{
 			"id": "skills-unity-past-summary",
 			"path": "src/about/skills.ts",
 			"expression": "U-16 プログラミングコンテスト向けのゲーム制作で使用。現在の制作 toolchain には含まれない。",
@@ -1304,52 +1429,6 @@
 			"note": "Usage-group label splitting the skills list into current vs past. Fixed vocabulary; re-check when the toolchain changes."
 		},
 		{
-			"id": "commission-intake-paused-status",
-			"path": "src/contact/commission-page.tsx",
-			"expression": "現在、制作依頼の受付は休止しています。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-18",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/390",
-						"note": "Issue #390 restores the commission surface; the paused wording is bound to the approved parked fact in src/about/data.ts (future.parked: 依頼制の制作 mode は現時点では parked). The record awaits owner confirmation like every agent-recorded row."
-					}
-				]
-			},
-			"note": "Status line of the /commission intake notice. It states the parked state the approved /about narrative already publishes; it must change in the same PR that un-parks the mode."
-		},
-		{
-			"id": "portfolio-case-study-current-evaluation-label",
-			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
-			"expression": "現在の評価",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-19",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/519",
-						"note": "Issue #519 requires the case-study element to separate 確定事実 / 当時の推測 / 現在の評価; this record covers the third class label and awaits owner confirmation like every agent-recorded row."
-					}
-				]
-			},
-			"note": "Claim-class label of the portfolio case-study element (src/portfolio/components/PortfolioCaseStudy.tsx). It names the third epistemic class the Issue #519 element must distinguish; it is a fixed vocabulary word, not a live status claim — re-check only if the class vocabulary changes."
-		},
-		{
 			"id": "stack-component-integration-510",
 			"path": "src/routes/stack/stack.ts",
 			"expression": "独立した feature が「データ契約 → 表示 component → Storybook preview → 薄い route adapter」の順にどう接続されるかを、実在する 1 つの component で示します。対象は `/` トップの「現在地」セクション（CurrentProjects）です。各項目の検証状況は pass / fail / not run / not applicable で区別しています。",
@@ -1371,62 +1450,6 @@
 				]
 			},
 			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
-		},
-		{
-			"id": "now-route-title-1108",
-			"path": "src/routes/now.tsx",
-			"expression": "現在地 / Where I am now — rebuildup.dev",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-19",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/1108",
-						"note": "本変更の実装対象。HOME のキュレーション入口化と /now 全件 route。"
-					},
-					{
-						"type": "commit",
-						"reference": "927f4835",
-						"note": "the commit that introduced this record (feat(home): curated HOME composition per ADR-0022)."
-					},
-					{
-						"type": "document",
-						"reference": "src/routes/now.tsx",
-						"note": "head.title の典拠。ページ内容 (現在地の全件一覧) と一致する title。"
-					}
-				]
-			},
-			"note": "/now の head.title。「現在地 / Where I am now」は home の CurrentProjects セクション見出しと同一の語彙で、ページが全件列挙 surface であることを表す。日付・件数などの時制主張を含まない。"
-		},
-		{
-			"id": "breadcrumb-now-label-1109",
-			"path": "src/editorial/nav/route-labels.ts",
-			"expression": "現在地",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-11-19",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "issue",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/1109",
-						"note": "Breadcrumb label registered for /now so BreadcrumbJsonLd emits the BreadcrumbList the route-coverage contract declares. Awaiting owner confirmation like every agent-recorded row."
-					}
-				]
-			},
-			"note": "Breadcrumb leaf label for /now (src/editorial/nav/route-labels.ts). Short form of the page title 「現在地 / Where I am now」; names the same destination the home section links to."
 		}
 	]
 }

@@ -185,11 +185,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 						className={css({ minWidth: '0' })}
 					>
 						{item.samples.map((sample) => (
-							<Stack
-								key={sample.label}
-								gap="2"
-								className={css({ minWidth: '0' })}
-							>
+							<Stack key={sample.label} gap="2" className={css({ minWidth: '0' })}>
 								<CodeBlock label={sample.label} code={sample.code} language={sample.language} />
 								{sample.note !== undefined ? (
 									<p

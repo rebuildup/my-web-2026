@@ -1,6 +1,7 @@
 import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Container } from '../editorial/primitives/Container';
+import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { StateMark } from '../editorial/primitives/StateMark';
@@ -122,143 +123,164 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 		<>
 			<SkipLink />
 			<main id="main">
-				<section
-					aria-labelledby="dotfiles-hero-title"
-					className={css({ paddingBlock: { base: '16', lg: '32' } })}
-				>
-					<Container>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-							})}
-						>
-							projects · dotfiles
-						</span>
-						<div
-							className={css({
-								display: 'flex',
-								flexDirection: { base: 'column', lg: 'row' },
-								alignItems: { base: 'flex-start', lg: 'flex-end' },
-								justifyContent: 'space-between',
-								gap: '6',
-								marginBlockStart: '2',
-							})}
-						>
-							<div>
-								<h1
-									id="dotfiles-hero-title"
-									className={css({
-										margin: '0',
-										fontFamily: 'heading',
-										fontSize: { base: '3xl', lg: '4xl' },
-										fontWeight: '700',
-										lineHeight: { base: '1.15', lg: '1.05' },
-										letterSpacing: '-0.03em',
-										color: 'text.default',
-									})}
-								>
-									dotfiles
-								</h1>
-								<p
-									lang="ja"
-									className={css({
-										margin: '0',
-										marginBlockStart: '2',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										color: 'text.muted',
-									})}
-								>
-									ユーザー設定・エージェント配線・実行時 secret 注入
-								</p>
-							</div>
-							<div
-								className={css({
-									display: 'flex',
-									flexWrap: 'wrap',
-									gap: '2',
-								})}
-							>
-								<Badge>user-level config</Badge>
-								<Badge>agent wiring</Badge>
-								<Badge>runtime secrets</Badge>
-							</div>
-						</div>
-						<p
-							lang="ja"
-							className={css({
-								margin: '0',
-								marginBlockStart: '6',
-								fontFamily: 'sans',
-								fontSize: 'lg',
-								lineHeight: '1.8',
-								color: 'text.default',
-								maxWidth: '720px',
-							})}
-						>
-							dotfiles は、開発マシンのユーザーレベル設定をまとめた公開リポジトリです。OS
-							とパッケージの導入は pc-setup が担い、dotfiles はその上に、home
-							設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret
-							注入を重ねます。
-						</p>
-						{snapshot ? (
-							<blockquote
-								lang="en"
+				<PageSection rhythm="hero" labelledBy="dotfiles-hero-title">
+					<span
+						className={css({
+							fontFamily: 'mono',
+							fontSize: 'sm',
+							color: 'text.muted',
+						})}
+					>
+						projects · dotfiles
+					</span>
+					<div
+						className={css({
+							display: 'flex',
+							flexDirection: { base: 'column', lg: 'row' },
+							alignItems: { base: 'flex-start', lg: 'flex-end' },
+							justifyContent: 'space-between',
+							gap: '6',
+							marginBlockStart: '2',
+						})}
+					>
+						<div>
+							<h1
+								id="dotfiles-hero-title"
 								className={css({
 									margin: '0',
-									marginBlockStart: '6',
-									paddingInlineStart: '4',
-									borderInlineStartWidth: '2px',
-									borderInlineStartStyle: 'solid',
-									borderInlineStartColor: 'border.subtle',
-									maxWidth: '720px',
+									fontFamily: 'heading',
+									fontSize: { base: '3xl', lg: '4xl' },
+									fontWeight: '700',
+									lineHeight: { base: '1.15', lg: '1.05' },
+									letterSpacing: '-0.03em',
+									color: 'text.default',
 								})}
 							>
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										lineHeight: '1.7',
-										color: 'text.muted',
-									})}
-								>
-									<RichText nodes={snapshot.introduction.lead} />
-								</p>
-								<cite
-									className={css({
-										display: 'block',
-										marginBlockStart: '2',
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										fontStyle: 'normal',
-										color: 'text.muted',
-									})}
-								>
-									— README,{' '}
-									<a
-										href={snapshot.source.readmeUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										className={linkClassName}
-									>
-										{snapshot.source.owner}/{snapshot.source.repo}
-									</a>
-								</cite>
-							</blockquote>
-						) : null}
+								dotfiles
+							</h1>
+							<p
+								lang="ja"
+								className={css({
+									margin: '0',
+									marginBlockStart: '2',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									color: 'text.muted',
+								})}
+							>
+								ユーザー設定・エージェント配線・実行時 secret 注入
+							</p>
+						</div>
 						<div
 							className={css({
 								display: 'flex',
 								flexWrap: 'wrap',
-								gap: '4',
-								marginBlockStart: '6',
+								gap: '2',
 							})}
 						>
+							<Badge>user-level config</Badge>
+							<Badge>agent wiring</Badge>
+							<Badge>runtime secrets</Badge>
+						</div>
+					</div>
+					<p
+						lang="ja"
+						className={css({
+							margin: '0',
+							marginBlockStart: '6',
+							fontFamily: 'sans',
+							fontSize: 'lg',
+							lineHeight: '1.8',
+							color: 'text.default',
+							maxWidth: '720px',
+						})}
+					>
+						dotfiles は、開発マシンのユーザーレベル設定をまとめた公開リポジトリです。OS
+						とパッケージの導入は pc-setup が担い、dotfiles はその上に、home
+						設定のリンク、エージェント共通設定の固定、Infisical を介した実行時 secret
+						注入を重ねます。
+					</p>
+					{snapshot ? (
+						<blockquote
+							lang="en"
+							className={css({
+								margin: '0',
+								marginBlockStart: '6',
+								paddingInlineStart: '4',
+								borderInlineStartWidth: '2px',
+								borderInlineStartStyle: 'solid',
+								borderInlineStartColor: 'border.subtle',
+								maxWidth: '720px',
+							})}
+						>
+							<p
+								className={css({
+									margin: '0',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									lineHeight: '1.7',
+									color: 'text.muted',
+								})}
+							>
+								<RichText nodes={snapshot.introduction.lead} />
+							</p>
+							<cite
+								className={css({
+									display: 'block',
+									marginBlockStart: '2',
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									fontStyle: 'normal',
+									color: 'text.muted',
+								})}
+							>
+								— README,{' '}
+								<a
+									href={snapshot.source.readmeUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									className={linkClassName}
+								>
+									{snapshot.source.owner}/{snapshot.source.repo}
+								</a>
+							</cite>
+						</blockquote>
+					) : null}
+					<div
+						className={css({
+							display: 'flex',
+							flexWrap: 'wrap',
+							gap: '4',
+							marginBlockStart: '6',
+						})}
+					>
+						<a
+							href="https://github.com/rebuildup/dotfiles"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={css({
+								display: 'inline-flex',
+								alignItems: 'center',
+								minHeight: '10',
+								paddingInline: '4',
+								borderRadius: 'full',
+								backgroundColor: 'bg.accent',
+								color: 'text.inverse',
+								fontFamily: 'sans',
+								fontSize: 'sm',
+								fontWeight: '600',
+								textDecoration: 'none',
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							GitHub で見る
+						</a>
+						{snapshot ? (
 							<a
-								href="https://github.com/rebuildup/dotfiles"
+								href={snapshot.source.readmeUrl}
 								target="_blank"
 								rel="noopener noreferrer"
 								className={css({
@@ -267,8 +289,10 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 									minHeight: '10',
 									paddingInline: '4',
 									borderRadius: 'full',
-									backgroundColor: 'bg.accent',
-									color: 'text.inverse',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.subtle',
+									color: 'text.default',
 									fontFamily: 'sans',
 									fontSize: 'sm',
 									fontWeight: '600',
@@ -279,39 +303,11 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 									},
 								})}
 							>
-								GitHub で見る
+								この snapshot の README
 							</a>
-							{snapshot ? (
-								<a
-									href={snapshot.source.readmeUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									className={css({
-										display: 'inline-flex',
-										alignItems: 'center',
-										minHeight: '10',
-										paddingInline: '4',
-										borderRadius: 'full',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.subtle',
-										color: 'text.default',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										fontWeight: '600',
-										textDecoration: 'none',
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
-								>
-									この snapshot の README
-								</a>
-							) : null}
-						</div>
-					</Container>
-				</section>
+						) : null}
+					</div>
+				</PageSection>
 
 				<FreshnessNotice view={view} />
 
@@ -324,67 +320,62 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 					: null}
 
 				{snapshot && snapshot.introduction.relatedRepositories.length > 0 ? (
-					<section
-						aria-labelledby="dotfiles-related-heading"
-						className={css({ paddingBlock: { base: '10', lg: '16' } })}
-					>
-						<Container>
-							<SectionHeading
-								id="dotfiles-related-heading"
-								eyebrow="03 — Related"
-								title="関連リポジトリ"
-								description="上流 README が名指ししている、役割の異なるリポジトリです。"
-							/>
-							<ul
-								className={css({
-									listStyle: 'none',
-									margin: '0',
-									padding: '0',
-									display: 'grid',
-									gap: '4',
-								})}
-							>
-								{snapshot.introduction.relatedRepositories.map((repo) => (
-									<li
-										key={repo.url}
+					<PageSection labelledBy="dotfiles-related-heading">
+						<SectionHeading
+							id="dotfiles-related-heading"
+							eyebrow="03 — Related"
+							title="関連リポジトリ"
+							description="上流 README が名指ししている、役割の異なるリポジトリです。"
+						/>
+						<ul
+							className={css({
+								listStyle: 'none',
+								margin: '0',
+								padding: '0',
+								display: 'grid',
+								gap: '4',
+							})}
+						>
+							{snapshot.introduction.relatedRepositories.map((repo) => (
+								<li
+									key={repo.url}
+									className={css({
+										paddingBlock: '4',
+										borderBlockStartWidth: '1px',
+										borderBlockStartStyle: 'solid',
+										borderBlockStartColor: 'border.subtle',
+									})}
+								>
+									<a
+										href={repo.url}
+										target="_blank"
+										rel="noopener noreferrer"
 										className={css({
-											paddingBlock: '4',
-											borderBlockStartWidth: '1px',
-											borderBlockStartStyle: 'solid',
-											borderBlockStartColor: 'border.subtle',
+											fontFamily: 'mono',
+											fontSize: 'md',
+											fontWeight: '600',
+											color: 'text.accent',
+											textDecoration: 'underline',
+											textUnderlineOffset: '0.18em',
+											textDecorationThickness: '1px',
+											_focusVisible: {
+												outline: '2px solid {colors.border.focus}',
+												outlineOffset: '2px',
+											},
+											_hover: { textDecorationThickness: '2px' },
 										})}
 									>
-										<a
-											href={repo.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'md',
-												fontWeight: '600',
-												color: 'text.accent',
-												textDecoration: 'underline',
-												textUnderlineOffset: '0.18em',
-												textDecorationThickness: '1px',
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
-												_hover: { textDecorationThickness: '2px' },
-											})}
-										>
-											{repo.label}
-										</a>
-										<p className={sourceNoteClassName} style={{ marginBlockStart: '4px' }}>
-											{repo.repo === 'pc-setup'
-												? 'OS とパッケージの provisioning。dotfiles が前提とするマシン状態を作ります。'
-												: '上流 README が参照する関連リポジトリです。'}
-										</p>
-									</li>
-								))}
-							</ul>
-						</Container>
-					</section>
+										{repo.label}
+									</a>
+									<p className={sourceNoteClassName} style={{ marginBlockStart: '4px' }}>
+										{repo.repo === 'pc-setup'
+											? 'OS とパッケージの provisioning。dotfiles が前提とするマシン状態を作ります。'
+											: '上流 README が参照する関連リポジトリです。'}
+									</p>
+								</li>
+							))}
+						</ul>
+					</PageSection>
 				) : null}
 
 				<ProvenanceSection view={view} />
@@ -399,106 +390,101 @@ function BoundarySection({
 	readonly snapshot: NonNullable<ProjectIntroductionView['snapshot']>;
 }) {
 	return (
-		<section
-			aria-labelledby="dotfiles-boundary-heading"
-			className={css({ paddingBlock: { base: '10', lg: '16' } })}
-		>
-			<Container>
-				<SectionHeading
-					id="dotfiles-boundary-heading"
-					eyebrow="01 — Boundary"
-					title="dotfiles と pc-setup の境界"
-					description="マシンを用意する層と、マシンが用意された後のユーザー設定を分けています。"
-				/>
-				<div
+		<PageSection labelledBy="dotfiles-boundary-heading">
+			<SectionHeading
+				id="dotfiles-boundary-heading"
+				eyebrow="01 — Boundary"
+				title="dotfiles と pc-setup の境界"
+				description="マシンを用意する層と、マシンが用意された後のユーザー設定を分けています。"
+			/>
+			<div
+				className={css({
+					display: 'grid',
+					gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
+					gap: '4',
+				})}
+			>
+				<article
 					className={css({
-						display: 'grid',
-						gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-						gap: '4',
+						// Issue #887: the panel separates itself from the page
+						// by FILL, not by a hairline enclosure. `border.subtle`
+						// is the system's decorative separator; the two
+						// boundary panels are raised planes instead.
+						backgroundColor: 'bg.surface',
+						padding: '6',
+						borderRadius: 'lg',
 					})}
 				>
-					<article
+					<Badge tone="accent">dotfiles</Badge>
+					<h3
 						className={css({
-							// Issue #887: the panel separates itself from the page
-							// by FILL, not by a hairline enclosure. `border.subtle`
-							// is the system's decorative separator; the two
-							// boundary panels are raised planes instead.
-							backgroundColor: 'bg.surface',
-							padding: '6',
-							borderRadius: 'lg',
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'heading',
+							fontSize: 'lg',
+							fontWeight: '700',
+							color: 'text.default',
 						})}
 					>
-						<Badge tone="accent">dotfiles</Badge>
-						<h3
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: 'lg',
-								fontWeight: '700',
-								color: 'text.default',
-							})}
-						>
-							ユーザー設定
-						</h3>
-						<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
-							home/ を $HOME にリンクし、Claude Code / Codex / OpenCode の共通設定を submodule の
-							commit で固定します。secret はリポジトリに置かず、プロセス単位で注入します。
-						</p>
-						<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
-							上流 README の Principles と Layout が、この層の契約です。
-						</p>
-					</article>
-					<article
+						ユーザー設定
+					</h3>
+					<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
+						home/ を $HOME にリンクし、Claude Code / Codex / OpenCode の共通設定を submodule の
+						commit で固定します。secret はリポジトリに置かず、プロセス単位で注入します。
+					</p>
+					<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
+						上流 README の Principles と Layout が、この層の契約です。
+					</p>
+				</article>
+				<article
+					className={css({
+						backgroundColor: 'bg.surface',
+						padding: '6',
+						borderRadius: 'lg',
+					})}
+				>
+					<Badge>pc-setup</Badge>
+					<h3
 						className={css({
-							backgroundColor: 'bg.surface',
-							padding: '6',
-							borderRadius: 'lg',
+							margin: '0',
+							marginBlockStart: '2',
+							fontFamily: 'heading',
+							fontSize: 'lg',
+							fontWeight: '700',
+							color: 'text.default',
 						})}
 					>
-						<Badge>pc-setup</Badge>
-						<h3
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: 'lg',
-								fontWeight: '700',
-								color: 'text.default',
-							})}
-						>
-							マシンとパッケージ
-						</h3>
-						<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
-							OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap
-							を担います。ユーザー設定そのものは持ちません。
-						</p>
-						<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
-							境界は上流 README の Principles と ADR-0002 に記録されています。
-						</p>
-						<a
-							href="https://github.com/rebuildup/pc-setup"
-							target="_blank"
-							rel="noopener noreferrer"
-							className={linkClassName}
-						>
-							rebuildup/pc-setup
-						</a>
-					</article>
-				</div>
-				<p className={sourceNoteClassName} style={{ marginBlockStart: '16px' }}>
-					このページの抜粋元:{' '}
+						マシンとパッケージ
+					</h3>
+					<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
+						OS の初期化、パッケージの導入、dotfiles を clone する前の bootstrap
+						を担います。ユーザー設定そのものは持ちません。
+					</p>
+					<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
+						境界は上流 README の Principles と ADR-0002 に記録されています。
+					</p>
 					<a
-						href={snapshot.source.readmeUrl}
+						href="https://github.com/rebuildup/pc-setup"
 						target="_blank"
 						rel="noopener noreferrer"
 						className={linkClassName}
 					>
-						README.md @ {snapshot.source.commitSha.slice(0, 7)}
+						rebuildup/pc-setup
 					</a>
-				</p>
-			</Container>
-		</section>
+				</article>
+			</div>
+			<p className={sourceNoteClassName} style={{ marginBlockStart: '16px' }}>
+				このページの抜粋元:{' '}
+				<a
+					href={snapshot.source.readmeUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={linkClassName}
+				>
+					README.md @ {snapshot.source.commitSha.slice(0, 7)}
+				</a>
+			</p>
+		</PageSection>
 	);
 }
 
@@ -514,124 +500,114 @@ function ReadmeSection({
 		description: '上流 README から抜粋したセクションです。',
 	};
 	return (
-		<section
-			aria-labelledby={`dotfiles-section-${section.id}`}
-			className={css({
-				paddingBlock: { base: '10', lg: '16' },
-				borderBlockStartWidth: '1px',
-				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.subtle',
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id={`dotfiles-section-${section.id}`}
-					eyebrow={`02.${index + 1} — README`}
-					title={meta.title}
-					description={meta.description}
-				/>
-				{section.summary ? (
-					<p
-						lang="en"
+		<PageSection separator labelledBy={`dotfiles-section-${section.id}`}>
+			<SectionHeading
+				id={`dotfiles-section-${section.id}`}
+				eyebrow={`02.${index + 1} — README`}
+				title={meta.title}
+				description={meta.description}
+			/>
+			{section.summary ? (
+				<p
+					lang="en"
+					className={css({
+						margin: '0',
+						marginBlockEnd: '4',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.8',
+						color: 'text.default',
+						maxWidth: '720px',
+					})}
+				>
+					<RichText nodes={section.summary} />
+				</p>
+			) : null}
+			{section.structure.length > 0 ? (
+				<>
+					<h3
 						className={css({
 							margin: '0',
-							marginBlockEnd: '4',
+							marginBlockEnd: '2',
 							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.8',
-							color: 'text.default',
-							maxWidth: '720px',
+							fontSize: 'sm',
+							fontWeight: '600',
+							letterSpacing: '0.04em',
+							textTransform: 'uppercase',
+							color: 'text.muted',
 						})}
 					>
-						<RichText nodes={section.summary} />
-					</p>
-				) : null}
-				{section.structure.length > 0 ? (
-					<>
-						<h3
-							className={css({
-								margin: '0',
-								marginBlockEnd: '2',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-								color: 'text.muted',
-							})}
-						>
-							リポジトリ直下
-						</h3>
-						<ul
-							className={css({
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '2',
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-							})}
-						>
-							{section.structure.map((entry) => (
-								<li key={entry}>
-									<code
-										className={css({
-											display: 'inline-block',
-											paddingBlock: '1',
-											paddingInline: '2',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.subtle',
-											borderRadius: 'md',
-											backgroundColor: 'bg.subtle',
-											fontFamily: 'mono',
-											fontSize: 'sm',
-											color: 'text.default',
-										})}
-									>
-										{entry}
-									</code>
-								</li>
-							))}
-						</ul>
-					</>
-				) : null}
-				{section.points.length > 0 ? (
+						リポジトリ直下
+					</h3>
 					<ul
-						lang="en"
 						className={css({
-							margin: '0',
-							marginBlockStart: section.structure.length > 0 ? '6' : '0',
-							paddingInlineStart: '4',
 							display: 'flex',
-							flexDirection: 'column',
-							gap: '4',
-							maxWidth: '720px',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.8',
-							color: 'text.default',
+							flexWrap: 'wrap',
+							gap: '2',
+							listStyle: 'none',
+							margin: '0',
+							padding: '0',
 						})}
 					>
-						{section.points.map((point, pointIndex) => (
-							<li key={`${section.id}-${pointIndex}`}>
-								<RichText nodes={point} />
+						{section.structure.map((entry) => (
+							<li key={entry}>
+								<code
+									className={css({
+										display: 'inline-block',
+										paddingBlock: '1',
+										paddingInline: '2',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.subtle',
+										borderRadius: 'md',
+										backgroundColor: 'bg.subtle',
+										fontFamily: 'mono',
+										fontSize: 'sm',
+										color: 'text.default',
+									})}
+								>
+									{entry}
+								</code>
 							</li>
 						))}
 					</ul>
-				) : null}
-				<p className={css({ margin: '0', marginBlockStart: '4' })}>
-					<a
-						href={section.sourceUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						className={linkClassName}
-					>
-						README の「{section.heading}」を読む
-					</a>
-				</p>
-			</Container>
-		</section>
+				</>
+			) : null}
+			{section.points.length > 0 ? (
+				<ul
+					lang="en"
+					className={css({
+						margin: '0',
+						marginBlockStart: section.structure.length > 0 ? '6' : '0',
+						paddingInlineStart: '4',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '4',
+						maxWidth: '720px',
+						fontFamily: 'sans',
+						fontSize: 'md',
+						lineHeight: '1.8',
+						color: 'text.default',
+					})}
+				>
+					{section.points.map((point, pointIndex) => (
+						<li key={`${section.id}-${pointIndex}`}>
+							<RichText nodes={point} />
+						</li>
+					))}
+				</ul>
+			) : null}
+			<p className={css({ margin: '0', marginBlockStart: '4' })}>
+				<a
+					href={section.sourceUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={linkClassName}
+				>
+					README の「{section.heading}」を読む
+				</a>
+			</p>
+		</PageSection>
 	);
 }
 
@@ -711,134 +687,119 @@ function FreshnessNotice({ view }: { readonly view: ProjectIntroductionView }) {
 
 function MissingSnapshotSection() {
 	return (
-		<section
-			aria-labelledby="dotfiles-missing-heading"
-			className={css({ paddingBlock: { base: '10', lg: '16' } })}
-		>
-			<Container>
-				<h2
-					id="dotfiles-missing-heading"
-					className={css({
-						margin: '0',
-						fontFamily: 'heading',
-						fontSize: '2xl',
-						fontWeight: '700',
-						color: 'text.default',
-					})}
+		<PageSection labelledBy="dotfiles-missing-heading">
+			<h2
+				id="dotfiles-missing-heading"
+				className={css({
+					margin: '0',
+					fontFamily: 'heading',
+					fontSize: '2xl',
+					fontWeight: '700',
+					color: 'text.default',
+				})}
+			>
+				紹介データを表示できません
+			</h2>
+			<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
+				このページが参照する snapshot
+				を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。
+			</p>
+			<p className={css({ margin: '0', marginBlockStart: '4' })}>
+				<a
+					href="https://github.com/rebuildup/dotfiles"
+					target="_blank"
+					rel="noopener noreferrer"
+					className={linkClassName}
 				>
-					紹介データを表示できません
-				</h2>
-				<p className={bodyTextClassName} style={{ marginBlockStart: '8px' }}>
-					このページが参照する snapshot
-					を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。
-				</p>
-				<p className={css({ margin: '0', marginBlockStart: '4' })}>
-					<a
-						href="https://github.com/rebuildup/dotfiles"
-						target="_blank"
-						rel="noopener noreferrer"
-						className={linkClassName}
-					>
-						rebuildup/dotfiles
-					</a>
-				</p>
-			</Container>
-		</section>
+					rebuildup/dotfiles
+				</a>
+			</p>
+		</PageSection>
 	);
 }
 
 function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView }) {
 	const { snapshot } = view;
 	return (
-		<section
-			aria-labelledby="dotfiles-provenance-heading"
-			className={css({
-				paddingBlock: { base: '10', lg: '16' },
-				borderBlockStartWidth: '1px',
-				borderBlockStartStyle: 'solid',
-				borderBlockStartColor: 'border.subtle',
-			})}
-		>
-			<Container>
-				<SectionHeading
-					id="dotfiles-provenance-heading"
-					eyebrow="04 — Provenance"
-					title="このページについて"
-					description="内容は公開 README から生成した snapshot です。表示のたびに上流へ問い合わせることはありません。"
-				/>
-				{snapshot ? (
-					<dl
-						className={css({
-							display: 'grid',
-							gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 3fr) minmax(0, 9fr)' },
-							rowGap: '4',
-							columnGap: '6',
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'sm',
-						})}
-					>
-						<dt className={css({ color: 'text.muted' })}>README commit</dt>
-						<dd className={css({ margin: '0', color: 'text.default' })}>
-							<a
-								href={commitUrl(snapshot.source)}
-								target="_blank"
-								rel="noopener noreferrer"
-								className={css({
-									fontFamily: 'mono',
-									color: 'text.accent',
-									textDecoration: 'underline',
-									textUnderlineOffset: '0.18em',
-									textDecorationThickness: '1px',
-									_hover: { textDecorationThickness: '2px' },
-								})}
-							>
-								{snapshot.source.commitSha}
-							</a>
-						</dd>
-						<dt className={css({ color: 'text.muted' })}>README</dt>
-						<dd className={css({ margin: '0' })}>
-							<a
-								href={snapshot.source.readmeUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								className={linkClassName}
-							>
-								{snapshot.source.readmePath} @ {snapshot.source.commitSha.slice(0, 7)}
-							</a>
-						</dd>
-						<dt className={css({ color: 'text.muted' })}>README blob</dt>
-						<dd
+		<PageSection separator labelledBy="dotfiles-provenance-heading">
+			<SectionHeading
+				id="dotfiles-provenance-heading"
+				eyebrow="04 — Provenance"
+				title="このページについて"
+				description="内容は公開 README から生成した snapshot です。表示のたびに上流へ問い合わせることはありません。"
+			/>
+			{snapshot ? (
+				<dl
+					className={css({
+						display: 'grid',
+						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 3fr) minmax(0, 9fr)' },
+						rowGap: '4',
+						columnGap: '6',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+					})}
+				>
+					<dt className={css({ color: 'text.muted' })}>README commit</dt>
+					<dd className={css({ margin: '0', color: 'text.default' })}>
+						<a
+							href={commitUrl(snapshot.source)}
+							target="_blank"
+							rel="noopener noreferrer"
 							className={css({
-								margin: '0',
 								fontFamily: 'mono',
-								overflowWrap: 'anywhere',
+								color: 'text.accent',
+								textDecoration: 'underline',
+								textUnderlineOffset: '0.18em',
+								textDecorationThickness: '1px',
+								_hover: { textDecorationThickness: '2px' },
 							})}
 						>
-							{snapshot.source.readmeBlobSha}
-						</dd>
-						<dt className={css({ color: 'text.muted' })}>commit date</dt>
-						<dd className={css({ margin: '0' })}>{formatDate(snapshot.source.committedAt)}</dd>
-						<dt className={css({ color: 'text.muted' })}>last verified</dt>
-						<dd className={css({ margin: '0' })}>{formatDate(snapshot.verifiedAt)}</dd>
-						<dt className={css({ color: 'text.muted' })}>snapshot applied</dt>
-						<dd className={css({ margin: '0' })}>{formatDate(snapshot.appliedAt)}</dd>
-						<dt className={css({ color: 'text.muted' })}>availability</dt>
-						<dd className={css({ margin: '0' })}>
-							{snapshot.availability === 'public' ? 'public' : availabilityLabel(view.reason)}
-						</dd>
-					</dl>
-				) : (
-					<p className={bodyTextClassName}>
-						snapshot の来歴を表示できません。上流リポジトリの README を直接確認してください。
-					</p>
-				)}
-				<p className={sourceNoteClassName} style={{ marginBlockStart: '24px' }}>
-					同期は公開 README・リポジトリ metadata・既定ブランチの commit の 3
-					読み取りだけを行い、内容が変わったとき、または週次の再確認が必要なときだけ snapshot
-					を更新します。
+							{snapshot.source.commitSha}
+						</a>
+					</dd>
+					<dt className={css({ color: 'text.muted' })}>README</dt>
+					<dd className={css({ margin: '0' })}>
+						<a
+							href={snapshot.source.readmeUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							className={linkClassName}
+						>
+							{snapshot.source.readmePath} @ {snapshot.source.commitSha.slice(0, 7)}
+						</a>
+					</dd>
+					<dt className={css({ color: 'text.muted' })}>README blob</dt>
+					<dd
+						className={css({
+							margin: '0',
+							fontFamily: 'mono',
+							overflowWrap: 'anywhere',
+						})}
+					>
+						{snapshot.source.readmeBlobSha}
+					</dd>
+					<dt className={css({ color: 'text.muted' })}>commit date</dt>
+					<dd className={css({ margin: '0' })}>{formatDate(snapshot.source.committedAt)}</dd>
+					<dt className={css({ color: 'text.muted' })}>last verified</dt>
+					<dd className={css({ margin: '0' })}>{formatDate(snapshot.verifiedAt)}</dd>
+					<dt className={css({ color: 'text.muted' })}>snapshot applied</dt>
+					<dd className={css({ margin: '0' })}>{formatDate(snapshot.appliedAt)}</dd>
+					<dt className={css({ color: 'text.muted' })}>availability</dt>
+					<dd className={css({ margin: '0' })}>
+						{snapshot.availability === 'public' ? 'public' : availabilityLabel(view.reason)}
+					</dd>
+				</dl>
+			) : (
+				<p className={bodyTextClassName}>
+					snapshot の来歴を表示できません。上流リポジトリの README を直接確認してください。
 				</p>
-			</Container>
-		</section>
+			)}
+			<p className={sourceNoteClassName} style={{ marginBlockStart: '24px' }}>
+				同期は公開 README・リポジトリ metadata・既定ブランチの commit の 3
+				読み取りだけを行い、内容が変わったとき、または週次の再確認が必要なときだけ snapshot
+				を更新します。
+			</p>
+		</PageSection>
 	);
 }

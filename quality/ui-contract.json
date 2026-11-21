@@ -839,10 +839,10 @@
 		},
 		{
 			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
+			"reason": "legacy debt pending #1109 — FreshnessNotice slim band (paddingBlock 2/4) is not a rhythm section; card surfaces pending Panel migration",
 			"signatures": {
+				"raw <section> element": 1,
 				"paddingBlock on surface object": 2,
-				"raw <section> element": 7,
 				"surface + block padding/min-height outside PageSection": 3
 			},
 			"clause": "C-1/C-3"
@@ -2495,7 +2495,6 @@
 			"files": [
 				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx",
 				"src/routes/tools.$slug.tsx"
 			],

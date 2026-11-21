@@ -2,9 +2,12 @@ import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Stack } from '../../editorial/primitives/Flow';
+import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import { ScrollRegion } from '../../editorial/table-code';
 import { formatDate, layerLabel, shortRef } from '../format';
 import { KEYBOARD_DEFAULT_LAYER } from '../types';
@@ -139,12 +142,6 @@ const metaTextStyle = css({
 	color: 'text.muted',
 });
 
-const flowGridStyle = css({
-	display: 'grid',
-	gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-	gap: '4',
-});
-
 const flowCardStyle = css({
 	display: 'flex',
 	flexDirection: 'column',
@@ -168,15 +165,6 @@ const flowTitleStyle = css({
 	color: 'text.default',
 });
 
-const flowListStyle = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
-});
-
 const flowStepStyle = css({
 	display: 'flex',
 	gap: '2',
@@ -198,9 +186,6 @@ const flowIndexStyle = css({
 const noteListStyle = css({
 	margin: '0',
 	paddingInlineStart: '4',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
 	fontSize: 'xs',
 	lineHeight: '1.6',
 	color: 'text.muted',
@@ -380,9 +365,6 @@ const calloutStyle = css({
 const warningListStyle = css({
 	margin: '0',
 	paddingInlineStart: '4',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
 	fontSize: 'sm',
 	lineHeight: '1.6',
 	color: 'text.default',
@@ -541,11 +523,11 @@ function KeyboardPageReady({
 					description="macOS は OS 側のキー差し替えと Kanata のレイヤーが直列に重なります。Windows は Kanata の入力順そのものを表示します。"
 				/>
 				<div className={bodyStyle}>
-					<div className={flowGridStyle}>
+					<Grid columns={2} gap="4">
 						{data.catalog.platforms.map((entry) => (
 							<PlatformFlow key={entry.id} platform={entry} />
 						))}
-					</div>
+					</Grid>
 				</div>
 			</PageSection>
 
@@ -676,11 +658,11 @@ function KeyboardPageReady({
 					{data.catalog.warnings.length > 0 ? (
 						<div>
 							<p className={metaTextStyle}>解析メモ</p>
-							<ul className={warningListStyle}>
+							<Stack as="ul" gap="1" className={warningListStyle}>
 								{data.catalog.warnings.map((warning) => (
 									<li key={warning}>{warning}</li>
 								))}
-							</ul>
+							</Stack>
 						</div>
 					) : null}
 				</div>
@@ -779,19 +761,12 @@ function KeyboardPageReady({
 												    the browser's link colour. The platform ink is
 												    achromatic now, so the underline is what says
 												    "this cell links to the source file". */}
-											<a
+											<TextLink
 												href={`https://github.com/${source.repository}/blob/${source.ref}/${source.path}`}
 												rel="noreferrer"
-												className={css({
-													color: 'text.accent',
-													textDecoration: 'underline',
-													textUnderlineOffset: '0.18em',
-													textDecorationThickness: '1px',
-													_hover: { textDecorationThickness: '2px' },
-												})}
 											>
 												{source.repository}
-											</a>
+											</TextLink>
 										</td>
 										<td>
 											<code title={source.ref}>{shortRef(source.ref)}</code>
@@ -853,13 +828,13 @@ function KeyboardPageUnavailable({
 				<p className={captionStyle}>
 					同期マニフェストの検証に失敗したため、古い、または不完全なデータを現在の設定として表示しません。診断コードのみ記録しています。
 				</p>
-				<ul className={noteListStyle}>
+				<Stack as="ul" gap="1" className={noteListStyle}>
 					{data.detailCodes.map((code) => (
 						<li key={code}>
 							<code>{code}</code>
 						</li>
 					))}
-				</ul>
+				</Stack>
 			</div>
 		</PageSection>
 	);
@@ -896,7 +871,7 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 				<Badge tone="neutral">{platform.layout}</Badge>
 			</p>
 			{ready ? (
-				<ol className={flowListStyle}>
+				<Stack as="ol" gap="2" className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
 					{steps.map((step, index) => (
 						<li key={step} className={flowStepStyle}>
 							<span className={flowIndexStyle} aria-hidden="true">
@@ -905,7 +880,7 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 							<span>{step}</span>
 						</li>
 					))}
-				</ol>
+				</Stack>
 			) : (
 				<p className={captionStyle}>
 					{platform.reason ??
@@ -913,11 +888,11 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 				</p>
 			)}
 			{platform.notes.length > 0 ? (
-				<ul className={noteListStyle}>
+				<Stack as="ul" gap="1" className={noteListStyle}>
 					{platform.notes.map((note) => (
 						<li key={note}>{note}</li>
 					))}
-				</ul>
+				</Stack>
 			) : null}
 		</div>
 	);

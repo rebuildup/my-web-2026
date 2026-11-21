@@ -353,14 +353,6 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 2
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/legal/AssetLicenseReview.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
@@ -377,36 +369,10 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/portfolio/components/DesignView.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridAutoFlow": 1,
-				"gridAutoRows": 1,
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioDetail.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 2
 			},
 			"clause": "C-4"
 		},
@@ -423,22 +389,6 @@
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
 				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/portfolio/components/VideoView.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridTemplateColumns": 2
 			},
 			"clause": "C-4"
 		},
@@ -525,6 +475,48 @@
 		{
 			"path": "src/about/components/AboutPage.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
+			"signatures": {
+				"gridTemplateColumns": 1
+			},
+			"clause": "C-4"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"reason": "justified: diagram grid uses asymmetric minmax(0,1fr)+fixed-rail tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			},
+			"clause": "C-4"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"reason": "justified: provenance <dl> uses asymmetric 3fr/9fr label/value tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			},
+			"clause": "C-4"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"reason": "justified: dense variable-span tile mosaic (gridAutoFlow dense + minmax auto rows + per-item column spans) has no Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1,
+				"gridAutoFlow": 1,
+				"gridAutoRows": 1
+			},
+			"clause": "C-4"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
+			"signatures": {
+				"gridTemplateColumns": 1
+			},
+			"clause": "C-4"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"reason": "justified: role/period <dl> uses auto key-value tracks, not a Grid preset",
 			"signatures": {
 				"gridTemplateColumns": 1
 			},
@@ -715,16 +707,6 @@
 			"clause": "C-1/C-3"
 		},
 		{
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "legacy debt pending #1109 tab-surface migration (tab buttons paint bg.canvas; flow/status cards carry surface+padding)",
-			"signatures": {
-				"backgroundColor: bg.canvas": 2,
-				"paddingBlock on surface object": 2,
-				"surface + block padding/min-height outside PageSection": 2
-			},
-			"clause": "C-1/C-3"
-		},
-		{
 			"path": "src/legal/AssetLicenseReview.tsx",
 			"reason": "legacy debt pending #1109 migration to PageSection",
 			"signatures": {
@@ -811,16 +793,6 @@
 				"surface + block padding/min-height outside PageSection": 1
 			},
 			"clause": "C-3"
-		},
-		{
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "legacy debt pending #1109 — FreshnessNotice slim band (paddingBlock 2/4) is not a rhythm section; card surfaces pending Panel migration",
-			"signatures": {
-				"raw <section> element": 1,
-				"paddingBlock on surface object": 2,
-				"surface + block padding/min-height outside PageSection": 3
-			},
-			"clause": "C-1/C-3"
 		},
 		{
 			"path": "src/routes/admin.emoji-catalog.tsx",
@@ -961,6 +933,26 @@
 				"surface + block padding/min-height outside PageSection": 2
 			},
 			"clause": "C-1/C-3"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"reason": "justified: ARIA tablist chrome (role=tab, aria-selected state) is not Button/TextLink vocabulary (ADR-0022 C-6) — the tab pills carry surface chrome",
+			"signatures": {
+				"backgroundColor: bg.canvas": 2,
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 2
+			},
+			"clause": "C-1/C-3"
+		},
+		{
+			"path": "src/projects/DotfilesIntroductionPage.tsx",
+			"reason": "justified: FreshnessNotice is a slim status band (8/16px beat) with a conditional surface fill — no PageSection rhythm or Panel variant expresses it",
+			"signatures": {
+				"raw <section> element": 1,
+				"paddingBlock on surface object": 2,
+				"surface + block padding/min-height outside PageSection": 2
+			},
+			"clause": "C-1/C-3"
 		}
 	],
 	"controlAllowlist": [
@@ -1098,20 +1090,6 @@
 			"clause": "C-6"
 		},
 		{
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> backgroundColor": 2,
-				"<button> borderColor": 2,
-				"<button> borderRadius": 2,
-				"<button> borderStyle": 2,
-				"<button> borderWidth": 2,
-				"<button> paddingBlock": 2,
-				"<button> paddingInline": 2
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/personal/engagement/Engagement.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
@@ -1122,23 +1100,6 @@
 				"<button> borderWidth": 1,
 				"<button> paddingBlock": 1,
 				"<button> paddingInline": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/portfolio/components/DesignView.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> borderRadius": 1,
-				"<a> height": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> borderRadius": 2
 			},
 			"clause": "C-6"
 		},
@@ -1169,32 +1130,10 @@
 			"clause": "C-6"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioDetail.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> borderRadius": 2,
-				"<a> paddingBlock": 2
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/portfolio/components/ProjectCard.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
 				"<a> borderRadius": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/portfolio/components/VideoView.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> borderRadius": 2,
-				"<button> backgroundColor": 2,
-				"<button> borderColor": 2,
-				"<button> borderRadius": 2,
-				"<button> borderStyle": 2,
-				"<button> borderWidth": 2
 			},
 			"clause": "C-6"
 		},
@@ -1207,19 +1146,6 @@
 				"<button> borderRadius": 1,
 				"<button> borderStyle": 1,
 				"<button> borderWidth": 1
-			},
-			"clause": "C-6"
-		},
-		{
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<a> backgroundColor": 1,
-				"<a> borderColor": 1,
-				"<a> borderRadius": 2,
-				"<a> borderStyle": 1,
-				"<a> borderWidth": 1,
-				"<a> paddingInline": 2
 			},
 			"clause": "C-6"
 		},
@@ -1285,6 +1211,59 @@
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
 				"<a> borderRadius": 1
+			},
+			"clause": "C-6"
+		},
+		{
+			"path": "src/keyboard/components/KeyboardPage.tsx",
+			"reason": "justified: ARIA tablist chrome (role=tab, aria-selected state) is not Button/TextLink vocabulary (ADR-0022 C-6)",
+			"signatures": {
+				"<button> backgroundColor": 2,
+				"<button> borderColor": 2,
+				"<button> borderRadius": 2,
+				"<button> borderStyle": 2,
+				"<button> borderWidth": 2,
+				"<button> paddingBlock": 2,
+				"<button> paddingInline": 2
+			},
+			"clause": "C-6"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"reason": "justified: whole-tile link chrome (height:100% + focus ring) is card-level affordance, not TextLink",
+			"signatures": {
+				"<a> height": 1,
+				"<a> borderRadius": 1
+			},
+			"clause": "C-6"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"reason": "legacy debt pending #1109: cover/title link focus-ring chrome shared with the card-title link pattern",
+			"signatures": {
+				"<a> borderRadius": 2
+			},
+			"clause": "C-6"
+		},
+		{
+			"path": "src/portfolio/components/PortfolioDetail.tsx",
+			"reason": "justified: adjacent-project nav links are two-line row affordances, not TextLink rows",
+			"signatures": {
+				"<a> paddingBlock": 2,
+				"<a> borderRadius": 2
+			},
+			"clause": "C-6"
+		},
+		{
+			"path": "src/portfolio/components/VideoView.tsx",
+			"reason": "justified: circular play/close overlay media controls + cover/title link focus rings are not Button/TextLink vocabulary",
+			"signatures": {
+				"<button> backgroundColor": 2,
+				"<button> borderColor": 2,
+				"<button> borderRadius": 2,
+				"<button> borderStyle": 2,
+				"<button> borderWidth": 2,
+				"<a> borderRadius": 2
 			},
 			"clause": "C-6"
 		}
@@ -1395,15 +1374,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/keyboard/components/KeyboardPage.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ol> display": 1,
-				"<ul> display": 2
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/legal/AssetLicenseReview.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -1453,40 +1423,11 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/portfolio/components/DesignView.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ol> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/portfolio/components/DevelopView.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<li> borderColor": 1,
-				"<li> borderRadius": 1,
-				"<li> borderStyle": 1,
-				"<li> borderWidth": 1,
-				"<ol> display": 1,
-				"<ul> display": 2
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/portfolio/components/PortfolioCaseStudy.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
 				"<li> backgroundColor": 1,
 				"<li> borderRadius": 1,
-				"<ul> display": 2
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioDetail.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
 				"<ul> display": 2
 			},
 			"clause": "C-5"
@@ -1499,22 +1440,6 @@
 				"<li> borderRadius": 1,
 				"<ol> display": 1,
 				"<ul> display": 2
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/portfolio/components/VideoView.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ol> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
-			"path": "src/projects/DotfilesIntroductionPage.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 3
 			},
 			"clause": "C-5"
 		},
@@ -1553,6 +1478,25 @@
 		{
 			"path": "src/contact/commission-page.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
+			"signatures": {
+				"<li> borderColor": 1,
+				"<li> borderRadius": 1,
+				"<li> borderStyle": 1,
+				"<li> borderWidth": 1
+			},
+			"clause": "C-5"
+		},
+		{
+			"path": "src/portfolio/components/DesignView.tsx",
+			"reason": "justified: the mosaic <ol> is the DesignView grid above",
+			"signatures": {
+				"<ol> display": 1
+			},
+			"clause": "C-5"
+		},
+		{
+			"path": "src/portfolio/components/DevelopView.tsx",
+			"reason": "justified: technology tag chips keep their pill chrome on <li>",
 			"signatures": {
 				"<li> borderColor": 1,
 				"<li> borderRadius": 1,
@@ -2069,20 +2013,6 @@
 		},
 		{
 			"files": [
-				"src/admin/composer.tsx",
-				"src/admin/emoji-catalog/catalog.tsx",
-				"src/admin/images/images.tsx",
-				"src/admin/invitations/invitations.tsx",
-				"src/admin/keys/keys.tsx",
-				"src/legal/AssetLicenseReview.tsx",
-				"src/personal/handle-map/HandleMap.tsx",
-				"src/portfolio/components/PortfolioCaseStudy.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
 				"src/admin/emoji-catalog/catalog.tsx",
 				"src/admin/images/images.tsx",
 				"src/admin/invitations/invitations.tsx",
@@ -2201,17 +2131,6 @@
 		},
 		{
 			"files": [
-				"src/keyboard/components/KeyboardPage.tsx",
-				"src/portfolio/components/FacetFilter.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/ProjectCard.tsx",
-				"src/portfolio/components/ViewSwitcher.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
 				"src/legal/AssetLicenseReview.tsx",
 				"src/personal/melting-face/MeltingFace.tsx",
 				"src/routes/stack/StackPage.tsx"
@@ -2223,15 +2142,6 @@
 				"src/legal/AssetLicenseReview.tsx",
 				"src/personal/engagement/Engagement.tsx",
 				"src/personal/handle-map/HandleMap.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/personal/engagement/Engagement.tsx",
-				"src/personal/handle-map/HandleMap.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2296,14 +2206,6 @@
 		{
 			"files": [
 				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/tools.$slug.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/PortfolioDetail.tsx",
 				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/tools.index.tsx"
 			],
@@ -2330,20 +2232,6 @@
 				"src/routes/design-system/sections/ColorSwatches.tsx",
 				"src/routes/design-system/sections/ReactionPicker.tsx",
 				"src/routes/design-system/sections/SpacingRuler.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/AboutPage.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/contact/page.tsx",
-				"src/home/explore/ExploreSection.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
-				"src/routes/activity/Timeline.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/stack/StackPage.tsx",
-				"src/routes/tools.index.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2353,35 +2241,6 @@
 				"src/about/components/SkillsList.tsx",
 				"src/home/current/CurrentProjects.tsx",
 				"src/portfolio/components/PortfolioProjectHistory.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/CareerTimeline.tsx",
-				"src/about/components/LinksPage.tsx",
-				"src/about/components/SkillsList.tsx",
-				"src/contact/page.tsx",
-				"src/home/composer.tsx",
-				"src/home/guide/VisitTrail.tsx",
-				"src/home/privacy-notice-compact.tsx",
-				"src/home/privacy-notice.tsx",
-				"src/home/reactions/widget.tsx",
-				"src/home/status/incident-list.tsx",
-				"src/keyboard/components/KeyboardDiagram.tsx",
-				"src/keyboard/components/KeyboardPage.tsx",
-				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/EmptyState.tsx",
-				"src/portfolio/components/FacetFilter.tsx",
-				"src/portfolio/components/Markdown.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/VideoView.tsx",
-				"src/portfolio/components/ViewSwitcher.tsx",
-				"src/projects/DotfilesIntroductionPage.tsx",
-				"src/routes/design-system/DesignSystemPage.tsx",
-				"src/routes/design-system/sections/InteractiveStates.tsx",
-				"src/routes/design-system/sections/ReactionPicker.tsx",
-				"src/routes/tools.$slug.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2402,16 +2261,6 @@
 				"src/routes/admin.invitations.tsx",
 				"src/routes/admin.keys.tsx",
 				"src/routes/stack/StackPage.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/about/components/SkillsList.tsx",
-				"src/home/privacy-notice-compact.tsx",
-				"src/portfolio/components/Markdown.tsx",
-				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/routes/tools.$slug.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -2445,6 +2294,84 @@
 				"src/routes/design-system/sections/ColorSwatches.tsx",
 				"src/routes/design-system/sections/ImageCls.tsx",
 				"src/routes/design-system/sections/StatusAccents.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/CareerTimeline.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/about/components/SkillsList.tsx",
+				"src/contact/page.tsx",
+				"src/home/composer.tsx",
+				"src/home/guide/VisitTrail.tsx",
+				"src/home/privacy-notice-compact.tsx",
+				"src/home/privacy-notice.tsx",
+				"src/home/reactions/widget.tsx",
+				"src/home/status/incident-list.tsx",
+				"src/keyboard/components/KeyboardDiagram.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/EmptyState.tsx",
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/Markdown.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/VideoView.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/routes/design-system/sections/InteractiveStates.tsx",
+				"src/routes/design-system/sections/ReactionPicker.tsx",
+				"src/routes/tools.$slug.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/AboutPage.tsx",
+				"src/about/components/LinksPage.tsx",
+				"src/contact/page.tsx",
+				"src/home/explore/ExploreSection.tsx",
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/portfolio/components/DevelopView.tsx",
+				"src/portfolio/components/PortfolioDetail.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
+				"src/portfolio/components/VideoView.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"src/routes/activity/Timeline.tsx",
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/stack/StackPage.tsx",
+				"src/routes/tools.index.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/about/components/SkillsList.tsx",
+				"src/home/privacy-notice-compact.tsx",
+				"src/portfolio/components/Markdown.tsx",
+				"src/routes/tools.$slug.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/admin/composer.tsx",
+				"src/admin/emoji-catalog/catalog.tsx",
+				"src/admin/images/images.tsx",
+				"src/admin/invitations/invitations.tsx",
+				"src/admin/keys/keys.tsx",
+				"src/legal/AssetLicenseReview.tsx",
+				"src/personal/handle-map/HandleMap.tsx",
+				"src/portfolio/components/PortfolioCaseStudy.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/keyboard/components/KeyboardPage.tsx",
+				"src/portfolio/components/FacetFilter.tsx",
+				"src/portfolio/components/ProjectCard.tsx",
+				"src/portfolio/components/ViewSwitcher.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		}

@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack } from '../../editorial/primitives/Flow';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import type { PortfolioProject } from '../schema';
 import { hasPeriodLabel, hasRecordedRole, projectCover } from '../views';
@@ -40,20 +41,15 @@ const ROW_FRAME_RATIO = '16 / 9';
 
 export function DevelopView({ projects }: DevelopViewProps) {
 	return (
-		<ol
-			className={css({
-				listStyle: 'none',
-				margin: '0',
-				padding: '0',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: { base: '10', lg: '16' },
-			})}
+		<Stack
+			as="ol"
+			gap={{ base: '10', lg: '16' }}
+			className={css({ listStyle: 'none', margin: '0', padding: '0' })}
 		>
 			{projects.map((project, index) => (
 				<DevelopRow key={project.id} project={project} index={index} />
 			))}
-		</ol>
+		</Stack>
 	);
 }
 
@@ -256,15 +252,10 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 						</dl>
 					) : null}
 					{hasTechnologies ? (
-						<ul
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '2',
-							})}
+						<Cluster
+							as="ul"
+							gap="2"
+							className={css({ listStyle: 'none', margin: '0', padding: '0' })}
 						>
 							{project.technologies.map((technology) => (
 								<li
@@ -285,18 +276,13 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 									{technology}
 								</li>
 							))}
-						</ul>
+						</Cluster>
 					) : null}
 					{hasLinks ? (
-						<ul
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '4',
-							})}
+						<Cluster
+							as="ul"
+							gap="4"
+							className={css({ listStyle: 'none', margin: '0', padding: '0' })}
 						>
 							{project.links.map((link) => (
 								<li key={link.id}>
@@ -338,7 +324,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 									</a>
 								</li>
 							))}
-						</ul>
+						</Cluster>
 					) : null}
 				</div>
 			</article>

@@ -12,8 +12,16 @@ import { css, cx } from '../../../styled-system/css';
 
 export type GridColumns = 1 | 2 | 3 | 4 | 5;
 
-/** Spacing-token gap values allowed by the rhythm contract. */
-export type FlowGap = '0' | '1' | '2' | '3' | '4' | '6' | '10' | '16' | '24' | '32';
+/** Spacing tokens allowed by the rhythm contract. */
+export type FlowGapToken = '0' | '1' | '2' | '3' | '4' | '6' | '10' | '16' | '24' | '32';
+
+/**
+ * A rhythm-token gap, or a responsive override across the `base`/`md`/`lg`
+ * breakpoints (Panda resolves the object inside `css()`).
+ */
+export type FlowGap =
+	| FlowGapToken
+	| { base?: FlowGapToken; sm?: FlowGapToken; md?: FlowGapToken; lg?: FlowGapToken };
 
 const COLUMN_TRACKS: Record<GridColumns, Record<string, string>> = {
 	1: { base: '1fr', md: '1fr', lg: '1fr' },

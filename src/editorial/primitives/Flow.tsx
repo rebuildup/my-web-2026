@@ -18,6 +18,8 @@ export interface StackProps {
 	className?: string;
 	children?: ReactNode;
 	'aria-label'?: string;
+	/** BCP-47 language tag forwarded to the rendered element. */
+	lang?: string;
 	/** Pass-through `data-*` attributes for E2E/integration selectors. */
 	[key: `data-${string}`]: string | number | boolean | undefined;
 }
@@ -67,6 +69,8 @@ export interface ClusterProps {
 	className?: string;
 	children?: ReactNode;
 	'aria-label'?: string;
+	/** BCP-47 language tag forwarded to the rendered element. */
+	lang?: string;
 	/** Pass-through `data-*` attributes for E2E/integration selectors. */
 	[key: `data-${string}`]: string | number | boolean | undefined;
 }

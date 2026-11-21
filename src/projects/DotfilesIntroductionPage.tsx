@@ -1,10 +1,15 @@
 import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
+import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
+import { Cluster, Stack } from '../editorial/primitives/Flow';
+import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
+import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { StateMark } from '../editorial/primitives/StateMark';
+import { TextLink } from '../editorial/primitives/TextLink';
 import { RichText } from './RichText';
 import type {
 	FreshnessState,
@@ -60,17 +65,10 @@ const FRESHNESS_MARK: Readonly<Record<FreshnessState, 'ok' | 'degraded' | 'unrea
 	unknown: 'degraded',
 };
 
-const linkClassName = css({
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-		borderRadius: '1px',
-	},
-	_hover: { textDecorationThickness: '2px' },
+const listReset = css({
+	margin: '0',
+	padding: '0',
+	listStyle: 'none',
 });
 
 const bodyTextClassName = css({
@@ -171,17 +169,11 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 								ユーザー設定・エージェント配線・実行時 secret 注入
 							</p>
 						</div>
-						<div
-							className={css({
-								display: 'flex',
-								flexWrap: 'wrap',
-								gap: '2',
-							})}
-						>
+						<Cluster gap="2">
 							<Badge>user-level config</Badge>
 							<Badge>agent wiring</Badge>
 							<Badge>runtime secrets</Badge>
-						</div>
+						</Cluster>
 					</div>
 					<p
 						lang="ja"
@@ -235,78 +227,40 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 								})}
 							>
 								— README,{' '}
-								<a
+								<TextLink
 									href={snapshot.source.readmeUrl}
 									target="_blank"
 									rel="noopener noreferrer"
-									className={linkClassName}
 								>
 									{snapshot.source.owner}/{snapshot.source.repo}
-								</a>
+								</TextLink>
 							</cite>
 						</blockquote>
 					) : null}
-					<div
-						className={css({
-							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '4',
-							marginBlockStart: '6',
-						})}
-					>
-						<a
+					<Cluster gap="4" className={css({ marginBlockStart: '6' })}>
+						<Button
+							as="a"
+							variant="primary"
+							size="sm"
 							href="https://github.com/rebuildup/dotfiles"
 							target="_blank"
 							rel="noopener noreferrer"
-							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								minHeight: '10',
-								paddingInline: '4',
-								borderRadius: 'full',
-								backgroundColor: 'bg.accent',
-								color: 'text.inverse',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								fontWeight: '600',
-								textDecoration: 'none',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
-							})}
 						>
 							GitHub で見る
-						</a>
+						</Button>
 						{snapshot ? (
-							<a
+							<Button
+								as="a"
+								variant="secondary"
+								size="sm"
 								href={snapshot.source.readmeUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								className={css({
-									display: 'inline-flex',
-									alignItems: 'center',
-									minHeight: '10',
-									paddingInline: '4',
-									borderRadius: 'full',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.subtle',
-									color: 'text.default',
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									fontWeight: '600',
-									textDecoration: 'none',
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
 							>
 								この snapshot の README
-							</a>
+							</Button>
 						) : null}
-					</div>
+					</Cluster>
 				</PageSection>
 
 				<FreshnessNotice view={view} />
@@ -327,15 +281,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 							title="関連リポジトリ"
 							description="上流 README が名指ししている、役割の異なるリポジトリです。"
 						/>
-						<ul
-							className={css({
-								listStyle: 'none',
-								margin: '0',
-								padding: '0',
-								display: 'grid',
-								gap: '4',
-							})}
-						>
+						<Stack as="ul" gap="4" className={listReset}>
 							{snapshot.introduction.relatedRepositories.map((repo) => (
 								<li
 									key={repo.url}
@@ -346,7 +292,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 										borderBlockStartColor: 'border.subtle',
 									})}
 								>
-									<a
+									<TextLink
 										href={repo.url}
 										target="_blank"
 										rel="noopener noreferrer"
@@ -354,19 +300,10 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 											fontFamily: 'mono',
 											fontSize: 'md',
 											fontWeight: '600',
-											color: 'text.accent',
-											textDecoration: 'underline',
-											textUnderlineOffset: '0.18em',
-											textDecorationThickness: '1px',
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
-											_hover: { textDecorationThickness: '2px' },
 										})}
 									>
 										{repo.label}
-									</a>
+									</TextLink>
 									<p className={sourceNoteClassName} style={{ marginBlockStart: '4px' }}>
 										{repo.repo === 'pc-setup'
 											? 'OS とパッケージの provisioning。dotfiles が前提とするマシン状態を作ります。'
@@ -374,7 +311,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 									</p>
 								</li>
 							))}
-						</ul>
+						</Stack>
 					</PageSection>
 				) : null}
 
@@ -397,24 +334,12 @@ function BoundarySection({
 				title="dotfiles と pc-setup の境界"
 				description="マシンを用意する層と、マシンが用意された後のユーザー設定を分けています。"
 			/>
-			<div
-				className={css({
-					display: 'grid',
-					gridTemplateColumns: { base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
-					gap: '4',
-				})}
-			>
-				<article
-					className={css({
-						// Issue #887: the panel separates itself from the page
-						// by FILL, not by a hairline enclosure. `border.subtle`
-						// is the system's decorative separator; the two
-						// boundary panels are raised planes instead.
-						backgroundColor: 'bg.surface',
-						padding: '6',
-						borderRadius: 'lg',
-					})}
-				>
+			<Grid columns={2} gap="4">
+				{/* Issue #887: the panel separates itself from the page
+				    by FILL, not by a hairline enclosure. `border.subtle`
+				    is the system's decorative separator; the two
+				    boundary panels are raised planes instead. */}
+				<Panel as="article" variant="surface" padding="6" radius="lg">
 					<Badge tone="accent">dotfiles</Badge>
 					<h3
 						className={css({
@@ -435,14 +360,8 @@ function BoundarySection({
 					<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
 						上流 README の Principles と Layout が、この層の契約です。
 					</p>
-				</article>
-				<article
-					className={css({
-						backgroundColor: 'bg.surface',
-						padding: '6',
-						borderRadius: 'lg',
-					})}
-				>
+				</Panel>
+				<Panel as="article" variant="surface" padding="6" radius="lg">
 					<Badge>pc-setup</Badge>
 					<h3
 						className={css({
@@ -463,26 +382,20 @@ function BoundarySection({
 					<p className={sourceNoteClassName} style={{ marginBlockStart: '8px' }}>
 						境界は上流 README の Principles と ADR-0002 に記録されています。
 					</p>
-					<a
+					<TextLink
 						href="https://github.com/rebuildup/pc-setup"
 						target="_blank"
 						rel="noopener noreferrer"
-						className={linkClassName}
 					>
 						rebuildup/pc-setup
-					</a>
-				</article>
-			</div>
+					</TextLink>
+				</Panel>
+			</Grid>
 			<p className={sourceNoteClassName} style={{ marginBlockStart: '16px' }}>
 				このページの抜粋元:{' '}
-				<a
-					href={snapshot.source.readmeUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					className={linkClassName}
-				>
+				<TextLink href={snapshot.source.readmeUrl} target="_blank" rel="noopener noreferrer">
 					README.md @ {snapshot.source.commitSha.slice(0, 7)}
-				</a>
+				</TextLink>
 			</p>
 		</PageSection>
 	);
@@ -539,16 +452,7 @@ function ReadmeSection({
 					>
 						リポジトリ直下
 					</h3>
-					<ul
-						className={css({
-							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '2',
-							listStyle: 'none',
-							margin: '0',
-							padding: '0',
-						})}
-					>
+					<Cluster as="ul" gap="2" className={listReset}>
 						{section.structure.map((entry) => (
 							<li key={entry}>
 								<code
@@ -570,19 +474,18 @@ function ReadmeSection({
 								</code>
 							</li>
 						))}
-					</ul>
+					</Cluster>
 				</>
 			) : null}
 			{section.points.length > 0 ? (
-				<ul
+				<Stack
+					as="ul"
 					lang="en"
+					gap="4"
 					className={css({
 						margin: '0',
 						marginBlockStart: section.structure.length > 0 ? '6' : '0',
 						paddingInlineStart: '4',
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '4',
 						maxWidth: '720px',
 						fontFamily: 'sans',
 						fontSize: 'md',
@@ -595,17 +498,12 @@ function ReadmeSection({
 							<RichText nodes={point} />
 						</li>
 					))}
-				</ul>
+				</Stack>
 			) : null}
 			<p className={css({ margin: '0', marginBlockStart: '4' })}>
-				<a
-					href={section.sourceUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					className={linkClassName}
-				>
+				<TextLink href={section.sourceUrl} target="_blank" rel="noopener noreferrer">
 					README の「{section.heading}」を読む
-				</a>
+				</TextLink>
 			</p>
 		</PageSection>
 	);
@@ -705,14 +603,13 @@ function MissingSnapshotSection() {
 				を読み込めませんでした。再同期が完了するまで、内容は表示しません。最新の情報は上流リポジトリで確認できます。
 			</p>
 			<p className={css({ margin: '0', marginBlockStart: '4' })}>
-				<a
+				<TextLink
 					href="https://github.com/rebuildup/dotfiles"
 					target="_blank"
 					rel="noopener noreferrer"
-					className={linkClassName}
 				>
 					rebuildup/dotfiles
-				</a>
+				</TextLink>
 			</p>
 		</PageSection>
 	);
@@ -742,32 +639,20 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 				>
 					<dt className={css({ color: 'text.muted' })}>README commit</dt>
 					<dd className={css({ margin: '0', color: 'text.default' })}>
-						<a
+						<TextLink
 							href={commitUrl(snapshot.source)}
 							target="_blank"
 							rel="noopener noreferrer"
-							className={css({
-								fontFamily: 'mono',
-								color: 'text.accent',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								_hover: { textDecorationThickness: '2px' },
-							})}
+							className={css({ fontFamily: 'mono' })}
 						>
 							{snapshot.source.commitSha}
-						</a>
+						</TextLink>
 					</dd>
 					<dt className={css({ color: 'text.muted' })}>README</dt>
 					<dd className={css({ margin: '0' })}>
-						<a
-							href={snapshot.source.readmeUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className={linkClassName}
-						>
+						<TextLink href={snapshot.source.readmeUrl} target="_blank" rel="noopener noreferrer">
 							{snapshot.source.readmePath} @ {snapshot.source.commitSha.slice(0, 7)}
-						</a>
+						</TextLink>
 					</dd>
 					<dt className={css({ color: 'text.muted' })}>README blob</dt>
 					<dd

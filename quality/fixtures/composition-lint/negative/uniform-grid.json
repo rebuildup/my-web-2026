@@ -1,0 +1,115 @@
+{
+  "version": "composition-model/v1",
+  "document": {
+    "width": 1440,
+    "height": 4000
+  },
+  "sections": [
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "g1",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "panel",
+          "area": 50000,
+          "fontSize": 15
+        },
+        {
+          "kind": "panel",
+          "area": 50000,
+          "fontSize": 15
+        },
+        {
+          "kind": "panel",
+          "area": 50000,
+          "fontSize": 15
+        }
+      ],
+      "grid": {
+        "tracks": [
+          "1fr",
+          "1fr",
+          "1fr"
+        ],
+        "columnRatio": [
+          1,
+          1,
+          1
+        ]
+      },
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    },
+    {
+      "tone": "ground",
+      "rhythm": "body",
+      "signature": "g2",
+      "inFlow": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 400
+      },
+      "blocks": [
+        {
+          "kind": "panel",
+          "area": 40000,
+          "fontSize": 15
+        },
+        {
+          "kind": "panel",
+          "area": 40000,
+          "fontSize": 15
+        },
+        {
+          "kind": "panel",
+          "area": 40000,
+          "fontSize": 15
+        },
+        {
+          "kind": "panel",
+          "area": 40000,
+          "fontSize": 15
+        }
+      ],
+      "grid": {
+        "tracks": [
+          "1fr",
+          "1fr",
+          "1fr",
+          "1fr"
+        ],
+        "columnRatio": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "mediaArea": 0,
+      "textArea": 0,
+      "contentWidthRatio": 0.9,
+      "emptyAreaRatio": 0.1
+    }
+  ],
+  "media": {
+    "totalArea": 0,
+    "byKind": {}
+  },
+  "metrics": {
+    "contentArea": 5760000,
+    "elementsPerPixel": 0.002
+  },
+  "features": []
+}

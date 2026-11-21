@@ -1376,14 +1376,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/about/components/LinksPage.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ul> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/about/components/SkillsList.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -2573,6 +2565,7 @@
 		},
 		{
 			"files": [
+				"src/about/components/LinksPage.tsx",
 				"src/contact/page.tsx",
 				"src/home/explore/ExploreSection.tsx",
 				"src/routes/design-system/sections/ColorSwatches.tsx"

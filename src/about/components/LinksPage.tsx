@@ -140,9 +140,6 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 			<ul
 				data-testid={`links-group-${group.id}`}
 				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '0',
 					margin: '0',
 					padding: '0',
 					listStyle: 'none',

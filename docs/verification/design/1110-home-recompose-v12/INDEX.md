@@ -26,12 +26,21 @@ daily quota (20 req/day) was exhausted mid-run — those slices are
 | F5 | Copy-editorial gate `no-approval-record` on PR #1115 | `issue-1110-home-recompose` pending record rebound to current change-set fingerprint; `decision: pending`, provenance unchanged | `f883ebb0` |
 | F6 | `ToneMatrix.tsx` undeclared under `src/routes/` (CI `publication:check` E005) | Declared in `ROUTE_DIR_INERT_FILES` — explicit inert classification, no weakened inspection | `f0c686c1` |
 | F7 | Invalid `PageSection` × `Panel` pairings only hidden in the fixture | `SectionToneContext` + `panelVariantAllowedOnTone`; `Panel` throws on forbidden pairs; 8×7 matrix test proves valid render / invalid throw | `07930746` |
+| F8 | "すべて見る" link floated far below the Now list (v12 desktop-dark opportunity #3) | See-all link gets its own tighter `marginBlockStart` instead of the shared row-link spacing | this commit |
+| F9 | `publication-surface` load contract still counted eight non-sitemap surfaces after `/now` landed | Count updated to nine; CI `validate` green | `718b2321` |
 
 ## v12 review outcome (Gemini, actual image inspection)
 
 Reviewed: desktop-light, desktop-dark, mobile-light--part1.
 Unreviewed (quota): mobile-light--part2, mobile-dark--part1,
-mobile-dark--part2 — recorded as pending, not PASS.
+mobile-dark--part2 — recorded as pending, not PASS. A retry on
+2026-11-21 failed before reaching the model: `GEMINI_API_KEY` is no
+longer present in the Infisical `dev` env (`HTTP 400: Please pass a
+valid API key`), so those slices stay unreviewed until a key is
+restored or another image-capable model is used.
+
+PR #1115 merged into `release-0-11-0` as `ac0723e0` on 2026-11-21
+after `validate` went green on `718b2321`.
 
 Confirmed improved in v12 transcripts:
 - Explore grid leads the content column and reads as the destination

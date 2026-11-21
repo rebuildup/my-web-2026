@@ -1,4 +1,4 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -121,6 +121,10 @@ const linkClassName = /* @__PURE__ */ css({
 	_hover: {
 		textDecorationThickness: '2px',
 	},
+});
+
+const seeAllLinkClassName = /* @__PURE__ */ css({
+	marginBlockStart: '1',
 });
 
 const summaryClassName = /* @__PURE__ */ css({
@@ -479,7 +483,7 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 						{seeAllHref && published.length > visible.length ? (
 							<a
 								href={seeAllHref}
-								className={linkClassName}
+								className={cx(linkClassName, seeAllLinkClassName)}
 								data-testid="home-current-projects-see-all"
 							>
 								すべて見る ({published.length} 件)

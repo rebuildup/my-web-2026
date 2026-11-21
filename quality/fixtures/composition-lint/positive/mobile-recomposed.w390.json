@@ -1,83 +1,81 @@
 {
-  "version": "composition-model/v1",
-  "document": {
-    "width": 390,
-    "height": 4200
-  },
-  "sections": [
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "m-hero",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 40000,
-          "fontSize": 40
-        },
-        {
-          "kind": "text",
-          "area": 80000,
-          "fontSize": 16
-        }
-      ],
-      "grid": null,
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    },
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "m-split",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "panel",
-          "area": 90000,
-          "fontSize": 15
-        },
-        {
-          "kind": "heading",
-          "area": 20000,
-          "fontSize": 26
-        },
-        {
-          "kind": "text",
-          "area": 120000,
-          "fontSize": 15
-        }
-      ],
-      "grid": null,
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    }
-  ],
-  "media": {
-    "totalArea": 0,
-    "byKind": {}
-  },
-  "metrics": {
-    "contentArea": 1638000,
-    "recompositionScore": 1
-  },
-  "features": [
-    "reorder"
-  ]
+	"version": "composition-model/v1",
+	"document": {
+		"width": 390,
+		"height": 4200
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "m-hero",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 40000,
+					"fontSize": 40
+				},
+				{
+					"kind": "text",
+					"area": 80000,
+					"fontSize": 16
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "m-split",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "panel",
+					"area": 90000,
+					"fontSize": 15
+				},
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 120000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {}
+	},
+	"metrics": {
+		"contentArea": 1638000,
+		"recompositionScore": 1
+	},
+	"features": ["reorder"]
 }

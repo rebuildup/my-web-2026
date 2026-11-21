@@ -31,9 +31,6 @@ export function loadContract(root = REPO_ROOT) {
 	return JSON.parse(readFileSync(resolve(root, CONTRACT_PATH), 'utf8'));
 }
 
-/** Severity ordering for verdict aggregation. */
-const SEVERITY_RANK = { info: 0, warning: 1, blocking: 2 };
-
 function ruleById(contract, id) {
 	return contract.rules.find((rule) => rule.id === id);
 }
@@ -514,5 +511,3 @@ export function aggregateVerdict(verdicts) {
 	if (verdicts.length === 0) return 'pass';
 	return verdicts.some((v) => v.verdict === 'fail' && v.severity === 'blocking') ? 'fail' : 'warn';
 }
-
-export { SEVERITY_RANK };

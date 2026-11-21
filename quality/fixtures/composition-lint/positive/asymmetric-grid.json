@@ -1,148 +1,124 @@
 {
-  "version": "composition-model/v1",
-  "document": {
-    "width": 1440,
-    "height": 4000
-  },
-  "sections": [
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "lead",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 60000,
-          "fontSize": 34
-        },
-        {
-          "kind": "panel",
-          "area": 80000,
-          "fontSize": 15
-        },
-        {
-          "kind": "panel",
-          "area": 40000,
-          "fontSize": 14
-        }
-      ],
-      "grid": {
-        "tracks": [
-          "5fr",
-          "4fr",
-          "3fr"
-        ],
-        "columnRatio": [
-          5,
-          4,
-          3
-        ]
-      },
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    },
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "rail",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 20000,
-          "fontSize": 24
-        },
-        {
-          "kind": "text",
-          "area": 100000,
-          "fontSize": 15
-        }
-      ],
-      "grid": {
-        "tracks": [
-          "4fr",
-          "8fr"
-        ],
-        "columnRatio": [
-          4,
-          8
-        ]
-      },
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    },
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "index",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "panel",
-          "area": 30000,
-          "fontSize": 15
-        },
-        {
-          "kind": "panel",
-          "area": 30000,
-          "fontSize": 15
-        },
-        {
-          "kind": "panel",
-          "area": 30000,
-          "fontSize": 15
-        }
-      ],
-      "grid": {
-        "tracks": [
-          "1fr",
-          "1fr",
-          "1fr"
-        ],
-        "columnRatio": [
-          1,
-          1,
-          1
-        ]
-      },
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    }
-  ],
-  "media": {
-    "totalArea": 0,
-    "byKind": {}
-  },
-  "metrics": {
-    "contentArea": 5760000,
-    "elementsPerPixel": 0.002
-  },
-  "features": [
-    "breakout"
-  ]
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 4000
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "lead",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 60000,
+					"fontSize": 34
+				},
+				{
+					"kind": "panel",
+					"area": 80000,
+					"fontSize": 15
+				},
+				{
+					"kind": "panel",
+					"area": 40000,
+					"fontSize": 14
+				}
+			],
+			"grid": {
+				"tracks": ["5fr", "4fr", "3fr"],
+				"columnRatio": [5, 4, 3]
+			},
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "rail",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 24
+				},
+				{
+					"kind": "text",
+					"area": 100000,
+					"fontSize": 15
+				}
+			],
+			"grid": {
+				"tracks": ["4fr", "8fr"],
+				"columnRatio": [4, 8]
+			},
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "index",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "panel",
+					"area": 30000,
+					"fontSize": 15
+				},
+				{
+					"kind": "panel",
+					"area": 30000,
+					"fontSize": 15
+				},
+				{
+					"kind": "panel",
+					"area": 30000,
+					"fontSize": 15
+				}
+			],
+			"grid": {
+				"tracks": ["1fr", "1fr", "1fr"],
+				"columnRatio": [1, 1, 1]
+			},
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {}
+	},
+	"metrics": {
+		"contentArea": 5760000,
+		"elementsPerPixel": 0.002
+	},
+	"features": ["breakout"]
 }

@@ -79,13 +79,16 @@ fixture: `quality/fixtures/composition-lint/` 配下の ID。
 | 空白は関係を表現する | 広い viewport で細い列+巨大な未活用領域 | viewport 内コンテンツ幅比、empty area 比 | geometry (CL-4) | 余白主体の意図的構図 | 中 — canonical measure 内の余白は契約どおり | `negative/narrow-column`, `positive/whitespace-led` |
 | 密度は情報量に対応する | elementsPerPixel の極端な偏り | elementsPerPixel、セクション高さ分散 | geometry + review | — | 中 | review 領分 |
 | リズムに変化がある | 全セクション同一 padding role | rhythm role 分布 | geometry（data-rhythm）+ review | 均一リズムが内容に合う | 中 | review 領分 |
+| 反復単位の器に内容が入っている | カード状の反復単位の下半が空（card-shaped void） | 反復単位の下端から内容末端までの空き率（`repeatTailGapRatio`） | geometry (CL-12) | 空きが意図的なタイル（理由記録） | 中 — 行均是な一覧は本来まばら | `negative/empty-cards`, `positive/filled-cards` |
 
 ### Image / Media / Art direction
 
 | 原則 | 違反状態 | 検出可能な特徴量 | 検出方法 | 正当な例外 | 誤検出の可能性 | fixture |
 | --- | --- | --- | --- | --- | --- | --- |
 | メディアは主役として面積を持つ | mediaExpected route で mediaArea が閾値未満 | mediaArea/contentArea 比 | geometry (CL-6) | メディアを持たないコンテンツ | 低 | `negative/text-only-portfolio`, `positive/media-led-detail` |
+| メディアが読み込まれている | 画像要素が読み込みに失敗し、broken frame が出る | 読み込み失敗した `<img>` 数（`brokenMedia`） | geometry (CL-13) | 意図的なトラッキングピクセル等 | 低 — 取得環境が media に到達できない場合は「記録する」こと（黙らせない） | `negative/broken-media`, `positive/loaded-media` |
 | 画像と文字の関係が設計されている | テキストのみで作品を列挙（実素材の放棄） | media manifest ↔ 描画の対応 | static+geometry (#1134) | 素材が本当にない作品 | 低 | 同上 |
+| 主役としてのメディアが hero にある | media-led route の hero が media を持たない、またはラスター画像を持たない | hero section の `mediaByKind` / mediaArea 比 / hero section の存在 | geometry (CL-6) | — | 低 — hero 欠落は fail-closed | 同上 |
 | crop / aspect / 読み順が適切 | 不自然なトリミング・アスペクト崩壊 | object-fit、aspect 比、配置 | review | — | 中 | review 領分 |
 
 ### Balance / Proportion / Visual weight
@@ -126,6 +129,19 @@ fixture: `quality/fixtures/composition-lint/` 配下の ID。
   ルールは collector 経由の結合テストも持つ。
 - fixture の追加は「実際に観測された欠陥」または「原則上明確な
   反例」に基づく。カバレッジ稼ぎの fixture は禁止。
+
+## 3.1 Issue #1149 で更新した判定の境界
+
+- **CL-6** — hero section が無い場合は fail-closed（route が media-led hero を
+  宣言しているのに hero が描画されていないのは「未判定」ではなく「違反」）。
+  面積比率に加えて **ラスター画像（img / video / canvas）の有無** を見る。
+  面積は SVG のマークでも満たせてしまうため、面積だけでは「media と内容の
+  対応」を語れない。項目単位の対応は #1134 の media usage contract の領分。
+- **CL-7** — 再構成の証拠は **視覚順の変化**（desktop と mobile で共有する
+  block 種の並びが変わる）または宣言済み feature に限る。block 種の集合が
+  違うだけ（disclosure の開閉など）は再構成の証拠にならない。
+- **CL-11** — prose の免除は **名前で指定した section 単位**。ルート全体の
+  免除（`proseStackAllowed`）は廃止。免除対象でない section は判断される。
 
 ## 4. 運用
 

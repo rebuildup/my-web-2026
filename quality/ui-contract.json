@@ -1703,8 +1703,7 @@
 				"src/routes/activity/Timeline.tsx",
 				"src/routes/admin.emoji-catalog.tsx",
 				"src/routes/admin.invitations.tsx",
-				"src/routes/admin.keys.tsx",
-				"src/routes/stack/StackPage.tsx"
+				"src/routes/admin.keys.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -1727,8 +1726,7 @@
 				"src/keyboard/components/KeyboardPage.tsx",
 				"src/personal/melting-face/MeltingFace.tsx",
 				"src/portfolio/components/DevelopView.tsx",
-				"src/portfolio/components/ProjectCard.tsx",
-				"src/routes/stack/StackPage.tsx"
+				"src/portfolio/components/ProjectCard.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},
@@ -1765,8 +1763,7 @@
 			"files": [
 				"src/admin/images/images.tsx",
 				"src/personal/handle-map/HandleMap.tsx",
-				"src/routes/admin.invitations.tsx",
-				"src/routes/stack/StackPage.tsx"
+				"src/routes/admin.invitations.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
 		},

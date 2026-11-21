@@ -128,6 +128,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					flexDirection: 'column',
 					gap: '2',
 					alignItems: 'flex-start',
+					minWidth: '0',
 				})}
 			>
 				<h3
@@ -143,13 +144,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				</h3>
 				<VersionBadge version={item.version} />
 			</div>
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-				})}
-			>
+			<Stack gap="3" className={css({ minWidth: '0' })}>
 				<p
 					className={css({
 						margin: '0',
@@ -184,14 +179,16 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					</div>
 				) : null}
 				{item.samples !== undefined && item.samples.length > 0 ? (
-					<div
+					<Stack
 						data-testid={`stack-samples-${item.id}`}
-						className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
+						gap="4"
+						className={css({ minWidth: '0' })}
 					>
 						{item.samples.map((sample) => (
-							<div
+							<Stack
 								key={sample.label}
-								className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}
+								gap="2"
+								className={css({ minWidth: '0' })}
 							>
 								<CodeBlock label={sample.label} code={sample.code} language={sample.language} />
 								{sample.note !== undefined ? (
@@ -207,9 +204,9 @@ function StackItemRow({ item }: { item: StackItemView }) {
 										{sample.note}
 									</p>
 								) : null}
-							</div>
+							</Stack>
 						))}
-					</div>
+					</Stack>
 				) : null}
 				{item.checks !== undefined && item.checks.length > 0 ? (
 					<StackChecks checks={item.checks} itemId={item.id} />
@@ -231,7 +228,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 						))}
 					</Cluster>
 				) : null}
-			</div>
+			</Stack>
 		</Split>
 	);
 }

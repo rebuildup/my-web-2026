@@ -8,7 +8,8 @@
 		"Machine-readable half of the rendered-composition contract. docs/visual/composition-principles.md is the prose half; where they disagree the ADR wins.",
 		"The collector emits composition-model/v1 JSON; the judge is a pure function over that model. Detection is structure/geometry only — never content strings, never personal data.",
 		"severity: blocking stops integration, warning feeds the L-C visual review as a required input, info is an observation with no verdict.",
-		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job."
+		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job.",
+		"routes[].heroMediaMinRatio: when set, the hero-rhythm section must dedicate at least this fraction of its area to media — catches media-bearing content rendered text-only (#1134). Per-item media mapping inside lists remains the portfolio obligation's data contract; the page-level aggregate is CL-6."
 	],
 	"model": {
 		"version": "composition-model/v1",
@@ -64,9 +65,10 @@
 		{
 			"path": "/portfolio/ch4nge",
 			"slug": "portfolio-detail",
-			"label": "portfolio detail (media-bearing slug)",
+			"label": "portfolio detail (media-bearing slug ch4nge)",
 			"mediaExpected": true,
-			"indexRoute": false
+			"indexRoute": false,
+			"heroMediaMinRatio": 0.15
 		},
 		{
 			"path": "/tools",

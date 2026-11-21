@@ -231,6 +231,25 @@ function checkCL6(model, rule, route) {
 			detail: `mediaExpected route renders media area ratio ${ratio.toFixed(3)} (< ${rule.detection.mediaAreaRatioMin})`,
 		};
 	}
+	// #1134 — hero media floor: a route that declares
+	// heroMediaMinRatio must dedicate that fraction of the hero
+	// section's area to media. Catches a media-bearing item rendered
+	// text-only even when the page-level ratio passes.
+	if (typeof route?.heroMediaMinRatio === 'number') {
+		const hero = bodySections(model).find((s) => (s.rhythm ?? 'body') === 'hero');
+		if (hero) {
+			const sectionArea = (hero.rect?.w ?? 0) * (hero.rect?.h ?? 0);
+			const heroRatio = sectionArea > 0 ? (hero.mediaArea ?? 0) / sectionArea : 0;
+			if (heroRatio < route.heroMediaMinRatio) {
+				return {
+					rule: 'CL-6',
+					severity: rule.severity,
+					verdict: 'fail',
+					detail: `hero section media ratio ${heroRatio.toFixed(3)} (< ${route.heroMediaMinRatio}) — media-bearing content rendered without its asset`,
+				};
+			}
+		}
+	}
 	return null;
 }
 

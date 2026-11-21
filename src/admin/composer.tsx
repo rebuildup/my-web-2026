@@ -3,6 +3,15 @@ import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import {
+	eyebrowMonoSm,
+	listStackGap3,
+	rowGap3,
+	spaceSection,
+	vStackGap2,
+	vStackGap4,
+	vStackGap10,
+} from '../editorial/primitives/shared-styles';
 
 /**
  * AdminDashboard — `/admin` composition.
@@ -41,7 +50,7 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 	return (
 		<section
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -51,13 +60,7 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 					description="招待・API キー・リアクション画像を一元管理。利用可能な機能は下の live / planned badge を正とします。"
 					variant="spread"
 				>
-					<div
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-						})}
-					>
+					<div className={css(vStackGap10)}>
 						<article
 							className={css({
 								display: 'flex',
@@ -67,17 +70,7 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 								borderBlockEnd: '1px solid {colors.border.subtle}',
 							})}
 						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Identity
-							</span>
+							<span className={css(eyebrowMonoSm)}>Identity</span>
 							<p
 								className={css({
 									margin: '0',
@@ -89,46 +82,15 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 							>
 								{email}
 							</p>
-							<div
-								className={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '3',
-								})}
-							>
+							<div className={css(rowGap3)}>
 								<Badge tone={role === 'admin' ? 'accent' : 'neutral'}>{role}</Badge>
 								{signOutForm}
 							</div>
 						</article>
 
-						<article
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4',
-							})}
-						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Capabilities
-							</span>
-							<ul
-								className={css({
-									margin: '0',
-									padding: '0',
-									listStyle: 'none',
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '3',
-								})}
-							>
+						<article className={css(vStackGap4)}>
+							<span className={css(eyebrowMonoSm)}>Capabilities</span>
+							<ul className={css(listStackGap3)}>
 								{capabilities.map((cap) => (
 									<li
 										key={cap.id}
@@ -175,24 +137,8 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 							</ul>
 						</article>
 
-						<article
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '2',
-							})}
-						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								System
-							</span>
+						<article className={css(vStackGap2)}>
+							<span className={css(eyebrowMonoSm)}>System</span>
 							<a
 								href="/api/v1/health"
 								rel="noopener noreferrer"

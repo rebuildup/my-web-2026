@@ -4,6 +4,7 @@ import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import { noteSansMd } from '../../editorial/primitives/shared-styles';
 import {
 	CURRENT_LOCATION_CHANGE_MOTION,
 	usePrefersReducedMotion,
@@ -227,13 +228,7 @@ const levelTagClassName = /* @__PURE__ */ css({
 	color: 'text.muted',
 });
 
-const emptyClassName = /* @__PURE__ */ css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	color: 'text.muted',
-	lineHeight: '1.6',
-});
+const emptyClassName = /* @__PURE__ */ css(noteSansMd);
 
 /** One measured line: label, value, and the word for where the value came from. */
 interface MetaRow {

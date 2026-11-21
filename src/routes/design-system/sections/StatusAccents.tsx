@@ -1,6 +1,15 @@
 import { css } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
 import { StateMark } from '../../../editorial/primitives/StateMark';
+import {
+	cols1to2,
+	eyebrowMonoXsLoose,
+	noteMonoXs,
+	noteSansSm,
+	noteSansSmBody,
+	vStackGap1,
+	vStackGap10,
+} from '../../../editorial/primitives/shared-styles';
 
 /**
  * StatusAccents — status shown by SHAPE and WORD, paired with the four
@@ -31,13 +40,7 @@ import { StateMark } from '../../../editorial/primitives/StateMark';
 
 export function StatusAccents() {
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '10',
-			})}
-		>
+		<div className={css(vStackGap10)}>
 			<StatusRow />
 			<CategoryRow />
 		</div>
@@ -75,32 +78,9 @@ function StatusRow() {
 				paddingBlock: '4',
 			})}
 		>
-			<header
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
-					Status
-				</span>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+			<header className={css(vStackGap1)}>
+				<span className={css(eyebrowMonoXsLoose)}>Status</span>
+				<p className={css(noteSansSm)}>
 					状態は色では示しません。印（StateMark）の形と語が状態を担います。印は見出しの墨（text.default）を継承し、状態を示す色トークンはありません（Issue
 					#887）。
 				</p>
@@ -175,17 +155,7 @@ function StatusTile({ entry }: { entry: StatusEntry }) {
 				<StateMark kind={entry.mark} size="sm" />
 				{entry.label}
 			</h3>
-			<p
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					lineHeight: '1.6',
-					color: 'text.muted',
-				})}
-			>
-				{entry.note}
-			</p>
+			<p className={css(noteSansSmBody)}>{entry.note}</p>
 		</article>
 	);
 }
@@ -252,32 +222,9 @@ function CategoryRow() {
 				paddingBlock: '4',
 			})}
 		>
-			<header
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
-					Category
-				</span>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+			<header className={css(vStackGap1)}>
+				<span className={css(eyebrowMonoXsLoose)}>Category</span>
+				<p className={css(noteSansSm)}>
 					Content category の 4
 					系統。形（StateMark）と語で分類し、色は補助の印として添えます。同じ形の
 					色だけを変える表現は使いません。
@@ -289,7 +236,7 @@ function CategoryRow() {
 					padding: '0',
 					listStyle: 'none',
 					display: 'grid',
-					gridTemplateColumns: { base: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+					gridTemplateColumns: cols1to2,
 					gap: '4',
 				})}
 			>
@@ -343,15 +290,7 @@ function CategoryCard({ entry }: { entry: CategoryEntry }) {
 						</span>
 						{entry.label}
 					</h3>
-					<code
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							color: 'text.muted',
-						})}
-					>
-						{entry.token}
-					</code>
+					<code className={css(noteMonoXs)}>{entry.token}</code>
 				</header>
 				<p
 					className={css({

@@ -3,6 +3,7 @@ import { css } from '../../../styled-system/css';
 import { ErrorSummary, TextField } from '../../editorial/forms';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { noteMonoSmFlush, spaceSection } from '../../editorial/primitives/shared-styles';
 import type { AcceptInvitationResult, InvitationProbe } from './accept';
 
 /**
@@ -62,7 +63,7 @@ export function AcceptInvitationView({ probe, token, submit }: AcceptInvitationV
 	return (
 		<section
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -186,16 +187,7 @@ function AcceptForm({
 			})}
 		>
 			<ErrorSummary heading="アカウントを作成できませんでした" errors={failure ? [failure] : []} />
-			<p
-				className={css({
-					margin: '0',
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-				})}
-			>
-				{email}
-			</p>
+			<p className={css(noteMonoSmFlush)}>{email}</p>
 			<TextField
 				name="name"
 				label="Name"

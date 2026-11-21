@@ -6,6 +6,15 @@ import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import {
+	emphasisDefault,
+	ledeSansLg,
+	noteMonoSm,
+	noteSansSmLoose,
+	noteSansXsBody,
+	pageTitle,
+	vStackGap1,
+} from '../../editorial/primitives/shared-styles';
 import { CodeBlock, DataTable, type TableRow } from '../../editorial/table-code';
 import { BIOME_SETTINGS_COLUMNS } from './biome-settings-table';
 import type { StackItemView, StackPageData, StackSectionView } from './resolve';
@@ -33,43 +42,11 @@ export function StackPage({ data }: { data: StackPageData }) {
 		<>
 			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="stack-hero-title">
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					my-web-2026 · /stack
-				</span>
-				<h1
-					id="stack-hero-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '2',
-						fontFamily: 'heading',
-						fontSize: { base: '3xl', lg: '4xl' },
-						fontWeight: '700',
-						lineHeight: { base: '1.15', lg: '1.05' },
-						color: 'text.default',
-						letterSpacing: '-0.03em',
-					})}
-				>
+				<span className={css(noteMonoSm)}>my-web-2026 · /stack</span>
+				<h1 id="stack-hero-title" lang="ja" className={css(pageTitle)}>
 					開発スタック / Stack
 				</h1>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '6',
-						fontFamily: 'sans',
-						fontSize: 'lg',
-						lineHeight: '1.6',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
+				<p lang="ja" className={css(ledeSansLg)}>
 					このサイトを動かしている技術の一覧です。version は{' '}
 					<code className={inlineCodeStyle}>package.json</code> と{' '}
 					<code className={inlineCodeStyle}>profile.yaml</code> から読み取り、根拠となる source
@@ -156,16 +133,8 @@ function StackItemRow({ item }: { item: StackItemView }) {
 				>
 					{item.responsibility}
 				</p>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						lineHeight: '1.7',
-						color: 'text.muted',
-					})}
-				>
-					<span className={css({ fontWeight: '600', color: 'text.default' })}>採用理由 — </span>
+				<p className={css(noteSansSmLoose)}>
+					<span className={css(emphasisDefault)}>採用理由 — </span>
 					{item.reason}
 				</p>
 				{item.settings !== undefined && item.settings.length > 0 ? (
@@ -188,17 +157,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 							<Stack key={sample.label} gap="2" className={css({ minWidth: '0' })}>
 								<CodeBlock label={sample.label} code={sample.code} language={sample.language} />
 								{sample.note !== undefined ? (
-									<p
-										className={css({
-											margin: '0',
-											fontFamily: 'sans',
-											fontSize: 'xs',
-											lineHeight: '1.6',
-											color: 'text.muted',
-										})}
-									>
-										{sample.note}
-									</p>
+									<p className={css(noteSansXsBody)}>{sample.note}</p>
 								) : null}
 							</Stack>
 						))}
@@ -272,11 +231,7 @@ function StackChecks({
 					key={check.id}
 					data-testid={`stack-check-${check.id}`}
 					data-status={check.status}
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '1',
-					})}
+					className={css(vStackGap1)}
 				>
 					<span
 						className={css({

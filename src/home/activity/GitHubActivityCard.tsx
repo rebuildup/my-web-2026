@@ -1,5 +1,12 @@
 import { css } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import {
+	monoXsPlain,
+	noteSansMdPlain,
+	noteSansSm,
+	vStackGap2,
+	vStackGap4,
+} from '../../editorial/primitives/shared-styles';
 import type { HomeGitHubActivity, HomeGitHubActivityRepoMeasure } from './contract';
 import { githubEventTypeLabelJa, githubRefStateLabelJa } from './event-labels';
 
@@ -42,10 +49,7 @@ const mutedClassName = /*#__PURE__*/ css({
 	color: 'text.muted',
 });
 
-const monoClassName = /*#__PURE__*/ css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-});
+const monoClassName = /*#__PURE__*/ css(monoXsPlain);
 
 const linkClassName = /*#__PURE__*/ css({
 	color: 'text.accent',
@@ -85,25 +89,20 @@ export interface GitHubActivityCardProps {
 export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 	if (!activity) {
 		return (
-			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'md', color: 'text.muted' })}>
-				GitHub 活動スナップショットを読み込めませんでした。
-			</p>
+			<p className={css(noteSansMdPlain)}>GitHub 活動スナップショットを読み込めませんでした。</p>
 		);
 	}
 	const publicState = SOURCE_STATUS_LABELS[activity.sources.public.status] ?? '不明';
 	const privateState = SOURCE_STATUS_LABELS[activity.sources.private.status] ?? '不明';
 	return (
-		<div
-			className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
-			data-testid="github-activity-card"
-		>
-			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'md', color: 'text.muted' })}>
+		<div className={css(vStackGap4)} data-testid="github-activity-card">
+			<p className={css(noteSansMdPlain)}>
 				公開ソース: {publicState} / 非公開ソース: {privateState} ・ 観測日{' '}
 				<span className={monoClassName}>{activity.generatedOn}</span> ・ 直近 {activity.windowDays}{' '}
 				日のイベント
 			</p>
 			{activity.topRepos.length > 0 ? (
-				<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+				<div className={css(vStackGap2)}>
 					<p className={sectionLabelClassName}>
 						期間内の測定値（コミット / PR）・ 上位 {activity.topRepos.length} 件
 					</p>
@@ -161,7 +160,7 @@ export function GitHubActivityCard({ activity }: GitHubActivityCardProps) {
 					})}
 				</Stack>
 			)}
-			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
+			<p className={css(noteSansSm)}>
 				観測された公開リポジトリ {activity.repoCount.public} 件 ・ 非公開リポジトリ{' '}
 				{activity.repoCount.private} 件
 			</p>

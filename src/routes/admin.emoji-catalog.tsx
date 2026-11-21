@@ -5,6 +5,14 @@ import { css } from '../../styled-system/css';
 import { CatalogView } from '../admin/emoji-catalog/catalog';
 import { insertCatalogEntryFn, listCatalog } from '../admin/emoji-catalog/load';
 import { getCurrentSession } from '../admin/public';
+import {
+	buttonAccent,
+	eyebrowMonoSm,
+	noteMonoSmFlush,
+	noteSansSmBare,
+	vStackGap1,
+	vStackGap4,
+} from '../editorial/primitives/shared-styles';
 
 /**
  * `/admin/emoji-catalog` — admin reaction emoji catalog CRUD
@@ -63,22 +71,9 @@ function CreateEntryForm() {
 	};
 
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-			<span
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-				})}
-			>
-				New entry
-			</span>
-			<form
-				onSubmit={onSubmit}
-				className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
-			>
+		<div className={css(vStackGap4)}>
+			<span className={css(eyebrowMonoSm)}>New entry</span>
+			<form onSubmit={onSubmit} className={css(vStackGap4)}>
 				<div
 					className={css({
 						display: 'grid',
@@ -87,10 +82,8 @@ function CreateEntryForm() {
 						alignItems: 'end',
 					})}
 				>
-					<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-							Slug (:thumbs_up: 形式)
-						</span>
+					<label className={css(vStackGap1)}>
+						<span className={css(noteSansSmBare)}>Slug (:thumbs_up: 形式)</span>
 						<input
 							type="text"
 							name="slug"
@@ -113,10 +106,8 @@ function CreateEntryForm() {
 							})}
 						/>
 					</label>
-					<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-							Glyph (1 絵文字)
-						</span>
+					<label className={css(vStackGap1)}>
+						<span className={css(noteSansSmBare)}>Glyph (1 絵文字)</span>
 						<input
 							type="text"
 							name="codepoint"
@@ -141,34 +132,14 @@ function CreateEntryForm() {
 					<button
 						type="submit"
 						disabled={busy || slug.length === 0 || codepoint.length === 0}
-						className={css({
-							fontFamily: 'sans',
-							fontSize: 'md',
-							fontWeight: '600',
-							color: 'text.inverse',
-							background: 'bg.accent',
-							border: 'none',
-							borderRadius: '4',
-							paddingBlock: '3',
-							paddingInline: '6',
-							cursor: 'pointer',
-							_disabled: { opacity: '0.5' },
-						})}
+						className={css(buttonAccent)}
 					>
 						{busy ? 'Creating…' : 'Add'}
 					</button>
 				</div>
 
 				{error && (
-					<p
-						role="alert"
-						className={css({
-							margin: '0',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
+					<p role="alert" className={css(noteMonoSmFlush)}>
 						{error}
 					</p>
 				)}

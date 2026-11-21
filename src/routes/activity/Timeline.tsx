@@ -7,6 +7,7 @@ import {
 	type ActivityTimelineItem,
 } from '../../activity/contract';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { monoXsPlain, noteSansMdPlain, vStackGap4 } from '../../editorial/primitives/shared-styles';
 
 /**
  * ActivityTimeline — the unified read-only chronology of published
@@ -43,10 +44,7 @@ const mutedClassName = /*#__PURE__*/ css({
 	color: 'text.muted',
 });
 
-const monoClassName = /*#__PURE__*/ css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-});
+const monoClassName = /*#__PURE__*/ css(monoXsPlain);
 
 const badgeClassName = /*#__PURE__*/ css({
 	display: 'inline-block',
@@ -123,10 +121,7 @@ export interface ActivityTimelineProps {
 export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 	if (!timeline) {
 		return (
-			<p
-				className={css({ margin: '0', fontFamily: 'sans', fontSize: 'md', color: 'text.muted' })}
-				data-testid="activity-timeline"
-			>
+			<p className={css(noteSansMdPlain)} data-testid="activity-timeline">
 				活動タイムラインを読み込めませんでした。
 			</p>
 		);
@@ -134,11 +129,8 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 	const noSourceOk =
 		timeline.sources.length > 0 && timeline.sources.every((s) => s.status !== 'ok');
 	return (
-		<div
-			className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
-			data-testid="activity-timeline"
-		>
-			<p className={css({ margin: '0', fontFamily: 'sans', fontSize: 'md', color: 'text.muted' })}>
+		<div className={css(vStackGap4)} data-testid="activity-timeline">
+			<p className={css(noteSansMdPlain)}>
 				{timeline.sources.map((source) => (
 					<span key={source.id}>
 						{ACTIVITY_SOURCE_LABELS_JA[source.id] ?? source.id}:{' '}

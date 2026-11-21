@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Stack } from '../../editorial/primitives/Flow';
 import { Panel } from '../../editorial/primitives/Panel';
+import { eyebrowMonoXsReset } from '../../editorial/primitives/shared-styles';
 
 /**
  * PortfolioEvidenceNotice — the public face of "we have no rights
@@ -51,14 +52,7 @@ const noticeClassName = css({
 	color: 'text.muted',
 });
 
-const labelClassName = css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-	margin: '0',
-});
+const labelClassName = css(eyebrowMonoXsReset);
 
 const bodyClassName = css({
 	margin: '0',

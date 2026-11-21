@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { eyebrowMonoXsLoose } from '../../editorial/primitives/shared-styles';
 
 /**
  * MediaPlaceholder — the honest "this project has no usable media"
@@ -40,17 +41,7 @@ export function MediaPlaceholder({ ratio = '4 / 3', label = 'no media' }: MediaP
 			})}
 			style={{ aspectRatio: ratio }}
 		>
-			<span
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					letterSpacing: '0.06em',
-					textTransform: 'uppercase',
-					color: 'text.muted',
-				})}
-			>
-				{label}
-			</span>
+			<span className={css(eyebrowMonoXsLoose)}>{label}</span>
 		</div>
 	);
 }

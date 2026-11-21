@@ -7,6 +7,14 @@ import { createApiKey, listApiKeys } from '../admin/keys/load';
 import type { ApiKeyPermissions, CreateApiKeyOutcome } from '../admin/keys/load';
 import { StepUpPanel } from '../admin/keys/step-up-panel';
 import { type StepUpStatus, getCurrentSession, getStepUpStatus } from '../admin/public';
+import {
+	buttonAccent,
+	eyebrowMonoSm,
+	noteSansSm,
+	noteSansSmBare,
+	vStackGap1,
+	vStackGap4,
+} from '../editorial/primitives/shared-styles';
 
 /**
  * `/admin/keys` — admin API key management.
@@ -155,26 +163,11 @@ function CreateKeyForm({
 	};
 
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-			<span
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-				})}
-			>
-				New API key
-			</span>
-			<form
-				onSubmit={onSubmit}
-				className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
-			>
-				<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-					<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-						Name
-					</span>
+		<div className={css(vStackGap4)}>
+			<span className={css(eyebrowMonoSm)}>New API key</span>
+			<form onSubmit={onSubmit} className={css(vStackGap4)}>
+				<label className={css(vStackGap1)}>
+					<span className={css(noteSansSmBare)}>Name</span>
 					<input
 						type="text"
 						name="name"
@@ -252,36 +245,13 @@ function CreateKeyForm({
 				<button
 					type="submit"
 					disabled={busy || locked || name.length === 0 || !anyScopeSelected}
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'md',
-						fontWeight: '600',
-						color: 'text.inverse',
-						background: 'bg.accent',
-						border: 'none',
-						borderRadius: '4',
-						paddingBlock: '3',
-						paddingInline: '6',
-						cursor: 'pointer',
-						_disabled: { opacity: '0.5' },
-					})}
+					className={css(buttonAccent)}
 				>
 					{busy ? 'Creating…' : locked ? 'Confirm above to create' : 'Create API key'}
 				</button>
 			</form>
 
-			{error && (
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{error}
-				</p>
-			)}
+			{error && <p className={css(noteSansSm)}>{error}</p>}
 
 			{plaintext && (
 				<div
@@ -296,17 +266,7 @@ function CreateKeyForm({
 						background: 'bg.surface',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Plaintext key (1 回のみ表示 / shown once)
-					</span>
+					<span className={css(eyebrowMonoSm)}>Plaintext key (1 回のみ表示 / shown once)</span>
 					<code
 						className={css({
 							margin: '0',

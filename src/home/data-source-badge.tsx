@@ -1,5 +1,6 @@
 import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
+import { emphasisDefault } from '../editorial/primitives/shared-styles';
 import type { DataSourceDescriptor } from './status/data-source';
 
 /**
@@ -54,9 +55,7 @@ export function DataSourceBadge({ source }: DataSourceBadgeProps) {
 				fontSize: 'xs',
 			})}
 		>
-			<span className={css({ fontWeight: '600', color: 'text.default' })}>
-				Development data source
-			</span>
+			<span className={css(emphasisDefault)}>Development data source</span>
 			<Badge tone={readOnly ? 'accent' : 'neutral'}>{source.label}</Badge>
 			<span>{source.detail}</span>
 			<span className={css({ fontWeight: '600' })}>

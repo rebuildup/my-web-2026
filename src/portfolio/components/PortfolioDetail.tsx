@@ -7,6 +7,16 @@ import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
+import {
+	eyebrowMonoXs,
+	eyebrowMonoXsLoose,
+	focusRing,
+	pageTitleFlush,
+	rowWrapGap3,
+	sizeDisplay,
+	tagMonoXsCaps,
+	vStackGap6,
+} from '../../editorial/primitives/shared-styles';
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioAdjacent, PortfolioProject } from '../schema';
 import { selectPortfolioVideo } from '../video-facade';
@@ -129,21 +139,8 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 			<main id="main">
 				<article id="portfolio-detail" aria-labelledby="portfolio-detail-heading">
 					<PageSection rhythm="hero" labelledBy="portfolio-detail-heading">
-						<div
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '6',
-							})}
-						>
-							<div
-								className={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '3',
-									flexWrap: 'wrap',
-								})}
-							>
+						<div className={css(vStackGap6)}>
+							<div className={css(rowWrapGap3)}>
 								<a
 									href="/portfolio"
 									className={css({
@@ -153,10 +150,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 										textTransform: 'uppercase',
 										color: 'text.muted',
 										textDecoration: 'none',
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
+										_focusVisible: focusRing,
 										_hover: {
 											color: 'text.default',
 										},
@@ -165,33 +159,12 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									← Back to portfolio
 								</a>
 								{project.facets[0] ? (
-									<span
-										aria-hidden="true"
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.06em',
-											textTransform: 'uppercase',
-											color: 'text.muted',
-										})}
-									>
+									<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 										· {FACET_LABEL[project.facets[0]]}
 									</span>
 								) : null}
 							</div>
-							<h1
-								id="portfolio-detail-heading"
-								className={css({
-									margin: '0',
-									fontFamily: 'heading',
-									fontSize: { base: '3xl', lg: '4xl' },
-									fontWeight: '700',
-									color: 'text.default',
-									lineHeight: '1.05',
-									letterSpacing: '-0.03em',
-									maxWidth: '720px',
-								})}
-							>
+							<h1 id="portfolio-detail-heading" className={css(pageTitleFlush)}>
 								{project.title}
 							</h1>
 							<p
@@ -220,31 +193,13 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 							>
 								{hasRole ? (
 									<>
-										<dt
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'xs',
-												letterSpacing: '0.04em',
-												textTransform: 'uppercase',
-											})}
-										>
-											Role
-										</dt>
+										<dt className={css(tagMonoXsCaps)}>Role</dt>
 										<dd className={css({ margin: '0' })}>{project.role}</dd>
 									</>
 								) : null}
 								{hasPeriod ? (
 									<>
-										<dt
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'xs',
-												letterSpacing: '0.04em',
-												textTransform: 'uppercase',
-											})}
-										>
-											Period
-										</dt>
+										<dt className={css(tagMonoXsCaps)}>Period</dt>
 										<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
 									</>
 								) : null}
@@ -342,24 +297,11 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 												textDecoration: 'underline',
 												textUnderlineOffset: '0.18em',
 												textDecorationThickness: '1px',
-												_focusVisible: {
-													outline: '2px solid {colors.border.focus}',
-													outlineOffset: '2px',
-												},
+												_focusVisible: focusRing,
 												_hover: { textDecorationThickness: '2px' },
 											})}
 										>
-											<span
-												className={css({
-													fontFamily: 'mono',
-													fontSize: 'xs',
-													letterSpacing: '0.04em',
-													textTransform: 'uppercase',
-													color: 'text.muted',
-												})}
-											>
-												{LINK_LABEL[link.kind]}
-											</span>
+											<span className={css(eyebrowMonoXs)}>{LINK_LABEL[link.kind]}</span>
 											<span>{link.label ?? link.url}</span>
 										</a>
 									</li>
@@ -411,16 +353,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													},
 												})}
 											>
-												<span
-													aria-hidden="true"
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.06em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
+												<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 													← Previous
 												</span>
 												<span
@@ -474,16 +407,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													},
 												})}
 											>
-												<span
-													aria-hidden="true"
-													className={css({
-														fontFamily: 'mono',
-														fontSize: 'xs',
-														letterSpacing: '0.06em',
-														textTransform: 'uppercase',
-														color: 'text.muted',
-													})}
-												>
+												<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 													Next →
 												</span>
 												<span

@@ -4,6 +4,13 @@ import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
+import {
+	focusRing,
+	ledeSansLg,
+	noteMonoSm,
+	pageTitle,
+	vStackGap1,
+} from '../../editorial/primitives/shared-styles';
 import { ABOUT_LINK_GROUPS, type AboutLink, type AboutLinkGroup } from '../links';
 
 /**
@@ -33,43 +40,11 @@ export function LinksPage({ groups }: LinksPageProps) {
 		<>
 			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="links-hero-title">
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					my-web-2026 · /links
-				</span>
-				<h1
-					id="links-hero-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '2',
-						fontFamily: 'heading',
-						fontSize: { base: '3xl', lg: '4xl' },
-						fontWeight: '700',
-						lineHeight: { base: '1.15', lg: '1.05' },
-						color: 'text.default',
-						letterSpacing: '-0.03em',
-					})}
-				>
+				<span className={css(noteMonoSm)}>my-web-2026 · /links</span>
+				<h1 id="links-hero-title" lang="ja" className={css(pageTitle)}>
 					リンク集 / Links
 				</h1>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '6',
-						fontFamily: 'sans',
-						fontSize: 'lg',
-						lineHeight: '1.6',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
+				<p lang="ja" className={css(ledeSansLg)}>
 					公開している外部アカウントとサイト内ページの一覧です。連絡先は
 					<a href="/contact" className={inlineLinkStyle}>
 						/contact
@@ -150,13 +125,7 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 function LinkRow({ link }: { link: AboutLink }) {
 	return (
 		<Split as="li" rowGap="2" separated>
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
+			<div className={css(vStackGap1)}>
 				<span
 					lang="ja"
 					className={css({
@@ -168,14 +137,7 @@ function LinkRow({ link }: { link: AboutLink }) {
 				>
 					{link.title}
 				</span>
-				<span
-					lang="en"
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+				<span lang="en" className={css(noteMonoSm)}>
 					{link.description}
 				</span>
 			</div>
@@ -196,10 +158,7 @@ function LinkRow({ link }: { link: AboutLink }) {
 					textDecorationThickness: '1px',
 					wordBreak: 'break-all',
 					_hover: { textDecorationThickness: '2px' },
-					_focusVisible: {
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
+					_focusVisible: focusRing,
 				})}
 			>
 				<span>{link.url}</span>

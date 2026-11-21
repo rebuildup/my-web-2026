@@ -1,6 +1,12 @@
 import type { EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
+import {
+	focusRing,
+	noteMonoSm,
+	noteMonoSmFlush,
+	vStackGap6,
+} from '../../editorial/primitives/shared-styles';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import { classifySlugCandidate } from '../../i18n/slug-identity';
 import { createAuditLogger } from '../../logging/logger';
@@ -542,27 +548,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	};
 
 	if (!data.enabled) {
-		return (
-			<div
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-				})}
-			>
-				Reactions disabled in this environment.
-			</div>
-		);
+		return <div className={css(noteMonoSm)}>Reactions disabled in this environment.</div>;
 	}
 
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '6',
-			})}
-		>
+		<div className={css(vStackGap6)}>
 			{/* Issue #405: the recorded reactions are one live region.
 			    `role="status"` is polite by default, `aria-atomic`
 			    announces the whole list once, and `aria-busy` batches the
@@ -588,13 +578,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				})}
 			>
 				{visibleAggregates.length === 0 ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
+					<span className={css(noteMonoSm)}>
 						まだ反応はありません — 下のボタンから送ってみましょう
 					</span>
 				) : (
@@ -622,22 +606,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 									fontSize: 'md',
 									cursor: 'pointer',
 									_hover: { borderColor: 'border.focus' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
+									_focusVisible: focusRing,
 								})}
 							>
 								<span aria-hidden="true">{glyph}</span>
-								<span
-									className={css({
-										fontFamily: 'mono',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
-									{chip.count}
-								</span>
+								<span className={css(noteMonoSm)}>{chip.count}</span>
 							</button>
 						);
 					})
@@ -665,10 +638,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 						fontSize: 'md',
 						cursor: 'pointer',
 						_hover: { borderColor: 'border.focus' },
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '2px',
-						},
+						_focusVisible: focusRing,
 					})}
 				>
 					<span aria-hidden="true">+</span>
@@ -682,16 +652,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				onSelect={handlePickerSelect}
 			/>
 			{error ? (
-				<p
-					role="alert"
-					data-error-reason={error}
-					className={css({
-						margin: '0',
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+				<p role="alert" data-error-reason={error} className={css(noteMonoSmFlush)}>
 					{describeMutationError(error)}
 				</p>
 			) : null}

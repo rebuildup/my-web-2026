@@ -1,5 +1,6 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { focusRing, linkAccent, noteSansSmBody } from '../editorial/primitives/shared-styles';
 import type { BilingualText } from '../privacy/data-lifecycle';
 
 /**
@@ -54,32 +55,11 @@ export function PrivacyNoticeCompact({ statement, linkLabel }: PrivacyNoticeComp
 			})}
 		>
 			<Container>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						lineHeight: '1.6',
-						color: 'text.muted',
-					})}
-				>
+				<p className={css(noteSansSmBody)}>
 					{statement.ja}
 					<span lang="en"> {statement.en}</span>
 					{' — '}
-					<a
-						href="/#data-notice"
-						className={css({
-							color: 'text.accent',
-							textDecoration: 'underline',
-							textUnderlineOffset: '0.18em',
-							textDecorationThickness: '1px',
-							_hover: { textDecorationThickness: '2px' },
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
-						})}
-					>
+					<a href="/#data-notice" className={css(linkAccent)}>
 						{linkLabel.ja}
 						<span lang="en"> {linkLabel.en}</span>
 					</a>

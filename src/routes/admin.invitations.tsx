@@ -6,6 +6,7 @@ import { InvitationsView } from '../admin/invitations/invitations';
 import { createInvitation, listInvitations, revokeInvitation } from '../admin/invitations/load';
 import { getCurrentSession } from '../admin/public';
 import { ErrorSummary, TextField } from '../editorial/forms';
+import { eyebrowMonoSm, vStackGap3Plain, vStackGap4 } from '../editorial/primitives/shared-styles';
 
 /**
  * `/admin/invitations` — invitation management.
@@ -63,24 +64,8 @@ function CreateInvitationForm() {
 	const fieldError = error?.field === 'email' ? error.message : null;
 
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '4',
-			})}
-		>
-			<span
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-				})}
-			>
-				New invitation
-			</span>
+		<div className={css(vStackGap4)}>
+			<span className={css(eyebrowMonoSm)}>New invitation</span>
 			<form
 				onSubmit={async (e) => {
 					e.preventDefault();
@@ -105,11 +90,7 @@ function CreateInvitationForm() {
 						setBusy(false);
 					}
 				}}
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '3',
-				})}
+				className={css(vStackGap3Plain)}
 			>
 				<ErrorSummary heading="招待を作成できませんでした" errors={error === null ? [] : [error]} />
 				<TextField
@@ -159,17 +140,7 @@ function CreateInvitationForm() {
 						background: 'bg.surface',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
-						})}
-					>
-						Accept URL (1 回のみ表示)
-					</span>
+					<span className={css(eyebrowMonoSm)}>Accept URL (1 回のみ表示)</span>
 					<code
 						className={css({
 							margin: '0',

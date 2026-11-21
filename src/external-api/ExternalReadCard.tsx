@@ -5,6 +5,11 @@ import { Button } from '../editorial/primitives/Button';
 import { Panel } from '../editorial/primitives/Panel';
 import { StateMark } from '../editorial/primitives/StateMark';
 import {
+	bodySansMdReset,
+	noteMonoSm,
+	noteMonoSmFlush,
+} from '../editorial/primitives/shared-styles';
+import {
 	EXTERNAL_FAILURE_LABEL,
 	type ExternalBreakerState,
 	type ExternalFreshness,
@@ -304,15 +309,7 @@ export function ExternalReadCard<T>({
 			) : null}
 
 			{degraded !== null && value === null ? (
-				<p
-					data-testid="external-read-empty"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-					})}
-				>
+				<p data-testid="external-read-empty" className={css(bodySansMdReset)}>
 					{UNAVAILABLE_LABEL}
 				</p>
 			) : null}
@@ -352,27 +349,11 @@ export function ExternalReadCard<T>({
 					gap: '2',
 				})}
 			>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{timelineLine(snapshot)}
-				</p>
+				<p className={css(noteMonoSmFlush)}>{timelineLine(snapshot)}</p>
 				{degraded === null ? null : (
 					<span className={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}>
 						{affordance.retryable ? null : (
-							<span
-								data-testid="external-read-blocked"
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-								})}
-							>
+							<span data-testid="external-read-blocked" className={css(noteMonoSm)}>
 								{NEXT_ATTEMPT_LABEL} {formatInstant(affordance.retryAt)}
 							</span>
 						)}

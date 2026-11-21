@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { focusRingMedia } from '../../editorial/primitives/shared-styles';
 import type { PortfolioProject } from '../schema';
 import { designTileFrameRatio, designTileSpan, hasPeriodLabel, projectCover } from '../views';
 import { FACET_LABEL } from '../vocabulary';
@@ -91,11 +92,7 @@ function DesignTile({ project }: { project: PortfolioProject }) {
 					height: '100%',
 					minWidth: '0',
 					textDecoration: 'none',
-					_focusVisible: {
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '4px',
-						borderRadius: '6px',
-					},
+					_focusVisible: focusRingMedia,
 				})}
 			>
 				{cover ? (

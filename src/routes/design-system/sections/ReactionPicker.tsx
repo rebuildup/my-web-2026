@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { css } from '../../../../styled-system/css';
+import {
+	eyebrowMonoXsLoose,
+	focusRing,
+	spaceNoneTo6,
+} from '../../../editorial/primitives/shared-styles';
 import { PickerModal } from '../../../home/reactions/widget';
 
 /**
@@ -60,7 +65,7 @@ export function ReactionPicker() {
 					margin: '0',
 					display: 'grid',
 					gridTemplateColumns: { base: '1fr', md: '8rem minmax(0, 1fr)' },
-					columnGap: { base: '0', md: '6' },
+					columnGap: spaceNoneTo6,
 					rowGap: { base: '2', md: '4' },
 					alignItems: 'start',
 				})}
@@ -113,10 +118,7 @@ export function ReactionPicker() {
 							backgroundColor: 'accent.interactive',
 							color: 'text.inverse',
 						},
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '2px',
-						},
+						_focusVisible: focusRing,
 					})}
 				>
 					Open the reaction picker
@@ -127,13 +129,7 @@ export function ReactionPicker() {
 	);
 }
 
-const fixtureTermClass = css({
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.06em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const fixtureTermClass = css(eyebrowMonoXsLoose);
 
 const fixtureDetailClass = css({
 	margin: '0',

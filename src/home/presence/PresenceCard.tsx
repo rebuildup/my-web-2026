@@ -22,6 +22,7 @@ import {
 	TV_PATH,
 	VIDEOGAME_ASSET_PATH,
 } from '../../editorial/primitives/material-symbol-paths';
+import { rowWrapGap3, vStackGap4 } from '../../editorial/primitives/shared-styles';
 import type { HomeLocale } from '../format';
 import { createHomeFormat } from '../format';
 import type { DiscordPresenceCard } from './types';
@@ -62,18 +63,9 @@ const descriptionClassName = /*#__PURE__*/ css({
 	textWrap: 'pretty',
 });
 
-const cardClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '4',
-});
+const cardClassName = /*#__PURE__*/ css(vStackGap4);
 
-const statusRowClassName = /*#__PURE__*/ css({
-	display: 'flex',
-	alignItems: 'center',
-	gap: '3',
-	flexWrap: 'wrap',
-});
+const statusRowClassName = /*#__PURE__*/ css(rowWrapGap3);
 
 const customStatusClassName = /*#__PURE__*/ css({
 	display: 'flex',

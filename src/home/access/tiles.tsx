@@ -1,4 +1,10 @@
 import { css } from '../../../styled-system/css';
+import {
+	eyebrowMonoSm,
+	eyebrowMonoXsLoose,
+	noteMonoSm,
+	noteMonoXs,
+} from '../../editorial/primitives/shared-styles';
 import { COUNTER_ROLL_MOTION, usePrefersReducedMotion } from '../../editorial/reduced-motion';
 // Digit WebPs are pre-rasterised mono glyphs (see
 // `scripts/generate-counter-digits.mjs` and `src/home/digits/`).
@@ -180,28 +186,8 @@ export function CounterTile({ data, locale, now, reducedMotion }: CounterTilePro
 					flexWrap: 'wrap',
 				})}
 			>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.muted',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-					})}
-				>
-					04 / KPI · {data.key}
-				</span>
-				{enabled ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							color: 'text.muted',
-						})}
-					>
-						{periodLabel}
-					</span>
-				) : null}
+				<span className={css(eyebrowMonoXsLoose)}>04 / KPI · {data.key}</span>
+				{enabled ? <span className={css(noteMonoXs)}>{periodLabel}</span> : null}
 			</div>
 			<div
 				className={css({
@@ -228,17 +214,7 @@ export function CounterTile({ data, locale, now, reducedMotion }: CounterTilePro
 						—
 					</span>
 				)}
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-						letterSpacing: '0.04em',
-						textTransform: 'uppercase',
-					})}
-				>
-					{enabled ? 'page views' : 'counter disabled'}
-				</span>
+				<span className={css(eyebrowMonoSm)}>{enabled ? 'page views' : 'counter disabled'}</span>
 			</div>
 			<div
 				className={css({
@@ -248,38 +224,12 @@ export function CounterTile({ data, locale, now, reducedMotion }: CounterTilePro
 					flexWrap: 'wrap',
 				})}
 			>
-				{enabled && deltaLabel ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						{deltaLabel}
-					</span>
-				) : null}
+				{enabled && deltaLabel ? <span className={css(noteMonoSm)}>{deltaLabel}</span> : null}
 				{enabled && data.last_hit !== null ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						last hit: {lastHitLabel}
-					</span>
+					<span className={css(noteMonoSm)}>last hit: {lastHitLabel}</span>
 				) : null}
 				{!enabled ? (
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						Page views are unavailable in this environment.
-					</span>
+					<span className={css(noteMonoSm)}>Page views are unavailable in this environment.</span>
 				) : null}
 			</div>
 		</div>

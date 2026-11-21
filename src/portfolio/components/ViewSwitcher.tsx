@@ -2,6 +2,7 @@ import { useRouter, useSearch } from '@tanstack/react-router';
 import { css } from '../../../styled-system/css';
 import { Cluster, Stack } from '../../editorial/primitives/Flow';
 import { ToggleChip } from '../../editorial/primitives/ToggleChip';
+import { eyebrowSans } from '../../editorial/primitives/shared-styles';
 import type { PortfolioView } from '../views';
 import { PORTFOLIO_VIEWS, parsePortfolioView } from '../views';
 import { FACET_LABEL } from '../vocabulary';
@@ -64,18 +65,7 @@ export function ViewSwitcher({ value }: ViewSwitcherProps) {
 
 	return (
 		<Stack as="fieldset" gap="3" className={css({ margin: '0', padding: '0', border: 'none' })}>
-			<legend
-				className={css({
-					fontFamily: 'sans',
-					fontSize: 'sm',
-					fontWeight: '600',
-					letterSpacing: '0.04em',
-					textTransform: 'uppercase',
-					color: 'text.muted',
-				})}
-			>
-				View
-			</legend>
+			<legend className={css(eyebrowSans)}>View</legend>
 			{/* No `aria-label` here: the `<fieldset>`/`<legend>` above
 			    already names this group, and a bare `<div>` cannot carry
 			    one anyway (implicit role `generic` — the Issue #490

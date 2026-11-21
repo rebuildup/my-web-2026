@@ -7,6 +7,18 @@ import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import {
+	buttonGhost,
+	eyebrowMonoSm,
+	listStackGap3,
+	noteSansMdPlain,
+	noteSansXs,
+	rowGap3,
+	spaceCompact,
+	spaceSection,
+	vStackGap4,
+	vStackGap10,
+} from '../../editorial/primitives/shared-styles';
+import {
 	insertCatalogEntryFn,
 	rebindCatalogEntryFn,
 	removeCatalogEntryFn,
@@ -34,7 +46,7 @@ export function CatalogView({ entries, createForm }: CatalogViewProps) {
 	return (
 		<section
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
@@ -44,55 +56,15 @@ export function CatalogView({ entries, createForm }: CatalogViewProps) {
 					description="リアクション用の絵文字 slug と glyph の対応表。スラッグは不透明キーなので削除しても過去のリアクションは失われません。"
 					variant="spread"
 				>
-					<div
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10',
-						})}
-					>
+					<div className={css(vStackGap10)}>
 						{createForm}
 
-						<div
-							className={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4',
-							})}
-						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'sm',
-									color: 'text.muted',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-								})}
-							>
-								Entries
-							</span>
+						<div className={css(vStackGap4)}>
+							<span className={css(eyebrowMonoSm)}>Entries</span>
 							{entries.length === 0 ? (
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										color: 'text.muted',
-									})}
-								>
-									カタログは空です。
-								</p>
+								<p className={css(noteSansMdPlain)}>カタログは空です。</p>
 							) : (
-								<ul
-									className={css({
-										margin: '0',
-										padding: '0',
-										listStyle: 'none',
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '3',
-									})}
-								>
+								<ul className={css(listStackGap3)}>
 									{entries.map((entry) => (
 										<CatalogRow key={entry.slug} entry={entry} />
 									))}
@@ -113,7 +85,7 @@ function CatalogRow({ entry }: { entry: AdminCatalogEntry }) {
 				display: 'grid',
 				gridTemplateColumns: { base: '1fr', md: 'auto minmax(0, 2fr) minmax(0, 2fr) auto' },
 				alignItems: 'baseline',
-				gap: { base: '2', md: '6' },
+				gap: spaceCompact,
 				paddingBlock: '4',
 				borderBlockStart: '1px solid {colors.border.subtle}',
 			})}
@@ -137,24 +109,11 @@ function CatalogRow({ entry }: { entry: AdminCatalogEntry }) {
 			>
 				:{entry.slug}:
 			</span>
-			<span
-				className={css({
-					fontFamily: 'sans',
-					fontSize: 'xs',
-					color: 'text.muted',
-				})}
-				title={`updated ${entry.updatedAt}`}
-			>
+			<span className={css(noteSansXs)} title={`updated ${entry.updatedAt}`}>
 				{entry.enabled ? 'enabled' : 'disabled'} · by {entry.createdBy ?? 'system'} ·{' '}
 				{entry.codepoint.length} cp
 			</span>
-			<div
-				className={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '3',
-				})}
-			>
+			<div className={css(rowGap3)}>
 				{entry.enabled ? (
 					<Badge tone="accent">enabled</Badge>
 				) : (
@@ -188,20 +147,7 @@ function ToggleButton({ slug, enabled }: { slug: string; enabled: boolean }) {
 					setBusy(false);
 				}
 			}}
-			className={css({
-				fontFamily: 'sans',
-				fontSize: 'xs',
-				fontWeight: '600',
-				color: 'text.muted',
-				background: 'transparent',
-				border: '1px solid {colors.border.subtle}',
-				borderRadius: 'full',
-				paddingInline: '3',
-				paddingBlock: '1',
-				cursor: 'pointer',
-				_hover: { color: 'text.default' },
-				_disabled: { opacity: '0.5' },
-			})}
+			className={css(buttonGhost)}
 		>
 			{busy ? '…' : enabled ? 'disable' : 'enable'}
 		</button>
@@ -227,20 +173,7 @@ function RebindButton({ slug, codepoint }: { slug: string; codepoint: string }) 
 					setBusy(false);
 				}
 			}}
-			className={css({
-				fontFamily: 'sans',
-				fontSize: 'xs',
-				fontWeight: '600',
-				color: 'text.muted',
-				background: 'transparent',
-				border: '1px solid {colors.border.subtle}',
-				borderRadius: 'full',
-				paddingInline: '3',
-				paddingBlock: '1',
-				cursor: 'pointer',
-				_hover: { color: 'text.default' },
-				_disabled: { opacity: '0.5' },
-			})}
+			className={css(buttonGhost)}
 		>
 			{busy ? '…' : 'rebind'}
 		</button>
@@ -268,20 +201,7 @@ function RemoveButton({ slug }: { slug: string }) {
 					setBusy(false);
 				}
 			}}
-			className={css({
-				fontFamily: 'sans',
-				fontSize: 'xs',
-				fontWeight: '600',
-				color: 'text.muted',
-				background: 'transparent',
-				border: '1px solid {colors.border.subtle}',
-				borderRadius: 'full',
-				paddingInline: '3',
-				paddingBlock: '1',
-				cursor: 'pointer',
-				_hover: { color: 'text.default' },
-				_disabled: { opacity: '0.5' },
-			})}
+			className={css(buttonGhost)}
 		>
 			{busy ? '…' : 'remove'}
 		</button>

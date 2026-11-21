@@ -3,6 +3,16 @@ import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { StateMark } from '../../editorial/primitives/StateMark';
 import { cardTitleLinkClassName } from '../../editorial/primitives/card-title';
+import {
+	eyebrowMonoXs,
+	focusRing,
+	focusRingMedia,
+	noteSansMd,
+	rowWrapGap3,
+	sizeTitle,
+	tagMonoXsCaps,
+	vStackGap2,
+} from '../../editorial/primitives/shared-styles';
 import type { PortfolioProject } from '../schema';
 import { hasPeriodLabel, hasRecordedRole, projectCover } from '../views';
 import { FACET_LABEL, LINK_LABEL } from '../vocabulary';
@@ -99,11 +109,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 							className={css({
 								display: 'block',
 								textDecoration: 'none',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '4px',
-									borderRadius: '6px',
-								},
+								_focusVisible: focusRingMedia,
 							})}
 						>
 							<PortfolioMediaFigure
@@ -126,21 +132,8 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 						order: { lg: mediaOnRight ? 1 : 2 },
 					})}
 				>
-					<header
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '2',
-						})}
-					>
-						<div
-							className={css({
-								display: 'flex',
-								alignItems: 'center',
-								gap: '3',
-								flexWrap: 'wrap',
-							})}
-						>
+					<header className={css(vStackGap2)}>
+						<div className={css(rowWrapGap3)}>
 							<span
 								className={css({
 									display: 'inline-flex',
@@ -162,7 +155,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 							className={css({
 								margin: '0',
 								fontFamily: 'heading',
-								fontSize: { base: 'xl', lg: '2xl' },
+								fontSize: sizeTitle,
 								fontWeight: '700',
 								color: 'text.default',
 								lineHeight: '1.25',
@@ -174,17 +167,7 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 							</a>
 						</h3>
 					</header>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.muted',
-							lineHeight: '1.6',
-						})}
-					>
-						{project.summary}
-					</p>
+					<p className={css(noteSansMd)}>{project.summary}</p>
 					{hasRole || hasPeriod ? (
 						<dl
 							className={css({
@@ -200,31 +183,13 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 						>
 							{hasRole ? (
 								<>
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Role
-									</dt>
+									<dt className={css(tagMonoXsCaps)}>Role</dt>
 									<dd className={css({ margin: '0' })}>{project.role}</dd>
 								</>
 							) : null}
 							{hasPeriod ? (
 								<>
-									<dt
-										className={css({
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											letterSpacing: '0.04em',
-											textTransform: 'uppercase',
-										})}
-									>
-										Period
-									</dt>
+									<dt className={css(tagMonoXsCaps)}>Period</dt>
 									<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
 								</>
 							) : null}
@@ -273,24 +238,11 @@ function DevelopRow({ project, index }: { project: PortfolioProject; index: numb
 											textUnderlineOffset: '0.18em',
 											textDecorationThickness: '1px',
 											textDecorationColor: 'border.strong',
-											_focusVisible: {
-												outline: '2px solid {colors.border.focus}',
-												outlineOffset: '2px',
-											},
+											_focusVisible: focusRing,
 											_hover: { textDecorationThickness: '2px' },
 										})}
 									>
-										<span
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'xs',
-												letterSpacing: '0.04em',
-												textTransform: 'uppercase',
-												color: 'text.muted',
-											})}
-										>
-											{LINK_LABEL[link.kind]}
-										</span>
+										<span className={css(eyebrowMonoXs)}>{LINK_LABEL[link.kind]}</span>
 										<span>{link.label ?? link.url}</span>
 									</a>
 								</li>

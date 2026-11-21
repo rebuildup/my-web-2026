@@ -3,6 +3,14 @@ import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { Panel } from '../../editorial/primitives/Panel';
+import {
+	eyebrowMonoXsReset,
+	labelAction,
+	noteSansMd,
+	noteSansXs,
+	noteSansXsBody,
+	titleHeadingLg,
+} from '../../editorial/primitives/shared-styles';
 
 /**
  * PortfolioProjectHistory — the production-history timeline of
@@ -191,49 +199,15 @@ const titleClassName = css({
 	color: 'text.default',
 });
 
-const metaClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const metaClassName = css(eyebrowMonoXsReset);
 
-const summaryClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const summaryClassName = css(noteSansMd);
 
-const legendLabelClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const legendLabelClassName = css(eyebrowMonoXsReset);
 
-const legendNameClassName = css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: '2',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	fontWeight: '600',
-	color: 'text.default',
-});
+const legendNameClassName = css(labelAction);
 
-const legendDescriptionClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'xs',
-	lineHeight: '1.6',
-	color: 'text.muted',
-});
+const legendDescriptionClassName = css(noteSansXsBody);
 
 const eventClassName = css({
 	display: 'flex',
@@ -263,11 +237,7 @@ const dateClassName = css({
 	flexShrink: '0',
 });
 
-const precisionClassName = css({
-	fontFamily: 'sans',
-	fontSize: 'xs',
-	color: 'text.muted',
-});
+const precisionClassName = css(noteSansXs);
 
 const basisBadgeClassName = css({
 	display: 'inline-flex',
@@ -279,14 +249,7 @@ const basisBadgeClassName = css({
 	color: 'text.muted',
 });
 
-const eventTitleClassName = css({
-	margin: '0',
-	fontFamily: 'heading',
-	fontSize: 'lg',
-	fontWeight: '700',
-	lineHeight: '1.3',
-	color: 'text.default',
-});
+const eventTitleClassName = css(titleHeadingLg);
 
 const detailClassName = css({
 	margin: '0',
@@ -306,14 +269,7 @@ const imageClassName = css({
 	borderColor: 'border.subtle',
 });
 
-const sourcesLabelClassName = css({
-	margin: '0',
-	fontFamily: 'mono',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	textTransform: 'uppercase',
-	color: 'text.muted',
-});
+const sourcesLabelClassName = css(eyebrowMonoXsReset);
 
 const sourcePathClassName = css({
 	fontFamily: 'mono',

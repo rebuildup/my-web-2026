@@ -1,6 +1,7 @@
 import { css } from '../../styled-system/css';
 import { Button } from '../editorial/primitives/Button';
 import { PageSection } from '../editorial/primitives/PageSection';
+import { sizeTitle } from '../editorial/primitives/shared-styles';
 import { SiteMark } from './mark';
 
 /**
@@ -47,7 +48,7 @@ export function Hero() {
 					marginBlockStart: '6',
 					maxWidth: '640px',
 					fontFamily: 'sans',
-					fontSize: { base: 'xl', lg: '2xl' },
+					fontSize: sizeTitle,
 					fontWeight: '700',
 					lineHeight: '1.4',
 					color: 'text.default',

@@ -1,5 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { focusRing, noteSansMd } from '../../editorial/primitives/shared-styles';
 import type { KnownIncident } from './incidents';
 import { INCIDENT_TRACKER_URL, selectPublishableIncidents } from './incidents';
 
@@ -57,13 +58,7 @@ const headingClassName = css({
 	letterSpacing: '-0.01em',
 });
 
-const bodyClassName = css({
-	margin: '0',
-	fontFamily: 'sans',
-	fontSize: 'md',
-	color: 'text.muted',
-	lineHeight: '1.6',
-});
+const bodyClassName = css(noteSansMd);
 
 const itemClassName = css({
 	display: 'flex',
@@ -101,10 +96,7 @@ const linkClassName = css({
 	textUnderlineOffset: '0.18em',
 	textDecorationThickness: '1px',
 	_hover: { textDecorationThickness: '2px' },
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
+	_focusVisible: focusRing,
 });
 
 export function IncidentList({ incidents, headingId = 'status-incidents' }: IncidentListProps) {

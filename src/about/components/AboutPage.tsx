@@ -12,6 +12,20 @@ import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
 import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
+import {
+	bodySansMd,
+	eyebrowMonoSm,
+	eyebrowMonoXs,
+	eyebrowMonoXsLoose,
+	noteMonoSm,
+	noteSansMd,
+	noteSansSm,
+	pageTitle,
+	rowGap3,
+	rowWrapGap3,
+	sizeTitle,
+	spaceSection,
+} from '../../editorial/primitives/shared-styles';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
 import type { SkillEntry } from '../skills';
@@ -172,29 +186,8 @@ function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 						minWidth: '0',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						/about · profile
-					</span>
-					<h1
-						id="about-hero-title"
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '2',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							color: 'text.default',
-							letterSpacing: '-0.03em',
-						})}
-					>
+					<span className={css(noteMonoSm)}>/about · profile</span>
+					<h1 id="about-hero-title" lang="ja" className={css(pageTitle)}>
 						{identity.name}
 					</h1>
 					<p
@@ -277,17 +270,7 @@ function IdentitySection({ identity }: { identity: AboutPageData['identity'] }) 
 				>
 					{rows.map((row) => (
 						<Fragment key={row.label}>
-							<dt
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									letterSpacing: '0.04em',
-									textTransform: 'uppercase',
-									color: 'text.muted',
-								})}
-							>
-								{row.label}
-							</dt>
+							<dt className={css(eyebrowMonoXs)}>{row.label}</dt>
 							<dd lang="ja" className={css({ margin: '0' })}>
 								{row.value}
 							</dd>
@@ -334,16 +317,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 									gap: '3',
 								})}
 							>
-								<span
-									aria-hidden="true"
-									className={css({
-										fontFamily: 'mono',
-										fontSize: 'xs',
-										letterSpacing: '0.06em',
-										textTransform: 'uppercase',
-										color: 'text.muted',
-									})}
-								>
+								<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 									{String(index + 1).padStart(2, '0')}
 								</span>
 								<h3
@@ -423,14 +397,7 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 							color: 'text.muted',
 						})}
 					>
-						<p
-							className={css({
-								margin: '0',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-							})}
-						>
+						<p className={css(bodySansMd)}>
 							現在、narrative subset に該当する公開作品はありません。
 						</p>
 					</output>
@@ -476,24 +443,8 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 				borderBlockStartStyle: 'solid',
 			})}
 		>
-			<header
-				className={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '3',
-					flexWrap: 'wrap',
-				})}
-			>
-				<span
-					aria-hidden="true"
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						letterSpacing: '0.06em',
-						textTransform: 'uppercase',
-						color: 'text.muted',
-					})}
-				>
+			<header className={css(rowWrapGap3)}>
+				<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 					{type}
 				</span>
 				{project.periodLabel ? (
@@ -514,28 +465,11 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 					{project.title}
 				</a>
 			</h3>
-			<p
-				lang="ja"
-				className={css({
-					margin: '0',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					color: 'text.muted',
-					lineHeight: '1.6',
-				})}
-			>
+			<p lang="ja" className={css(noteSansMd)}>
 				{project.summary}
 			</p>
 			{project.role ? (
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+				<p lang="ja" className={css(noteSansSm)}>
 					役割: {project.role}
 				</p>
 			) : null}
@@ -648,13 +582,7 @@ function FutureColumn({
 }) {
 	return (
 		<Stack gap="4">
-			<header
-				className={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '3',
-				})}
-			>
+			<header className={css(rowGap3)}>
 				<Badge tone={tone === 'active' ? 'accent' : 'neutral'}>{label}</Badge>
 			</header>
 			<Stack as="ul" gap="4" className={cx(listResetClassName, bodyText)}>
@@ -671,16 +599,7 @@ function FutureColumn({
 							paddingBlockStart: '3',
 						})}
 					>
-						<span
-							aria-hidden="true"
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'xs',
-								letterSpacing: '0.06em',
-								textTransform: 'uppercase',
-								color: 'text.muted',
-							})}
-						>
+						<span aria-hidden="true" className={css(eyebrowMonoXsLoose)}>
 							{tone === 'active' ? '◆' : '·'}
 						</span>
 						<span>{item}</span>
@@ -704,22 +623,13 @@ function ExternalHandlesFooter({
 		<footer
 			aria-labelledby="about-footer-heading"
 			className={css({
-				paddingBlock: { base: '16', lg: '24' },
+				paddingBlock: spaceSection,
 			})}
 		>
 			<Container>
 				<Stack gap="6">
 					<Stack gap="2">
-						<span
-							aria-hidden="true"
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
+						<span aria-hidden="true" className={css(eyebrowMonoSm)}>
 							08 — Finds me elsewhere
 						</span>
 						<h2
@@ -727,7 +637,7 @@ function ExternalHandlesFooter({
 							className={css({
 								margin: '0',
 								fontFamily: 'heading',
-								fontSize: { base: 'xl', lg: '2xl' },
+								fontSize: sizeTitle,
 								fontWeight: '700',
 								lineHeight: '1.15',
 								letterSpacing: '-0.02em',

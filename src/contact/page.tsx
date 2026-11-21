@@ -7,6 +7,14 @@ import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { TextLink } from '../editorial/primitives/TextLink';
+import {
+	bodySansMdReset,
+	focusRing,
+	ledeSansLg,
+	noteMonoSm,
+	pageTitle,
+	vStackGap1,
+} from '../editorial/primitives/shared-styles';
 import { PURPOSE_LABEL_EN, PURPOSE_LABEL_JA } from './labels';
 import type { PublicContactChannel } from './public';
 
@@ -53,43 +61,11 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 		<>
 			<SkipLink />
 			<PageSection rhythm="hero" labelledBy="contact-hero-title">
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					my-web-2026 · /contact
-				</span>
-				<h1
-					id="contact-hero-title"
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '2',
-						fontFamily: 'heading',
-						fontSize: { base: '3xl', lg: '4xl' },
-						fontWeight: '700',
-						lineHeight: { base: '1.15', lg: '1.05' },
-						color: 'text.default',
-						letterSpacing: '-0.03em',
-					})}
-				>
+				<span className={css(noteMonoSm)}>my-web-2026 · /contact</span>
+				<h1 id="contact-hero-title" lang="ja" className={css(pageTitle)}>
 					Contact
 				</h1>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '6',
-						fontFamily: 'sans',
-						fontSize: 'lg',
-						lineHeight: '1.6',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
+				<p lang="ja" className={css(ledeSansLg)}>
 					現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel
 					は現在 re-verified されていないため、ここには載せていません。
 				</p>
@@ -170,13 +146,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 					: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<Split as="li" rowGap="2" separated data-channel-id={channel.id}>
-			<div
-				className={css({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '1',
-				})}
-			>
+			<div className={css(vStackGap1)}>
 				<span
 					lang="ja"
 					className={css({
@@ -188,14 +158,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 				>
 					{channel.label}
 				</span>
-				<span
-					lang="en"
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
+				<span lang="en" className={css(noteMonoSm)}>
 					{channel.labelEn}
 				</span>
 			</div>
@@ -207,14 +170,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 					minWidth: '0',
 				})}
 			>
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
-					})}
-				>
+				<p className={css(bodySansMdReset)}>
 					<span lang="ja">用途: {PURPOSE_LABEL_JA[channel.purpose]}</span>
 					<span lang="en"> · {PURPOSE_LABEL_EN[channel.purpose]}</span>
 				</p>
@@ -239,10 +195,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 						textDecorationThickness: '1px',
 						overflowWrap: 'break-word',
 						_hover: { textDecorationThickness: '2px' },
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '2px',
-						},
+						_focusVisible: focusRing,
 					})}
 				>
 					<span
@@ -266,15 +219,7 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 					</span>
 					<span aria-hidden="true">→</span>
 				</a>
-				<span
-					className={css({
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{verifiedLabel}
-				</span>
+				<span className={css(noteMonoSm)}>{verifiedLabel}</span>
 			</div>
 		</Split>
 	);

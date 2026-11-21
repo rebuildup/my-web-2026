@@ -1,6 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
@@ -116,12 +116,6 @@ function plannedCapabilities() {
 	return CAPABILITIES.filter((capability) => capability.status === 'planned');
 }
 
-const cardListClassName = /*#__PURE__*/ css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
 const classLabelClassName = /*#__PURE__*/ css({
 	fontFamily: 'sans',
 	fontSize: 'xs',
@@ -223,7 +217,7 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 				titleEn="Site guide"
 				description="このサイトの行き先を、内容の分類ごとの面で並べています。各カードの色面はその行き先の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 			/>
-			<Grid columns={3} gap="6" as="ul" className={cardListClassName}>
+			<Grid columns={3} gap="6" as="ul" className={listResetClassName}>
 				{destinations.map((destination) => (
 					<ExploreCard key={destination.id} destination={destination} />
 				))}

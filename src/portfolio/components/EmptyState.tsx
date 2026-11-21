@@ -1,4 +1,6 @@
 import { css } from '../../../styled-system/css';
+import { Button } from '../../editorial/primitives/Button';
+import { Stack } from '../../editorial/primitives/Flow';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 
 /**
@@ -51,51 +53,23 @@ export function PortfolioEmptyState({
 }: PortfolioEmptyStateProps = {}) {
 	const external = EXTERNAL_HREF.test(statusHref);
 	return (
-		<div
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '6',
-				paddingBlock: '8',
-			})}
-		>
+		<Stack gap="6" className={css({ paddingBlock: '8' })}>
 			<SectionHeading
 				eyebrow="Status"
 				title="ポートフォリオ準備中"
 				description="公開できる project はまだありません。公開済みの作品は /portfolio とトップページの現在地セクションから確認できます。"
 			/>
-			<a
+			<Button
+				as="a"
+				variant="secondary"
 				href={statusHref}
 				rel={external ? 'noopener noreferrer' : undefined}
 				target={external ? '_blank' : undefined}
-				className={css({
-					display: 'inline-flex',
-					alignItems: 'center',
-					gap: '2',
-					alignSelf: 'flex-start',
-					height: '10',
-					paddingInline: '5',
-					borderRadius: 'full',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
-					backgroundColor: 'bg.surface',
-					color: 'text.default',
-					fontFamily: 'sans',
-					fontSize: 'md',
-					fontWeight: '600',
-					textDecoration: 'none',
-					transition: 'border-color 120ms ease, background-color 120ms ease',
-					_hover: { borderColor: 'border.strong' },
-					_focusVisible: {
-						outline: '2px solid {colors.border.focus}',
-						outlineOffset: '2px',
-					},
-				})}
+				className={css({ alignSelf: 'flex-start' })}
 			>
 				<span>公開状況を確認する</span>
 				<span aria-hidden="true">→</span>
-			</a>
-		</div>
+			</Button>
+		</Stack>
 	);
 }

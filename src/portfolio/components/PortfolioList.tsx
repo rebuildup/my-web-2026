@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css';
 import { Button } from '../../editorial/primitives/Button';
+import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -181,7 +182,14 @@ export function PortfolioList({
 						// `Grid` preset 5 (1/2/3 columns), the 24px gutter, the
 						// 40px row beat and `equalRows`, the measured fix for
 						// uneven card heights (design #764).
-						<Grid as="ol" columns={5} columnGap="6" rowGap="10" equalRows className={listReset}>
+						<Grid
+							as="ol"
+							columns={5}
+							columnGap="6"
+							rowGap="10"
+							equalRows
+							className={listResetClassName}
+						>
 							{allProjects.map((project) => (
 								<li key={project.id} className={liStretchClass}>
 									<ProjectCard project={project} />
@@ -227,13 +235,6 @@ export function PortfolioList({
 		</>
 	);
 }
-
-/** List resets for the semantic `<ol>` card grid (display lives in `Grid`). */
-const listReset = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 /**
  * Grid item behaviour for one card (same shape as the tools index's

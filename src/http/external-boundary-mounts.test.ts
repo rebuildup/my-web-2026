@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { EXTERNAL_BOUNDARY_PREFIXES } from '../../scripts/_index-boundary.mjs';
-import { externalBoundary } from './hono';
 import {
+	BOUNDARY_NOT_FOUND_CONTRACT,
 	type BoundaryMountActual,
 	type BoundaryMountEntry,
 	type BoundaryProbeObservation,
-	BOUNDARY_NOT_FOUND_CONTRACT,
-	classifyProbe,
 	EXTERNAL_BOUNDARY_MOUNTS,
+	classifyProbe,
 	evaluateBoundaryMounts,
 	isBoundaryNotFound,
 } from './external-boundary-mounts';
+import { externalBoundary } from './hono';
 
 /**
  * External boundary mount contract (Issue #841, decision O-13).

@@ -1,6 +1,6 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -105,19 +105,16 @@ function StackSectionBlock({
 				description={section.description}
 				variant="default"
 			/>
-			<ul
+			<Stack
+				as="ul"
+				gap="0"
 				data-testid={`stack-items-${section.id}`}
-				className={css({
-					margin: '0',
-					marginBlockStart: '10',
-					padding: '0',
-					listStyle: 'none',
-				})}
+				className={cx(listResetClassName, css({ marginBlockStart: '10' }))}
 			>
 				{section.items.map((item) => (
 					<StackItemRow key={item.id} item={item} />
 				))}
-			</ul>
+			</Stack>
 		</PageSection>
 	);
 }
@@ -218,11 +215,7 @@ function StackItemRow({ item }: { item: StackItemView }) {
 					<StackChecks checks={item.checks} itemId={item.id} />
 				) : null}
 				{item.evidence.length > 0 ? (
-					<Cluster
-						as="ul"
-						aria-label="根拠 source"
-						className={css({ margin: '0', padding: '0', listStyle: 'none' })}
-					>
+					<Cluster as="ul" aria-label="根拠 source" className={listResetClassName}>
 						{item.evidence.map((link) => (
 							<li key={link.href}>
 								<TextLink
@@ -272,7 +265,7 @@ function StackChecks({
 			gap="2"
 			aria-label="検証状況"
 			data-testid={`stack-checks-${itemId}`}
-			className={css({ margin: '0', padding: '0', listStyle: 'none' })}
+			className={listResetClassName}
 		>
 			{checks.map((check) => (
 				<li

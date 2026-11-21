@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 
 /**
  * PortfolioCaseStudy — the case-study element of Issue #519.
@@ -231,12 +232,6 @@ const legendDescriptionClassName = css({
 	color: 'text.muted',
 });
 
-const sectionClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
-});
-
 const sectionHeadingClassName = css({
 	margin: '0',
 	fontFamily: 'heading',
@@ -244,15 +239,6 @@ const sectionHeadingClassName = css({
 	fontWeight: '700',
 	lineHeight: '1.3',
 	color: 'text.default',
-});
-
-const entryListClassName = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '3',
 });
 
 const entryClassName = css({
@@ -297,13 +283,13 @@ export function PortfolioCaseStudy({
 
 	return (
 		<article className={rootClassName} data-portfolio-case-study="">
-			<header className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack as="header" gap="2">
 				<h2 className={titleClassName}>{title}</h2>
 				{periodLabel ? <p className={metaClassName}>{periodLabel}</p> : null}
 				{summary ? <p className={summaryClassName}>{summary}</p> : null}
-			</header>
+			</Stack>
 
-			<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<Stack gap="2">
 				<p className={legendLabelClassName}>読み方 / How to read</p>
 				<ul className={legendListClassName}>
 					{CLAIM_CLASS_ORDER.map((claimClass) => {
@@ -322,18 +308,14 @@ export function PortfolioCaseStudy({
 						);
 					})}
 				</ul>
-			</div>
+			</Stack>
 
 			{visibleSections.map((section) => (
-				<section
-					key={section.id}
-					aria-labelledby={`case-study-${section.id}`}
-					className={sectionClassName}
-				>
+				<Stack as="section" key={section.id} gap="3" aria-labelledby={`case-study-${section.id}`}>
 					<h3 id={`case-study-${section.id}`} className={sectionHeadingClassName}>
 						{section.heading}
 					</h3>
-					<ul className={entryListClassName}>
+					<Stack as="ul" gap="3" className={listResetClassName}>
 						{section.entries.map((entry, index) => (
 							<li
 								// Entries have no stable id of their own; the
@@ -351,8 +333,8 @@ export function PortfolioCaseStudy({
 								<p className={entryTextClassName}>{entry.text}</p>
 							</li>
 						))}
-					</ul>
-				</section>
+					</Stack>
+				</Stack>
 			))}
 		</article>
 	);

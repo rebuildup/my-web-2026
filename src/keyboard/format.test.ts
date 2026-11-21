@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import macSource from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
 import {
 	actionDescription,
 	actionLabel,
@@ -10,6 +9,7 @@ import {
 	shortRef,
 } from './format';
 import { parseKanata } from './parse-kanata';
+import macSource from './sources/key-map-kanata/mac/kanata-us.kbd?raw';
 import type { KeyboardAction } from './types';
 
 const parsed = parseKanata(macSource);

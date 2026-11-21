@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildKeyboardCatalog, type KeyboardSourceBundle } from './catalog';
+import { type KeyboardSourceBundle, buildKeyboardCatalog } from './catalog';
 import { KEYBOARD_SOURCES } from './index';
 import type { KeyboardManifest } from './types';
 

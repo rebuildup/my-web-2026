@@ -87,6 +87,8 @@ export interface PanelProps {
 	radius?: 'sm' | 'md' | 'lg';
 	as?: ElementType;
 	className?: string;
+	/** ARIA role for landmark/section panels (e.g. `note`). */
+	role?: string;
 	children?: ReactNode;
 	/** Pass-through `data-*` attributes for E2E/integration selectors. */
 	[key: `data-${string}`]: string | number | boolean | undefined;

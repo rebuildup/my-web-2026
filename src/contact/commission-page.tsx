@@ -1,7 +1,8 @@
-import { css } from '../../styled-system/css';
-import { Stack } from '../editorial/primitives/Flow';
+import { css, cx } from '../../styled-system/css';
+import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
+import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { SkipLink } from '../editorial/primitives/SkipLink';
 import { TextLink } from '../editorial/primitives/TextLink';
@@ -11,6 +12,18 @@ import {
 	COMMISSION_SOFTWARE,
 	COMMISSION_STEPS,
 } from './commission';
+
+/**
+ * The hairline box the outlined callouts share (requirements note,
+ * contact note, process steps): `Panel variant="plain"` owns the
+ * surface decision, this owns only the border the plain variant does
+ * not draw.
+ */
+const hairlineBox = css({
+	borderWidth: '1px',
+	borderStyle: 'solid',
+	borderColor: 'border.subtle',
+});
 
 /**
  * `/commission` page composition (Issue #390; status contract per
@@ -95,17 +108,12 @@ function StatusSection() {
 				title="受付状況"
 				titleEn="Intake status"
 			/>
-			<div
+			<Panel
+				variant="surface"
+				padding="6"
+				radius="md"
 				data-testid="commission-status"
-				className={css({
-					marginBlockStart: '6',
-					padding: '6',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
-					borderRadius: 'md',
-					backgroundColor: 'bg.surface',
-				})}
+				className={css({ marginBlockStart: '6' })}
 			>
 				<p
 					lang="ja"
@@ -135,7 +143,7 @@ function StatusSection() {
 					<TextLink href="/contact">/contact</TextLink>
 					の掲載 channel でお知らせします。休止中のため、依頼フォームや料金表は公開していません。
 				</p>
-			</div>
+			</Panel>
 		</PageSection>
 	);
 }
@@ -170,12 +178,7 @@ function ServicesSection() {
 						<Stack
 							as="ul"
 							gap="4"
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								padding: '0',
-								listStyle: 'none',
-							})}
+							className={cx(listResetClassName, css({ marginBlockStart: '4' }))}
 						>
 							{group.services.map((service) => (
 								<li key={service.title}>
@@ -206,12 +209,7 @@ function ServicesSection() {
 										<Stack
 											as="ul"
 											gap="1"
-											className={css({
-												margin: '0',
-												marginBlockStart: '2',
-												padding: '0',
-												listStyle: 'none',
-											})}
+											className={cx(listResetClassName, css({ marginBlockStart: '2' }))}
 										>
 											{service.items.map((item) => (
 												<li
@@ -249,26 +247,16 @@ function ProcessSection() {
 			<Stack
 				as="ol"
 				gap="4"
-				className={css({
-					margin: '0',
-					marginBlockStart: '8',
-					padding: '0',
-					listStyle: 'none',
-					maxWidth: '720px',
-				})}
+				className={cx(listResetClassName, css({ marginBlockStart: '8', maxWidth: '720px' }))}
 			>
 				{COMMISSION_STEPS.map((step) => (
-					<li
+					<Panel
+						as="li"
 						key={step.step}
-						className={css({
-							display: 'flex',
-							gap: '4',
-							padding: '4',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.subtle',
-							borderRadius: 'md',
-						})}
+						variant="plain"
+						padding="4"
+						radius="md"
+						className={cx(hairlineBox, css({ display: 'flex', gap: '4' }))}
 					>
 						<span
 							aria-hidden="true"
@@ -314,7 +302,7 @@ function ProcessSection() {
 								{step.description}
 							</p>
 						</div>
-					</li>
+					</Panel>
 				))}
 			</Stack>
 		</PageSection>
@@ -330,16 +318,11 @@ function RequirementsSection() {
 				title="見積もりに必要な情報"
 				titleEn="What an estimate needs"
 			/>
-			<div
-				className={css({
-					marginBlockStart: '6',
-					padding: '6',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
-					borderRadius: 'md',
-					maxWidth: '720px',
-				})}
+			<Panel
+				variant="plain"
+				padding="6"
+				radius="md"
+				className={cx(hairlineBox, css({ marginBlockStart: '6', maxWidth: '720px' }))}
 			>
 				<p
 					lang="ja"
@@ -352,16 +335,7 @@ function RequirementsSection() {
 				>
 					受付再開後、依頼時に以下を伺います:
 				</p>
-				<Stack
-					as="ul"
-					gap="2"
-					className={css({
-						margin: '0',
-						marginBlockStart: '4',
-						padding: '0',
-						listStyle: 'none',
-					})}
-				>
+				<Stack as="ul" gap="2" className={cx(listResetClassName, css({ marginBlockStart: '4' }))}>
 					{COMMISSION_REQUIREMENTS.map((item) => (
 						<li
 							key={item}
@@ -387,7 +361,7 @@ function RequirementsSection() {
 				>
 					場合によっては、追加で音源やイラスト、曲名などを伺うことがあります。
 				</p>
-			</div>
+			</Panel>
 		</PageSection>
 	);
 }
@@ -422,12 +396,7 @@ function SoftwareSection() {
 						<Stack
 							as="ul"
 							gap="1"
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								padding: '0',
-								listStyle: 'none',
-							})}
+							className={cx(listResetClassName, css({ marginBlockStart: '2' }))}
 						>
 							{group.tools.map((tool) => (
 								<li
@@ -458,16 +427,11 @@ function ContactSection() {
 				title="連絡方法"
 				titleEn="How to reach"
 			/>
-			<div
-				className={css({
-					marginBlockStart: '6',
-					padding: '6',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
-					borderRadius: 'md',
-					maxWidth: '720px',
-				})}
+			<Panel
+				variant="plain"
+				padding="6"
+				radius="md"
+				className={cx(hairlineBox, css({ marginBlockStart: '6', maxWidth: '720px' }))}
 			>
 				<p
 					lang="ja"
@@ -495,7 +459,7 @@ function ContactSection() {
 				>
 					通話などでのミーティングの対応は行っていません。料金は公開していません。受付再開後、依頼内容に応じて個別にお見積もりします。
 				</p>
-			</div>
+			</Panel>
 		</PageSection>
 	);
 }

@@ -1,4 +1,6 @@
 import { css } from '../../../styled-system/css';
+import { Stack } from '../../editorial/primitives/Flow';
+import { Panel } from '../../editorial/primitives/Panel';
 
 /**
  * PortfolioEvidenceNotice — the public face of "we have no rights
@@ -42,24 +44,11 @@ export interface PortfolioEvidenceNoticeProps {
 }
 
 const noticeClassName = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '1',
-	// Issue #887: the panel separates itself by FILL, not by a
-	// hairline enclosure. `border.subtle` is the system's decorative
-	// separator (it carries no information of its own), and this box
-	// was painted with the page colour behind it, so the border was
-	// doing all of the work. `bg.subtle` is the documented "inset
-	// block" role; the disclosure keeps its own boundary without an
-	// outline the monochrome hierarchy does not need.
-	backgroundColor: 'bg.subtle',
-	borderRadius: '4',
-	padding: '3',
 	marginBlockStart: '4',
+	maxWidth: '720px',
 	fontFamily: 'sans',
 	fontSize: 'sm',
 	color: 'text.muted',
-	maxWidth: '720px',
 });
 
 const labelClassName = css({
@@ -79,19 +68,30 @@ const bodyClassName = css({
 export function PortfolioEvidenceNotice({ evidenceStatus }: PortfolioEvidenceNoticeProps) {
 	if (evidenceStatus === 'reviewed') return null;
 	return (
-		<aside
-			className={noticeClassName}
+		// Issue #887: the panel separates itself by FILL, not by a
+		// hairline enclosure — `Panel variant="subtle"` is the documented
+		// "inset block" role (`bg.subtle`), so the disclosure keeps its
+		// own boundary without an outline the monochrome hierarchy does
+		// not need.
+		<Panel
+			as="aside"
+			variant="subtle"
+			padding="4"
+			radius="sm"
 			role="note"
+			className={noticeClassName}
 			// The marker the rights gate reads out of this file. Changing
 			// it means changing `quality/asset-license-publication-decision.json`
 			// in the same commit — which is the point: the disclosure and
 			// its check cannot drift apart silently.
 			data-evidence-status="unreviewed"
 		>
-			<p className={labelClassName}>Rights review: unreviewed / 権利レビュー未実施</p>
-			<p className={bodyClassName}>
-				この作品の権利記録（著作者・出典・ライセンス）はこのリポジトリにありません。公開の可否は決定・記録済みであり、この作品はその決定で公開されています。記録が無いまま公開しているため、公開面にその状態を表示しています。
-			</p>
-		</aside>
+			<Stack gap="1">
+				<p className={labelClassName}>Rights review: unreviewed / 権利レビュー未実施</p>
+				<p className={bodyClassName}>
+					この作品の権利記録（著作者・出典・ライセンス）はこのリポジトリにありません。公開の可否は決定・記録済みであり、この作品はその決定で公開されています。記録が無いまま公開しているため、公開面にその状態を表示しています。
+				</p>
+			</Stack>
+		</Panel>
 	);
 }

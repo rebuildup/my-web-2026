@@ -1,7 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
-import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -310,11 +310,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 					{project.links.length > 0 ? (
 						<PageSection labelledBy="portfolio-section-links" separator>
 							<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
-							<Stack
-								as="ul"
-								gap="3"
-								className={css({ listStyle: 'none', margin: '0', padding: '0' })}
-							>
+							<Stack as="ul" gap="3" className={listResetClassName}>
 								{project.links.map((link) => (
 									<li key={link.id}>
 										<a
@@ -393,13 +389,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 									title="隣接 project / Adjacent"
 									description="このプロジェクトの前後に並ぶ project。"
 								/>
-								<Grid
-									as="ul"
-									columns={2}
-									columnGap="6"
-									rowGap="4"
-									className={css({ listStyle: 'none', margin: '0', padding: '0' })}
-								>
+								<Grid as="ul" columns={2} columnGap="6" rowGap="4" className={listResetClassName}>
 									<li>
 										{adjacent.prev ? (
 											<a

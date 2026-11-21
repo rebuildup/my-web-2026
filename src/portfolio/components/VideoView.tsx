@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
+import { cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import type { PortfolioProject } from '../schema';
 import { projectCover, projectVideo } from '../views';
 import { FACET_LABEL } from '../vocabulary';
@@ -46,7 +48,7 @@ export function VideoView({ projects }: VideoViewProps) {
 			columns={5}
 			columnGap={{ base: '0', sm: '6' }}
 			rowGap="10"
-			className={css({ listStyle: 'none', margin: '0', padding: '0' })}
+			className={listResetClassName}
 		>
 			{projects.map((project) => (
 				<VideoTile
@@ -202,25 +204,7 @@ function VideoTile({
 							letterSpacing: '-0.01em',
 						})}
 					>
-						<a
-							href={detailHref}
-							className={css({
-								color: 'inherit',
-								textDecoration: 'underline',
-								textUnderlineOffset: '0.18em',
-								textDecorationThickness: '1px',
-								textDecorationColor: 'border.strong',
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '4px',
-									borderRadius: '2px',
-								},
-								_hover: {
-									textDecorationThickness: '2px',
-									textDecorationColor: 'currentColor',
-								},
-							})}
-						>
+						<a href={detailHref} className={cardTitleLinkClassName}>
 							{project.title}
 						</a>
 					</h3>

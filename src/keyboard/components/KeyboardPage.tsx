@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { Stack } from '../../editorial/primitives/Flow';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -871,7 +871,7 @@ function PlatformFlow({ platform }: { platform: KeyboardPlatform }) {
 				<Badge tone="neutral">{platform.layout}</Badge>
 			</p>
 			{ready ? (
-				<Stack as="ol" gap="2" className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
+				<Stack as="ol" gap="2" className={listResetClassName}>
 					{steps.map((step, index) => (
 						<li key={step} className={flowStepStyle}>
 							<span className={flowIndexStyle} aria-hidden="true">

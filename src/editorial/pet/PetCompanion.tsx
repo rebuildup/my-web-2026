@@ -1,7 +1,7 @@
 import { type ComponentType, useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
-import { CLOSE_PATH, EMOTICONS_PATH } from '../primitives/material-symbol-paths';
 import { MaterialSymbol } from '../primitives/MaterialSymbol';
+import { CLOSE_PATH, EMOTICONS_PATH } from '../primitives/material-symbol-paths';
 import { useMediaQuery } from '../use-media-query';
 
 /**

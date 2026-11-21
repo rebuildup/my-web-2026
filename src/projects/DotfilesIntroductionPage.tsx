@@ -2,7 +2,7 @@ import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Button } from '../editorial/primitives/Button';
 import { Container } from '../editorial/primitives/Container';
-import { Cluster, Stack } from '../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
@@ -64,12 +64,6 @@ const FRESHNESS_MARK: Readonly<Record<FreshnessState, 'ok' | 'degraded' | 'unrea
 	unavailable: 'unreachable',
 	unknown: 'degraded',
 };
-
-const listReset = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 const bodyTextClassName = css({
 	margin: '0',
@@ -281,7 +275,7 @@ export function DotfilesIntroductionPage({ view }: DotfilesIntroductionPageProps
 							title="関連リポジトリ"
 							description="上流 README が名指ししている、役割の異なるリポジトリです。"
 						/>
-						<Stack as="ul" gap="4" className={listReset}>
+						<Stack as="ul" gap="4" className={listResetClassName}>
 							{snapshot.introduction.relatedRepositories.map((repo) => (
 								<li
 									key={repo.url}
@@ -452,7 +446,7 @@ function ReadmeSection({
 					>
 						リポジトリ直下
 					</h3>
-					<Cluster as="ul" gap="2" className={listReset}>
+					<Cluster as="ul" gap="2" className={listResetClassName}>
 						{section.structure.map((entry) => (
 							<li key={entry}>
 								<code

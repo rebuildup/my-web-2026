@@ -6,7 +6,7 @@ import {
 	type ActivityTimeline,
 	type ActivityTimelineItem,
 } from '../../activity/contract';
-import { Stack } from '../../editorial/primitives/Flow';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 
 /**
  * ActivityTimeline — the unified read-only chronology of published
@@ -28,12 +28,6 @@ import { Stack } from '../../editorial/primitives/Flow';
  *     authored a coarse period label, else the `at` day) and a real
  *     permalink when one exists.
  */
-
-const listResetClassName = /*#__PURE__*/ css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 const itemClassName = /*#__PURE__*/ css({
 	display: 'flex',

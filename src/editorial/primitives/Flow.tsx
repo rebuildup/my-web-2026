@@ -11,6 +11,18 @@ import type { FlowGap } from './Grid';
  * code never writes ad-hoc `flexDirection` + `gap` pairs for layout.
  */
 
+/**
+ * `listResetClassName` — the owned reset for lists rendered through
+ * `Stack`/`Cluster`/`Grid` with `as="ul"|"ol"`. Feature code composes
+ * it via `cx(listResetClassName, …)` instead of re-declaring the
+ * `listStyle`/`margin`/`padding` literal (ADR-0022 C-7).
+ */
+export const listResetClassName = css({
+	listStyle: 'none',
+	margin: '0',
+	padding: '0',
+});
+
 export interface StackProps {
 	/** Gap from the spacing-token rhythm set (default `4` = 16px). */
 	gap?: FlowGap;

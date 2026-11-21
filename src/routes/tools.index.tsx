@@ -3,6 +3,7 @@ import { css } from '../../styled-system/css';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../editorial/primitives/PageSection';
@@ -376,7 +377,14 @@ function ToolsIndexRoute() {
 						eyebrow="01 — Available"
 						title="使えるツール"
 					/>
-					<Grid as="ul" columns={2} columnGap="6" rowGap="10" equalRows className={listReset}>
+					<Grid
+						as="ul"
+						columns={2}
+						columnGap="6"
+						rowGap="10"
+						equalRows
+						className={listResetClassName}
+					>
 						{available.map((tool) => (
 							<ToolCard key={tool.slug} tool={tool} />
 						))}
@@ -391,7 +399,14 @@ function ToolsIndexRoute() {
 						eyebrow="02 — Planned"
 						title="準備中"
 					/>
-					<Grid as="ul" columns={2} columnGap="6" rowGap="6" equalRows className={listReset}>
+					<Grid
+						as="ul"
+						columns={2}
+						columnGap="6"
+						rowGap="6"
+						equalRows
+						className={listResetClassName}
+					>
 						{planned.map((tool) => (
 							<PlannedToolItem key={tool.slug} tool={tool} />
 						))}
@@ -410,15 +425,10 @@ function ToolsIndexRoute() {
  * so two cards never have two different heights — the measured fix
  * for uneven card heights (design #764: 22.4 px → 0 px). The roadmap
  * section uses the same columns with a tighter row beat. List
- * semantics stay on the `<ul>` via `as="ul"`; only the resets remain
- * here because `display` belongs to the primitive (C-5).
+ * semantics stay on the `<ul>` via `as="ul"`; the reset comes from
+ * the shared `listResetClassName` because `display` belongs to the
+ * primitive (C-5).
  */
-const listReset = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
-
 const cardItem = css({
 	display: 'grid',
 	minWidth: '0',

@@ -3,14 +3,14 @@ import { css, cx } from '../../../styled-system/css';
 import { PetCompanion, petSafeAreaStyle } from '../../editorial/pet';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
-import { Cluster, Stack } from '../../editorial/primitives/Flow';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid, Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
 import { TextLink } from '../../editorial/primitives/TextLink';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
+import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import type { PortfolioProject } from '../../portfolio/schema';
 import type { CareerEntry } from '../career';
@@ -78,12 +78,6 @@ const SITE_REFERENCE_LINKS: ReadonlyArray<{ href: string; label: string }> = [
 	{ href: '/keyboard', label: 'キーボード配列 / Keyboard' },
 	{ href: '/stack', label: '開発スタック / Stack' },
 ];
-
-const listReset = css({
-	margin: '0',
-	padding: '0',
-	listStyle: 'none',
-});
 
 const bodyText = css({
 	fontFamily: 'sans',
@@ -319,7 +313,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 				description="バラバラに見える活動が同じ人物から出てくる理由。プロジェクトを貫く throughline。"
 				variant="spread"
 			>
-				<Stack as="ol" gap="10" className={listReset}>
+				<Stack as="ol" gap="10" className={listResetClassName}>
 					{interests.map((interest, index) => (
 						<li
 							key={interest.title}
@@ -441,7 +435,7 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 						</p>
 					</output>
 				) : (
-					<Stack as="ol" gap="0" className={listReset}>
+					<Stack as="ol" gap="0" className={listResetClassName}>
 						{projects.map((project) => (
 							<li key={project.id}>
 								<ExperienceCard project={project} />
@@ -477,7 +471,9 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 				flexDirection: 'column',
 				gap: '3',
 				paddingBlock: '6',
-				borderTop: '1px solid {colors.border.subtle}',
+				borderBlockStartWidth: '1px',
+				borderBlockStartColor: 'border.subtle',
+				borderBlockStartStyle: 'solid',
 			})}
 		>
 			<header
@@ -514,29 +510,7 @@ function ExperienceCard({ project }: { project: PortfolioProject }) {
 				) : null}
 			</header>
 			<h3 className={cardTitleClassName}>
-				<a
-					href={`/portfolio/${project.slug}`}
-					className={css({
-						color: 'inherit',
-						textDecoration: 'underline',
-						textUnderlineOffset: '0.18em',
-						textDecorationThickness: '1px',
-						// The heading itself is the link, so a full-ink rule under
-						// every line would shout. The underline stays (it is now
-						// the only affordance) but is drawn in the identifying-
-						// rule tone instead of the body ink.
-						textDecorationColor: 'border.strong',
-						_focusVisible: {
-							outline: '2px solid {colors.border.focus}',
-							outlineOffset: '4px',
-							borderRadius: '2px',
-						},
-						_hover: {
-							textDecorationThickness: '2px',
-							textDecorationColor: 'currentColor',
-						},
-					})}
-				>
+				<a href={`/portfolio/${project.slug}`} className={cardTitleLinkClassName}>
 					{project.title}
 				</a>
 			</h3>
@@ -603,7 +577,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 				description="今、時間を割いていること。半年程度の freshness を想定。"
 				variant="spread"
 			>
-				<Stack as="ul" gap="4" className={cx(listReset, bodyText)}>
+				<Stack as="ul" gap="4" className={cx(listResetClassName, bodyText)}>
 					{items.map((item) => (
 						<li
 							key={item}
@@ -683,7 +657,7 @@ function FutureColumn({
 			>
 				<Badge tone={tone === 'active' ? 'accent' : 'neutral'}>{label}</Badge>
 			</header>
-			<Stack as="ul" gap="4" className={cx(listReset, bodyText)}>
+			<Stack as="ul" gap="4" className={cx(listResetClassName, bodyText)}>
 				{items.map((item) => (
 					<li
 						key={item}
@@ -763,7 +737,7 @@ function ExternalHandlesFooter({
 							他の場所で見つける / Elsewhere
 						</h2>
 					</Stack>
-					<Cluster as="ul" gap="3" className={listReset}>
+					<Cluster as="ul" gap="3" className={listResetClassName}>
 						{handles.map((handle) => (
 							<li key={handle.href}>
 								<TextLink
@@ -779,7 +753,7 @@ function ExternalHandlesFooter({
 						))}
 					</Cluster>
 					<nav aria-label="サイト内リファレンス">
-						<Cluster as="ul" gap="3" className={listReset}>
+						<Cluster as="ul" gap="3" className={listResetClassName}>
 							{SITE_REFERENCE_LINKS.map((item) => (
 								<li key={item.href}>
 									<TextLink variant="chip" href={item.href}>

@@ -20,3 +20,29 @@ export const cardTitleClassName = /*#__PURE__*/ css({
 	letterSpacing: '-0.01em',
 	color: 'text.default',
 });
+
+/**
+ * The link INSIDE a card title (ADR-0022 C-6/C-7). The heading is the
+ * whole link, so a full-ink rule under every line would shout: the
+ * underline stays — with no hue left it is the only affordance — but
+ * is drawn in the identifying-rule tone and thickens on hover. One
+ * style for every entity card (portfolio index rows, develop/video
+ * tracks); a non-link title span (the design mosaic, whose whole tile
+ * is the anchor) keeps the same underline minus the focus ring.
+ */
+export const cardTitleLinkClassName = /*#__PURE__*/ css({
+	color: 'inherit',
+	textDecoration: 'underline',
+	textUnderlineOffset: '0.18em',
+	textDecorationThickness: '1px',
+	textDecorationColor: 'border.strong',
+	_focusVisible: {
+		outline: '2px solid {colors.border.focus}',
+		outlineOffset: '4px',
+		borderRadius: '2px',
+	},
+	_hover: {
+		textDecorationThickness: '2px',
+		textDecorationColor: 'currentColor',
+	},
+});

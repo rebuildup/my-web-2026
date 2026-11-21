@@ -1,5 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { TextLink } from '../../editorial/primitives/TextLink';
 import type { CareerEntry, CareerEntryKind } from '../career';
 
 /**
@@ -44,27 +46,14 @@ const VERIFICATION_STATUS_LABELS: Readonly<Record<string, string>> = {
 	unverified: '未確認',
 };
 
-const listStyle = css({
-	listStyle: 'none',
-	margin: '0',
-	padding: '0',
-	display: 'flex',
-	flexDirection: 'column',
-});
-
 const itemStyle = css({
 	display: 'flex',
 	flexDirection: 'column',
 	gap: '2',
 	paddingBlock: '5',
-	borderTop: '1px solid {colors.border.subtle}',
-});
-
-const metaRowStyle = css({
-	display: 'flex',
-	alignItems: 'center',
-	flexWrap: 'wrap',
-	gap: '3',
+	borderBlockStartWidth: '1px',
+	borderBlockStartColor: 'border.subtle',
+	borderBlockStartStyle: 'solid',
 });
 
 const dateStyle = css({
@@ -93,24 +82,7 @@ const summaryStyle = css({
 	color: 'text.muted',
 });
 
-const sourceLinkStyle = css({
-	fontFamily: 'sans',
-	fontSize: 'sm',
-	color: 'text.accent',
-	textDecoration: 'underline',
-	textUnderlineOffset: '0.18em',
-	textDecorationThickness: '1px',
-	_focusVisible: {
-		outline: '2px solid {colors.border.focus}',
-		outlineOffset: '2px',
-	},
-	_hover: { textDecorationThickness: '2px' },
-});
-
 const emptyStyle = css({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: '2',
 	paddingBlock: '8',
 	color: 'text.muted',
 });
@@ -118,7 +90,7 @@ const emptyStyle = css({
 export function CareerTimeline({ entries }: CareerTimelineProps) {
 	if (entries.length === 0) {
 		return (
-			<output className={emptyStyle}>
+			<Stack as="output" gap="2" className={emptyStyle}>
 				<p
 					className={css({
 						margin: '0',
@@ -134,14 +106,14 @@ export function CareerTimeline({ entries }: CareerTimelineProps) {
 				>
 					旧サイトの記録は確認待ちの項目として保持しています。確認が済み次第、ここに表示されます。
 				</p>
-			</output>
+			</Stack>
 		);
 	}
 	return (
-		<ol className={listStyle}>
+		<Stack as="ol" gap="0" className={listResetClassName}>
 			{entries.map((entry) => (
 				<li key={entry.id} className={itemStyle}>
-					<div className={metaRowStyle}>
+					<Cluster gap="3">
 						<span className={dateStyle}>{entry.dateLabel}</span>
 						<Badge tone={KIND_TONES[entry.kind]}>{KIND_LABELS[entry.kind]}</Badge>
 						{entry.verification.status !== 'verified' ? (
@@ -149,28 +121,27 @@ export function CareerTimeline({ entries }: CareerTimelineProps) {
 								{VERIFICATION_STATUS_LABELS[entry.verification.status] ?? entry.verification.status}
 							</Badge>
 						) : null}
-					</div>
+					</Cluster>
 					<h3 className={titleStyle}>{entry.title}</h3>
 					{entry.summary ? <p className={summaryStyle}>{entry.summary}</p> : null}
 					{entry.sources.length > 0 ? (
-						<p className={css({ margin: '0', display: 'flex', flexWrap: 'wrap', gap: '4' })}>
+						<Cluster as="p" gap="4" className={css({ margin: '0' })}>
 							{entry.sources.map((source) => (
-								<a
+								<TextLink
 									key={source.url}
 									href={source.url}
-									className={sourceLinkStyle}
 									rel={source.url.startsWith('http') ? 'noreferrer' : undefined}
 								>
 									{source.label ?? '出典'}
-								</a>
+								</TextLink>
 							))}
-						</p>
+						</Cluster>
 					) : null}
 					{/* `verification.note` is an internal review record
 					    (it names repo modules), so it is deliberately NOT
 					    rendered — only the status badge above is public. */}
 				</li>
 			))}
-		</ol>
+		</Stack>
 	);
 }

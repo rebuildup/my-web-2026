@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -137,18 +138,11 @@ function LinkGroupSection({ group, index }: { group: AboutLinkGroup; index: numb
 				title={group.label}
 				variant="default"
 			/>
-			<ul
-				data-testid={`links-group-${group.id}`}
-				className={css({
-					margin: '0',
-					padding: '0',
-					listStyle: 'none',
-				})}
-			>
+			<Stack as="ul" gap="0" data-testid={`links-group-${group.id}`} className={listResetClassName}>
 				{group.links.map((link) => (
 					<LinkRow key={link.id} link={link} />
 				))}
-			</ul>
+			</Stack>
 		</PageSection>
 	);
 }

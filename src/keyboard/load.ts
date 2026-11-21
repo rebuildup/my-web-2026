@@ -19,7 +19,7 @@
  * here. A new source is a code change, which is the point.
  */
 
-import { buildKeyboardCatalog, type KeyboardSourceBundle } from './catalog';
+import { type KeyboardSourceBundle, buildKeyboardCatalog } from './catalog';
 import {
 	KEYBOARD_STALE_AFTER_DAYS,
 	type KeyboardManifest,

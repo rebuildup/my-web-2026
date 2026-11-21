@@ -152,7 +152,7 @@ with a `_dark` tail.
 | `mono.line.rule` | `#74747d` | `#62626c` |
 | `mono.ink.text` | `#101012` | `#f2f2ef` |
 | `mono.ink.secondary` | `#404047` | `#b9b9c0` |
-| `mono.ink.muted` | `#5f5f68` | `#8d8d96` |
+| `mono.ink.muted` | `#54555e` | `#8d8d96` |
 | `mono.ink.disabled` | `#a7a7ad` | `#5c5c64` |
 | `mono.ink.inverse` | `#f6f6f2` | `#0a0a0c` |
 | `mono.ink.onColour` | `#101012` | `#0a0a0c` |

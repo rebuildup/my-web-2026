@@ -17,14 +17,10 @@
  * never a silent pass (same rule as the viewport grid report).
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-	aggregateVerdict,
-	judgeRoute,
-	loadContract,
-} from './judge-composition.mjs';
+import { aggregateVerdict, judgeRoute, loadContract } from './judge-composition.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -43,7 +39,9 @@ function main() {
 	const modelsDir = resolve(REPO_ROOT, opts['models-dir'] ?? '.tmp/composition-models');
 	const asJson = Boolean(opts.json);
 
-	const files = existsSync(modelsDir) ? readdirSync(modelsDir).filter((f) => f.endsWith('.json')) : [];
+	const files = existsSync(modelsDir)
+		? readdirSync(modelsDir).filter((f) => f.endsWith('.json'))
+		: [];
 	// Group <slug>.<stem>.json per route.
 	const byRoute = new Map();
 	for (const file of files) {
@@ -87,7 +85,11 @@ function main() {
 		process.stdout.write('composition:lint — rendered composition verdicts\n');
 		for (const r of results) {
 			const mark = r.verdict === 'pass' ? 'PASS' : r.verdict === 'warn' ? 'WARN' : 'FAIL';
-			const extra = r.blocking?.length ? ` [${r.blocking.join(',')}]` : r.detail ? ` ${r.detail}` : '';
+			const extra = r.blocking?.length
+				? ` [${r.blocking.join(',')}]`
+				: r.detail
+					? ` ${r.detail}`
+					: '';
 			const warn = r.warnings ? ` (${r.warnings} warning)` : '';
 			process.stdout.write(`  ${mark.padEnd(4)} ${r.route}${extra}${warn}\n`);
 		}

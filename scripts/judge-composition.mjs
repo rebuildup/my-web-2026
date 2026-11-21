@@ -57,7 +57,8 @@ function blockArea(section, kinds) {
 }
 
 function maxBlockAreaRatio(model) {
-	const content = model.metrics?.contentArea ?? model.document?.height * (model.document?.width ?? 1);
+	const content =
+		model.metrics?.contentArea ?? model.document?.height * (model.document?.width ?? 1);
 	if (!content) return 0;
 	let max = 0;
 	for (const s of bodySections(model)) {
@@ -193,7 +194,10 @@ function checkCL4(model, rule, viewport) {
 }
 
 /** CL-5 — uniform grid with no variation anywhere. */
-function checkCL5(model, rule) {
+function checkCL5(model, rule, route) {
+	// Card catalogs legitimately use equal tracks — the contract's
+	// own exception note. Same indexRoute exemption as CL-2/CL-8/CL-10.
+	if (route?.indexRoute) return null;
 	const grids = gridsWithUniformTracks(model);
 	const uniform = grids.filter((g) => {
 		const tracks = g.tracks ?? [];
@@ -203,9 +207,7 @@ function checkCL5(model, rule) {
 		const mean = ratio.reduce((a, b) => a + b, 0) / ratio.length;
 		return ratio.every((r) => Math.abs(r - mean) <= rule.detection.equalRatioTolerance * mean);
 	});
-	const hasVariation = grids.some(
-		(g) => (g.columnRatio ?? []).length > 0 && !uniform.includes(g),
-	);
+	const hasVariation = grids.some((g) => (g.columnRatio ?? []).length > 0 && !uniform.includes(g));
 	if (uniform.length > 0 && !hasVariation && !hasBreakoutOrOverlap(model)) {
 		return {
 			rule: 'CL-5',
@@ -231,14 +233,38 @@ function checkCL6(model, rule, route) {
 			detail: `mediaExpected route renders media area ratio ${ratio.toFixed(3)} (< ${rule.detection.mediaAreaRatioMin})`,
 		};
 	}
+	// #1134 — hero media floor: a route that declares
+	// heroMediaMinRatio must dedicate that fraction of the hero
+	// section's area to media. Catches a media-bearing item rendered
+	// text-only even when the page-level ratio passes.
+	if (typeof route?.heroMediaMinRatio === 'number') {
+		const hero = bodySections(model).find((s) => (s.rhythm ?? 'body') === 'hero');
+		if (hero) {
+			const sectionArea = (hero.rect?.w ?? 0) * (hero.rect?.h ?? 0);
+			const heroRatio = sectionArea > 0 ? (hero.mediaArea ?? 0) / sectionArea : 0;
+			if (heroRatio < route.heroMediaMinRatio) {
+				return {
+					rule: 'CL-6',
+					severity: rule.severity,
+					verdict: 'fail',
+					detail: `hero section media ratio ${heroRatio.toFixed(3)} (< ${route.heroMediaMinRatio}) — media-bearing content rendered without its asset`,
+				};
+			}
+		}
+	}
 	return null;
 }
 
 /** CL-7 — mobile naive stack (needs the desktop/mobile pair). */
-export function checkCL7(desktopModel, mobileModel, rule) {
+export function checkCL7(desktopModel, mobileModel, rule, route) {
+	// Index/catalog routes legitimately stack cards in reading order
+	// on mobile — uniform stacking IS the correct transform there.
+	if (route?.indexRoute) return null;
 	const dSections = bodySections(desktopModel);
 	const mSections = bodySections(mobileModel);
-	const multiColDesktop = dSections.filter((s) => (s.grid?.tracks?.length ?? 0) >= rule.detection.minDesktopColumns);
+	const multiColDesktop = dSections.filter(
+		(s) => (s.grid?.tracks?.length ?? 0) >= rule.detection.minDesktopColumns,
+	);
 	if (multiColDesktop.length === 0) return null;
 	const heightRatio =
 		mobileModel.document?.height && desktopModel.document?.height
@@ -251,23 +277,31 @@ export function checkCL7(desktopModel, mobileModel, rule) {
 	const dOrder = dSections.map(orderKey);
 	const mOrder = mSections.map(orderKey);
 	const sameLen = dOrder.length === mOrder.length && dOrder.length > 0;
-	const orderDiff = sameLen
-		? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length
-		: 0;
+	const orderDiff = sameLen ? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length : 0;
+	// Block-level order check: pair sections by index and compare
+	// their block-kind sequences. A naive stack preserves every
+	// sequence verbatim; real recomposition reorders at least one.
+	let orderPreserved = true;
+	const pairs = Math.min(dSections.length, mSections.length);
+	for (let i = 0; i < pairs; i += 1) {
+		const dSeq = (dSections[i].blockOrder ?? []).join(',');
+		const mSeq = (mSections[i].blockOrder ?? []).join(',');
+		if (dSeq && mSeq && dSeq !== mSeq) {
+			orderPreserved = false;
+			break;
+		}
+	}
 	const recomposed =
 		(mobileModel.features ?? []).some((f) => f === 'reorder' || f === 'disclosure') ||
 		(mobileModel.metrics?.recompositionScore ?? 0) > 0 ||
-		orderDiff > 0.3;
-	if (
-		!recomposed &&
-		heightRatio !== null &&
-		heightRatio > rule.detection.heightGrowthMax
-	) {
+		orderDiff > 0.3 ||
+		!orderPreserved;
+	if (!recomposed && heightRatio !== null && heightRatio > rule.detection.heightGrowthMax) {
 		return {
 			rule: 'CL-7',
 			severity: rule.severity,
 			verdict: 'warn',
-			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x, order preserved, no recomposition signal`,
+			detail: `desktop multi-column sections stack on mobile with height growth ${heightRatio.toFixed(2)}x, section and block order preserved, no recomposition signal`,
 		};
 	}
 	return null;
@@ -295,7 +329,10 @@ function checkCL10(model, rule, route) {
 	}
 	const [topProfile, topCount] = [...byProfile.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
 	const dominance = topCount / Math.max(1, sections.length);
-	if (topCount >= rule.detection.minRepeaterSections && dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)) {
+	if (
+		topCount >= rule.detection.minRepeaterSections &&
+		dominance >= (rule.detection.repeaterDominanceMin ?? 0.5)
+	) {
 		return {
 			rule: 'CL-10',
 			severity: rule.severity,
@@ -332,13 +369,88 @@ function checkCL9(model, rule) {
 	const hasToneContrast = toneTransitions(model) > 0;
 	const hasDisplay =
 		bodyMedian !== null && maxSize >= bodyMedian * rule.detection.displayFontRatioMin;
-	const hasMediaAnchor = (model.media?.totalArea ?? 0) > 0 && dominance >= rule.detection.dominantAreaMin;
-	if (dominance < rule.detection.dominantAreaMin && !hasDisplay && !hasToneContrast && !hasMediaAnchor) {
+	const hasMediaAnchor =
+		(model.media?.totalArea ?? 0) > 0 && dominance >= rule.detection.dominantAreaMin;
+	if (
+		dominance < rule.detection.dominantAreaMin &&
+		!hasDisplay &&
+		!hasToneContrast &&
+		!hasMediaAnchor
+	) {
 		return {
 			rule: 'CL-9',
 			severity: rule.severity,
 			verdict: 'warn',
 			detail: `no dominant block (${dominance.toFixed(2)}), no display type, no tone transition`,
+		};
+	}
+	return null;
+}
+
+/** CL-11 — page-level stack monotony.
+ *
+ * CL-1/CL-2 compare section signatures; CL-10 compares repeat
+ * profiles. This rule compares the composition itself: a run of
+ * consecutive single-column, media-free sections that share the same
+ * content left edge and a similar density band is a vertical stack
+ * regardless of which components produced it. Intentional editorial
+ * single-column flow is preserved by requiring the RUN to dominate
+ * the page and by exempting index routes.
+ */
+function checkCL11(model, rule, route, viewport) {
+	if (route?.indexRoute) return null;
+	// Content-shaped pages (markdown case studies) legitimately stack
+	// prose sections; their composition lives in the hero/media
+	// sections which other rules still judge. Declared per-route
+	// with a recorded reason — see contract notes.
+	if (route?.proseStackAllowed) return null;
+	// Single-column is the REQUIRED mobile transform; stack
+	// monotony is a desktop-composition defect.
+	if ((viewport?.width ?? 0) < (rule.detection.viewportMinWidth ?? 1024)) return null;
+	const d = rule.detection;
+	const sections = bodySections(model);
+	const alignTol = d.alignTolerancePx ?? 16;
+	const densityTol = d.densityTolerance ?? 0.15;
+
+	const isStackUnit = (s) =>
+		(s.columnCount ?? (s.grid ? s.grid.columnCount : 1)) <= 1 &&
+		(s.mediaArea ?? 0) < (d.mediaAreaMax ?? 20000) &&
+		typeof s.contentLeft === 'number' &&
+		typeof s.density === 'number';
+
+	// Longest run of consecutive stack units sharing left edge ±tol
+	// and density within ±tol of the run's first member.
+	let bestRun = [];
+	let cur = [];
+	const flush = () => {
+		if (cur.length > bestRun.length) bestRun = cur;
+		cur = [];
+	};
+	for (const s of sections) {
+		if (!isStackUnit(s)) {
+			flush();
+			continue;
+		}
+		const anchor = cur[0];
+		if (
+			anchor &&
+			(Math.abs(s.contentLeft - anchor.contentLeft) > alignTol ||
+				Math.abs(s.density - anchor.density) > densityTol)
+		) {
+			flush();
+		}
+		cur.push(s);
+	}
+	flush();
+
+	const minRun = d.minRunLength ?? 3;
+	const dominance = bestRun.length / Math.max(1, sections.length);
+	if (bestRun.length >= minRun && dominance >= (d.runDominanceMin ?? 0.5)) {
+		return {
+			rule: 'CL-11',
+			severity: rule.severity,
+			verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
+			detail: `${bestRun.length}/${sections.length} consecutive sections form a single-column left-aligned stack (same axis, no media, uniform density) — composition reduces to vertical stacking`,
 		};
 	}
 	return null;
@@ -367,11 +479,12 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL2(model, ruleById(contract, 'CL-2'), route));
 	push(checkCL3(model, ruleById(contract, 'CL-3')));
 	push(checkCL4(model, ruleById(contract, 'CL-4'), viewport));
-	push(checkCL5(model, ruleById(contract, 'CL-5')));
+	push(checkCL5(model, ruleById(contract, 'CL-5'), route));
 	push(checkCL6(model, ruleById(contract, 'CL-6'), route));
 	push(checkCL8(model, ruleById(contract, 'CL-8'), route));
 	push(checkCL9(model, ruleById(contract, 'CL-9')));
 	push(checkCL10(model, ruleById(contract, 'CL-10'), route));
+	push(checkCL11(model, ruleById(contract, 'CL-11'), route, viewport));
 	return verdicts;
 }
 
@@ -389,6 +502,7 @@ export function judgeRoute(modelsByViewport, contract, route) {
 			modelsByViewport[desktopKey],
 			modelsByViewport[mobileKey],
 			ruleById(contract, 'CL-7'),
+			route,
 		);
 		if (v) verdicts.push(v);
 	}
@@ -398,9 +512,7 @@ export function judgeRoute(modelsByViewport, contract, route) {
 /** Aggregate verdicts into a cell verdict. */
 export function aggregateVerdict(verdicts) {
 	if (verdicts.length === 0) return 'pass';
-	return verdicts.some((v) => v.verdict === 'fail' && v.severity === 'blocking')
-		? 'fail'
-		: 'warn';
+	return verdicts.some((v) => v.verdict === 'fail' && v.severity === 'blocking') ? 'fail' : 'warn';
 }
 
 export { SEVERITY_RANK };

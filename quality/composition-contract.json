@@ -8,7 +8,9 @@
 		"Machine-readable half of the rendered-composition contract. docs/visual/composition-principles.md is the prose half; where they disagree the ADR wins.",
 		"The collector emits composition-model/v1 JSON; the judge is a pure function over that model. Detection is structure/geometry only — never content strings, never personal data.",
 		"severity: blocking stops integration, warning feeds the L-C visual review as a required input, info is an observation with no verdict.",
-		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job."
+		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job.",
+		"routes[].heroMediaMinRatio: when set, the hero-rhythm section must dedicate at least this fraction of its area to media — catches media-bearing content rendered text-only (#1134). Per-item media mapping inside lists remains the portfolio obligation's data contract; the page-level aggregate is CL-6.",
+		"routes[].proseStackAllowed: exempts CL-11 for content-shaped pages whose body sections are long-form prose by design (markdown case studies). Requires the page to carry its composition elsewhere (hero media floor still applies via heroMediaMinRatio). Reason recorded per ADR-0023 exception policy — not a lint escape hatch: the flag is visible in review and must be justified in the route's contract entry."
 	],
 	"model": {
 		"version": "composition-model/v1",
@@ -64,9 +66,11 @@
 		{
 			"path": "/portfolio/ch4nge",
 			"slug": "portfolio-detail",
-			"label": "portfolio detail (media-bearing slug)",
+			"label": "portfolio detail (media-bearing slug ch4nge)",
 			"mediaExpected": true,
-			"indexRoute": false
+			"indexRoute": false,
+			"heroMediaMinRatio": 0.15,
+			"proseStackAllowed": true
 		},
 		{
 			"path": "/tools",
@@ -314,6 +318,28 @@
 			"fixture": [
 				"negative/repeated-lists",
 				"positive/list-with-rhythm"
+			]
+		},
+		{
+			"id": "CL-11",
+			"principle": "composition-rhythm",
+			"name": "stack-monotony",
+			"summary": "A run of consecutive sections that are all single-column, media-free, share the same content left edge and a similar density band — the page reduces to a left-aligned vertical stack regardless of which components produced it.",
+			"severity": "blocking",
+			"detection": {
+				"minRunLength": 3,
+				"runDominanceMin": 0.5,
+				"alignTolerancePx": 16,
+				"densityTolerance": 0.15,
+				"mediaAreaMax": 20000,
+				"note": "signature-independent by design: different cards/lists/tiles that produce the same visual stack still count. Single-column prose is preserved when the run does not dominate the page or when sections vary axis/density/media. viewportMinWidth gates the rule to desktop: single-column stacking is the required mobile transform, not a defect.",
+				"viewportMinWidth": 1024
+			},
+			"exceptions": "index routes are exempt (catalogs stack by nature); intentional single-column editorial flows that vary density, axis or media do not form a qualifying run",
+			"falsePositives": "a genuinely minimal single-column page — mitigated by minRunLength + dominance; warning-level evidence is kept in the detail string",
+			"fixture": [
+				"negative/stack-monotony",
+				"positive/varied-single-column"
 			]
 		}
 	],

@@ -21,7 +21,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadContract, MODEL_VERSION } from './judge-composition.mjs';
+import { MODEL_VERSION, loadContract } from './judge-composition.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000';
@@ -48,7 +48,7 @@ const COLLECTOR = () => {
 		return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
 	};
 	const area = (r) => Math.round(r.width * r.height);
-	const px = (v) => Math.round(parseFloat(v) || 0);
+	const px = (v) => Math.round(Number.parseFloat(v) || 0);
 
 	const KIND_OF = (el) => {
 		const tag = el.tagName.toLowerCase();
@@ -104,7 +104,9 @@ const COLLECTOR = () => {
 				fontSize: kind === 'media' ? undefined : px(bs.fontSize),
 			});
 		};
-		for (const el of section.querySelectorAll('h1,h2,h3,h4,h5,h6,img,video,canvas,svg,ul,ol,a,button')) {
+		for (const el of section.querySelectorAll(
+			'h1,h2,h3,h4,h5,h6,img,video,canvas,svg,ul,ol,a,button',
+		)) {
 			pushBlock(el);
 		}
 		// Panel-ish surfaces: elements with non-transparent bg or border.
@@ -114,7 +116,7 @@ const COLLECTOR = () => {
 			if (area(br) < 2000) continue;
 			const hasSurface =
 				(bs.backgroundColor && bs.backgroundColor !== 'rgba(0, 0, 0, 0)') ||
-				(parseFloat(bs.borderTopWidth) > 0 && bs.borderTopStyle !== 'none');
+				(Number.parseFloat(bs.borderTopWidth) > 0 && bs.borderTopStyle !== 'none');
 			if (hasSurface && visible(el)) pushBlock(el, 'panel');
 		}
 
@@ -134,9 +136,7 @@ const COLLECTOR = () => {
 			// Column widths from left-edge boundaries; last column runs
 			// to the grid's right edge. Normalized to sum = column count
 			// so equal tracks read as equal ratios.
-			const widths = lefts.map((l, i) =>
-				(i + 1 < lefts.length ? lefts[i + 1] : gridRight) - l,
-			);
+			const widths = lefts.map((l, i) => (i + 1 < lefts.length ? lefts[i + 1] : gridRight) - l);
 			const wsum = widths.reduce((a, b) => a + b, 0) || 1;
 			grid = {
 				tracks: tracks.slice(0, 16),
@@ -149,9 +149,7 @@ const COLLECTOR = () => {
 		// Content column: union width of text-flow blocks (heading /
 		// text / list). A genuinely narrow column shows up here; a
 		// multi-column grid spans wide and reads as full-width.
-		const textBlocks = blocks.filter((b) =>
-			['heading', 'text', 'list'].includes(b.kind),
-		);
+		const textBlocks = blocks.filter((b) => ['heading', 'text', 'list'].includes(b.kind));
 		let contentW = r.width;
 		if (textBlocks.length >= 2) {
 			const minX = Math.min(...textBlocks.map((b) => b.rect.x));
@@ -184,6 +182,20 @@ const COLLECTOR = () => {
 			}
 		}
 
+		// Composition fingerprint: content column edges, density and
+		// block order — the page-level rhythm signals that
+		// section signatures cannot see.
+		const flowBlocks = blocks.filter((b) => b.rect);
+		const contentLeft = flowBlocks.length
+			? Math.min(...flowBlocks.map((b) => b.rect.x))
+			: Math.round(r.left);
+		const contentRight = flowBlocks.length
+			? Math.max(...flowBlocks.map((b) => b.rect.x + b.rect.w))
+			: Math.round(r.left + r.width);
+		const covered = flowBlocks.reduce((sum, b) => sum + b.area, 0);
+		const density = area(r) > 0 ? Math.min(1, Math.round((covered / area(r)) * 100) / 100) : 0;
+		const blockOrder = blocks.slice(0, 16).map((b) => b.kind);
+
 		const mediaArea = mediaAreaOf(section);
 		const heading = section.querySelector('h1,h2,h3');
 		const headingSize = heading ? px(getComputedStyle(heading).fontSize) : undefined;
@@ -203,21 +215,28 @@ const COLLECTOR = () => {
 			rhythm,
 			signature,
 			inFlow,
-			rect: { x: Math.round(r.left), y: Math.round(top), w: Math.round(r.width), h: Math.round(r.height) },
+			rect: {
+				x: Math.round(r.left),
+				y: Math.round(top),
+				w: Math.round(r.width),
+				h: Math.round(r.height),
+			},
 			backgroundStep: s.backgroundColor,
 			blocks: blocks.slice(0, 24),
 			grid,
 			mediaArea,
 			textArea: Math.max(0, area(r) - mediaArea),
-			contentWidthRatio:
-				vw > 0 ? Math.min(1, Math.round((contentW / vw) * 100) / 100) : 0,
+			contentWidthRatio: vw > 0 ? Math.min(1, Math.round((contentW / vw) * 100) / 100) : 0,
 			emptyAreaRatio:
-				grid || r.width <= 0
-					? 0
-					: Math.min(1, Math.round((1 - contentW / r.width) * 100) / 100),
+				grid || r.width <= 0 ? 0 : Math.min(1, Math.round((1 - contentW / r.width) * 100) / 100),
 			repeatUnits: maxRepeatUnits,
 			repeatKind: repeatKind ?? undefined,
 			repeatProfile: repeatProfile ?? undefined,
+			contentLeft,
+			contentRight,
+			density,
+			columnCount: grid?.columnCount ?? 1,
+			blockOrder,
 		};
 	});
 
@@ -246,7 +265,9 @@ const COLLECTOR = () => {
 		media: { totalArea: mediaTotal, byKind: mediaByKind },
 		metrics: {
 			contentArea,
-			elementsPerPixel: Math.round((document.querySelectorAll('body *').length / Math.max(1, docHeight)) * 10000) / 10000,
+			elementsPerPixel:
+				Math.round((document.querySelectorAll('body *').length / Math.max(1, docHeight)) * 10000) /
+				10000,
 			recompositionScore: 0,
 		},
 		features,

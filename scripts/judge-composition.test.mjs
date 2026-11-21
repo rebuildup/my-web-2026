@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
@@ -52,11 +52,13 @@ const FIXTURE_ROUTE = {
 };
 
 function routeFor(name) {
-	return CONTRACT.routes.find((r) => r.slug === FIXTURE_ROUTE[name]) ?? {
-		path: '/fixture',
-		mediaExpected: false,
-		indexRoute: false,
-	};
+	return (
+		CONTRACT.routes.find((r) => r.slug === FIXTURE_ROUTE[name]) ?? {
+			path: '/fixture',
+			mediaExpected: false,
+			indexRoute: false,
+		}
+	);
 }
 
 function modelsFor(files) {
@@ -84,6 +86,7 @@ const NEGATIVE_EXPECT = {
 	'no-focal': ['CL-9'],
 	'repeated-lists': ['CL-10'],
 	'home-list-stack': ['CL-10'],
+	'stack-monotony': ['CL-11'],
 };
 
 describe('composition lint judge — negative fixtures must fire their rule', () => {
@@ -184,6 +187,26 @@ describe('composition lint judge — rule-level expectations', () => {
 			CONTRACT.viewports[0],
 		);
 		assert.ok(!verdicts.some((v) => v.rule === 'CL-6'));
+	});
+
+	it('heroMediaMinRatio fails a media-bearing route rendered text-only (#1134)', () => {
+		const verdicts = judgeCompositionModel(
+			loadFixture('negative', 'text-only-portfolio.json'),
+			CONTRACT,
+			{ mediaExpected: true, heroMediaMinRatio: 0.15, indexRoute: false },
+			CONTRACT.viewports[0],
+		);
+		assert.ok(verdicts.some((v) => v.rule === 'CL-6' && v.verdict === 'fail'));
+	});
+
+	it('heroMediaMinRatio passes when the hero dedicates media area', () => {
+		const verdicts = judgeCompositionModel(
+			loadFixture('positive', 'media-led-detail.json'),
+			CONTRACT,
+			{ mediaExpected: true, heroMediaMinRatio: 0.15, indexRoute: false },
+			CONTRACT.viewports[0],
+		);
+		assert.ok(!verdicts.some((v) => v.rule === 'CL-6' && v.verdict === 'fail'));
 	});
 
 	it('rejects an unknown model version (fail-closed)', () => {

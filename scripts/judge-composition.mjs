@@ -234,22 +234,89 @@ function checkCL6(model, rule, route) {
 	// heroMediaMinRatio must dedicate that fraction of the hero
 	// section's area to media. Catches a media-bearing item rendered
 	// text-only even when the page-level ratio passes.
+	//
+	// Issue #1149 — two corrections:
+	//
+	//   1. FAIL-CLOSED on a missing hero. The route promised a
+	//      media-led hero; a page that renders no hero section at all
+	//      cannot have satisfied the promise, and the old code read
+	//      "no hero" as "no violation".
+	//   2. The floor needs a RASTER image, not only area. An area
+	//      ratio is satisfied by a vector mark (the site logo) just
+	//      as well as by the work's own photograph, so the area check
+	//      alone cannot say whether the media and the content
+	//      correspond. The per-item correspondence stays the data
+	//      contract's business (Issue #1134's media usage contract);
+	//      what the render can prove is that the hero carries an
+	//      image at all.
 	if (typeof route?.heroMediaMinRatio === 'number') {
 		const hero = bodySections(model).find((s) => (s.rhythm ?? 'body') === 'hero');
-		if (hero) {
-			const sectionArea = (hero.rect?.w ?? 0) * (hero.rect?.h ?? 0);
-			const heroRatio = sectionArea > 0 ? (hero.mediaArea ?? 0) / sectionArea : 0;
-			if (heroRatio < route.heroMediaMinRatio) {
-				return {
-					rule: 'CL-6',
-					severity: rule.severity,
-					verdict: 'fail',
-					detail: `hero section media ratio ${heroRatio.toFixed(3)} (< ${route.heroMediaMinRatio}) — media-bearing content rendered without its asset`,
-				};
-			}
+		if (!hero) {
+			return {
+				rule: 'CL-6',
+				severity: rule.severity,
+				verdict: 'fail',
+				detail: `route declares a media-led hero (heroMediaMinRatio ${route.heroMediaMinRatio}) but the page renders no hero section`,
+			};
+		}
+		const sectionArea = (hero.rect?.w ?? 0) * (hero.rect?.h ?? 0);
+		const heroRatio = sectionArea > 0 ? (hero.mediaArea ?? 0) / sectionArea : 0;
+		if (heroRatio < route.heroMediaMinRatio) {
+			return {
+				rule: 'CL-6',
+				severity: rule.severity,
+				verdict: 'fail',
+				detail: `hero section media ratio ${heroRatio.toFixed(3)} (< ${route.heroMediaMinRatio}) — media-bearing content rendered without its asset`,
+			};
+		}
+		const mediaByKind = hero.mediaByKind ?? { img: 0, video: 0, canvas: 0, svg: 0 };
+		const raster = (mediaByKind.img ?? 0) + (mediaByKind.video ?? 0) + (mediaByKind.canvas ?? 0);
+		if (raster <= 0) {
+			return {
+				rule: 'CL-6',
+				severity: rule.severity,
+				verdict: 'fail',
+				detail: `hero section carries no raster image (media by kind: ${JSON.stringify(mediaByKind)}) — a media-led route whose hero shows only marks`,
+			};
 		}
 	}
 	return null;
+}
+
+/** CL-12 — a repeated unit whose lower part is empty (card-shaped void). */
+function checkCL12(model, rule) {
+	const gapMax = rule.detection?.repeatTailGapRatioMax ?? 0.5;
+	const minUnits = rule.detection?.repeatUnitsMin ?? 3;
+	const offenders = [];
+	for (const section of bodySections(model)) {
+		const units = section.repeatUnits ?? 0;
+		const gap = section.repeatTailGapRatio;
+		if (units < minUnits || typeof gap !== 'number') continue;
+		if (gap > gapMax) {
+			offenders.push(
+				`${section.name ?? `section ${section.index}`} (${units} units, empty tail ${gap})`,
+			);
+		}
+	}
+	if (offenders.length === 0) return null;
+	return {
+		rule: 'CL-12',
+		severity: rule.severity,
+		verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
+		detail: `repeated content leaves the lower part of its own box empty — ${offenders.join('; ')}`,
+	};
+}
+
+/** CL-13 — media that failed to load. */
+function checkCL13(model, rule) {
+	const broken = bodySections(model).reduce((sum, s) => sum + (s.brokenMedia ?? 0), 0);
+	if (broken === 0) return null;
+	return {
+		rule: 'CL-13',
+		severity: rule.severity,
+		verdict: rule.severity === 'blocking' ? 'fail' : 'warn',
+		detail: `${broken} image(s) failed to load — the composition shows a broken frame where it promised media`,
+	};
 }
 
 /** CL-7 — mobile naive stack (needs the desktop/mobile pair). */
@@ -275,16 +342,38 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 	const mOrder = mSections.map(orderKey);
 	const sameLen = dOrder.length === mOrder.length && dOrder.length > 0;
 	const orderDiff = sameLen ? dOrder.filter((k, i) => k !== mOrder[i]).length / dOrder.length : 0;
-	// Block-level order check: pair sections by index and compare
-	// their block-kind sequences. A naive stack preserves every
-	// sequence verbatim; real recomposition reorders at least one.
-	let orderPreserved = true;
+	// Issue #1149 — recomposition evidence has to be a LAYOUT change,
+	// not a difference in which blocks exist.
+	//
+	// The old check compared the two viewports' block-KIND sequences
+	// and called any difference a recomposition. But a section can
+	// carry a different SET of blocks at the two widths for reasons
+	// that have nothing to do with composition — a disclosure that is
+	// open on desktop and collapsed on mobile, a control that only
+	// renders at one width — and that difference was read as proof
+	// that the page had been recomposed.
+	//
+	// What can be proven from the render is the READING ORDER: the
+	// sequence in which the blocks are laid out. So the comparison
+	// runs over the block kinds the two viewports SHARE, in their
+	// visual order (top to bottom, then left to right). A naive stack
+	// preserves that order; a real recomposition reorders it.
+	const visualOrder = (section) =>
+		[...(section.blocks ?? [])]
+			.filter((b) => b.rect)
+			.sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x)
+			.map((b) => b.kind);
+	let readingOrderChanged = false;
 	const pairs = Math.min(dSections.length, mSections.length);
 	for (let i = 0; i < pairs; i += 1) {
-		const dSeq = (dSections[i].blockOrder ?? []).join(',');
-		const mSeq = (mSections[i].blockOrder ?? []).join(',');
-		if (dSeq && mSeq && dSeq !== mSeq) {
-			orderPreserved = false;
+		const dSeq = visualOrder(dSections[i]);
+		const mSeq = visualOrder(mSections[i]);
+		if (dSeq.length === 0 || mSeq.length === 0) continue;
+		const shared = new Set(dSeq.filter((k) => mSeq.includes(k)));
+		const dShared = dSeq.filter((k) => shared.has(k));
+		const mShared = mSeq.filter((k) => shared.has(k));
+		if (dShared.join(',') !== mShared.join(',')) {
+			readingOrderChanged = true;
 			break;
 		}
 	}
@@ -292,7 +381,7 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 		(mobileModel.features ?? []).some((f) => f === 'reorder' || f === 'disclosure') ||
 		(mobileModel.metrics?.recompositionScore ?? 0) > 0 ||
 		orderDiff > 0.3 ||
-		!orderPreserved;
+		readingOrderChanged;
 	if (!recomposed && heightRatio !== null && heightRatio > rule.detection.heightGrowthMax) {
 		return {
 			rule: 'CL-7',
@@ -396,16 +485,25 @@ function checkCL9(model, rule) {
  */
 function checkCL11(model, rule, route, viewport) {
 	if (route?.indexRoute) return null;
-	// Content-shaped pages (markdown case studies) legitimately stack
-	// prose sections; their composition lives in the hero/media
-	// sections which other rules still judge. Declared per-route
-	// with a recorded reason — see contract notes.
-	if (route?.proseStackAllowed) return null;
 	// Single-column is the REQUIRED mobile transform; stack
 	// monotony is a desktop-composition defect.
 	if ((viewport?.width ?? 0) < (rule.detection.viewportMinWidth ?? 1024)) return null;
 	const d = rule.detection;
-	const sections = bodySections(model);
+	// Issue #1149 — the prose exemption is scoped to the sections
+	// that ARE prose.
+	//
+	// The old contract flag (`proseStackAllowed: true`) returned
+	// before the rule ran at all, so a page that declared it was
+	// exempt WHOLE — including its hero, its media sections and any
+	// other block that had nothing to do with prose. The exemption is
+	// now a list of section NAMES: those sections neither extend nor
+	// break the monotony run, and everything else on the page is
+	// still judged. A route that wants a page-wide exemption has to
+	// say so per section, with the reason in the contract.
+	const proseSections = new Set(route?.proseSections ?? []);
+	const sections = bodySections(model).filter(
+		(s) => !(typeof s.name === 'string' && proseSections.has(s.name)),
+	);
 	const alignTol = d.alignTolerancePx ?? 16;
 	const densityTol = d.densityTolerance ?? 0.15;
 
@@ -482,6 +580,8 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL9(model, ruleById(contract, 'CL-9')));
 	push(checkCL10(model, ruleById(contract, 'CL-10'), route));
 	push(checkCL11(model, ruleById(contract, 'CL-11'), route, viewport));
+	push(checkCL12(model, ruleById(contract, 'CL-12')));
+	push(checkCL13(model, ruleById(contract, 'CL-13')));
 	return verdicts;
 }
 

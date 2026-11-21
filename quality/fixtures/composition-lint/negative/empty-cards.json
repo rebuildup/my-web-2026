@@ -1,0 +1,97 @@
+{
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 3000
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"name": "projects",
+			"signature": "ground|g3|media|h24|panel",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 1200
+			},
+			"blocks": [
+				{
+					"kind": "media",
+					"area": 52000,
+					"rect": {
+						"x": 20,
+						"y": 0,
+						"w": 300,
+						"h": 170
+					},
+					"fontSize": 16
+				},
+				{
+					"kind": "heading",
+					"area": 12000,
+					"rect": {
+						"x": 20,
+						"y": 190,
+						"w": 300,
+						"h": 30
+					},
+					"fontSize": 34
+				},
+				{
+					"kind": "text",
+					"area": 26000,
+					"rect": {
+						"x": 20,
+						"y": 230,
+						"w": 300,
+						"h": 110
+					},
+					"fontSize": 16
+				}
+			],
+			"grid": {
+				"tracks": ["1fr", "1fr", "1fr"],
+				"columnCount": 3,
+				"columnRatio": [1, 1, 1]
+			},
+			"mediaArea": 52000,
+			"textArea": 38000,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1,
+			"repeatUnits": 6,
+			"repeatKind": "li",
+			"repeatProfile": "li|13x17",
+			"repeatTailGapRatio": 0.78,
+			"mediaByKind": {
+				"img": 52000,
+				"video": 0,
+				"canvas": 0,
+				"svg": 0
+			},
+			"brokenMedia": 0,
+			"contentLeft": 20,
+			"contentRight": 920,
+			"density": 0.4,
+			"columnCount": 3,
+			"blockOrder": ["media", "heading", "text"]
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {
+			"img": 0,
+			"video": 0,
+			"canvas": 0,
+			"svg": 0
+		}
+	},
+	"metrics": {
+		"contentArea": 4320000,
+		"elementsPerPixel": 0.002,
+		"recompositionScore": 0
+	},
+	"features": []
+}

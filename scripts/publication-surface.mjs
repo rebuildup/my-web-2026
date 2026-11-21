@@ -306,6 +306,8 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/stack/resolve.ts',
 	'src/routes/stack/stack.ts',
 	'src/routes/activity/ActivityPage.tsx',
+	'src/routes/activity/Timeline.tsx',
+	'src/routes/activity/Timeline.stories.tsx',
 	'src/routes/activity/assemble.ts',
 	'src/routes/activity/load.ts',
 ];

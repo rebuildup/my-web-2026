@@ -252,7 +252,14 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								key={section.id}
 								labelledBy={`portfolio-section-${section.id}`}
 								separator
+								name="prose"
 							>
+								{/* Issue #1149 — the markdown body sections are the
+								    PROSE sections the composition contract's
+								    CL-11 exemption is scoped to. Naming them
+								    makes the exemption exact: the hero, the
+								    links section and the adjacent-works section
+								    are still judged. */}
 								<SectionHeading
 									id={`portfolio-section-${section.id}`}
 									eyebrow={section.eyebrow}

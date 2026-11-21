@@ -66,11 +66,42 @@ const COLLECTOR = () => {
 		for (const el of root.querySelectorAll('img, video, canvas, svg')) {
 			if (!visible(el)) continue;
 			const r = el.getBoundingClientRect();
-			// object-fit cover crops visually but the element box is the
-			// composition's media claim; use the box.
+			// object-fit cover crops visually but the element box is
+			// the composition's media claim; use the box.
 			total += area(r);
 		}
 		return total;
+	};
+
+	// Media area per element kind inside a subtree. Issue #1149 — CL-6
+	// has to tell a raster IMAGE (the work's own asset) from a vector
+	// mark (the site logo): a hero that carries a big SVG is not a
+	// media-led hero, and an area ratio alone cannot say which it is.
+	const mediaAreaByKindOf = (root) => {
+		const byKind = { img: 0, video: 0, canvas: 0, svg: 0 };
+		for (const el of root.querySelectorAll('img, video, canvas, svg')) {
+			if (!visible(el)) continue;
+			const kind = el.tagName.toLowerCase();
+			if (kind in byKind) byKind[kind] += area(el.getBoundingClientRect());
+		}
+		return byKind;
+	};
+
+	// Media elements that FAILED to load. An `<img>` with a src whose
+	// intrinsic size is still zero after the document settled is a
+	// broken image — the browser draws the alt text or nothing, so the
+	// composition loses the media it promised. Lazy images are given a
+	// chance to load (the collector scrolls the document first), so a
+	// still-zero intrinsic size is a failure, not a pending load.
+	const brokenMediaOf = (root) => {
+		let broken = 0;
+		for (const el of root.querySelectorAll('img')) {
+			if (!visible(el)) continue;
+			const src = el.getAttribute('src');
+			if (!src) continue;
+			if (el.complete && el.naturalWidth === 0) broken += 1;
+		}
+		return broken;
 	};
 
 	const sections = [...document.querySelectorAll('section')].map((section, index) => {
@@ -162,6 +193,8 @@ const COLLECTOR = () => {
 		let maxRepeatUnits = 0;
 		let repeatKind = null;
 		let repeatProfile = null;
+		let repeatUnits = [];
+		let maxRepeatArea = 0;
 		for (const parent of section.querySelectorAll('ul, ol, div, article, section, main')) {
 			const kids = [...parent.children].filter(
 				(k) => visible(k) && area(k.getBoundingClientRect()) > 2000,
@@ -171,16 +204,64 @@ const COLLECTOR = () => {
 			for (const k of kids) {
 				const kr = k.getBoundingClientRect();
 				const key = `${k.tagName}|${Math.round(kr.width / 24)}x${Math.round(kr.height / 24)}`;
-				groups.set(key, (groups.get(key) ?? 0) + 1);
+				const list = groups.get(key) ?? [];
+				list.push(k);
+				groups.set(key, list);
 			}
-			for (const [key, count] of groups) {
-				if (count > maxRepeatUnits) {
-					maxRepeatUnits = count;
+			for (const [key, members] of groups) {
+				if (members.length < 3) continue;
+				// The group that dominates the composition wins: ranking by
+				// the most UNITS would pick a page's smallest repeated
+				// chip (a badge row, a pill list) over the cards the
+				// reader actually sees, so the selection is by total
+				// AREA and the unit count is a floor, not the ranking.
+				const totalArea = members.reduce((sum, el) => sum + area(el.getBoundingClientRect()), 0);
+				if (totalArea > maxRepeatArea) {
+					maxRepeatUnits = members.length;
+					maxRepeatArea = totalArea;
 					repeatKind = key.split('|')[0].toLowerCase();
 					repeatProfile = key.toLowerCase();
+					repeatUnits = members;
 				}
 			}
 		}
+
+		// Issue #1149 — how much of a repeated unit is left EMPTY at its
+		// bottom.
+		//
+		// The L-C review found the portfolio grid's text-only cards
+		// stretched to the row height, so the copy sat in the top third
+		// of an empty plane — a card-shaped void. The measurement is
+		// the TAIL GAP: the share of the unit's height that lies below
+		// the last content block inside it.
+		//
+		// An area ratio was tried first and rejected: a list row is
+		// legitimately sparse (a short label in a wide row), so the
+		// area ratio read every list on the site as an empty card. The
+		// tail gap asks the question the eye asks — "is the bottom of
+		// this box empty?" — and a list row, a swatch cell and a filled
+		// card all answer "no".
+		const contentBlocks = blocks.filter((b) => b.kind !== 'panel' && b.kind !== 'other' && b.rect);
+		const tailGapOf = (unit) => {
+			const ur = unit.getBoundingClientRect();
+			const unitHeight = ur.height;
+			if (unitHeight <= 0) return null;
+			let contentBottom = null;
+			for (const b of contentBlocks) {
+				const cx = b.rect.x + b.rect.w / 2;
+				const cy = b.rect.y + b.rect.h / 2;
+				if (cx < ur.left || cx > ur.right || cy < ur.top || cy > ur.bottom) continue;
+				const bottom = b.rect.y + b.rect.h - ur.top;
+				if (contentBottom === null || bottom > contentBottom) contentBottom = bottom;
+			}
+			if (contentBottom === null) return null;
+			const gap = (unitHeight - contentBottom) / unitHeight;
+			return Math.max(0, Math.round(gap * 100) / 100);
+		};
+		const gaps = repeatUnits.map(tailGapOf).filter((v) => typeof v === 'number');
+		const repeatTailGapRatio = gaps.length
+			? gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+			: undefined;
 
 		// Composition fingerprint: content column edges, density and
 		// block order — the page-level rhythm signals that
@@ -232,6 +313,9 @@ const COLLECTOR = () => {
 			repeatUnits: maxRepeatUnits,
 			repeatKind: repeatKind ?? undefined,
 			repeatProfile: repeatProfile ?? undefined,
+			repeatTailGapRatio,
+			mediaByKind: mediaAreaByKindOf(section),
+			brokenMedia: brokenMediaOf(section),
 			contentLeft,
 			contentRight,
 			density,

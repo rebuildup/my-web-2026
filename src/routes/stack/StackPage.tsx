@@ -215,7 +215,14 @@ function StackItemRow({ item }: { item: StackItemView }) {
 									href={link.href}
 									target="_blank"
 									rel="noopener noreferrer"
-									className={css({ fontFamily: 'mono', fontSize: 'xs', fontWeight: '600' })}
+									className={css({
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										fontWeight: '600',
+										display: 'inline-flex',
+										alignItems: 'center',
+										minHeight: '6',
+									})}
 								>
 									<span>{link.label}</span>
 									<span aria-hidden="true">↗</span>

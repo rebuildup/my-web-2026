@@ -184,7 +184,7 @@ const rowHeaderClassName = /* @__PURE__ */ css({
 const nameClassName = /* @__PURE__ */ css({
 	margin: '0',
 	fontFamily: 'heading',
-	fontSize: 'xl',
+	fontSize: '2xl',
 	fontWeight: '700',
 	color: 'text.default',
 	lineHeight: '1.2',

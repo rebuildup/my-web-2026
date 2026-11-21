@@ -1,5 +1,6 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { TextLink } from '../editorial/primitives/TextLink';
 import { PrivacyNotice } from './privacy-notice';
 import type { PrivacyNoticeData } from './privacy/load';
 import { PACKAGE_VERSION } from './version';
@@ -163,42 +164,16 @@ export function Footer({ privacyNotice }: FooterProps) {
 							})}
 						>
 							<li>
-								<a
+								<TextLink
 									href="https://github.com/rebuildup/my-web-2026"
 									rel="noopener noreferrer"
 									target="_blank"
-									className={css({
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
 								>
 									Source
-								</a>
+								</TextLink>
 							</li>
 							<li>
-								<a
-									href="/portfolio"
-									className={css({
-										color: 'text.accent',
-										textDecoration: 'underline',
-										textUnderlineOffset: '0.18em',
-										textDecorationThickness: '1px',
-										_hover: { textDecorationThickness: '2px' },
-										_focusVisible: {
-											outline: '2px solid {colors.border.focus}',
-											outlineOffset: '2px',
-										},
-									})}
-								>
-									Portfolio
-								</a>
+								<TextLink href="/portfolio">Portfolio</TextLink>
 							</li>
 						</ul>
 					</div>

@@ -7,7 +7,7 @@ import { PageSection } from '../../editorial/primitives/PageSection';
 import { Panel, type PanelVariant } from '../../editorial/primitives/Panel';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { TextLink } from '../../editorial/primitives/TextLink';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
+import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { CAPABILITIES } from '../capabilities/registry';
 import { VisitTrail } from '../guide/VisitTrail';
@@ -151,14 +151,24 @@ const plannedClassName = /*#__PURE__*/ css({
 	color: 'text.muted',
 });
 
+/**
+ * Issue #1135 — the title link is INLINE, so the arrow follows the
+ * text it belongs to.
+ *
+ * The card titles are bilingual and wrap onto a second line; as a
+ * flex row the arrow became a flex item beside a full-width text
+ * box, so it sat at the card's right edge, visually detached from
+ * the title it points at. In the text flow the arrow follows the
+ * last word of the title on the line the title ends on.
+ */
 const cardLinkClassName = /*#__PURE__*/ css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: '1',
+	display: 'inline',
 	maxWidth: '100%',
 });
 
-const cardLinkTextClassName = /*#__PURE__*/ css({ minWidth: '0' });
+const cardLinkArrowClassName = /*#__PURE__*/ css({
+	marginInlineStart: '1',
+});
 
 function ExploreCard({ destination }: { readonly destination: ExploreDestination }) {
 	return (
@@ -172,11 +182,11 @@ function ExploreCard({ destination }: { readonly destination: ExploreDestination
 					{destination.href ? (
 						<TextLink
 							href={destination.href}
-							className={cx(cardTitleClassName, cardLinkClassName)}
+							className={cx(cardTitleLinkClassName, cardLinkClassName)}
 							{...(destination.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
 						>
-							<span className={cardLinkTextClassName}>{destination.titleJa}</span>
-							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+							<span>{destination.titleJa}</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} className={cardLinkArrowClassName} />
 						</TextLink>
 					) : (
 						destination.titleJa
@@ -212,7 +222,7 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 		.slice(0, EXPLORE_DESTINATION_LIMIT);
 	const planned = plannedCapabilities();
 	return (
-		<PageSection labelledBy="site-guide-heading">
+		<PageSection labelledBy="site-guide-heading" id="explore" name="explore">
 			<SectionHeading
 				id="site-guide-heading"
 				eyebrow="00 — Explore"

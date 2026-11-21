@@ -329,12 +329,20 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						<AdTopBanner />
 					</div>
 				</Container>
-				<PageSection labelledBy="site-status-heading" tone="sunken">
+				<PageSection labelledBy="site-status-heading" tone="sunken" id="status" name="status">
 					{/* Issue #1110 — this section aggregates five widgets, so it
 					    takes the `default` heading and the full measure: the
 					    spread variant's 8/12 content column left every widget
 					    ~290px wide and tripled the section's height. Density
-					    is a section-role decision (layout-system.md §9). */}
+					    is a section-role decision (layout-system.md §9).
+					    Issue #1135 — the platform-health rows take the FULL
+					    measure and the two visitor widgets sit under them:
+					    in the 6/6 split the health row's detail column was
+					    ~150px, so 「external HTTP boundary endpoints
+					    mounted」 wrapped over four lines and the status read
+					    as a broken table. The hierarchy is also right that
+	    way — health is the section's primary claim, the widgets are
+	    secondary. */}
 					<SectionHeading
 						id="site-status-heading"
 						eyebrow="02 — Status"
@@ -342,21 +350,21 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						titleEn="Site status"
 						description="このサイトが今動いているか。binding の到達性、ページビュー、訪問者の反応を 1 つの面にまとめています。"
 					/>
-					<Grid columns={2} gap="10">
-						<div>
-							<h3 id="status-heading" className={subsectionTitleClassName}>
-								プラットフォームの状態 / Platform health
-							</h3>
-							<StatusTiles
-								chrome="body"
-								services={data.services}
-								statuses={data.statuses}
-								observedAt={data.observedAt}
-								incidents={data.incidents}
-								locale={locale}
-								timeZone={timeZone}
-							/>
-						</div>
+					<div>
+						<h3 id="status-heading" className={subsectionTitleClassName}>
+							プラットフォームの状態 / Platform health
+						</h3>
+						<StatusTiles
+							chrome="body"
+							services={data.services}
+							statuses={data.statuses}
+							observedAt={data.observedAt}
+							incidents={data.incidents}
+							locale={locale}
+							timeZone={timeZone}
+						/>
+					</div>
+					<Grid columns={2} gap="10" className={css({ marginBlockStart: '10' })}>
 						<div>
 							<h3 id="reactions-heading" className={subsectionTitleClassName}>
 								みんなの反応 / Reactions
@@ -366,16 +374,15 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 								を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。
 							</p>
 							<ReactionsWidget data={data.reactions} />
-
-							<div className={css({ marginBlockStart: '8' })}>
-								<h3 id="access-counter-heading" className={subsectionTitleClassName}>
-									ページビュー / Page views
-								</h3>
-								<p className={subsectionDescriptionClassName}>
-									各リクエストは短時間ウィンドウ内で重複加算されません。
-								</p>
-								<CounterTile data={data.counter} locale={locale} />
-							</div>
+						</div>
+						<div>
+							<h3 id="access-counter-heading" className={subsectionTitleClassName}>
+								ページビュー / Page views
+							</h3>
+							<p className={subsectionDescriptionClassName}>
+								各リクエストは短時間ウィンドウ内で重複加算されません。
+							</p>
+							<CounterTile data={data.counter} locale={locale} />
 						</div>
 					</Grid>
 					<Disclosure
@@ -428,7 +435,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 				    bare section blurred into the content flow, so the zone
 				    takes the `sunken` tone — an ad break should read as a
 				    different surface, not as more article. */}
-				<PageSection labelledBy="sponsored-heading" tone="sunken">
+				<PageSection labelledBy="sponsored-heading" tone="sunken" name="sponsored">
 					<h2 id="sponsored-heading" className={css({ srOnly: true })}>
 						Sponsored
 					</h2>
@@ -451,7 +458,14 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 						</Grid>
 					</Container>
 				</PageSection>
-				<PageSection labelledBy="contact-cta-heading" rhythm="closing" tone="inverse" separator>
+				<PageSection
+					labelledBy="contact-cta-heading"
+					rhythm="closing"
+					tone="inverse"
+					separator
+					id="contact"
+					name="contact"
+				>
 					<SectionHeading
 						id="contact-cta-heading"
 						eyebrow="03 — Contact"

@@ -121,7 +121,7 @@ export function renderStreakCard(
       <line x1="${line2X}" y1="${lineTop}" x2="${line2X}" y2="${lineBottom}" class="divider" />
 
       <!-- Total Contributions -->
-      <text x="95" y="${statsY}" class="stat">${streak.totalContributions.toLocaleString()}</text>
+      <text x="95" y="${statsY}" class="stat">${streak.totalContributions.toLocaleString('en-US')}</text>
       <text x="95" y="${labelsY}" class="label">Total Contributions</text>
       <text x="95" y="${rangeY}" class="range">${
 			streak.firstContribution ? `${streak.firstContribution} - Present` : ''

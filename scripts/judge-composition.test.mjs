@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
@@ -52,11 +52,13 @@ const FIXTURE_ROUTE = {
 };
 
 function routeFor(name) {
-	return CONTRACT.routes.find((r) => r.slug === FIXTURE_ROUTE[name]) ?? {
-		path: '/fixture',
-		mediaExpected: false,
-		indexRoute: false,
-	};
+	return (
+		CONTRACT.routes.find((r) => r.slug === FIXTURE_ROUTE[name]) ?? {
+			path: '/fixture',
+			mediaExpected: false,
+			indexRoute: false,
+		}
+	);
 }
 
 function modelsFor(files) {

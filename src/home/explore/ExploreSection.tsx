@@ -161,6 +161,17 @@ const plannedClassName = /*#__PURE__*/ css({
  * the title it points at. In the text flow the arrow follows the
  * last word of the title on the line the title ends on.
  */
+/**
+ * Issue #1135 — the destination cards sit on the row's TOP edge.
+ *
+ * A grid item is stretched to its row's height by default, so the
+ * shortest card of a row ran its colour field far below its own copy.
+ * The L-C review measured the empty tail at 0.57 of the card's height.
+ */
+const cardsTopAlignedClassName = /*#__PURE__*/ css({
+	alignItems: 'start',
+});
+
 const cardLinkClassName = /*#__PURE__*/ css({
 	display: 'inline',
 	maxWidth: '100%',
@@ -230,7 +241,17 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 				titleEn="Site guide"
 				description="このサイトの行き先を、内容の分類ごとの面で並べています。各カードの色面はその行き先の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 			/>
-			<Grid columns={3} gap="6" as="ul" className={listResetClassName}>
+			{/* Issue #1135 — the cards sit on the row's TOP edge. A grid
+			    item is stretched to its row's height by default, so the
+			    shortest card of a row ran its colour field far below its
+			    own copy: the L-C review measured an empty tail of 0.57 on
+			    the explore grid. The cards keep their own height now. */}
+			<Grid
+				columns={3}
+				gap="6"
+				as="ul"
+				className={cx(listResetClassName, cardsTopAlignedClassName)}
+			>
 				{destinations.map((destination) => (
 					<ExploreCard key={destination.id} destination={destination} />
 				))}

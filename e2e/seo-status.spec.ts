@@ -196,7 +196,7 @@ test.describe('seo status contract — browser rendering (#419)', () => {
 		const response = await page.goto('/now');
 		expect(response?.status()).toBe(200);
 		expectServed('public-now', 200, await page.content());
-		await expect(page.getByRole('heading', { name: '現在地 / Where I am now' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: '現在地 Where I am now' })).toBeVisible();
 	});
 
 	test('public-portfolio-index renders as a normal page', async ({ page }) => {

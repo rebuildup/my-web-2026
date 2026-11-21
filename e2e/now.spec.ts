@@ -27,7 +27,7 @@ test.describe('/now — full current-project enumeration (#1108)', () => {
 
 		const section = page.getByTestId('home-current-projects');
 		await expect(section).toBeVisible();
-		await expect(section.getByRole('heading', { name: '現在地 / Where I am now' })).toBeVisible();
+		await expect(section.getByRole('heading', { name: '現在地 Where I am now' })).toBeVisible();
 
 		// The enumeration is complete: the summary count and the rendered
 		// rows must agree, and there is no see-all link — this IS the

@@ -1,115 +1,115 @@
 {
-  "version": "composition-model/v1",
-  "document": {
-    "width": 390,
-    "height": 9500
-  },
-  "sections": [
-    {
-      "tone": "ground",
-      "rhythm": "hero",
-      "signature": "m-0",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 32000,
-          "fontSize": 44
-        },
-        {
-          "kind": "text",
-          "area": 64000,
-          "fontSize": 16
-        }
-      ],
-      "grid": null,
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    },
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "m-1",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 16000,
-          "fontSize": 26
-        },
-        {
-          "kind": "text",
-          "area": 96000,
-          "fontSize": 15
-        },
-        {
-          "kind": "panel",
-          "area": 72000,
-          "fontSize": 15
-        }
-      ],
-      "grid": null,
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    },
-    {
-      "tone": "ground",
-      "rhythm": "body",
-      "signature": "m-2",
-      "inFlow": true,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "w": 1024,
-        "h": 400
-      },
-      "blocks": [
-        {
-          "kind": "heading",
-          "area": 16000,
-          "fontSize": 26
-        },
-        {
-          "kind": "text",
-          "area": 96000,
-          "fontSize": 15
-        },
-        {
-          "kind": "panel",
-          "area": 72000,
-          "fontSize": 15
-        }
-      ],
-      "grid": null,
-      "mediaArea": 0,
-      "textArea": 0,
-      "contentWidthRatio": 0.9,
-      "emptyAreaRatio": 0.1
-    }
-  ],
-  "media": {
-    "totalArea": 0,
-    "byKind": {}
-  },
-  "metrics": {
-    "contentArea": 3705000,
-    "recompositionScore": 0
-  },
-  "features": []
+	"version": "composition-model/v1",
+	"document": {
+		"width": 390,
+		"height": 9500
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "hero",
+			"signature": "m-0",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 32000,
+					"fontSize": 44
+				},
+				{
+					"kind": "text",
+					"area": 64000,
+					"fontSize": 16
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "m-1",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 16000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 96000,
+					"fontSize": 15
+				},
+				{
+					"kind": "panel",
+					"area": 72000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "m-2",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 16000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 96000,
+					"fontSize": 15
+				},
+				{
+					"kind": "panel",
+					"area": 72000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {}
+	},
+	"metrics": {
+		"contentArea": 3705000,
+		"recompositionScore": 0
+	},
+	"features": []
 }

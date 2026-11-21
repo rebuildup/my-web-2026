@@ -19,7 +19,18 @@
 		"exemptNote": "src/editorial/** is the DEFINITION side of the contract (tokens, primitives, nav, pet). The gate inspects consumers. Individual files under editorial may still be allowlisted for C-2 when they legitimately carry raw values (icon assets)."
 	},
 	"primitives": {
-		"layout": ["PageSection", "Container", "Grid", "Stack", "Cluster", "Split", "GridItem", "Breakout", "Overlap", "OverlapLayer"],
+		"layout": [
+			"PageSection",
+			"Container",
+			"Grid",
+			"Stack",
+			"Cluster",
+			"Split",
+			"GridItem",
+			"Breakout",
+			"Overlap",
+			"OverlapLayer"
+		],
 		"components": [
 			"SectionHeading",
 			"Button",

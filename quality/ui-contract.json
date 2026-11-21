@@ -427,15 +427,6 @@
 			"clause": "C-4"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioList.tsx",
-			"reason": "legacy debt pending #1109 Grid/Split preset migration",
-			"signatures": {
-				"gridAutoRows": 1,
-				"gridTemplateColumns": 1
-			},
-			"clause": "C-4"
-		},
-		{
 			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
 			"reason": "legacy debt pending #1109 Grid/Split preset migration",
 			"signatures": {
@@ -812,14 +803,6 @@
 				"surface + block padding/min-height outside PageSection": 1
 			},
 			"clause": "C-1/C-3"
-		},
-		{
-			"path": "src/portfolio/components/PortfolioList.tsx",
-			"reason": "legacy debt pending #1109 migration to PageSection",
-			"signatures": {
-				"raw <section> element": 2
-			},
-			"clause": "C-1"
 		},
 		{
 			"path": "src/portfolio/components/PortfolioMedia.tsx",
@@ -1216,18 +1199,6 @@
 			"clause": "C-6"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioList.tsx",
-			"reason": "legacy debt pending #1109 Button/TextLink migration",
-			"signatures": {
-				"<button> backgroundColor": 1,
-				"<button> borderColor": 1,
-				"<button> borderRadius": 1,
-				"<button> borderStyle": 1,
-				"<button> borderWidth": 1
-			},
-			"clause": "C-6"
-		},
-		{
 			"path": "src/portfolio/components/ProjectCard.tsx",
 			"reason": "legacy debt pending #1109 Button/TextLink migration",
 			"signatures": {
@@ -1556,14 +1527,6 @@
 			"clause": "C-5"
 		},
 		{
-			"path": "src/portfolio/components/PortfolioList.tsx",
-			"reason": "legacy debt pending #1109 list-primitive migration",
-			"signatures": {
-				"<ol> display": 1
-			},
-			"clause": "C-5"
-		},
-		{
 			"path": "src/portfolio/components/PortfolioProjectHistory.tsx",
 			"reason": "legacy debt pending #1109 list-primitive migration",
 			"signatures": {
@@ -1862,7 +1825,6 @@
 				"src/portfolio/components/FacetFilter.tsx",
 				"src/portfolio/components/Markdown.tsx",
 				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
 				"src/portfolio/components/VideoView.tsx",
 				"src/portfolio/components/ViewSwitcher.tsx",
 				"src/projects/DotfilesIntroductionPage.tsx",
@@ -2110,7 +2072,6 @@
 				"src/home/footer.tsx",
 				"src/home/presence/PresenceCard.tsx",
 				"src/home/status/tiles.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/admin.login.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx"
 			],
@@ -2184,6 +2145,7 @@
 				"src/about/components/LinksPage.tsx",
 				"src/contact/page.tsx",
 				"src/home/explore/ExploreSection.tsx",
+				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/activity/Timeline.tsx",
 				"src/routes/design-system/sections/ColorSwatches.tsx",
 				"src/routes/stack/StackPage.tsx",
@@ -2487,7 +2449,6 @@
 		{
 			"files": [
 				"src/portfolio/components/PortfolioDetail.tsx",
-				"src/portfolio/components/PortfolioList.tsx",
 				"src/routes/design-system/DesignSystemPage.tsx",
 				"src/routes/tools.$slug.tsx"
 			],
@@ -2504,15 +2465,6 @@
 		{
 			"files": [
 				"src/portfolio/components/PortfolioList.tsx",
-				"src/routes/design-system/sections/ColorSwatches.tsx",
-				"src/routes/design-system/sections/ReactionPicker.tsx",
-				"src/routes/design-system/sections/SpacingRuler.tsx"
-			],
-			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
-		},
-		{
-			"files": [
-				"src/portfolio/components/PortfolioList.tsx",
 				"src/portfolio/components/VideoView.tsx",
 				"src/routes/tools.index.tsx"
 			],
@@ -2522,6 +2474,14 @@
 			"files": [
 				"src/portfolio/components/VideoView.tsx",
 				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/SpacingRuler.tsx"
+			],
+			"reason": "legacy debt pending #1109 primitive extraction (C-7)"
+		},
+		{
+			"files": [
+				"src/routes/design-system/sections/ColorSwatches.tsx",
+				"src/routes/design-system/sections/ReactionPicker.tsx",
 				"src/routes/design-system/sections/SpacingRuler.tsx"
 			],
 			"reason": "legacy debt pending #1109 primitive extraction (C-7)"

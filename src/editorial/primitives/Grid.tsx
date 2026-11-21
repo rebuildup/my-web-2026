@@ -10,7 +10,7 @@ import { css, cx } from '../../../styled-system/css';
  * is mandatory inside the presets so content can shrink.
  */
 
-export type GridColumns = 1 | 2 | 3 | 4;
+export type GridColumns = 1 | 2 | 3 | 4 | 5;
 
 /** Spacing-token gap values allowed by the rhythm contract. */
 export type FlowGap = '1' | '2' | '4' | '6' | '10' | '16' | '24' | '32';
@@ -31,6 +31,14 @@ const COLUMN_TRACKS: Record<GridColumns, Record<string, string>> = {
 		base: '1fr',
 		md: 'repeat(2, minmax(0, 1fr))',
 		lg: 'repeat(4, minmax(0, 1fr))',
+	},
+	5: {
+		// The portfolio card progression: one column on phones, pairs on
+		// tablet, a 3-up sheet on desktop — the documented card-grid
+		// pattern (`/portfolio` index, Issue #912 round 2).
+		base: '1fr',
+		md: 'repeat(2, minmax(0, 1fr))',
+		lg: 'repeat(3, minmax(0, 1fr))',
 	},
 };
 

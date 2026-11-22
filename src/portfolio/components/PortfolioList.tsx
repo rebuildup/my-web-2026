@@ -1,4 +1,4 @@
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { Button } from '../../editorial/primitives/Button';
 import { listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
@@ -162,8 +162,14 @@ export function PortfolioList({
 							columns={5}
 							columnGap="6"
 							rowGap="10"
-							equalRows
-							className={listResetClassName}
+							// Issue #1136 — the grid no longer stretches the
+							// cards. `equalRows` sized every row to the tallest
+							// card in the grid, and the card is a grid item of
+							// its own, so a card's surface ran hundreds of
+							// pixels past its copy: the L-C review recorded the
+							// grid as "card-shaped voids". The cards now keep
+							// their own height and sit on the row's top edge.
+							className={cx(listResetClassName, cardsTopAlignedClassName)}
 						>
 							{allProjects.map((project) => (
 								<li key={project.id} className={liStretchClass}>
@@ -218,3 +224,15 @@ export function PortfolioList({
  * same height.
  */
 const liStretchClass = css(gridMin);
+
+/**
+ * Issue #1136 — the cards sit on the row's TOP edge.
+ *
+ * The grid item is a grid container of its own, so its card child is
+ * stretched to the item's height by default. With the row height set
+ * by the tallest card in the row, every other card's surface ran far
+ * below its own copy. Top alignment lets each card keep its height.
+ */
+const cardsTopAlignedClassName = css({
+	alignItems: 'start',
+});

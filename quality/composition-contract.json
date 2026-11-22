@@ -10,7 +10,9 @@
 		"severity: blocking stops integration, warning feeds the L-C visual review as a required input, info is an observation with no verdict.",
 		"Every allowlist entry carries a reason and a signature set. An entry that waives nothing fails. Growing an allowlist is a contract change; shrinking it is the migration tickets' job.",
 		"routes[].heroMediaMinRatio: when set, the hero-rhythm section must dedicate at least this fraction of its area to media — catches media-bearing content rendered text-only (#1134). Per-item media mapping inside lists remains the portfolio obligation's data contract; the page-level aggregate is CL-6.",
-		"routes[].proseStackAllowed: exempts CL-11 for content-shaped pages whose body sections are long-form prose by design (markdown case studies). Requires the page to carry its composition elsewhere (hero media floor still applies via heroMediaMinRatio). Reason recorded per ADR-0023 exception policy — not a lint escape hatch: the flag is visible in review and must be justified in the route's contract entry."
+		"routes[].proseStackAllowed: exempts CL-11 for content-shaped pages whose body sections are long-form prose by design (markdown case studies). Requires the page to carry its composition elsewhere (hero media floor still applies via heroMediaMinRatio). Reason recorded per ADR-0023 exception policy — not a lint escape hatch: the flag is visible in review and must be justified in the route's contract entry.",
+		"routes[].proseSections: names the sections a content-shaped page may stack as prose. The exemption is scoped to those sections — the rest of the route (hero, media sections, any other block) is still judged by CL-11 (Issue #1149). The former page-wide `proseStackAllowed` flag is gone.",
+		"Issue #1149 — the model gained three per-section facts: `mediaByKind` (media area per element kind), `brokenMedia` (images that failed to load) and `repeatTailGapRatio` (how much of a repeated unit is empty below its content). CL-6 reads the first, CL-12 the third, CL-13 the second."
 	],
 	"model": {
 		"version": "composition-model/v1",
@@ -61,7 +63,8 @@
 			"mediaExpected": true,
 			"indexRoute": false,
 			"heroMediaMinRatio": 0.15,
-			"proseStackAllowed": true
+			"proseSections": ["prose"],
+			"proseSectionsReason": "the markdown case-study body sections are long-form prose by design; the exemption applies to those sections only (Issue #1149)"
 		},
 		{
 			"path": "/tools",
@@ -299,6 +302,34 @@
 			"exceptions": "index routes are exempt (catalogs stack by nature); intentional single-column editorial flows that vary density, axis or media do not form a qualifying run",
 			"falsePositives": "a genuinely minimal single-column page — mitigated by minRunLength + dominance; warning-level evidence is kept in the detail string",
 			"fixture": ["negative/stack-monotony", "positive/varied-single-column"]
+		},
+		{
+			"id": "CL-12",
+			"principle": "white-space",
+			"name": "empty-repeated-unit",
+			"summary": "A repeated card-shaped unit leaves the lower part of its own box empty — the content sits at the top of a plane the grid stretched.",
+			"severity": "warning",
+			"detection": {
+				"repeatUnitsMin": 3,
+				"repeatTailGapRatioMax": 0.5,
+				"note": "repeatTailGapRatio is the share of the repeated unit's HEIGHT that lies below its last content block — the question the eye asks (\"is the bottom of this box empty?\"). An area ratio was rejected: a list row is legitimately sparse, so the area ratio read every list as an empty card. The threshold is 0.5 — the bottom half of the unit is empty. Measured against the shipped pages: the portfolio card grid measured 0.52 while its cards were stretched, and 0.10 after the card stopped stretching; the home records measure 0.15 and the home status rows 0.02."
+			},
+			"exceptions": "a unit whose emptiness IS the design (a spacer tile, a deliberately blank tile) has to be declared per route with a reason",
+			"falsePositives": "a unit whose content is painted as a background image or a canvas has no content block — such a unit must declare an exception",
+			"fixture": ["negative/empty-cards", "positive/filled-cards"]
+		},
+		{
+			"id": "CL-13",
+			"principle": "media-art-direction",
+			"name": "broken-media",
+			"summary": "An image element failed to load, so the composition shows a broken frame where it promised media.",
+			"severity": "warning",
+			"detection": {
+				"note": "the collector scrolls the document before measuring, so an image with a src and a zero intrinsic size after the settle is a failure, not a pending lazy load"
+			},
+			"exceptions": "an image that is intentionally a tracking pixel or a decorative spacer",
+			"falsePositives": "an image whose source is blocked by the capture environment (offline preview) — record it in the run report rather than silencing the rule",
+			"fixture": ["negative/broken-media", "positive/loaded-media"]
 		}
 	],
 	"allowlists": [],

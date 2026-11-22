@@ -1,0 +1,97 @@
+{
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 3000
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"name": "guides",
+			"signature": "ground|g2|media|h24|panel",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 24000,
+					"rect": {
+						"x": 0,
+						"y": 0,
+						"w": 460,
+						"h": 60
+					},
+					"fontSize": 34
+				},
+				{
+					"kind": "media",
+					"area": 180000,
+					"rect": {
+						"x": 500,
+						"y": 0,
+						"w": 500,
+						"h": 360
+					},
+					"fontSize": 16
+				},
+				{
+					"kind": "text",
+					"area": 60000,
+					"rect": {
+						"x": 0,
+						"y": 80,
+						"w": 460,
+						"h": 300
+					},
+					"fontSize": 16
+				}
+			],
+			"grid": {
+				"tracks": ["1fr", "1fr"],
+				"columnCount": 2,
+				"columnRatio": [1, 1]
+			},
+			"mediaArea": 180000,
+			"textArea": 84000,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1,
+			"repeatUnits": 4,
+			"repeatKind": "li",
+			"repeatProfile": "li|12x12",
+			"repeatTailGapRatio": 0.08,
+			"mediaByKind": {
+				"img": 180000,
+				"video": 0,
+				"canvas": 0,
+				"svg": 0
+			},
+			"brokenMedia": 0,
+			"contentLeft": 0,
+			"contentRight": 1000,
+			"density": 0.7,
+			"columnCount": 2,
+			"blockOrder": ["heading", "media", "text"]
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {
+			"img": 0,
+			"video": 0,
+			"canvas": 0,
+			"svg": 0
+		}
+	},
+	"metrics": {
+		"contentArea": 4320000,
+		"elementsPerPixel": 0.002,
+		"recompositionScore": 0
+	},
+	"features": []
+}

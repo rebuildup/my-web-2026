@@ -7,7 +7,7 @@
 	"sections": [
 		{
 			"tone": "ground",
-			"rhythm": "body",
+			"rhythm": "hero",
 			"signature": "hero-media",
 			"inFlow": true,
 			"rect": {
@@ -37,7 +37,14 @@
 			"mediaArea": 700000,
 			"textArea": 0,
 			"contentWidthRatio": 0.9,
-			"emptyAreaRatio": 0.1
+			"emptyAreaRatio": 0.1,
+			"mediaByKind": {
+				"img": 700000,
+				"video": 0,
+				"canvas": 0,
+				"svg": 0
+			},
+			"brokenMedia": 0
 		},
 		{
 			"tone": "ground",

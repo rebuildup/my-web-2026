@@ -497,7 +497,7 @@ function KeyboardPageReady({
 			    page's freshness record), and the source list at the end is
 			    the last statement. The diagram between them stays on the
 			    ground: it is the page's subject. */}
-			<PageSection separator label="同期状態">
+			<PageSection separator label="同期状態" tone="sunken">
 				<div className={statusStripStyle}>
 					<StateMark kind={data.freshness === 'fresh' ? 'ok' : 'degraded'} size="sm" />
 					<p className={statusTextStyle}>
@@ -710,7 +710,7 @@ function KeyboardPageReady({
 				</PageSection>
 			) : null}
 
-			<PageSection separator labelledBy={`${baseId}-sources`}>
+			<PageSection separator labelledBy={`${baseId}-sources`} tone="raised">
 				<SectionHeading
 					id={`${baseId}-sources`}
 					eyebrow="04 — provenance"

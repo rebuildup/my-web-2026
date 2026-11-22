@@ -25,21 +25,23 @@ test.describe('/now — full current-project enumeration (#1108)', () => {
 		await expect(page).toHaveTitle('現在地 / Where I am now — rebuildup.dev');
 		await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', CANONICAL);
 
-		const section = page.getByTestId('home-current-projects');
-		await expect(section).toBeVisible();
-		await expect(section.getByRole('heading', { name: '現在地 Where I am now' })).toBeVisible();
+		// Issue #1185 — the page's title and its scale sentence live in the
+		// entry hero; the enumeration below is the section's list alone.
+		await expect(
+			page.getByRole('heading', { level: 1, name: '現在地 Where I am now' }),
+		).toBeVisible();
 
 		// The enumeration is complete: the summary count and the rendered
 		// rows must agree, and there is no see-all link — this IS the
 		// see-all destination.
-		const summary = section.getByTestId('home-current-projects-summary');
+		const summary = page.getByTestId('home-current-projects-summary');
 		await expect(summary).toBeVisible();
 		const summaryText = (await summary.innerText()) ?? '';
 		const declared = /全 (\d+) 件/.exec(summaryText);
 		expect(declared, `summary must declare a total count: ${summaryText}`).not.toBeNull();
-		const rows = section.getByTestId('home-current-projects-list').locator('li');
+		const rows = page.getByTestId('home-current-projects-list').locator('li');
 		expect(await rows.count()).toBe(Number(declared?.[1]));
-		await expect(section.getByTestId('home-current-projects-see-all')).toHaveCount(0);
+		await expect(page.getByTestId('home-current-projects-see-all')).toHaveCount(0);
 	});
 
 	test('is reachable from the home see-all link', async ({ page }) => {

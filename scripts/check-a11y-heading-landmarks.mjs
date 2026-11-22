@@ -189,6 +189,12 @@ export const PAGE_UNITS = [
 		note: 'the read-only keyboard-layout reference',
 	},
 	{
+		id: 'now',
+		kind: 'page',
+		files: ['src/routes/now.tsx', 'src/home/current/CurrentProjects.tsx'],
+		note: 'the full current-project enumeration; its h1 lives in the route (Issue #1185)',
+	},
+	{
 		id: 'portfolio-list',
 		kind: 'page',
 		files: [

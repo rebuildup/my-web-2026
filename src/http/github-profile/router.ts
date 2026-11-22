@@ -3,6 +3,7 @@ import { notionProjects } from '../../portfolio/notion/reader';
 import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
 import { renderProfileCardSvg } from './card';
+import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
 
 /**
@@ -24,8 +25,10 @@ import { composeProfileCardModel } from './model';
  *     (`../activity/schema`, `../presence/schema`) — `http` never
  *     imports `src/home/**`;
  *   - `notionProjects()` — the committed, reviewed public portfolio
- *     snapshot — for the work covers, with URLs composed through
- *     `composeMediaUrl` (the Issue #634 publication gate).
+ *     snapshot — for the work covers. Covers are NOT linked: an SVG
+ *     delivered through `<img>` cannot load external subresources, so
+ *     `embedWorkMedia` reads the R2 objects and inlines them as
+ *     `data:` URIs under a byte budget (ADR-0024 §2.3).
  *
  * Failure behaviour: the endpoint answers 200 with a card in EVERY
  * data state. Missing / invalid / stale inputs render their honest
@@ -45,8 +48,6 @@ const CARD_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 interface ProfileSnapshotEnv {
 	DB?: D1Database;
 	MEDIA?: R2Bucket;
-	MEDIA_PUBLIC_BASE_URL?: string;
-	MY_WEB_2026_DATA_SOURCE?: string;
 	DISCORD_PRESENCE_USER_ID?: string;
 }
 
@@ -86,14 +87,10 @@ githubProfileRouter.get('/card', rateLimitRead, async (c) => {
 		presencePayload,
 		expectedPresenceUserId: env.DISCORD_PRESENCE_USER_ID,
 		now: Date.now(),
-		mediaEnv: {
-			MEDIA: env.MEDIA,
-			MEDIA_PUBLIC_BASE_URL: env.MEDIA_PUBLIC_BASE_URL,
-			MY_WEB_2026_DATA_SOURCE: env.MY_WEB_2026_DATA_SOURCE,
-		},
 		projects: notionProjects(),
 	});
-	const svg = renderProfileCardSvg(model);
+	const works = await embedWorkMedia(model.works, env.MEDIA);
+	const svg = renderProfileCardSvg({ ...model, works });
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': CARD_CACHE_CONTROL,

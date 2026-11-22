@@ -14,7 +14,10 @@
  *     is;
  *   - no links or button-like elements inside the image — Camo
  *     proxies the bytes and inner links cannot work; navigation stays
- *     in the README's Markdown.
+ *     in the README's Markdown;
+ *   - work covers arrive as `data:` URIs (`media-embed.ts`): an SVG
+ *     delivered through `<img>` cannot load external subresources, so
+ *     remote `<image href>` URLs would render blank on GitHub.
  */
 
 import type { ProfileCardModel, ProfileCardWork } from './model';
@@ -101,7 +104,7 @@ function truncate(text: string, maxWidth: number, fontSize: number): string {
 	return `${out}…`;
 }
 
-/** `2026-11-22T06:11:00.000Z` → `Nov 22, 2026, 6:11 AM` (en-US, UTC). */
+/** `2026-11-22T06:11:00.000Z` → `Nov 22, 2026, 6:11 AM UTC`. */
 function formatObserved(iso: string | undefined): string {
 	if (!iso) return 'unknown time';
 	const date = new Date(iso);
@@ -129,51 +132,78 @@ function formatDay(iso: string | undefined): string {
 	}).format(date);
 }
 
-interface WorkTileProps {
-	readonly work: ProfileCardWork;
-	readonly x: number;
-	readonly y: number;
-	readonly width: number;
-	readonly index: number;
-}
+const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 
-const TILE_IMAGE_HEIGHT = 176;
-const TILE_TITLE_SIZE = 26;
-const TILE_SUMMARY_SIZE = 19;
+// ---- layout constants (single source for every panel) ----
+const PAD = 48;
+const CONTENT_WIDTH = CARD_WIDTH - PAD * 2;
 
-function renderWorkTile({ work, x, y, width, index }: WorkTileProps): string {
-	const imageHeight = TILE_IMAGE_HEIGHT;
-	const clipId = `work-clip-${index}`;
-	const titleLines = wrapText(work.title, width, TILE_TITLE_SIZE, 2);
-	const summary = truncate(work.summary, width, TILE_SUMMARY_SIZE);
-	const titleY = y + imageHeight + 18;
-	const summaryY = titleY + titleLines.length * (TILE_TITLE_SIZE + 8) + 8;
-	return `
-	<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${width}" height="${imageHeight}" rx="12"/></clipPath>
-	<image href="${escapeXml(work.imageUrl)}" x="${x}" y="${y}" width="${width}" height="${imageHeight}"
-		preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})">
-		<title>${escapeXml(work.alt)}</title>
-	</image>
-	<rect x="${x}" y="${y}" width="${width}" height="${imageHeight}" rx="12" fill="none" stroke="${COLORS.panelStroke}" stroke-width="1"/>
-	${titleLines
-		.map(
-			(line, i) =>
-				`<text x="${x}" y="${titleY + i * (TILE_TITLE_SIZE + 8)}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="${TILE_TITLE_SIZE}" font-weight="700" fill="${COLORS.text}">${escapeXml(line)}</text>`,
-		)
-		.join('')}
-	<text x="${x}" y="${summaryY}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="${TILE_SUMMARY_SIZE}" fill="${COLORS.muted}">${escapeXml(summary)}</text>`;
-}
+const HEADER_TITLE_Y = 106;
+const HEADER_DESC_Y = 144;
+const HEADER_META_Y = 58;
 
-function renderGitHubPanel(
-	model: ProfileCardModel,
+const WORKS_LABEL_Y = 184;
+const WORKS_Y = 204;
+const TILE_IMAGE_HEIGHT = 164;
+const TILE_TITLE_SIZE = 24;
+const TILE_TITLE_LH = 30;
+const TILE_TITLE_MAX_LINES = 2;
+const TILE_SUMMARY_SIZE = 18;
+const TILE_SUMMARY_GAP = 10;
+
+const PANEL_GAP = 24;
+const PANEL_Y = 500;
+const PANEL_HEIGHT = 148;
+const PANEL_PAD = 28;
+const PANEL_LABEL_Y = 38; // baseline of the small caps label row
+const PANEL_PRIMARY_Y = 80; // baseline of the headline/counts
+const PANEL_SECONDARY_Y = 110; // baseline of the detail line
+const PANEL_FOOTER_SIZE = 15;
+
+function renderWorkTile(
+	work: ProfileCardWork,
 	x: number,
 	y: number,
 	width: number,
-	height: number,
+	index: number,
 ): string {
+	const clipId = `work-clip-${index}`;
+	const titleLines = wrapText(work.title, width, TILE_TITLE_SIZE, TILE_TITLE_MAX_LINES);
+	const summary = truncate(work.summary, width, TILE_SUMMARY_SIZE);
+	const titleY = y + TILE_IMAGE_HEIGHT + 16;
+	const summaryY = titleY + titleLines.length * TILE_TITLE_LH + TILE_SUMMARY_GAP;
+	const image = work.dataUri
+		? `<image href="${escapeXml(work.dataUri)}" x="${x}" y="${y}" width="${width}" height="${TILE_IMAGE_HEIGHT}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"><title>${escapeXml(work.alt)}</title></image>`
+		: `<rect x="${x}" y="${y}" width="${width}" height="${TILE_IMAGE_HEIGHT}" rx="12" fill="${COLORS.bg}"/>`;
+	return `
+	<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${width}" height="${TILE_IMAGE_HEIGHT}" rx="12"/></clipPath>
+	${image}
+	<rect x="${x}" y="${y}" width="${width}" height="${TILE_IMAGE_HEIGHT}" rx="12" fill="none" stroke="${COLORS.panelStroke}" stroke-width="1"/>
+	${titleLines
+		.map(
+			(line, i) =>
+				`<text x="${x}" y="${titleY + i * TILE_TITLE_LH}" font-family="${FONT}" font-size="${TILE_TITLE_SIZE}" font-weight="700" fill="${COLORS.text}">${escapeXml(line)}</text>`,
+		)
+		.join('')}
+	<text x="${x}" y="${summaryY}" font-family="${FONT}" font-size="${TILE_SUMMARY_SIZE}" fill="${COLORS.muted}">${escapeXml(summary)}</text>`;
+}
+
+function panelChrome(x: number, y: number, width: number, label: string, dotColor: string): string {
+	const innerX = x + PANEL_PAD;
+	return `
+	<rect x="${x}" y="${y}" width="${width}" height="${PANEL_HEIGHT}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
+	<circle cx="${innerX}" cy="${y + PANEL_LABEL_Y - 6}" r="6" fill="${dotColor}"/>
+	<text x="${innerX + 16}" y="${y + PANEL_LABEL_Y}" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">${escapeXml(label)}</text>`;
+}
+
+function panelFooter(x: number, y: number, width: number, text: string): string {
+	return `<text x="${x + width - PANEL_PAD}" y="${y + PANEL_HEIGHT - 14}" text-anchor="end" font-family="${FONT}" font-size="${PANEL_FOOTER_SIZE}" fill="${COLORS.faint}">${escapeXml(text)}</text>`;
+}
+
+function renderGitHubPanel(model: ProfileCardModel, x: number, y: number, width: number): string {
 	const github = model.github;
-	const innerX = x + 28;
-	const innerWidth = width - 56;
+	const innerX = x + PANEL_PAD;
+	const innerWidth = width - PANEL_PAD * 2;
 	let body = '';
 	if (github.state === 'ok') {
 		const counts = `${github.publicRepos} public · ${github.privateRepos} private project${github.privateRepos === 1 ? '' : 's'} active`;
@@ -181,37 +211,28 @@ function renderGitHubPanel(
 			? truncate(
 					`latest: ${github.latest.repoId} — ${github.latest.type} · ${formatDay(github.latest.at)}`,
 					innerWidth,
-					20,
+					TILE_SUMMARY_SIZE,
 				)
 			: 'no public feed events in window';
 		body = `
-	<text x="${innerX}" y="${y + 76}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="600" fill="${COLORS.text}">${escapeXml(counts)}</text>
-	<text x="${innerX}" y="${y + 108}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="${COLORS.muted}">${escapeXml(latest)}</text>`;
+	<text x="${innerX}" y="${y + PANEL_PRIMARY_Y}" font-family="${FONT}" font-size="23" font-weight="600" fill="${COLORS.text}">${escapeXml(counts)}</text>
+	<text x="${innerX}" y="${y + PANEL_SECONDARY_Y}" font-family="${FONT}" font-size="${TILE_SUMMARY_SIZE}" fill="${COLORS.muted}">${escapeXml(latest)}</text>`;
 	} else {
 		body = `
-	<text x="${innerX}" y="${y + 92}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="24" fill="${COLORS.muted}">No GitHub activity observed yet.</text>`;
+	<text x="${innerX}" y="${y + PANEL_PRIMARY_Y - 4}" font-family="${FONT}" font-size="20" fill="${COLORS.muted}">No GitHub activity observed yet.</text>`;
 	}
 	const observed = github.observedAt
 		? `observed ${formatObserved(github.observedAt)}`
 		: 'never observed';
-	return `
-	<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
-	<circle cx="${x + 28}" cy="${y + 34}" r="6" fill="${github.state === 'ok' ? COLORS.ok : COLORS.offline}"/>
-	<text x="${x + 44}" y="${y + 40}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">GITHUB ACTIVITY</text>
+	return `${panelChrome(x, y, width, 'GITHUB ACTIVITY', github.state === 'ok' ? COLORS.ok : COLORS.offline)}
 	${body}
-	<text x="${x + width - 28}" y="${y + height - 18}" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="${COLORS.faint}">${escapeXml(observed)}</text>`;
+	${panelFooter(x, y, width, observed)}`;
 }
 
-function renderDiscordPanel(
-	model: ProfileCardModel,
-	x: number,
-	y: number,
-	width: number,
-	height: number,
-): string {
+function renderDiscordPanel(model: ProfileCardModel, x: number, y: number, width: number): string {
 	const discord = model.discord;
-	const innerX = x + 28;
-	const innerWidth = width - 56;
+	const innerX = x + PANEL_PAD;
+	const innerWidth = width - PANEL_PAD * 2;
 	let dotColor: string = COLORS.offline;
 	let headline = 'Discord presence unavailable';
 	let detail = '';
@@ -219,7 +240,7 @@ function renderDiscordPanel(
 	if (discord.state === 'ok') {
 		dotColor = discord.statusLabel === 'Online' ? COLORS.ok : COLORS.stale;
 		headline = discord.statusLabel;
-		detail = discord.detail ? truncate(discord.detail, innerWidth, 20) : '';
+		detail = discord.detail ? truncate(discord.detail, innerWidth, TILE_SUMMARY_SIZE) : '';
 		footer = `observed ${formatObserved(discord.observedAt)}`;
 	} else if (discord.state === 'stale') {
 		dotColor = COLORS.stale;
@@ -228,13 +249,10 @@ function renderDiscordPanel(
 			? `last seen ${formatObserved(discord.observedAt)}`
 			: 'feed not reporting';
 	}
-	return `
-	<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
-	<circle cx="${x + 28}" cy="${y + 34}" r="6" fill="${dotColor}"/>
-	<text x="${x + 44}" y="${y + 40}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">DISCORD</text>
-	<text x="${innerX}" y="${y + 92}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="24" font-weight="600" fill="${COLORS.text}">${escapeXml(headline)}</text>
-	${detail ? `<text x="${innerX}" y="${y + 122}" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="${COLORS.muted}">${escapeXml(detail)}</text>` : ''}
-	${footer ? `<text x="${x + width - 28}" y="${y + height - 18}" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="${COLORS.faint}">${escapeXml(footer)}</text>` : ''}`;
+	return `${panelChrome(x, y, width, 'DISCORD', dotColor)}
+	<text x="${innerX}" y="${y + PANEL_PRIMARY_Y}" font-family="${FONT}" font-size="23" font-weight="600" fill="${COLORS.text}">${escapeXml(headline)}</text>
+	${detail ? `<text x="${innerX}" y="${y + PANEL_SECONDARY_Y}" font-family="${FONT}" font-size="${TILE_SUMMARY_SIZE}" fill="${COLORS.muted}">${escapeXml(detail)}</text>` : ''}
+	${footer ? panelFooter(x, y, width, footer) : ''}`;
 }
 
 /**
@@ -242,39 +260,16 @@ function renderDiscordPanel(
  * no clock, no randomness, no external fetch.
  */
 export function renderProfileCardSvg(model: ProfileCardModel): string {
-	const pad = 48;
-	const contentWidth = CARD_WIDTH - pad * 2;
-
-	// Works grid: up to WORK_TILE_COUNT columns.
 	const tileGap = 24;
-	const tileWidth = Math.floor((contentWidth - tileGap * 3) / 4);
-	const worksY = 208;
-	const tiles = model.works
+	const tileWidth = Math.floor((CONTENT_WIDTH - tileGap * 3) / 4);
+	const tilesSvg = model.works
 		.slice(0, 4)
-		.map((work, i) =>
-			renderWorkTile({
-				work,
-				x: pad + i * (tileWidth + tileGap),
-				y: worksY,
-				width: tileWidth,
-				index: i,
-			}),
-		)
+		.map((work, i) => renderWorkTile(work, PAD + i * (tileWidth + tileGap), WORKS_Y, tileWidth, i))
 		.join('');
 
-	// Status band.
-	const panelGap = 24;
-	const panelWidth = Math.floor((contentWidth - panelGap) / 2);
-	const panelY = 540;
-	const panelHeight = 118;
-	const githubPanel = renderGitHubPanel(model, pad, panelY, panelWidth, panelHeight);
-	const discordPanel = renderDiscordPanel(
-		model,
-		pad + panelWidth + panelGap,
-		panelY,
-		panelWidth,
-		panelHeight,
-	);
+	const panelWidth = Math.floor((CONTENT_WIDTH - PANEL_GAP) / 2);
+	const githubPanel = renderGitHubPanel(model, PAD, PANEL_Y, panelWidth);
+	const discordPanel = renderDiscordPanel(model, PAD + panelWidth + PANEL_GAP, PANEL_Y, panelWidth);
 
 	const descriptor = 'After Effects tools · Web apps · Motion design';
 	const observedFooter = `card generated ${formatObserved(model.generatedAt)} · data as observed above`;
@@ -284,12 +279,13 @@ export function renderProfileCardSvg(model: ProfileCardModel): string {
 <desc>Selected works and current GitHub / Discord activity for @rebuildup.</desc>
 <rect width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="${COLORS.bg}"/>
 <rect x="24" y="24" width="${CARD_WIDTH - 48}" height="${CARD_HEIGHT - 48}" rx="20" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
-<text x="${pad}" y="112" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="60" font-weight="800" letter-spacing="-1" fill="${COLORS.text}">rebuildup</text>
-<text x="${pad}" y="152" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" fill="${COLORS.muted}">${escapeXml(descriptor)}</text>
-<text x="${CARD_WIDTH - pad}" y="56" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="${COLORS.faint}">@rebuildup · github.com</text>
-${tiles}
+<text x="${PAD}" y="${HEADER_TITLE_Y}" font-family="${FONT}" font-size="56" font-weight="800" letter-spacing="-1" fill="${COLORS.text}">rebuildup</text>
+<text x="${PAD}" y="${HEADER_DESC_Y}" font-family="${FONT}" font-size="24" fill="${COLORS.muted}">${escapeXml(descriptor)}</text>
+<text x="${CARD_WIDTH - PAD}" y="${HEADER_META_Y}" text-anchor="end" font-family="${FONT}" font-size="19" fill="${COLORS.faint}">@rebuildup · github.com</text>
+<text x="${PAD}" y="${WORKS_LABEL_Y}" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">SELECTED WORKS</text>
+${tilesSvg}
 ${githubPanel}
 ${discordPanel}
-<text x="${CARD_WIDTH - pad}" y="${CARD_HEIGHT - 28}" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="${COLORS.faint}">${escapeXml(observedFooter)}</text>
+<text x="${CARD_WIDTH - PAD}" y="${CARD_HEIGHT - 28}" text-anchor="end" font-family="${FONT}" font-size="15" fill="${COLORS.faint}">${escapeXml(observedFooter)}</text>
 </svg>`;
 }

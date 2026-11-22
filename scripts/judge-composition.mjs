@@ -191,10 +191,16 @@ function checkCL4(model, rule, viewport) {
 }
 
 /** CL-5 — uniform grid with no variation anywhere. */
-function checkCL5(model, rule, route) {
+function checkCL5(model, rule, route, viewport) {
 	// Card catalogs legitimately use equal tracks — the contract's
 	// own exception note. Same indexRoute exemption as CL-2/CL-8/CL-10.
 	if (route?.indexRoute) return null;
+	// Issue #1168 — the rule is about the DESKTOP composition. On a
+	// narrow viewport every grid is one column by contract (ADR-0023
+	// §3: a composition designed for desktop recomposes to a single
+	// column on mobile), so reading the mobile view as "equal tracks
+	// with no variation" flagged every coordinate grid on the site.
+	if ((viewport?.width ?? 0) < (rule.detection.viewportMinWidth ?? 1024)) return null;
 	const grids = gridsWithUniformTracks(model);
 	const uniform = grids.filter((g) => {
 		const tracks = g.tracks ?? [];
@@ -594,7 +600,7 @@ export function judgeCompositionModel(model, contract, route, viewport) {
 	push(checkCL2(model, ruleById(contract, 'CL-2'), route));
 	push(checkCL3(model, ruleById(contract, 'CL-3')));
 	push(checkCL4(model, ruleById(contract, 'CL-4'), viewport));
-	push(checkCL5(model, ruleById(contract, 'CL-5'), route));
+	push(checkCL5(model, ruleById(contract, 'CL-5'), route, viewport));
 	push(checkCL6(model, ruleById(contract, 'CL-6'), route));
 	push(checkCL8(model, ruleById(contract, 'CL-8'), route));
 	push(checkCL9(model, ruleById(contract, 'CL-9')));

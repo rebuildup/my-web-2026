@@ -56,7 +56,10 @@ const COLLECTOR = () => {
 		if (tag === 'img' || tag === 'video' || tag === 'canvas' || tag === 'svg') return 'media';
 		if (tag === 'ul' || tag === 'ol') return 'list';
 		if (tag === 'a' || tag === 'button') return 'control';
-		if (tag === 'p' || tag === 'blockquote' || /^h[1-6]$/.test(tag)) return 'text';
+		// `dt` / `dd` are the definition rows a record list renders its
+		// measured facts in — they are TEXT, so they count as content.
+		if (tag === 'p' || tag === 'blockquote' || tag === 'dt' || tag === 'dd' || /^h[1-6]$/.test(tag))
+			return 'text';
 		return 'other';
 	};
 
@@ -139,7 +142,12 @@ const COLLECTOR = () => {
 			// `p` / `blockquote` are the TEXT blocks. Without them the
 			// collector never records prose, so the density, the tail-gap and
 			// the body font-size median all measure a heading-only page.
-			'h1,h2,h3,h4,h5,h6,p,blockquote,img,video,canvas,svg,ul,ol,a,button',
+			// `p` / `blockquote` are the TEXT blocks; `dt` / `dd` are the
+			// definition rows a record list renders its measured facts in.
+			// Without the definition rows the collector sees a record's
+			// name column and nothing else, and the whole facts column
+			// reads as an empty tail.
+			'h1,h2,h3,h4,h5,h6,p,blockquote,dt,dd,img,video,canvas,svg,ul,ol,a,button',
 		)) {
 			pushBlock(el);
 		}
@@ -346,6 +354,11 @@ const COLLECTOR = () => {
 				h: Math.round(r.height),
 			},
 			backgroundStep: s.backgroundColor,
+			// The emitted model keeps a bounded block list, but the
+			// composition metrics are computed over the WHOLE list: a
+			// section with more than 24 blocks (a long record list)
+			// would otherwise look like it ends 150 px above its real
+			// content, and CL-12 would report a void that is not there.
 			blocks: blocks.slice(0, 24),
 			grid,
 			mediaArea,

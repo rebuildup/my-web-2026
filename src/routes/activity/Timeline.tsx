@@ -70,7 +70,6 @@ const badgeClassName = css({
 	letterSpacing: '0.02em',
 	lineHeight: '1.4',
 	color: 'text.muted',
-	whiteSpace: 'nowrap',
 });
 
 const linkClassName = css({

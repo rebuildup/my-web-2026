@@ -62,7 +62,7 @@ const SECTION_INDEX = [
 
 export function Hero() {
 	return (
-		<PageSection labelledBy="hero-title" rhythm="hero" name="hero">
+		<PageSection labelledBy="hero-title" rhythm="hero" name="hero" testId="home-hero">
 			<Grid template="12" gap="6">
 				<GridItem span={7}>
 					<p

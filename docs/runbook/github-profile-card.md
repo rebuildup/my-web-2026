@@ -1,10 +1,44 @@
-# GitHub profile card (Issue #1170)
+# GitHub profile images (Issues #1170 / #1196)
 
-Runbook for the single-image GitHub profile card served at
-`GET /api/v1/github-profile/card`. It is the main image of the
-`rebuildup/rebuildup` profile README (rebuildup/rebuildup#3) — a
-business-card surface, not a stats dashboard. Design contract:
-`docs/adr/ADR-0024-github-profile-card.md`.
+Runbook for the images the `rebuildup/rebuildup` profile README
+embeds. The README was redesigned from a single card into a
+multi-section layout (rebuildup/rebuildup#5); the delivery contract is
+`docs/adr/ADR-0025-github-profile-assets.md` and the design record is
+`docs/visual/github-profile-readme.md`.
+
+## Current surface (ADR-0025)
+
+| Asset | URL | Kind |
+|---|---|---|
+| Work covers ×5 | `https://rebuildup.dev/github-profile/works/<slug>.webp` | Static Assets, committed WebP ≤1200px |
+| Status strip | `GET /api/v1/github-profile/status` | SVG, ~5 KB, no raster |
+
+Work selection lives in `src/http/github-profile/works.json`
+(`hero` / `grid` roles); `works.ts` resolves slugs against the
+committed portfolio snapshot fail-closed. Regenerate the images with:
+
+```sh
+node scripts/build-github-profile-works.mjs          # write
+node scripts/build-github-profile-works.mjs --check  # verify freshness
+```
+
+The script only uses media that `GET /media/<key>` serves publicly —
+a private or unpublished key answers 403 and is skipped.
+
+## Deprecated surface (ADR-0024 → ADR-0025 §2.4)
+
+`GET /api/v1/github-profile/card` — the v0.11.3 single-image card —
+**still serves unchanged** but carries `Deprecation: true` and is
+scheduled for removal in the next minor release after the README
+switch is verified in production. Do not extend it; `/status` reuses
+its panel renderers.
+
+---
+
+## Legacy card reference (pre-removal)
+
+The sections below document `/card` as shipped in v0.11.3. They stay
+accurate until the endpoint is removed.
 
 ## What the card contains
 

@@ -153,13 +153,14 @@ http -> editorial (Issue #530 — the public API directory preview story
 http/media -> portfolio (Issue #634 — `GET /media/<key>` asks the portfolio
   obligation whether a `portfolio/` object is published; the route owns
   namespace and delivery, portfolio owns what "published" means)
-http/github-profile -> portfolio (Issue #1170 — the profile card's work
-  covers come from `notionProjects()` (the committed public snapshot)
-  as public-filtered `r2Key` candidates; the route owns the card
-  contract, portfolio owns what "published" means. Covers are embedded
-  as `data:` URIs read through `env.MEDIA` after `isPublicMediaKey`
-  gating (`http -> cloudflare` already covers the binding and the pure
-  rule). See ADR-0024)
+http/github-profile -> portfolio (Issue #1170 / #1196 — the profile
+  surfaces' work selection comes from `notionProjects()` (the
+  committed public snapshot): the deprecated `/card` embeds covers as
+  `data:` URIs after `isPublicMediaKey` gating, while `works.ts`
+  resolves the ADR-0025 `works.json` manifest for the static
+  `/github-profile/works/<slug>.webp` assets; the route owns the
+  profile contract, portfolio owns what "published" means. See
+  ADR-0024 / ADR-0025)
 http -> logging (Issue #467 — boundary diagnostics)
 http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)

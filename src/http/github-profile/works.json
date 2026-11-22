@@ -1,0 +1,27 @@
+{
+	"schema": "github-profile-works.v1",
+	"issue": "#1196",
+	"adr": "docs/adr/ADR-0025-github-profile-assets.md",
+	"works": [
+		{
+			"slug": "my-web-2025",
+			"role": "hero"
+		},
+		{
+			"slug": "multislicer",
+			"role": "grid"
+		},
+		{
+			"slug": "seishun",
+			"role": "grid"
+		},
+		{
+			"slug": "kosen-fes-2025",
+			"role": "grid"
+		},
+		{
+			"slug": "pomodoroom",
+			"role": "grid"
+		}
+	]
+}

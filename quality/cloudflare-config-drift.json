@@ -68,7 +68,8 @@
 			"/tools/mic-level/app/*",
 			"/assets/*",
 			"/icons/*",
-			"/site.webmanifest"
+			"/site.webmanifest",
+			"/github-profile/*"
 		]
 	}
 }

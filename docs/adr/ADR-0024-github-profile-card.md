@@ -1,6 +1,11 @@
 # ADR-0024 — GitHub プロフィールカード画像の生成・配信契約
 
-- Status: **Proposed** — Issue #1170 の設計正本。実装は同 Issue の ticket PR で行う
+- Status: **Superseded by ADR-0025** — the "single card" premise was
+  withdrawn when the profile README moved to a multi-section,
+  multi-image design (Issue #1196). The `/card` endpoint itself keeps
+  serving under its documented contract until the ADR-0025 §2.4
+  deprecation window closes; the panel renderer it shares with
+  `/status` remains live code, not dead code.
 - Date: 2026-11-22
 - Ticket: Issue #1170（my-web-2026 側）/ rebuildup/rebuildup#3（README 側）
 - Target release: `release-0-12-0`

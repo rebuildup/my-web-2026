@@ -58,7 +58,10 @@ function NowRoute() {
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
 			<main>
-				<CurrentProjects projects={projects} today={today} />
+				{/* Issue #1163 — `/now` is the ENTRY surface: the
+				    current-projects section is its title block, and the
+				    summary facts sit in the entry's right column. */}
+				<CurrentProjects projects={projects} today={today} variant="page" />
 			</main>
 		</>
 	);

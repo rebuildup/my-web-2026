@@ -28,12 +28,15 @@ test.describe('activity — /activity timeline', () => {
 
 		const timeline = page.locator('[data-testid="activity-timeline"]');
 		await expect(timeline).toBeVisible();
-		// The source-health line names all three declared sources —
-		// GitHub, Portfolio and the not-yet-connected articles source.
-		await expect(timeline).toContainText('GitHub');
-		await expect(timeline).toContainText('Portfolio');
-		await expect(timeline).toContainText('Content');
-		await expect(timeline).toContainText('観測日');
+		// Issue #1174 — the source-health line names all three declared
+		// sources (GitHub, Portfolio and the not-yet-connected articles
+		// source) and lives in the entry's right column, above the list.
+		const status = page.locator('[data-testid="activity-source-status"]');
+		await expect(status).toBeVisible();
+		await expect(status).toContainText('GitHub');
+		await expect(status).toContainText('Portfolio');
+		await expect(status).toContainText('Content');
+		await expect(status).toContainText('観測日');
 	});
 
 	test('renders honest empty or populated states, never a fabricated date', async ({ page }) => {

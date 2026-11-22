@@ -182,7 +182,10 @@ export function ActivitySourceStatus({ timeline }: { readonly timeline: Activity
 		return <p className={css(noteSansMdPlain)}>観測状態を表示できません。</p>;
 	}
 	return (
-		<div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+		<div
+			className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}
+			data-testid="activity-source-status"
+		>
 			{timeline.sources.map((source) => (
 				<div
 					key={source.id}

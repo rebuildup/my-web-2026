@@ -96,7 +96,6 @@ const dateClassName = css({
 	fontSize: 'sm',
 	fontVariantNumeric: 'tabular-nums',
 	color: 'text.muted',
-	whiteSpace: 'nowrap',
 });
 
 const groupLabelClassName = css({

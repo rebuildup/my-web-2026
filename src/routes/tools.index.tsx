@@ -7,6 +7,7 @@ import { Badge } from '../editorial/primitives/Badge';
 import { listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { PageHero } from '../editorial/primitives/PageHero';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { ARROW_FORWARD_PATH } from '../editorial/primitives/material-symbol-paths';
@@ -305,6 +306,105 @@ const TOOL_PREVIEWS: Readonly<
 	},
 };
 
+/**
+ * The catalogue's own inventory for the hero's right column.
+ *
+ * Issue #1163 — the tool cards below each carry a screenshot, so the
+ * inventory here is deliberately type-only: the names and the state
+ * (open now / in preparation), nothing that the cards repeat. It is
+ * the shelf the visitor scans before the shelf they open.
+ */
+/**
+ * How many names the entry's inventory shows before it counts the
+ * rest. The cards below carry the whole catalogue with screenshots;
+ * the entry's right column is a shelf PREVIEW, not a second list.
+ */
+const INVENTORY_PREVIEW = 6;
+
+function ToolInventory({
+	available,
+	planned,
+}: {
+	readonly available: readonly ToolIndexEntry[];
+	readonly planned: readonly ToolIndexEntry[];
+}) {
+	return (
+		<div className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
+			{[
+				{ label: 'Available', entries: available },
+				{ label: 'In preparation', entries: planned },
+			].map((group) => (
+				<div key={group.label}>
+					<p
+						className={css({
+							margin: '0',
+							paddingBlockEnd: '2',
+							borderBottomWidth: '1px',
+							borderBottomStyle: 'solid',
+							borderBottomColor: 'border.strong',
+							fontFamily: 'mono',
+							fontSize: 'xs',
+							letterSpacing: '0.08em',
+							textTransform: 'uppercase',
+							color: 'text.muted',
+						})}
+					>
+						{`${group.label} · ${group.entries.length}`}
+					</p>
+					<ul
+						className={css({
+							margin: '0',
+							padding: '0',
+							listStyle: 'none',
+						})}
+					>
+						{group.entries.slice(0, INVENTORY_PREVIEW).map((entry) => (
+							<li
+								key={entry.slug}
+								className={css({
+									paddingBlock: '1',
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.subtle',
+									fontFamily: 'sans',
+									fontSize: 'xs',
+									color: 'text.default',
+								})}
+							>
+								{entry.display_name}
+							</li>
+						))}
+						{group.entries.length === 0 ? (
+							<li
+								className={css({
+									paddingBlock: '2',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.muted',
+								})}
+							>
+								なし
+							</li>
+						) : null}
+						{group.entries.length > INVENTORY_PREVIEW ? (
+							<li
+								className={css({
+									paddingBlock: '2',
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.muted',
+								})}
+							>
+								{`他 ${group.entries.length - INVENTORY_PREVIEW} 件`}
+							</li>
+						) : null}
+					</ul>
+				</div>
+			))}
+		</div>
+	);
+}
+
 function ToolsIndexRoute() {
 	const { available, planned, reactions, privacyNotice } = Route.useLoaderData();
 	return (
@@ -312,34 +412,19 @@ function ToolsIndexRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			{/* Issue #300: hero beat (16/32), same Container and left axis
-			    as every other public page. */}
-			<PageSection rhythm="hero">
-				<header
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '4',
-						marginBlockEnd: '0',
-					})}
-				>
-					<span className={css(eyebrowMonoSm)}>Tools</span>
-					<h1 className={css(pageTitleFlush)}>ツール</h1>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.muted',
-							lineHeight: '1.6',
-							maxWidth: '640px',
-						})}
-					>
-						ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した
-						repository で開発し、同じ origin から配信しています。
-					</p>
-				</header>
-			</PageSection>
+			{/* Issue #1163 — the entry's right column carries the
+			    catalogue's own inventory: which tools can be opened now,
+			    and which are still being prepared. The visitor can see
+			    the whole shelf before the cards below, and the right
+			    half of the entry is no longer empty. */}
+			<PageHero
+				labelledBy="tools-hero-title"
+				eyebrow="Tools"
+				title="ツール"
+				description="ブラウザだけで動く小さなツールを、開けるものと準備中のものに分けて並べています。各ツールは独立した repository で開発し、同じ origin から配信しています。"
+				asideLabel="Inventory"
+				aside={<ToolInventory available={available} planned={planned} />}
+			/>
 			{available.length === 0 && planned.length === 0 ? (
 				<PageSection>
 					<p className={css(noteSansMdPlain)}>登録されているツールはまだありません。</p>

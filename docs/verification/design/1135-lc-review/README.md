@@ -218,6 +218,8 @@ node scripts/composition-lint.mjs
 | 面積だけでは media 対応を判定できない | CL-6 修正 | blocking — ラスター画像必须 | `positive/media-led-detail` |
 | block 種別列を構成証拠と誤認 | CL-7 修正 | 視覚順の変化を証拠にする | `negative/mobile-kind-shift` / `positive/mobile-reading-order` |
 | prose 免除がルート全体 | CL-11 修正 | 免除は名前指定の section 単位 | `scripts/judge-composition.test.mjs` |
+| PageHero の h1 が gate に見えない | heading-landmarks gate に PageHero を登録（#1183） | `<PageHero …>` を level-1 heading として数える | `scripts/check-a11y-heading-landmarks.mjs` |
+| `/now` に h1 が無い | route に PageHero を追加（#1185） | entry の題名と規模の一文を hero が担う | `src/routes/now.tsx` |
 
 **CL-12 の指標は「比率」ではなく「絶対の空き（px）」**。比率（0.42 vs 0.21）では
 「空の card」と「まばらな一覧行」を分離できない。閾値 120px は実測で決めた

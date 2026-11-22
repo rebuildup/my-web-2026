@@ -510,17 +510,20 @@ export function CurrentProjects({
 		orderIndex.set(project.id, position + 1);
 	});
 
-	// Issue #1185 — `/now` is an ENTRY surface: the route owns the page's
-	// h1 (the PageHero) and the entry's right column (the summary
-	// sentence), so this variant renders the enumeration alone. The
-	// section wrapper and its heading belong to the HOME's section,
-	// which keeps its h2.
-	if (variant === 'page') {
-		return published.length === 0 ? (
-			<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-				現在、公開している進行中のプロジェクトはありません。
-			</p>
-		) : groups ? (
+	// The enumeration itself, shared by the two placements: the HOME's
+	// section (groups are h3 under the section's h2) and the `/now`
+	// ENTRY (groups are h2 under the hero's h1). One renderer, so the
+	// two surfaces cannot drift apart.
+	const renderEnumeration = (headingLevel: 'h2' | 'h3') => {
+		if (published.length === 0) {
+			return (
+				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+					現在、公開している進行中のプロジェクトはありません。
+				</p>
+			);
+		}
+		const GroupHeading = headingLevel;
+		return groups ? (
 			<Stack
 				as="ul"
 				gap="10"
@@ -529,10 +532,10 @@ export function CurrentProjects({
 			>
 				{groups.map((group) => (
 					<li key={group.level} data-testid="home-current-project-group" data-level={group.level}>
-						<h2 className={groupHeadingClassName}>
+						<GroupHeading className={groupHeadingClassName}>
 							<span>{group.label}</span>
 							<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-						</h2>
+						</GroupHeading>
 						<Stack as="ul" gap="0" className={listResetClassName}>
 							{group.records.map((project) => (
 								<ProjectRow
@@ -569,6 +572,15 @@ export function CurrentProjects({
 				))}
 			</Stack>
 		);
+	};
+
+	// Issue #1185 — `/now` is an ENTRY surface: the route owns the page's
+	// h1 (the PageHero) and the entry's right column (the summary
+	// sentence), so this variant renders the enumeration alone. The
+	// section wrapper and its heading belong to the HOME's section,
+	// which keeps its h2.
+	if (variant === 'page') {
+		return renderEnumeration('h2');
 	}
 
 	return (
@@ -595,79 +607,12 @@ export function CurrentProjects({
 				titleEn="Where I am now"
 				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
 			/>
-			{published.length === 0 ? (
-				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-					現在、公開している進行中のプロジェクトはありません。
+			{summary ? (
+				<p data-testid="home-current-projects-summary" className={summaryClassName}>
+					{summary}
 				</p>
-			) : (
-				<>
-					<p data-testid="home-current-projects-summary" className={summaryClassName}>
-						{summary}
-					</p>
-					{groups ? (
-						<Stack
-							as="ul"
-							gap="10"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{groups.map((group) => (
-								<li
-									key={group.level}
-									data-testid="home-current-project-group"
-									data-level={group.level}
-								>
-									<h3 className={groupHeadingClassName}>
-										<span>{group.label}</span>
-										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-									</h3>
-									<Stack as="ul" gap="0" className={listResetClassName}>
-										{group.records.map((project) => (
-											<ProjectRow
-												key={project.id}
-												project={project}
-												today={today}
-												changed={changedIds.has(project.id)}
-												reducedMotion={reducedMotion}
-												grouped
-												index={orderIndex.get(project.id) ?? 1}
-											/>
-										))}
-									</Stack>
-								</li>
-							))}
-						</Stack>
-					) : (
-						<Stack
-							as="ul"
-							gap="0"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{visible.map((project) => (
-								<ProjectRow
-									key={project.id}
-									project={project}
-									today={today}
-									changed={changedIds.has(project.id)}
-									reducedMotion={reducedMotion}
-									grouped={false}
-									index={orderIndex.get(project.id) ?? 1}
-								/>
-							))}
-						</Stack>
-					)}
-					{seeAllHref && published.length > visible.length ? (
-						<a
-							href={seeAllHref}
-							className={cx(linkClassName, seeAllLinkClassName)}
-							data-testid="home-current-projects-see-all"
-						>
-							すべて見る ({published.length} 件)
-						</a>
-					) : null}
-				</>
-			)}
+			) : null}
+			{renderEnumeration('h3')}
 		</PageSection>
 	);
 }

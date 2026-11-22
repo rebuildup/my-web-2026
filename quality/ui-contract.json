@@ -1105,9 +1105,9 @@
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
 			"clauses": ["C-8"],
-			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
+			"reason": "justified: the published-projects enumeration, bounded by the committed roster; /now is the enumeration surface itself (ADR-0022 C-8) and the home section caps its slice with limit",
 			"signatures": {
-				"unbounded .map(": 2
+				"unbounded .map(": 4
 			}
 		},
 		{

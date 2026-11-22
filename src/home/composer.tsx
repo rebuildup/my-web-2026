@@ -144,10 +144,10 @@ const subsectionTitleClassName = /*#__PURE__*/ css({
  * `/api/v1/github-readme-stats/` (`src/http/hono.ts`), so the home
  * page and the image endpoint can never disagree about origin, and
  * the old `github-readme-stats-fast.vercel.app` URL stays gone
- * everywhere. `username=rebuildup` matches the owner's profile
- * README (`gh api repos/rebuildup/rebuildup/readme`).
+ * everywhere. Issue #1164 made the endpoint personal-fixed — the
+ * `rebuildup` identity is bound server-side, so no query params.
  */
-const GITHUB_STATS_IMAGE_URL = '/api/v1/github-readme-stats/api?username=rebuildup';
+const GITHUB_STATS_IMAGE_URL = '/api/v1/github-readme-stats/api';
 
 const subsectionDescriptionClassName = /*#__PURE__*/ css({
 	margin: '0',

@@ -4160,6 +4160,34 @@
 			"action": "closed",
 			"note": "hero の PageSection に testId を持ち、意図的破損の対象へ加えた。pixel judge と geometry judge が同じ欠陥を検出する。",
 			"missing": null
+		},
+		{
+			"issue": 1161,
+			"title": "fix(quality): composition lint の collector / judge 精度 — CodeRabbit 指摘 5 件 + GridItem / Breakout 実例",
+			"closedAt": "2026-11-22",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"scripts/collect-composition.mjs",
+				"scripts/judge-composition.mjs",
+				"scripts/judge-composition.test.mjs",
+				"src/editorial/primitives/Grid.tsx",
+				"src/routes/design-system/DesignSystemPage.tsx",
+				"src/projects/DotfilesIntroductionPage.tsx",
+				"quality/composition-contract.json",
+				"quality/bundle-budget.json",
+				"docs/verification/design/1135-lc-review/README.md",
+				"#1162",
+				"#1163"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "release PR #1155 の CodeRabbit review 12 thread を検証し、実在する 8 件を修正（本文要素の収集・CL-12 の葉ブロック下端・順序比較・stale model・CL-12 の絶対指標・GridItem の配置組合せ検証・Breakout 実例・レビュー記録の ID・dotfiles の prose 命名）。upstream 由来の 3 件（vendored Skill の表現・vendored stats カード）はこのリポジトリでは直さず、thread で理由を返して resolve した。",
+			"missing": "upstream へ返す 3 件の反映は design-skills / project-init 側の PR が未作成。"
 		}
 	]
 }

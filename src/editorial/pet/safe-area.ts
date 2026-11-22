@@ -40,12 +40,16 @@ import { PET_FRAME_WIDTH, PET_POSITION_MARGIN, PET_REST_SCALE } from './position
  * base / md / lg), and this style is additional padding on the page
  * wrapper, so the reserve per breakpoint is the remainder:
  *
- *     base: 0     (below `md` the sprite does not AUTO-mount — Issue
- *                  #1110 second pass; a ~92 px corridor on a phone
- *                  viewport is ~20% of the measure, so phones keep the
- *                  full reading column and summon the companion
- *                  through `PetCompanion`'s optional-invocation
- *                  control instead of a permanent reservation)
+ *     base: 0     (below `md` the corridor is NOT reserved — Issue
+ *                  #1162: the companion auto-mounts on every viewport
+ *                  (the contract has no button), and a ~92 px corridor
+ *                  on a phone viewport is ~20% of the measure, which
+ *                  would turn every section into a narrow ribbon. The
+ *                  phone keeps its full reading column; the sprite's
+ *                  resting footprint at the TRAILING edge is the
+ *                  accepted cost, and the visitor can drag the
+ *                  character anywhere — `docs/domain/pet-companion.md`
+ *                  §5.2)
  *     md:   92 - 24 = 68px
  *     lg:   92 - 32 = 60px
  *     xl:   0     (the centred 1024 px column clears the box)

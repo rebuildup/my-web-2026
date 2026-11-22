@@ -97,7 +97,17 @@ node scripts/composition-lint.mjs
   解除すると WCAG 2.2 SC 2.4.11 の焦点非遮蔽が壊れる。視覚的な残存課題として
   記録し、**今回は未改修**。
 
-**F-7 — 広告ユニット（注記・対象外）**
+**F-7 — モバイルで companion が index rail に重なる（注記・未改修）**
+
+- 観察: mobile（390px）では hero の index rail の「02 サイトの状態」行が
+  固定 companion の上に乗って読みにくくなる。`petSafeAreaStyle` の inline-end
+  通行帯は `md` 以上で.reserve されるため、phone 幅では重なりが残る。
+- 判定: **未改修**。companion の表示契約（`docs/domain/pet-companion.md` §5.2、
+  Issue #274）は owner 指示で smartphone では自動 mount しない契約だが、
+  今回の capture では mount が見えている。契約と実挙動の不一致は companion
+  側の Issue として切り出す必要があり、この PR の範囲（構図）では扱わない。
+
+**F-8 — 広告ユニット（注記・対象外）**
 
 - 観察: 広告の card 形状と CTA の位置は広告契約（Issue #925）の解剖に
   従っている。構図契約の管轄外。
@@ -105,20 +115,20 @@ node scripts/composition-lint.mjs
 
 ### 3.2 `/portfolio`
 
-**F-8 — カードが空の器になる（重大）**
+**F-9 — カードが空の器になる（重大）**
 
 - 観察: media を持たない project の card が、行の高さに引き伸ばされて
   表面積の 2/3 が空白の白い平面になっていた（card-shaped void）。
 - 期待する関係: 反復単位の表面は内容に従う（CL-12 の新設根拠）。
 - 影響: major ／ 確度: high ／ 検出: rendered + DOM geometry
 
-**F-9 — リアクション帯がページの左軸を外れる（重大）**
+**F-10 — リアクション帯がページの左軸を外れる（重大）**
 
 - 観察: `/portfolio` のリアクション帯が viewport 左端（x=0）から始まり、
   ページ全体の左 key line（x=240）と一致していなかった。
 - 影響: major ／ 確度: high ／ 検出: rendered + DOM geometry
 
-**F-10 — 画像が読み込めない（軽微・環境起因）**
+**F-11 — 画像が読み込めない（軽微・環境起因）**
 
 - 観察: 作品カバー 3 枚が broken 表示。原因是**ローカル環境で R2 の
   media に到達できない**こと（Issue #903 と同じ前提）。production の
@@ -128,21 +138,21 @@ node scripts/composition-lint.mjs
 
 ### 3.3 他ページ（未解決として記録）
 
-**F-11 — 全ページの hero が左一列（重大・系統的・未改修）**
+**F-12 — 全ページの hero が左一列（重大・系統的・未改修）**
 
 - 観察: `/about` `/tools` `/stack` `/activity` `/now` `/links` の hero は
   いずれも 1024px container の左側に 1 ブロックだけがあり、右側が空域。
   HOME と同じ構図欠陥がページごとに繰り返されている。
 - 判定: **未改修**。理由は §6 の残存課題。 Affects: HOME 以外の主要ページ。
 
-**F-12 — 色面の不在（軽微）**
+**F-13 — 色面の不在（軽微）**
 
 - 観察: `/about` `/keyboard` `/projects/dotfiles` は 8〜9 個の body section が
   すべて `ground` tone で、面の遷移がない（CL-8 warning）。
 - 判定: 未改修。section の役割差异に基づく tone 割当はページ側の決定であり、
   本 Issue の範囲（HOME と主ページ）Pairs で順送り。
 
-**F-13 — 時系列の単調羅列（軽微）**
+**F-14 — 時系列の単調羅列（軽微）**
 
 - 観察: `/activity` の chronology は同形の小文字行の連続。
 - 判定: 未改修。
@@ -153,7 +163,7 @@ node scripts/composition-lint.mjs
 | --- | --- | --- | --- | --- |
 | F-1 | HOME hero | 12 track の非対称 hero + section index 軸 | `home-hero--before.webp` | `home-hero--after.webp` |
 | F-3 | HOME 現在地 | 2 列レコード（番号 / 名称 / 計測値 + 罫線） | `home-now--before.webp` | `home-now--after.webp` |
-| F-8 / F-9 | `/portfolio` | card の stretch 解除 + media placeholder frame + リアクション帯の Container 化 | `portfolio-cards--before.webp` | `portfolio-cards--after.webp` |
+| F-9 / F-10 | `/portfolio` | card の stretch 解除 + media placeholder frame + リアクション帯の Container 化 | `portfolio-cards--before.webp` | `portfolio-cards--after.webp` |
 
 - F-2（identity mark の拡大）・F-4（状態行の全幅化）・F-5（矢印の追従）は
   上記の比較画像に含まれる。

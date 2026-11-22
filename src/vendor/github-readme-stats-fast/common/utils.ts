@@ -56,7 +56,7 @@ export class CustomError extends Error {
 export function flexLayout({
 	items,
 	gap,
-	direction = 'column',
+	direction,
 	sizes = [],
 }: {
 	items: string[];

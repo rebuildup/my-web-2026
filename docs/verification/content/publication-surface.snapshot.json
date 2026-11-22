@@ -726,6 +726,7 @@
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
 					"src/tools/manifest.json",
+					"src/vendor/github-readme-stats-fast/cards/streak-card.ts",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",
 					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
@@ -6008,30 +6009,15 @@
 		]
 	},
 	"approvedTransition": {
-		"addedPublicUrls": [
-			"/now"
-		],
+		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://rebuildup.dev/now"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://rebuildup.dev/now"
-			},
-			{
-				"code": "W004 public-url-added",
-				"severity": "warn",
-				"message": "Public URL added: /now"
-			}
-		]
+		"findings": []
 	}
 }

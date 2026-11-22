@@ -175,6 +175,38 @@ describe('GitHub Readme Stats Router', () => {
 			const body = await res.text();
 			expect(body).toContain('Incorrect layout input');
 		});
+
+		it('bounds the compact card to the upstream default language count', async () => {
+			const edges = Array.from({ length: 12 }, (_, i) => ({
+				size: 1000 - i * 10,
+				node: { name: `Lang${i}`, color: '#3178c6' },
+			}));
+			mockFetch.mockResolvedValue(
+				createGraphQLMock({
+					user: {
+						repositories: {
+							nodes: [{ name: 'repo1', languages: { edges } }],
+						},
+					},
+				}),
+			);
+
+			// Unique username: microCache/svgCache are in-memory, so a
+			// reused login could serve an earlier test's cached card.
+			const req = createMockRequest('/api/top-langs/', {
+				username: 'compact-count-user',
+				layout: 'compact',
+			});
+			const res = await githubReadmeStatsRouter.fetch(req, createMockEnv());
+			expect(res.status).toBe(200);
+			const body = await res.text();
+			// Upstream default for compact is 6 languages:
+			// height = 90 + round(6 / 2) * 25 = 165, width = 300.
+			expect(body).toContain('viewBox="0 0 300 165"');
+			expect(body).toContain('Lang0');
+			expect(body).toContain('Lang5');
+			expect(body).not.toContain('Lang6');
+		});
 	});
 
 	describe('Streak card: /api/streak', () => {

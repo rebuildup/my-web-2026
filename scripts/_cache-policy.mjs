@@ -181,6 +181,19 @@ export const CACHE_POLICY_MATRIX = [
 			'test/integration/reactions-images.test.ts (runtime, through the Worker entry), test/integration/cache-policy-matrix.test.ts (table = source constant)',
 	},
 	{
+		id: 'readme-stats-card',
+		class: 'GitHub Readme Stats SVG card (personal-fixed, Issue #1164)',
+		sample: '/api/v1/github-readme-stats/api',
+		cacheControl: 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+		validator: 'none',
+		vary: 'none',
+		varyNote:
+			'the value shown is the stats card; per-card freshness differs (top-langs 86400, streak 3600, pin 604800) and stale-while-revalidate is CONSTANTS.ONE_DAY. The `public` + positive lifetime is the sharedCacheIsolation opt-in — without it camo/CDN could not hold the card and an upstream outage surfaced as a broken image',
+		owner: 'external boundary (src/http/github-readme-stats/router.ts + svg-store.ts)',
+		enforcedBy:
+			'src/http/github-readme-stats/router.test.ts (public opt-in header + stale-while-revalidate store)',
+	},
+	{
 		id: 'personal-page',
 		class: 'Personal page (SSR HTML, rendered per request)',
 		sample: '/contact',

@@ -3995,6 +3995,7 @@
 					"src/editorial/nav/route-labels.ts",
 					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
+					"src/http/github-readme-stats/svg-store.ts",
 					"src/http/outbound-fetch.ts",
 					"src/http/security-headers.json",
 					"src/http/security-txt/document.ts",

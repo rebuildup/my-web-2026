@@ -6,19 +6,17 @@
  * Commit: 8e2c76e59a9e2407f2c80f4e23704a04e8db21ad
  */
 
-import { Card } from '../common/Card.ts';
-import { I18n } from '../common/I18n.ts';
-import { flexLayout, getCardColors } from '../common/utils.ts';
+import { getCardColors } from '../common/utils.ts';
 
 export interface StreakData {
 	currentStreak: number;
 	longestStreak: number;
 	totalContributions: number;
-	firstContribution: string;
-	currentStreakStart: string;
-	currentStreakEnd: string;
-	longestStreakStart: string;
-	longestStreakEnd: string;
+	firstContribution?: string;
+	currentStreakStart?: string;
+	currentStreakEnd?: string;
+	longestStreakStart?: string;
+	longestStreakEnd?: string;
 }
 
 interface StreakCardOptions {
@@ -30,169 +28,6 @@ interface StreakCardOptions {
 	border_color?: string;
 }
 
-const streakCardLocales = {
-	'streakcard.title': {
-		ar: 'سلسلة المساهمات في جيت هاب',
-		az: 'GitHub töhfələrinin silsiləsi',
-		cn: 'GitHub 贡献连续记录',
-		'zh-tw': 'GitHub 貢獻連續記錄',
-		cs: 'Řada příspěvků na GitHubu',
-		de: 'GitHub-Beitragsstreak',
-		en: 'GitHub Contribution Streak',
-		bn: 'GitHub অবদানের স্ট্রিক',
-		es: 'Racha de contribuciones de GitHub',
-		fr: 'Série de contributions GitHub',
-		hu: 'GitHub hozzájárulási sorozatok',
-		it: 'Serie di contributi GitHub',
-		ja: 'GitHub 貢献ストリーク',
-		kr: '깃허브 기여 연속 기록',
-		nl: 'GitHub-bijdragestreek',
-		'pt-pt': 'Sequência de contribuições do GitHub',
-		'pt-br': 'Sequência de contribuições do GitHub',
-		np: 'गिटहब योगदान श्रृंखला',
-		el: 'Σειρά συνεισφορών GitHub',
-		ru: 'Серия вкладов GitHub',
-		'uk-ua': 'Серія внесків GitHub',
-		id: 'Streak Kontribusi GitHub',
-		ml: 'GitHub സംഭാവന സ്ട്രീക്ക്',
-		my: 'GitHub �円形ഭാഗ 스트릭',
-		sk: 'Rad príspevkov na GitHube',
-		tr: 'GitHub Katkı Serisi',
-		pl: 'Serii wkładów GitHub',
-		uz: 'GitHub hissa qo\'shish ketma-ketligi',
-		vi: 'Chuỗi đóng góp GitHub',
-		se: 'GitHub-bidragsstreak',
-	},
-	'streakcard.current_streak': {
-		ar: 'السلة الحالية',
-		az: 'Cari silsilə',
-		cn: '当前连续',
-		'zh-tw': '目前連續',
-		cs: 'Aktuální řada',
-		de: 'Aktuelle Serie',
-		en: 'Current Streak',
-		bn: 'বর্তমান স্ট্রিক',
-		es: 'Racha actual',
-		fr: 'Série actuelle',
-		hu: 'Jelenlegi sor',
-		it: 'Serie attuale',
-		ja: '現在のストリーク',
-		kr: '현재 스트릭',
-		nl: 'Huidige reeks',
-		'pt-pt': 'Sequência atual',
-		'pt-br': 'Sequência atual',
-		np: 'वर्तमान श्रृंखला',
-		el: 'Τρέχουσα σειρά',
-		ru: 'Текущая серия',
-		'uk-ua': 'Поточна серія',
-		id: 'Streak Saat Ini',
-		ml: 'നിലവിലെ സ്ട്രീക്ക്',
-		my: 'เหตุการณ์ปัจจุบัน',
-		sk: 'Aktuálna rada',
-		tr: 'Mevcut Seri',
-		pl: 'Obecna seria',
-		uz: 'Joriy ketma-ketlik',
-		vi: 'Streak Hiện Tại',
-		se: 'Nuvarande streak',
-	},
-	'streakcard.longest_streak': {
-		ar: 'أطول سلة',
-		az: 'Ən uzun silsilə',
-		cn: '最长连续',
-		'zh-tw': '最長連續',
-		cs: 'Nejdelší řada',
-		de: 'Längste Serie',
-		en: 'Longest Streak',
-		bn: 'সর্বাধিক লম্বা স্ট্রিক',
-		es: 'Racha más larga',
-		fr: 'Plus longue série',
-		hu: 'Leghosszabb sor',
-		it: 'Serie più lunga',
-		ja: '最長ストリーク',
-		kr: '최장 스트릭',
-		nl: 'Langste reeks',
-		'pt-pt': 'Sequência mais longa',
-		'pt-br': 'Sequência mais longa',
-		np: 'सबैभन्दा लामो श्रृंखला',
-		el: 'Μεγαλύτερη σειρά',
-		ru: 'Самая длинная серия',
-		'uk-ua': 'Найдовша серія',
-		id: 'Streak Terpanjang',
-		ml: 'ഏറ്റവും നീണ്ട സ്ട്രീക്ക്',
-		my: 'အမြင့်ဆုံး',
-		sk: 'Najdlhšia rada',
-		tr: 'En Uzun Seri',
-		pl: 'Najdłuższa seria',
-		uz: 'Eng uzog ketma-ketlik',
-		vi: 'Streak Dài Nhất',
-		se: 'Längsta streak',
-	},
-	'streakcard.total_contributions': {
-		ar: 'إجمالي المساهمات',
-		az: 'Ümumi töhfə',
-		cn: '总贡献数',
-		'zh-tw': '總貢獻數',
-		cs: 'Celkem příspěvků',
-		de: 'Gesamtbeiträge',
-		en: 'Total Contributions',
-		bn: 'মোট অবদান',
-		es: 'Contribuciones totales',
-		fr: 'Contributions totales',
-		hu: 'Összes hozzájárulás',
-		it: 'Contributi totali',
-		ja: '総貢献数',
-		kr: '총 기여 수',
-		nl: 'Totaal bijdragen',
-		'pt-pt': 'Contribuições totais',
-		'pt-br': 'Contribuições totais',
-		np: 'कुल योगदान',
-		el: 'Σύνολο συνεισφορών',
-		ru: 'Всего вкладов',
-		'uk-ua': 'Разом внесків',
-		id: 'Total Kontribusi',
-		ml: 'ആകെ സംഭാവന',
-		my: 'စုစုပေါင်းစws',
-		sk: 'Celkový počet príspevkov',
-		tr: 'Toplam Katkı',
-		pl: 'Całkowite wkłady',
-		uz: 'Jami hissa qo\'shish',
-		vi: 'Tổng Đóng Góp',
-		se: 'Totala bidrag',
-	},
-	'streakcard.first_contribution': {
-		ar: 'أول مساهمة',
-		az: 'İlk töhfə',
-		cn: '首次贡献',
-		'zh-tw': '首次貢獻',
-		cs: 'První příspěvek',
-		de: 'Erster Beitrag',
-		en: 'First Contribution',
-		bn: 'প্রথম অবদান',
-		es: 'Primera contribución',
-		fr: 'Première contribution',
-		hu: 'Első hozzájárulás',
-		it: 'Primo contributo',
-		ja: '最初の貢献',
-		kr: '첫 기여',
-		nl: 'Eerste bijdrage',
-		'pt-pt': 'Primeira contribuição',
-		'pt-br': 'Primeira contribuição',
-		np: 'पहिलो योगदान',
-		el: 'Πρώτη συνεισφορά',
-		ru: 'Первый вклад',
-		'uk-ua': 'Перший внесок',
-		id: 'Kontribusi Pertama',
-		ml: 'ആദ്യ സംഭാവന',
-		my: 'ပထမ円形ഭാഗ',
-		sk: 'Prvý príspevok',
-		tr: 'İlk Katkı',
-		pl: 'Pierwszy wkład',
-		uz: 'Birinchi hissa qo\'shish',
-		vi: 'Đóng Góp Đầu Tiên',
-		se: 'Första bidraget',
-	},
-};
-
 /**
  * Renders the streak card.
  */
@@ -201,98 +36,126 @@ export function renderStreakCard(
 	streak: StreakData,
 	options: Partial<StreakCardOptions> = {},
 ): string {
-	const {
-		theme = 'default',
-		hide_border = false,
-		title_color,
-		text_color,
-		bg_color,
-		border_color,
-	} = options;
-
-	const { titleColor, textColor, bgColor, borderColor } = getCardColors({
-		title_color,
-		text_color,
-		icon_color: '',
-		bg_color,
-		border_color,
-		ring_color: '',
-		theme,
+	const { textColor, bgColor, borderColor } = getCardColors({
+		title_color: options.title_color,
+		text_color: options.text_color,
+		bg_color: options.bg_color,
+		border_color: options.border_color,
+		theme: options.theme || 'default',
 	});
 
-	const i18n = new I18n({
-		locale: null,
-		translations: streakCardLocales,
-	});
+	const formatRange = (start?: string, end?: string): string => {
+		if (!start || !end) {
+			return '';
+		}
+		if (start === end) {
+			return start;
+		}
+		return `${start} - ${end}`;
+	};
 
-	const card = new Card({
-		customTitle: undefined,
-		defaultTitle: i18n.t('streakcard.title'),
-		width: 400,
-		height: 180,
-		border_radius: undefined,
-		colors: {
-			titleColor,
-			textColor,
-			iconColor: titleColor,
-			bgColor,
-			borderColor,
-		},
-	});
+	// Move everything up since title is removed
+	const statsY = 85; // Was 100
+	const labelsY = 115; // Was 130
+	const rangeY = 145; // Was 150
+	const circleY = 79; // Was 110
+	const circleNumberY = 84; // Was 115
+	const circleLabelY = 144; // Was 170
+	const circleRangeY = 168; // Was 189
+	const fireIconY = 23.5; // Was 49.5
 
-	card.setHideBorder(hide_border);
-	card.setCSS(`
-    .stat { font: 600 14px 'Segoe UI', Ubuntu, Sans-Serif; fill: ${textColor}; }
-    .stat.bold { font-weight: 700; }
-    .gray { fill: #858585 }
-    .stagger { opacity: 0; animation: fadeInAnimation 0.3s ease-in-out forwards; }
-  `);
+	// Divider line coordinates - also moved up
+	const lineTop = 30; // Was 45
+	const lineBottom = 165; // Was 180
+	const line1X = 171; // Position of first vertical line (between Total and Current)
+	const line2X = 324; // Position of second vertical line (between Current and Longest)
 
-	const items = [
-		{
-			label: i18n.t('streakcard.current_streak'),
-			value: streak.currentStreak.toString(),
-			id: 'current-streak',
-		},
-		{
-			label: i18n.t('streakcard.longest_streak'),
-			value: streak.longestStreak.toString(),
-			id: 'longest-streak',
-		},
-		{
-			label: i18n.t('streakcard.total_contributions'),
-			value: streak.totalContributions.toString(),
-			id: 'total-contributions',
-		},
-	];
+	return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="495" height="195" viewBox="0 0 495 195">
+      <defs>
+        <!-- Glow filter -->
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <!-- Mask to hide part of the ring behind the fire -->
+        <mask id="mask_out_ring_behind_fire">
+          <rect width="495" height="195" fill="white"/>
+          <ellipse cx="247.5" cy="${fireIconY + 12.5}" rx="13" ry="18" fill="black"/>
+        </mask>
+      </defs>
+      <style>
+        @keyframes fadein {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes glowPulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
+        }
+        @keyframes currstreak {
+          0% { font-size: 3px; opacity: 0.2; }
+          80% { font-size: 34px; opacity: 1; }
+          100% { font-size: 28px; opacity: 1; }
+        }
+        .header-fire { font: 600 20px 'Segoe UI', Ubuntu, Sans-Serif; fill: orange; filter: url(#glow); animation: glowPulse 2s infinite; }
+        .header-text { font: 600 20px 'Segoe UI', Ubuntu, Sans-Serif; fill: black; }
+        .stat { font: 700 28px 'Segoe UI', Ubuntu, Sans-Serif; fill: ${textColor}; text-anchor: middle; animation: fadein 0.6s forwards; }
+        .label { font: 400 14px 'Segoe UI', Ubuntu, Sans-Serif; fill: ${textColor}; text-anchor: middle; opacity: 0; animation: fadein 0.8s forwards; }
+        .range { font: 400 12px 'Segoe UI', Ubuntu, Sans-Serif; fill: ${textColor}; text-anchor: middle; opacity: 0; animation: fadein 1s forwards; }
+        .circle-label { font: 700 28px 'Segoe UI', Ubuntu, Sans-Serif; fill: orange; text-anchor: middle; dominant-baseline: middle; filter: url(#glow); animation: currstreak 0.6s forwards; }
+        .ring { stroke: orange; filter: url(#glow); animation: glowPulse 2s infinite; }
+        .divider { stroke: ${textColor}; stroke-opacity: 0.4; stroke-width: 1; }
+      </style>
 
-	const statItems = items.map((item, index) => `
-    <g class="stagger" style="animation-delay: ${(index + 3) * 150}ms" transform="translate(25, 0)">
-      <text class="stat bold" y="12.5">${item.label}:</text>
-      <text class="stat bold" x="140" y="12.5" data-testid="${item.id}">${item.value}</text>
-    </g>
-  `)
+      <rect width="100%" height="100%" fill="${bgColor}" stroke="${
+			options.hide_border ? 'none' : borderColor
+		}" rx="4.5"/>
 
-	const dateItems = [
-		{
-			label: i18n.t('streakcard.first_contribution'),
-			value: streak.firstContribution,
-			id: 'first-contribution',
-		},
-	].map((item, index) => `
-    <g class="stagger" style="animation-delay: ${(index + 6) * 150}ms" transform="translate(25, 0)">
-      <text class="stat" y="12.5">${item.label}:</text>
-      <text class="stat" x="140" y="12.5" data-testid="${item.id}">${item.value}</text>
-    </g>
-  `)
+      <!-- Divider lines -->
+      <line x1="${line1X}" y1="${lineTop}" x2="${line1X}" y2="${lineBottom}" class="divider" />
+      <line x1="${line2X}" y1="${lineTop}" x2="${line2X}" y2="${lineBottom}" class="divider" />
 
-	const lheight = 25;
-	const body = `
-    <svg x="0" y="0">
-      ${flexLayout({ items: statItems, gap: lheight, direction: 'column' }).join('')}
-      ${flexLayout({ items: dateItems, gap: lheight, direction: 'column' }).join('')}
+      <!-- Total Contributions -->
+      <text x="95" y="${statsY}" class="stat">${streak.totalContributions.toLocaleString('en-US')}</text>
+      <text x="95" y="${labelsY}" class="label">Total Contributions</text>
+      <text x="95" y="${rangeY}" class="range">${
+			streak.firstContribution ? `${streak.firstContribution} - Present` : ''
+		}</text>
+
+      <!-- Current Streak with glowing circle -->
+      <g mask="url(#mask_out_ring_behind_fire)">
+        <circle cx="247.5" cy="${circleY}" r="40" stroke-width="5" class="ring" fill="none"/>
+      </g>
+
+      <!-- Fire icon with glow -->
+      <g transform="translate(247.5, ${fireIconY})" style="opacity: 0; animation: fadein 0.5s linear forwards 0.6s">
+        <path d="M -12 -0.5 L 15 -0.5 L 15 23.5 L -12 23.5 Z" fill="none"/>
+        <path d="M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 C 2.24 7.53 0.89 9.2 -1.17 9.2 C -3.23 9.2 -4.79 7.53 -4.79 5.47 L -4.76 5.11 C -6.78 7.51 -8 10.62 -8 13.99 C -8 18.41 -4.42 22 0 22 C 4.42 22 8 18.41 8 13.99 C 8 8.6 5.41 3.79 1.5 0.67 Z M -0.29 19 C -2.07 19 -3.51 17.6 -3.51 15.86 C -3.51 14.24 -2.46 13.1 -0.7 12.74 C 1.07 12.38 2.9 11.53 3.92 10.16 C 4.31 11.45 4.51 12.81 4.51 14.2 C 4.51 16.85 2.36 19 -0.29 19 Z"
+          fill="orange" filter="url(#glow)"/>
+      </g>
+
+      <!-- Current Streak number -->
+      <text x="247.5" y="${circleNumberY}" class="circle-label">${streak.currentStreak}</text>
+      <text x="247.5" y="${circleLabelY}" class="label"  style="fill: orange">Current Streak</text>
+      <text x="247.5" y="${circleRangeY}" class="range">${
+			streak.currentStreakStart && streak.currentStreakEnd
+				? formatRange(streak.currentStreakStart, streak.currentStreakEnd)
+				: ''
+		}</text>
+
+      <!-- Longest Streak -->
+      <text x="400" y="${statsY}" class="stat">${streak.longestStreak}</text>
+      <text x="400" y="${labelsY}" class="label">Longest Streak</text>
+      <text x="400" y="${rangeY}" class="range">${
+			streak.longestStreakStart && streak.longestStreakEnd
+				? formatRange(streak.longestStreakStart, streak.longestStreakEnd)
+				: ''
+		}</text>
     </svg>
   `;
-
-	return card.render(body);
 }

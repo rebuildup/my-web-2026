@@ -608,7 +608,7 @@ function MissingSnapshotSection() {
 function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView }) {
 	const { snapshot } = view;
 	return (
-		<PageSection separator labelledBy="dotfiles-provenance-heading">
+		<PageSection separator labelledBy="dotfiles-provenance-heading" tone="raised">
 			<SectionHeading
 				id="dotfiles-provenance-heading"
 				eyebrow="04 — Provenance"

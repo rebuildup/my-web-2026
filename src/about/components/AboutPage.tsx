@@ -314,7 +314,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 		   「Active」/「Parked」 labels) has no ink pair that survives
 		   the inverse plate — light label on a light pill — so the
 		   page turns with the monochrome ladder instead. */
-		<PageSection labelledBy="about-section-interests" separator>
+		<PageSection labelledBy="about-section-interests" separator tone="sunken">
 			<SectionHeading
 				id="about-section-interests"
 				eyebrow="02 — Interests"
@@ -405,7 +405,7 @@ function SkillsSection({ skills }: { skills: readonly SkillEntry[] }) {
 
 function ExperienceSection({ projects }: { projects: readonly PortfolioProject[] }) {
 	return (
-		<PageSection labelledBy="about-section-experience" separator>
+		<PageSection labelledBy="about-section-experience" separator tone="sunken">
 			<SectionHeading
 				id="about-section-experience"
 				eyebrow="04 — Experience"
@@ -529,7 +529,7 @@ function CareerSection({ entries }: { entries: readonly CareerEntry[] }) {
 
 function CurrentSection({ items }: { items: readonly string[] }) {
 	return (
-		<PageSection labelledBy="about-section-current" separator>
+		<PageSection labelledBy="about-section-current" separator tone="sunken">
 			<SectionHeading
 				id="about-section-current"
 				eyebrow="06 — Current"
@@ -580,7 +580,7 @@ function FutureSection({
 	parked: readonly string[];
 }) {
 	return (
-		<PageSection labelledBy="about-section-future" separator>
+		<PageSection labelledBy="about-section-future" separator tone="raised">
 			<SectionHeading
 				id="about-section-future"
 				eyebrow="07 — Future"

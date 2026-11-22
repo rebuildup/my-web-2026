@@ -7,6 +7,7 @@ import { Badge } from '../editorial/primitives/Badge';
 import { listResetClassName } from '../editorial/primitives/Flow';
 import { Grid } from '../editorial/primitives/Grid';
 import { MaterialSymbol } from '../editorial/primitives/MaterialSymbol';
+import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { PageHero } from '../editorial/primitives/PageHero';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
@@ -328,55 +329,37 @@ function ToolInventory({
 	readonly available: readonly ToolIndexEntry[];
 	readonly planned: readonly ToolIndexEntry[];
 }) {
+	const groups = [
+		{ label: 'Available', entries: available },
+		{ label: 'In preparation', entries: planned },
+	];
+
 	return (
 		<div className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
-			{[
-				{ label: 'Available', entries: available },
-				{ label: 'In preparation', entries: planned },
-			].map((group) => (
-				<div key={group.label}>
-					<p
-						className={css({
-							margin: '0',
-							paddingBlockEnd: '2',
-							borderBottomWidth: '1px',
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'border.strong',
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							letterSpacing: '0.08em',
-							textTransform: 'uppercase',
-							color: 'text.muted',
-						})}
-					>
-						{`${group.label} · ${group.entries.length}`}
-					</p>
-					<ul
-						className={css({
-							margin: '0',
-							padding: '0',
-							listStyle: 'none',
-						})}
-					>
-						{group.entries.slice(0, INVENTORY_PREVIEW).map((entry) => (
-							<li
-								key={entry.slug}
-								className={css({
-									paddingBlock: '1',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.subtle',
-									fontFamily: 'sans',
-									fontSize: 'xs',
-									color: 'text.default',
-								})}
-							>
-								{entry.display_name}
-							</li>
-						))}
+			{groups.map((group) => {
+				const preview = group.entries.slice(0, INVENTORY_PREVIEW);
+				return (
+					<div key={group.label}>
+						<p
+							className={css({
+								margin: '0',
+								paddingBlockEnd: '2',
+								borderBottomWidth: '1px',
+								borderBottomStyle: 'solid',
+								borderBottomColor: 'border.strong',
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								letterSpacing: '0.08em',
+								textTransform: 'uppercase',
+								color: 'text.muted',
+							})}
+						>
+							{`${group.label} · ${group.entries.length}`}
+						</p>
 						{group.entries.length === 0 ? (
-							<li
+							<p
 								className={css({
+									margin: '0',
 									paddingBlock: '2',
 									fontFamily: 'sans',
 									fontSize: 'sm',
@@ -384,23 +367,34 @@ function ToolInventory({
 								})}
 							>
 								なし
-							</li>
-						) : null}
-						{group.entries.length > INVENTORY_PREVIEW ? (
-							<li
-								className={css({
-									paddingBlock: '2',
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									color: 'text.muted',
-								})}
-							>
-								{`他 ${group.entries.length - INVENTORY_PREVIEW} 件`}
-							</li>
-						) : null}
-					</ul>
-				</div>
-			))}
+							</p>
+						) : (
+							<>
+								<EditorialIndex
+									ariaLabel={`${group.label} tools`}
+									items={preview.map((entry) => ({
+										href: `/tools/${entry.slug}`,
+										label: entry.display_name,
+									}))}
+								/>
+								{group.entries.length > INVENTORY_PREVIEW ? (
+									<p
+										className={css({
+											margin: '0',
+											paddingBlock: '2',
+											fontFamily: 'mono',
+											fontSize: 'xs',
+											color: 'text.muted',
+										})}
+									>
+										{`他 ${group.entries.length - INVENTORY_PREVIEW} 件`}
+									</p>
+								) : null}
+							</>
+						)}
+					</div>
+				);
+			})}
 		</div>
 	);
 }

@@ -6,6 +6,7 @@ import { Container } from '../../editorial/primitives/Container';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid, Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -159,53 +160,14 @@ const NARRATIVE_ORDER = [
  */
 function NarrativeIndex() {
 	return (
-		<nav aria-label="Sections">
-			<ol
-				className={css({
-					margin: '0',
-					padding: '0',
-					listStyle: 'none',
-				})}
-			>
-				{NARRATIVE_ORDER.map((step, index) => (
-					<li
-						key={step}
-						className={css({
-							display: 'flex',
-							alignItems: 'baseline',
-							gap: '3',
-							paddingBlock: '2',
-							borderBottomWidth: '1px',
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'border.subtle',
-						})}
-					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'xs',
-								fontVariantNumeric: 'tabular-nums',
-								color: 'text.muted',
-							})}
-						>
-							{String(index + 1).padStart(2, '0')}
-						</span>
-						<a
-							href={`#about-section-${step}`}
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.default',
-								textDecoration: 'none',
-								_hover: { textDecoration: 'underline' },
-							})}
-						>
-							{step}
-						</a>
-					</li>
-				))}
-			</ol>
-		</nav>
+		<EditorialIndex
+			ariaLabel="Sections"
+			items={NARRATIVE_ORDER.map((step, index) => ({
+				href: `#about-section-${step}`,
+				number: String(index + 1).padStart(2, '0'),
+				label: step,
+			}))}
+		/>
 	);
 }
 

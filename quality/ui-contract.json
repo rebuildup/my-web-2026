@@ -1301,6 +1301,14 @@
 			"signatures": {
 				"unbounded .map(": 2
 			}
+		},
+		{
+			"path": "src/routes/activity/Timeline.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: the /activity page IS the enumeration surface for the activity timeline — every published item is listed here, so there is no index route beyond it",
+			"signatures": {
+				"unbounded .map(": 1
+			}
 		}
 	],
 	"duplicateAllowlist": []

@@ -1450,6 +1450,29 @@
 				]
 			},
 			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
+		},
+		{
+			"id": "contact-hero-description",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。掲載されていない channel は現在 re-verified されていないため、ここには載せていません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1163",
+						"note": "The hero description of `/contact` carries the same sentence the intro paragraph used to hold (split across two records: contact-intro-current-only / contact-intro-unpublished-excluded). The sentence moved into the PageHero description prop, so the gate now extracts it as one expression. True against src/contact/channels.json and the 30-day freshness gate of src/contact/schema.ts."
+					}
+				]
+			},
+			"note": "Same claim as the two records it supersedes for this surface; kept as a separate row because the extraction span changed when the sentence moved into the hero description prop."
 		}
 	]
 }

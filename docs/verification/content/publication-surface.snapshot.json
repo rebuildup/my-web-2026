@@ -725,6 +725,7 @@
 					"public/favicon.svg",
 					"src/editorial/primitives/MaterialSymbol.tsx",
 					"src/home/mark.tsx",
+					"src/http/github-profile/card.ts",
 					"src/tools/manifest.json",
 					"src/vendor/github-readme-stats-fast/cards/streak-card.ts",
 					"src/vendor/github-readme-stats-fast/common/Card.ts",

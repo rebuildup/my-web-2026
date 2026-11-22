@@ -528,11 +528,7 @@ export function CurrentProjects({
 				className={listResetClassName}
 			>
 				{groups.map((group) => (
-					<li
-						key={group.level}
-						data-testid="home-current-project-group"
-						data-level={group.level}
-					>
+					<li key={group.level} data-testid="home-current-project-group" data-level={group.level}>
 						<h2 className={groupHeadingClassName}>
 							<span>{group.label}</span>
 							<span className={levelTagClassName}>{`${group.records.length} 件`}</span>

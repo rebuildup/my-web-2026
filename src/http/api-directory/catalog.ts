@@ -198,6 +198,21 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		},
 		purpose: 'Public repository pin card. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/card',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the card always answers 200 — missing / stale / invalid data renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Single-image GitHub profile card for the rebuildup/rebuildup README (Issue #1170): portfolio covers + GitHub activity / Discord presence snapshots with observation times. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

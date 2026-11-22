@@ -8,6 +8,7 @@ import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { corsMiddleware } from './cors/middleware';
 import { publicErrorResponse } from './errors';
+import { githubProfileRouter } from './github-profile/router';
 import { githubReadmeStatsRouter } from './github-readme-stats/router';
 import { mediaRouter } from './media/router';
 import { sharedCacheIsolation } from './middleware/cache-policy';
@@ -185,6 +186,7 @@ externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
 externalBoundary.route('/api/v1/github-readme-stats', githubReadmeStatsRouter);
+externalBoundary.route('/api/v1/github-profile', githubProfileRouter);
 externalBoundary.route('/api/v1/presence', presenceRouter);
 externalBoundary.route('/api/v1/activity', activityRouter);
 

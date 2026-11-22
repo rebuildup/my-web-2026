@@ -164,6 +164,7 @@ node scripts/composition-lint.mjs
 | F-1 | HOME hero | 12 track の非対称 hero + section index 軸 | `home-hero--before.webp` | `home-hero--after.webp` |
 | F-3 | HOME 現在地 | 2 列レコード（番号 / 名称 / 計測値 + 罫線） | `home-now--before.webp` | `home-now--after.webp` |
 | F-9 / F-10 | `/portfolio` | card の stretch 解除 + media placeholder frame + リアクション帯の Container 化 | `portfolio-cards--before.webp` | `portfolio-cards--after.webp` |
+| F-10 | `/portfolio` | リアクション帯を Container へ（ページの左軸へ） | `portfolio-top--before.webp` | `portfolio-top--after.webp` |
 
 - F-2（identity mark の拡大）・F-4（状態行の全幅化）・F-5（矢印の追従）は
   上記の比較画像に含まれる。

@@ -113,23 +113,29 @@ export function PageHero({
 						className={cx(titleClassName, css({ marginBlockStart: eyebrow ? '4' : '0' }))}
 					>
 						{title}
+						{titleEn ? (
+							// The English half is part of the TITLE, not a
+							// paragraph after it: a screen reader must hear
+							// the whole name when it reaches the `<h1>`, and a
+							// block span keeps the two languages on their own
+							// lines (the slash-break Issue #792 fixed for
+							// SectionHeading applies here too).
+							<span
+								className={css({
+									display: 'block',
+									marginBlockStart: '2',
+									fontFamily: 'heading',
+									fontSize: '2xl',
+									fontWeight: '700',
+									letterSpacing: '-0.02em',
+									lineHeight: '1.2',
+									color: 'text.default',
+								})}
+							>
+								{titleEn}
+							</span>
+						) : null}
 					</h1>
-					{titleEn ? (
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: '2xl',
-								fontWeight: '700',
-								letterSpacing: '-0.02em',
-								lineHeight: '1.2',
-								color: 'text.default',
-							})}
-						>
-							{titleEn}
-						</p>
-					) : null}
 					{description ? (
 						<p className={cx(descriptionClassName, css({ marginBlockStart: titleEn ? '4' : '6' }))}>
 							{description}

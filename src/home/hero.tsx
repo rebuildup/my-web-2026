@@ -2,6 +2,7 @@ import { css } from '../../styled-system/css';
 import { Button } from '../editorial/primitives/Button';
 import { Grid, GridItem } from '../editorial/primitives/Grid';
 import { PageSection } from '../editorial/primitives/PageSection';
+import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { TextLink } from '../editorial/primitives/TextLink';
 import { sizeTitle } from '../editorial/primitives/shared-styles';
 import { SiteMark } from './mark';
@@ -144,55 +145,14 @@ export function Hero() {
 						borderTopColor: 'border.subtle',
 					})}
 				>
-					<nav aria-label="Index">
-						<ol
-							className={css({
-								margin: '0',
-								padding: '0',
-								listStyle: 'none',
-							})}
-						>
-							{SECTION_INDEX.map((entry) => (
-								<li
-									key={entry.id}
-									className={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.subtle',
-									})}
-								>
-									<TextLink
-										href={`#${entry.id}`}
-										className={css({
-											display: 'flex',
-											alignItems: 'baseline',
-											gap: '3',
-											paddingBlock: '3',
-											fontFamily: 'sans',
-											fontSize: 'md',
-											fontWeight: '600',
-											color: 'text.default',
-											textDecoration: 'none',
-											_hover: { textDecoration: 'underline' },
-										})}
-									>
-										<span
-											aria-hidden="true"
-											className={css({
-												fontFamily: 'mono',
-												fontSize: 'xs',
-												letterSpacing: '0.08em',
-												color: 'text.muted',
-											})}
-										>
-											{entry.number}
-										</span>
-										<span>{entry.title}</span>
-									</TextLink>
-								</li>
-							))}
-						</ol>
-					</nav>
+					<EditorialIndex
+						ariaLabel="Index"
+						items={SECTION_INDEX.map((entry, index) => ({
+							href: `#${entry.id}`,
+							number: String(index + 1).padStart(2, '0'),
+							label: entry.title,
+						}))}
+					/>
 				</GridItem>
 			</Grid>
 		</PageSection>

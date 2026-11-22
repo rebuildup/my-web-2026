@@ -189,6 +189,12 @@ export const PAGE_UNITS = [
 		note: 'the read-only keyboard-layout reference',
 	},
 	{
+		id: 'now',
+		kind: 'page',
+		files: ['src/routes/now.tsx', 'src/home/current/CurrentProjects.tsx'],
+		note: 'the full current-project enumeration; its h1 lives in the route (Issue #1185)',
+	},
+	{
 		id: 'portfolio-list',
 		kind: 'page',
 		files: [
@@ -321,6 +327,16 @@ export const OUT_OF_SCOPE = [
 export const SECTION_HEADING_PRIMITIVE = 'src/editorial/primitives/SectionHeading.tsx';
 
 /**
+ * The page-entry primitive (Issue #1172). It renders exactly one `<h1>`
+ * per call — the page's title — so the gate reads a `<PageHero …>` call
+ * as a level-1 heading, for the same reason it reads a
+ * `<SectionHeading …>` call as a level-2: a source scan cannot see
+ * inside the primitive, and a page built from it would otherwise look
+ * like it had no title.
+ */
+export const PAGE_HERO_PRIMITIVE = 'src/editorial/primitives/PageHero.tsx';
+
+/**
  * The rule the gate reports when the FIXTURES no longer demonstrate
  * what they are supposed to demonstrate.
  *
@@ -401,7 +417,7 @@ export function readPrimitiveHeadingLevel(source) {
  * `element` is a literal `<h1>`…`<h6>`; `primitive` is a
  * `<SectionHeading …>` call, whose level comes from the primitive.
  */
-export function extractHeadings(source, primitiveLevel = 2) {
+export function extractHeadings(source, primitiveLevel = 2, heroLevel = null) {
 	const code = stripComments(source);
 	const found = [];
 	for (const match of code.matchAll(/<h([1-6])(?=[\s>])/g)) {
@@ -416,6 +432,16 @@ export function extractHeadings(source, primitiveLevel = 2) {
 		for (const match of code.matchAll(/<SectionHeading(?=[\s>])/g)) {
 			found.push({
 				level: primitiveLevel,
+				line: lineAt(code, match.index ?? 0),
+				kind: 'primitive',
+				index: match.index ?? 0,
+			});
+		}
+	}
+	if (heroLevel !== null) {
+		for (const match of code.matchAll(/<PageHero(?=[\s>])/g)) {
+			found.push({
+				level: heroLevel,
 				line: lineAt(code, match.index ?? 0),
 				kind: 'primitive',
 				index: match.index ?? 0,
@@ -559,12 +585,19 @@ export function applyExemptions(violations, exemptRules = []) {
  * {@link applyExemptions}). It defaults to an empty list, so a unit
  * that declares no exemption is never excused.
  */
-export function evaluateUnit({ id, kind = 'page', files, primitiveLevel = 2, exemptRules = [] }) {
+export function evaluateUnit({
+	id,
+	kind = 'page',
+	files,
+	primitiveLevel = 2,
+	heroLevel = null,
+	exemptRules = [],
+}) {
 	const violations = [];
 	const headings = [];
 	const landmarks = [];
 	for (const file of files) {
-		const fileHeadings = extractHeadings(file.source, primitiveLevel);
+		const fileHeadings = extractHeadings(file.source, primitiveLevel, heroLevel);
 		headings.push(...fileHeadings.map((heading) => ({ ...heading, file: file.relativePath })));
 		landmarks.push(
 			...extractMainLandmarks(file.source).map((landmark) => ({
@@ -788,6 +821,17 @@ export function collectEvidence({
 		primitiveNote = `${SECTION_HEADING_PRIMITIVE} could not be read (${error.message}); its calls are not counted`;
 	}
 
+	let heroLevel = null;
+	let heroNote = null;
+	try {
+		heroLevel = readPrimitiveHeadingLevel(readFile(PAGE_HERO_PRIMITIVE));
+		if (heroLevel === null) {
+			heroNote = `${PAGE_HERO_PRIMITIVE} renders no heading element; its calls are not counted`;
+		}
+	} catch (error) {
+		heroNote = `${PAGE_HERO_PRIMITIVE} could not be read (${error.message}); its calls are not counted`;
+	}
+
 	const units = [];
 	const violations = [];
 	const exemptions = [];
@@ -803,6 +847,7 @@ export function collectEvidence({
 			kind: unit.kind,
 			files,
 			primitiveLevel,
+			heroLevel,
 			exemptRules: unit.exemptRules ?? [],
 		});
 		units.push({ ...result, note: unit.note });
@@ -840,6 +885,7 @@ export function collectEvidence({
 		fixtures: fixtureEvidence.fixtures,
 		primitiveLevel,
 		primitiveNote,
+		heroNote,
 		humanEvaluation: HUMAN_EVALUATION,
 	};
 }
@@ -904,6 +950,9 @@ export function renderGateSummary(evidence) {
 	}
 	if (evidence.primitiveNote) {
 		lines.push(`note: ${evidence.primitiveNote}`);
+	}
+	if (evidence.heroNote) {
+		lines.push(`note: ${evidence.heroNote}`);
 		lines.push('');
 	}
 	if (evidence.violations.length > 0) {

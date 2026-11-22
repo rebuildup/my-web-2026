@@ -1105,9 +1105,9 @@
 		{
 			"path": "src/home/current/CurrentProjects.tsx",
 			"clauses": ["C-8"],
-			"reason": "justified: meta list uses a measured 7rem label rail + 1fr value track",
+			"reason": "justified: the published-projects enumeration, bounded by the committed roster; /now is the enumeration surface itself (ADR-0022 C-8) and the home section caps its slice with limit",
 			"signatures": {
-				"unbounded .map(": 2
+				"unbounded .map(": 4
 			}
 		},
 		{
@@ -1300,6 +1300,14 @@
 			"reason": "justified: preview image well fill (bg.subtle), a media asset surface not a Panel",
 			"signatures": {
 				"unbounded .map(": 2
+			}
+		},
+		{
+			"path": "src/routes/activity/Timeline.tsx",
+			"clauses": ["C-8"],
+			"reason": "justified: the /activity page IS the enumeration surface for the activity timeline — every published item is listed here, so there is no index route beyond it",
+			"signatures": {
+				"unbounded .map(": 1
 			}
 		}
 	],

@@ -70,7 +70,6 @@ const badgeClassName = css({
 	letterSpacing: '0.02em',
 	lineHeight: '1.4',
 	color: 'text.muted',
-	whiteSpace: 'nowrap',
 });
 
 const linkClassName = css({
@@ -96,7 +95,6 @@ const dateClassName = css({
 	fontSize: 'sm',
 	fontVariantNumeric: 'tabular-nums',
 	color: 'text.muted',
-	whiteSpace: 'nowrap',
 });
 
 const groupLabelClassName = css({
@@ -322,7 +320,7 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 			data-testid="activity-timeline"
 		>
 			{groups.map((group) => (
-				<section key={group.month} aria-label={`${group.month} 年の公開アクティビティ`}>
+				<div key={group.month}>
 					<h3 className={groupLabelClassName}>
 						<span>{group.month}</span>
 						<span className={groupCountClassName}>{`${group.items.length} 件`}</span>
@@ -332,7 +330,7 @@ export function ActivityTimelineView({ timeline }: ActivityTimelineProps) {
 							<TimelineItemRow key={item.id} item={item} />
 						))}
 					</ul>
-				</section>
+				</div>
 			))}
 		</div>
 	);

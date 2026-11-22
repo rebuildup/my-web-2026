@@ -467,6 +467,26 @@ function ProjectFacts({ rows }: { readonly rows: readonly MetaRow[] }) {
 	);
 }
 
+/**
+ * The entry's scale sentence — how many projects are published, as of
+ * `today`, and how many moved in the recent window.
+ *
+ * Issue #1163 — the `/now` ENTRY carries this in its hero's aside, so
+ * the route needs the same sentence the section used to print under its
+ * heading. One function, two placements; the numbers cannot drift.
+ */
+export function currentProjectsSummary(
+	projects: readonly CurrentProjectRecord[],
+	today: string,
+): string | null {
+	const published = selectPublishedProjects(projects, today);
+	if (published.length === 0) return null;
+	const recent = recentlyUpdatedCount(published, today);
+	return `全 ${published.length} 件。${today} 時点・直近 ${RECENT_UPDATE_WINDOW_DAYS} 日の更新は${
+		recent === 0 ? 'ありません' : ` ${recent} 件です`
+	}。`;
+}
+
 export function CurrentProjects({
 	projects = [],
 	today,
@@ -480,12 +500,7 @@ export function CurrentProjects({
 	const reducedMotion = usePrefersReducedMotion();
 	const changedIds = useChangedProjectIds(published);
 	const recent = recentlyUpdatedCount(published, today);
-	const summary =
-		published.length === 0
-			? null
-			: `全 ${published.length} 件。${today} 時点・直近 ${RECENT_UPDATE_WINDOW_DAYS} 日の更新は${
-					recent === 0 ? 'ありません' : ` ${recent} 件です`
-				}。`;
+	const summary = currentProjectsSummary(projects, today);
 	// Issue #1135 — the row index is the record's position in the
 	// ORDERED published list, so the number a reader sees is the
 	// order the section itself published, not a counter of the
@@ -494,6 +509,79 @@ export function CurrentProjects({
 	visible.forEach((project, position) => {
 		orderIndex.set(project.id, position + 1);
 	});
+
+	// The enumeration itself, shared by the two placements: the HOME's
+	// section (groups are h3 under the section's h2) and the `/now`
+	// ENTRY (groups are h2 under the hero's h1). One renderer, so the
+	// two surfaces cannot drift apart.
+	const renderEnumeration = (headingLevel: 'h2' | 'h3') => {
+		if (published.length === 0) {
+			return (
+				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+					現在、公開している進行中のプロジェクトはありません。
+				</p>
+			);
+		}
+		const GroupHeading = headingLevel;
+		return groups ? (
+			<Stack
+				as="ul"
+				gap="10"
+				data-testid="home-current-projects-list"
+				className={listResetClassName}
+			>
+				{groups.map((group) => (
+					<li key={group.level} data-testid="home-current-project-group" data-level={group.level}>
+						<GroupHeading className={groupHeadingClassName}>
+							<span>{group.label}</span>
+							<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
+						</GroupHeading>
+						<Stack as="ul" gap="0" className={listResetClassName}>
+							{group.records.map((project) => (
+								<ProjectRow
+									key={project.id}
+									project={project}
+									today={today}
+									changed={changedIds.has(project.id)}
+									reducedMotion={reducedMotion}
+									grouped
+									index={orderIndex.get(project.id) ?? 1}
+								/>
+							))}
+						</Stack>
+					</li>
+				))}
+			</Stack>
+		) : (
+			<Stack
+				as="ul"
+				gap="0"
+				data-testid="home-current-projects-list"
+				className={listResetClassName}
+			>
+				{visible.map((project) => (
+					<ProjectRow
+						key={project.id}
+						project={project}
+						today={today}
+						changed={changedIds.has(project.id)}
+						reducedMotion={reducedMotion}
+						grouped={false}
+						index={orderIndex.get(project.id) ?? 1}
+					/>
+				))}
+			</Stack>
+		);
+	};
+
+	// Issue #1185 — `/now` is an ENTRY surface: the route owns the page's
+	// h1 (the PageHero) and the entry's right column (the summary
+	// sentence), so this variant renders the enumeration alone. The
+	// section wrapper and its heading belong to the HOME's section,
+	// which keeps its h2.
+	if (variant === 'page') {
+		return renderEnumeration('h2');
+	}
 
 	return (
 		<PageSection
@@ -508,116 +596,23 @@ export function CurrentProjects({
 			    that ends after three lines, which read as a dead zone on
 			    desktop. The list needs the full measure for its records.
 
-			    Issue #1163 — the `/now` ENTRY is the other case: there the
-			    heading is the page's title and the right half of the
-			    entry carried nothing. The summary facts move into that
-			    column, so the entry states the page's scale beside its
-			    title. Same data, different placement. */}
-			{variant === 'page' ? (
-				<Grid template="12" gap="6">
-					<GridItem span={{ base: 12, md: 12, lg: 7 }}>
-						<SectionHeading
-							id="current-projects-heading"
-							eyebrow="01 — Now"
-							title="現在地"
-							titleEn="Where I am now"
-							description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-						/>
-					</GridItem>
-					<GridItem
-						span={{ base: 12, md: 12, lg: 4 }}
-						start={{ base: 1, lg: 9 }}
-						className={css({ alignSelf: 'end' })}
-					>
-						<p data-testid="home-current-projects-summary" className={summaryClassName}>
-							{summary}
-						</p>
-					</GridItem>
-				</Grid>
-			) : (
-				<SectionHeading
-					id="current-projects-heading"
-					eyebrow="01 — Now"
-					title="現在地"
-					titleEn="Where I am now"
-					description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-				/>
-			)}
-			{published.length === 0 ? (
-				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-					現在、公開している進行中のプロジェクトはありません。
+			    Issue #1185 — the `/now` ENTRY no longer renders this
+			    heading: the route owns the page's h1 (the PageHero) and
+			    the entry's right column (the summary sentence), so the
+			    page variant returns the enumeration alone above. */}
+			<SectionHeading
+				id="current-projects-heading"
+				eyebrow="01 — Now"
+				title="現在地"
+				titleEn="Where I am now"
+				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+			/>
+			{summary ? (
+				<p data-testid="home-current-projects-summary" className={summaryClassName}>
+					{summary}
 				</p>
-			) : (
-				<>
-					{variant === 'section' ? (
-						<p data-testid="home-current-projects-summary" className={summaryClassName}>
-							{summary}
-						</p>
-					) : null}
-					{groups ? (
-						<Stack
-							as="ul"
-							gap="10"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{groups.map((group) => (
-								<li
-									key={group.level}
-									data-testid="home-current-project-group"
-									data-level={group.level}
-								>
-									<h3 className={groupHeadingClassName}>
-										<span>{group.label}</span>
-										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-									</h3>
-									<Stack as="ul" gap="0" className={listResetClassName}>
-										{group.records.map((project) => (
-											<ProjectRow
-												key={project.id}
-												project={project}
-												today={today}
-												changed={changedIds.has(project.id)}
-												reducedMotion={reducedMotion}
-												grouped
-												index={orderIndex.get(project.id) ?? 1}
-											/>
-										))}
-									</Stack>
-								</li>
-							))}
-						</Stack>
-					) : (
-						<Stack
-							as="ul"
-							gap="0"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{visible.map((project) => (
-								<ProjectRow
-									key={project.id}
-									project={project}
-									today={today}
-									changed={changedIds.has(project.id)}
-									reducedMotion={reducedMotion}
-									grouped={false}
-									index={orderIndex.get(project.id) ?? 1}
-								/>
-							))}
-						</Stack>
-					)}
-					{seeAllHref && published.length > visible.length ? (
-						<a
-							href={seeAllHref}
-							className={cx(linkClassName, seeAllLinkClassName)}
-							data-testid="home-current-projects-see-all"
-						>
-							すべて見る ({published.length} 件)
-						</a>
-					) : null}
-				</>
-			)}
+			) : null}
+			{renderEnumeration('h3')}
 		</PageSection>
 	);
 }

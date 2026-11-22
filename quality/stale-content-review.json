@@ -392,62 +392,6 @@
 			"note": "Unverifiable empty-state variant added by Issue #833 so 'no channels' and 'channels exist but none confirmable' render differently. Awaiting owner confirmation."
 		},
 		{
-			"id": "contact-intro-current-only",
-			"path": "src/contact/page.tsx",
-			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Intro paragraph of `/contact` (src/contact/page.tsx:107). True against src/contact/channels.json and the freshness gate of src/contact/schema.ts:67 (FRESHNESS_WINDOW_DAYS = 30). On 2026-10-22 the GitHub channels are still inside that window (verified_at 2026-09-27), so the sentence holds until 2026-10-27 unless the channels are re-verified."
-		},
-		{
-			"id": "contact-intro-unpublished-excluded",
-			"path": "src/contact/page.tsx",
-			"expression": "は現在 re-verified されていないため、ここには載せていません。",
-			"locale": "ja",
-			"dimension": "prose",
-			"reviewedAt": "2026-10-22",
-			"reviewedBy": "agent",
-			"provenance": {
-				"kind": "agent-recorded",
-				"reference": null,
-				"recordedBy": "agent",
-				"ownerConfirmation": "unconfirmed",
-				"evidence": [
-					{
-						"type": "commit",
-						"reference": "6db891ada9c5b596380d82019bf112223e831650",
-						"note": "the commit that introduced this record"
-					},
-					{
-						"type": "owner-comment",
-						"reference": "https://github.com/rebuildup/my-web-2026/issues/437#issuecomment-6337569318",
-						"note": "the owner-account comment states that the registry review dates are fields the owner fills in, that an agent filled some of them in on the basis of merge permission (agent がマージ権限を根拠に代理記入したレコードがあり), and that the owner is yet to check and correct them."
-					}
-				]
-			},
-			"note": "Continuation of the intro paragraph (src/contact/page.tsx:108). Same evidence as the previous entry: src/contact/channels.json plus the 30-day gate of src/contact/schema.ts:67."
-		},
-		{
 			"id": "contact-meta-832",
 			"path": "src/routes/contact.tsx",
 			"expression": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途別に明示しています。",
@@ -1450,6 +1394,52 @@
 				]
 			},
 			"note": "Section description of the component-integration example on /stack. 「現在地」 is the literal name of the Home section (src/home/current/), not a freshness claim; the sentence describes a stable structural fact."
+		},
+		{
+			"id": "contact-hero-description",
+			"path": "src/contact/page.tsx",
+			"expression": "現在利用可能な、用途別の contact channel だけを掲載しています。掲載されていない channel は現在 re-verified されていないため、ここには載せていません。",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1163",
+						"note": "The hero description of `/contact` carries the same sentence the intro paragraph used to hold (split across two records: contact-intro-current-only / contact-intro-unpublished-excluded). The sentence moved into the PageHero description prop, so the gate now extracts it as one expression. True against src/contact/channels.json and the 30-day freshness gate of src/contact/schema.ts."
+					}
+				]
+			},
+			"note": "Same claim as the two records it supersedes for this surface; kept as a separate row because the extraction span changed when the sentence moved into the hero description prop."
+		},
+		{
+			"id": "now-hero-title",
+			"path": "src/routes/now.tsx",
+			"expression": "現在地",
+			"locale": "ja",
+			"dimension": "prose",
+			"reviewedAt": "2026-11-22",
+			"reviewedBy": "agent",
+			"provenance": {
+				"kind": "agent-recorded",
+				"reference": null,
+				"recordedBy": "agent",
+				"ownerConfirmation": "unconfirmed",
+				"evidence": [
+					{
+						"type": "issue",
+						"reference": "https://github.com/rebuildup/my-web-2026/issues/1185",
+						"note": "The /now page title moved into the PageHero (Issue #1185). 「現在地」 is the page's name — a stable label, not a freshness claim; the freshness sentence beside it is the summary line, which carries its own record."
+					}
+				]
+			},
+			"note": "Page title of /now. Not a time-sensitive claim: it names the surface, it does not assert a date."
 		}
 	]
 }

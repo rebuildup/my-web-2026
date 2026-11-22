@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
 import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -43,62 +44,15 @@ export interface LinksPageProps {
  */
 function LinksIndex({ groups }: { readonly groups: readonly AboutLinkGroup[] }) {
 	return (
-		<nav aria-label="Groups">
-			<ol className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
-				{groups.map((group, index) => (
-					<li
-						key={group.id}
-						className={css({
-							display: 'flex',
-							alignItems: 'baseline',
-							justifyContent: 'space-between',
-							gap: '3',
-							paddingBlock: '2',
-							borderBottomWidth: '1px',
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'border.subtle',
-						})}
-					>
-						<span
-							className={css({ display: 'flex', alignItems: 'baseline', gap: '3', minWidth: '0' })}
-						>
-							<span
-								className={css({
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									fontVariantNumeric: 'tabular-nums',
-									color: 'text.muted',
-								})}
-							>
-								{String(index + 1).padStart(2, '0')}
-							</span>
-							<a
-								href={`#links-group-${group.id}`}
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									color: 'text.default',
-									textDecoration: 'none',
-									_hover: { textDecoration: 'underline' },
-								})}
-							>
-								{group.label}
-							</a>
-						</span>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'xs',
-								fontVariantNumeric: 'tabular-nums',
-								color: 'text.muted',
-							})}
-						>
-							{`${group.links.length} 件`}
-						</span>
-					</li>
-				))}
-			</ol>
-		</nav>
+		<EditorialIndex
+			ariaLabel="Groups"
+			items={groups.map((group, index) => ({
+				href: `#links-group-${group.id}`,
+				number: String(index + 1).padStart(2, '0'),
+				label: group.label,
+				meta: `${group.links.length} 件`,
+			}))}
+		/>
 	);
 }
 

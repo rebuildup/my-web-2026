@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Split } from '../editorial/primitives/Grid';
+import { EditorialIndex } from '../editorial/primitives/EditorialIndex';
 import { PageHero } from '../editorial/primitives/PageHero';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
@@ -66,59 +67,14 @@ export interface ContactPageProps {
  */
 function ChannelIndex({ channels }: { readonly channels: readonly PublicContactChannel[] }) {
 	return (
-		<nav aria-label="Channels">
-			<ol className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
-				{channels.map((channel) => (
-					<li
-						key={channel.id}
-						className={css({
-							display: 'flex',
-							alignItems: 'baseline',
-							justifyContent: 'space-between',
-							gap: '3',
-							paddingBlock: '2',
-							borderBottomWidth: '1px',
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'border.subtle',
-						})}
-					>
-						<span className={css({ minWidth: '0' })}>
-							<span
-								className={css({
-									display: 'block',
-									fontFamily: 'sans',
-									fontSize: 'sm',
-									color: 'text.default',
-								})}
-							>
-								{channel.label}
-							</span>
-							<span
-								className={css({
-									display: 'block',
-									fontFamily: 'mono',
-									fontSize: 'xs',
-									color: 'text.muted',
-								})}
-							>
-								{PURPOSE_LABEL_JA[channel.purpose] ?? channel.purpose}
-							</span>
-						</span>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'xs',
-								fontVariantNumeric: 'tabular-nums',
-								color: 'text.muted',
-								whiteSpace: 'nowrap',
-							})}
-						>
-							{`${channel.verifiedDaysAgo} 日前`}
-						</span>
-					</li>
-				))}
-			</ol>
-		</nav>
+		<EditorialIndex
+			ariaLabel="Channels"
+			items={channels.map((channel) => ({
+				href: `#contact-channel-${channel.id}`,
+				label: channel.label,
+				meta: `${PURPOSE_LABEL_JA[channel.purpose] ?? channel.purpose} · ${channel.verifiedDaysAgo} 日前`,
+			}))}
+		/>
 	);
 }
 
@@ -215,6 +171,9 @@ function ChannelRow({ channel }: { channel: PublicContactChannel }) {
 					: `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`;
 	return (
 		<Split as="li" rowGap="2" separated data-channel-id={channel.id}>
+			{/* the index row's anchor target — the link lives in the entry
+			    column, the destination lives here */}
+			<span id={`contact-channel-${channel.id}`} className="sr-only" />
 			<div className={css(vStackGap1)}>
 				<span
 					lang="ja"

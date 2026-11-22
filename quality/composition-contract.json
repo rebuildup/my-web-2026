@@ -204,7 +204,8 @@
 			"detection": {
 				"minTracks": 3,
 				"equalRatioTolerance": 0.05,
-				"note": "card indexes legitimately use equal tracks; the rule fires only when NO grid on the page shows intentional variation AND no Breakout/Overlap exists"
+				"note": "card indexes legitimately use equal tracks; the rule fires only when NO grid on the page shows intentional variation AND no Breakout/Overlap exists The rule judges the DESKTOP composition: on a narrow viewport every grid is one column by contract, so the mobile view is not evidence of an equal-column composition (Issue #1168).",
+				"viewportMinWidth": 1024
 			},
 			"exceptions": "dense index pages (portfolio grid) are expected-equal; declare per-route",
 			"falsePositives": "homogeneous data genuinely wants equal cells — warning level only",

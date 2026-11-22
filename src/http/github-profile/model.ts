@@ -22,9 +22,9 @@
  *     project the CMS snapshot does not publish.
  */
 
-import { type PortfolioMediaEnv, composeMediaUrl } from '../../portfolio/media';
+import { isPublicMediaKey } from '../../cloudflare/media-visibility';
 import { notionProjects } from '../../portfolio/notion/reader';
-import type { PortfolioProject } from '../../portfolio/schema';
+import type { PortfolioMedia, PortfolioProject } from '../../portfolio/schema';
 import { GitHubActivitySnapshotBody } from '../activity/schema';
 import { PresenceSnapshotBody } from '../presence/schema';
 
@@ -50,11 +50,25 @@ export const FEATURED_SLUGS: readonly string[] = [
 /** How many work tiles the card renders. */
 export const WORK_TILE_COUNT = 4;
 
+/**
+ * One servable cover candidate. SVG rendered through `<img>` (which is
+ * how GitHub/Camo delivers it) forbids external subresources, so the
+ * router embeds the bytes as a `data:` URI — the model therefore
+ * carries the R2 identity, not a URL (ADR-0024 §2.3).
+ */
+export interface ProfileCardWorkMedia {
+	readonly r2Key: string;
+	readonly contentType: string;
+}
+
 export interface ProfileCardWork {
 	readonly title: string;
 	readonly summary: string;
-	readonly imageUrl: string;
+	/** Ordered cover candidates (cover media first, then display order). */
+	readonly media: readonly ProfileCardWorkMedia[];
 	readonly alt: string;
+	/** Filled by `embedWorkMedia` in the router; absent → placeholder. */
+	readonly dataUri?: string;
 }
 
 export interface ProfileCardGitHub {
@@ -96,26 +110,24 @@ export interface ProfileCardModel {
 }
 
 /**
- * Pick the cover image URL for one project: the `isCover` raster media
- * first (display order), then any raster media. `null` when the project
- * has no servable raster cover — the tile is skipped, not faked.
+ * Pick the cover candidates for one project: the `isCover` raster media
+ * first (display order), then any raster media. Only keys that pass the
+ * public-media boundary (`isPublicMediaKey`) are kept — the card can
+ * never embed a private object. `[]` when the project has no servable
+ * raster cover — the tile falls back to a text-only panel, not a fake.
  */
-function coverImageUrl(
-	project: PortfolioProject,
-	mediaEnv: PortfolioMediaEnv,
-): { url: string; alt: string } | null {
+function coverMediaCandidates(project: PortfolioProject): ProfileCardWorkMedia[] {
 	const rasters = project.media.filter((media) => RASTER_CONTENT_TYPES.has(media.contentType));
 	const ordered = [
 		...rasters.filter((media) => media.isCover),
 		...rasters.filter((media) => !media.isCover),
 	].sort((a, b) => a.displayOrder - b.displayOrder);
-	for (const media of ordered) {
-		const url = composeMediaUrl(mediaEnv, media.r2Key);
-		if (url) {
-			return { url, alt: media.alt?.trim() || project.title };
-		}
-	}
-	return null;
+	return ordered
+		.filter((media) => isPublicMediaKey(media.r2Key))
+		.map((media: PortfolioMedia) => ({
+			r2Key: media.r2Key,
+			contentType: media.contentType,
+		}));
 }
 
 /** Deterministic fill order for non-featured slots: newest work first. */
@@ -132,7 +144,6 @@ function byRecency(a: PortfolioProject, b: PortfolioProject): number {
  */
 export function selectShowcaseWorks(
 	projects: readonly PortfolioProject[],
-	mediaEnv: PortfolioMediaEnv,
 ): readonly ProfileCardWork[] {
 	const bySlug = new Map(projects.map((project) => [project.slug, project]));
 	const picked: PortfolioProject[] = [];
@@ -153,13 +164,13 @@ export function selectShowcaseWorks(
 	}
 	const works: ProfileCardWork[] = [];
 	for (const project of picked.slice(0, WORK_TILE_COUNT)) {
-		const cover = coverImageUrl(project, mediaEnv);
-		if (!cover) continue;
+		const media = coverMediaCandidates(project);
+		if (media.length === 0) continue;
 		works.push({
 			title: project.title,
 			summary: project.role ?? project.summary,
-			imageUrl: cover.url,
-			alt: cover.alt,
+			media,
+			alt: project.title,
 		});
 	}
 	return works;
@@ -285,8 +296,6 @@ export interface ProfileCardModelInput {
 	readonly expectedPresenceUserId?: string;
 	/** Composition instant (ms epoch) — injected for deterministic tests. */
 	readonly now: number;
-	/** Media env for `composeMediaUrl` (`env.MEDIA`, `MEDIA_PUBLIC_BASE_URL`, …). */
-	readonly mediaEnv: PortfolioMediaEnv;
 	/** Project source; defaults to the committed public snapshot. */
 	readonly projects?: readonly PortfolioProject[];
 }
@@ -294,7 +303,7 @@ export interface ProfileCardModelInput {
 /** Assemble the full card model. Never throws on bad input. */
 export function composeProfileCardModel(input: ProfileCardModelInput): ProfileCardModel {
 	return {
-		works: selectShowcaseWorks(input.projects ?? notionProjects(), input.mediaEnv),
+		works: selectShowcaseWorks(input.projects ?? notionProjects()),
 		github: githubSummary(input.activityPayload),
 		discord: discordSummary(input.presencePayload, input.expectedPresenceUserId, input.now),
 		generatedAt: new Date(input.now).toISOString(),

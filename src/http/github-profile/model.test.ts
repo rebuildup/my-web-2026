@@ -16,11 +16,6 @@ import {
  * inputs must render as unavailable, never as invented state.
  */
 
-const MEDIA_ENV = {
-	MEDIA: {} as R2Bucket,
-	MEDIA_PUBLIC_BASE_URL: 'https://rebuildup.dev/media',
-};
-
 function media(r2Key: string, overrides: Partial<PortfolioMedia> = {}): PortfolioMedia {
 	return {
 		id: r2Key,
@@ -198,7 +193,7 @@ describe('selectShowcaseWorks', () => {
 			project('newest', { periodStart: 2026 }),
 			project('mid', { periodStart: 2024 }),
 		];
-		const works = selectShowcaseWorks([...filler, ...featured], MEDIA_ENV);
+		const works = selectShowcaseWorks([...filler, ...featured]);
 		expect(works).toHaveLength(WORK_TILE_COUNT);
 		expect(works[0]?.title).toBe(`Title ${FEATURED_SLUGS[0]}`);
 		expect(works[1]?.title).toBe(`Title ${FEATURED_SLUGS[1]}`);
@@ -211,13 +206,32 @@ describe('selectShowcaseWorks', () => {
 		const noCover = project('nocover', {
 			media: [media('portfolio/nocover/nocover/cover.svg', { contentType: 'image/svg+xml' })],
 		});
-		const works = selectShowcaseWorks([noCover], MEDIA_ENV);
+		const works = selectShowcaseWorks([noCover]);
 		expect(works).toHaveLength(0);
 	});
 
-	it('produces absolute media URLs through composeMediaUrl', () => {
-		const works = selectShowcaseWorks([project('only')], MEDIA_ENV);
-		expect(works[0]?.imageUrl).toBe('https://rebuildup.dev/media/portfolio/only/only/cover.png');
+	it('keeps only public-media keys as embed candidates', () => {
+		const privateKey = project('private', {
+			media: [media('private/secrets/cover.png')],
+		});
+		const works = selectShowcaseWorks([privateKey]);
+		expect(works).toHaveLength(0);
+	});
+
+	it('produces ordered R2 candidates, cover media first', () => {
+		const p = project('multi', {
+			media: [
+				media('portfolio/multi/multi/extra.jpg', {
+					isCover: false,
+					displayOrder: 1,
+					contentType: 'image/jpeg',
+				}),
+				media('portfolio/multi/multi/cover.png', { isCover: true, displayOrder: 0 }),
+			],
+		});
+		const works = selectShowcaseWorks([p]);
+		expect(works[0]?.media[0]?.r2Key).toBe('portfolio/multi/multi/cover.png');
+		expect(works[0]?.media[1]?.r2Key).toBe('portfolio/multi/multi/extra.jpg');
 	});
 });
 
@@ -228,7 +242,6 @@ describe('composeProfileCardModel', () => {
 			presencePayload: PRESENCE_OK,
 			expectedPresenceUserId: '123456789012345678',
 			now: NOW,
-			mediaEnv: MEDIA_ENV,
 			projects: [project('p1')],
 		});
 		expect(model.github.state).toBe('ok');

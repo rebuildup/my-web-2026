@@ -4339,6 +4339,30 @@
 			"action": "closed",
 			"note": "validate:release の step 13 が C-7（同一 literal が 8 ファイル）/ C-1（生の section）/ C-8（bound のない map）を検出。索引を EditorialIndex primitive に集約し、6 ページ + home の索引レールを移行。/tools の在庫項目を /tools/<slug> へのリンクに、/contact の channel 行に anchor target を追加。/activity は列挙面なので C-8 を理由付きで allowlist。/contact の hero 説明文の stale-content record を追加（agent-recorded / unconfirmed）。",
 			"missing": null
+		},
+		{
+			"issue": 1185,
+			"title": "/now に h1 が無い — entry の題名を PageHero に移す",
+			"closedAt": "2026-11-22",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"src/routes/now.tsx",
+				"src/home/current/CurrentProjects.tsx",
+				"src/editorial/primitives/PageHero.tsx",
+				"scripts/check-a11y-heading-landmarks.mjs",
+				"e2e/now.spec.ts",
+				"docs/verification/design/1135-lc-review/now-hero--after.webp",
+				"#1183"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "/now は entry surface だが h1 を持たず、唯一の見出しが current-projects セクションの h2 だった。route に PageHero を置き、CurrentProjects の variant=\"page\" は列挙だけを描く。PageHero の titleEn を h1 の中の block span にし、読み上げ名が JA だけにならないようにした。a11y:heading-landmarks の page units に /now を追加。",
+			"missing": null
 		}
 	]
 }

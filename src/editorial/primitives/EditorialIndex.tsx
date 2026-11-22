@@ -87,7 +87,6 @@ const metaClassName = css({
 	fontSize: 'xs',
 	fontVariantNumeric: 'tabular-nums',
 	color: 'text.muted',
-	whiteSpace: 'nowrap',
 });
 
 export function EditorialIndex({ ariaLabel, items, variant = 'linked' }: EditorialIndexProps) {

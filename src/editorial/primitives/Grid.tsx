@@ -177,8 +177,36 @@ interface TrackPlacement {
 
 function gridColumnFor(track: TrackPlacement): string | undefined {
 	const { span, start, end } = track;
+	// The placement must stay INSIDE the explicit 12-track grid. A
+	// combination that reaches past line 13 makes CSS Grid create an
+	// implicit track, so the composition is no longer the one the
+	// contract describes; `start` alone on line 13 would produce
+	// `span 0`, which is not a valid placement at all.
+	if (start !== undefined && span !== undefined && start + span - 1 > GRID_LINES) {
+		throw new Error(
+			`GridItem: start ${start} with span ${span} reaches past the last grid line ${GRID_LINES}`,
+		);
+	}
+	if (start !== undefined && end !== undefined && end <= start) {
+		throw new Error(`GridItem: end ${end} must be after start ${start}`);
+	}
+	if (span !== undefined && end !== undefined && span > end - 1) {
+		throw new Error(`GridItem: span ${span} does not fit before end line ${end}`);
+	}
+	if (start !== undefined && start >= GRID_LINES) {
+		throw new Error(
+			`GridItem: start ${start} leaves no track to span (the last start line is ${GRID_LINES - 1})`,
+		);
+	}
+	if (end !== undefined && end < 2) {
+		throw new Error(`GridItem: end ${end} leaves no track to span (the first end line is 2)`);
+	}
 	if (start !== undefined && span !== undefined) return `${start} / span ${span}`;
 	if (start !== undefined && end !== undefined) return `${start} / ${end}`;
+	// `span` + `end` without a start: CSS accepts `span N / end-line`,
+	// and using it keeps the declared span instead of silently
+	// replacing it with the span the end line implies.
+	if (span !== undefined && end !== undefined) return `span ${span} / ${end}`;
 	if (start !== undefined) return `${start} / span ${GRID_LINES - start}`;
 	if (end !== undefined) return `span ${end - 1} / ${end}`;
 	if (span !== undefined) return `span ${span}`;

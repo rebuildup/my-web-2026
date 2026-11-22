@@ -1,5 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid, GridItem } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -159,6 +160,42 @@ const rowClassName = /* @__PURE__ */ css({
 	'&:last-child': {
 		borderBlockEnd: 'none',
 	},
+});
+
+/**
+ * Issue #1135 — the row's index number.
+ *
+ * The L-C review found the section read as one undifferentiated dump:
+ * four rows of the same shape, none of them scannable. The number
+ * gives the column a rhythm and lets a reader count the entries
+ * without reading them.
+ */
+const rowIndexClassName = /* @__PURE__ */ css({
+	fontFamily: 'mono',
+	fontSize: 'sm',
+	fontVariantNumeric: 'tabular-nums',
+	color: 'text.muted',
+});
+
+/**
+ * Issue #1135 — the facts column.
+ *
+ * The measured facts move to their own column, separated by a
+ * vertical hairline, so the row reads as ONE record with a name and
+ * a set of measurements instead of a name with a small table
+ * hanging under it. On mobile the columns stack and the hairline
+ * goes with them — a rule that separates two stacked blocks would
+ * draw a false relationship.
+ */
+const factsColumnClassName = /* @__PURE__ */ css({
+	// The vertical rule uses the `border-left` SHORTHAND: the CSS
+	// vocabulary gate (quality/css-standards.json) knows the shorthand
+	// and `border-left-color`, and rejects the `border-left-width` /
+	// `border-left-style` longhands Panda would emit from the
+	// longhand props.
+	borderLeft: { base: 'none', md: '1px solid' },
+	borderLeftColor: 'border.subtle',
+	paddingInlineStart: { base: '0', md: '6' },
 });
 
 const rowHeaderClassName = /* @__PURE__ */ css({
@@ -331,47 +368,53 @@ interface ProjectRowProps {
 	readonly reducedMotion: boolean;
 	/** `true` when the list is grouped, so the level is already in the heading. */
 	readonly grouped: boolean;
+	/** Position in the ordered published list (1-based) — the row's index number. */
+	readonly index: number;
 }
 
-function ProjectRow({ project, today, changed, reducedMotion, grouped }: ProjectRowProps) {
+function ProjectRow({ project, today, changed, reducedMotion, grouped, index }: ProjectRowProps) {
 	const Heading = grouped ? 'h4' : 'h3';
 	const rows = metaRows(project, today);
 	const level = project.weight?.level;
 	return (
 		<li data-testid="home-current-project" data-project-id={project.id} className={rowClassName}>
-			<div className={rowHeaderClassName}>
-				<Heading className={nameClassName}>{project.name}</Heading>
-				{!grouped && level ? (
-					<span data-testid="home-current-project-level" className={levelTagClassName}>
-						{WEIGHT_LEVEL_LABELS[level.value]}
-					</span>
-				) : null}
-				{changed ? <ChangeMarker reducedMotion={reducedMotion} /> : null}
-			</div>
-			<p lang="ja" className={statusClassName}>
-				{project.statusJa}
-			</p>
-			{rows.length === 0 ? null : (
-				<dl data-testid="home-current-project-meta" className={metaListClassName}>
-					{rows.map((row) => (
-						<div key={row.label} className={css({ display: 'contents' })}>
-							<dt className={metaLabelClassName}>{row.label}</dt>
-							<dd className={metaValueClassName}>
-								<span>{row.value}</span>
-								<span data-testid="home-current-project-source" className={sourceTagClassName}>
-									{SOURCE_LABELS[row.source]}
-								</span>
-							</dd>
-						</div>
-					))}
-				</dl>
-			)}
-			{project.link ? (
-				<a href={project.link.href} className={linkClassName}>
-					<span>{project.link.label}</span>
-					<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
-				</a>
-			) : null}
+			{/* Issue #1135 — the row became a two-column record: the name
+			    and its sentence on the left, the measured facts on the
+			    right, separated by a hairline. Before, every fact sat
+			    under its own name in a narrow label/value grid, and the
+			    section read as a stack of identical blocks. */}
+			<Grid template="12" gap="4" columnGap={{ base: '4', md: '6' }}>
+				<GridItem span={1} className={rowIndexClassName} aria-hidden="true">
+					{String(index).padStart(2, '0')}
+				</GridItem>
+				<GridItem span={{ base: 12, md: 5 }} start={{ base: 1, md: 2 }}>
+					<div className={rowHeaderClassName}>
+						<Heading className={nameClassName}>{project.name}</Heading>
+						{!grouped && level ? (
+							<span data-testid="home-current-project-level" className={levelTagClassName}>
+								{WEIGHT_LEVEL_LABELS[level.value]}
+							</span>
+						) : null}
+						{changed ? <ChangeMarker reducedMotion={reducedMotion} /> : null}
+					</div>
+					<p lang="ja" className={statusClassName}>
+						{project.statusJa}
+					</p>
+					{project.link ? (
+						<a href={project.link.href} className={linkClassName}>
+							<span>{project.link.label}</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+						</a>
+					) : null}
+				</GridItem>
+				<GridItem
+					span={{ base: 12, md: 6 }}
+					start={{ base: 1, md: 7 }}
+					className={factsColumnClassName}
+				>
+					<ProjectFacts rows={rows} />
+				</GridItem>
+			</Grid>
 		</li>
 	);
 }
@@ -384,6 +427,35 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 		if (!Number.isFinite(days) || days < 0) return false;
 		return days <= RECENT_UPDATE_WINDOW_DAYS;
 	}).length;
+}
+
+/**
+ * The measured facts of one project.
+ *
+ * Issue #1135 — the facts live in their own component so the row stays
+ * readable: the record is a two-column composition (name + sentence on
+ * the left, measurements on the right) and the measurement list is a
+ * separate concern from the record's identity. The list holds at most
+ * three rows (start / last update / measured window), and a row the
+ * record does not carry is omitted rather than filled in.
+ */
+function ProjectFacts({ rows }: { readonly rows: readonly MetaRow[] }) {
+	if (rows.length === 0) return null;
+	return (
+		<dl data-testid="home-current-project-meta" className={metaListClassName}>
+			{rows.map((row) => (
+				<div key={row.label} className={css({ display: 'contents' })}>
+					<dt className={metaLabelClassName}>{row.label}</dt>
+					<dd className={metaValueClassName}>
+						<span>{row.value}</span>
+						<span data-testid="home-current-project-source" className={sourceTagClassName}>
+							{SOURCE_LABELS[row.source]}
+						</span>
+					</dd>
+				</div>
+			))}
+		</dl>
+	);
 }
 
 export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
@@ -399,9 +471,22 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 			: `全 ${published.length} 件。${today} 時点・直近 ${RECENT_UPDATE_WINDOW_DAYS} 日の更新は${
 					recent === 0 ? 'ありません' : ` ${recent} 件です`
 				}。`;
+	// Issue #1135 — the row index is the record's position in the
+	// ORDERED published list, so the number a reader sees is the
+	// order the section itself published, not a counter of the
+	// rendered slice.
+	const orderIndex = new Map<string, number>();
+	visible.forEach((project, position) => {
+		orderIndex.set(project.id, position + 1);
+	});
 
 	return (
-		<PageSection labelledBy="current-projects-heading" testId="home-current-projects">
+		<PageSection
+			labelledBy="current-projects-heading"
+			testId="home-current-projects"
+			id="current"
+			name="now"
+		>
 			{/* v12/v13 review — `default`, not `spread`: the spread variant
 			    parks the whole project list in the 8/12 column beside a
 			    heading cluster that ends after three lines, which read as
@@ -449,6 +534,7 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 												changed={changedIds.has(project.id)}
 												reducedMotion={reducedMotion}
 												grouped
+												index={orderIndex.get(project.id) ?? 1}
 											/>
 										))}
 									</Stack>
@@ -470,6 +556,7 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 									changed={changedIds.has(project.id)}
 									reducedMotion={reducedMotion}
 									grouped={false}
+									index={orderIndex.get(project.id) ?? 1}
 								/>
 							))}
 						</Stack>

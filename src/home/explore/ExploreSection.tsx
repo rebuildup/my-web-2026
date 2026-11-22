@@ -7,7 +7,7 @@ import { PageSection } from '../../editorial/primitives/PageSection';
 import { Panel, type PanelVariant } from '../../editorial/primitives/Panel';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { TextLink } from '../../editorial/primitives/TextLink';
-import { cardTitleClassName } from '../../editorial/primitives/card-title';
+import { cardTitleClassName, cardTitleLinkClassName } from '../../editorial/primitives/card-title';
 import { ARROW_FORWARD_PATH } from '../../editorial/primitives/material-symbol-paths';
 import { CAPABILITIES } from '../capabilities/registry';
 import { VisitTrail } from '../guide/VisitTrail';
@@ -151,14 +151,35 @@ const plannedClassName = /*#__PURE__*/ css({
 	color: 'text.muted',
 });
 
+/**
+ * Issue #1135 — the title link is INLINE, so the arrow follows the
+ * text it belongs to.
+ *
+ * The card titles are bilingual and wrap onto a second line; as a
+ * flex row the arrow became a flex item beside a full-width text
+ * box, so it sat at the card's right edge, visually detached from
+ * the title it points at. In the text flow the arrow follows the
+ * last word of the title on the line the title ends on.
+ */
+/**
+ * Issue #1135 — the destination cards sit on the row's TOP edge.
+ *
+ * A grid item is stretched to its row's height by default, so the
+ * shortest card of a row ran its colour field far below its own copy.
+ * The L-C review measured the empty tail at 0.57 of the card's height.
+ */
+const cardsTopAlignedClassName = /*#__PURE__*/ css({
+	alignItems: 'start',
+});
+
 const cardLinkClassName = /*#__PURE__*/ css({
-	display: 'inline-flex',
-	alignItems: 'center',
-	gap: '1',
+	display: 'inline',
 	maxWidth: '100%',
 });
 
-const cardLinkTextClassName = /*#__PURE__*/ css({ minWidth: '0' });
+const cardLinkArrowClassName = /*#__PURE__*/ css({
+	marginInlineStart: '1',
+});
 
 function ExploreCard({ destination }: { readonly destination: ExploreDestination }) {
 	return (
@@ -172,11 +193,11 @@ function ExploreCard({ destination }: { readonly destination: ExploreDestination
 					{destination.href ? (
 						<TextLink
 							href={destination.href}
-							className={cx(cardTitleClassName, cardLinkClassName)}
+							className={cx(cardTitleLinkClassName, cardLinkClassName)}
 							{...(destination.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
 						>
-							<span className={cardLinkTextClassName}>{destination.titleJa}</span>
-							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+							<span>{destination.titleJa}</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} className={cardLinkArrowClassName} />
 						</TextLink>
 					) : (
 						destination.titleJa
@@ -212,7 +233,7 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 		.slice(0, EXPLORE_DESTINATION_LIMIT);
 	const planned = plannedCapabilities();
 	return (
-		<PageSection labelledBy="site-guide-heading">
+		<PageSection labelledBy="site-guide-heading" id="explore" name="explore">
 			<SectionHeading
 				id="site-guide-heading"
 				eyebrow="00 — Explore"
@@ -220,7 +241,17 @@ export function ExploreSection({ today }: ExploreSectionProps) {
 				titleEn="Site guide"
 				description="このサイトの行き先を、内容の分類ごとの面で並べています。各カードの色面はその行き先の内容分類を示し、点線の別線はサイトの外へ出る拠点です。"
 			/>
-			<Grid columns={3} gap="6" as="ul" className={listResetClassName}>
+			{/* Issue #1135 — the cards sit on the row's TOP edge. A grid
+			    item is stretched to its row's height by default, so the
+			    shortest card of a row ran its colour field far below its
+			    own copy: the L-C review measured an empty tail of 0.57 on
+			    the explore grid. The cards keep their own height now. */}
+			<Grid
+				columns={3}
+				gap="6"
+				as="ul"
+				className={cx(listResetClassName, cardsTopAlignedClassName)}
+			>
 				{destinations.map((destination) => (
 					<ExploreCard key={destination.id} destination={destination} />
 				))}

@@ -4144,6 +4144,22 @@
 			"action": "closed",
 			"note": "design-skills PR #192 の validate-release-source 失敗は base 変更前の古い run だったことを特定し、fresh な event で解消。release PR #194 を merge して upstream v0.6.0 をリリースし、その tag の内容を vendoring して skills-lock.json を再計算した。",
 			"missing": "upstream Skill は trial-pending のまま（stable 昇格は trial evidence の积累後）。"
+		},
+		{
+			"issue": 1158,
+			"title": "fix(e2e): viewport diff self-test の意図的破損が可視領域から外れ diff 0 になっていた",
+			"closedAt": "2026-11-22",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": ["src/home/hero.tsx", "e2e/viewport/visual-diff.spec.ts", "#1159"],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "hero の PageSection に testId を持ち、意図的破損の対象へ加えた。pixel judge と geometry judge が同じ欠陥を検出する。",
+			"missing": null
 		}
 	]
 }

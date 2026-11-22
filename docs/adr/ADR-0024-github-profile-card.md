@@ -23,9 +23,8 @@
   スナップショット（D1 `discord_presence_snapshot`、15 分鮮度窓）。
 - `src/portfolio/notion/reader.ts` — コミット済み Notion スナップショット
   から `PortfolioProject[]` を同期的に得る（ランタイム fetch なし）。
-  `media[]` の `isCover` + `r2Key` が実制作物画像で、
-  `composeMediaUrl` が `https://rebuildup.dev/media/<key>` に解決する
-  （Issue #634 の公開境界を通る）。
+  `media[]` の `isCover` + `r2Key` が実制作物画像で、公開可否は
+  `isPublicMediaKey`（Issue #634 の公開境界）が fail-closed に判定する。
 - `src/http/middleware/cache-policy.ts` — `/api/v1/*` の shared-cache
   opt-in（`public` + 正の freshness lifetime）。
 
@@ -37,13 +36,22 @@
 
 | 候補 | 判定 | 理由 |
 | --- | --- | --- |
-| **SVG** | **採用** | Worker 上で文字列生成するだけで完結し、ラスタライズ基盤が要らない。解像度非依存でモバイルの高 DPI でも劣化しない。外部 `<image href>` で実制作物を参照でき、発行バイト数は数 KB。GitHub/Camo は SVG を `image/svg+xml` としてそのまま中継する（readme-stats 系カードの実績あり）。 |
-| PNG / WebP | 不採用 | Worker で SVG→ラスタ変換するには Cloudflare Browser Rendering 等の新規サービスが必要で、AGENTS.md §4 の「追加サービスは ticket + ADR」対象になる。得られるのはラスタ化だけで、カードの内容・鮮度契約は SVG と同一。コストに見合わない。 |
+| **SVG** | **採用** | Worker 上で文字列生成するだけで完結し、ラスタライズ基盤が要らない。解像度非依存でモバイルの高 DPI でも劣化しない。GitHub/Camo は SVG を `image/svg+xml` としてそのまま中継する（readme-stats 系カードの実績あり）。**ただし `<img>` 経由の SVG は外部サブリソースを読み込まない**（後述 §2.3a）ため、実制作物画像は `data:` URI として SVG 内に埋め込む。発行バイト数は埋め込み予算（§2.3a）で頭打ちにする。 |
+| PNG / WebP | 不採用 | Worker で SVG→ラスタ変換するには Cloudflare Browser Rendering 等の新規サービスが必要で、AGENTS.md §4 の「追加サービスは ticket + ADR」対象になる。得られるのはラスタ化だけで、カードの内容・鮮度契約は SVG と同一。コストに見合わない。ラスタ化しても外部画像の埋め込み問題は残るため、SVG + data URI の方が単純。 |
 
 SVG の制約として、画像内部のリンクは Camo 経由では機能しない
 （GitHub が画像をプロキシするため）。したがってカード内に疑似ボタン・
 リンク要素を置かず、README 側は画像全体を `<a>` で囲むかテキストリンクで
 導線を張る（rebuildup/rebuildup#3 の要求と一致）。
+
+**外部 `<image href>` は使えない（レビュー指摘による設計修正）**:
+GitHub は README 中の画像を `<img>`（Camo プロキシ経由）として描画する。
+`<img>` で読み込まれた SVG は「secure animated mode」に相当し、外部
+URL を参照する `<image href="https://…">` は **一切フェッチされず空白に
+なる**。SVG 自体は 200 で配信されても作品画像だけが欠落するため、
+文字列検査や HTTP 200 では検出できない。したがって実制作物カバーは
+`media-embed.ts` がリクエスト時に R2 から読み、`data:image/…;base64,…`
+として SVG 内に埋め込む（§2.3a）。
 
 ### 2.2 配信面は `GET /api/v1/github-profile/card`
 
@@ -76,16 +84,37 @@ D1 の `payload` 列は ingest 時に同スキーマを通過した文書なの�
   unavailable 系の表示で、正常状態を偽装しない。
 - **制作物**: `notionProjects()`（コミット済みスナップショット、
   `published` + `public` のみ）から掲載作品を選び、`isCover` 優先・
-  ラスタ形式（png / jpeg / webp）の media を `composeMediaUrl` で公開 URL
-  に解決する。D1 の portfolio テーブルは読まない — カードはレビュー可能な
-  コミット済み集合だけを使い、実行時に作品集合が動かない。
+  ラスタ形式（png / jpeg / webp）の media を `r2Key` 候補として保持する。
+  公開可否は `src/cloudflare/media-visibility.ts` の `isPublicMediaKey`
+  で fail-closed に判定し、D1 の portfolio テーブルは読まない — カードは
+  レビュー可能なコミット済み集合だけを使い、実行時に作品集合が動かない。
 - **作品の選択**: `FEATURED_SLUGS`（カード所有の authored 選定リスト）を
   優先し、不足分は `periodStart` 降順で決定的に補充する。選定リストに
   あっても公開スナップショットに無い slug は単に出ない（fail-closed）。
 
-新しい依存辺: `http/github-profile → portfolio`（`notionProjects` /
-`composeMediaUrl` のみ。`http/media → portfolio` と同じ「公開判定を
-portfolio に委ねる」向き）。AGENTS.md §3 の依存表に追記する。
+### 2.3a メディア埋め込み契約（`media-embed.ts`）
+
+`<img>` 経由 SVG の外部サブリソース禁止（§2.1）を受け、router は
+model 合成後に `embedWorkMedia(model.works, env.MEDIA)` を実行する。
+
+- 候補 `r2Key` を順に `MEDIA.head()` / `MEDIA.get()` し、content-type が
+  png / jpeg / webp のものだけを `data:` URI 化する。`head` でサイズを
+  先に見て、1 枚あたり `MAX_COVER_BYTES`（750KB）と残り総予算を超える
+  オブジェクトはダウンロードすらしない。先に成功した候補で確定し、
+  失敗・非公開キー・予算超過はその作品をプレースホルダ描画に落とす
+  （カード全体は壊さない）。
+- **総埋め込み予算 `MAX_TOTAL_MEDIA_BYTES` = 1.5MB**（元バイト基準、
+  カード全体で共有）。超過分は埋め込まずプレースホルダにする。
+  base64 は約 4/3 に膨らむため応答は最大 ~2MB 強。実カバー 4 枚
+  （計 ~920KB）なら全件収まる想定。
+- R2 が取れない・オブジェクトが無い場合も同じくプレースホルダで、
+  嘘の画像や外部 URL への退避はしない。
+
+新しい依存辺: `http/github-profile → portfolio`（`notionProjects` のみ）、
+`http/github-profile → cloudflare`（`isPublicMediaKey` の値 import と
+`env.MEDIA` バインディング。`http/media → portfolio` と同じ
+「公開判定を portfolio / cloudflare の契約に委ねる」向き）。
+AGENTS.md §3 の依存表に追記する。
 
 ### 2.4 鮮度とキャッシュ
 
@@ -95,12 +124,16 @@ portfolio に委ねる」向き）。AGENTS.md §3 の依存表に追記する�
   正常状態の偽装にならない。
 - `Cache-Control: public, max-age=300, s-maxage=300` —
   `sharedCacheIsolation` の shared-cache opt-in を満たす最小の positive
-  lifetime。生成は D1 2 行 + コミット済み JSON の parse + 文字列合成だけで
-  重くないが、GitHub Camo が画像 URL ごとにプロキシキャッシュするため、
-  Worker 側も短い freshness で edge に委ねる。
-- Camo の実測（反映遅延・`no-cache` 系ヘッダの扱い）は
-  `docs/runbook/github-profile-card.md` に測定手順を記録する。最終的な
-  更新特性の検証はリリース候補確定後に実施する（AGENTS.md §6）。
+  lifetime。生成は D1 2 行 + コミット済み JSON の parse + R2 メディア
+  読み（最大 4 オブジェクト・計 ~1.5MB 上限）+ 文字列合成で、旧設計の
+  「数 KB・fetch なし」よりは重いが、共有キャッシュと Camo のプロキシ
+  キャッシュで実リクエストあたりのコストは限定される。Camo のキャッシュ
+  特性上、Worker の freshness をこれ以上短くしても閲覧者側の反映は
+  Camo 次第になるため、5 分を初期値とし実測で見直す。
+- Camo の実測（反映遅延・`no-cache` 系ヘッダの扱い・埋め込み後の
+  応答サイズ）は `docs/runbook/github-profile-card.md` に測定手順を
+  記録する。最終的な更新特性の検証はリリース候補確定後に実施する
+  （AGENTS.md §6）。
 
 ### 2.5 テーマ・可読性
 
@@ -126,6 +159,8 @@ portfolio に委ねる」向き）。AGENTS.md §3 の依存表に追記する�
   片方だけ変わる drift は契約テストとレビューで拾う。
 - README 側（rebuildup/rebuildup#3）は本エンドポイントの本番 200 応答が
   前提。画像 URL は `https://rebuildup.dev/api/v1/github-profile/card`。
-- カードが参照する制作物画像は `/media/<key>` 経由で、ネストした
-  `<image href>` は Camo ではなく閲覧者のブラウザが直接取得する。
-  失敗時はそのタイルを落とす（画像全体は壊れない）。
+- カードが参照する制作物画像は `data:` URI として SVG 内に埋め込まれる
+  ため、閲覧者のブラウザも Camo も外部サブリソースを追加取得しない。
+  埋め込みに失敗した作品はテキストのみのタイルに落ちる（画像全体は
+  壊れない）。応答サイズは埋め込み量に比例して増えるため、実測値は
+  runbook の検証記録で管理する。

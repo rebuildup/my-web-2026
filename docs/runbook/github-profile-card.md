@@ -12,10 +12,13 @@ business-card surface, not a stats dashboard. Design contract:
   committed portfolio snapshot by `selectShowcaseWorks`
   (`src/http/github-profile/model.ts`): `FEATURED_SLUGS` first, then
   the remaining published projects with a servable raster cover,
-  newest `periodStart` first. Images are `<image>` references to
-  `https://rebuildup.dev/media/<key>` resolved through
-  `composeMediaUrl`, so the public-media boundary (Issue #634)
-  applies unchanged.
+  newest `periodStart` first. Covers are **embedded as `data:` URIs**
+  by `embedWorkMedia` (`src/http/github-profile/media-embed.ts`)
+  because an SVG loaded through `<img>` (which is how GitHub/Camo
+  renders README images) cannot fetch external subresources — remote
+  `<image href="https://…">` would render blank. Only R2 keys passing
+  `isPublicMediaKey` are read; content types are limited to
+  png / jpeg / webp.
 - **GitHub activity** — counts and the latest *public* feed item from
   the D1 `github_activity_snapshot` row. Private-kind entries may
   contribute counts only; identities never reach the SVG.
@@ -36,17 +39,20 @@ business-card surface, not a stats dashboard. Design contract:
 | Status | always `200` |
 | Content-Type | `image/svg+xml; charset=utf-8` |
 | Cache-Control | `public, max-age=300, s-maxage=300` |
-| Size | ~5–8 KB (text + `<image>` hrefs; covers are not inlined) |
+| Size | ~1.2–2 MB typical with 4 embedded covers (raw media budget 1.5 MB → ~2 MB base64); ~10 KB with none |
 
 ## Cost model
 
 Per request the route performs two D1 point reads
-(`id = 1` rows) plus synchronous composition over the committed
-portfolio snapshot. No upstream GitHub or Discord calls happen at
-request time — freshness is owned by the existing ingest jobs
-(`github-activity-sync`, Discord presence push). The SVG references
-cover images by URL, so a card request never fetches image bytes;
-Camo/browser fetches each cover once per its own cache window.
+(`id = 1` rows), up to 4 `head`+`get` pairs against R2 (bounded by
+`MAX_COVER_BYTES` per cover and `MAX_TOTAL_MEDIA_BYTES` overall), plus
+synchronous composition over the committed portfolio snapshot. No
+upstream GitHub or Discord calls happen at request time — freshness is
+owned by the existing ingest jobs (`github-activity-sync`, Discord
+presence push). Because covers are inlined, the response is larger
+than the old URL-reference design (~1.2–2 MB vs ~5 KB); the shared
+cache and Camo absorb repeat fetches, and the byte budgets cap the
+worst case.
 
 ## Camo / GitHub profile notes
 
@@ -66,6 +72,7 @@ GitHub's markdown simple.
 - **Presence snapshot stale (>15 min) or userId mismatch** → `stale`
   / `unavailable` panel; never rendered as online.
 - **No servable cover** → fewer than 4 tiles; the card still renders.
-- **MEDIA binding absent** → `composeMediaUrl` yields relative
-  `/media/...` hrefs which resolve against the request origin; the
-  production base URL is required for GitHub/Camo to fetch them.
+- **MEDIA binding absent or object missing / oversized** → that tile
+  renders the text-only placeholder; the rest of the card (including
+  other covers) is unaffected. There is no fallback to remote URLs —
+  they cannot render inside an `<img>`-loaded SVG.

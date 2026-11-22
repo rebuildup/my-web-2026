@@ -84,6 +84,25 @@ describe('GET /card', () => {
 		expect(body).toContain('Online');
 	});
 
+	it('embeds real cover bytes as data: URIs when MEDIA is bound', async () => {
+		const png = new Uint8Array([137, 80, 78, 71]).buffer;
+		const bucket = {
+			head: async () => ({ size: 4, httpMetadata: { contentType: 'image/png' } }),
+			get: async () => ({ arrayBuffer: async () => png }),
+		} as unknown as R2Bucket;
+		const res = await githubProfileRouter.request('/card', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+			MEDIA: bucket,
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		// The committed snapshot's first featured cover must be inlined —
+		// remote <image href> would render blank under <img>.
+		expect(body).toContain('data:image/');
+		expect(body).not.toMatch(/<image[^>]*href="https?:\/\//);
+	});
+
 	it('rejects non-GET methods', async () => {
 		const res = await githubProfileRouter.request('/card', { method: 'POST' }, {
 			...ENV_BASE,

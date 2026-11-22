@@ -2,6 +2,8 @@ import { css, cx } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
+import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -37,22 +39,42 @@ import type { StackCheckStatus, StackFactRow } from './stack';
  * renders the 「未確定」 badge instead of a guessed value — the same
  * fail-closed posture the data module documents.
  */
+/**
+ * The stack's own section index with item counts.
+ *
+ * Issue #1163 — the entry's right column. Each row links to the
+ * section it names, so the index is a way into the list rather than
+ * a caption of it.
+ */
+function StackIndex({ sections }: { readonly sections: readonly StackSectionView[] }) {
+	return (
+		<EditorialIndex
+			ariaLabel="Sections"
+			items={sections.map((section, index) => ({
+				href: `#stack-section-${section.id}`,
+				number: String(index + 1).padStart(2, '0'),
+				label: section.title,
+				meta: `${section.items.length} 件`,
+			}))}
+		/>
+	);
+}
+
 export function StackPage({ data }: { data: StackPageData }) {
 	return (
 		<>
 			<SkipLink />
-			<PageSection rhythm="hero" labelledBy="stack-hero-title">
-				<span className={css(noteMonoSm)}>my-web-2026 · /stack</span>
-				<h1 id="stack-hero-title" lang="ja" className={css(pageTitle)}>
-					開発スタック / Stack
-				</h1>
-				<p lang="ja" className={css(ledeSansLg)}>
-					このサイトを動かしている技術の一覧です。version は{' '}
-					<code className={inlineCodeStyle}>package.json</code> と{' '}
-					<code className={inlineCodeStyle}>profile.yaml</code> から読み取り、根拠となる source
-					へのリンクを各項目に付けています。開発記事や整備 PR の 参照先として使えます。
-				</p>
-			</PageSection>
+			{/* Issue #1163 — the right column carries the stack's own
+			    sections with their item counts, so the entry tells the
+			    reader how the list is organised before they read it. */}
+			<PageHero
+				labelledBy="stack-hero-title"
+				eyebrow="my-web-2026 · /stack"
+				title="開発スタック / Stack"
+				description="このサイトを動かしている技術の一覧です。version は package.json と profile.yaml から読み取り、根拠となる source へのリンクを各項目に付けています。開発記事や整備 PR の 参照先として使えます。"
+				asideLabel="Sections"
+				aside={<StackIndex sections={data.sections} />}
+			/>
 			<main id="main">
 				{data.sections.map((section, index) => (
 					<StackSectionBlock key={section.id} section={section} index={index + 1} />

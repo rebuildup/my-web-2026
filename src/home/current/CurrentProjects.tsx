@@ -1,5 +1,6 @@
 import { css, cx } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
+import { Grid, GridItem } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -88,6 +89,15 @@ export interface CurrentProjectsProps {
 	 */
 	limit?: number;
 	seeAllHref?: string;
+	/**
+	 * Issue #1163 — `section` (the default) is the HOME's body
+	 * section: the heading sits above the list on the full measure.
+	 * `page` is the `/now` ENTRY: the heading takes the left 7 tracks
+	 * and the summary facts move to the right column, so the entry's
+	 * right half carries the page's own scale instead of empty space.
+	 * The data is the same in both — only its placement differs.
+	 */
+	variant?: 'section' | 'page';
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -159,6 +169,42 @@ const rowClassName = /* @__PURE__ */ css({
 	'&:last-child': {
 		borderBlockEnd: 'none',
 	},
+});
+
+/**
+ * Issue #1135 — the row's index number.
+ *
+ * The L-C review found the section read as one undifferentiated dump:
+ * four rows of the same shape, none of them scannable. The number
+ * gives the column a rhythm and lets a reader count the entries
+ * without reading them.
+ */
+const rowIndexClassName = /* @__PURE__ */ css({
+	fontFamily: 'mono',
+	fontSize: 'sm',
+	fontVariantNumeric: 'tabular-nums',
+	color: 'text.muted',
+});
+
+/**
+ * Issue #1135 — the facts column.
+ *
+ * The measured facts move to their own column, separated by a
+ * vertical hairline, so the row reads as ONE record with a name and
+ * a set of measurements instead of a name with a small table
+ * hanging under it. On mobile the columns stack and the hairline
+ * goes with them — a rule that separates two stacked blocks would
+ * draw a false relationship.
+ */
+const factsColumnClassName = /* @__PURE__ */ css({
+	// The vertical rule uses the `border-left` SHORTHAND: the CSS
+	// vocabulary gate (quality/css-standards.json) knows the shorthand
+	// and `border-left-color`, and rejects the `border-left-width` /
+	// `border-left-style` longhands Panda would emit from the
+	// longhand props.
+	borderLeft: { base: 'none', md: '1px solid' },
+	borderLeftColor: 'border.subtle',
+	paddingInlineStart: { base: '0', md: '6' },
 });
 
 const rowHeaderClassName = /* @__PURE__ */ css({
@@ -331,47 +377,53 @@ interface ProjectRowProps {
 	readonly reducedMotion: boolean;
 	/** `true` when the list is grouped, so the level is already in the heading. */
 	readonly grouped: boolean;
+	/** Position in the ordered published list (1-based) — the row's index number. */
+	readonly index: number;
 }
 
-function ProjectRow({ project, today, changed, reducedMotion, grouped }: ProjectRowProps) {
+function ProjectRow({ project, today, changed, reducedMotion, grouped, index }: ProjectRowProps) {
 	const Heading = grouped ? 'h4' : 'h3';
 	const rows = metaRows(project, today);
 	const level = project.weight?.level;
 	return (
 		<li data-testid="home-current-project" data-project-id={project.id} className={rowClassName}>
-			<div className={rowHeaderClassName}>
-				<Heading className={nameClassName}>{project.name}</Heading>
-				{!grouped && level ? (
-					<span data-testid="home-current-project-level" className={levelTagClassName}>
-						{WEIGHT_LEVEL_LABELS[level.value]}
-					</span>
-				) : null}
-				{changed ? <ChangeMarker reducedMotion={reducedMotion} /> : null}
-			</div>
-			<p lang="ja" className={statusClassName}>
-				{project.statusJa}
-			</p>
-			{rows.length === 0 ? null : (
-				<dl data-testid="home-current-project-meta" className={metaListClassName}>
-					{rows.map((row) => (
-						<div key={row.label} className={css({ display: 'contents' })}>
-							<dt className={metaLabelClassName}>{row.label}</dt>
-							<dd className={metaValueClassName}>
-								<span>{row.value}</span>
-								<span data-testid="home-current-project-source" className={sourceTagClassName}>
-									{SOURCE_LABELS[row.source]}
-								</span>
-							</dd>
-						</div>
-					))}
-				</dl>
-			)}
-			{project.link ? (
-				<a href={project.link.href} className={linkClassName}>
-					<span>{project.link.label}</span>
-					<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
-				</a>
-			) : null}
+			{/* Issue #1135 — the row became a two-column record: the name
+			    and its sentence on the left, the measured facts on the
+			    right, separated by a hairline. Before, every fact sat
+			    under its own name in a narrow label/value grid, and the
+			    section read as a stack of identical blocks. */}
+			<Grid template="12" gap="4" columnGap={{ base: '4', md: '6' }}>
+				<GridItem span={1} className={rowIndexClassName} aria-hidden="true">
+					{String(index).padStart(2, '0')}
+				</GridItem>
+				<GridItem span={{ base: 12, md: 5 }} start={{ base: 1, md: 2 }}>
+					<div className={rowHeaderClassName}>
+						<Heading className={nameClassName}>{project.name}</Heading>
+						{!grouped && level ? (
+							<span data-testid="home-current-project-level" className={levelTagClassName}>
+								{WEIGHT_LEVEL_LABELS[level.value]}
+							</span>
+						) : null}
+						{changed ? <ChangeMarker reducedMotion={reducedMotion} /> : null}
+					</div>
+					<p lang="ja" className={statusClassName}>
+						{project.statusJa}
+					</p>
+					{project.link ? (
+						<a href={project.link.href} className={linkClassName}>
+							<span>{project.link.label}</span>
+							<MaterialSymbol d={ARROW_FORWARD_PATH} size={16} />
+						</a>
+					) : null}
+				</GridItem>
+				<GridItem
+					span={{ base: 12, md: 6 }}
+					start={{ base: 1, md: 7 }}
+					className={factsColumnClassName}
+				>
+					<ProjectFacts rows={rows} />
+				</GridItem>
+			</Grid>
 		</li>
 	);
 }
@@ -386,27 +438,168 @@ function recentlyUpdatedCount(projects: readonly CurrentProjectRecord[], today: 
 	}).length;
 }
 
-export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
+/**
+ * The measured facts of one project.
+ *
+ * Issue #1135 — the facts live in their own component so the row stays
+ * readable: the record is a two-column composition (name + sentence on
+ * the left, measurements on the right) and the measurement list is a
+ * separate concern from the record's identity. The list holds at most
+ * three rows (start / last update / measured window), and a row the
+ * record does not carry is omitted rather than filled in.
+ */
+function ProjectFacts({ rows }: { readonly rows: readonly MetaRow[] }) {
+	if (rows.length === 0) return null;
+	return (
+		<dl data-testid="home-current-project-meta" className={metaListClassName}>
+			{rows.map((row) => (
+				<div key={row.label} className={css({ display: 'contents' })}>
+					<dt className={metaLabelClassName}>{row.label}</dt>
+					<dd className={metaValueClassName}>
+						<span>{row.value}</span>
+						<span data-testid="home-current-project-source" className={sourceTagClassName}>
+							{SOURCE_LABELS[row.source]}
+						</span>
+					</dd>
+				</div>
+			))}
+		</dl>
+	);
+}
+
+/**
+ * The entry's scale sentence — how many projects are published, as of
+ * `today`, and how many moved in the recent window.
+ *
+ * Issue #1163 — the `/now` ENTRY carries this in its hero's aside, so
+ * the route needs the same sentence the section used to print under its
+ * heading. One function, two placements; the numbers cannot drift.
+ */
+export function currentProjectsSummary(
+	projects: readonly CurrentProjectRecord[],
+	today: string,
+): string | null {
+	const published = selectPublishedProjects(projects, today);
+	if (published.length === 0) return null;
+	const recent = recentlyUpdatedCount(published, today);
+	return `全 ${published.length} 件。${today} 時点・直近 ${RECENT_UPDATE_WINDOW_DAYS} 日の更新は${
+		recent === 0 ? 'ありません' : ` ${recent} 件です`
+	}。`;
+}
+
+export function CurrentProjects({
+	projects = [],
+	today,
+	limit,
+	seeAllHref,
+	variant = 'section',
+}: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
 	const visible = limit === undefined ? published : published.slice(0, limit);
 	const groups = groupByWeight(visible);
 	const reducedMotion = usePrefersReducedMotion();
 	const changedIds = useChangedProjectIds(published);
 	const recent = recentlyUpdatedCount(published, today);
-	const summary =
-		published.length === 0
-			? null
-			: `全 ${published.length} 件。${today} 時点・直近 ${RECENT_UPDATE_WINDOW_DAYS} 日の更新は${
-					recent === 0 ? 'ありません' : ` ${recent} 件です`
-				}。`;
+	const summary = currentProjectsSummary(projects, today);
+	// Issue #1135 — the row index is the record's position in the
+	// ORDERED published list, so the number a reader sees is the
+	// order the section itself published, not a counter of the
+	// rendered slice.
+	const orderIndex = new Map<string, number>();
+	visible.forEach((project, position) => {
+		orderIndex.set(project.id, position + 1);
+	});
+
+	// The enumeration itself, shared by the two placements: the HOME's
+	// section (groups are h3 under the section's h2) and the `/now`
+	// ENTRY (groups are h2 under the hero's h1). One renderer, so the
+	// two surfaces cannot drift apart.
+	const renderEnumeration = (headingLevel: 'h2' | 'h3') => {
+		if (published.length === 0) {
+			return (
+				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
+					現在、公開している進行中のプロジェクトはありません。
+				</p>
+			);
+		}
+		const GroupHeading = headingLevel;
+		return groups ? (
+			<Stack
+				as="ul"
+				gap="10"
+				data-testid="home-current-projects-list"
+				className={listResetClassName}
+			>
+				{groups.map((group) => (
+					<li key={group.level} data-testid="home-current-project-group" data-level={group.level}>
+						<GroupHeading className={groupHeadingClassName}>
+							<span>{group.label}</span>
+							<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
+						</GroupHeading>
+						<Stack as="ul" gap="0" className={listResetClassName}>
+							{group.records.map((project) => (
+								<ProjectRow
+									key={project.id}
+									project={project}
+									today={today}
+									changed={changedIds.has(project.id)}
+									reducedMotion={reducedMotion}
+									grouped
+									index={orderIndex.get(project.id) ?? 1}
+								/>
+							))}
+						</Stack>
+					</li>
+				))}
+			</Stack>
+		) : (
+			<Stack
+				as="ul"
+				gap="0"
+				data-testid="home-current-projects-list"
+				className={listResetClassName}
+			>
+				{visible.map((project) => (
+					<ProjectRow
+						key={project.id}
+						project={project}
+						today={today}
+						changed={changedIds.has(project.id)}
+						reducedMotion={reducedMotion}
+						grouped={false}
+						index={orderIndex.get(project.id) ?? 1}
+					/>
+				))}
+			</Stack>
+		);
+	};
+
+	// Issue #1185 — `/now` is an ENTRY surface: the route owns the page's
+	// h1 (the PageHero) and the entry's right column (the summary
+	// sentence), so this variant renders the enumeration alone. The
+	// section wrapper and its heading belong to the HOME's section,
+	// which keeps its h2.
+	if (variant === 'page') {
+		return renderEnumeration('h2');
+	}
 
 	return (
-		<PageSection labelledBy="current-projects-heading" testId="home-current-projects">
-			{/* v12/v13 review — `default`, not `spread`: the spread variant
-			    parks the whole project list in the 8/12 column beside a
-			    heading cluster that ends after three lines, which read as
-			    a dead zone on desktop. The list needs the full measure
-			    for its label/value rows, same as the Explore grid above. */}
+		<PageSection
+			labelledBy="current-projects-heading"
+			testId="home-current-projects"
+			id="current"
+			name="now"
+		>
+			{/* v12/v13 review — the HOME's section keeps the heading on
+			    the full measure: the spread variant parks the whole
+			    project list in the 8/12 column beside a heading cluster
+			    that ends after three lines, which read as a dead zone on
+			    desktop. The list needs the full measure for its records.
+
+			    Issue #1185 — the `/now` ENTRY no longer renders this
+			    heading: the route owns the page's h1 (the PageHero) and
+			    the entry's right column (the summary sentence), so the
+			    page variant returns the enumeration alone above. */}
 			<SectionHeading
 				id="current-projects-heading"
 				eyebrow="01 — Now"
@@ -414,77 +607,21 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 				titleEn="Where I am now"
 				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
 			/>
-			{published.length === 0 ? (
-				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
-					現在、公開している進行中のプロジェクトはありません。
+			{summary ? (
+				<p data-testid="home-current-projects-summary" className={summaryClassName}>
+					{summary}
 				</p>
-			) : (
-				<>
-					<p data-testid="home-current-projects-summary" className={summaryClassName}>
-						{summary}
-					</p>
-					{groups ? (
-						<Stack
-							as="ul"
-							gap="10"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{groups.map((group) => (
-								<li
-									key={group.level}
-									data-testid="home-current-project-group"
-									data-level={group.level}
-								>
-									<h3 className={groupHeadingClassName}>
-										<span>{group.label}</span>
-										<span className={levelTagClassName}>{`${group.records.length} 件`}</span>
-									</h3>
-									<Stack as="ul" gap="0" className={listResetClassName}>
-										{group.records.map((project) => (
-											<ProjectRow
-												key={project.id}
-												project={project}
-												today={today}
-												changed={changedIds.has(project.id)}
-												reducedMotion={reducedMotion}
-												grouped
-											/>
-										))}
-									</Stack>
-								</li>
-							))}
-						</Stack>
-					) : (
-						<Stack
-							as="ul"
-							gap="0"
-							data-testid="home-current-projects-list"
-							className={listResetClassName}
-						>
-							{visible.map((project) => (
-								<ProjectRow
-									key={project.id}
-									project={project}
-									today={today}
-									changed={changedIds.has(project.id)}
-									reducedMotion={reducedMotion}
-									grouped={false}
-								/>
-							))}
-						</Stack>
-					)}
-					{seeAllHref && published.length > visible.length ? (
-						<a
-							href={seeAllHref}
-							className={cx(linkClassName, seeAllLinkClassName)}
-							data-testid="home-current-projects-see-all"
-						>
-							すべて見る ({published.length} 件)
-						</a>
-					) : null}
-				</>
-			)}
+			) : null}
+			{renderEnumeration('h3')}
+			{seeAllHref && published.length > visible.length ? (
+				<a
+					href={seeAllHref}
+					className={cx(linkClassName, seeAllLinkClassName)}
+					data-testid="home-current-projects-see-all"
+				>
+					すべて見る ({published.length} 件)
+				</a>
+			) : null}
 		</PageSection>
 	);
 }

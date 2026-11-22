@@ -1,0 +1,276 @@
+{
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 5000
+	},
+	"sectionOrder": [],
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "hero",
+			"signature": "hero-b",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1440,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 150000,
+					"fontSize": 56,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "text",
+					"area": 100000,
+					"fontSize": 17,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.67,
+			"emptyAreaRatio": 0,
+			"contentLeft": 120,
+			"contentRight": 1320,
+			"density": 0.5,
+			"columnCount": 1,
+			"blockOrder": ["heading", "text"]
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "measure",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1440,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 25000,
+					"fontSize": 30,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "text",
+					"area": 180000,
+					"fontSize": 18,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.42,
+			"emptyAreaRatio": 0.4,
+			"contentLeft": 420,
+			"contentRight": 1020,
+			"density": 0.35,
+			"columnCount": 1,
+			"blockOrder": ["heading", "text"]
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "media-break",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1440,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "media",
+					"area": 400000,
+					"fontSize": 15,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 26,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "text",
+					"area": 80000,
+					"fontSize": 15,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				}
+			],
+			"grid": {
+				"tracks": ["1fr", "1fr"],
+				"columnCount": 2,
+				"columnRatio": [1, 1]
+			},
+			"mediaArea": 400000,
+			"textArea": 0,
+			"contentWidthRatio": 0.67,
+			"emptyAreaRatio": 0,
+			"contentLeft": 240,
+			"contentRight": 1200,
+			"density": 0.6,
+			"columnCount": 2,
+			"blockOrder": ["heading", "text"]
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "dense-list",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1440,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 24,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "list",
+					"area": 300000,
+					"fontSize": 14,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "list",
+					"area": 300000,
+					"fontSize": 14,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.67,
+			"emptyAreaRatio": 0,
+			"contentLeft": 240,
+			"contentRight": 1200,
+			"density": 0.7,
+			"columnCount": 1,
+			"blockOrder": ["heading", "text"]
+		},
+		{
+			"tone": "inverse",
+			"rhythm": "closing",
+			"signature": "close",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1440,
+				"h": 600
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 45000,
+					"fontSize": 30,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				},
+				{
+					"kind": "control",
+					"area": 15000,
+					"fontSize": 15,
+					"rect": {
+						"x": 240,
+						"y": 0,
+						"w": 960,
+						"h": 100
+					}
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.67,
+			"emptyAreaRatio": 0,
+			"contentLeft": 240,
+			"contentRight": 1200,
+			"density": 0.45,
+			"columnCount": 1,
+			"blockOrder": ["heading", "text"]
+		}
+	],
+	"media": {
+		"totalArea": 400000,
+		"byKind": {
+			"img": 400000
+		}
+	},
+	"metrics": {
+		"contentArea": 7200000
+	},
+	"features": ["breakout"]
+}

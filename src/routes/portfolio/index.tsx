@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
+import { Container } from '../../editorial/primitives/Container';
 import { composeSocialCard } from '../../editorial/social-card';
 import { PrivacyNoticeCompact } from '../../home/privacy-notice-compact';
 import { getCompactPrivacyNotice } from '../../home/privacy/load';
@@ -167,7 +168,14 @@ function PortfolioFacetView() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<ReactionsWidget data={reactions} />
+			{/* Issue #1136 — the reactions band is a full-bleed row by
+			    itself, so on this route it started at the viewport's left
+			    edge while every other block on the page sits on the
+			    container's left key line. The Container puts it back on
+			    the page's shared axis. */}
+			<Container>
+				<ReactionsWidget data={reactions} />
+			</Container>
 			<PortfolioList
 				initialPage={initialPage}
 				activeFacets={activeFacets}

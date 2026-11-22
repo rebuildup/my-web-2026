@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.11.3",
+	"version": "0.12.0",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -312,7 +312,10 @@
 		"check:operator-mfa": "node scripts/check-operator-mfa.mjs",
 		"anomaly:fixture:proof": "node scripts/request-anomaly-monitor-fixture.mjs",
 		"verify:anomaly-monitor-screenshot": "node scripts/capture-anomaly-monitor-fixture.mjs",
-		"anomaly:fixture:report": "node scripts/request-anomaly-monitor-fixture.mjs --html=.tmp/anomaly-monitor-fixture.html"
+		"anomaly:fixture:report": "node scripts/request-anomaly-monitor-fixture.mjs --html=.tmp/anomaly-monitor-fixture.html",
+		"composition:lint": "node scripts/composition-lint.mjs",
+		"composition:collect": "node scripts/collect-composition.mjs",
+		"composition:lint:test": "node --test scripts/judge-composition.test.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.7",

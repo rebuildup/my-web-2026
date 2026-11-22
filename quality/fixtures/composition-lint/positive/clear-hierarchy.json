@@ -1,0 +1,144 @@
+{
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 4000
+	},
+	"sections": [
+		{
+			"tone": "inverse",
+			"rhythm": "hero",
+			"signature": "hero",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 150000,
+					"fontSize": 52
+				},
+				{
+					"kind": "text",
+					"area": 80000,
+					"fontSize": 16
+				},
+				{
+					"kind": "control",
+					"area": 30000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "field.design",
+			"rhythm": "body",
+			"signature": "feature",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "media",
+					"area": 250000,
+					"fontSize": 15
+				},
+				{
+					"kind": "heading",
+					"area": 30000,
+					"fontSize": 30
+				},
+				{
+					"kind": "text",
+					"area": 90000,
+					"fontSize": 16
+				}
+			],
+			"grid": null,
+			"mediaArea": 250000,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "body-a",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 110000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		},
+		{
+			"tone": "sunken",
+			"rhythm": "body",
+			"signature": "body-b",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 110000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		}
+	],
+	"media": {
+		"totalArea": 0,
+		"byKind": {}
+	},
+	"metrics": {
+		"contentArea": 5760000,
+		"elementsPerPixel": 0.002
+	},
+	"features": []
+}

@@ -5,6 +5,7 @@ import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { eyebrowMonoSm, focusRing, pageTitle } from '../../editorial/primitives/shared-styles';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
+import { Composition } from './sections/Composition';
 import { ImageCls } from './sections/ImageCls';
 import { InteractiveStates } from './sections/InteractiveStates';
 import { ReactionPicker } from './sections/ReactionPicker';
@@ -99,6 +100,7 @@ export function DesignSystemPage({ tokenData }: { tokenData: DesignSystemTokenDa
 				<ImageSection />
 				<CjkSection />
 				<TableCodeSection />
+				<CompositionSection />
 			</main>
 		</>
 	);
@@ -334,6 +336,36 @@ function TableCodeSection() {
 			>
 				<TableCode />
 			</SectionHeading>
+		</PageSection>
+	);
+}
+
+/**
+ * 10 — Composition primitives (ADR-0023, Issue #1130).
+ *
+ * The vocabulary that keeps "intentional composition" inside the
+ * contract: 12-track asymmetric grid, declared measure breakout and
+ * figure/ground overlap. `rhythm="feature"` demonstrates the
+ * deliberate larger beat.
+ */
+function CompositionSection() {
+	return (
+		<PageSection labelledBy="design-system-composition" separator rhythm="feature">
+			<SectionHeading
+				id="design-system-composition"
+				eyebrow="10 — Composition"
+				title="構図 / Composition primitives"
+				description="ADR-0023 の構成原語です。Grid template=&quot;12&quot; + GridItem の非対称配置、Breakout による measure 逸脱、Overlap による figure/ground の重なりを、契約内で宣言的に組みます。"
+			>
+				{/* Issue #1161 — the showcase sits BELOW the heading, not
+				    in the `spread` heading's 8/12 content column: a
+				    Breakout measures its escape against its own parent,
+				    so inside that column the wide block would be centred
+				    on the column and reach past the viewport at `lg`. On
+				    the canonical Container it breaks out of the measure
+				    and stays centred on the page. */}
+			</SectionHeading>
+			<Composition />
 		</PageSection>
 	);
 }

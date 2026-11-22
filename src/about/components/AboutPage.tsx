@@ -6,6 +6,8 @@ import { Container } from '../../editorial/primitives/Container';
 import { Cluster, Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid, Split } from '../../editorial/primitives/Grid';
 import { MaterialSymbol } from '../../editorial/primitives/MaterialSymbol';
+import { EditorialIndex } from '../../editorial/primitives/EditorialIndex';
+import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -147,93 +149,67 @@ const NARRATIVE_ORDER = [
 	'future',
 ] as const;
 
+/**
+ * The narrative index — the page's own seven sections, in order.
+ *
+ * Issue #1163 — the index used to be one wrapped mono line in the
+ * left column: unreadable, and the right half of the entry stayed
+ * empty. It is now the hero's right column, one row per section, and
+ * each row links to its section, so the index is a way into the page
+ * rather than a caption.
+ */
+function NarrativeIndex() {
+	return (
+		<EditorialIndex
+			ariaLabel="Sections"
+			items={NARRATIVE_ORDER.map((step, index) => ({
+				href: `#about-section-${step}`,
+				number: String(index + 1).padStart(2, '0'),
+				label: step,
+			}))}
+		/>
+	);
+}
+
 function Hero({ identity }: { identity: AboutPageData['identity'] }) {
 	return (
-		<PageSection rhythm="hero" labelledBy="about-hero-title">
-			<Split rowGap="10" className={css({ alignItems: 'start' })}>
-				<aside
-					aria-hidden="true"
+		<PageHero
+			labelledBy="about-hero-title"
+			eyebrow="/about · profile"
+			title={identity.name}
+			description={identity.role}
+			asideLabel="Narrative"
+			aside={<NarrativeIndex />}
+		>
+			<p
+				lang="ja"
+				className={css({
+					margin: '0',
+					marginBlockStart: '4',
+					fontFamily: 'sans',
+					fontSize: 'md',
+					lineHeight: '1.6',
+					color: 'text.muted',
+				})}
+			>
+				{identity.lead}
+			</p>
+			{identity.secondary ? (
+				<p
+					lang="ja"
 					className={css({
-						display: { base: 'none', lg: 'flex' },
-						flexDirection: 'column',
-						gap: '1',
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.muted',
+						margin: '0',
+						marginBlockStart: '4',
+						fontFamily: 'sans',
+						fontSize: 'md',
 						lineHeight: '1.6',
+						color: 'text.muted',
 					})}
 				>
-					<span lang="en">about</span>
-					<span lang="en">samuido · profile</span>
-					<span lang="en">
-						{NARRATIVE_ORDER.map((step, index) => (
-							<Fragment key={step}>
-								{index > 0 ? (
-									<>
-										{' '}
-										<MaterialSymbol d={ARROW_FORWARD_PATH} size={12} />{' '}
-									</>
-								) : null}
-								{step}
-							</Fragment>
-						))}
-					</span>
-				</aside>
-				<div
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						minWidth: '0',
-					})}
-				>
-					<span className={css(noteMonoSm)}>/about · profile</span>
-					<h1 id="about-hero-title" lang="ja" className={css(pageTitle)}>
-						{identity.name}
-					</h1>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '4',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-						})}
-					>
-						{identity.role}
-					</p>
-					<p
-						lang="ja"
-						className={css({
-							margin: '0',
-							marginBlockStart: '4',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.6',
-							color: 'text.muted',
-						})}
-					>
-						{identity.lead}
-					</p>
-					{identity.secondary ? (
-						<p
-							lang="ja"
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-								color: 'text.muted',
-							})}
-						>
-							{identity.secondary}
-						</p>
-					) : null}
-				</div>
-			</Split>
-		</PageSection>
+					{identity.secondary}
+				</p>
+			) : null}
+		</PageHero>
 	);
 }
 
@@ -288,7 +264,19 @@ function IdentitySection({ identity }: { identity: AboutPageData['identity'] }) 
 
 function InterestsSection({ interests }: { interests: AboutPageData['interests'] }) {
 	return (
-		<PageSection labelledBy="about-section-interests" separator>
+		/* Issue #1166 — the page's sections get a surface rhythm.
+		   The L-C review (F-13) recorded nine body sections on one
+		   flat ground: every band looked the same, so the reader had
+		   no way to feel the change of subject. The monochrome ladder
+		   (sunken / raised) marks the CONTENT's kinds — thinking,
+		   record, now — and the closing section is lifted off the page
+		   as its last statement. No hue: a colour field here would be
+		   decoration, and the contract forbids it. The closing band is
+		   `raised`, not `inverse`: the neutral Badge inside it (the
+		   「Active」/「Parked」 labels) has no ink pair that survives
+		   the inverse plate — light label on a light pill — so the
+		   page turns with the monochrome ladder instead. */
+		<PageSection labelledBy="about-section-interests" separator tone="sunken">
 			<SectionHeading
 				id="about-section-interests"
 				eyebrow="02 — Interests"
@@ -379,7 +367,7 @@ function SkillsSection({ skills }: { skills: readonly SkillEntry[] }) {
 
 function ExperienceSection({ projects }: { projects: readonly PortfolioProject[] }) {
 	return (
-		<PageSection labelledBy="about-section-experience" separator>
+		<PageSection labelledBy="about-section-experience" separator tone="sunken">
 			<SectionHeading
 				id="about-section-experience"
 				eyebrow="04 — Experience"
@@ -503,7 +491,7 @@ function CareerSection({ entries }: { entries: readonly CareerEntry[] }) {
 
 function CurrentSection({ items }: { items: readonly string[] }) {
 	return (
-		<PageSection labelledBy="about-section-current" separator>
+		<PageSection labelledBy="about-section-current" separator tone="sunken">
 			<SectionHeading
 				id="about-section-current"
 				eyebrow="06 — Current"
@@ -554,7 +542,7 @@ function FutureSection({
 	parked: readonly string[];
 }) {
 	return (
-		<PageSection labelledBy="about-section-future" separator>
+		<PageSection labelledBy="about-section-future" separator tone="raised">
 			<SectionHeading
 				id="about-section-future"
 				eyebrow="07 — Future"

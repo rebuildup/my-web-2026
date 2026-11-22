@@ -1,10 +1,10 @@
 import { css } from '../../../styled-system/css';
 import type { ActivityTimeline } from '../../activity/contract';
+import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
-import { ledeSansLg, noteMonoSm, pageTitle } from '../../editorial/primitives/shared-styles';
-import { ActivityTimelineView } from './Timeline';
+import { ActivitySourceStatus, ActivityTimelineView } from './Timeline';
 
 /**
  * `/activity` page composition (Issue #352).
@@ -24,16 +24,20 @@ export function ActivityPage({ timeline }: { timeline: ActivityTimeline }) {
 	return (
 		<>
 			<SkipLink />
-			<PageSection rhythm="hero" labelledBy="activity-hero-title">
-				<span className={css(noteMonoSm)}>my-web-2026 · /activity</span>
-				<h1 id="activity-hero-title" lang="ja" className={css(pageTitle)}>
-					活動タイムライン / Activity
-				</h1>
-				<p lang="ja" className={css(ledeSansLg)}>
-					GitHub のリリース、公開された記事、Portfolio
-					の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。ソースごとの観測状態は一覧の上に併記します。
-				</p>
-			</PageSection>
+			{/* Issue #1163 — the entry block takes 7 of 12 tracks and the
+			    source status takes the right column. The status was the
+			    one piece of the page's own context that the visitor needs
+			    BEFORE reading the list (which source feeds it, how fresh
+			    it is); it used to sit as a small line above the list, and
+			    the right half of the entry stayed empty. */}
+			<PageHero
+				labelledBy="activity-hero-title"
+				eyebrow="my-web-2026 · /activity"
+				title="活動タイムライン / Activity"
+				description="GitHub のリリース、公開された記事、Portfolio の公開作品を一つの時系列にまとめた読み取り専用の一覧です。各項目はソースが記録した日付だけを表示し、日付が分からない項目に日付を補いません。"
+				asideLabel="Source status"
+				aside={<ActivitySourceStatus timeline={timeline} />}
+			/>
 			<main id="main">
 				<PageSection labelledBy="activity-timeline-heading" separator testId="activity-page">
 					<SectionHeading

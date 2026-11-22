@@ -450,7 +450,7 @@ describe('check-stale-content-review — the shipped registry', () => {
 	 * genuinely future date (a typo, a hand-edited year) still
 	 * fails here until someone moves this line deliberately.
 	 */
-	const SHIPPED_TODAY = '2026-11-19';
+	const SHIPPED_TODAY = '2026-11-22';
 
 	it('parses and validates', () => {
 		const registry = readJson(join(REPO_ROOT, REGISTRY_PATH));

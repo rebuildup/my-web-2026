@@ -1,0 +1,90 @@
+{
+	"version": "composition-model/v1",
+	"document": {
+		"width": 1440,
+		"height": 4000
+	},
+	"sections": [
+		{
+			"tone": "ground",
+			"rhythm": "hero",
+			"signature": "hero-media",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "media",
+					"area": 700000,
+					"fontSize": 15
+				},
+				{
+					"kind": "heading",
+					"area": 40000,
+					"fontSize": 34
+				},
+				{
+					"kind": "text",
+					"area": 80000,
+					"fontSize": 16
+				}
+			],
+			"grid": null,
+			"mediaArea": 700000,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1,
+			"mediaByKind": {
+				"img": 700000,
+				"video": 0,
+				"canvas": 0,
+				"svg": 0
+			},
+			"brokenMedia": 0
+		},
+		{
+			"tone": "ground",
+			"rhythm": "body",
+			"signature": "body",
+			"inFlow": true,
+			"rect": {
+				"x": 0,
+				"y": 0,
+				"w": 1024,
+				"h": 400
+			},
+			"blocks": [
+				{
+					"kind": "heading",
+					"area": 20000,
+					"fontSize": 26
+				},
+				{
+					"kind": "text",
+					"area": 120000,
+					"fontSize": 15
+				}
+			],
+			"grid": null,
+			"mediaArea": 0,
+			"textArea": 0,
+			"contentWidthRatio": 0.9,
+			"emptyAreaRatio": 0.1
+		}
+	],
+	"media": {
+		"totalArea": 900000,
+		"byKind": {
+			"img": 900000
+		}
+	},
+	"metrics": {
+		"contentArea": 5760000,
+		"elementsPerPixel": 0.002
+	},
+	"features": []
+}

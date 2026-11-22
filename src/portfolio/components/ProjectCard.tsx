@@ -11,6 +11,7 @@ import {
 import { isFacetDerivedRole } from '../kind-labels';
 import type { PortfolioProject } from '../schema';
 import { FACET_LABEL } from '../vocabulary';
+import { MediaPlaceholder } from './MediaPlaceholder';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
@@ -166,7 +167,21 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				<div className={css({ minWidth: '0' })}>
 					<PortfolioMediaFigure media={cover} loading="lazy" frameAspectRatio={COVER_FRAME_RATIO} />
 				</div>
-			) : null}
+			) : (
+				/* Issue #1136 — a project with no published cover still
+				   occupies the grid's media slot, painted as the same
+				   labelled frame the exhibition views use. Before, the
+				   card simply had no media block, and because the grid
+				   stretches every row to its tallest card, the copy sat
+				   in the top third of an empty white plane — the L-C
+				   review recorded it as a card-shaped void. The frame
+				   keeps the grid's rhythm and states the fact (this
+				   project has no published image) instead of leaving a
+				   hole. */
+				<div className={css({ minWidth: '0' })}>
+					<MediaPlaceholder ratio={COVER_FRAME_RATIO} />
+				</div>
+			)}
 			<div
 				className={css({
 					display: 'flex',

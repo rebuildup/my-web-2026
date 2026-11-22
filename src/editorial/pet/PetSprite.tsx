@@ -615,6 +615,11 @@ export function PetSprite({ reducedMotion: override }: PetSpriteProps = {}) {
 			className={overlayStyle}
 			style={{ ...positionStyle, transform: `scale(${scale})` }}
 			aria-hidden="true"
+			// Issue #1162 — the overlay's own box is what the
+			// narrow-viewport contract is about (it must rest at the
+			// trailing edge and cover no line start), so it needs a
+			// stable hook the browser test can measure.
+			data-testid="pet-companion"
 		>
 			<div
 				ref={boxRef}

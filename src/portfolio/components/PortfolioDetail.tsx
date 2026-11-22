@@ -252,7 +252,14 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								key={section.id}
 								labelledBy={`portfolio-section-${section.id}`}
 								separator
+								name="prose"
 							>
+								{/* Issue #1149 — the markdown body sections are the
+								    PROSE sections the composition contract's
+								    CL-11 exemption is scoped to. Naming them
+								    makes the exemption exact: the hero, the
+								    links section and the adjacent-works section
+								    are still judged. */}
 								<SectionHeading
 									id={`portfolio-section-${section.id}`}
 									eyebrow={section.eyebrow}
@@ -263,7 +270,13 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 						);
 					})}
 					{project.links.length > 0 ? (
-						<PageSection labelledBy="portfolio-section-links" separator>
+						<PageSection labelledBy="portfolio-section-links" separator tone="sunken">
+							{/* Issue #1166 — the links are SUPPORTING material: a
+							    recessed band says so without a hue. The case-study
+							    body above stays on the ground (it is the page's
+							    reading surface, and the markdown's own headings
+							    already divide it), and the related works below lift
+							    off the page as its last statement. */}
 							<SectionHeading id="portfolio-section-links" eyebrow="07" title="Links" />
 							<Stack as="ul" gap="3" className={listResetClassName}>
 								{project.links.map((link) => (
@@ -310,7 +323,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 						</PageSection>
 					) : null}
 					{showAdjacent ? (
-						<PageSection labelledBy="portfolio-section-adjacent" separator>
+						<PageSection labelledBy="portfolio-section-adjacent" separator tone="raised">
 							<nav aria-labelledby="portfolio-section-adjacent">
 								{/*
 								 * Issue #767 — no eyebrow here. The numbered

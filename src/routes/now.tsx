@@ -2,8 +2,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
-import { CurrentProjects } from '../home/current/CurrentProjects';
+import { CurrentProjects, currentProjectsSummary } from '../home/current/CurrentProjects';
 import { getCurrentProjects } from '../home/public';
+import { css } from '../../styled-system/css';
+import { PageHero } from '../editorial/primitives/PageHero';
 
 /**
  * `/now` — the full enumeration surface for the "現在地 / Where I am
@@ -50,16 +52,46 @@ export const Route = createFileRoute('/now')({
 	component: NowRoute,
 });
 
+const summaryClassName = css({
+	fontFamily: 'mono',
+	fontSize: 'sm',
+	fontVariantNumeric: 'tabular-nums',
+	color: 'text.muted',
+	margin: '0',
+});
+
 function NowRoute() {
 	const { projects, today } = Route.useLoaderData();
+	const summary = currentProjectsSummary(projects, today);
 	return (
 		<>
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<main>
-				<CurrentProjects projects={projects} today={today} />
-			</main>
+			{/* Issue #1185 — `/now` is an ENTRY surface and it had no `<h1>`:
+			    the page's only heading was the current-projects section's
+			    `<h2>`. The hero carries the page's title, and the entry's
+			    right column carries the same scale sentence the section
+			    used to print under its heading. */}
+			<PageHero
+				labelledBy="now-hero-title"
+				eyebrow="/now"
+				title="現在地"
+				titleEn="Where I am now"
+				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+				asideLabel="Scale"
+				aside={
+					summary ? (
+						<p data-testid="home-current-projects-summary" className={summaryClassName}>
+							{summary}
+						</p>
+					) : undefined
+				}
+			>
+				<main>
+					<CurrentProjects projects={projects} today={today} variant="page" />
+				</main>
+			</PageHero>
 		</>
 	);
 }

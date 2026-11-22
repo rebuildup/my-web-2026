@@ -110,3 +110,39 @@ describe('GET /card', () => {
 		expect(res.status).toBe(405);
 	});
 });
+
+describe('GET /status', () => {
+	it('answers 200 SVG with the shared-cache opt-in and no raster media', async () => {
+		const res = await githubProfileRouter.request('/status', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('image/svg+xml');
+		expect(res.headers.get('cache-control')).toBe('public, max-age=300, s-maxage=300');
+		const body = await res.text();
+		expect(body).toContain('<svg');
+		expect(body).toContain('GITHUB ACTIVITY');
+		expect(body).toContain('DISCORD');
+		expect(body).not.toContain('data:image');
+		expect(body).not.toContain('<image');
+	});
+
+	it('renders live snapshot data when D1 rows exist', async () => {
+		const res = await githubProfileRouter.request('/status', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_activity_snapshot: ACTIVITY, discord_presence_snapshot: PRESENCE }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('1 public · 0 private projects active');
+		expect(body).toContain('Online');
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/status', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
+	});
+});

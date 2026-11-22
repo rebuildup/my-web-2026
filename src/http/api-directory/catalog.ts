@@ -211,7 +211,22 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 			cacheControl: 'public, max-age=300, s-maxage=300',
 		},
 		purpose:
-			'Single-image GitHub profile card for the rebuildup/rebuildup README (Issue #1170): portfolio covers + GitHub activity / Discord presence snapshots with observation times. Anonymous access. Returns SVG.',
+			'DEPRECATED (ADR-0025): single-image GitHub profile card for the rebuildup/rebuildup README (Issue #1170). Superseded by /api/v1/github-profile/status + static work images; kept serving unchanged until removal. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/status',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the status strip always answers 200 — missing / stale / invalid data renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Dynamic status strip for the rebuildup/rebuildup profile README "Now" section (Issue #1196): GitHub activity + Discord presence snapshots with observation times, no raster media. Anonymous access. Returns SVG.',
 	},
 ];
 

@@ -5,19 +5,25 @@ import { methodNotAllowed } from '../validation';
 import { renderProfileCardSvg } from './card';
 import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
+import { renderProfileStatusSvg } from './status';
 
 /**
- * GitHub profile card router — `/api/v1/github-profile/*`
- * (Issue #1170, ADR-0024).
+ * GitHub profile router — `/api/v1/github-profile/*`
+ * (Issue #1170 / #1196, ADR-0024 / ADR-0025).
  *
  * Routes:
- *   GET /api/v1/github-profile/card  the single-image "business card"
- *                                    the `rebuildup/rebuildup` profile
- *                                    README embeds. SVG, dark fixed
- *                                    surface, real portfolio covers +
- *                                    GitHub activity / Discord
- *                                    presence snapshots with their
- *                                    observation times drawn inside.
+ *   GET /api/v1/github-profile/card   the single-image "business card"
+ *                                     (Issue #1170, ADR-0024).
+ *                                     DEPRECATED by ADR-0025: the
+ *                                     profile README no longer embeds
+ *                                     it; kept serving unchanged until
+ *                                     the deprecation window closes.
+ *   GET /api/v1/github-profile/status the dynamic status strip the
+ *                                     redesigned README's "Now"
+ *                                     section embeds (Issue #1196,
+ *                                     ADR-0025): GitHub activity +
+ *                                     Discord presence, no raster
+ *                                     media, a few KB.
  *
  * Data sources (all already-public projections):
  *   - D1 `github_activity_snapshot` / `discord_presence_snapshot`
@@ -44,6 +50,9 @@ import { composeProfileCardModel } from './model';
 export const githubProfileRouter = new Hono<{ Bindings: Env }>();
 
 const CARD_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
+// The status strip is the README's only dynamic image: same freshness
+// window, smaller payload, same honest-state contract (ADR-0025 §2.3).
+const STATUS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 
 interface ProfileSnapshotEnv {
 	DB?: D1Database;
@@ -76,12 +85,22 @@ async function readPresencePayload(db: D1Database | undefined): Promise<unknown>
 	}
 }
 
-githubProfileRouter.get('/card', rateLimitRead, async (c) => {
-	const env = c.env as unknown as ProfileSnapshotEnv;
+interface ProfileSnapshotRow {
+	activityPayload: unknown;
+	presencePayload: unknown;
+}
+
+async function readProfileSnapshots(env: ProfileSnapshotEnv): Promise<ProfileSnapshotRow> {
 	const [activityPayload, presencePayload] = await Promise.all([
 		readActivityPayload(env.DB),
 		readPresencePayload(env.DB),
 	]);
+	return { activityPayload, presencePayload };
+}
+
+githubProfileRouter.get('/card', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
 	const model = composeProfileCardModel({
 		activityPayload,
 		presencePayload,
@@ -94,7 +113,31 @@ githubProfileRouter.get('/card', rateLimitRead, async (c) => {
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': CARD_CACHE_CONTROL,
+		// RFC 8594 deprecation signal (ADR-0025 §2.4): the README no
+		// longer references this endpoint; it stays up unchanged until
+		// the removal release.
+		Deprecation: 'true',
+	});
+});
+
+githubProfileRouter.get('/status', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
+	const model = composeProfileCardModel({
+		activityPayload,
+		presencePayload,
+		expectedPresenceUserId: env.DISCORD_PRESENCE_USER_ID,
+		now: Date.now(),
+		// Works are not part of the status strip; skip the portfolio
+		// projection entirely.
+		projects: [],
+	});
+	const svg = renderProfileStatusSvg(model);
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': STATUS_CACHE_CONTROL,
 	});
 });
 
 githubProfileRouter.all('/card', methodNotAllowed(['GET']));
+githubProfileRouter.all('/status', methodNotAllowed(['GET']));

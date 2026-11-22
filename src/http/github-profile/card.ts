@@ -25,7 +25,7 @@ import type { ProfileCardModel, ProfileCardWork } from './model';
 export const CARD_WIDTH = 1280;
 export const CARD_HEIGHT = 720;
 
-const COLORS = {
+export const COLORS = {
 	bg: '#0B0F14',
 	panel: '#12181F',
 	panelStroke: '#2A3340',
@@ -38,7 +38,7 @@ const COLORS = {
 	offline: '#6E7681',
 } as const;
 
-function escapeXml(value: string): string {
+export function escapeXml(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
@@ -48,7 +48,7 @@ function escapeXml(value: string): string {
 }
 
 /** Rough advance-width estimate: CJK/full-width ≈ 1em, latin ≈ 0.56em. */
-function textWidth(text: string, fontSize: number): number {
+export function textWidth(text: string, fontSize: number): number {
 	let width = 0;
 	for (const ch of text) {
 		const code = ch.codePointAt(0) ?? 0;
@@ -68,7 +68,7 @@ function textWidth(text: string, fontSize: number): number {
  * Greedy word wrap to `maxLines`; the last line ellipsizes. SVG has no
  * auto-wrap, so the composer owns it.
  */
-function wrapText(text: string, maxWidth: number, fontSize: number, maxLines = 1): string[] {
+export function wrapText(text: string, maxWidth: number, fontSize: number, maxLines = 1): string[] {
 	const words = text.split(/\s+/).filter(Boolean);
 	const all: string[] = [];
 	let current = '';
@@ -95,7 +95,7 @@ function wrapText(text: string, maxWidth: number, fontSize: number, maxLines = 1
 	return kept;
 }
 
-function truncate(text: string, maxWidth: number, fontSize: number): string {
+export function truncate(text: string, maxWidth: number, fontSize: number): string {
 	if (textWidth(text, fontSize) <= maxWidth) return text;
 	let out = text;
 	while (out.length > 1 && textWidth(`${out}…`, fontSize) > maxWidth) {
@@ -105,7 +105,7 @@ function truncate(text: string, maxWidth: number, fontSize: number): string {
 }
 
 /** `2026-11-22T06:11:00.000Z` → `Nov 22, 2026, 6:11 AM UTC`. */
-function formatObserved(iso: string | undefined): string {
+export function formatObserved(iso: string | undefined): string {
 	if (!iso) return 'unknown time';
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return 'unknown time';
@@ -120,7 +120,7 @@ function formatObserved(iso: string | undefined): string {
 	}).format(date);
 }
 
-function formatDay(iso: string | undefined): string {
+export function formatDay(iso: string | undefined): string {
 	if (!iso) return 'unknown date';
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return 'unknown date';
@@ -132,7 +132,7 @@ function formatDay(iso: string | undefined): string {
 	}).format(date);
 }
 
-const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+export const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 // ---- layout constants (single source for every panel) ----
 const PAD = 48;
@@ -188,7 +188,13 @@ function renderWorkTile(
 	<text x="${x}" y="${summaryY}" font-family="${FONT}" font-size="${TILE_SUMMARY_SIZE}" fill="${COLORS.muted}">${escapeXml(summary)}</text>`;
 }
 
-function panelChrome(x: number, y: number, width: number, label: string, dotColor: string): string {
+export function panelChrome(
+	x: number,
+	y: number,
+	width: number,
+	label: string,
+	dotColor: string,
+): string {
 	const innerX = x + PANEL_PAD;
 	return `
 	<rect x="${x}" y="${y}" width="${width}" height="${PANEL_HEIGHT}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
@@ -196,11 +202,16 @@ function panelChrome(x: number, y: number, width: number, label: string, dotColo
 	<text x="${innerX + 16}" y="${y + PANEL_LABEL_Y}" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">${escapeXml(label)}</text>`;
 }
 
-function panelFooter(x: number, y: number, width: number, text: string): string {
+export function panelFooter(x: number, y: number, width: number, text: string): string {
 	return `<text x="${x + width - PANEL_PAD}" y="${y + PANEL_HEIGHT - 14}" text-anchor="end" font-family="${FONT}" font-size="${PANEL_FOOTER_SIZE}" fill="${COLORS.faint}">${escapeXml(text)}</text>`;
 }
 
-function renderGitHubPanel(model: ProfileCardModel, x: number, y: number, width: number): string {
+export function renderGitHubPanel(
+	model: ProfileCardModel,
+	x: number,
+	y: number,
+	width: number,
+): string {
 	const github = model.github;
 	const innerX = x + PANEL_PAD;
 	const innerWidth = width - PANEL_PAD * 2;
@@ -229,7 +240,12 @@ function renderGitHubPanel(model: ProfileCardModel, x: number, y: number, width:
 	${panelFooter(x, y, width, observed)}`;
 }
 
-function renderDiscordPanel(model: ProfileCardModel, x: number, y: number, width: number): string {
+export function renderDiscordPanel(
+	model: ProfileCardModel,
+	x: number,
+	y: number,
+	width: number,
+): string {
 	const discord = model.discord;
 	const innerX = x + PANEL_PAD;
 	const innerWidth = width - PANEL_PAD * 2;

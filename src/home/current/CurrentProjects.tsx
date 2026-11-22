@@ -613,6 +613,15 @@ export function CurrentProjects({
 				</p>
 			) : null}
 			{renderEnumeration('h3')}
+			{seeAllHref && published.length > visible.length ? (
+				<a
+					href={seeAllHref}
+					className={cx(linkClassName, seeAllLinkClassName)}
+					data-testid="home-current-projects-see-all"
+				>
+					すべて見る ({published.length} 件)
+				</a>
+			) : null}
 		</PageSection>
 	);
 }

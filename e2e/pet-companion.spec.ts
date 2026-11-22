@@ -23,6 +23,22 @@ const SPRITE = '[data-testid="pet-companion"]';
 test.describe('companion overlay — narrow viewport (Issue #1162)', () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
+	// Issue #1190 — the analytics-consent banner is ~341 px tall at this
+	// width, and the companion's contract is to rest ABOVE it (the
+	// sprite's bottom lands ~354 px from the viewport edge, not ~72 px).
+	// The position assertions below are about the sprite's own resting
+	// inset, so the banner is denied here and collapses to its pill.
+	test.beforeEach(async ({ page }) => {
+		await page.addInitScript(() => {
+			try {
+				localStorage.setItem('my-web-2026:analytics-consent', 'denied');
+			} catch {
+				// storage may be unavailable; the banner then stays and the
+				// position assertions still describe the banner-free case
+			}
+		});
+	});
+
 	test('mounts without any summon control', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.locator(SPRITE)).toBeVisible();

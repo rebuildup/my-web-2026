@@ -89,6 +89,15 @@ export interface CurrentProjectsProps {
 	 */
 	limit?: number;
 	seeAllHref?: string;
+	/**
+	 * Issue #1163 — `section` (the default) is the HOME's body
+	 * section: the heading sits above the list on the full measure.
+	 * `page` is the `/now` ENTRY: the heading takes the left 7 tracks
+	 * and the summary facts move to the right column, so the entry's
+	 * right half carries the page's own scale instead of empty space.
+	 * The data is the same in both — only its placement differs.
+	 */
+	variant?: 'section' | 'page';
 }
 
 // Every style in this module is built at module scope, and every `css()` call
@@ -458,7 +467,13 @@ function ProjectFacts({ rows }: { readonly rows: readonly MetaRow[] }) {
 	);
 }
 
-export function CurrentProjects({ projects = [], today, limit, seeAllHref }: CurrentProjectsProps) {
+export function CurrentProjects({
+	projects = [],
+	today,
+	limit,
+	seeAllHref,
+	variant = 'section',
+}: CurrentProjectsProps) {
 	const published = selectPublishedProjects(projects, today);
 	const visible = limit === undefined ? published : published.slice(0, limit);
 	const groups = groupByWeight(visible);
@@ -487,27 +502,58 @@ export function CurrentProjects({ projects = [], today, limit, seeAllHref }: Cur
 			id="current"
 			name="now"
 		>
-			{/* v12/v13 review — `default`, not `spread`: the spread variant
-			    parks the whole project list in the 8/12 column beside a
-			    heading cluster that ends after three lines, which read as
-			    a dead zone on desktop. The list needs the full measure
-			    for its label/value rows, same as the Explore grid above. */}
-			<SectionHeading
-				id="current-projects-heading"
-				eyebrow="01 — Now"
-				title="現在地"
-				titleEn="Where I am now"
-				description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
-			/>
+			{/* v12/v13 review — the HOME's section keeps the heading on
+			    the full measure: the spread variant parks the whole
+			    project list in the 8/12 column beside a heading cluster
+			    that ends after three lines, which read as a dead zone on
+			    desktop. The list needs the full measure for its records.
+
+			    Issue #1163 — the `/now` ENTRY is the other case: there the
+			    heading is the page's title and the right half of the
+			    entry carried nothing. The summary facts move into that
+			    column, so the entry states the page's scale beside its
+			    title. Same data, different placement. */}
+			{variant === 'page' ? (
+				<Grid template="12" gap="6">
+					<GridItem span={{ base: 12, md: 12, lg: 7 }}>
+						<SectionHeading
+							id="current-projects-heading"
+							eyebrow="01 — Now"
+							title="現在地"
+							titleEn="Where I am now"
+							description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+						/>
+					</GridItem>
+					<GridItem
+						span={{ base: 12, md: 12, lg: 4 }}
+						start={{ base: 1, lg: 9 }}
+						className={css({ alignSelf: 'end' })}
+					>
+						<p data-testid="home-current-projects-summary" className={summaryClassName}>
+							{summary}
+						</p>
+					</GridItem>
+				</Grid>
+			) : (
+				<SectionHeading
+					id="current-projects-heading"
+					eyebrow="01 — Now"
+					title="現在地"
+					titleEn="Where I am now"
+					description="続けているプロジェクトと、始めた日・最後に動いた日・そこに入れている量です。計測した値には出所（手書き / git）を添えています。"
+				/>
+			)}
 			{published.length === 0 ? (
 				<p lang="ja" data-testid="home-current-projects-empty" className={emptyClassName}>
 					現在、公開している進行中のプロジェクトはありません。
 				</p>
 			) : (
 				<>
-					<p data-testid="home-current-projects-summary" className={summaryClassName}>
-						{summary}
-					</p>
+					{variant === 'section' ? (
+						<p data-testid="home-current-projects-summary" className={summaryClassName}>
+							{summary}
+						</p>
+					) : null}
 					{groups ? (
 						<Stack
 							as="ul"

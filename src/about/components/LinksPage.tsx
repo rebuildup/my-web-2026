@@ -1,6 +1,7 @@
 import { css } from '../../../styled-system/css';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Split } from '../../editorial/primitives/Grid';
+import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { SkipLink } from '../../editorial/primitives/SkipLink';
@@ -34,24 +35,89 @@ export interface LinksPageProps {
 	readonly groups: readonly AboutLinkGroup[];
 }
 
+/**
+ * The directory's own group index with link counts.
+ *
+ * Issue #1163 — the entry's right column. The groups are the page's
+ * own division, so the index says how the shelf is arranged.
+ */
+function LinksIndex({ groups }: { readonly groups: readonly AboutLinkGroup[] }) {
+	return (
+		<nav aria-label="Groups">
+			<ol className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
+				{groups.map((group, index) => (
+					<li
+						key={group.id}
+						className={css({
+							display: 'flex',
+							alignItems: 'baseline',
+							justifyContent: 'space-between',
+							gap: '3',
+							paddingBlock: '2',
+							borderBottomWidth: '1px',
+							borderBottomStyle: 'solid',
+							borderBottomColor: 'border.subtle',
+						})}
+					>
+						<span
+							className={css({ display: 'flex', alignItems: 'baseline', gap: '3', minWidth: '0' })}
+						>
+							<span
+								className={css({
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									fontVariantNumeric: 'tabular-nums',
+									color: 'text.muted',
+								})}
+							>
+								{String(index + 1).padStart(2, '0')}
+							</span>
+							<a
+								href={`#links-group-${group.id}`}
+								className={css({
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.default',
+									textDecoration: 'none',
+									_hover: { textDecoration: 'underline' },
+								})}
+							>
+								{group.label}
+							</a>
+						</span>
+						<span
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								fontVariantNumeric: 'tabular-nums',
+								color: 'text.muted',
+							})}
+						>
+							{`${group.links.length} 件`}
+						</span>
+					</li>
+				))}
+			</ol>
+		</nav>
+	);
+}
+
 export function LinksPage({ groups }: LinksPageProps) {
 	const visibleGroups = groups.filter((group) => group.links.length > 0);
 	return (
 		<>
 			<SkipLink />
-			<PageSection rhythm="hero" labelledBy="links-hero-title">
-				<span className={css(noteMonoSm)}>my-web-2026 · /links</span>
-				<h1 id="links-hero-title" lang="ja" className={css(pageTitle)}>
-					リンク集 / Links
-				</h1>
-				<p lang="ja" className={css(ledeSansLg)}>
-					公開している外部アカウントとサイト内ページの一覧です。連絡先は
-					<a href="/contact" className={inlineLinkStyle}>
-						/contact
-					</a>
-					に掲載している verified channel を参照してください。
-				</p>
-			</PageSection>
+			{/* Issue #1163 — the right column carries the directory's own
+			    groups with their counts, so the reader knows how the list
+			    is divided before scrolling it. */}
+			<PageHero
+				labelledBy="links-hero-title"
+				eyebrow="my-web-2026 · /links"
+				title="リンク集 / Links"
+				description="公開している外部アカウントとサイト内ページの一覧です。連絡先は /contact に掲載している verified channel を参照してください。"
+				asideLabel="Groups"
+				aside={<LinksIndex groups={visibleGroups} />}
+			/>
 			<main id="main">
 				{visibleGroups.length === 0 ? (
 					<LinksEmptyState />

@@ -5,43 +5,70 @@
  * Provides SVG cards for: stats, top-langs, streak, pin.
  *
  * Routes:
- *   GET /api/github-readme-stats/api?username=...
- *   GET /api/github-readme-stats/api/top-langs/?username=...
- *   GET /api/github-readme-stats/api/streak?username=...
- *   GET /api/github-readme-stats/api/pin/?username=...&repo=...
+ *   GET /api/github-readme-stats/api
+ *   GET /api/github-readme-stats/api/top-langs/
+ *   GET /api/github-readme-stats/api/streak
+ *   GET /api/github-readme-stats/api/pin/?repo=...
+ *
+ * Issue #1164: the service is personal-fixed. `username` is always
+ * `rebuildup`, visual/layout/locale parameters are ignored, and the
+ * only accepted input is `repo` on the pin card. Rendered SVGs are
+ * kept in the persistent `svg-store` (Cache API) and served
+ * stale-while-revalidate: a stored card is returned immediately and a
+ * background refresh replaces it, so an upstream GitHub API outage can
+ * no longer surface as a broken image once a card has rendered once.
  *
  * Upstream: https://github.com/Pranesh-2005/github-readme-stats-fast
  * Commit: 8e2c76e59a9e2407f2c80f4e23704a04e8db21ad
  * License: MIT
  */
 
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { renderRepoCard } from '../../vendor/github-readme-stats-fast/cards/repo.ts';
 import { renderStatsCard } from '../../vendor/github-readme-stats-fast/cards/stats.ts';
 import { renderStreakCard } from '../../vendor/github-readme-stats-fast/cards/streak-card.ts';
 import { renderTopLanguages } from '../../vendor/github-readme-stats-fast/cards/top-languages.ts';
-import { blacklist } from '../../vendor/github-readme-stats-fast/common/blacklist.ts';
 import { microCache } from '../../vendor/github-readme-stats-fast/common/microCache.ts';
-import { normalizeParams } from '../../vendor/github-readme-stats-fast/common/normalizeparam.ts';
 import { svgCacheGetOrSet } from '../../vendor/github-readme-stats-fast/common/svgCache.ts';
 import {
 	CONSTANTS,
 	CustomError,
 	MissingParamError,
-	getGithubToken,
-	parseArray,
-	parseBoolean,
 	renderError,
 } from '../../vendor/github-readme-stats-fast/common/utils.ts';
 import { fetchRepo } from '../../vendor/github-readme-stats-fast/fetchers/repo.ts';
 import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats.ts';
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
 import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
-import { isLocaleAvailable } from '../../vendor/github-readme-stats-fast/translations.ts';
 import { rateLimitRead } from '../middleware/rate-limit';
+import { svgStoreMatch, svgStorePut } from './svg-store.ts';
+
+/** The only GitHub login this service renders cards for (Issue #1164). */
+const OWNER_LOGIN = 'rebuildup';
+
+/** GitHub repo names are `[A-Za-z0-9._-]`; bounded so a hostile `repo`
+ * value cannot become an arbitrary upstream path segment. */
+const REPO_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+
+type HonoContext = Context<{ Bindings: Env }>;
 
 // Module scope so token rotation survives across requests on a warm instance
 let tokenIndex = 0;
+
+function getNextToken(env: Record<string, string | undefined>): string | undefined {
+	const tokens = Object.keys(env)
+		.filter((key) => key.startsWith('GITHUB_README_STATS_PAT_'))
+		.map((key) => env[key])
+		.filter(Boolean) as string[];
+
+	if (tokens.length === 0) {
+		return env.GITHUB_TOKEN;
+	}
+
+	const token = tokens[tokenIndex % tokens.length];
+	tokenIndex++;
+	return token;
+}
 
 /**
  * The vendored fetchers only read string env vars (`GITHUB_README_STATS_PAT_*`,
@@ -56,15 +83,9 @@ function stringEnv(env: Env): Record<string, string | undefined> {
 	return out;
 }
 
-/** Optional integer query param: absent or unparseable stays `undefined`. */
-function optInt(value: string | undefined): number | undefined {
-	const parsed = Number.parseInt(value ?? '', 10);
-	return Number.isNaN(parsed) ? undefined : parsed;
-}
-
 /**
  * CustomError types that describe a *per-request* condition (the requested
- * user/repo does not exist) rather than service degradation. Every other
+ * repo does not exist) rather than service degradation. Every other
  * CustomError — missing token, upstream API/GraphQL failure, rate-limit
  * retry exhaustion, or a dynamically-typed upstream error — means the
  * service is degraded and must surface as HTTP 503 so it is never
@@ -124,19 +145,96 @@ function degradedResponse(
 	);
 }
 
-function getNextToken(env: Record<string, string | undefined>): string | undefined {
-	const tokens = Object.keys(env)
-		.filter((key) => key.startsWith('GITHUB_README_STATS_PAT_'))
-		.map((key) => env[key])
-		.filter(Boolean) as string[];
+/** One background refresh per card key per isolate. */
+const refreshesInFlight = new Set<string>();
 
-	if (tokens.length === 0) {
-		return env.GITHUB_TOKEN;
+/**
+ * Stale-while-revalidate over the persistent SVG store (Issue #1164).
+ *
+ * - Stored card present: return it immediately. When it is older than
+ *   `freshSeconds`, kick off one background refresh via
+ *   `executionCtx.waitUntil` (or await it when no ExecutionContext is
+ *   available, e.g. unit tests) so the next request sees fresh bytes.
+ * - No stored card: render live, persist, return. A render failure with
+ *   no stored card falls through to the error mapping — there is
+ *   nothing older to serve.
+ *
+ * `Cache-Control` carries `public` + a positive lifetime, which is the
+ * explicit shared-cache opt-in `sharedCacheIsolation` honours (same
+ * contract as `GET /api/v1/reaction-images/:id`), so camo and CDNs may
+ * hold the card instead of re-fetching on every profile view.
+ */
+async function serveCard(
+	c: HonoContext,
+	options: {
+		storeName: string;
+		freshSeconds: number;
+		render: () => string | Promise<string>;
+		themeParams: CardThemeParams;
+	},
+): Promise<Response> {
+	const { storeName, freshSeconds, render, themeParams } = options;
+	c.header('Content-Type', 'image/svg+xml');
+
+	const cacheControl = `public, max-age=${freshSeconds}, s-maxage=${freshSeconds}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`;
+	const cached = await svgStoreMatch(storeName);
+
+	if (cached) {
+		if (
+			Date.now() - cached.renderedAt >= freshSeconds * 1000 &&
+			!refreshesInFlight.has(storeName)
+		) {
+			refreshesInFlight.add(storeName);
+			const refresh = (async () => {
+				try {
+					const svg = await render();
+					await svgStorePut(storeName, svg);
+				} catch {
+					// Keep serving the stale card; the next request retries.
+				} finally {
+					refreshesInFlight.delete(storeName);
+				}
+			})();
+			// Hono throws when the context carries no ExecutionContext
+			// (unit tests call `router.fetch(req, env)` without one).
+			let ctx: { waitUntil?: (p: Promise<unknown>) => void } | undefined;
+			try {
+				ctx = c.executionCtx as typeof ctx;
+			} catch {
+				ctx = undefined;
+			}
+			if (ctx && typeof ctx.waitUntil === 'function') {
+				ctx.waitUntil(refresh);
+			} else {
+				await refresh;
+			}
+		}
+		c.header('Cache-Control', cacheControl);
+		return c.body(cached.svg);
 	}
 
-	const token = tokens[tokenIndex % tokens.length];
-	tokenIndex++;
-	return token;
+	try {
+		const svg = await render();
+		await svgStorePut(storeName, svg);
+		c.header('Cache-Control', cacheControl);
+		return c.body(svg);
+	} catch (err) {
+		if (isServiceUnavailable(err)) {
+			return degradedResponse(c, themeParams);
+		}
+		c.header(
+			'Cache-Control',
+			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
+		);
+		const error = err as Error;
+		return c.body(
+			renderError(
+				publicErrorMessage(err),
+				(error as { secondaryMessage?: string }).secondaryMessage,
+				themeParams,
+			),
+		);
+	}
 }
 
 export const githubReadmeStatsRouter = new Hono<{
@@ -145,502 +243,88 @@ export const githubReadmeStatsRouter = new Hono<{
 
 // Stats card: /api/github-readme-stats/api
 githubReadmeStatsRouter.get('/api', rateLimitRead, async (c) => {
-	const {
-		username,
-		hide,
-		hide_title,
-		hide_border,
-		card_width,
-		hide_rank,
-		show_icons,
-		include_all_commits,
-		line_height,
-		title_color,
-		ring_color,
-		icon_color,
-		text_color,
-		text_bold,
-		bg_color,
-		theme,
-		exclude_repo,
-		custom_title,
-		locale,
-		disable_animations,
-		border_radius,
-		number_format,
-		border_color,
-		rank_icon,
-		show,
-	} = c.req.query();
-
-	c.header('Content-Type', 'image/svg+xml');
-
-	if (blacklist.includes(username ?? '')) {
-		return c.body(
-			renderError('Something went wrong', 'This username is blacklisted', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
-	}
-
-	if (locale && !isLocaleAvailable(locale)) {
-		return c.body(
-			renderError('Something went wrong', 'Language not found', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
-	}
-
-	try {
-		const env = stringEnv(c.env);
-		if (!getGithubToken(env)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		const showStats = parseArray(show);
-		// Data key must cover every arg fetchStats receives, incl. `show`
-		const dataKey = `stats:${username}:${include_all_commits}:${exclude_repo}:${showStats.join(',')}`;
-		const stats = await microCache(dataKey, () =>
-			fetchStats(
-				username ?? '',
-				parseBoolean(include_all_commits),
-				parseArray(exclude_repo),
-				showStats.includes('prs_merged') || showStats.includes('prs_merged_percentage'),
-				showStats.includes('discussions_started'),
-				showStats.includes('discussions_answered'),
-				env,
-			),
-		);
-
-		// Caller-supplied `cache_seconds` is deliberately ignored (the
-		// streak route documents the same rule): any embed could otherwise
-		// pin a stale card in CDN caches for days. `CACHE_SECONDS` remains
-		// the operator-side override.
-		const cacheSeconds = env.CACHE_SECONDS
-			? Number.parseInt(env.CACHE_SECONDS, 10) || CONSTANTS.CARD_CACHE_SECONDS
-			: CONSTANTS.CARD_CACHE_SECONDS;
-
-		c.header(
-			'Cache-Control',
-			`max-age=${cacheSeconds}, s-maxage=${cacheSeconds}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
-		);
-
-		// Normalize all visual params (Layer 4)
-		const normalizedParams = normalizeParams({
-			hide,
-			hide_title,
-			hide_border,
-			card_width,
-			hide_rank,
-			show_icons,
-			include_all_commits,
-			line_height,
-			title_color,
-			ring_color,
-			icon_color,
-			text_color,
-			text_bold,
-			bg_color,
-			theme,
-			custom_title,
-			locale,
-			disable_animations,
-			border_radius,
-			number_format,
-			border_color,
-			rank_icon,
-			show,
-		});
-
-		// Stable SVG cache key (Layer 3)
-		const svgKey = `stats-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-
-		const svg = await svgCacheGetOrSet(svgKey, async () =>
-			renderStatsCard(stats, {
-				hide: parseArray(hide),
-				show_icons: parseBoolean(show_icons),
-				hide_title: parseBoolean(hide_title),
-				hide_border: parseBoolean(hide_border),
-				card_width: optInt(card_width),
-				hide_rank: parseBoolean(hide_rank),
-				include_all_commits: parseBoolean(include_all_commits),
-				line_height: optInt(line_height),
-				title_color,
-				ring_color,
-				icon_color,
-				text_color,
-				text_bold: parseBoolean(text_bold),
-				bg_color,
-				theme,
-				custom_title,
-				border_radius: optInt(border_radius),
-				border_color,
-				number_format,
-				locale: locale ? locale.toLowerCase() : null,
-				disable_animations: parseBoolean(disable_animations),
-				rank_icon,
-				show: parseArray(show),
-			}),
-		);
-		return c.body(svg);
-	} catch (err) {
-		if (isServiceUnavailable(err)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		c.header(
-			'Cache-Control',
-			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
-		);
-		const error = err as Error;
-		return c.body(
-			renderError(
-				publicErrorMessage(err),
-				(error as { secondaryMessage?: string }).secondaryMessage,
-				{
-					title_color,
-					text_color,
-					bg_color,
-					border_color,
-					theme,
-				},
-			),
-		);
-	}
+	// Issue #1164: personal-fixed — query params are ignored entirely.
+	return serveCard(c, {
+		storeName: 'card:stats',
+		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
+		themeParams: {},
+		render: async () => {
+			const env = stringEnv(c.env);
+			// Data fetch goes through microCache + svgCache so concurrent
+			// requests share one upstream call and one render per isolate.
+			const stats = await microCache(`stats:${OWNER_LOGIN}`, () =>
+				fetchStats(OWNER_LOGIN, false, [], false, false, false, env),
+			);
+			return svgCacheGetOrSet(`stats-svg:${OWNER_LOGIN}`, async () => renderStatsCard(stats));
+		},
+	});
 });
 
 // Top languages card: /api/github-readme-stats/api/top-langs/
 githubReadmeStatsRouter.get('/api/top-langs/', rateLimitRead, async (c) => {
-	const {
-		username,
-		hide,
-		hide_title,
-		hide_border,
-		card_width,
-		title_color,
-		text_color,
-		bg_color,
-		theme,
-		layout,
-		langs_count,
-		exclude_repo,
-		size_weight,
-		count_weight,
-		custom_title,
-		locale,
-		border_radius,
-		border_color,
-		disable_animations,
-		hide_progress,
-	} = c.req.query();
-
-	c.header('Content-Type', 'image/svg+xml');
-
-	if (blacklist.includes(username ?? '')) {
-		return c.body(
-			renderError('Something went wrong', 'This username is blacklisted', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
-	}
-
-	if (locale && !isLocaleAvailable(locale)) {
-		return c.body(renderError('Something went wrong', 'Locale not found'));
-	}
-
-	if (
-		layout !== undefined &&
-		(typeof layout !== 'string' ||
-			!['compact', 'normal', 'donut', 'donut-vertical', 'pie'].includes(layout))
-	) {
-		return c.body(renderError('Something went wrong', 'Incorrect layout input'));
-	}
-
-	try {
-		const env = stringEnv(c.env);
-		if (!getGithubToken(env)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		// Data key must cover every arg fetchTopLanguages receives
-		const dataKey = `toplangs:${username}:${exclude_repo}:${size_weight}:${count_weight}`;
-		const topLangs = await microCache(dataKey, () =>
-			fetchTopLanguages(
-				username ?? '',
-				parseArray(exclude_repo),
-				Number.parseInt(size_weight ?? '', 10) || 1,
-				Number.parseInt(count_weight ?? '', 10) || 0,
-				env,
-			),
-		);
-
-		c.header(
-			'Cache-Control',
-			`max-age=${86400}, s-maxage=${86400}, stale-while-revalidate=${86400}`,
-		);
-
-		// Normalize visual params (prevents cache explosion)
-		const normalizedParams = normalizeParams({
-			hide,
-			hide_title,
-			hide_border,
-			card_width,
-			title_color,
-			text_color,
-			bg_color,
-			theme,
-			layout,
-			langs_count,
-			custom_title,
-			locale,
-			border_radius,
-			border_color,
-			disable_animations,
-			hide_progress,
-		});
-		const svgKey = `toplangs-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, async () =>
-			renderTopLanguages(topLangs, {
-				custom_title,
-				hide_title: parseBoolean(hide_title),
-				hide_border: parseBoolean(hide_border),
-				card_width: optInt(card_width),
-				hide: parseArray(hide),
-				title_color,
-				text_color,
-				bg_color,
-				theme,
-				layout,
-				langs_count: optInt(langs_count),
-				border_radius: optInt(border_radius),
-				border_color,
-				locale: locale ? locale.toLowerCase() : null,
-				disable_animations: parseBoolean(disable_animations),
-				hide_progress: parseBoolean(hide_progress),
-			}),
-		);
-
-		return c.body(svg);
-	} catch (err) {
-		if (isServiceUnavailable(err)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		c.header(
-			'Cache-Control',
-			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS * 60}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
-		);
-		const error = err as Error;
-		return c.body(
-			renderError(
-				publicErrorMessage(err),
-				(error as { secondaryMessage?: string }).secondaryMessage,
-				{
-					title_color,
-					text_color,
-					bg_color,
-					border_color,
-					theme,
-				},
-			),
-		);
-	}
+	// Issue #1164: personal-fixed — the card is always the compact
+	// layout the profile README embeds.
+	return serveCard(c, {
+		storeName: 'card:top-langs',
+		freshSeconds: CONSTANTS.CARD_CACHE_SECONDS,
+		themeParams: {},
+		render: async () => {
+			const env = stringEnv(c.env);
+			const topLangs = await microCache(`toplangs:${OWNER_LOGIN}`, () =>
+				fetchTopLanguages(OWNER_LOGIN, [], 1, 0, env),
+			);
+			return svgCacheGetOrSet(`toplangs-svg:${OWNER_LOGIN}`, async () =>
+				renderTopLanguages(topLangs, { layout: 'compact' }),
+			);
+		},
+	});
 });
 
 // Streak card: /api/github-readme-stats/api/streak
 githubReadmeStatsRouter.get('/api/streak', rateLimitRead, async (c) => {
-	const { username, theme, hide_border, title_color, text_color, bg_color, border_color } =
-		c.req.query();
-
-	c.header('Content-Type', 'image/svg+xml');
-
-	if (!username) {
-		return c.body(
-			renderError('Something went wrong', 'Missing `username` parameter', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
-	}
-
-	try {
-		const env = stringEnv(c.env);
-		const token = getNextToken(env);
-		if (!token) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-
-		const dataKey = `streak:${username}`;
-		const streak = await microCache(dataKey, () => fetchStreak(username, token, env));
-
-		// Streaks are pinned to a fixed 1 hour CDN cache; `cache_seconds` is
-		// deliberately not honoured here.
-		c.header('Cache-Control', `max-age=${3600}, s-maxage=${3600}, stale-while-revalidate=${3600}`);
-
-		const normalizedParams = normalizeParams({
-			theme,
-			hide_border,
-			title_color,
-			text_color,
-			bg_color,
-			border_color,
-		});
-		const svgKey = `streak-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, async () =>
-			renderStreakCard(username, streak, {
-				theme,
-				hide_border: parseBoolean(hide_border),
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-			}),
-		);
-		return c.body(svg);
-	} catch (err) {
-		if (isServiceUnavailable(err)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		c.header(
-			'Cache-Control',
-			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
-		);
-		const error = err as Error;
-		return c.body(
-			renderError(
-				publicErrorMessage(err),
-				(error as { secondaryMessage?: string }).secondaryMessage,
-				{
-					title_color,
-					text_color,
-					bg_color,
-					border_color,
-					theme,
-				},
-			),
-		);
-	}
+	return serveCard(c, {
+		storeName: 'card:streak',
+		freshSeconds: 3600,
+		themeParams: {},
+		render: async () => {
+			const env = stringEnv(c.env);
+			const token = getNextToken(env);
+			if (!token) {
+				throw new CustomError('GitHub token not configured', CustomError.NO_TOKENS);
+			}
+			const streak = await microCache(`streak:${OWNER_LOGIN}`, () =>
+				fetchStreak(OWNER_LOGIN, token, env),
+			);
+			return svgCacheGetOrSet(`streak-svg:${OWNER_LOGIN}`, async () =>
+				renderStreakCard(OWNER_LOGIN, streak),
+			);
+		},
+	});
 });
 
-// Pin card: /api/github-readme-stats/api/pin/
+// Pin card: /api/github-readme-stats/api/pin/?repo=...
 githubReadmeStatsRouter.get('/api/pin/', rateLimitRead, async (c) => {
-	const {
-		username,
-		repo,
-		hide_border,
-		title_color,
-		icon_color,
-		text_color,
-		bg_color,
-		theme,
-		show_owner,
-		locale,
-		border_radius,
-		border_color,
-		description_lines_count,
-	} = c.req.query();
+	const { repo } = c.req.query();
 
-	c.header('Content-Type', 'image/svg+xml');
-
-	if (blacklist.includes(username ?? '')) {
-		return c.body(
-			renderError('Something went wrong', 'This username is blacklisted', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
+	if (!repo || !REPO_NAME_PATTERN.test(repo)) {
+		c.header('Content-Type', 'image/svg+xml');
+		return c.body(renderError('Something went wrong', 'Missing or invalid `repo` parameter', {}));
 	}
 
-	if (locale && !isLocaleAvailable(locale)) {
-		return c.body(
-			renderError('Something went wrong', 'Language not found', {
-				title_color,
-				text_color,
-				bg_color,
-				border_color,
-				theme,
-			}),
-		);
-	}
-
-	try {
-		const env = stringEnv(c.env);
-		if (!getGithubToken(env)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		const dataKey = `pin:${username}/${repo}`;
-		const repoData = await microCache(dataKey, () => fetchRepo(username ?? '', repo ?? '', env));
-
-		c.header(
-			'Cache-Control',
-			`max-age=${604800}, s-maxage=${604800}, stale-while-revalidate=${604800}`,
-		);
-
-		const normalizedParams = normalizeParams({
-			hide_border,
-			title_color,
-			icon_color,
-			text_color,
-			bg_color,
-			theme,
-			border_radius,
-			border_color,
-			show_owner,
-			locale,
-			description_lines_count,
-		});
-		const svgKey = `pin-svg:${dataKey}:${JSON.stringify(normalizedParams)}`;
-		const svg = await svgCacheGetOrSet(svgKey, async () =>
-			renderRepoCard(repoData, {
-				hide_border: parseBoolean(hide_border),
-				title_color,
-				icon_color,
-				text_color,
-				bg_color,
-				theme,
-				border_radius: optInt(border_radius),
-				border_color,
-				show_owner: parseBoolean(show_owner),
-				locale: locale ? locale.toLowerCase() : null,
-				description_lines_count: optInt(description_lines_count),
-			}),
-		);
-		return c.body(svg);
-	} catch (err) {
-		if (isServiceUnavailable(err)) {
-			return degradedResponse(c, { title_color, text_color, bg_color, border_color, theme });
-		}
-		c.header(
-			'Cache-Control',
-			`max-age=${CONSTANTS.ERROR_CACHE_SECONDS / 2}, s-maxage=${CONSTANTS.ERROR_CACHE_SECONDS}, stale-while-revalidate=${CONSTANTS.ONE_DAY}`,
-		);
-		const error = err as Error;
-		return c.body(
-			renderError(
-				publicErrorMessage(err),
-				(error as { secondaryMessage?: string }).secondaryMessage,
-				{
-					title_color,
-					text_color,
-					bg_color,
-					border_color,
-					theme,
-				},
-			),
-		);
-	}
+	// Issue #1164: personal-fixed — `show_owner` is always on, matching
+	// the profile README embeds.
+	return serveCard(c, {
+		storeName: `card:pin:${repo}`,
+		freshSeconds: CONSTANTS.PIN_CARD_CACHE_SECONDS,
+		themeParams: {},
+		render: async () => {
+			const env = stringEnv(c.env);
+			const repoData = await microCache(`pin:${OWNER_LOGIN}/${repo}`, () =>
+				fetchRepo(OWNER_LOGIN, repo, env),
+			);
+			return svgCacheGetOrSet(`pin-svg:${OWNER_LOGIN}/${repo}`, async () =>
+				renderRepoCard(repoData, { show_owner: true }),
+			);
+		},
+	});
 });

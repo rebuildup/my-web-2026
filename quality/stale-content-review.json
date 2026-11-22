@@ -14,9 +14,7 @@
 		"note": "what was checked, in prose, with the file and the line"
 	},
 	"freshnessWindowDays": 90,
-	"locales": [
-		"ja"
-	],
+	"locales": ["ja"],
 	"excludedPaths": [
 		{
 			"glob": "src/editorial/error-states/**",

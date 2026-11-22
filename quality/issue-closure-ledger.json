@@ -117,7 +117,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "planned-unimplemented",
 			"closure": "unsupported",
-			"evidence": ["#63", "AGENTS.md", "#647"],
+			"evidence": [
+				"#63",
+				"AGENTS.md",
+				"#647"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -202,7 +206,10 @@
 			"window": "sweep-2026-10-31",
 			"state": "research-complete-with-decision",
 			"closure": "supported",
-			"evidence": ["issue #254 comments (2026-10-05, 2026-10-08)", "scripts/_d1.mjs"],
+			"evidence": [
+				"issue #254 comments (2026-10-05, 2026-10-08)",
+				"scripts/_d1.mjs"
+			],
 			"decision": {
 				"kind": "owner",
 				"reason": "製品欠陥ではなくローカル node_modules 解決差であると調査で特定され、判定・workaround が記録済み。コード変更なしで閉じられる事案。"
@@ -2481,7 +2488,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/personal/domain.md", "361do-name-meanings.md", "#521"],
+			"evidence": [
+				"docs/personal/domain.md",
+				"361do-name-meanings.md",
+				"#521"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2613,7 +2624,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "partial",
 			"closure": "unsupported",
-			"evidence": ["docs/influences/tech-interests.md", "#528", "docs/personal/knowledge-model.md"],
+			"evidence": [
+				"docs/influences/tech-interests.md",
+				"#528",
+				"docs/personal/knowledge-model.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2794,7 +2809,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["src/cloudflare/d1-backup.ts", "src/cloudflare/d1-numeric.test.ts", "#705"],
+			"evidence": [
+				"src/cloudflare/d1-backup.ts",
+				"src/cloudflare/d1-numeric.test.ts",
+				"#705"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -2943,7 +2962,11 @@
 			"window": "sweep-2026-10-31",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#731", "skills/herdr-runtime/SKILL.md", "AGENTS.md"],
+			"evidence": [
+				"#731",
+				"skills/herdr-runtime/SKILL.md",
+				"AGENTS.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3314,7 +3337,11 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#789", ".mcp.json", "docs/runbook/notion-mcp.md"],
+			"evidence": [
+				"#789",
+				".mcp.json",
+				"docs/runbook/notion-mcp.md"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -3330,7 +3357,10 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["#846", "src/tools/manifest.json"],
+			"evidence": [
+				"#846",
+				"src/tools/manifest.json"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -4152,7 +4182,11 @@
 			"window": "tracked",
 			"state": "implemented-and-verified",
 			"closure": "supported",
-			"evidence": ["src/home/hero.tsx", "e2e/viewport/visual-diff.spec.ts", "#1159"],
+			"evidence": [
+				"src/home/hero.tsx",
+				"e2e/viewport/visual-diff.spec.ts",
+				"#1159"
+			],
 			"decision": null,
 			"recordedBy": "agent",
 			"ownerConfirmation": "unconfirmed",
@@ -4363,6 +4397,26 @@
 			"action": "closed",
 			"note": "/now は entry surface だが h1 を持たず、唯一の見出しが current-projects セクションの h2 だった。route に PageHero を置き、CurrentProjects の variant=\"page\" は列挙だけを描く。PageHero の titleEn を h1 の中の block span にし、読み上げ名が JA だけにならないようにした。a11y:heading-landmarks の page units に /now を追加。",
 			"missing": null
+		},
+		{
+			"issue": 1190,
+			"title": "test(e2e): see-all リンクの消失と pet companion の consent 前提を修正する",
+			"closedAt": "2026-11-22T11:45:59Z",
+			"window": "tracked",
+			"state": "implemented-and-verified",
+			"closure": "supported",
+			"evidence": [
+				"PR #1191（merged, head 0be46cbd, merge fbfedb98）",
+				"src/home/current/CurrentProjects.tsx:614-625 — see-all リンクの復元",
+				"e2e/pet-companion.spec.ts:22-39 — narrow viewport の consent 拒否"
+			],
+			"decision": null,
+			"recordedBy": "agent",
+			"ownerConfirmation": "unconfirmed",
+			"ownerReference": null,
+			"action": "closed",
+			"note": "agent-recorded: ローカル全 E2E の 3 件の回帰を修正。owner 確認は未実施。",
+			"missing": []
 		}
 	]
 }

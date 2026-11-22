@@ -16,8 +16,9 @@
  *     future "fix" that replaced the echo with `*` would silently
  *     re-open cross-site credential access.
  *   - `public-read` — unauthenticated, read-only, public data. Today
- *     `/api/v1/health`, `/api/v1/reaction-images/:id` and
- *     `/api/v1/github-readme-stats/*`. These get
+ *     `/api/v1/health`, `/api/v1/reaction-images/:id`,
+ *     `/api/v1/github-readme-stats/*` and
+ *     `/api/v1/github-profile/*`. These get
  *     `Access-Control-Allow-Origin: *` and **never**
  *     `Access-Control-Allow-Credentials`, because there is no secret
  *     behind them to protect.
@@ -153,6 +154,14 @@ export const CORS_ROUTES: readonly CorsRoute[] = Object.freeze([
 		klass: 'public-read',
 		// Self-hosted GitHub stats card SVGs (Issue #933): unauthenticated,
 		// read-only, public GitHub data rendered to an image.
+		methods: Object.freeze(['GET', 'HEAD', 'OPTIONS']),
+	},
+	{
+		path: '/api/v1/github-profile',
+		klass: 'public-read',
+		// Single-image GitHub profile card (Issue #1170): unauthenticated,
+		// read-only SVG built from already-public snapshots; GitHub/Camo
+		// fetches it server-side, browsers may embed it cross-origin.
 		methods: Object.freeze(['GET', 'HEAD', 'OPTIONS']),
 	},
 	// `/api/v1/db/ping` and `/api/v1/media/ping` are deliberately

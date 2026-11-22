@@ -4,6 +4,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Stack, listResetClassName } from '../../editorial/primitives/Flow';
 import { Grid } from '../../editorial/primitives/Grid';
+import { PageHero } from '../../editorial/primitives/PageHero';
 import { PageSection } from '../../editorial/primitives/PageSection';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { StateMark } from '../../editorial/primitives/StateMark';
@@ -392,25 +393,25 @@ export function KeyboardPage({ data }: KeyboardPageProps) {
 		// `main` landmarks where a reader meets one. The landmark now
 		// belongs to the page, and the branches are ordinary sections.
 		<main>
-			<PageSection rhythm="hero" labelledBy={`${baseId}-title`}>
-				<div className={heroInnerStyle}>
-					<p className={eyebrowStyle}>/keyboard · input</p>
-					<h1 id={`${baseId}-title`} className={titleStyle}>
-						{PAGE_TITLE}
-					</h1>
-					<p className={leadStyle}>
-						大西配列を土台にした macOS / Windows
-						のキーボード設定を、実際のキー位置に沿って表示します。macOS の hidutil
-						によるベース差し替えと、Kanata のレイヤーを分けて扱い、Space 長押しや Shift
-						長押しで変わる操作も確認できます。
-					</p>
+			{/* Issue #1163 — the entry's right column carries the page's
+			    own three facts (the layout it draws, and the two
+			    toolchains it separates). They were a row of badges
+			    under the lead; here they state what the page is about
+			    while the title is read. */}
+			<PageHero
+				labelledBy={`${baseId}-title`}
+				eyebrow="/keyboard · input"
+				title={PAGE_TITLE}
+				description="大西配列を土台にした macOS / Windows のキーボード設定を、実際のキー位置に沿って表示します。macOS の hidutil によるベース差し替えと、Kanata のレイヤーを分けて扱い、Space 長押しや Shift 長押しで変わる操作も確認できます。"
+				asideLabel="Scope"
+				aside={
 					<div className={factRowStyle}>
 						<Badge tone="neutral">大西配列 + QWERTY</Badge>
 						<Badge tone="neutral">macOS: hidutil + Kanata</Badge>
 						<Badge tone="neutral">Windows: Kanata</Badge>
 					</div>
-				</div>
-			</PageSection>
+				}
+			/>
 			{data.status === 'ready' ? (
 				<KeyboardPageReady data={data} baseId={baseId} />
 			) : (
@@ -492,6 +493,10 @@ function KeyboardPageReady({
 
 	return (
 		<div>
+			{/* Issue #1166 — the sync status is a supporting band (the
+			    page's freshness record), and the source list at the end is
+			    the last statement. The diagram between them stays on the
+			    ground: it is the page's subject. */}
 			<PageSection separator label="同期状態">
 				<div className={statusStripStyle}>
 					<StateMark kind={data.freshness === 'fresh' ? 'ok' : 'degraded'} size="sm" />

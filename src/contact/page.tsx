@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Stack, listResetClassName } from '../editorial/primitives/Flow';
 import { Split } from '../editorial/primitives/Grid';
+import { PageHero } from '../editorial/primitives/PageHero';
 import { PageSection } from '../editorial/primitives/PageSection';
 import { Panel } from '../editorial/primitives/Panel';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
@@ -56,19 +57,87 @@ export interface ContactPageProps {
  *
  * No JS interactivity. The page is fully static SSR.
  */
+/**
+ * The published channels, in the entry's right column.
+ *
+ * Issue #1163 — one row per channel: its purpose, and when it was
+ * last confirmed. The rows below repeat the detail (the URL, the
+ * verification note); this is the choice, not the record.
+ */
+function ChannelIndex({ channels }: { readonly channels: readonly PublicContactChannel[] }) {
+	return (
+		<nav aria-label="Channels">
+			<ol className={css({ margin: '0', padding: '0', listStyle: 'none' })}>
+				{channels.map((channel) => (
+					<li
+						key={channel.id}
+						className={css({
+							display: 'flex',
+							alignItems: 'baseline',
+							justifyContent: 'space-between',
+							gap: '3',
+							paddingBlock: '2',
+							borderBottomWidth: '1px',
+							borderBottomStyle: 'solid',
+							borderBottomColor: 'border.subtle',
+						})}
+					>
+						<span className={css({ minWidth: '0' })}>
+							<span
+								className={css({
+									display: 'block',
+									fontFamily: 'sans',
+									fontSize: 'sm',
+									color: 'text.default',
+								})}
+							>
+								{channel.label}
+							</span>
+							<span
+								className={css({
+									display: 'block',
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									color: 'text.muted',
+								})}
+							>
+								{PURPOSE_LABEL_JA[channel.purpose] ?? channel.purpose}
+							</span>
+						</span>
+						<span
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								fontVariantNumeric: 'tabular-nums',
+								color: 'text.muted',
+								whiteSpace: 'nowrap',
+							})}
+						>
+							{`${channel.verifiedDaysAgo} 日前`}
+						</span>
+					</li>
+				))}
+			</ol>
+		</nav>
+	);
+}
+
 export function ContactPage({ channels, empty, unverifiableCount }: ContactPageProps) {
 	return (
 		<>
 			<SkipLink />
-			<PageSection rhythm="hero" labelledBy="contact-hero-title">
-				<span className={css(noteMonoSm)}>my-web-2026 · /contact</span>
-				<h1 id="contact-hero-title" lang="ja" className={css(pageTitle)}>
-					Contact
-				</h1>
-				<p lang="ja" className={css(ledeSansLg)}>
-					現在利用可能な、用途別の contact channel だけを掲載しています。 掲載されていない channel
-					は現在 re-verified されていないため、ここには載せていません。
-				</p>
+			{/* Issue #1163 — the right column carries the page's own
+			    channel inventory: which channel exists, for what
+			    purpose, and when it was last confirmed. The reader can
+			    pick a channel before scrolling the list below. */}
+			<PageHero
+				labelledBy="contact-hero-title"
+				eyebrow="my-web-2026 · /contact"
+				title="Contact"
+				description="現在利用可能な、用途別の contact channel だけを掲載しています。掲載されていない channel は現在 re-verified されていないため、ここには載せていません。"
+				asideLabel="Channels"
+				aside={<ChannelIndex channels={channels} />}
+			>
 				<p
 					lang="ja"
 					className={css({
@@ -85,7 +154,7 @@ export function ContactPage({ channels, empty, unverifiableCount }: ContactPageP
 					<TextLink href="/commission">/commission</TextLink>
 					を参照してください。 お問い合わせは、公開されている channel 経由でお願いします。
 				</p>
-			</PageSection>
+			</PageHero>
 			<main id="main">
 				<PageSection labelledBy="channels-heading">
 					<SectionHeading

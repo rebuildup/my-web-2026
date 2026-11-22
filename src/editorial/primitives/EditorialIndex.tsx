@@ -1,4 +1,4 @@
-import { css, cx } from '../../../styled-system/css';
+import { css } from '../../../styled-system/css';
 import { TextLink } from './TextLink';
 
 /**
@@ -117,6 +117,3 @@ export function EditorialIndex({ ariaLabel, items, variant = 'linked' }: Editori
 		</nav>
 	);
 }
-
-/** The shared class for a plain list reset — see `EditorialIndex`. */
-export const editorialIndexListClassName = cx(listClassName);

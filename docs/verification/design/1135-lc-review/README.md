@@ -178,26 +178,29 @@ node scripts/composition-lint.mjs
 
 | 欠陥 | ルール | 判定 | fixture |
 | --- | --- | --- | --- |
-| card-shaped void（F-8） | **CL-12**（新設） | warning — 反復単位の下半が空 | `negative/empty-cards` / `positive/filled-cards` |
-| 読み込み失敗した画像（F-10） | **CL-13**（新設） | warning | `negative/broken-media` / `positive/loaded-media` |
+| card-shaped void（F-9） | **CL-12**（新設） | warning — 反復単位の下半が空 | `negative/empty-cards` / `positive/filled-cards` |
+| 読み込み失敗した画像（F-11） | **CL-13**（新設） | warning | `negative/broken-media` / `positive/loaded-media` |
 | hero 欠落の fail-open | CL-6 修正 | blocking — hero が無ければ fail | `negative/text-only-portfolio` |
 | 面積だけでは media 対応を判定できない | CL-6 修正 | blocking — hero にラスター画像必须是 | `positive/media-led-detail` |
 | block 種別列を構成証拠と誤認 | CL-7 修正 | 視覚順の変化を証拠にする | `negative/mobile-kind-shift` / `positive/mobile-reading-order` |
 | prose 免除がルート全体 | CL-11 修正 | 免除は名前指定の section 単位に | `scripts/judge-composition.test.mjs` |
 
-CL-12 の閾値（`repeatTailGapRatioMax: 0.5`）は実測で決めた。
-`/portfolio` の card グリッドは stretch 解消前 0.52、解消後 0.10、
-HOME のレコードは 0.15、状態行は 0.02。
+CL-12 の閾値は実測で決めた。測定量は**比率ではなく絶対の空き（px）**:
+比率だけだと「空の card」と「まばらな一覧行」を分離できない（60px の行に
+35px の文字があるなら 40% 空いていて、それは正しい設計である）。void は
+絶対量で現れる — `/portfolio` の card は stretch 解消前 **247px**、
+解消後 **93px**。閾値 120px で、改修後のどの route もこれに達しない。
 
 ## 6. 残存課題と未検証事項
 
 **残存（未改修）**
 
-1. F-11: `/about` `/tools` `/stack` `/activity` `/now` `/links` の hero 右半分の空域。
-2. F-12: 8〜9 body section が全て `ground` tone のページ（CL-8 warning）。
-3. F-13: `/activity` の chronology の単調さ。
+1. F-12: `/about` `/tools` `/stack` `/activity` `/now` `/links` の hero 右半分の空域。
+2. F-13: 8〜9 body section が全て `ground` tone のページ（CL-8 warning）。
+3. F-14: `/activity` の chronology の単調さ。
 4. F-6: ページ末尾の 176px 予約帯（a11y 契約）。
-5. `/portfolio` の mobile は 43,000px 長い（index route として許容範囲だが、
+5. F-7: mobile で companion が index rail に重なる（companion 側の契約と実挙動の不一致）。
+6. `/portfolio` の mobile は 43,000px 長い（index route として許容範囲だが、
    index route としての密度設計は未実施）。
 
 **未検証（今回対象外）**

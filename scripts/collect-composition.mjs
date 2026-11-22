@@ -18,7 +18,7 @@
  * block-kind classification.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODEL_VERSION, loadContract } from './judge-composition.mjs';
@@ -136,7 +136,10 @@ const COLLECTOR = () => {
 			});
 		};
 		for (const el of section.querySelectorAll(
-			'h1,h2,h3,h4,h5,h6,img,video,canvas,svg,ul,ol,a,button',
+			// `p` / `blockquote` are the TEXT blocks. Without them the
+			// collector never records prose, so the density, the tail-gap and
+			// the body font-size median all measure a heading-only page.
+			'h1,h2,h3,h4,h5,h6,p,blockquote,img,video,canvas,svg,ul,ol,a,button',
 		)) {
 			pushBlock(el);
 		}
@@ -242,12 +245,28 @@ const COLLECTOR = () => {
 		// this box empty?" — and a list row, a swatch cell and a filled
 		// card all answer "no".
 		const contentBlocks = blocks.filter((b) => b.kind !== 'panel' && b.kind !== 'other' && b.rect);
+		// The content bottom is read from the blocks that DRAW content,
+		// not from a block that CONTAINS them. A card whose whole area
+		// is one anchor registers that anchor as a `control` whose rect
+		// is the card itself; using its bottom edge would report every
+		// card as full and hide the void CL-12 exists to catch.
+		const leafBlocks = contentBlocks.filter(
+			(block) =>
+				!contentBlocks.some(
+					(other) =>
+						other !== block &&
+						other.rect.x + other.rect.w / 2 >= block.rect.x &&
+						other.rect.x + other.rect.w / 2 <= block.rect.x + block.rect.w &&
+						other.rect.y + other.rect.h / 2 >= block.rect.y &&
+						other.rect.y + other.rect.h / 2 <= block.rect.y + block.rect.h,
+				),
+		);
 		const tailGapOf = (unit) => {
 			const ur = unit.getBoundingClientRect();
 			const unitHeight = ur.height;
 			if (unitHeight <= 0) return null;
 			let contentBottom = null;
-			for (const b of contentBlocks) {
+			for (const b of leafBlocks) {
 				const cx = b.rect.x + b.rect.w / 2;
 				const cy = b.rect.y + b.rect.h / 2;
 				if (cx < ur.left || cx > ur.right || cy < ur.top || cy > ur.bottom) continue;
@@ -261,6 +280,30 @@ const COLLECTOR = () => {
 		const gaps = repeatUnits.map(tailGapOf).filter((v) => typeof v === 'number');
 		const repeatTailGapRatio = gaps.length
 			? gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+			: undefined;
+		// The ABSOLUTE empty tail, in pixels. The ratio alone cannot
+		// separate a void card from a legitimately airy list row (a
+		// 60 px row with a 35 px line of text is 40% empty and reads
+		// fine), but the void is absolute: the card is 400 px tall and
+		// 165 px of it hold nothing.
+		const tailGapPxOf = (unit) => {
+			const ur = unit.getBoundingClientRect();
+			const unitHeight = ur.height;
+			if (unitHeight <= 0) return null;
+			let contentBottom = null;
+			for (const b of leafBlocks) {
+				const cx = b.rect.x + b.rect.w / 2;
+				const cy = b.rect.y + b.rect.h / 2;
+				if (cx < ur.left || cx > ur.right || cy < ur.top || cy > ur.bottom) continue;
+				const bottom = b.rect.y + b.rect.h - ur.top;
+				if (contentBottom === null || bottom > contentBottom) contentBottom = bottom;
+			}
+			if (contentBottom === null) return null;
+			return Math.max(0, Math.round(unitHeight - contentBottom));
+		};
+		const gapPx = repeatUnits.map(tailGapPxOf).filter((v) => typeof v === 'number');
+		const repeatTailGapPx = gapPx.length
+			? gapPx.sort((a, b) => a - b)[Math.floor(gapPx.length / 2)]
 			: undefined;
 
 		// Composition fingerprint: content column edges, density and
@@ -314,6 +357,7 @@ const COLLECTOR = () => {
 			repeatKind: repeatKind ?? undefined,
 			repeatProfile: repeatProfile ?? undefined,
 			repeatTailGapRatio,
+			repeatTailGapPx,
 			mediaByKind: mediaAreaByKindOf(section),
 			brokenMedia: brokenMediaOf(section),
 			contentLeft,
@@ -376,6 +420,7 @@ async function main() {
 	const { chromium } = await import('@playwright/test');
 	const browser = await chromium.launch();
 	const written = [];
+	const failed = [];
 	try {
 		for (const route of routes) {
 			for (const vp of viewports) {
@@ -392,12 +437,21 @@ async function main() {
 				});
 				const page = await context.newPage();
 				try {
+					// A stale model must not survive a failed collection:
+					// `composition:lint` only checks that a model FILE
+					// exists, so a previous run's model would hide the
+					// failure. The old file is removed BEFORE the fetch,
+					// and a non-200 leaves no file behind.
+					const file = `${route.slug}.${vp.stem}.json`;
+					const abs = resolve(REPO_ROOT, outDir, file);
+					rmSync(abs, { force: true });
 					const res = await page.goto(`${baseUrl}${route.path}`, {
 						waitUntil: 'load',
 						timeout: 60000,
 					});
 					if (!res || res.status() !== 200) {
 						process.stderr.write(`[collect] ${route.path} @${vp.stem}: HTTP ${res?.status()}\n`);
+						failed.push(`${route.path} @${vp.stem}`);
 						await context.close();
 						continue;
 					}
@@ -419,8 +473,6 @@ async function main() {
 					const model = await page.evaluate(COLLECTOR);
 					model.route = route.slug;
 					model.viewport = { width: vp.width, height: vp.height, stem: vp.stem };
-					const file = `${route.slug}.${vp.stem}.json`;
-					const abs = resolve(REPO_ROOT, outDir, file);
 					mkdirSync(dirname(abs), { recursive: true });
 					writeFileSync(abs, `${JSON.stringify(model, null, 2)}\n`);
 					written.push(file);
@@ -434,6 +486,12 @@ async function main() {
 		await browser.close();
 	}
 	process.stdout.write(`[collect] wrote ${written.length} model(s) to ${outDir}\n`);
+	if (failed.length > 0) {
+		process.stderr.write(
+			`[collect] ${failed.length} cell(s) failed — no model was written for them: ${failed.join(', ')}\n`,
+		);
+		process.exitCode = 1;
+	}
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

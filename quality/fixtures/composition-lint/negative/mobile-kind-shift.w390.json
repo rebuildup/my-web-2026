@@ -83,7 +83,8 @@
 			"contentRight": 350,
 			"density": 0.7,
 			"columnCount": 1,
-			"blockOrder": ["heading", "media", "text", "control"]
+			"blockOrder": ["heading", "media", "text", "control"],
+			"repeatTailGapPx": 30
 		}
 	],
 	"media": {

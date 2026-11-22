@@ -405,7 +405,12 @@ function ReadmeSection({
 		description: '上流 README から抜粋したセクションです。',
 	};
 	return (
-		<PageSection separator labelledBy={`dotfiles-section-${section.id}`}>
+		<PageSection separator labelledBy={`dotfiles-section-${section.id}`} name="prose">
+			{/* Issue #1160 — the README excerpts are PROSE sections, the same
+			    shape as the portfolio detail's markdown body. Naming them lets
+			    the composition contract's CL-11 exemption be scoped to them
+			    (the hero, the related-works band and the boundary section
+			    stay judged). */}
 			<SectionHeading
 				id={`dotfiles-section-${section.id}`}
 				eyebrow={`02.${index + 1} — README`}

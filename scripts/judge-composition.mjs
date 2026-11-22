@@ -285,16 +285,16 @@ function checkCL6(model, rule, route) {
 
 /** CL-12 — a repeated unit whose lower part is empty (card-shaped void). */
 function checkCL12(model, rule) {
-	const gapMax = rule.detection?.repeatTailGapRatioMax ?? 0.5;
+	const gapMaxPx = rule.detection?.repeatTailGapPxMax ?? 120;
 	const minUnits = rule.detection?.repeatUnitsMin ?? 3;
 	const offenders = [];
 	for (const section of bodySections(model)) {
 		const units = section.repeatUnits ?? 0;
-		const gap = section.repeatTailGapRatio;
-		if (units < minUnits || typeof gap !== 'number') continue;
-		if (gap > gapMax) {
+		const gapPx = section.repeatTailGapPx;
+		if (units < minUnits || typeof gapPx !== 'number') continue;
+		if (gapPx > gapMaxPx) {
 			offenders.push(
-				`${section.name ?? `section ${section.index}`} (${units} units, empty tail ${gap})`,
+				`${section.name ?? `section ${section.index}`} (${units} units, ${gapPx}px empty tail)`,
 			);
 		}
 	}
@@ -369,10 +369,30 @@ export function checkCL7(desktopModel, mobileModel, rule, route) {
 		const dSeq = visualOrder(dSections[i]);
 		const mSeq = visualOrder(mSections[i]);
 		if (dSeq.length === 0 || mSeq.length === 0) continue;
-		const shared = new Set(dSeq.filter((k) => mSeq.includes(k)));
-		const dShared = dSeq.filter((k) => shared.has(k));
-		const mShared = mSeq.filter((k) => shared.has(k));
-		if (dShared.join(',') !== mShared.join(',')) {
+		// Compare the RELATIVE ORDER of the kinds both viewports carry,
+		// each kind counted once. A count difference alone (one image
+		// hidden at the narrow width) is not a reorder: the kinds that
+		// survive keep their order, so the order of their first
+		// occurrences is what decides.
+		const firstIndex = (seq) => {
+			const seen = new Map();
+			seq.forEach((kind, index) => {
+				if (!seen.has(kind)) seen.set(kind, index);
+			});
+			return seen;
+		};
+		const dFirst = firstIndex(dSeq);
+		const mFirst = firstIndex(mSeq);
+		const shared = [...dFirst.keys()].filter((kind) => mFirst.has(kind));
+		const dOrder = shared
+			.slice()
+			.sort((a, b) => dFirst.get(a) - dFirst.get(b))
+			.join(',');
+		const mOrder = shared
+			.slice()
+			.sort((a, b) => mFirst.get(a) - mFirst.get(b))
+			.join(',');
+		if (dOrder !== mOrder) {
 			readingOrderChanged = true;
 			break;
 		}

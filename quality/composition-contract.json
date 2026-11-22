@@ -120,7 +120,9 @@
 			"slug": "projects-dotfiles",
 			"label": "dotfiles project",
 			"mediaExpected": false,
-			"indexRoute": false
+			"indexRoute": false,
+			"proseSections": ["prose"],
+			"proseSectionsReason": "the README excerpt sections are long-form prose by design; the exemption applies to those sections only (Issue #1160)"
 		},
 		{
 			"path": "/design-system",
@@ -311,8 +313,8 @@
 			"severity": "warning",
 			"detection": {
 				"repeatUnitsMin": 3,
-				"repeatTailGapRatioMax": 0.5,
-				"note": "repeatTailGapRatio is the share of the repeated unit's HEIGHT that lies below its last content block — the question the eye asks (\"is the bottom of this box empty?\"). An area ratio was rejected: a list row is legitimately sparse, so the area ratio read every list as an empty card. The threshold is 0.5 — the bottom half of the unit is empty. Measured against the shipped pages: the portfolio card grid measured 0.52 while its cards were stretched, and 0.10 after the card stopped stretching; the home records measure 0.15 and the home status rows 0.02."
+				"repeatTailGapPxMax": 120,
+				"note": "repeatTailGapPx is the ABSOLUTE empty tail of the repeated unit — the pixels below its last content block. The ratio alone could not separate a void card from a legitimately airy list row (a 60 px row with a 35 px line is 40% empty and reads fine), but the void is absolute: the portfolio card was 400 px tall with 247 px of nothing below its copy, and 93 px after the fix. Measured on the shipped pages, no route exceeds 120 px after the fix."
 			},
 			"exceptions": "a unit whose emptiness IS the design (a spacer tile, a deliberately blank tile) has to be declared per route with a reason",
 			"falsePositives": "a unit whose content is painted as a background image or a canvas has no content block — such a unit must declare an exception",

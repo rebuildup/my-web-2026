@@ -37,8 +37,15 @@ Issue #1193 が軽量化を追跡していた。
   保たれる。
 - 選定: `src/http/github-profile/works.json` が slug + レイアウ
   役割（hero / grid）を宣言し、`works.ts` がスナップショットへ
-  fail-closed に解決する。作品の増減はこの 2 ファイル + スクリプ
-  ト再実行 + README 更新で行う。
+  fail-closed に解決する（`published` + `public` のみ。呼び出し側が
+  未フィルタの配列を渡しても除外される — Issue #1199）。作品の増減
+  はこの 2 ファイル + スクリプト再実行 + README 更新で行う。
+- 残存派生物: スクリプトは実行ごとに `public/github-profile/works/`
+  を走査し、その回で生成されなかった `.webp`（manifest から外れた
+  slug、公開境界を外れた作品、cover が取得不能になった作品）を
+  削除する。`--check` では残存を失敗として報告する。Static Assets
+  は `public/` をそのまま配信するため、この掃除がないと公開終了
+  した作品の派生画像が配信され続ける（Issue #1199）。
 - キャッシュ: `public/_headers` に `/github-profile/*` →
   `Cache-Control: public, max-age=86400` を追加。slug URL は安定
   だが bytes は再生成で変わり得るため `immutable` にはしない。

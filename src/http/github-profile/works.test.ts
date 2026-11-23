@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { PortfolioProject } from '../../portfolio/schema';
 import { WORK_ASSET_DIR, githubProfileWorks } from './works';
 import manifest from './works.json';
 
@@ -35,5 +36,40 @@ describe('githubProfileWorks', () => {
 	it('skips slugs that are not publicly resolvable', () => {
 		const works = githubProfileWorks([]);
 		expect(works).toHaveLength(0);
+	});
+
+	it('skips projects that are not published+public even when passed in', () => {
+		// Issue #1199: the resolver must fail closed on the publication
+		// boundary itself, not trust the caller to pre-filter.
+		const slug = manifest.works[0]?.slug;
+		expect(slug).toBeDefined();
+		const draft = {
+			id: 'id-draft',
+			slug,
+			title: 'Draft',
+			summary: 'Draft',
+			role: 'Developer',
+			periodStart: 2025,
+			periodEnd: null,
+			periodLabel: null,
+			motivationMd: '',
+			architectureMd: null,
+			constraintsMd: null,
+			implementationMd: null,
+			evidenceMd: null,
+			retrospectiveMd: null,
+			facets: [],
+			technologies: [],
+			visibility: 'unlisted',
+			status: 'published',
+			evidenceStatus: 'unreviewed',
+			pinned: false,
+			displayOrder: 0,
+			createdAt: 0,
+			updatedAt: 0,
+			links: [],
+			media: [],
+		} as PortfolioProject;
+		expect(githubProfileWorks([draft])).toHaveLength(0);
 	});
 });

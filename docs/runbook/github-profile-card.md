@@ -22,8 +22,17 @@ node scripts/build-github-profile-works.mjs          # write
 node scripts/build-github-profile-works.mjs --check  # verify freshness
 ```
 
-The script only uses media that `GET /media/<key>` serves publicly —
-a private or unpublished key answers 403 and is skipped.
+The script only uses `isCover` raster media that `GET /media/<key>`
+serves publicly — a private or unpublished key answers 403 and is
+skipped, and non-cover media is never a candidate (the recorded
+licence condition in `quality/asset-license-inventory.json` is
+cover-only). After processing the manifest it sweeps
+`public/github-profile/works/`: any `.webp` this run did not produce
+(slug removed from `works.json`, project left the published+public
+snapshot, or no servable cover) is deleted in build mode and reported
+as a failure in `--check` mode — Static Assets serves `public/`
+verbatim, so a leftover derivative would keep publishing bytes for a
+work that is no longer public (Issue #1199).
 
 ## Deprecated surface (ADR-0024 → ADR-0025 §2.4)
 

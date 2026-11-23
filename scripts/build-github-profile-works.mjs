@@ -13,11 +13,21 @@
  * Source selection (fail-closed, mirrors `model.ts#coverMediaCandidates`):
  *   - project resolved by slug from `src/portfolio/notion/generated/
  *     snapshot.json` (the committed public snapshot),
- *   - raster cover media first (`isCover`), then remaining rasters, in
- *     `displayOrder`,
+ *   - `isCover` raster media only, in `displayOrder` — the recorded
+ *     licence condition in `quality/asset-license-inventory.json`
+ *     (`github-profile-works`) is cover-only, so non-cover rasters are
+ *     never candidates here,
  *   - each candidate is fetched through the production `/media/<key>`
  *     route, so a key that fails the public-media boundary answers 403
  *     and is skipped — the script cannot publish a private object.
+ *
+ * Stale-asset rule (Issue #1199): after processing the manifest, every
+ * `<slug>.webp` under `public/github-profile/works/` that this run did
+ * not produce — because the slug left `works.json`, the project left
+ * the published+public snapshot, or no cover is publicly servable — is
+ * removed (build mode) or reported (check mode). Static Assets serves
+ * `public/` verbatim, so a leftover derivative would keep publishing
+ * bytes for a work that is no longer public.
  *
  * Output: one `<slug>.webp` per manifest entry, max width 1200px,
  * WebP q80 via `sharp` (already a devDependency). Deterministic enough
@@ -29,7 +39,7 @@
  *   node scripts/build-github-profile-works.mjs --check  # verify only
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -51,10 +61,8 @@ function loadJson(path) {
 }
 
 function coverCandidates(project) {
-	const rasters = (project.media ?? []).filter((media) =>
-		RASTER_CONTENT_TYPES.has(media.contentType),
-	);
-	return [...rasters.filter((media) => media.isCover), ...rasters.filter((media) => !media.isCover)]
+	return (project.media ?? [])
+		.filter((media) => media.isCover && RASTER_CONTENT_TYPES.has(media.contentType))
 		.sort((a, b) => a.displayOrder - b.displayOrder)
 		.map((media) => media.r2Key)
 		.filter((key) => typeof key === 'string' && key.length > 0);
@@ -85,6 +93,7 @@ const projects = (snapshot.records ?? []).filter(
 const bySlug = new Map(projects.map((project) => [project.slug, project]));
 
 const results = [];
+const produced = new Set();
 let failures = 0;
 
 for (const entry of manifest.works) {
@@ -111,6 +120,7 @@ for (const entry of manifest.works) {
 		continue;
 	}
 	const webp = await renderWebp(bytes);
+	produced.add(`${entry.slug}.webp`);
 	if (CHECK_ONLY) {
 		const current = existsSync(outPath) ? readFileSync(outPath) : null;
 		if (!current || !current.equals(webp)) {
@@ -123,6 +133,22 @@ for (const entry of manifest.works) {
 		writeFileSync(outPath, webp);
 	}
 	results.push(`${entry.slug}.webp ${webp.length}B <- ${usedKey}`);
+}
+
+// Stale-asset sweep: a derivative this run did not produce must not keep
+// being served — `public/` is delivered verbatim by Static Assets.
+if (existsSync(OUT_DIR)) {
+	for (const file of readdirSync(OUT_DIR)) {
+		if (!file.endsWith('.webp') || produced.has(file)) continue;
+		const stalePath = join(OUT_DIR, file);
+		if (CHECK_ONLY) {
+			console.error(`[works] ${file}: stale derived asset (not produced by this run)`);
+			failures += 1;
+		} else {
+			rmSync(stalePath);
+			console.log(`[works] removed stale ${file}`);
+		}
+	}
 }
 
 for (const line of results) console.log(`[works] ${line}`);

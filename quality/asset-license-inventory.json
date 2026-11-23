@@ -712,6 +712,55 @@
 			"publication": "published",
 			"ownerConfirmation": "unconfirmed",
 			"externalHosts": []
+		},
+		{
+			"id": "github-profile-reel",
+			"kind": "image",
+			"title": "GitHubプロフィール作品リール（animated WebP 1点）",
+			"summary": "scripts/build-github-profile-reel.mjs が src/http/github-profile/reel.json のセグメント定義に従い、公開 portfolio スナップショットが published+public とする作品の YouTube 動画リンクから yt-dlp --download-sections で必要区間のみ取得し、560x315@4fps の animated WebP に変換して生成する。rebuildup/rebuildup のプロフィールREADMEが Selected Work として参照する（Issue #1204 / ADR-0025）。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"covers": ["public/github-profile/reel.webp"],
+			"publicPaths": ["/github-profile/reel.webp"],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"各セグメントの動画URLは src/portfolio/notion/generated/snapshot.json が published+public とする作品の links[].kind==='video' の YouTube URL のみから解決される。manifest に URL を直接書かない。",
+					"作品が公開集合から外れた場合、スクリプトは fail-closed で失敗し reel.webp を更新しない。",
+					"変換は scripts/build-github-profile-reel.mjs（yt-dlp + ffmpeg + sharp animated WebP）で reel.json の定義から再生成できる。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-23",
+				"note": "生成スクリプト・reel.json の slug 一覧・snapshot.json の公開状態が出所を固定する。実ファイルは 2026-11-23 に同スクリプトで YouTube 公開動画から再生成した。owner 承認の記録ではない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{
+					"kind": "repository-file",
+					"path": "scripts/build-github-profile-reel.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/http/github-profile/reel.json"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/portfolio/notion/generated/snapshot.json"
+				}
+			],
+			"publication": "published",
+			"ownerConfirmation": "unconfirmed",
+			"externalHosts": []
 		}
 	]
 }

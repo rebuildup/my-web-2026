@@ -161,6 +161,12 @@ http/github-profile -> portfolio (Issue #1170 / #1196 — the profile
   `/github-profile/works/<slug>.webp` assets; the route owns the
   profile contract, portfolio owns what "published" means. See
   ADR-0024 / ADR-0025)
+http/github-profile -> home/current (Issue #1205 — the `/now` strip's
+  IN PROGRESS panel reads `home/current/roster.ts`, a committed pure-
+  data module with no binding and no peer import; the exception is
+  file-scoped to `src/http/github-profile/` and target-scoped to that
+  one module, enforced by `isGithubProfileRosterEdge` in
+  `scripts/check-architecture.mjs`. `home` at large stays forbidden)
 http -> logging (Issue #467 — boundary diagnostics)
 http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)

@@ -253,6 +253,26 @@ function isHomeStatusFile(path, srcDirectory) {
 	return rel.startsWith('home/status/');
 }
 
+/**
+ * Issue #1205: the GitHub-profile "now" strip may read the committed
+ * current-projects roster (`home/current/roster.ts`) — a pure data
+ * module with no binding and no peer import — so the profile can show
+ * the owner's declared in-progress projects. The exception is
+ * file-scoped and target-scoped: only files under
+ * `src/http/github-profile/` may import exactly that one module, and
+ * only `home`'s `current/roster.ts`, never the `home` owner at large.
+ * AGENTS.md §3 records the same edge.
+ */
+function isGithubProfileRosterEdge(fromOwner, file, target, srcDirectory) {
+	if (fromOwner !== 'http') return false;
+	const fromRel = relative(srcDirectory, file).split(sep).join('/');
+	const toRel = relative(srcDirectory, target)
+		.split(sep)
+		.join('/')
+		.replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, '');
+	return fromRel.startsWith('http/github-profile/') && toRel === 'home/current/roster';
+}
+
 function resolveInternalImport(fromFile, specifier, srcDirectory) {
 	if (specifier.startsWith('.')) return resolve(dirname(fromFile), specifier);
 	if (specifier.startsWith('~/')) return resolve(srcDirectory, specifier.slice(2));
@@ -496,6 +516,8 @@ export function checkArchitecture(repoRoot) {
 				(toOwner === 'cloudflare' || toOwner === 'http');
 			if (allowedHomeStatusRuntimeDependency) continue;
 
+			if (isGithubProfileRosterEdge(fromOwner, file, target, sourceRoot)) continue;
+
 			if (isTypeOnlyEdge(fromOwner, toOwner) && stmt.isTypeOnly) continue;
 
 			if (isTypeOnlyEdge(fromOwner, toOwner)) {
@@ -521,6 +543,8 @@ export function checkArchitecture(repoRoot) {
 				isHomeStatusFile(file, sourceRoot) &&
 				(toOwner === 'cloudflare' || toOwner === 'http');
 			if (allowedHomeStatusRuntimeDependency) continue;
+
+			if (isGithubProfileRosterEdge(fromOwner, file, target, sourceRoot)) continue;
 
 			errors.push(
 				`${relative(repoRoot, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,

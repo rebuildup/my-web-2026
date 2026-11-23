@@ -2,10 +2,11 @@
  * GitHub profile "now" strip — unified status SVG (Issue #1205).
  *
  * One image combining GitHub streak / top language / totals, recent
- * public activity, Discord presence and the owner's declared
- * in-progress projects. Sized for GitHub's mobile render: the canvas
- * is narrow (680px) and every label is set large enough that the
- * ~308px mobile display width still leaves body text above ~10px.
+ * public activity, Discord presence and the owner's DECLARED focus
+ * areas. Sized for GitHub's mobile render: the canvas is narrow
+ * (680px) and every label is set large enough that the ~308px mobile
+ * display width still leaves body text readable; observation times
+ * use a compact `Nov 22 · 05:00 UTC` form so they are not truncated.
  *
  * Data honesty rules (same contract as `status.ts` / ADR-0025):
  *   - a failed or absent upstream renders `—` with an `unavailable`
@@ -15,32 +16,59 @@
  *   - activity / presence come from the D1 snapshots via
  *     `composeProfileCardModel` — the same validation as `/status`;
  *   - repo counts are labelled as "repos active in the window", never
- *     as projects in progress — the IN PROGRESS panel is the only
- *     place curated project names appear, and it reads the committed
- *     `home/current/roster.ts` data (no invented weight or status);
+ *     as projects in progress — the DECLARED FOCUS panel is the only
+ *     place curated project names appear. It reads the committed
+ *     `home/current/roster.ts` data whose owner confirmation is still
+ *     PENDING, so it is labelled "declared", not "in progress", and no
+ *     weight, date or activity is invented;
  *   - every data source carries its observation time inside the image.
  *
  * Rendering is deterministic for a given input: no clock, no
  * randomness, no external fetch at render time.
  */
 
-import { COLORS, FONT, escapeXml, formatObserved, textWidth, truncate } from './card';
+import { COLORS, FONT, escapeXml, textWidth, truncate } from './card';
 import type { ProfileCardModel } from './model';
 
 export const NOW_WIDTH = 680;
-export const NOW_HEIGHT = 840;
+export const NOW_HEIGHT = 700;
 
 const PAD_X = 24;
 const HEADER_Y = 36;
-const STAT_Y = 60;
-const STAT_GAP = 16;
-const STAT_CELL_H = 196;
-const ACT_Y = STAT_Y + STAT_CELL_H * 2 + STAT_GAP + STAT_GAP;
-const ACT_H = 168;
+const STAT_Y = 56;
+const STAT_GAP = 12;
+const STAT_CELL_H = 150;
+const ACT_Y = STAT_Y + STAT_CELL_H * 2 + STAT_GAP * 2;
+const ACT_H = 146;
 const BOT_Y = ACT_Y + ACT_H + STAT_GAP;
-const BOT_H = 168;
+const BOT_H = 156;
 const BOT_GAP = STAT_GAP;
 const INNER_X = 20;
+
+/** `2026-11-22T06:11:00.000Z` → `Nov 22 · 06:11 UTC` — short enough that
+ * observation times survive the ~308px mobile render untruncated. */
+function formatObservedCompact(iso: string | undefined): string {
+	if (!iso) return 'unknown time';
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return 'unknown time';
+	const months = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec',
+	];
+	const hh = String(date.getUTCHours()).padStart(2, '0');
+	const mm = String(date.getUTCMinutes()).padStart(2, '0');
+	return `${months[date.getUTCMonth()]} ${date.getUTCDate()} · ${hh}:${mm} UTC`;
+}
 
 export interface NowStats {
 	/** All-time public contributions (GitHub). */
@@ -97,19 +125,19 @@ function statCells(stats: NowStats): readonly StatCell[] {
 
 function renderStatCell(cell: StatCell, x: number, y: number, width: number): string {
 	const innerX = x + INNER_X;
-	const labelY = y + 38;
-	const valueY = y + 116;
-	const noteY = y + 168;
-	const unitY = y + 146;
-	const valueSize = cell.value.length > 7 ? 44 : 56;
+	const labelY = y + 30;
+	const valueY = y + 92;
+	const unitY = y + 118;
+	const noteY = y + 140;
+	const valueSize = cell.value.length > 7 ? 40 : 48;
 	const fittedValue = fitText(cell.value, valueSize, width - INNER_X * 2);
-	const fittedUnit = fitText(cell.unit, 20, width - INNER_X * 2);
+	const fittedUnit = fitText(cell.unit, 18, width - INNER_X * 2);
 	return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${STAT_CELL_H}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}"/>
-<text x="${innerX}" y="${labelY}" font-family="${FONT}" font-size="24" font-weight="600" fill="${COLORS.muted}" letter-spacing="1.5">${escapeXml(cell.label.toUpperCase())}</text>
+<text x="${innerX}" y="${labelY}" font-family="${FONT}" font-size="20" font-weight="600" fill="${COLORS.muted}" letter-spacing="1.5">${escapeXml(cell.label.toUpperCase())}</text>
 <text x="${innerX}" y="${valueY}" font-family="${FONT}" font-size="${valueSize}" font-weight="700" fill="${cell.value === '—' ? COLORS.faint : COLORS.text}">${escapeXml(fittedValue)}</text>
-${fittedUnit ? `<text x="${innerX}" y="${unitY}" font-family="${FONT}" font-size="20" fill="${COLORS.muted}">${escapeXml(fittedUnit)}</text>` : ''}
-${cell.note ? `<text x="${innerX}" y="${noteY}" font-family="${FONT}" font-size="20" fill="${COLORS.stale}">${escapeXml(cell.note)}</text>` : ''}
+${fittedUnit ? `<text x="${innerX}" y="${unitY}" font-family="${FONT}" font-size="18" fill="${COLORS.muted}">${escapeXml(fittedUnit)}</text>` : ''}
+${cell.note ? `<text x="${innerX}" y="${noteY}" font-family="${FONT}" font-size="18" fill="${COLORS.stale}">${escapeXml(cell.note)}</text>` : ''}
 </g>`;
 }
 
@@ -128,24 +156,24 @@ function renderActivityPanel(model: ProfileCardModel, x: number, y: number, widt
 	const detail = ok
 		? `${gh.publicRepos} public / ${gh.privateRepos} private repos active in ${gh.windowDays}d`
 		: 'snapshot missing or unreadable';
-	const metaY = y + 136;
-	const noteY = y + 158;
+	const metaY = y + 110;
+	const noteY = y + 132;
 	const textMax = width - INNER_X * 2 - 8;
-	const fittedHeadline = fitText(headline, 30, textMax);
-	const fittedDetail = fitText(detail, 22, textMax);
+	const fittedHeadline = fitText(headline, 28, textMax);
+	const fittedDetail = fitText(detail, 19, textMax);
 	const fittedMeta = fitText(
-		`${gh.latest && ok ? `latest ${formatObserved(gh.latest.at)} · ` : ''}${gh.observedAt ? `observed ${formatObserved(gh.observedAt)}` : 'no observation recorded'}`,
-		20,
+		`${gh.latest && ok ? `latest ${formatObservedCompact(gh.latest.at)} · ` : ''}${gh.observedAt ? `observed ${formatObservedCompact(gh.observedAt)}` : 'no observation recorded'}`,
+		18,
 		textMax,
 	);
-	const fittedNote = fitText('window repo activity, not projects in progress', 20, textMax);
+	const fittedNote = fitText('repo counts are activity, not projects in progress', 18, textMax);
 	return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${ACT_H}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}"/>
-<text x="${innerX}" y="${y + 40}" font-family="${FONT}" font-size="24" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">GITHUB ACTIVITY</text>
-<text x="${innerX}" y="${y + 84}" font-family="${FONT}" font-size="30" font-weight="600" fill="${ok ? COLORS.text : COLORS.stale}">${escapeXml(fittedHeadline)}</text>
-<text x="${innerX}" y="${y + 116}" font-family="${FONT}" font-size="22" fill="${COLORS.muted}">${escapeXml(fittedDetail)}</text>
-<text x="${innerX}" y="${metaY}" font-family="${FONT}" font-size="20" fill="${COLORS.faint}">${escapeXml(fittedMeta)}</text>
-<text x="${innerX}" y="${noteY}" font-family="${FONT}" font-size="20" fill="${COLORS.faint}">${escapeXml(fittedNote)}</text>
+<text x="${innerX}" y="${y + 36}" font-family="${FONT}" font-size="22" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">GITHUB ACTIVITY</text>
+<text x="${innerX}" y="${y + 70}" font-family="${FONT}" font-size="28" font-weight="600" fill="${ok ? COLORS.text : COLORS.stale}">${escapeXml(fittedHeadline)}</text>
+<text x="${innerX}" y="${y + 94}" font-family="${FONT}" font-size="19" fill="${COLORS.muted}">${escapeXml(fittedDetail)}</text>
+<text x="${innerX}" y="${metaY}" font-family="${FONT}" font-size="18" fill="${COLORS.faint}">${escapeXml(fittedMeta)}</text>
+<text x="${innerX}" y="${noteY}" font-family="${FONT}" font-size="18" fill="${COLORS.faint}">${escapeXml(fittedNote)}</text>
 </g>`;
 }
 
@@ -163,20 +191,20 @@ function renderDiscordPanel(model: ProfileCardModel, x: number, y: number, width
 		? (dp.detail ?? 'no activity detail')
 		: 'snapshot missing, stale, or identity-mismatched';
 	const textMax = width - INNER_X * 2 - 8;
-	const fittedHeadline = fitText(headline, 30, textMax);
-	const fittedDetail = fitText(detail, 21, textMax);
+	const fittedHeadline = fitText(headline, 28, textMax);
+	const fittedDetail = fitText(detail, 19, textMax);
 	const fittedObserved = fitText(
-		dp.observedAt ? `observed ${formatObserved(dp.observedAt)}` : 'no observation recorded',
-		20,
+		dp.observedAt ? `observed ${formatObservedCompact(dp.observedAt)}` : 'no observation recorded',
+		18,
 		textMax,
 	);
 	return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${BOT_H}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}"/>
 <circle cx="${innerX + 7}" cy="${titleY - 6}" r="7" fill="${ok ? COLORS.ok : dp.state === 'stale' ? COLORS.stale : COLORS.offline}"/>
-<text x="${innerX + 20}" y="${titleY}" font-family="${FONT}" font-size="24" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">DISCORD</text>
-<text x="${innerX}" y="${y + 92}" font-family="${FONT}" font-size="30" font-weight="600" fill="${ok ? COLORS.text : COLORS.stale}">${escapeXml(fittedHeadline)}</text>
-<text x="${innerX}" y="${y + 124}" font-family="${FONT}" font-size="21" fill="${COLORS.muted}">${escapeXml(fittedDetail)}</text>
-<text x="${innerX}" y="${y + 152}" font-family="${FONT}" font-size="20" fill="${COLORS.faint}">${escapeXml(fittedObserved)}</text>
+<text x="${innerX + 20}" y="${titleY}" font-family="${FONT}" font-size="22" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">DISCORD</text>
+<text x="${innerX}" y="${y + 78}" font-family="${FONT}" font-size="28" font-weight="600" fill="${ok ? COLORS.text : COLORS.stale}">${escapeXml(fittedHeadline)}</text>
+<text x="${innerX}" y="${y + 104}" font-family="${FONT}" font-size="19" fill="${COLORS.muted}">${escapeXml(fittedDetail)}</text>
+<text x="${innerX}" y="${y + 134}" font-family="${FONT}" font-size="18" fill="${COLORS.faint}">${escapeXml(fittedObserved)}</text>
 </g>`;
 }
 
@@ -192,13 +220,13 @@ function renderProjectsPanel(
 	const textMax = width - INNER_X * 2 - 8;
 	const nameSvgs = lines.map(
 		(name, i) =>
-			`<text x="${innerX}" y="${y + 70 + i * 24}" font-family="${FONT}" font-size="22" font-weight="600" fill="${COLORS.text}">• ${escapeXml(fitText(name, 22, textMax))}</text>`,
+			`<text x="${innerX}" y="${y + 62 + i * 21}" font-family="${FONT}" font-size="19" font-weight="600" fill="${COLORS.text}">• ${escapeXml(fitText(name, 19, textMax))}</text>`,
 	);
 	return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${BOT_H}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}"/>
-<text x="${innerX}" y="${y + 40}" font-family="${FONT}" font-size="24" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">IN PROGRESS</text>
+<text x="${innerX}" y="${y + 40}" font-family="${FONT}" font-size="22" font-weight="600" fill="${COLORS.accent}" letter-spacing="1.5">DECLARED FOCUS</text>
 ${nameSvgs.join('\n')}
-<text x="${innerX}" y="${y + BOT_H - 12}" font-family="${FONT}" font-size="18" fill="${COLORS.faint}">declared roster · rebuildup.dev</text>
+<text x="${innerX}" y="${y + BOT_H - 8}" font-family="${FONT}" font-size="16" fill="${COLORS.faint}">declared · rebuildup.dev</text>
 </g>`;
 }
 
@@ -206,7 +234,7 @@ ${nameSvgs.join('\n')}
  * Render the unified status strip. `stats` carries the GitHub-derived
  * figures (already fetched + cached by the router); `model` carries
  * the validated activity / presence projections; `projects` carries
- * the committed roster names for the IN PROGRESS panel.
+ * the committed roster names for the DECLARED FOCUS panel.
  */
 export function renderProfileNowSvg(
 	model: ProfileCardModel,
@@ -227,14 +255,13 @@ export function renderProfileNowSvg(
 	});
 	const panelWidth = NOW_WIDTH - PAD_X * 2;
 	const botWidth = Math.floor((panelWidth - BOT_GAP) / 2);
-	const generated = `generated ${formatObserved(model.generatedAt)}`;
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="${NOW_WIDTH}" height="${NOW_HEIGHT}" viewBox="0 0 ${NOW_WIDTH} ${NOW_HEIGHT}" role="img" aria-label="rebuildup — GitHub stats, activity, in-progress projects and Discord presence">
-<title>rebuildup — GitHub stats, activity, in-progress projects and Discord presence</title>
-<desc>GitHub contribution stats, recent public activity, declared in-progress projects and Discord presence for @rebuildup, with observation times.</desc>
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${NOW_WIDTH}" height="${NOW_HEIGHT}" viewBox="0 0 ${NOW_WIDTH} ${NOW_HEIGHT}" role="img" aria-label="rebuildup — GitHub stats, activity, declared focus areas and Discord presence">
+<title>rebuildup — GitHub stats, activity, declared focus areas and Discord presence</title>
+<desc>GitHub contribution stats, recent public activity, declared focus areas and Discord presence for @rebuildup, with observation times.</desc>
 <rect width="${NOW_WIDTH}" height="${NOW_HEIGHT}" fill="${COLORS.bg}"/>
-<text x="${PAD_X}" y="${HEADER_Y}" font-family="${FONT}" font-size="30" font-weight="700" fill="${COLORS.text}" letter-spacing="2">NOW · @rebuildup</text>
-<text x="${NOW_WIDTH - PAD_X}" y="${HEADER_Y}" text-anchor="end" font-family="${FONT}" font-size="20" fill="${COLORS.faint}">${escapeXml(generated)}</text>
+<text x="${PAD_X}" y="${HEADER_Y}" font-family="${FONT}" font-size="28" font-weight="700" fill="${COLORS.text}" letter-spacing="2">NOW · @rebuildup</text>
+<text x="${NOW_WIDTH - PAD_X}" y="${HEADER_Y}" text-anchor="end" font-family="${FONT}" font-size="18" fill="${COLORS.faint}">${escapeXml(`generated ${formatObservedCompact(model.generatedAt)}`)}</text>
 ${statSvgs.join('\n')}
 ${renderActivityPanel(model, PAD_X, ACT_Y, panelWidth)}
 ${renderDiscordPanel(model, PAD_X, BOT_Y, botWidth)}

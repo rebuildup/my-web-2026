@@ -1,81 +1,94 @@
 # GitHub profile v3 review evidence — 2026-11-23
 
-Scope: PR #1208 (release-0-13-1) 差し戻し指摘3件への修正証跡。
-Candidate SHA: `11c2c4c0`（ticket PR #1209 / #1210 マージ後の release-0-13-1 head）。
+Scope: PR #1208 (release-0-13-1) 差し戻し指摘への修正証跡。
+第1ラウンド: ticket PR #1209 / #1210（candidate `11c2c4c0` → freeze `04a78909`）。
+第2ラウンド（本版）: 実画面レビューで確認された残件3件への修正。
 
 ## 1. `/api/v1/github-profile/now` — Issue #1205
 
-### 変更点
+### 第2ラウンドの変更点
 
-- 1200×400 横長 → **680×840 縦長**。統計 2×2 グリッド + GITHUB ACTIVITY /
-  DISCORD / IN PROGRESS の縦積みパネル構成。
-- **IN PROGRESS パネル新設**: `src/home/current/roster.ts` の確定済み
-  エントリ名のみ表示（my-web-2026 / Tastile / After Effects /
-  AI coding agent）。weightLevel・日付・活動状況は未記入のため補わない。
-  出典 `declared roster · rebuildup.dev` を画像内に明記。
-- 活動件数の表記を `repos active in the window` 系に修正し、
-  `window repo activity, not projects in progress` の注意書きを併記。
-  リポジトリ活動と進行中プロジェクトを別パネルに分離。
-- `http/github-profile -> home/current` 依存は
-  `isGithubProfileRosterEdge`（`scripts/check-architecture.mjs`）で
-  ファイル限定の例外として許可。AGENTS.md §3 に記録。
+- **高さ 840 → 700**（情報の取捨選択と階層化で圧縮。パネル高を増やす
+  のではなく ACT_H=146 / BOT_H=156 に再配分）。
+- **`IN PROGRESS` → `DECLARED FOCUS`**: `roster.ts` の
+  `Owner confirmation: PENDING` と矛盾しない表記に修正。
+  GitHub で活動確認されたプロジェクトではなく、オーナー宣言の
+  注力領域であることをラベルと出典行 `declared · rebuildup.dev`
+  で明示。repo 活動カウントは従来通り `repos active in the window`
+  + `not projects in progress` 注意書きで分離。
+- **観測時刻をコンパクト化**: `Nov 22 · 06:11 UTC` 形式。
+  680px / ~308px 表示で省略されにくい。
+- **プロジェクト名と出典の重なり解消**: 4行目ベースライン
+  `y+125`、出典ベースライン `y+148`（ベースライン差 23px、
+  フォント 19/16）。パネル下端までの余白 ~5px を確保。
+
+### レイアウト計測（SVG 座標）
+
+| パネル | y 範囲 | 高さ |
+| --- | --- | --- |
+| 統計 2×2 | 56–368 | cell 150 |
+| GITHUB ACTIVITY | 380–526 | 146 |
+| DISCORD / DECLARED FOCUS | 538–694 | 156 |
+
+DECLARED FOCUS 内: タイトル y+40、行 y+62/83/104/125（font 19）、
+出典 y+148（font 16）。行4 下端 ~667 → 出典上端 ~674 で非重なり。
 
 ### モバイル可読性（実効フォントサイズ）
 
-GitHub モバイル表示 ~308px 幅での縮尺は 308/680 ≈ **0.453**。
+GitHub モバイル ~308px 幅での縮尺は 308/680 ≈ **0.453**。
 
 | 要素 | SVG px | 実効 px |
 | --- | --- | --- |
-| パネルタイトル・ラベル | 24 | ~10.9 |
-| 本文（activity detail / Discord detail / プロジェクト名） | 20–22 | ~9.1–10.0 |
-| 値・見出し | 30–56 | ~13.6–25.4 |
-| 最小（フッター注記） | 18 | ~8.2 |
-
-旧構成（1200×400、15px ラベル）は同条件で ~3.9px だった。
+| パネルタイトル | 22 | ~10.0 |
+| 本文（detail / 観測時刻） | 18–19 | ~8.2–8.6 |
+| プロジェクト名 | 19 | ~8.6 |
+| 出典注記 | 16 | ~7.3 |
+| 値・見出し | 28–56 | ~12.7–25.4 |
 
 ### 検証
 
 - `vitest run src/http/github-profile/` **51 tests PASS**
-  （IN PROGRESS・セマンティクス文言・unavailable 正直表示・決定性・
-  ラスタ画像非含有を検証）
-- `tsc --noEmit` / `biome check` / `check-architecture.mjs` 全て PASS
+- `tsc --noEmit` / `biome check` / `check-architecture.mjs` PASS
 - ラスタライズ証跡: `now-680.png`（原寸）/ `now-308.png`（モバイル相当）
 
 ## 2. `public/github-profile/reel.webp` — Issue #1204
 
-### 原因と対応
+### 第2ラウンドの変更点
 
-- MultiSlicer ソース（540×480）には**黒帯が焼き付いており**、
-  `fit: crop` では上下見切れ、`fit: blur` でも黒帯が残存していた。
-  輝度ゲート（平均 YAVG）は構図を評価できない。
-- ビルドに **cropdetect 自動クロップ**を追加: 各セグメント全フレームの
-  検出結果の union（= 全フレーム共通で黒い領域のみ）を除去。
-  いずれかのフレームに実コンテンツがある端は残るため誤クロップしない。
-- MultiSlicer を `blur` 構図へ変更（全フレーム表示・上部文字の見切れ解消）。
+- **黒い縦シームの残存原因を特定・修正**: cropdetect の union
+  クロップは「いずれかのフレームで明るい画素がある列」を内容扱い
+  するため、ほぼ全フレームで黒い境界列がフォアグラウンド端に残り、
+  シャープ映像とブラー背景の境界に細い黒線として描画されていた。
+- **検出方式を変更**: 動画を ~30 フレーム等間隔サンプリングし、
+  行/列の**平均輝度**が閾値（>3）を超える範囲のみを内容領域とする。
+  純黒バーは平均 0 なので確実に除外され、一過性の明点では
+  クロップが広がらない。検出後に 2px インセット。
+- **Isogasii → Shinkansen に差替え**: isogasii-demo の代表フレームは
+  画面大半が白余白で作品内容が伝わらないため、公開 portfolio の
+  別作品 `shinkansen`（p5.js ジェネラティブアート、640×360）を
+  `at: 0.27` で採用。輝度ゲートだけでなくフレーム構成を考慮した
+  代表フレーム選定。
 
 ### 計測値
 
 | 項目 | 値 |
 | --- | --- |
 | 出力 | 560×314 @ 4fps animated WebP |
-| サイズ | **563,370 bytes** |
-| 同一ソース GIF | 1,041,609 bytes（WebP 継続採用） |
-| セグメント | 5作品 × 2.5s（multislicer / flashbeat / ugoita / usoto / isogasii-demo） |
+| サイズ | **578,194 bytes** |
+| セグメント | 5作品 × 2.5s（multislicer / flashbeat / ugoita / usoto / shinkansen） |
 | ソース解決 | portfolio snapshot の published+public video link のみ（fail-closed） |
 
-MultiSlicer 先頭フレームの左右端輝度（列平均 YAVG）:
+MultiSlicer 先頭フレームの列平均輝度プロファイル（10px ビン）:
 
-- 修正前: 両端 ~1.5（ほぼ純黒の黒帯）
-- 修正後: ~65–147（ブラー背景の実画像。黒帯解消）
-
-他4作品は 640×360 の 16:9 ソースで cropdetect は全フレーム検出なし。
-ugoita は上下レターボックス（~48–54px）を検出・除去済み。
+- 前版: フォアグラウンド端付近に ~24–29 の黒列（シーム）
+- 今版: 同領域 ~46–69。純黒列は消失し、残る落差は
+  `eq=brightness=-0.15` のブラー背景側の自然な暗さ。
 
 ### 証跡ファイル
 
 - `reel-seg{1..5}-*.png`: 出力 WebP から抽出した各セグメント先頭フレーム
-- `reel-transition-{01..11}.png`: セグメント境界前後のフレーム
-- `*-first.png`: ソースクリップの先頭フレーム（`--review` 出力）
+- `reel-transition-{01..10}.png`: セグメント境界前後のフレーム
+- `*-first.png`: ソースクリップの先頭フレーム
 
 ## 3. operator gate B（v0.13.1 限定例外）
 
@@ -84,9 +97,8 @@ ugoita は上下レターボックス（~48–54px）を検出・除去済み。
 - 例外根拠: v0.13.0（同日）で Infisical prod parity / live Worker
   binding 全検証 PASS の実測証跡 + 本差分に secret・binding・
   wrangler 変更 0 件。
-- 本修正でも secret/binding/wrangler 契約の変更なし（差分は
-  `src/http/github-profile/**`、`scripts/`、`public/`、`docs/`、
-  `AGENTS.md` のみ）。契約が変わった場合は例外を無効とする。
+- 本修正でも secret/binding/wrangler 契約の変更なし。契約が
+  変わった場合は例外を無効とする。
 - 次回以降の標準運用に省略を一般化しない。
 
 ## 4. 未了（正直な記録）
@@ -95,3 +107,7 @@ ugoita は上下レターボックス（~48–54px）を検出・除去済み。
   生成物の提出であり、**GitHub 実画面（desktop/mobile・light/dark）での
   最終視覚受入はデプロイ後に実施する**。
 - リールの切替はハードカット（2.5s/作品）。演出強化が必要なら別途対応。
+- Isogasii の差替えは「内容が伝わるフレームが無い」という判断。
+  別タイムスタンプの再選定も可能だが、現状は作品構成の多様性
+  （Web アプリ・音楽・イラスト・映像 PV・ジェネラティブアート）を
+  優先した。

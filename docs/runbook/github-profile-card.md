@@ -10,8 +10,11 @@ multi-section layout (rebuildup/rebuildup#5); the delivery contract is
 
 | Asset | URL | Kind |
 |---|---|---|
+| Work reel | `https://rebuildup.dev/github-profile/reel.webp` | Static Assets, committed animated WebP 560×315@4fps (Issue #1204) |
+| Skill icons ×14 | `https://rebuildup.dev/github-profile/skills/<name>.svg` | Static Assets, tandpfun/skill-icons (MIT), dark/light variants |
 | Work covers ×5 | `https://rebuildup.dev/github-profile/works/<slug>.webp` | Static Assets, committed WebP ≤1200px |
-| Status strip | `GET /api/v1/github-profile/status` | SVG, ~5 KB, no raster |
+| Unified status | `GET /api/v1/github-profile/now` | SVG, contributions/streak/top-lang/activity/Discord, ~few KB, no raster |
+| Legacy status | `GET /api/v1/github-profile/status` | SVG 2-panel strip; superseded by `/now` in the README |
 
 Work selection lives in `src/http/github-profile/works.json`
 (`hero` / `grid` roles); `works.ts` resolves slugs against the
@@ -33,6 +36,22 @@ snapshot, or no servable cover) is deleted in build mode and reported
 as a failure in `--check` mode — Static Assets serves `public/`
 verbatim, so a leftover derivative would keep publishing bytes for a
 work that is no longer public (Issue #1199).
+
+The reel asset (`public/github-profile/reel.webp`) is regenerated
+separately — its sources are the public YouTube videos linked from the
+same snapshot, not `/media` covers:
+
+```sh
+pnpm run profile:reel:build   # yt-dlp + ffmpeg + sharp; fails closed
+                              # when a reel.json slug leaves the
+                              # published+public set or a segment's
+                              # first frame fails the luma gate
+```
+
+Segment picks live in `src/http/github-profile/reel.json` (`at`
+fraction, `duration`, `fit: crop|blur`); review first frames with
+`--review` (dumps PNGs to `.tmp/reel-review/`) before committing a new
+build.
 
 ## Deprecated surface (ADR-0024 → ADR-0025 §2.4)
 

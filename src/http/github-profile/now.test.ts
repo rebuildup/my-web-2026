@@ -82,9 +82,10 @@ describe('renderProfileNowSvg', () => {
 		expect(svg).toContain('—');
 	});
 
-	it('keeps activity, Discord and in-progress panels with observation times', () => {
+	it('keeps activity, Discord and declared-focus panels with observation times', () => {
 		const svg = renderProfileNowSvg(BASE_MODEL, EMPTY_STATS, PROJECTS);
-		expect(svg).toContain('IN PROGRESS');
+		expect(svg).toContain('DECLARED FOCUS');
+		expect(svg).toContain('declared · rebuildup.dev');
 		expect(svg).toContain('my-web-2026');
 		expect(svg).toContain('Tastile');
 		expect(svg).toContain('GITHUB ACTIVITY');

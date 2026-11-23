@@ -116,26 +116,17 @@ function meanLuma(file) {
 }
 
 // Baked-in letterbox bars survive every fit mode, so detect the region
-// that is non-black in at least one frame and crop to it. cropdetect runs
-// per frame; the union of all detected rectangles removes only columns /
-// rows that are black in EVERY frame, so real edge content is kept.
+// that carries visible content and crop to it. Per-frame cropdetect is
+// unreliable here: a transient bright pixel stretches the union crop and
+// leaves mostly-black columns at the foreground edge — the thin dark
+// seam between the sharp frame and the blurred backdrop. Instead,
+// sample frames across the video and keep only rows/columns whose mean
+// luma clears a low threshold; a pure-black bar contributes exactly 0.
+const CROP_SAMPLE_TARGET = 30;
+const CROP_MIN_MEAN = 3;
+const CROP_INSET = 2;
+
 function detectCrop(videoPath) {
-	const { stderr } = spawnSync(
-		'ffmpeg',
-		['-v', 'info', '-i', videoPath, '-vf', 'cropdetect=limit=24:round=2', '-f', 'null', '-'],
-		{ encoding: 'utf8' },
-	);
-	const crops = [...String(stderr ?? '').matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].map((m) => ({
-		w: Number(m[1]),
-		h: Number(m[2]),
-		x: Number(m[3]),
-		y: Number(m[4]),
-	}));
-	if (crops.length === 0) return null;
-	const x0 = Math.min(...crops.map((c) => c.x));
-	const y0 = Math.min(...crops.map((c) => c.y));
-	const x1 = Math.max(...crops.map((c) => c.x + c.w));
-	const y1 = Math.max(...crops.map((c) => c.y + c.h));
 	const probe = spawnSync(
 		'ffprobe',
 		[
@@ -144,21 +135,64 @@ function detectCrop(videoPath) {
 			'-select_streams',
 			'v:0',
 			'-show_entries',
-			'stream=width,height',
+			'stream=width,height:format=duration',
 			'-of',
 			'csv=p=0',
 			videoPath,
 		],
 		{ encoding: 'utf8' },
 	);
-	const [srcW, srcH] = String(probe.stdout ?? '')
+	const [srcW, srcH, duration] = String(probe.stdout ?? '')
 		.trim()
-		.split(',')
+		.split(/[,\n]/)
 		.map(Number);
 	if (!srcW || !srcH) return null;
+	const interval = Math.max(1, Math.round((duration || 10) / CROP_SAMPLE_TARGET));
+	const { stdout, status } = spawnSync(
+		'ffmpeg',
+		['-v', 'error', '-i', videoPath, '-vf', `fps=1/${interval},format=gray`, '-f', 'rawvideo', '-'],
+		{ maxBuffer: 256 * 1024 * 1024 },
+	);
+	if (status !== 0 || !stdout?.length) return null;
+	const frameBytes = srcW * srcH;
+	const frames = Math.floor(stdout.length / frameBytes);
+	if (frames === 0) return null;
+	const colSum = new Float64Array(srcW);
+	const rowSum = new Float64Array(srcH);
+	for (let f = 0; f < frames; f++) {
+		const base = f * frameBytes;
+		for (let y = 0; y < srcH; y++) {
+			const rowBase = base + y * srcW;
+			let rowAcc = 0;
+			for (let x = 0; x < srcW; x++) {
+				const v = stdout[rowBase + x];
+				colSum[x] += v;
+				rowAcc += v;
+			}
+			rowSum[y] += rowAcc;
+		}
+	}
+	const colMean = (x) => colSum[x] / (frames * srcH);
+	const rowMean = (y) => rowSum[y] / (frames * srcW);
+	const bounds = (mean, size) => {
+		let lo = 0;
+		let hi = size - 1;
+		while (lo < size && mean(lo) <= CROP_MIN_MEAN) lo++;
+		while (hi > lo && mean(hi) <= CROP_MIN_MEAN) hi--;
+		return [lo, hi];
+	};
+	const [x0, xr] = bounds(colMean, srcW);
+	const [y0, yr] = bounds(rowMean, srcH);
 	// Require a meaningful trim; tiny jitters must not cut real pixels.
-	if (x1 - x0 >= srcW * 0.98 && y1 - y0 >= srcH * 0.98) return null;
-	return { w: x1 - x0, h: y1 - y0, x: x0, y: y0 };
+	if (xr - x0 >= srcW * 0.98 && yr - y0 >= srcH * 0.98) return null;
+	const ix = Math.min(CROP_INSET, Math.floor((xr - x0) / 4));
+	const iy = Math.min(CROP_INSET, Math.floor((yr - y0) / 4));
+	return {
+		w: xr - x0 - ix * 2 + 1,
+		h: yr - y0 - iy * 2 + 1,
+		x: x0 + ix,
+		y: y0 + iy,
+	};
 }
 
 function normalizeFilter(width, height, fit, canvas, crop) {

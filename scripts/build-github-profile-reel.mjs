@@ -68,7 +68,11 @@ function videoUrlFor(project) {
 }
 
 function run(cmd, args, opts = {}) {
-	return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...opts });
+	return execFileSync(cmd, args, {
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'inherit'],
+		...opts,
+	});
 }
 
 function ytInfo(url) {
@@ -93,7 +97,19 @@ function meanLuma(file) {
 	// spawnSync so both streams are captured.
 	const { stderr } = spawnSync(
 		'ffmpeg',
-		['-v', 'info', '-i', file, '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG', '-frames:v', '1', '-f', 'null', '-'],
+		[
+			'-v',
+			'info',
+			'-i',
+			file,
+			'-vf',
+			'signalstats,metadata=print:key=lavfi.signalstats.YAVG',
+			'-frames:v',
+			'1',
+			'-f',
+			'null',
+			'-',
+		],
 		{ encoding: 'utf8' },
 	);
 	return Number(String(stderr ?? '').match(/YAVG=([\d.]+)/)?.[1] ?? 0);
@@ -106,7 +122,7 @@ function normalizeFilter(width, height, fit, canvas) {
 		// overlay the sharp source — no black bars for vertical/square
 		// footage, and the backdrop stays part of the picture.
 		return [
-			`[0:v]split[bg][fg]`,
+			'[0:v]split[bg][fg]',
 			`[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=20:2,eq=brightness=-0.15[bgout]`,
 			`[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease[fgout]`,
 			`[bgout][fgout]overlay=(W-w)/2:(H-h)/2,fps=${canvas.fps},format=yuv420p`,
@@ -119,12 +135,22 @@ function segmentFile(videoPath, seg, index, canvas, workDir) {
 	const out = join(workDir, `seg${index}.mp4`);
 	const vf = normalizeFilter(0, 0, seg.fit, canvas);
 	run('ffmpeg', [
-		'-y', '-v', 'error',
-		'-ss', String(seg.start),
-		'-t', String(seg.duration),
-		'-i', videoPath,
-		'-vf', vf,
-		'-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+		'-y',
+		'-v',
+		'error',
+		'-ss',
+		String(seg.start),
+		'-t',
+		String(seg.duration),
+		'-i',
+		videoPath,
+		'-vf',
+		vf,
+		'-an',
+		'-c:v',
+		'libx264',
+		'-pix_fmt',
+		'yuv420p',
 		out,
 	]);
 	return out;
@@ -147,7 +173,9 @@ try {
 		const project = bySlug.get(seg.slug);
 		const url = project ? videoUrlFor(project) : null;
 		if (!project || !url) {
-			console.error(`[reel] ${seg.slug}: not a published+public work with a YouTube link — skipped`);
+			console.error(
+				`[reel] ${seg.slug}: not a published+public work with a YouTube link — skipped`,
+			);
 			failures += 1;
 			continue;
 		}
@@ -157,12 +185,17 @@ try {
 		// Fetch only the needed range at <=480p.
 		const raw = join(workDir, `src${i}.%(ext)s`);
 		run('yt-dlp', [
-			'-f', 'bv*[height<=480]+ba/b[height<=480]',
-			'--download-sections', `*${absStart.toFixed(2)}-${(absStart + seg.duration).toFixed(2)}`,
-			'-o', raw,
+			'-f',
+			'bv*[height<=480]+ba/b[height<=480]',
+			'--download-sections',
+			`*${absStart.toFixed(2)}-${(absStart + seg.duration).toFixed(2)}`,
+			'-o',
+			raw,
 			url,
 		]);
-		const srcFile = execFileSync('bash', ['-c', `ls ${workDir}/src${i}.* | head -1`], { encoding: 'utf8' }).trim();
+		const srcFile = execFileSync('bash', ['-c', `ls ${workDir}/src${i}.* | head -1`], {
+			encoding: 'utf8',
+		}).trim();
 		if (!existsSync(srcFile)) {
 			console.error(`[reel] ${seg.slug}: yt-dlp produced no file`);
 			failures += 1;
@@ -177,21 +210,41 @@ try {
 			writeFileSync(join(REVIEW_DIR, `${seg.slug}-first.png`), readFileSync(firstPng));
 		}
 		if (luma < MIN_LUMA) {
-			console.error(`[reel] ${seg.slug}: first frame too dark (YAVG=${luma.toFixed(1)}) — pick a different "at"`);
+			console.error(
+				`[reel] ${seg.slug}: first frame too dark (YAVG=${luma.toFixed(1)}) — pick a different "at"`,
+			);
 			failures += 1;
 			continue;
 		}
-		segments.push({ slug: seg.slug, file: segmentFile(srcFile, { ...seg, start: 0, duration: seg.duration }, i, canvas, workDir) });
-		console.log(`[reel] ${seg.slug}: ${absStart.toFixed(1)}s+${seg.duration}s luma=${luma.toFixed(0)}`);
+		segments.push({
+			slug: seg.slug,
+			file: segmentFile(srcFile, { ...seg, start: 0, duration: seg.duration }, i, canvas, workDir),
+		});
+		console.log(
+			`[reel] ${seg.slug}: ${absStart.toFixed(1)}s+${seg.duration}s luma=${luma.toFixed(0)}`,
+		);
 	}
 
 	if (failures > 0) throw new Error(`${failures} segment(s) failed`);
 	if (segments.length === 0) throw new Error('no segments');
 
 	const listPath = join(workDir, 'list.txt');
-	writeFileSync(listPath, segments.map((s) => `file '${s.file}'`).join('\n') + '\n');
+	writeFileSync(listPath, `${segments.map((s) => `file '${s.file}'`).join('\n')}\n`);
 	const joined = join(workDir, 'joined.mp4');
-	run('ffmpeg', ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', joined]);
+	run('ffmpeg', [
+		'-y',
+		'-v',
+		'error',
+		'-f',
+		'concat',
+		'-safe',
+		'0',
+		'-i',
+		listPath,
+		'-c',
+		'copy',
+		joined,
+	]);
 
 	// gif pipe -> sharp animated WebP (ffmpeg here has no libwebp).
 	const gifPath = process.env.REEL_GIF_OUT;

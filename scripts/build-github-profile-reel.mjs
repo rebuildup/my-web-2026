@@ -115,25 +115,72 @@ function meanLuma(file) {
 	return Number(String(stderr ?? '').match(/YAVG=([\d.]+)/)?.[1] ?? 0);
 }
 
-function normalizeFilter(width, height, fit, canvas) {
+// Baked-in letterbox bars survive every fit mode, so detect the region
+// that is non-black in at least one frame and crop to it. cropdetect runs
+// per frame; the union of all detected rectangles removes only columns /
+// rows that are black in EVERY frame, so real edge content is kept.
+function detectCrop(videoPath) {
+	const { stderr } = spawnSync(
+		'ffmpeg',
+		['-v', 'info', '-i', videoPath, '-vf', 'cropdetect=limit=24:round=2', '-f', 'null', '-'],
+		{ encoding: 'utf8' },
+	);
+	const crops = [...String(stderr ?? '').matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].map((m) => ({
+		w: Number(m[1]),
+		h: Number(m[2]),
+		x: Number(m[3]),
+		y: Number(m[4]),
+	}));
+	if (crops.length === 0) return null;
+	const x0 = Math.min(...crops.map((c) => c.x));
+	const y0 = Math.min(...crops.map((c) => c.y));
+	const x1 = Math.max(...crops.map((c) => c.x + c.w));
+	const y1 = Math.max(...crops.map((c) => c.y + c.h));
+	const probe = spawnSync(
+		'ffprobe',
+		[
+			'-v',
+			'error',
+			'-select_streams',
+			'v:0',
+			'-show_entries',
+			'stream=width,height',
+			'-of',
+			'csv=p=0',
+			videoPath,
+		],
+		{ encoding: 'utf8' },
+	);
+	const [srcW, srcH] = String(probe.stdout ?? '')
+		.trim()
+		.split(',')
+		.map(Number);
+	if (!srcW || !srcH) return null;
+	// Require a meaningful trim; tiny jitters must not cut real pixels.
+	if (x1 - x0 >= srcW * 0.98 && y1 - y0 >= srcH * 0.98) return null;
+	return { w: x1 - x0, h: y1 - y0, x: x0, y: y0 };
+}
+
+function normalizeFilter(width, height, fit, canvas, crop) {
 	const { width: W, height: H } = canvas;
+	const pre = crop ? `crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},` : '';
 	if (fit === 'blur') {
 		// Fill the canvas with a blurred, dimmed copy of the frame, then
 		// overlay the sharp source — no black bars for vertical/square
 		// footage, and the backdrop stays part of the picture.
 		return [
-			'[0:v]split[bg][fg]',
+			`[0:v]${pre}split[bg][fg]`,
 			`[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=20:2,eq=brightness=-0.15[bgout]`,
 			`[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease[fgout]`,
 			`[bgout][fgout]overlay=(W-w)/2:(H-h)/2,fps=${canvas.fps},format=yuv420p`,
 		].join(';');
 	}
-	return `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${canvas.fps},format=yuv420p`;
+	return `${pre}scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${canvas.fps},format=yuv420p`;
 }
 
 function segmentFile(videoPath, seg, index, canvas, workDir) {
 	const out = join(workDir, `seg${index}.mp4`);
-	const vf = normalizeFilter(0, 0, seg.fit, canvas);
+	const vf = normalizeFilter(0, 0, seg.fit, canvas, detectCrop(videoPath));
 	run('ffmpeg', [
 		'-y',
 		'-v',

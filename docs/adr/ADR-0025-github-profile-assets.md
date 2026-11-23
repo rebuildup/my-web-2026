@@ -97,6 +97,28 @@ Issue #1193 が軽量化を追跡していた。
   描画）は削除まで凍結する。`/status` はその panel レンダラを
   再利用するため、panel 部分の共有は維持する。
 
+### 2.5 作品リールと統合 now ストリップ（Issue #1204 / #1205）
+
+- **作品リール** `public/github-profile/reel.webp`: 単一の animated
+  WebP（560×315@4fps、約12.5秒）が published+public な作品の公開
+  YouTube 映像を巡回する。ソースは `reel.json` の slug 一覧で、
+  URL は portfolio snapshot の `links[].kind==='video'` からのみ
+  解決する（manifest に URL を書かない）。作品が公開集合から外れ
+  ればスクリプトは fail-closed で失敗する。縦横比差は `fit: crop`
+  （中央クロップ）/ `fit: blur`（ブラー背景+シャープ前景）で作品
+  ごとに吸収し、無意味な黒帯を作らない。セグメント先頭フレームの
+  輝度（signalstats YAVG）を下限検査し、ローディング/暗転フレームを
+  出荷しない。形式は GIF（同一ソースで約1.7倍の容量）ではなく
+  animated WebP を採用。`profile:reel:build` で再生成。
+- **統合 now ストリップ** `GET /api/v1/github-profile/now`:
+  contributions / current・longest streak / top language を vendored
+  readme-stats fetchers + microCache で取得し、既存の activity /
+  Discord presence パネルと **1 枚の SVG** に統合する。`/status`
+  の2パネル構成と「カード4枚の横並び」はどちらも採用しない
+  （rebuildup/rebuildup#8 のデザインレビューで不採用）。upstream
+  失敗時は `unavailable` を正直に描画し、観測時刻を画像内に残す。
+  キャッシュ契約は `/status` と同一。
+
 ## 3. Consequences
 
 - README 全体の画像転送量は旧カード 1 枚 ~1.23MB から、作品

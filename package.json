@@ -157,6 +157,7 @@
 		"portfolio:ledger:check": "node scripts/check-portfolio-ledger.mjs",
 		"profile:works:build": "node scripts/build-github-profile-works.mjs",
 		"profile:works:check": "node scripts/build-github-profile-works.mjs --check",
+		"profile:reel:build": "node scripts/build-github-profile-reel.mjs",
 		"sitemap:ledger:check": "node --experimental-strip-types scripts/check-sitemap-ledger-agreement.mjs",
 		"content:links:check": "node --experimental-strip-types scripts/check-content-links.mjs",
 		"content:links:report": "node --experimental-strip-types scripts/content-link-report.mjs",

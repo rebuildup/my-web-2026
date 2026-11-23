@@ -658,6 +658,60 @@
 			"publication": "published",
 			"ownerConfirmation": "unconfirmed",
 			"externalHosts": []
+		},
+		{
+			"id": "github-profile-skills",
+			"kind": "image",
+			"title": "GitHubプロフィール用スキルアイコン（SVG 14点）",
+			"summary": "rebuildup/rebuildup のプロフィールREADMEが技術スタックを示すために参照するアイコン。tandpfun/skill-icons（MIT License）から TypeScript / React / Next.js / Cloudflare / Vite / After Effects / Blender / Node.js の Dark/Light バリアントを取得し public/github-profile/skills/ にコミット。ブランドロゴの商標は各権利者に帰属し、MIT の範囲で表示利用する。アイコン描画システムは自作せず、既存アイコン資産をそのまま静的配信する（Issue #1205）。",
+			"covers": ["public/github-profile/skills/**"],
+			"publicPaths": [
+				"/github-profile/skills/typescript.svg",
+				"/github-profile/skills/react-dark.svg",
+				"/github-profile/skills/react-light.svg",
+				"/github-profile/skills/nextjs-dark.svg",
+				"/github-profile/skills/nextjs-light.svg",
+				"/github-profile/skills/cloudflare-dark.svg",
+				"/github-profile/skills/cloudflare-light.svg",
+				"/github-profile/skills/vite-dark.svg",
+				"/github-profile/skills/vite-light.svg",
+				"/github-profile/skills/aftereffects.svg",
+				"/github-profile/skills/blender-dark.svg",
+				"/github-profile/skills/blender-light.svg",
+				"/github-profile/skills/nodejs-dark.svg",
+				"/github-profile/skills/nodejs-light.svg"
+			],
+			"origin": "third-party-bundled",
+			"rightsHolder": "tandpfun/skill-icons contributors; brand marks belong to their respective owners",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": true,
+				"attributionText": "Skill icons by tandpfun/skill-icons (https://github.com/tandpfun/skill-icons), MIT License.",
+				"attributionDeliveredAt": "github-profile README footer link",
+				"conditions": [
+					"Icons are served verbatim from public/github-profile/skills/; no recoloring or derivative edits.",
+					"Dark/Light variants are selected by the README via <picture> prefers-color-scheme."
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-23",
+				"note": "Source repository license verified via GitHub API (MIT). Files fetched from raw.githubusercontent.com/tandpfun/skill-icons main branch icons/ directory."
+			},
+			"evidence": [
+				{
+					"kind": "external-reference",
+					"url": "https://github.com/tandpfun/skill-icons"
+				},
+				{
+					"kind": "external-reference",
+					"url": "https://github.com/tandpfun/skill-icons/blob/main/LICENSE"
+				}
+			],
+			"publication": "published",
+			"ownerConfirmation": "unconfirmed",
+			"externalHosts": []
 		}
 	]
 }

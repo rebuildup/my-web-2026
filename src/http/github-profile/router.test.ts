@@ -146,3 +146,31 @@ describe('GET /status', () => {
 		expect(res.status).toBe(405);
 	});
 });
+
+describe('GET /now', () => {
+	it('answers 200 SVG with the shared-cache opt-in and honest unavailable stats', async () => {
+		const res = await githubProfileRouter.request('/now', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('image/svg+xml');
+		expect(res.headers.get('cache-control')).toBe('public, max-age=300, s-maxage=300');
+		const body = await res.text();
+		expect(body).toContain('<svg');
+		expect(body).toContain('NOW · @rebuildup');
+		expect(body).toContain('CURRENT STREAK');
+		expect(body).toContain('TOP LANGUAGE');
+		// No GitHub token in the test env → stats render as unavailable,
+		// never as invented numbers.
+		expect(body).toContain('unavailable');
+		expect(body).not.toContain('<image');
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/now', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
+	});
+});

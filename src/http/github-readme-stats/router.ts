@@ -55,7 +55,7 @@ type HonoContext = Context<{ Bindings: Env }>;
 // Module scope so token rotation survives across requests on a warm instance
 let tokenIndex = 0;
 
-function getNextToken(env: Record<string, string | undefined>): string | undefined {
+export function getNextToken(env: Record<string, string | undefined>): string | undefined {
 	const tokens = Object.keys(env)
 		.filter((key) => key.startsWith('GITHUB_README_STATS_PAT_'))
 		.map((key) => env[key])
@@ -75,7 +75,7 @@ function getNextToken(env: Record<string, string | undefined>): string | undefin
  * `GITHUB_TOKEN`, `CACHE_SECONDS`). `Env` also carries bindings (D1, R2, …)
  * that are not strings, so the router hands the vendor a plain string view.
  */
-function stringEnv(env: Env): Record<string, string | undefined> {
+export function stringEnv(env: Env): Record<string, string | undefined> {
 	const out: Record<string, string | undefined> = {};
 	for (const [key, value] of Object.entries(env)) {
 		if (typeof value === 'string') out[key] = value;

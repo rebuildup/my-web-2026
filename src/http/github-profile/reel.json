@@ -5,10 +5,10 @@
 	"output": "public/github-profile/reel.webp",
 	"canvas": { "width": 560, "height": 315, "fps": 4 },
 	"segments": [
-		{ "slug": "multislicer", "at": 0.3, "duration": 2.5, "fit": "crop" },
+		{ "slug": "multislicer", "at": 0.3, "duration": 2.5, "fit": "blur" },
 		{ "slug": "flashbeat", "at": 0.45, "duration": 2.5, "fit": "crop" },
 		{ "slug": "ugoita", "at": 0.3, "duration": 2.5, "fit": "blur" },
-		{ "slug": "usoto", "at": 0.35, "duration": 2.5, "fit": "blur" },
+		{ "slug": "usoto", "at": 0.35, "duration": 2.5, "fit": "crop" },
 		{ "slug": "isogasii-demo", "at": 0.3, "duration": 2.5, "fit": "crop" }
 	]
 }

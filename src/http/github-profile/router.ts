@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { PROJECT_ROSTER } from '../../home/current/roster';
 import { notionProjects } from '../../portfolio/notion/reader';
 import { microCache } from '../../vendor/github-readme-stats-fast/common/microCache.ts';
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
@@ -33,8 +34,10 @@ import { renderProfileStatusSvg } from './status';
  * Data sources (all already-public projections):
  *   - D1 `github_activity_snapshot` / `discord_presence_snapshot`
  *     payloads, re-validated by this boundary's own ingest schemas
- *     (`../activity/schema`, `../presence/schema`) — `http` never
- *     imports `src/home/**`;
+ *     (`../activity/schema`, `../presence/schema`);
+ *   - `home/current/roster.ts` — the committed current-projects
+ *     roster — for the `/now` IN PROGRESS panel only (the single
+ *     file-scoped `http -> home` exception, Issue #1205);
  *   - `notionProjects()` — the committed, reviewed public portfolio
  *     snapshot — for the work covers. Covers are NOT linked: an SVG
  *     delivered through `<img>` cannot load external subresources, so
@@ -184,7 +187,11 @@ githubProfileRouter.get('/now', rateLimitRead, async (c) => {
 		),
 		fetchNowStats(env),
 	]);
-	const svg = renderProfileNowSvg(model, stats);
+	const svg = renderProfileNowSvg(
+		model,
+		stats,
+		PROJECT_ROSTER.map((project) => project.name),
+	);
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': NOW_CACHE_CONTROL,

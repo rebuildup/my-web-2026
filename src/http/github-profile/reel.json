@@ -1,0 +1,14 @@
+{
+	"schema": "github-profile-reel.v1",
+	"issue": "#1204",
+	"adr": "docs/adr/ADR-0025-github-profile-assets.md",
+	"output": "public/github-profile/reel.webp",
+	"canvas": { "width": 560, "height": 315, "fps": 4 },
+	"segments": [
+		{ "slug": "multislicer", "at": 0.3, "duration": 2.5, "fit": "blur" },
+		{ "slug": "flashbeat", "at": 0.45, "duration": 2.5, "fit": "crop" },
+		{ "slug": "ugoita", "at": 0.3, "duration": 2.5, "fit": "blur" },
+		{ "slug": "usoto", "at": 0.35, "duration": 2.5, "fit": "crop" },
+		{ "slug": "shinkansen", "at": 0.27, "duration": 2.5, "fit": "crop" }
+	]
+}

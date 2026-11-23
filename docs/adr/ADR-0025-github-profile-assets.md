@@ -37,8 +37,15 @@ Issue #1193 が軽量化を追跡していた。
   保たれる。
 - 選定: `src/http/github-profile/works.json` が slug + レイアウ
   役割（hero / grid）を宣言し、`works.ts` がスナップショットへ
-  fail-closed に解決する。作品の増減はこの 2 ファイル + スクリプ
-  ト再実行 + README 更新で行う。
+  fail-closed に解決する（`published` + `public` のみ。呼び出し側が
+  未フィルタの配列を渡しても除外される — Issue #1199）。作品の増減
+  はこの 2 ファイル + スクリプト再実行 + README 更新で行う。
+- 残存派生物: スクリプトは実行ごとに `public/github-profile/works/`
+  を走査し、その回で生成されなかった `.webp`（manifest から外れた
+  slug、公開境界を外れた作品、cover が取得不能になった作品）を
+  削除する。`--check` では残存を失敗として報告する。Static Assets
+  は `public/` をそのまま配信するため、この掃除がないと公開終了
+  した作品の派生画像が配信され続ける（Issue #1199）。
 - キャッシュ: `public/_headers` に `/github-profile/*` →
   `Cache-Control: public, max-age=86400` を追加。slug URL は安定
   だが bytes は再生成で変わり得るため `immutable` にはしない。
@@ -89,6 +96,28 @@ Issue #1193 が軽量化を追跡していた。
 - `/card` のコード（`card.ts` / `media-embed.ts` / works tile
   描画）は削除まで凍結する。`/status` はその panel レンダラを
   再利用するため、panel 部分の共有は維持する。
+
+### 2.5 作品リールと統合 now ストリップ（Issue #1204 / #1205）
+
+- **作品リール** `public/github-profile/reel.webp`: 単一の animated
+  WebP（560×315@4fps、約12.5秒）が published+public な作品の公開
+  YouTube 映像を巡回する。ソースは `reel.json` の slug 一覧で、
+  URL は portfolio snapshot の `links[].kind==='video'` からのみ
+  解決する（manifest に URL を書かない）。作品が公開集合から外れ
+  ればスクリプトは fail-closed で失敗する。縦横比差は `fit: crop`
+  （中央クロップ）/ `fit: blur`（ブラー背景+シャープ前景）で作品
+  ごとに吸収し、無意味な黒帯を作らない。セグメント先頭フレームの
+  輝度（signalstats YAVG）を下限検査し、ローディング/暗転フレームを
+  出荷しない。形式は GIF（同一ソースで約1.7倍の容量）ではなく
+  animated WebP を採用。`profile:reel:build` で再生成。
+- **統合 now ストリップ** `GET /api/v1/github-profile/now`:
+  contributions / current・longest streak / top language を vendored
+  readme-stats fetchers + microCache で取得し、既存の activity /
+  Discord presence パネルと **1 枚の SVG** に統合する。`/status`
+  の2パネル構成と「カード4枚の横並び」はどちらも採用しない
+  （rebuildup/rebuildup#8 のデザインレビューで不採用）。upstream
+  失敗時は `unavailable` を正直に描画し、観測時刻を画像内に残す。
+  キャッシュ契約は `/status` と同一。
 
 ## 3. Consequences
 

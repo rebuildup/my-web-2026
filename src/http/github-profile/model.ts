@@ -119,9 +119,9 @@ export interface ProfileCardModel {
 function coverMediaCandidates(project: PortfolioProject): ProfileCardWorkMedia[] {
 	const rasters = project.media.filter((media) => RASTER_CONTENT_TYPES.has(media.contentType));
 	const ordered = [
-		...rasters.filter((media) => media.isCover),
-		...rasters.filter((media) => !media.isCover),
-	].sort((a, b) => a.displayOrder - b.displayOrder);
+		...rasters.filter((media) => media.isCover).sort((a, b) => a.displayOrder - b.displayOrder),
+		...rasters.filter((media) => !media.isCover).sort((a, b) => a.displayOrder - b.displayOrder),
+	];
 	return ordered
 		.filter((media) => isPublicMediaKey(media.r2Key))
 		.map((media: PortfolioMedia) => ({

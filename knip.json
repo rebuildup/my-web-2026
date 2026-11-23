@@ -30,5 +30,6 @@
 			"enumMembers",
 			"namespaceMembers"
 		]
-	}
+	},
+	"ignoreBinaries": ["ffmpeg", "ffprobe", "yt-dlp"]
 }

@@ -63,7 +63,14 @@ function toWork(project: PortfolioProject, role: GithubProfileWorkRole): GithubP
 export function githubProfileWorks(
 	projects: readonly PortfolioProject[] = notionProjects(),
 ): readonly GithubProfileWork[] {
-	const bySlug = new Map(projects.map((project) => [project.slug, project]));
+	// Fail-closed: only projects the portfolio itself publishes publicly
+	// may back a profile asset, regardless of what array the caller
+	// passes in (Issue #1199).
+	const bySlug = new Map(
+		projects
+			.filter((project) => project.status === 'published' && project.visibility === 'public')
+			.map((project) => [project.slug, project]),
+	);
 	const works: GithubProfileWork[] = [];
 	for (const entry of ENTRIES) {
 		const project = bySlug.get(entry.slug);

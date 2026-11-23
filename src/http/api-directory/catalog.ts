@@ -228,6 +228,21 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Dynamic status strip for the rebuildup/rebuildup profile README "Now" section (Issue #1196): GitHub activity + Discord presence snapshots with observation times, no raster media. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/now',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the strip always answers 200 — failed upstreams render — with an unavailable note inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Unified status strip for the rebuildup/rebuildup profile README (Issue #1205): GitHub contributions / current & longest streak / top language (readme-stats fetchers, hourly upstream cache) plus GitHub activity and Discord presence panels with observation times. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

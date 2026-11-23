@@ -108,3 +108,21 @@ deprecated のため選定を共有しない。
   fail-closed で検証する。
 - Camo のキャッシュ特性・実画面検証はリリース後に
   `docs/runbook/github-profile-card.md` の手順で実測する。
+
+## 7. v2 再設計（Issue #1204 / #1205 / rebuildup/rebuildup#8）
+
+v0.13.0 の「hero + 2×2 グリッド + status」は、Selected Work の
+縦占有・status の視認性・テキスト主体の自己紹介が課題となり、
+rebuildup/rebuildup#8 のレビューで**単一リール構成をベースに全面
+再設計**が決定した（案Bの2×2アニメタイルは不採用）。
+
+- **作品リール**: `reel.webp`（animated WebP 560×315@4fps）1本が
+  5作品の公開 YouTube 映像を巡回。縦横比は crop/blur 構図で吸収、
+  先頭フレーム輝度ゲートでローディング/暗転を排除。GIF 比較は
+  約1.7倍の容量で WebP 採用。生成は `profile:reel:build`、
+  公開境界は snapshot の published+public 解決で fail-closed。
+- **スキルアイコン**: tandpfun/skill-icons（MIT）を自前ホストの
+  静的 SVG として配信（描画システムは自作しない）。
+- **統合 now**: `/api/v1/github-profile/now` が contributions /
+  streak / top language / activity / Discord を1枚の SVG に統合。
+  カード4枚の横並びは不採用。`/status` は互換のため残す。

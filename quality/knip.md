@@ -33,6 +33,7 @@ in a versioned baseline, and only *new* findings fail `validate:fast`.
 | `ignoreDependencies: postcss` | knip attributes the Panda plugin's implicit `postcss` external to `panda.config.ts` as an `unlisted` finding. No first-party source imports the package — `'@pandacss/dev/postcss'` in `postcss.config.mjs` is a plugin *name*, not an import — so the entry records a toolchain-internal resolution, not a missing dependency declaration. |
 | `ignoreDependencies: @storybook/react` | Imported by `.storybook/preview.ts` and by every `src/**/*.stories.tsx`, but it is **not** a declared dependency (only `@storybook/react-vite` is). The entry records a real packaging gap, not a structural false reference; declaring it belongs to a dependency-decision ticket, not to this gate. |
 | `ignoreExportsUsedInFile: true` | Exports referenced within their own module are not "unused". |
+| `ignoreBinaries: ffmpeg, ffprobe, yt-dlp` | System tools invoked by `scripts/build-github-profile-reel.mjs` (Issue #1204) via `execFileSync`/`spawnSync`. They are host prerequisites of a build-time asset pipeline, not npm dependencies — the script fails closed when they are absent. |
 
 ## What the gate reads
 

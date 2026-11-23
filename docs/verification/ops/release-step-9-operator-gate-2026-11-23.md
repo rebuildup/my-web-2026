@@ -43,7 +43,7 @@ exit 0。allowlist 外 key は 0、enumeration complete。v0.12.0 実測
 ## B-1. Infisical 契約観測
 
 ```text
-$ INFISICAL_TOKEN=<CLI access token> node scripts/check-cf-secrets.mjs --execute --environment=prod
+$ INFISICAL_TOKEN=<CLI access token> node scripts/check-cf-secrets.mjs --execute --environment=prod | tee .tmp/cf-secrets-prod.txt
 [check-cf-secrets] environment=prod
 [check-cf-secrets] deploy-time secret bindings=["BETTER_AUTH_SECRETS","DISCORD_PRESENCE_USER_ID","GITHUB_README_STATS_PAT_1","GOOGLE_ANALYTICS_MEASUREMENT_ID","MY_WEB_2026_CONSUMER_API_KEY"] (from Build Output, mode=production)
 [execute] Using pre-authenticated INFISICAL_TOKEN from parent process

@@ -287,3 +287,19 @@
 
 /icons/*
   Cache-Control: public, max-age=0, must-revalidate
+
+# ---------------------------------------------------------------------------
+# GitHub profile work images (Issue #1196, ADR-0025)
+#
+# `/github-profile/works/<slug>.webp` are the curated, pre-optimised
+# portfolio covers the `rebuildup/rebuildup` profile README embeds.
+# GitHub/Camo fetches each URL once and caches it, so the origin only
+# needs to keep revalidation cheap — but a day of freshness removes
+# nearly every repeat fetch while a regeneration still propagates
+# within a day. Not `immutable`: the slug URL is stable while the
+# bytes behind it can change when `scripts/build-github-profile-works.mjs`
+# is re-run, so a year-long pin would be wrong.
+# ---------------------------------------------------------------------------
+
+/github-profile/*
+  Cache-Control: public, max-age=86400

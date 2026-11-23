@@ -604,6 +604,60 @@
 			"publication": "published",
 			"ownerConfirmation": "unconfirmed",
 			"externalHosts": []
+		},
+		{
+			"id": "github-profile-works",
+			"kind": "image",
+			"title": "GitHubプロフィール掲載作品カバー（WebP 5点）",
+			"summary": "scripts/build-github-profile-works.mjs が公開 portfolio スナップショットの isCover ラスタメディアを production /media/<key> 経由で取得し、最大1200px WebP q80 に変換して生成する。rebuildup/rebuildup のプロフィールREADMEが作品ごとに独立リンク付きで参照する（Issue #1196 / ADR-0025）。写っているのは全て rebuildup 自身の制作物（my-web-2025 / MultiSlicer / seishun / kosen-fes-2025 / pomodoroom）で、顧客案件を含む seishun は公開portfolioで公開済みのカバーのみを使う。この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"covers": ["public/github-profile/works/**"],
+			"publicPaths": [
+				"/github-profile/works/my-web-2025.webp",
+				"/github-profile/works/multislicer.webp",
+				"/github-profile/works/seishun.webp",
+				"/github-profile/works/kosen-fes-2025.webp",
+				"/github-profile/works/pomodoroom.webp"
+			],
+			"origin": "repository-generated",
+			"rightsHolder": "rebuildup",
+			"license": {
+				"spdx": "MIT",
+				"redistribution": "bundled",
+				"attributionRequired": false,
+				"attributionText": null,
+				"attributionDeliveredAt": null,
+				"conditions": [
+					"元画像は src/portfolio/notion/generated/snapshot.json が published+public とする作品の isCover メディアのみ。/media/<key> が 200 を返すキーだけが使える（公開境界は Worker 側が fail-closed で判定）。",
+					"変換は scripts/build-github-profile-works.mjs（sharp, WebP q80, 最大1200px）で決定的に再生成できる。"
+				]
+			},
+			"verification": {
+				"method": "repository-evidence",
+				"checkedOn": "2026-11-23",
+				"note": "生成スクリプトと works.json の slug 一覧、snapshot.json の公開状態が出所を固定する。実ファイルは 2026-11-23 に同スクリプトで production /media から再生成した。owner 承認の記録ではない。"
+			},
+			"evidence": [
+				{
+					"kind": "repository-file",
+					"path": "LICENSE",
+					"sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d"
+				},
+				{
+					"kind": "repository-file",
+					"path": "scripts/build-github-profile-works.mjs"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/http/github-profile/works.json"
+				},
+				{
+					"kind": "repository-file",
+					"path": "src/portfolio/notion/generated/snapshot.json"
+				}
+			],
+			"publication": "published",
+			"ownerConfirmation": "unconfirmed",
+			"externalHosts": []
 		}
 	]
 }

@@ -254,15 +254,22 @@ function isHomeStatusFile(path, srcDirectory) {
 }
 
 /**
- * Issue #1205: the GitHub-profile "now" strip may read the committed
- * current-projects roster (`home/current/roster.ts`) — a pure data
- * module with no binding and no peer import — so the profile can show
- * the owner's declared in-progress projects. The exception is
- * file-scoped and target-scoped: only files under
- * `src/http/github-profile/` may import exactly that one module, and
- * only `home`'s `current/roster.ts`, never the `home` owner at large.
- * AGENTS.md §3 records the same edge.
+ * Issue #1205 / #1216: the GitHub-profile surfaces may read the
+ * committed current-projects modules (`home/current/{roster,loader,
+ * types}.ts`) — pure data and composition over committed JSON
+ * artefacts with no binding, no fetch and no peer import — so the
+ * profile can show the owner's declared in-progress projects and the
+ * same records the site renders. The exception is file-scoped and
+ * target-scoped: only files under `src/http/github-profile/` may
+ * import exactly those modules, never the `home` owner at large.
+ * AGENTS.md §3 records the same edges.
  */
+const GITHUB_PROFILE_CURRENT_TARGETS = new Set([
+	'home/current/roster',
+	'home/current/loader',
+	'home/current/types',
+]);
+
 function isGithubProfileRosterEdge(fromOwner, file, target, srcDirectory) {
 	if (fromOwner !== 'http') return false;
 	const fromRel = relative(srcDirectory, file).split(sep).join('/');
@@ -270,7 +277,7 @@ function isGithubProfileRosterEdge(fromOwner, file, target, srcDirectory) {
 		.split(sep)
 		.join('/')
 		.replace(/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/, '');
-	return fromRel.startsWith('http/github-profile/') && toRel === 'home/current/roster';
+	return fromRel.startsWith('http/github-profile/') && GITHUB_PROFILE_CURRENT_TARGETS.has(toRel);
 }
 
 function resolveInternalImport(fromFile, specifier, srcDirectory) {

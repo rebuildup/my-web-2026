@@ -273,6 +273,21 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Discord presence chip for the rebuildup/rebuildup profile README (ADR-0026, Issue #1212), served independently from the activity card so the two freshness contracts never share a response or a cache entry. JST observation stamp. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/current',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the card always answers 200 — an empty project set renders an honest empty state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'In-progress projects card for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): the same currentProjectsLoader composition the site renders — roster declarations plus measured git/GitHub facts — so "what is being worked on" survives the /now retirement. Committed data only; no request-time fetch. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

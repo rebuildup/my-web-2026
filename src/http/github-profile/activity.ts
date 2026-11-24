@@ -85,6 +85,7 @@ interface RepoRow {
 interface FeedRow {
 	at: string;
 	label: string;
+	type: string;
 }
 
 function aggregate(payload: unknown): {
@@ -139,8 +140,11 @@ function aggregate(payload: unknown): {
 						: '';
 			const repoShort = item.repoId.split('/').pop() ?? item.repoId;
 			const shortType = item.type.replace(/Event$/, '');
-			const label = [repoShort, shortType, refLabel].filter(Boolean).join(' · ');
-			return { at: item.at, label };
+			// The ref label already names the kind ("PR #42", "Issue #5"),
+			// so the bare event type only appears when there is no ref —
+			// and the row glyph carries the type visually either way.
+			const label = [repoShort, refLabel || shortType].filter(Boolean).join(' · ');
+			return { at: item.at, label, type: item.type };
 		});
 	const observed = [snapshot.sources.public.observedAt, snapshot.sources.private.observedAt].filter(
 		(s): s is string => typeof s === 'string',
@@ -161,6 +165,45 @@ const PAD = 28;
 const INNER = PAD + 24;
 const MAX_REPO_ROWS = 7;
 const MAX_BAR = 220;
+
+// ---- semantic glyphs (Issue #1216) ----
+// Status was text-only; small shapes now carry the event/repo
+// meaning before the words do. Colours follow the card palette.
+const ISSUE_COLOR = '#BC8CFF';
+
+/** Tiny git-graph mark drawn before each repository row. */
+function repoGlyph(x: number, y: number): string {
+	return [
+		`<g transform="translate(${x},${y})" fill="none" stroke="${COLORS.muted}" stroke-width="1.3">`,
+		`<circle cx="3.5" cy="3.5" r="2" fill="${COLORS.bg}"/>`,
+		`<circle cx="8.5" cy="10.5" r="2" fill="${COLORS.bg}"/>`,
+		`<path d="M3.5 5.5c0 3 2 4.5 5 4.5"/>`,
+		'</g>',
+	].join('');
+}
+
+type FeedGlyph = { color: string; shape: 'circle' | 'square' | 'triangle' | 'diamond' };
+
+function feedGlyph(type: string): FeedGlyph {
+	if (/pull/i.test(type)) return { color: COLORS.accent, shape: 'square' };
+	if (/issue/i.test(type)) return { color: ISSUE_COLOR, shape: 'triangle' };
+	if (/commit|push/i.test(type)) return { color: COLORS.ok, shape: 'circle' };
+	return { color: COLORS.offline, shape: 'diamond' };
+}
+
+/** ~9px event-type marker centred on (cx, cy). */
+function feedGlyphSvg(glyph: FeedGlyph, cx: number, cy: number): string {
+	switch (glyph.shape) {
+		case 'square':
+			return `<rect x="${cx - 3.5}" y="${cy - 3.5}" width="7" height="7" rx="1.5" fill="${glyph.color}"/>`;
+		case 'triangle':
+			return `<path d="M${cx} ${cy - 4} L${cx + 4} ${cy + 3} L${cx - 4} ${cy + 3} Z" fill="${glyph.color}"/>`;
+		case 'diamond':
+			return `<path d="M${cx} ${cy - 4} L${cx + 4} ${cy} L${cx} ${cy + 4} L${cx - 4} ${cy} Z" fill="${glyph.color}"/>`;
+		default:
+			return `<circle cx="${cx}" cy="${cy}" r="4" fill="${glyph.color}"/>`;
+	}
+}
 
 export function renderActivitySvg(payload: unknown): string {
 	const data = aggregate(payload);
@@ -211,9 +254,10 @@ export function renderActivitySvg(payload: unknown): string {
 	let y = chartTop + 44;
 	for (const repo of shownRepos) {
 		const barW = Math.max(4, Math.round((repo.events / maxEvents) * MAX_BAR));
-		const name = truncate(repo.name, 190, 13);
+		const name = truncate(repo.name, 170, 13);
 		parts.push(
-			`<text x="${leftX}" y="${y}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
+			repoGlyph(leftX, y - 10),
+			`<text x="${leftX + 16}" y="${y}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
 			`<text x="${leftX + leftW - 60}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${repo.events} ev</text>`,
 			`<rect x="${leftX}" y="${y + 5}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
 		);
@@ -245,9 +289,11 @@ export function renderActivitySvg(payload: unknown): string {
 	} else {
 		for (const item of data.feed) {
 			const when = formatJst(item.at);
-			const lines = wrapText(item.label, rightW - 110, 13, 1);
+			const lines = wrapText(item.label, rightW - 126, 13, 1);
+			const glyph = feedGlyph(item.type);
 			parts.push(
-				`<text x="${rightX}" y="${fy}" font-family="${FONT}" font-size="13" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
+				feedGlyphSvg(glyph, rightX + 6, fy - 4),
+				`<text x="${rightX + 20}" y="${fy}" font-family="${FONT}" font-size="13" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
 				`<text x="${rightX + rightW - 104}" y="${fy}" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.faint}">${escapeXml(when)}</text>`,
 			);
 			fy += 30;

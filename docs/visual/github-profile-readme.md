@@ -291,9 +291,9 @@ v3.3 の設計意図を実装に落とした。`showcase.json` を schema v3
 
 - **モバイルでの SVG 縮小**: 840px カードが 390px viewport で
   約45%に縮み文字が小さくなるのは GitHub README の `<img>` 制約で
-  あり、カード分割やフォント縮小では解決しない。現行の
-  「情報を落とさず縮小」に留め、モバイル専用レイアウトは
-  README 媒体制約上不可能として記録する。
+  あり、カード分割やフォント縮小では解決しない。→ §14 で
+  `<picture><source media>` によるモバイル専用バリアントを導入し
+  解消した。
 - **stats/top-langs/streak の白テーマ**: カードは light 固定で
   カスタム暗色カードと色調が異なる。`<picture>` によるテーマ
   出し分けは query param が personal-fixed で無視されるため
@@ -306,3 +306,66 @@ v3.3 の設計意図を実装に落とした。`showcase.json` を schema v3
   （open/closed/merged）をラベルに含めて区別可能にしたが、
   同一 state の連続イベント（例: commented 連発）は snapshot の
   契約上これ以上区別できない。
+
+## 14. 全体構成の作り直しとモバイルバリアント（2026-11-24、rebuildup/rebuildup#8 継続）
+
+ユーザー指摘「無駄に縦長・横長で全体として綺麗に見えない」を受け、
+カードの単純な縦積みをやめて構成自体を再設計した。カードを
+そのまま並べるのではなく、要素をページ全体の中で組み合わせる
+方針に転換し、既存の統合エンドポイント `/now`（stats + activity
++ presence + DECLARED FOCUS を 1 枚に描く SVG）を主役に据えた。
+
+### `/now` の再構成（800×512）
+
+従来は 680×700 で lifetime stats が上半分を占め「今」を埋めて
+いた。ライブステータス優先のベンツォに組み替えた:
+
+- 上段: GITHUB ACTIVITY（全幅・最新公開イベント + repo 活動数）
+- 中段: DISCORD presence と DECLARED FOCUS を左右に並置
+- 下段: contributions / streak / top language の 4 セルを
+  コンパクト 1 行に集約
+
+あわせて JST 表記への統一（`/activity` とタイムゾーンを一致）、
+`PullRequestEvent` 等の生イベント名の人間可読化
+（`friendlyEventType`）、全カードの角丸 + 1px `panelStroke`
+（ダークモードでの輪郭確保）を行った。
+
+### `/activity` の改善
+
+- 左パネルを PAD マージンに揃え、右パネルとの左右対称を確保
+- フィード行のタイムスタンプを 2 行目に下げ、ラベルが全幅を
+  使えるようにして `Issue #158 ·…` 型の途切れを解消
+- 同一 repo+type+ref の連続イベント（PR の open/close が数秒差で
+  2 件出る GitHub 仕様）を最新 1 件に dedupe
+- private repo 集計行を `(aggregated):` 表記 + 11px フットノート化
+  してパネル内 overflow を解消
+- repo 行ピッチ 30→32px、バーと次行アイコンの干渉を解消
+
+### モバイルバリアント（`?layout=mobile` + `<picture>`）
+
+§13 で「README 媒体制約上不可能」と記録したモバイル専用
+レイアウトは、`<picture><source media="(max-width: 767px)">`
+で実現できることが判明し導入した。`/now` と `/activity` の
+両方が 560px 幅の積み上げ型 SVG を `?layout=mobile` で返す:
+
+- `/now` mobile: GITHUB ACTIVITY → DISCORD → DECLARED FOCUS を
+  全幅で縦積み、stats は 2×2 グリッド。狭いパネルでは冗長な
+  補足コピー（`(activity, not projects)`、二重タイムスタンプ）を
+  省略して中途半端な省略記号を防ぐ
+- `/activity` mobile: EVENTS BY REPOSITORY と RECENT ACTIVITY を
+  全幅パネルで縦積み。0 イベント repo は高さ節約のため除外、
+  フッター下余白を拡大
+
+### レビュー結果
+
+`agent review run` を 4 ラウンド実施（v9 request-changes → v10
+request-changes → v11 request-changes → **v12 approve**）。
+全 11 件の前回指摘 + 4 件の追加修正が desk/mob × light/dark で
+検証済み。残存は polish 級のみ: フィード最終行タイムスタンプと
+パネルフッターの間隔、mobile の muted メタ文字サイズ、
+repo 件数表示の desktop/mobile 差、Selected work WebP の
+角丸なし（ラスタ資産の別パイプライン）、Stack の孤立アイコン。
+
+- **証跡**: `docs/verification/github-profile/v8/` — 全体
+  レンダリング 4 枚、モバイル activity 拡大、agent review JSON
+  4 件（v9–v12）、preview-index.html。

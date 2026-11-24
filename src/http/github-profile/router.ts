@@ -8,12 +8,12 @@ import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetcher
 import { getNextToken, stringEnv } from '../github-readme-stats/router';
 import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
-import { renderActivitySvg } from './activity';
+import { renderActivityMobileSvg, renderActivitySvg } from './activity';
 import { renderProfileCardSvg } from './card';
 import { renderCurrentSvg } from './current';
 import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
-import { type NowStats, renderProfileNowSvg } from './now';
+import { type NowStats, renderProfileNowMobileSvg, renderProfileNowSvg } from './now';
 import { renderPresenceSvg } from './presence';
 import { renderProfileStatusSvg } from './status';
 
@@ -200,11 +200,13 @@ githubProfileRouter.get('/now', rateLimitRead, async (c) => {
 		),
 		fetchNowStats(env),
 	]);
-	const svg = renderProfileNowSvg(
-		model,
-		stats,
-		PROJECT_ROSTER.map((project) => project.name),
-	);
+	const projects = PROJECT_ROSTER.map((project) => project.name);
+	// `?layout=mobile` serves the stacked variant used by the README's
+	// <picture><source media> swap on narrow viewports.
+	const svg =
+		c.req.query('layout') === 'mobile'
+			? renderProfileNowMobileSvg(model, stats, projects)
+			: renderProfileNowSvg(model, stats, projects);
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': NOW_CACHE_CONTROL,
@@ -233,7 +235,13 @@ githubProfileRouter.get('/status', rateLimitRead, async (c) => {
 githubProfileRouter.get('/activity', rateLimitRead, async (c) => {
 	const env = c.env as unknown as ProfileSnapshotEnv;
 	const activityPayload = await readActivityPayload(env.DB);
-	const svg = renderActivitySvg(activityPayload);
+	// `?layout=mobile` serves the stacked single-column variant that the
+	// README's <picture><source media> swap uses on narrow viewports —
+	// the 840px two-column card is unreadable at ~0.43x on a phone.
+	const svg =
+		c.req.query('layout') === 'mobile'
+			? renderActivityMobileSvg(activityPayload)
+			: renderActivitySvg(activityPayload);
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': ACTIVITY_CACHE_CONTROL,

@@ -424,3 +424,66 @@ repo 件数表示の desktop/mobile 差、Selected work WebP の
   production-readonly` + remote bindings）は `wrangler login`
   が必要で、現在未認証のため operator 作業待ち。非公開データの
   公開境界は seeded 検証で維持。
+
+## 16. Selected Work 構造再設計（2026-11-24、第2次収束）
+
+v9 までのドック・スロット・主役リレー方式は、遷移中のドック内
+衝突・滞留・デッドスペースをパラメータ調整では解消できなかった
+ため、要求の意味的構造（メイン=主役 / サブ=文脈 / 装飾=縁取り）
+に立ち返って再設計した。
+
+### 構造変更
+
+- **ドック撤去**: `slots.parks` を空にし、役割を持たない作品は
+  `off`（画面外）へ。2x2 ドックプレートと occlusion 分岐を全廃。
+- **off は「移動」ではなく「出現/消滅」**: `off` を端点に持つ
+  遷移では、入場側は目的スロットへ不可視のままスナップしてから
+  alpha フェードイン、退場側は現スロットでフェードアウト後に
+  不可視で退避。**キャンバスを横断する移動はゼロ**となり、
+  エッジでのクリップ・角丸なし切れ端は構造上発生しない。
+- **alpha 実装**: sharp `modulate()` に alpha チャンネルは無い
+  ため、uniform-alpha の `dest-in` マスクを追加適用
+  （`alphaMask()`、accent frame にも同じフェードを適用）。
+- **homura クリップ**: 元映像が静止イラスト中心の歌ってみた
+  MV で、モーションは 1 秒級のバーストのみ。`segments`
+  [[4,5.5],[6.3,7.8],[20,21.5]] でモーション区間のみを連結し
+  常時動画が流れるよう再構成（作品の内容上の限界として記録）。
+
+### レビュー結果（agy、v10〜v19）
+
+- v12/v13: エッジクリッピングが残存（alpha 未適用だったため
+  `modulate({alpha})` が no-op だったことが判明 → dest-in 修正）
+- v14: **クリッピング系 defect ゼロ**を確認。残存 major は
+  homura の静止映像のみ
+- v15〜v19: homura を segments でモーション区間に限定。
+  v19 verdict: **ACCEPT WITH FIXES**
+  - 構造的条件は全フレーム PASS（クリップ無し・角丸維持・
+    横断移動無し・dissolve/materialize 滑らか・因果的ハンドオフ）
+  - major 残存: Act の静止区間が残る（映像ソースの内容限界。
+    パラメータではこれ以上改善不能）
+  - minor: BR デッドスペース恒常化・暗いサブのコントラスト・
+    WebP 暗部マクロブロック・主役ボーダーの白背景での視認性
+
+### #1216 コンテンツ改善（同リリース同梱）
+
+- `roster.ts` に `weightLevel` を記述（my-web-2026=primary /
+  ai-coding-agent=active / tastile=side / after-effects=side）。
+  `/current` カードと `/now` DECLARED FOCUS の両方に反映。
+- `statusJa` を内部構造の説明ではなく現在の活動が直感的に
+  分かる表現へ書き換え（「〜を再構築中」「〜を開発中」等、
+  進行形で統一）。
+
+### 実データ検証（新規）
+
+- Infisical prod の `CLOUDFLARE_D1_API_TOKEN`（スコープ付き
+  API トークン、wrangler login 不要の正規経路）で本番 D1 の
+  `github_activity_snapshot` / `discord_presence_snapshot` を
+  読み取り、ローカル seeded D1 に投入して実データでカードを
+  検証済み。非公開データ境界は維持（読み取りのみ）。
+
+### GitHub/Camo 実レンダリング検証
+
+- `docs/verification/github-profile/camo-render-test.md` に
+  README ドラフトと同一の `<picture>/<source media>` 構文を
+  配置。github.com の blob ビューでサニタイズ後の実レンダリング
+  を確認するためのプローブ（公開プロフィールは不変）。

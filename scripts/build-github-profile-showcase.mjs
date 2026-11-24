@@ -243,11 +243,12 @@ function buildMotion(showcase) {
 	});
 	const motions = {};
 	for (const w of works) {
-		const changes = { s: [], cx: [], cy: [] };
+		const changes = { s: [], cx: [], cy: [], alpha: [] };
 		const v0 = {};
 		for (const p of ['s', 'cx', 'cy']) {
 			v0[p] = slotParams(showcase, slotOf[0][w] ?? 'off')[p];
 		}
+		v0.alpha = slotOf[0][w] === 'off' ? 0 : 1;
 		// internal boundaries 1..n-1: the glide ENDS on the boundary so
 		// each act starts from a settled arrangement instead of spending
 		// its opening seconds still in flight. A small deterministic
@@ -264,6 +265,22 @@ function buildMotion(showcase) {
 			const a = b - TRANS - lead;
 			const pa = slotParams(showcase, from);
 			const pb = slotParams(showcase, to);
+			const win = TRANS + lead;
+			// Off-stage works NEVER travel: entering works snap to
+			// their destination while invisible and materialize there;
+			// leaving works dissolve at their slot, then snap away.
+			// No card is ever sliced by the canvas edge mid-flight.
+			if ((from === 'off') !== (to === 'off')) {
+				if (from === 'off') {
+					for (const p of ['s', 'cx', 'cy']) changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
+					changes.alpha.push({ a: a + win * 0.6, d: win * 0.4, delta: 1 });
+				} else {
+					changes.alpha.push({ a, d: win * 0.4, delta: -1 });
+					for (const p of ['s', 'cx', 'cy'])
+						changes[p].push({ a: a + win * 0.4 + 0.05, d: 0.05, delta: pb[p] - pa[p] });
+				}
+				continue;
+			}
 			// Causal anticipation on the SCALE channel only: receding
 			// cards start shrinking earlier (clear the stage first),
 			// arriving cards grow late (pop into place at the
@@ -273,7 +290,7 @@ function buildMotion(showcase) {
 			// Park-bound cards must be thumbnail-sized BEFORE they reach
 			// the dock plate: shrink almost a full second early so they
 			// never slice across the plate's edge while still large.
-			const parkBound = /^park\d+$/.test(to);
+			const parkBound = /^(park\d+|off)$/.test(to);
 			for (const p of ['s', 'cx', 'cy']) {
 				let aa = a;
 				let dd = TRANS + lead;
@@ -300,8 +317,19 @@ function buildMotion(showcase) {
 			const a = D - (showcase.fade ?? 0) - TRANS;
 			const pa = slotParams(showcase, from);
 			const pb = slotParams(showcase, to);
-			for (const p of ['s', 'cx', 'cy']) {
-				changes[p].push({ a, d: TRANS, delta: pb[p] - pa[p] });
+			if ((from === 'off') !== (to === 'off')) {
+				if (from === 'off') {
+					for (const p of ['s', 'cx', 'cy']) changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
+					changes.alpha.push({ a: a + TRANS * 0.6, d: TRANS * 0.4, delta: 1 });
+				} else {
+					changes.alpha.push({ a, d: TRANS * 0.4, delta: -1 });
+					for (const p of ['s', 'cx', 'cy'])
+						changes[p].push({ a: a + TRANS * 0.4 + 0.05, d: 0.05, delta: pb[p] - pa[p] });
+				}
+			} else {
+				for (const p of ['s', 'cx', 'cy']) {
+					changes[p].push({ a, d: TRANS, delta: pb[p] - pa[p] });
+				}
 			}
 		}
 		motions[w] = { v0, changes };
@@ -339,7 +367,8 @@ function elementState(showcase, motions, works, idx, t) {
 		cyRole + drift.amp * 0.7 * amp * Math.cos((2 * Math.PI * t) / drift.period + phase + 1.3);
 	const w = element.w * s;
 	const h = element.h * s;
-	return { x: cx - w / 2, y: cy - h / 2, w, h, sRole };
+	const alpha = Math.min(1, Math.max(0, paramValue(m.v0.alpha, m.changes.alpha, t)));
+	return { x: cx - w / 2, y: cy - h / 2, w, h, sRole, alpha };
 }
 
 // rounded-rect SVG -> PNG via sharp (sub slot panels + main frame)
@@ -606,6 +635,21 @@ async function main() {
 		return maskCache.get(key);
 	}
 
+	const alphaMaskCache = new Map();
+	function alphaMask(w, h, a) {
+		const q = Math.round(a * 100) / 100;
+		const key = `${w}x${h}x${q}`;
+		if (!alphaMaskCache.has(key)) {
+			alphaMaskCache.set(
+				key,
+				Buffer.from(
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="#fff" fill-opacity="${q}"/></svg>`,
+				),
+			);
+		}
+		return alphaMaskCache.get(key);
+	}
+
 	const rimCache = new Map();
 	function rimStroke(w, h) {
 		const key = `${w}x${h}`;
@@ -660,7 +704,7 @@ async function main() {
 			const hpx = Math.max(2, Math.round(st.h) - (Math.round(st.h) % 2));
 			const x = Math.round(st.x);
 			const y = Math.round(st.y);
-			if (wpx >= 4 && x + wpx > 0 && y + hpx > 0 && x < W && y < H) {
+			if (wpx >= 4 && st.alpha > 0.02 && x + wpx > 0 && y + hpx > 0 && x < W && y < H) {
 				items.push({
 					file: elemFiles.get(w),
 					slug: w,
@@ -669,6 +713,7 @@ async function main() {
 					w: wpx,
 					h: hpx,
 					dim: slotOf[destIdx]?.[w] === 'main' ? 1 : dimAt(st.sRole),
+					alpha: st.alpha,
 					mainBound: slotOf[destIdx]?.[w] === 'main',
 					area: wpx * hpx,
 				});
@@ -696,7 +741,9 @@ async function main() {
 
 		const layers = [];
 		for (const [i, p] of items.entries()) {
-			let img = sharp(join(srcDir, `${i}.png`)).resize(p.w, p.h, { fit: 'fill' });
+			let img = sharp(join(srcDir, `${i}.png`))
+				.resize(p.w, p.h, { fit: 'fill' })
+				.ensureAlpha();
 			// Subs also desaturate slightly so bright footage can't
 			// out-shout a dark protagonist at README scale. The
 			// per-clip grade is a luminance equaliser: it lifts
@@ -713,6 +760,9 @@ async function main() {
 			// rim and accent layers must ride in ONE call or the rounded
 			// mask silently drops (sharp-cornered subs).
 			const ops = [{ input: roundedMask(p.w, p.h), blend: 'dest-in' }];
+			// modulate() has no alpha channel — dissolve/materialize is
+			// applied as a second dest-in pass with a uniform-alpha mask.
+			if (p.alpha < 0.999) ops.push({ input: alphaMask(p.w, p.h, p.alpha), blend: 'dest-in' });
 			// Faint rim keeps dark-UI subs/dock thumbs readable against
 			// the near-black canvas at README scale.
 			if (p.dim < 0.999) ops.push({ input: rimStroke(p.w, p.h) });
@@ -728,8 +778,11 @@ async function main() {
 		if (lead) {
 			const fw = lead.w + PAD * 2;
 			const fh = lead.h + PAD * 2;
+			let frameImg = sharp(accentFrame(fw, fh));
+			if (lead.alpha < 0.999)
+				frameImg = frameImg.composite([{ input: alphaMask(fw, fh, lead.alpha), blend: 'dest-in' }]);
 			frameLayer = {
-				input: await sharp(accentFrame(fw, fh)).png().toBuffer(),
+				input: await frameImg.png().toBuffer(),
 				left: lead.x - PAD,
 				top: lead.y - PAD,
 			};

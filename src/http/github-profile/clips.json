@@ -53,7 +53,6 @@
 			"slug": "homura",
 			"portfolioSlug": "homura",
 			"kind": "video",
-			"at": 0.35,
 			"duration": 4,
 			"fit": "crop",
 			"crop": {
@@ -62,7 +61,8 @@
 				"w": 640,
 				"h": 344
 			},
-			"grade": 1.6
+			"grade": 1.6,
+			"segments": [[4, 5.5], [6.3, 7.8], [20, 21.5]]
 		},
 		{
 			"slug": "multislicer",

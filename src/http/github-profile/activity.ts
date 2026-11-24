@@ -24,7 +24,7 @@ import { COLORS, FONT, escapeXml, panelChrome, panelFooter, truncate, wrapText }
  */
 
 export const ACTIVITY_WIDTH = 840;
-export const ACTIVITY_HEIGHT = 460;
+export const ACTIVITY_HEIGHT = 480;
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,6 +62,17 @@ export function formatJst(iso: string): string {
 		timeZone: 'UTC',
 	});
 	return `${month} ${parts.day}, ${parts.year} · ${pad2(parts.hour)}:${pad2(parts.minute)} JST`;
+}
+
+/** `Nov 24, 16:38 JST` — row-level stamp; the panel header carries the year. */
+function formatJstCompact(iso: string): string {
+	const parts = jstParts(iso);
+	if (!parts) return iso;
+	const month = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).toLocaleString('en-US', {
+		month: 'short',
+		timeZone: 'UTC',
+	});
+	return `${month} ${parts.day}, ${pad2(parts.hour)}:${pad2(parts.minute)} JST`;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -129,15 +140,15 @@ function aggregate(payload: unknown): {
 		.filter((item) => item.kind === 'public')
 		.slice()
 		.sort((a, b) => (a.at < b.at ? 1 : -1))
-		.slice(0, 6)
+		.slice(0, MAX_FEED_ROWS)
 		.map((item) => {
 			const ref = item.ref;
 			const refLabel =
-				ref?.kind === 'pull'
+				(ref?.kind === 'pull'
 					? `PR #${ref.number}`
 					: ref?.kind === 'issue'
 						? `Issue #${ref.number}`
-						: '';
+						: '') + (ref?.state ? ` · ${ref.state}` : '');
 			const repoShort = item.repoId.split('/').pop() ?? item.repoId;
 			const shortType = item.type.replace(/Event$/, '');
 			// The ref label already names the kind ("PR #42", "Issue #5"),
@@ -163,8 +174,13 @@ function aggregate(payload: unknown): {
 
 const PAD = 28;
 const INNER = PAD + 24;
-const MAX_REPO_ROWS = 7;
-const MAX_BAR = 220;
+const MAX_REPO_ROWS = 6;
+const MAX_FEED_ROWS = 8;
+const MAX_BAR = 200;
+// The two columns share one panel band: chrome, content and footer all
+// live inside it, so dense snapshots cannot spill past the panel edge.
+const PANEL_Y = 72;
+const PANEL_H = ACTIVITY_HEIGHT - PANEL_Y - 32;
 
 // ---- semantic glyphs (Issue #1216) ----
 // Status was text-only; small shapes now carry the event/repo
@@ -215,9 +231,22 @@ export function renderActivitySvg(payload: unknown): string {
 
 	if (!data) {
 		parts.push(
-			panelChrome(INNER, 96, ACTIVITY_WIDTH - INNER * 2, 'GITHUB ACTIVITY', COLORS.offline),
-			`<text x="${INNER}" y="220" font-family="${FONT}" font-size="22" fill="${COLORS.muted}">GitHub activity snapshot unavailable.</text>`,
-			panelFooter(INNER, 96, ACTIVITY_WIDTH - INNER * 2, 'rebuildup.dev/github-profile'),
+			panelChrome(
+				INNER,
+				PANEL_Y,
+				ACTIVITY_WIDTH - INNER * 2,
+				'GITHUB ACTIVITY',
+				COLORS.offline,
+				PANEL_H,
+			),
+			`<text x="${INNER}" y="${PANEL_Y + PANEL_H / 2 + 8}" font-family="${FONT}" font-size="22" fill="${COLORS.muted}">GitHub activity snapshot unavailable.</text>`,
+			panelFooter(
+				INNER,
+				PANEL_Y,
+				ACTIVITY_WIDTH - INNER * 2,
+				'rebuildup.dev/github-profile',
+				PANEL_H,
+			),
 		);
 		parts.push('</svg>');
 		return parts.join('');
@@ -229,7 +258,10 @@ export function renderActivitySvg(payload: unknown): string {
 				new Date(
 					Date.parse(`${data.generatedOn}T00:00:00Z`) - (data.windowDays - 1) * DAY_MS,
 				).toISOString(),
-				`${data.generatedOn}T23:59:59Z`,
+				// Noon UTC lands on the same JST calendar day as `generatedOn`,
+				// so the label names the snapshot day itself rather than the
+				// next morning its UTC end-of-day instant spills into.
+				`${data.generatedOn}T12:00:00Z`,
 			)
 		: `${data.windowDays}d window`;
 	parts.push(
@@ -240,66 +272,67 @@ export function renderActivitySvg(payload: unknown): string {
 	// Left column: totals + per-repo bars.
 	const leftX = INNER;
 	const leftW = 360;
-	const chartTop = 92;
-	const rowH = 40;
 	const shownRepos = data.repos.slice(0, MAX_REPO_ROWS);
 	const maxEvents = Math.max(1, ...data.repos.map((r) => r.events));
 
 	parts.push(
-		panelChrome(leftX, chartTop - 24, leftW, 'EVENTS BY REPOSITORY', COLORS.ok),
-		`<text x="${leftX}" y="${chartTop + 22}" font-family="${FONT}" font-size="30" font-weight="800" fill="${COLORS.text}">${data.totals.commits.toLocaleString('en-US')}</text>`,
-		`<text x="${leftX + 96}" y="${chartTop + 22}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs} PRs · ${data.windowDays}d</text>`,
+		panelChrome(leftX, PANEL_Y, leftW, 'EVENTS BY REPOSITORY', COLORS.ok, PANEL_H),
+		`<text x="${leftX + 24}" y="${PANEL_Y + 70}" font-family="${FONT}" font-size="28" font-weight="800" fill="${COLORS.text}">${data.totals.commits.toLocaleString('en-US')}</text>`,
+		`<text x="${leftX + 24}" y="${PANEL_Y + 90}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs.toLocaleString('en-US')} PRs · ${data.windowDays}d</text>`,
 	);
 
-	let y = chartTop + 44;
+	let y = PANEL_Y + 110;
 	for (const repo of shownRepos) {
-		const barW = Math.max(4, Math.round((repo.events / maxEvents) * MAX_BAR));
 		const name = truncate(repo.name, 170, 13);
 		parts.push(
-			repoGlyph(leftX, y - 10),
-			`<text x="${leftX + 16}" y="${y}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
-			`<text x="${leftX + leftW - 60}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${repo.events} ev</text>`,
-			`<rect x="${leftX}" y="${y + 5}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
+			repoGlyph(leftX + 24, y - 10),
+			`<text x="${leftX + 40}" y="${y}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
+			`<text x="${leftX + leftW - 24}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${repo.events} ev</text>`,
 		);
-		y += rowH;
+		if (repo.events > 0) {
+			const barW = Math.max(4, Math.round((repo.events / maxEvents) * MAX_BAR));
+			parts.push(
+				`<rect x="${leftX + 24}" y="${y + 7}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
+			);
+		}
+		y += 30;
 	}
 	if (data.repos.length > shownRepos.length) {
 		parts.push(
-			`<text x="${leftX}" y="${y + 4}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">+${data.repos.length - shownRepos.length} more repositories</text>`,
+			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">+${data.repos.length - shownRepos.length} more repositories</text>`,
 		);
-		y += 24;
+		y += 30;
 	}
 	if (data.privateCount > 0) {
 		parts.push(
-			`<text x="${leftX}" y="${y + 4}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${data.privateCount} private ${data.privateCount === 1 ? 'repo' : 'repos'} · ${data.privateTotals.commits} commits · ${data.privateTotals.prs} PRs (aggregated)</text>`,
+			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${data.privateCount} private ${data.privateCount === 1 ? 'repo' : 'repos'} · ${data.privateTotals.commits.toLocaleString('en-US')} commits · ${data.privateTotals.prs.toLocaleString('en-US')} PRs (aggregated)</text>`,
 		);
 	}
-	parts.push(panelFooter(leftX, chartTop - 24, leftW, 'public activity only'));
+	parts.push(panelFooter(leftX, PANEL_Y, leftW, 'bars: public repos only', PANEL_H));
 
 	// Right column: recent public feed.
 	const rightX = leftX + leftW + 32;
 	const rightW = ACTIVITY_WIDTH - PAD - rightX;
-	const feedTop = chartTop - 24;
-	parts.push(panelChrome(rightX, feedTop, rightW, 'RECENT ACTIVITY', COLORS.ok));
-	let fy = feedTop + 42;
+	parts.push(panelChrome(rightX, PANEL_Y, rightW, 'RECENT ACTIVITY', COLORS.accent, PANEL_H));
+	let fy = PANEL_Y + 68;
 	if (data.feed.length === 0) {
 		parts.push(
-			`<text x="${rightX}" y="${fy + 8}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">No public feed items in window.</text>`,
+			`<text x="${rightX + 24}" y="${fy + 8}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">No public feed items in window.</text>`,
 		);
 	} else {
 		for (const item of data.feed) {
-			const when = formatJst(item.at);
-			const lines = wrapText(item.label, rightW - 126, 13, 1);
+			const when = formatJstCompact(item.at);
+			const lines = wrapText(item.label, rightW - 170, 13, 1);
 			const glyph = feedGlyph(item.type);
 			parts.push(
-				feedGlyphSvg(glyph, rightX + 6, fy - 4),
-				`<text x="${rightX + 20}" y="${fy}" font-family="${FONT}" font-size="13" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
-				`<text x="${rightX + rightW - 104}" y="${fy}" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.faint}">${escapeXml(when)}</text>`,
+				feedGlyphSvg(glyph, rightX + 18, fy - 4),
+				`<text x="${rightX + 34}" y="${fy}" font-family="${FONT}" font-size="13" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
+				`<text x="${rightX + rightW - 20}" y="${fy}" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.muted}">${escapeXml(when)}</text>`,
 			);
-			fy += 30;
+			fy += 34;
 		}
 	}
-	parts.push(panelFooter(rightX, feedTop, rightW, 'times in JST'));
+	parts.push(panelFooter(rightX, PANEL_Y, rightW, 'times in JST', PANEL_H));
 
 	// Footer: observation stamps keep cached copies honest. User-facing
 	// times are JST throughout; the snapshot's own UTC stamps stay inside

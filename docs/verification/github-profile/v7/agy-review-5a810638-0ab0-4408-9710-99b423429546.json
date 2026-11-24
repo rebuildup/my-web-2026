@@ -1,0 +1,123 @@
+{
+	"version": "1.0.0",
+	"id": "5a810638-0ab0-4408-9710-99b423429546",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "25c3a3b31889525d0245f223f8c3fef16b0cfe553dc04b7a7256204a42af0332",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[All images: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] GitHub activity SVG card has severe multi-zone text collisions: '4,364 commits · 20 events · 1409 PRs · 30d' directly overlaps 'EVENTS BY REPOSITORY'; 'ty-plus · PR #572' directly overlaps 'RECENT ACTIVITY'; PR/issue titles collide with JST timestamps; 'public activity only' and 'times in JST' float over list rows; and two footer lines render directly on top of each other at the bottom-left. The card is also narrower/left-aligned compared to the 'In progress' card above it on desktop.",
+				"severity": "critical"
+			},
+			{
+				"description": "[All images: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] All three GitHub stats / top-langs / streak SVG cards render as mostly-blank pure-white rectangles with invisible text (only a pale blue rank ring in top-left, completely blank top-right, and an orange ring with two vertical rules in the bottom card). On 01-desk-dark.png and 03-mob-dark.png this creates a glaring white-on-dark contrast failure that breaks visual consistency and communicates no data.",
+				"severity": "critical"
+			},
+			{
+				"description": "[All images: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] Stack category headings lack block separation/line breaks and flow inline right after the preceding icon row: on desktop (00-desk-light.png, 01-desk-dark.png), 'Web &' sits beside p5* while 'framework' wraps, and 'Infra & backend', 'Dev tools', and 'Creative' sit inline beside Sass, Debian, and Xd; on mobile (02-mob-light.png, 03-mob-dark.png), labels jam beside orphan icons ('p5* Web & framework', 'Sass Infra &' / 'backend', 'Debian Dev tools', 'Xd Creative'), destroying category orderliness and vertical rhythm.",
+				"severity": "major"
+			},
+			{
+				"description": "[All images: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] In the 'Now' section's 'In progress' SVG card, '+11 more on rebuildup.dev' directly overlaps the bottom footer 'as of 2026-11-24 · names and status lines are the owner's declarations'. Additionally, every listed project shares the same blue dot glyph and repetitive generic Japanese boilerplate ('GitHub 上で活動が観測された公開リポジトリ。'), failing to visually or semantically communicate real progress status.",
+				"severity": "major"
+			},
+			{
+				"description": "[Mobile: 02-mob-light.png, 03-mob-dark.png] Both the 'In progress' and 'GitHub activity' SVGs scale down uniformly from desktop width to 390px viewport width, shrinking their dense text and two-column activity layout to unreadably small micro-print (~5-6px equivalent), compounded by the overlapping labels.",
+				"severity": "major"
+			},
+			{
+				"description": "[Desktop & Mobile: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] Information hierarchy buries 'Now' below a massive colorful Stack section (5 rows on desktop, 9 rows on mobile with orphan icons). While 'Selected work' successfully captures the eye first, the dense wall of ~45 colorful tech badges visually dominates the middle of the page and forces visitors to scroll past it to discover active work.",
+				"severity": "minor"
+			},
+			{
+				"description": "[All images: 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] Discord presence chip SVG effectively signals live presence via the Discord icon and green online dot and stays readable on mobile, but unnecessarily truncates the message ('Online — shipping the profile r...') despite ample horizontal width available on desktop.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Positive observations across 00-desk-light.png, 01-desk-dark.png, 02-mob-light.png, 03-mob-dark.png] Top intro/link row is concise and scannable; 'Selected work' leads visually with a strong 800x360 dark preview frame and clean link list; skill icons properly switch between light and dark tile variants; dark custom SVG panels ('In progress', Discord pill, 'GitHub activity') maintain acceptable contrast on both light and dark page themes.",
+				"severity": "info"
+			}
+		],
+		"summary": "Overall Verdict: REJECT. Per-requirement verdicts — 1. Information hierarchy: PARTIAL (Selected work leads strongly, but a tall colorful Stack icon wall visually dominates and buries 'Now' mid-page); 2. Status intuitiveness: PARTIAL (Discord presence pill is clear, but 'In progress' uses identical dots and repetitive generic boilerplate, 'GitHub activity' is garbled by overlapping text, and stats/langs/streak cards are blank); 3. Consistency: MISSING (Stack category labels run inline into preceding icon rows, GitHub activity card width mismatches 'In progress', and three pure-white broken stats cards clash with the dark SVG panel language); 4. Mobile: MISSING (no horizontal overflow, but full-width SVGs shrink to unreadably small micro-text at 390px and Stack wraps into 9 rows with orphan icons and inline label collisions); 5. Light/dark: MISSING (skill icons and custom dark SVGs work acceptably across themes, but the three blank white stats/langs/streak cards create a glaring contrast failure on dark mode). Top 3 fixes by impact: (1) Fix SVG text coordinate collisions in 'GitHub activity' (metrics/headers/timestamps/notes/footer) and 'In progress' ('+11 more' vs footer), align their widths, and increase SVG text legibility for 390px mobile; (2) Fix the blank white GitHub stats/top-langs/streak cards so text renders reliably (e.g. disable fade-in animations/fix text color) and match the dark card palette or use light/dark <picture> variants; (3) Add proper block/line-break separation for Stack category headings so labels never flow inline beside icons, and consider promoting 'Now' above 'Stack' with real per-project status copy and an untruncated Discord presence pill.",
+		"verdict": "reject"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "e4b69dab-1040-4720-95c0-4ef43b046eea",
+		"durationSeconds": 107.070675,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 15665,
+			"output_tokens": 8895,
+			"thinking_tokens": 7032,
+			"cache_read_tokens": 10367,
+			"total_tokens": 24560
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/5a810638-0ab0-4408-9710-99b423429546",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.88,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.95,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T12:58:24Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t88%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t95%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T12:58:24Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

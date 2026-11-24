@@ -243,6 +243,36 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Unified status strip for the rebuildup/rebuildup profile README (Issue #1205): GitHub contributions / current & longest streak / top language (readme-stats fetchers, hourly upstream cache) plus GitHub activity and Discord presence panels with observation times. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/activity',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the card always answers 200 — missing / stale / invalid snapshot data renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Dynamic activity card for the rebuildup/rebuildup profile README (ADR-0026, Issue #1212): per-repository event bars plus the public feed with JST timestamps and an observation stamp. Private repositories are aggregated anonymously. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/presence',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the chip always answers 200 — missing / stale / mismatched-user presence renders an honest unavailable or stale state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Discord presence chip for the rebuildup/rebuildup profile README (ADR-0026, Issue #1212), served independently from the activity card so the two freshness contracts never share a response or a cache entry. JST observation stamp. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

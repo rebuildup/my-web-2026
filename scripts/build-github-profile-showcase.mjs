@@ -272,8 +272,7 @@ function buildMotion(showcase) {
 			// No card is ever sliced by the canvas edge mid-flight.
 			if ((from === 'off') !== (to === 'off')) {
 				if (from === 'off') {
-					for (const p of ['s', 'cx', 'cy'])
-						changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
+					for (const p of ['s', 'cx', 'cy']) changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
 					changes.alpha.push({ a: a + win * 0.6, d: win * 0.4, delta: 1 });
 				} else {
 					changes.alpha.push({ a, d: win * 0.4, delta: -1 });
@@ -320,8 +319,7 @@ function buildMotion(showcase) {
 			const pb = slotParams(showcase, to);
 			if ((from === 'off') !== (to === 'off')) {
 				if (from === 'off') {
-					for (const p of ['s', 'cx', 'cy'])
-						changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
+					for (const p of ['s', 'cx', 'cy']) changes[p].push({ a, d: 0.05, delta: pb[p] - pa[p] });
 					changes.alpha.push({ a: a + TRANS * 0.6, d: TRANS * 0.4, delta: 1 });
 				} else {
 					changes.alpha.push({ a, d: TRANS * 0.4, delta: -1 });
@@ -706,14 +704,7 @@ async function main() {
 			const hpx = Math.max(2, Math.round(st.h) - (Math.round(st.h) % 2));
 			const x = Math.round(st.x);
 			const y = Math.round(st.y);
-			if (
-				wpx >= 4 &&
-				st.alpha > 0.02 &&
-				x + wpx > 0 &&
-				y + hpx > 0 &&
-				x < W &&
-				y < H
-			) {
+			if (wpx >= 4 && st.alpha > 0.02 && x + wpx > 0 && y + hpx > 0 && x < W && y < H) {
 				items.push({
 					file: elemFiles.get(w),
 					slug: w,
@@ -771,8 +762,7 @@ async function main() {
 			const ops = [{ input: roundedMask(p.w, p.h), blend: 'dest-in' }];
 			// modulate() has no alpha channel — dissolve/materialize is
 			// applied as a second dest-in pass with a uniform-alpha mask.
-			if (p.alpha < 0.999)
-				ops.push({ input: alphaMask(p.w, p.h, p.alpha), blend: 'dest-in' });
+			if (p.alpha < 0.999) ops.push({ input: alphaMask(p.w, p.h, p.alpha), blend: 'dest-in' });
 			// Faint rim keeps dark-UI subs/dock thumbs readable against
 			// the near-black canvas at README scale.
 			if (p.dim < 0.999) ops.push({ input: rimStroke(p.w, p.h) });
@@ -790,9 +780,7 @@ async function main() {
 			const fh = lead.h + PAD * 2;
 			let frameImg = sharp(accentFrame(fw, fh));
 			if (lead.alpha < 0.999)
-				frameImg = frameImg.composite([
-					{ input: alphaMask(fw, fh, lead.alpha), blend: 'dest-in' },
-				]);
+				frameImg = frameImg.composite([{ input: alphaMask(fw, fh, lead.alpha), blend: 'dest-in' }]);
 			frameLayer = {
 				input: await frameImg.png().toBuffer(),
 				left: lead.x - PAD,

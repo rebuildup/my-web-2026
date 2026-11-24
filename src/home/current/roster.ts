@@ -60,7 +60,8 @@ export const PROJECT_ROSTER = [
 	{
 		id: 'tastile',
 		name: 'Tastile',
-		statusJa: 'scheduling を扱う product を Web / Android / desktop / backend の複数クライアントで開発中。',
+		statusJa:
+			'scheduling を扱う product を Web / Android / desktop / backend の複数クライアントで開発中。',
 		handwritten: { recordedOn: '2026-11-24', weightLevel: 'side' },
 	},
 	{

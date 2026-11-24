@@ -163,3 +163,22 @@ v2（リール + 8 アイコン + 統合 `/now`）は不採用。旧 STATUS の�
   依存関係と portfolio `technologies` メタデータと照合済み。
 - **証跡**: レンダリング結果とレビュー用フレームを
   `docs/verification/github-profile/v4/` にコミットし PR から参照可能にする。
+
+## 10. v3.2 修正（2026-11-24、レビュー第2弾対応・Issue #1214）
+
+縦マーキー（v3.1）も「均一タイルの単調スクロール」として不採用。
+横長・高さ抑制の **シーン構成モーションコラージュ** へ再設計した。
+
+- **比較**: 実素材のプロトタイプ2案（A=常時ドリフトコラージュ、
+  B=シーン構図+斜めマスク遷移）を生成・比較し B を採用。
+  証跡は `docs/verification/github-profile/v5/`。
+- **採用構成**: `showcase.webp`（800×360@8fps、約21秒、約2.9MB）。
+  4 シーン + ループバックを斜めワイプ（xfade diagtl/diagbr/
+  diagtr/diagbl 巡回）で接続。シーンごとに hero/脇役のサイズ・
+  構図・尺が異なり（hero+脇役、左右分割、3作品トリオ、全高
+  hero+脇役）、hero は Ken Burns push-in、脇役は位相の異なる
+  正弦ドリフト。ループ継ぎ目は先頭/末尾の背景色 bookend フェード
+  で構造的にシームレス化。
+- **定義**: `showcase.json` を schema v2（scenes/items/wipes/
+  loopBack）へ更新。生成は `profile:showcase:build`、
+  `--review` で全編サンプルフレームを書き出せる。

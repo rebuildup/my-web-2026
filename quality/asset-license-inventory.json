@@ -827,8 +827,8 @@
 		{
 			"id": "github-profile-showcase",
 			"kind": "image",
-			"title": "GitHubプロフィール作品ショーケース（animated WebP 1点・縦マーキー）",
-			"summary": "scripts/build-github-profile-showcase.mjs が src/http/github-profile/showcase.json の定義に従い、公開 portfolio スナップショットが published+public とする作品を正規化セグメント化し、連続スクロールする filmstrip マーキーとして animated WebP を生成する。rebuildup/rebuildup のプロフィールREADMEが Selected Work として参照し、全作品はテキストリンク一覧から個別ページへ遷移する（rebuildup/rebuildup#8）。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像・素材であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"title": "GitHubプロフィール作品ショーケース（animated WebP 1点・シーン構成コラージュ）",
+			"summary": "scripts/build-github-profile-showcase.mjs が src/http/github-profile/showcase.json（schema v2: scenes/items/wipes/loopBack）の定義に従い、公開 portfolio スナップショットが published+public とする作品を正規化し、シーンごとに構図・サイズ・主役時間を変えた横長モーションコラージュとして animated WebP を生成する。シーン間は斜めワイプ（xfade）、hero は Ken Burns push-in、脇役は正弦ドリフト、ループ継ぎ目は背景色 bookend フェードでシームレス化する（rebuildup/rebuildup#8、my-web-2026#1214）。rebuildup/rebuildup のプロフィールREADMEが Selected Work として参照し、全作品はテキストリンク一覧から個別ページへ遷移する。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像・素材であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
 			"covers": ["public/github-profile/showcase.webp"],
 			"publicPaths": ["/github-profile/showcase.webp"],
 			"origin": "repository-generated",
@@ -849,7 +849,7 @@
 			"verification": {
 				"method": "repository-evidence",
 				"checkedOn": "2026-11-24",
-				"note": "生成スクリプトと showcase.json/clips.json の slug・出典種別、snapshot.json の公開状態が出所を固定する。実ファイルはプロトタイプ検証で生成したものをコミット。owner 承認の記録ではない。"
+				"note": "生成スクリプトと showcase.json（schema v2）/clips.json の slug・出典種別、snapshot.json の公開状態が出所を固定する。実ファイルはシーン構成コラージュ版で生成したものをコミット（docs/verification/github-profile/v5/）。owner 承認の記録ではない。"
 			},
 			"evidence": [
 				{

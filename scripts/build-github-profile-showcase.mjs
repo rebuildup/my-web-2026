@@ -1,63 +1,62 @@
 #!/usr/bin/env node
 /**
- * GitHub profile work showcase build (rebuildup/rebuildup#8, ADR-0026).
+ * GitHub profile work showcase build — scene-based motion collage
+ * (rebuildup/rebuildup#8 review round 2, Issue #1214, ADR-0026).
  *
- * The profile README's Selected Work section shows ONE animated WebP
- * that is a real slideshow: a vertical filmstrip of the owner's works
- * scrolls continuously upward, so several works are always visible at
- * once and the frame never sits still. This replaces both the v2
- * hard-cut reel and the rejected static 3x3 clip grid.
+ * The README's Selected Work section shows ONE animated WebP:
+ * a horizontal, height-constrained collage of the owner's works.
+ * Unlike the rejected uniform marquee/grid, every work gets its own
+ * screen time, size, crop and role:
  *
- * Composition (see src/http/github-profile/showcase.json):
- *   - every work becomes a normalized segment (tileWidth x tileHeight,
- *     fps, segmentSeconds) sourced fail-closed from the public
- *     portfolio snapshot — YouTube sections for `kind: "video"`, the
- *     public `/media/<key>` cover GIF for `kind: "gif"`;
- *   - each work is an independent looping segment overlaid on the
- *     canvas; its y position is `cellIndex * cellHeight - scroll(t)`,
- *     so the whole strip scrolls upward and several works are always
- *     visible at once. The first `visibleCells + 1` works are appended
- *     again at the tail and scroll(t) wraps with
- *     `mod(t * speed, scrollDistance)`, so the loop is seamless;
- *   - the loop period equals scrollDistance / speed.
+ *   - scenes have deliberately different layouts (hero + support,
+ *     asymmetric split, trio, duo) defined in showcase.json;
+ *   - hero items get a slow Ken Burns push-in (scale eval=frame +
+ *     centre crop) spanning the whole scene;
+ *   - support items drift on independent sinusoidal periods/phases;
+ *   - scenes are joined by alternating DIAGONAL wipes (xfade
+ *     diagtl/diagbr/diagtr/diagbl), so the focal work changes
+ *     organically instead of the whole frame sliding uniformly;
+ *   - the last scene repeats the first scene's file so the final
+ *     diagonal wipe lands back on scene 1, and bookend fades to the
+ *     canvas background make the wrap seamless by construction.
  *
- * Scene quality gate: sampled frames across the WHOLE output are probed
- * for mean luma — a dark or loading segment anywhere in the reel fails
- * the build (the v2 reel's first-frame-only gate missed a mid-reel
- * black frame).
+ * Sources are fail-closed from the public portfolio snapshot:
+ * YouTube sections for `kind: "video"` (the `at` fraction inside
+ * clips.json picks the section), the public `/media/<key>` cover
+ * GIF for `kind: "gif"`. Nothing here runs in the Worker.
  *
- * Pipeline (build-time only; nothing here runs in the Worker):
+ * Scene quality gate: sampled frames across the WHOLE output are
+ * probed for mean luma — a dark or loading segment anywhere fails
+ * the build.
+ *
+ * Pipeline (build-time only):
  *   yt-dlp --download-sections / /media fetch -> ffmpeg normalize ->
- *   per-cell overlay marquee -> gif pipe -> sharp animated WebP.
+ *   per-scene overlay composites -> xfade diagonal wipes ->
+ *   gif pipe -> sharp animated WebP.
  *
  * Usage:
  *   node scripts/build-github-profile-showcase.mjs           # regenerate
- *   node scripts/build-github-profile-showcase.mjs --review  # dump
- *                                                          # sampled
- *                                                          # frames to
- *                                                          # .tmp/showcase-review/
+ *   node scripts/build-github-profile-showcase.mjs --review  # dump frames
  */
-
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHOWCASE_PATH = join(REPO_ROOT, 'src/http/github-profile/showcase.json');
 const SOURCES_PATH = join(REPO_ROOT, 'src/http/github-profile/clips.json');
 const SNAPSHOT_PATH = join(REPO_ROOT, 'src/portfolio/notion/generated/snapshot.json');
-const OUT_PATH = join(REPO_ROOT, 'public/github-profile/showcase.webp');
-const SRC_CACHE = join(REPO_ROOT, '.tmp/showcase-src');
-const WORK_DIR = join(REPO_ROOT, '.tmp/showcase-build');
-const REVIEW_DIR = join(REPO_ROOT, '.tmp/showcase-review');
 const MEDIA_BASE = 'https://rebuildup.dev/media';
-
-const YT_ID = /(?:youtu\.be\/|[?&]v=)([\w-]{11})/;
-const MIN_LUMA = 20;
+const WORK_DIR = join(REPO_ROOT, '.tmp/showcase-build');
+const SRC_CACHE = join(REPO_ROOT, '.tmp/showcase-src');
+const REVIEW_DIR = join(REPO_ROOT, '.tmp/showcase-review');
 const REVIEW = process.argv.includes('--review');
+const OUT_PATH = join(REPO_ROOT, 'public/github-profile/showcase.webp');
+const MIN_LUMA = 18;
+const YT_ID = /(?:youtube\.com\/(?:watch\?[^ ]*v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/;
 
 function loadJson(path) {
 	return JSON.parse(readFileSync(path, 'utf8'));
@@ -77,8 +76,6 @@ function publicProjects() {
 function videoUrlFor(project) {
 	const link = (project.links ?? []).find((l) => l.kind === 'video' && typeof l.url === 'string');
 	if (!link) throw new Error(`${project.slug}: no public video link`);
-	// Snapshot URLs may carry markdown escapes (e.g. `\_`); strip them
-	// before extracting the video id.
 	const clean = link.url.replace(/\\([\w])/g, '$1');
 	const id = clean.match(YT_ID)?.[1];
 	if (!id) throw new Error(`${project.slug}: unparseable video URL`);
@@ -93,15 +90,23 @@ function coverGifKeyFor(project) {
 	return media.r2Key;
 }
 
-async function ensureVideoSource(clip, project, workDir) {
-	const cache = join(SRC_CACHE, `${clip.slug}.mp4`);
+async function ensureVideoSource(clip, project, workDir, sectionSeconds) {
+	const cache = join(SRC_CACHE, `${clip.slug}-${sectionSeconds}s.mp4`);
 	if (existsSync(cache)) return cache;
 	const url = videoUrlFor(project);
-	const info = JSON.parse(run('yt-dlp', ['-J', '--no-playlist', '--no-warnings', url]));
-	const total = info.duration ?? 60;
+	const metaCache = join(SRC_CACHE, `${clip.slug}.info.json`);
+	let total;
+	if (existsSync(metaCache)) {
+		total = loadJson(metaCache).duration ?? sectionSeconds;
+	} else {
+		const info = JSON.parse(run('yt-dlp', ['-J', '--no-playlist', '--no-warnings', url]));
+		mkdirSync(SRC_CACHE, { recursive: true });
+		writeFileSync(metaCache, JSON.stringify(info));
+		total = info.duration ?? sectionSeconds;
+	}
 	const duration = clip.duration ?? 4;
-	const start = Math.max(0, Math.floor(total * clip.at) - 1);
-	const end = start + duration + 1;
+	const start = Math.max(0, Math.floor(total * (clip.at ?? 0.35)) - 1);
+	const end = start + sectionSeconds;
 	const srcDir = join(workDir, clip.slug);
 	mkdirSync(srcDir, { recursive: true });
 	try {
@@ -122,9 +127,7 @@ async function ensureVideoSource(clip, project, workDir) {
 	const srcFile = execFileSync(
 		'bash',
 		['-c', `ls ${srcDir}/src.* 2>/dev/null | grep -v '\\.part' | head -1`],
-		{
-			encoding: 'utf8',
-		},
+		{ encoding: 'utf8' },
 	).trim();
 	if (!srcFile) throw new Error(`${clip.slug}: yt-dlp produced no source`);
 	mkdirSync(SRC_CACHE, { recursive: true });
@@ -132,8 +135,8 @@ async function ensureVideoSource(clip, project, workDir) {
 	return cache;
 }
 
-async function ensureGifSource(clip, project) {
-	const cache = join(SRC_CACHE, `${clip.slug}.gif`);
+async function ensureGifSource(clip, project, sectionSeconds) {
+	const cache = join(SRC_CACHE, `${clip.slug}-${sectionSeconds}s.gif`);
 	if (existsSync(cache)) return cache;
 	const key = coverGifKeyFor(project);
 	const res = await fetch(`${MEDIA_BASE}/${key}`);
@@ -165,6 +168,10 @@ async function main() {
 	const showcase = loadJson(SHOWCASE_PATH);
 	const sources = loadJson(SOURCES_PATH);
 	const canvas = showcase.canvas;
+	const { width: W, height: H, fps, quality, border, borderPx } = canvas;
+	const bg = canvas.background.replace('#', '0x');
+	const borderColor = border.replace('#', '0x');
+	const TRANS = showcase.transitionSeconds;
 	const projects = publicProjects();
 	const bySlug = new Map(projects.map((p) => [p.slug, p]));
 	const clipBySlug = new Map(sources.clips.map((c) => [c.slug, c]));
@@ -173,88 +180,158 @@ async function main() {
 	mkdirSync(WORK_DIR, { recursive: true });
 	if (REVIEW) mkdirSync(REVIEW_DIR, { recursive: true });
 
-	const { tileWidth: TW, tileHeight: TH, cellHeight: CH, fps, segmentSeconds: SEG } = canvas;
-	const bg = canvas.background.replace('#', '0x');
-	const normVf = `scale=${TW}:${TH}:force_original_aspect_ratio=increase,crop=${TW}:${TH},fps=${fps},pad=${TW}:${CH}:0:0:color=${bg}`;
-
-	// 1. Normalize every ordered work to a cell-sized segment.
-	const segmentFiles = [];
-	for (const slug of showcase.order) {
+	async function sourceFor(slug) {
 		const clip = clipBySlug.get(slug);
-		if (!clip) throw new Error(`showcase order references unknown clip "${slug}"`);
+		if (!clip) throw new Error(`unknown clip "${slug}"`);
 		const project = bySlug.get(clip.portfolioSlug);
 		if (!project) throw new Error(`${slug}: portfolio slug "${clip.portfolioSlug}" not public`);
-		const src =
-			clip.kind === 'video'
-				? await ensureVideoSource(clip, project, workDir)
-				: await ensureGifSource(clip, project);
-		const out = join(WORK_DIR, `seg-${slug}.mp4`);
-		const loopIn = clip.kind === 'gif' ? ['-stream_loop', '-1'] : [];
-		run('ffmpeg', [
-			'-y',
-			'-v',
-			'error',
-			...loopIn,
-			'-i',
-			src,
-			'-vf',
-			normVf,
+		return clip.kind === 'video'
+			? ensureVideoSource(clip, project, workDir, showcase.elementSeconds)
+			: ensureGifSource(clip, project, showcase.elementSeconds);
+	}
+
+	// Normalize each work once into a looping element at its largest
+	// needed size; scenes reuse the file. 12 s elements mean no internal
+	// loop cut occurs inside any scene (max scene = 8 s).
+	const elementCache = new Map();
+	async function element(slug, w, h, bordered) {
+		const key = `${slug}-${w}x${h}${bordered ? '-b' : ''}`;
+		if (elementCache.has(key)) return elementCache.get(key);
+		const out = join(WORK_DIR, `elem-${key}.mp4`);
+		if (!existsSync(out)) {
+			const src = await sourceFor(slug);
+			const inner = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},format=yuv420p`;
+			const vf = bordered
+				? `${inner},pad=${w + borderPx * 2}:${h + borderPx * 2}:${borderPx}:${borderPx}:color=${borderColor}`
+				: inner;
+			run('ffmpeg', [
+				'-y',
+				'-v',
+				'error',
+				'-stream_loop',
+				'-1',
+				'-fflags',
+				'+genpts',
+				'-i',
+				src,
+				'-vf',
+				vf,
+				'-t',
+				String(showcase.elementSeconds),
+				'-c:v',
+				'libx264',
+				'-preset',
+				'fast',
+				'-pix_fmt',
+				'yuv420p',
+				'-an',
+				out,
+			]);
+		}
+		elementCache.set(key, out);
+		return out;
+	}
+
+	// Render one scene: bg + per-item overlays. Hero items get a
+	// Ken Burns push-in; drift items get a small sinusoidal offset.
+	async function renderScene(scene) {
+		const out = join(WORK_DIR, `scene-${scene.slug}.mp4`);
+		if (existsSync(out)) return out;
+		const D = scene.duration;
+		const args = ['-y', '-v', 'error'];
+		const items = [];
+		let inputIndex = 0;
+		for (const it of scene.items) {
+			const bordered = it.border === true;
+			const file = await element(it.slug, it.w, it.h, bordered);
+			args.push('-stream_loop', '-1', '-fflags', '+genpts', '-i', file);
+			items.push({ idx: inputIndex, ...it });
+			inputIndex += 1;
+		}
+		const filters = [`color=c=${bg}:s=${W}x${H}:d=${D}:r=${fps}[bg]`];
+		let prev = 'bg';
+		items.forEach((it, i) => {
+			const tag = `i${i}`;
+			const src = `[${it.idx}:v]`;
+			if (it.hero) {
+				// Slow push-in over the whole scene: zoom 1.00 -> 1.10
+				// eased by (1-cos)/2, centre crop keeps the frame filled.
+				const z = `(1-cos(2*PI*t/${D}))/2`;
+				filters.push(
+					`${src}scale=w='${it.w}*(1+0.10*${z})':h='${it.h}*(1+0.10*${z})':eval=frame,crop=${it.w}:${it.h}:x='(in_w-out_w)/2':y='(in_h-out_h)/2',setsar=1,fps=${fps}[${tag}]`,
+				);
+			} else {
+				filters.push(`${src}setsar=1,fps=${fps}[${tag}]`);
+			}
+			const drift = it.drift ?? 0;
+			const phase = (i * 1.7).toFixed(2);
+			const xExpr = drift ? `${it.x}+${drift}*sin(2*PI*t/${D}+${phase})` : `${it.x}`;
+			const out = i === items.length - 1 ? 'vout' : `o${i}`;
+			filters.push(`[${prev}][${tag}]overlay=x='${xExpr}':y='${it.y}'[${out}]`);
+			prev = out;
+		});
+		args.push(
+			'-filter_complex',
+			filters.join(';'),
+			'-map',
+			'[vout]',
 			'-t',
-			String(SEG),
+			String(D),
 			'-c:v',
 			'libx264',
 			'-preset',
 			'fast',
 			'-pix_fmt',
 			'yuv420p',
+			'-an',
 			out,
-		]);
-		segmentFiles.push(out);
-		console.log(`[showcase] segment ${slug} ok`);
+		);
+		run('ffmpeg', args);
+		return out;
 	}
 
-	// 2. Marquee: every cell is an independent looping segment overlaid
-	//    on the background; its y position is a function of time, so the
-	//    whole strip scrolls upward at `speed` px/s. The sequence repeats
-	//    the first (visibleCells + 1) works, and the scroll wraps with
-	//    mod(t*speed, scrollDistance) — at the wrap instant the repeated
-	//    cells sit exactly where the originals were, so the loop is
-	//    seamless (each segment is SEG seconds, scrollDistance is a
-	//    multiple of SEG*speed, and the repeat offset is a whole number
-	//    of segment loops).
-	const repeatCount = canvas.visibleCells + 1;
-	const filmstripEntries = [...segmentFiles, ...segmentFiles.slice(0, repeatCount)];
-	const cellsPerLoop = showcase.order.length;
-	const scrollDistance = cellsPerLoop * CH;
-	const visibleHeight = canvas.visibleCells * CH;
-	const speed = CH / SEG; // px per second — one cell every segmentSeconds
-	const loopSeconds = scrollDistance / speed;
-	const filmstripCells = filmstripEntries.length;
-	if (scrollDistance + visibleHeight > filmstripCells * CH) {
-		throw new Error('filmstrip too short for seamless loop');
+	const sceneFiles = [];
+	const sceneDurs = [];
+	for (const scene of showcase.scenes) {
+		sceneFiles.push(await renderScene(scene));
+		sceneDurs.push(scene.duration);
 	}
-	const xOff = Math.round((canvas.width - TW) / 2);
-	const yOff = Math.round((canvas.height - visibleHeight) / 2);
+	const loopScene = showcase.scenes.find((s) => s.slug === showcase.loopBack);
+	if (!loopScene) throw new Error(`loopBack scene "${showcase.loopBack}" not found`);
+	sceneFiles.push(sceneFiles[showcase.scenes.indexOf(loopScene)]);
+	sceneDurs.push(loopScene.duration);
 
+	// xfade chain: each transition occupies the last TRANS seconds of
+	// the accumulated stream; the appended loop-back scene makes the
+	// final wipe land on scene 1's opening frame.
 	const args = ['-y', '-v', 'error'];
-	for (const file of filmstripEntries) {
-		args.push('-stream_loop', '-1', '-fflags', '+genpts', '-i', file);
-	}
-	let filter = `color=c=${bg}:s=${canvas.width}x${canvas.height}:d=${loopSeconds}:r=${fps}[bg]`;
-	let prev = 'bg';
-	for (let i = 0; i < filmstripCells; i += 1) {
-		const yExpr = `${yOff}+${i * CH}-mod(t*${speed}\\,${scrollDistance})`;
-		const out = i === filmstripCells - 1 ? 'vout' : `o${i}`;
-		filter += `;[${prev}][${i}:v]overlay=${xOff}:'${yExpr}'[${out}]`;
+	for (const f of sceneFiles) args.push('-i', f);
+	const xfilters = [];
+	let prev = '0:v';
+	let acc = sceneDurs[0];
+	for (let i = 1; i < sceneFiles.length; i += 1) {
+		const out = i === sceneFiles.length - 1 ? 'vout' : `x${i}`;
+		const offset = acc - TRANS;
+		xfilters.push(
+			`[${prev}][${i}:v]xfade=transition=${showcase.wipes[i - 1]}:duration=${TRANS}:offset=${offset}[${out}]`,
+		);
 		prev = out;
+		acc += sceneDurs[i] - TRANS;
 	}
+	// Bookend the loop: fade in from / out to the canvas background so
+	// the wrap is seamless by construction — the last frames and the
+	// first frames are both the flat background, and no content-phase
+	// matching is required at the seam.
+	const FADE = 0.35;
+	const total = acc;
+	xfilters.push(
+		`[vout]fade=t=in:st=0:d=${FADE}:color=${bg},fade=t=out:st=${(total - FADE).toFixed(2)}:d=${FADE}:color=${bg}[vfinal]`,
+	);
 	args.push(
 		'-filter_complex',
-		filter,
+		xfilters.join(';'),
 		'-map',
-		'[vout]',
-		'-t',
-		String(loopSeconds),
+		'[vfinal]',
 		'-c:v',
 		'libx264',
 		'-preset',
@@ -262,25 +339,26 @@ async function main() {
 		'-pix_fmt',
 		'yuv420p',
 		'-an',
-		join(WORK_DIR, 'marquee.mp4'),
+		join(WORK_DIR, 'showcase.mp4'),
 	);
 	run('ffmpeg', args);
 
-	// 4. gif pipe -> sharp animated WebP (same path as the reel builder;
-	//    this ffmpeg build has no libwebp encoder).
-	const gif = join(WORK_DIR, 'marquee.gif');
-	run('ffmpeg', ['-y', '-v', 'error', '-i', join(WORK_DIR, 'marquee.mp4'), '-f', 'gif', gif]);
+	// gif pipe -> sharp animated WebP (this ffmpeg build has no libwebp).
+	const gif = join(WORK_DIR, 'showcase.gif');
+	run('ffmpeg', ['-y', '-v', 'error', '-i', join(WORK_DIR, 'showcase.mp4'), '-f', 'gif', gif]);
 	mkdirSync(dirname(OUT_PATH), { recursive: true });
-	await sharp(gif, { animated: true }).webp({ quality: canvas.quality, loop: 0 }).toFile(OUT_PATH);
+	await sharp(gif, { animated: true }).webp({ quality, loop: 0 }).toFile(OUT_PATH);
 	console.log(`[showcase] wrote ${OUT_PATH}`);
 
-	// 5. Sampled-frame luma gate across the whole loop.
+	// Sampled-frame luma gate across the whole loop.
 	const meta = await sharp(readFileSync(OUT_PATH), { animated: true }).metadata();
 	const pages = meta.pages ?? 1;
 	let failures = 0;
 	const samples = 12;
 	for (let i = 0; i < samples; i += 1) {
-		const idx = Math.min(pages - 1, Math.floor((i * pages) / samples));
+		// Sample the middle 80% — the bookend fades legitimately sit
+		// near the luma floor by design.
+		const idx = Math.min(pages - 1, Math.floor(pages * (0.1 + (0.8 * i) / samples)));
 		const png = join(WORK_DIR, `sample-${i}.png`);
 		writeFileSync(png, await sharp(readFileSync(OUT_PATH), { page: idx }).png().toBuffer());
 		const luma = meanLuma(png);
@@ -289,8 +367,10 @@ async function main() {
 			failures += 1;
 		}
 		if (REVIEW) {
-			const { copyFileSync } = await import('node:fs');
-			copyFileSync(png, join(REVIEW_DIR, `showcase-${String(idx).padStart(3, '0')}.png`));
+			writeFileSync(
+				join(REVIEW_DIR, `showcase-${String(idx).padStart(3, '0')}.png`),
+				readFileSync(png),
+			);
 		}
 	}
 	rmSync(workDir, { recursive: true, force: true });

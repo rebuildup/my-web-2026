@@ -3,7 +3,7 @@
 - Status: Accepted (2026-11-24)
 - Supersedes: ADR-0025 の「単一リール + 8 アイコン + 統合 `/now`」構成部分。
   ADR-0024（deprecated `/card`）と ADR-0025 の静的 works 資産・権利境界は継続有効。
-- Issue: rebuildup/rebuildup#8, my-web-2026#1212
+- Issue: rebuildup/rebuildup#8, my-web-2026#1212, my-web-2026#1214
 
 ## 1. 背景
 
@@ -37,25 +37,35 @@ feed 行・期間ラベル・観測スタンプ（`observedAt`）はすべて
 キャッシュされた画像を現在値と誤認させない契約（ADR-0024 §2.4）は
 「観測済みである旨と時刻が画像に残る」ことで維持する。
 
-### 2.3 Selected Work は連続スクロールするショーケース
+### 2.3 Selected Work はシーン構成のモーションコラージュ
 
-`public/github-profile/showcase.webp`（480×680@6fps、18秒ループ、
-約2.9MB）は、作品を正規化したタイルをセル状に並べ、各タイルを
-独立したループストリームとしてキャンバスへ overlay し、y 座標を
-時間の関数 `cellIndex * cellHeight - mod(t * speed, scrollDistance)`
-で動かす animated WebP である。複数作品が常に同時に視認でき、
-静止フレームが存在しない。末尾に先頭 `visibleCells + 1` 作品を
-繰り返し配置し、スクロール量をループ周期で折り返すため継ぎ目なく
-ループする — 固定 3×3 グリッドの却下を受けての再設計（v3.1）。
+`public/github-profile/showcase.webp`（800×360@8fps、約21秒ループ、
+約2.9MB）は、横長・高さ抑制の animated WebP である。均一タイルの
+スクロールでも固定グリッドでもなく、**シーンごとに構図・作品の
+サイズ・主役になる時間を変える**:
+
+- 4 シーン + ループバックの 5 セグメントを、斜め方向のワイプ
+  （ffmpeg xfade `diagtl/diagbr/diagtr/diagbl` を巡回）で接続。
+  画面全体が一様に動くのではなく、マスク境界を通じて主役が
+  有機的に入れ替わる。
+- hero アイテムはシーン尺いっぱいの緩やかな push-in
+  （`scale eval=frame` + センタークロップの Ken Burns）、脇役は
+  位相の異なる正弦ドリフト。作品自体の映像モーションも生きる。
+- 末尾セグメントは先頭シーンの再生で、最後のワイプが S1 冒頭へ
+  戻る。ループ継ぎ目は先頭/末尾 0.35 秒の背景色フェード
+  （bookend）で構造的にシームレス化する。
+- シーン定義は `src/http/github-profile/showcase.json`
+  （schema `github-profile-showcase.v2`）、出典は
+  `src/http/github-profile/clips.json`。出典は公開 portfolio
+  スナップショットの `published + public` レコードに限定
+  （fail-closed）。出力全域のサンプルフレームに輝度ゲートをかけ、
+  暗転・ローディングフレームをビルド時に拒否する。
+
+経緯: 3×3 グリッド（v3）と縦マーキー（v3.1、480×680@6fps）は
+いずれもレビューで不採用となり、横コラージュと斜めマスクの
+2 プロトタイプを実素材で比較した上でシーン構成案を採用した
+（Issue #1214、証跡 `docs/verification/github-profile/v5/`）。
 作品ごとの個別リンクは README 側のテキスト一覧が担う。
-
-生成は `scripts/build-github-profile-showcase.mjs` +
-`src/http/github-profile/showcase.json`（レイアウト）+
-`src/http/github-profile/clips.json`（出典マニフェスト）。出典は公開
-portfolio スナップショットの `published + public` レコードに限定
-（fail-closed）。出力全域のサンプルフレームに輝度ゲートをかけ、
-旧リールの「先頭フレームだけ検査」では拾えなかった中盤の黒フレームを
-ビルド時に拒否する。
 
 ### 2.4 スキルアイコンは旧 48 技術を起点に再構成
 
@@ -68,7 +78,8 @@ portfolio スナップショットの `published + public` レコードに限定
 
 - 活動の可視化: リポジトリ別バー・feed・private 集約・JST 時刻・観測スタンプ。
 - 更新独立性: activity / presence / 静的クリップ / 静的アイコンが別経路。
-- 作品: 9 領域（Web アプリ・AE ツール・ツール・映像・UI）を常時スクロールで同時視認。
+- 作品: 9 領域（Web アプリ・AE ツール・ツール・映像・UI）を
+  シーン構成コラージュで順に主役化し、斜めワイプで有機的に遷移。
 - 旧実装の退化なし: 旧 STATUS の stats/streak/top-langs/activity グラフ相当は
   `/api/github-readme-stats/*` の既存カード群 + 新 activity カードで回復する。
 

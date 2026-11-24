@@ -1,5 +1,5 @@
 {
-	"schema": "github-profile-showcase.v2",
+	"schema": "github-profile-showcase.v3",
 	"issue": "rebuildup/rebuildup#8",
 	"adr": "docs/adr/ADR-0026-github-profile-redesign.md",
 	"output": "public/github-profile/showcase.webp",
@@ -8,48 +8,114 @@
 		"height": 360,
 		"background": "#0B0F14",
 		"fps": 8,
-		"quality": 30,
-		"border": "#334155",
-		"borderPx": 4
+		"quality": 70
 	},
-	"transitionSeconds": 0.8,
-	"elementSeconds": 12,
-	"scenes": [
+	"duration": 28,
+	"elementSeconds": 28,
+	"transition": 0.75,
+	"fade": 0.35,
+	"element": {
+		"w": 640,
+		"h": 360
+	},
+	"slots": {
+		"main": {
+			"w": 520,
+			"h": 293,
+			"x": 140,
+			"y": 34
+		},
+		"subs": [
+			{
+				"w": 190,
+				"h": 107,
+				"x": 16,
+				"y": 16
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 594,
+				"y": 16
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 16,
+				"y": 237
+			}
+		],
+		"parks": [
+			{
+				"w": 44,
+				"h": 25,
+				"x": 684,
+				"y": 208
+			},
+			{
+				"w": 44,
+				"h": 25,
+				"x": 734,
+				"y": 208
+			},
+			{
+				"w": 44,
+				"h": 25,
+				"x": 684,
+				"y": 252
+			},
+			{
+				"w": 44,
+				"h": 25,
+				"x": 734,
+				"y": 252
+			}
+		]
+	},
+	"breathing": {
+		"amp": 0.03,
+		"period": 28
+	},
+	"drift": {
+		"amp": 3,
+		"period": 9
+	},
+	"acts": [
 		{
-			"slug": "s1",
-			"duration": 4,
-			"items": [
-				{ "slug": "prototype", "w": 620, "h": 349, "x": 160, "y": 6, "hero": true },
-				{ "slug": "flashbeat", "w": 170, "h": 96, "x": 8, "y": 16, "border": true, "drift": 5 }
-			]
+			"main": "prototype",
+			"preview": "flashbeat",
+			"prev": "kosen",
+			"context": "multislicer",
+			"duration": 6.0
 		},
 		{
-			"slug": "s2",
-			"duration": 4,
-			"items": [
-				{ "slug": "multislicer", "w": 400, "h": 360, "x": 0, "y": 0, "hero": true },
-				{ "slug": "aulymo-v02", "w": 400, "h": 225, "x": 400, "y": 67, "border": true, "drift": 6 }
-			]
+			"main": "flashbeat",
+			"preview": "foldlayers",
+			"prev": "prototype",
+			"context": "aulymo-v02",
+			"duration": 5.0
 		},
 		{
-			"slug": "s3",
-			"duration": 8,
-			"items": [
-				{ "slug": "foldlayers", "w": 460, "h": 259, "x": 170, "y": 50, "border": true, "drift": 7 },
-				{ "slug": "ugoita", "w": 240, "h": 135, "x": 30, "y": 205, "border": true, "drift": 9 },
-				{ "slug": "homura", "w": 160, "h": 90, "x": 610, "y": 30, "border": true, "drift": 5 }
-			]
+			"main": "foldlayers",
+			"preview": "homura",
+			"prev": "flashbeat",
+			"context": "ugoita",
+			"duration": 5.5
 		},
 		{
-			"slug": "s4",
-			"duration": 4,
-			"items": [
-				{ "slug": "kosen", "w": 400, "h": 360, "x": 0, "y": 0, "hero": true },
-				{ "slug": "tegaki", "w": 380, "h": 214, "x": 410, "y": 20, "border": true, "drift": 6 }
-			]
+			"main": "homura",
+			"preview": "kosen",
+			"prev": "foldlayers",
+			"context": "multislicer",
+			"duration": 6.0
+		},
+		{
+			"main": "multislicer",
+			"preview": "prototype",
+			"prev": "homura",
+			"context": "ugoita",
+			"duration": 5.5
 		}
 	],
-	"wipes": ["diagtl", "diagbr", "diagtr", "diagbl"],
-	"loopBack": "s1",
 	"sources": "src/http/github-profile/clips.json"
 }

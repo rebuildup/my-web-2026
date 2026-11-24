@@ -2,7 +2,11 @@
 	"schema": "github-profile-clips.v1",
 	"issue": "rebuildup/rebuildup#8",
 	"outputDir": "public/github-profile/clips",
-	"canvas": { "width": 480, "height": 360, "fps": 8 },
+	"canvas": {
+		"width": 480,
+		"height": 360,
+		"fps": 8
+	},
 	"clips": [
 		{
 			"slug": "prototype",
@@ -10,7 +14,8 @@
 			"kind": "video",
 			"at": 0.3,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"grade": 1.6
 		},
 		{
 			"slug": "flashbeat",
@@ -18,7 +23,8 @@
 			"kind": "video",
 			"at": 0.45,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"grade": 0.9
 		},
 		{
 			"slug": "ugoita",
@@ -26,7 +32,13 @@
 			"kind": "video",
 			"at": 0.3,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"crop": {
+				"x": 98,
+				"y": 55,
+				"w": 444,
+				"h": 250
+			}
 		},
 		{
 			"slug": "foldlayers",
@@ -34,7 +46,8 @@
 			"kind": "video",
 			"at": 0.4,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"grade": 1.5
 		},
 		{
 			"slug": "homura",
@@ -42,7 +55,14 @@
 			"kind": "video",
 			"at": 0.35,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"crop": {
+				"x": 0,
+				"y": 8,
+				"w": 640,
+				"h": 344
+			},
+			"grade": 1.6
 		},
 		{
 			"slug": "multislicer",
@@ -50,7 +70,15 @@
 			"kind": "video",
 			"at": 0.3,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"crop": {
+				"x": 36,
+				"y": 22,
+				"w": 568,
+				"h": 320
+			},
+			"segments": [[0, 1.6], [2.6, 8.0]],
+			"grade": 0.95
 		},
 		{
 			"slug": "aulymo-v02",
@@ -58,7 +86,8 @@
 			"kind": "video",
 			"at": 0.4,
 			"duration": 4,
-			"fit": "crop"
+			"fit": "crop",
+			"grade": 1.6
 		},
 		{
 			"slug": "kosen",
@@ -66,8 +95,10 @@
 			"kind": "video",
 			"at": 0.5,
 			"duration": 4,
-			"fit": "crop"
-		},
-		{ "slug": "tegaki", "portfolioSlug": "tegaki-anime", "kind": "gif", "square": true }
+			"fit": "crop",
+			"grade": 0.72,
+			"trim": 2.7,
+			"offset": 0.3
+		}
 	]
 }

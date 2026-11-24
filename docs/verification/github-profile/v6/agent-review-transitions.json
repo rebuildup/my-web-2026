@@ -1,0 +1,135 @@
+{
+	"version": "1.0.0",
+	"id": "7628b212-70cd-4400-a341-0d49280551c1",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "40c99647ab7c03ef6ea6efd973b00af4e9b0b8db8df4c53524db6346f2a0e3f1",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[00-t4.2.png | t=4.2s, Settled Act 1] Strong hero dominance and hierarchy: ProtoType fills center cleanly with a crisp thin blue accent border; three corner sub-cards (yellow rhythm game top-left, two-character anime top-right, blue/gray graphic bottom-left) tuck neatly behind hero corners; 2x2 dock plate at bottom-right is neatly aligned. Minor readability issue: the top-left dock thumbnail is nearly solid black and vanishes into the dock plate, especially at ~350px wide.",
+				"severity": "minor"
+			},
+			{
+				"description": "[01-t5.8.png | t=5.8s, Late Transition 1->2] Dock collision/pileup and loose mid-canvas debris: while the incoming yellow hero has claimed center-left and the blue accent border and outgoing ProtoType is parked at top-right, an outgoing gray/blue sub-card piles directly on top of the right column of the 2x2 dock plate, occluding the cyan thumbnail and crowding the bottom-left slot. Meanwhile the blue 'aaaaa' card floats loose in empty space left of the dock, the dark plugin UI card trails under the yellow hero's bottom edge, and both left corners sit empty with faint dark ghost slot shapes.",
+				"severity": "major"
+			},
+			{
+				"description": "[02-t6.5.png | t=6.5s, Settled Act 2] Clean settled composition: yellow rhythm game ('Telecaster B-Boy', Combo 83) dominates center with high contrast, crisp blue accent border, and strong 350px readability; 2x2 dock is tidy and evenly spaced. Minor issue: top-left sub-card ('FOLD LAYERS') and bottom-left dark UI card are very dark and lose edge separation against the dark canvas at ~350px.",
+				"severity": "minor"
+			},
+			{
+				"description": "[03-t9.8.png | t=9.8s, Late Settled Act 2] Best settled frame of Act 2: yellow hero (Combo 92) animates cleanly with intact accent border, top-left FoldLayers card has progressed to the legible After Effects timeline ('Just your'), all three corners frame the hero cleanly, and the 2x2 dock is neatly aligned with zero artifacts or stretching.",
+				"severity": "info"
+			},
+			{
+				"description": "[04-t10.5.png | t=10.5s, Mid Transition 2->3] Non-causal hero overlap, floating debris, and half-empty dock: outgoing yellow hero shifts right while keeping top z-index and the blue accent border, colliding with and overlapping the incoming FoldLayers hero expanding from top-left behind it so neither reads as a clear protagonist. All corner cards vacate simultaneously, leaving ~25-30% dead dark space across the left/bottom-left corners (showing faint empty slot ghosts), stranding the dark UI and cyan anime cards along the bottom edge, wedging ProtoType between the yellow card and dock, and leaving the dock with only 2 misaligned thumbnails.",
+				"severity": "major"
+			},
+			{
+				"description": "[05-t11.2.png | t=11.2s, Settled Act 3] Strong settled hierarchy: FoldLayers After Effects timeline fills center with clean blue accent border and balanced colorful corner sub-cards (brown anime top-left, yellow game top-right, cyan anime bottom-left); 2x2 dock is neatly aligned. Minor issue: top-row dock thumbnails (ProtoType and dark plugin UI) are very dark and nearly disappear into the dock plate at ~350px.",
+				"severity": "minor"
+			},
+			{
+				"description": "[06-t16.0.png | t=16.0s, Mid Transition 3->4] Non-causal overlap and dock crowding: outgoing FoldLayers black title card ('Stop scrolling. Start creating.') remains on top with the blue accent border shifted right-of-center, clipping the right third of the incoming brown anime hero expanding behind it from top-left. Simultaneous evacuation leaves both left corners empty, drops cyan anime and blue 'aaaaa' cards loosely along the bottom seam, places the outgoing yellow card kissing the top edge of the dock plate, and leaves the dock's bottom row completely empty.",
+				"severity": "major"
+			},
+			{
+				"description": "[07-t22.0.png | t=22.0s, Mid Transition 4->5] Excessive dead space (~35% upper-left quadrant empty) and cluttered right-side congestion: outgoing brown anime hero ('祈りの') stays in front with the blue accent border while incoming blue/gray 'aaaaa' hero expands from bottom-left behind it, leaving the entire top-left quadrant blank save for a faint ghost slot box. FoldLayers hovers directly above the dock on the far right, the cyan card is wedged awkwardly beneath the hero's bottom seam, and the dock shows only 2 diagonally opposite thumbnails.",
+				"severity": "major"
+			},
+			{
+				"description": "[08-t24.5.png | t=24.5s, Settled Act 5] Clean settled hierarchy and high 350px readability: cobalt-blue-on-off-white '夜 / aaaaa' graphic dominates center with crisp typography, balanced corners, and neatly aligned 2x2 dock. Minor notes: the thin blue accent border has softer contrast against the bright off-white card interior, and the bottom-right dock thumbnail is momentarily a near-blank flat gray frame.",
+				"severity": "minor"
+			},
+			{
+				"description": "[09-t26.5.png | t=26.5s, Late Settled Act 5] Clean, sharp late-loop frame: protagonist motion progresses smoothly with no stretching, freezing, or notable WebP blocking; all three corner sub-cards and all four 2x2 dock thumbnails are cleanly populated and aligned (bottom-right dock thumbnail recovered). Readability at ~350px is strong for the hero; dock thumbnails read primarily as tiny color swatches (~20x11px).",
+				"severity": "info"
+			},
+			{
+				"description": "[Top 3 Fixes by Impact] (1) Fix dock-entry routing & slot choreography: route demoted cards directly into their vacated dock slot (or cross-fade/scale cleanly into slot) so moving cards never pile over occupied dock thumbnails (01-t5.8.png) or leave half-empty/diagonally gapped dock plates (04, 06, 07). (2) Make hero handoffs causal: start receding, dimming, and dropping z-index on the outgoing hero before/as the incoming hero expands, and transfer the blue accent border early to the incoming protagonist rather than holding it on the outgoing card over the incoming one (04, 06, 07). (3) Stagger corner sub-card swaps & hide empty corner slot ghosts: overlap incoming corner arrivals with outgoing exits (or cross-fade secondary slots) to eliminate 25-35% left-side dead voids and loose cards drifting beneath the hero (01, 04, 06, 07). Bonus polish: add a subtle 1px light rim/floor lift on dark sub-cards and dock thumbnails so they stay visible at ~350px wide.",
+				"severity": "major"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. All five settled acts (00, 02, 03, 05, 08, 09) are polished: protagonist hierarchy is dominant, 16:9 aspect ratios are unstretched, WebP compression is clean, settled 2x2 dock alignment is tidy, and hero works remain readable at ~350px. However, every sampled act transition (01, 04, 06, 07) breaks down due to simultaneous all-card motion: an outgoing sub-card piles directly onto occupied dock slots at t=5.8s (01); outgoing heroes retain top z-index and the blue accent border while overlapping incoming heroes at t=10.5s, 16.0s, and 22.0s (04, 06, 07); and simultaneous corner evacuation creates 25-35% dead dark voids on the left (worst at t=22.0s) alongside stray cards drifting under the hero and half-empty dock plates. Top 3 fixes by impact: (1) Cleanly route/swap dock slots so cards never collide with or pile onto the dock plate; (2) Make hero handoffs causal by receding/dropping z-index on the outgoing hero and transferring the blue accent border earlier to the incoming protagonist; (3) Stagger corner sub-card transitions and hide ghost slot placeholders to remove excessive mid-transition dead space and bottom-edge debris.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "64b2f618-062c-4080-9319-00d01c47d396",
+		"durationSeconds": 130.1989,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 23526,
+			"output_tokens": 11469,
+			"thinking_tokens": 8724,
+			"cache_read_tokens": 10741,
+			"total_tokens": 34995
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/7628b212-70cd-4400-a341-0d49280551c1",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.88,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.98,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T10:55:20Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t88%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t98%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T10:55:20Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

@@ -1,0 +1,135 @@
+{
+	"version": "1.0.0",
+	"id": "37193b94-d3c6-41d8-85b0-e51c6f9f6095",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "40c99647ab7c03ef6ea6efd973b00af4e9b0b8db8df4c53524db6346f2a0e3f1",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[00-t4.2.png | t=4.2s — Settled Act 1: ProtoType] Strong settled hierarchy: ProtoType dominates center with crisp thin blue accent border and clear silhouette at 350px; TL (Telecaster), BL (Params), and TR (two anime boys) sit cleanly tucked behind and dimmed. Bottom-right 2x2 dock is neatly aligned, but its TL thumbnail (FoldLayers) is nearly solid black and reads like an empty slot, and TR (dark macOS UI) is also very dark.",
+				"severity": "minor"
+			},
+			{
+				"description": "[01-t5.8.png | t=5.8s — Mid-transition Act 1->2] Dock collision and clutter: Telecaster (incoming, blue border, left-of-center) overlaps receding ProtoType (moving to TR), while the outgoing TR grey/blue card piles directly onto the right column of the dock plate, overlapping the parked teal anime girl thumbnail. Params floats mid-air just left of the dock, dark macOS UI peeks from beneath Telecaster's bottom edge, and TL/BL corners become large empty dark voids (exposing faint slot backplates).",
+				"severity": "major"
+			},
+			{
+				"description": "[02-t6.5.png | t=6.5s — Settled Act 2: Telecaster B-Boy] Very strong settled act: vibrant yellow/red/blue protagonist dominates cleanly with intact thin blue accent border, excellent 350px readability, clear continuity (ProtoType receded to TR), and neatly aligned 2x2 dock with all four thumbnails visible. Minor contrast issue: TL sub (FoldLayers title card) and BL sub (dark macOS UI) are very dark and recede almost into the dark background at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "[03-t9.8.png | t=9.8s — Late Act 2 / Premature Act 3 Trigger] Premature z-order and accent-border snap: Telecaster B-Boy is still full-size and centered, yet it has already lost its blue accent border while the parked TL sub (FoldLayers) abruptly pops in front of Telecaster's top-left corner, jumps to full brightness, and wears the blue accent border before any spatial hand-off occurs. Dock remains tidy and aligned.",
+				"severity": "major"
+			},
+			{
+				"description": "[04-t10.5.png | t=10.5s — Mid-transition Act 2->3] Un-staged mid-stage pileup and dead space: incoming FoldLayers (blue border) and outgoing Telecaster collide horizontally across the upper half rather than reading as recede-then-arrive. ProtoType shrinks directly behind Telecaster's right edge above the dock, dark macOS UI and teal anime girl cross paths in mid-air at bottom-center, the dock drops to 2 unevenly positioned thumbnails, and the entire bottom-left quadrant (~30-35% of canvas) is empty dark dead space.",
+				"severity": "major"
+			},
+			{
+				"description": "[05-t11.2.png | t=11.2s — Settled Act 3: FoldLayers] Clean, well-balanced settled act: FoldLayers dominates center with crisp blue accent border; TL (pointing anime girl), BL (teal anime girl), and TR (Telecaster) all have good visibility and stay cleanly behind the protagonist. Dock 2x2 is neatly aligned, though its top row (ProtoType, dark macOS UI) is very dark at 350px and the dense AE UI relies on the blue viewport and bold white kinetic text for small-size readability.",
+				"severity": "info"
+			},
+			{
+				"description": "[06-t16.0.png | t=16.0s — Mid-transition Act 3->4] Severe dock and mid-air collisions: incoming pointing anime girl overlaps the left half of receding FoldLayers (clipping its headline mid-word). Simultaneously, outgoing TR Telecaster collides directly onto the top-left of the dock plate, overlapping the dock border and covering part of the parked ProtoType thumbnail, while teal anime girl and Params overlap each other in mid-air at bottom-center. Bottom half of dock plate is empty and BL/TR corners are large dark voids.",
+				"severity": "major"
+			},
+			{
+				"description": "[07-t22.0.png | t=22.0s — Mid-transition Act 4->5] Diagonal hand-off with dead space and sparse dock: incoming Params (bright white grid, blue border) rises from bottom-left over outgoing pointing anime girl receding up-right (slightly cleaner diagonal than 04/06, though still simultaneous overlap). Dark FoldLayers floats awkwardly above the dock plate, the dock holds only 2 diagonal thumbnails (TR and BL), and TL corner plus bottom-center-right form large empty dark voids.",
+				"severity": "minor"
+			},
+			{
+				"description": "[08-t24.5.png | t=24.5s — Settled Act 5: Params] Strong settled act with top-tier 350px readability: bright white grid and cobalt blue graphics dominate effortlessly, corner subs (TL ProtoType, BL teal girl, TR pointing girl) sit neatly behind, and dock 2x2 is cleanly aligned. Two minor flaws: BR dock thumbnail (two anime boys) lands on a nearly blank flat grey frame, and the thin blue accent border has lower visual contrast against Params' bright white interior.",
+				"severity": "minor"
+			},
+			{
+				"description": "[09-t26.5.png | t=26.5s — Late Act 5 / Premature Act 1 Loop Trigger] Glaring premature z-order and accent-border snap (repeat of 03-t9.8, amplified by dark-on-white contrast): Params is still full-size and centered but completely stripped of its blue border, while stationary TL sub ProtoType pops on top of Params' white top-left corner at full brightness wearing the blue accent border before any hand-off motion develops. Dock and other subs remain tidy.",
+				"severity": "major"
+			},
+			{
+				"description": "[Global Technical & 350px Readability Check] Zero blank full frames, zero frozen clips (all cards animate cleanly across timestamps), and zero aspect-ratio stretching. WebP compression introduces expected mild softening on tiny UI text and subtle dark-area banding on empty slot backplates, acceptable for README embed. Main small-scale legibility risk is dark thumbnails inside the 2x2 dock (~24x14px at 350px wide) and dark corner subs (FoldLayers title, dark macOS UI) merging into the dark canvas.",
+				"severity": "minor"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. Settled acts (00, 02, 05, 08) are cohesive, readable at 350px, free of frozen/stretched frames, and show strong protagonist hierarchy with a neat 2x2 dock. However, transition choreography breaks down across every act boundary: (1) the next protagonist snaps to front z-index, full brightness, and steals the blue accent border ~1.2-1.5s early while still parked in the corner (03-t9.8, 09-t26.5); (2) cards traveling to/from the dock collide with parked dock thumbnails and each other mid-air (01-t5.8, 06-t16.0); and (3) all cards moving simultaneously create mid-stage protagonist pileups plus large empty dark corner voids (01, 04, 06, 07).\n\nTop 3 Fixes by Impact:\n1. Defer z-order, brightness, and blue accent-border hand-off until the outgoing protagonist has started receding (~35-50% through the transition) and crossfade the border instead of step-switching it at transition start (eliminates the jarring corner pop-over in 03-t9.8 and 09-t26.5).\n2. Choreograph transitions as a staggered causal relay (outgoing protagonist recedes first by ~150-250ms, then incoming protagonist enters; dock exits clear slots before dock entries land, routing sub<->dock paths below/outside the dock plate with a brief opacity dip or dedicated lane) to eliminate dock-plate pileups (01, 06), mid-air sub collisions (06), and excessive empty-corner dead space (01, 04, 06, 07).\n3. Lift minimum legibility of dark/blank dock and sub frames by offsetting source clip start times away from solid-black/flat-grey frames (00 TL dock FoldLayers, 08 BR dock two-boys) and adding a subtle 1px inner/outer hairline rim on dark cards and slightly stronger contrast on the protagonist blue accent border so it reads clearly at 350px wide even on bright white cards (08).",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "16dc49e4-f192-4722-b4f5-6155d474eae0",
+		"durationSeconds": 166.80978,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 23646,
+			"output_tokens": 14579,
+			"thinking_tokens": 11782,
+			"cache_read_tokens": 10747,
+			"total_tokens": 38225
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/37193b94-d3c6-41d8-85b0-e51c6f9f6095",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.88,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.96,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T11:07:07Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t88%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t96%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T11:07:07Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

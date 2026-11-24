@@ -1,0 +1,119 @@
+{
+	"version": "1.0.0",
+	"id": "5086821d-26c4-4206-921f-e331adeffc78",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "602affa6802a5e594d0427bd7cf51754c6d7e6123d95786eefb83135f9a0e959",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "Intra-dock card collisions and dock-plate overhang recur across transitions (frames 01, 04, 05, 08, 09, 11). While keeping the dock plate strictly under all cards eliminated rev 9's clipping/disappearing bugs, it exposed straight-line paths cutting across already-parked thumbnails and lagging dock arrivals after the protagonist has already settled: Monochrome overlaps Cyan (01); Blue and Cyan overlap horizontally in the top dock row (04); ProtoType piles onto macOS UI and protrudes past the top dock edge while Monochrome/Blue touch in the bottom row (05); Cyan passes directly over ~50% of yellow Telecaster in BL and protrudes past the left dock edge both entering (08) and leaving (09); Monochrome overlaps ~60% of Telecaster in BL while FoldLayers slightly overhangs the top dock edge (11).",
+				"severity": "major"
+			},
+			{
+				"description": "Premature departure stagger leaves lopsided dead space in frame 09 (t=21.25s) and airy scatter in frame 01 (t=5.50s). In frame 09, the top-left sub (Monochrome) has already vanished behind a still-stationary protagonist while Cyan juts out of the dock's left border; in frame 01, the bottom-left quadrant opens into a large dark void (~25-30% of canvas) while macOS UI and the small Blue card drift in the lower center.",
+				"severity": "minor"
+			},
+			{
+				"description": "Low-contrast dark/flat thumbnails and thin accent border at ~350px readability. Very dark source frames in the dock (frame 00 TL is nearly black; frame 06 TL/TR ProtoType and macOS UI are very dim) read almost like empty holes at 350px (~30px wide thumbnails), and frame 08 TL sub (Monochrome) sits on a nearly blank flat-grey frame. The ~1.5-2px blue accent border tracks cleanly at 800px but risks thinning/anti-aliasing faintly at 350px wide.",
+				"severity": "minor"
+			},
+			{
+				"description": "Subtle lossy WebP interframe compression ghosting (faint dark rectangular outlines/banding where previous cards rested) is visible in the dark navy background on transition frames (most noticeable in frames 01, 04, 07, 10). No stretched, corrupted, or fully blank frames occur anywhere.",
+				"severity": "minor"
+			},
+			{
+				"description": "Per-frame observations [00-05]: 00 (t=4.25s) Settled Act 1 — strong ProtoType dominance, crisp blue border, clean corners, neat 2x2 dock though TL slot is near-black. 01 (t=5.50s) Mid Act 1->2 — clean causal side-by-side hand-off (Telecaster left w/ blue border, ProtoType right dimmed), but empty BL void and Monochrome overlaps Cyan in dock. 02 (t=6.00s) Settled Act 2 — vivid Telecaster protagonist, clear corners, neat 2x2 dock. 03 (t=6.50s) Settled Act 2 — smooth active playback (Score 492024->504294, Combo 81->83), steady hierarchy and clean dock. 04 (t=10.00s) Early Act 2->3 — causal hand-off as Telecaster holds z-order/border while FoldLayers rises behind from TL, but Blue/Cyan collide in dock top row and Wolf-girl squeezes between Telecaster and dock. 05 (t=10.75s) Late Act 2->3 — FoldLayers cleanly takes center/border and Telecaster lands at TR, but dock trails with ProtoType/macOS UI piled up past top edge and Monochrome/Blue overlapping below.",
+				"severity": "info"
+			},
+			{
+				"description": "Per-frame observations [06-11]: 06 (t=11.25s) Settled Act 3 — crisp FoldLayers protagonist and corners, neat 2x2 dock (dark TL/TR slots). 07 (t=15.75s) Mid Act 3->4 — strong causal relay (FoldLayers holds right/border while Wolf-girl rises from TL, Cyan/Blue pass cleanly below); Telecaster hovers on top-left dock corner without clipping. 08 (t=16.25s) Late Act 3->4 — Wolf-girl locks center w/ border and FoldLayers settles at TR, but TL Monochrome is flat grey and arriving Cyan overlaps ~50% of Telecaster in dock BL while overhanging the left edge (BR empty). 09 (t=21.25s) Pre/early Act 4->5 — Wolf-girl still centered w/ border (same character pose as 07-08 with updated lyrics), yet TL sub is already gone leaving empty top-left void and departing Cyan again overlaps Telecaster while protruding past dock left edge. 10 (t=21.75s) Mid Act 4->5 — crisp causal relay (Wolf-girl shifts up-right w/ border while Blue '夜' grows behind from BL), FoldLayers floats above dock, sparse top-left. 11 (t=22.25s) Late Act 4->5 — striking Blue/white '夜' grid dominates center w/ strong 350px readability, but Monochrome crosses over ~60% of Telecaster in dock BL and FoldLayers slightly overhangs the top dock edge.",
+				"severity": "info"
+			},
+			{
+				"description": "Top 3 fixes by impact: (1) Eliminate intra-dock collisions and trailing dock settlements by assigning dock slots to avoid cross-slot traversal (e.g., BL sub <-> BL dock, TR sub <-> TR/TL dock) or arcing paths outside occupied slots, and finishing dock park arrivals at or slightly before protagonist lock-in (fixes frames 01, 04, 05, 08, 09, 11). (2) Slightly narrow corner-sub departure lead time so TL sub doesn't vanish behind a stationary protagonist (frame 09) and BL doesn't hollow out mid-transition (frame 01). (3) Improve ~350px legibility and dark-field polish by nudging the blue accent border slightly thicker (or adding a faint glow), applying a subtle brightness floor/inner rim on near-black dock thumbnails (frames 00 TL, 06 TL/TR), and tuning WebP quality/keyframe/background dithering to reduce faint rectangular interframe ghosting.",
+				"severity": "info"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. Revision 10 successfully fixes dock clipping — the dock plate stays strictly beneath every card across all 12 frames with zero disappearing artifacts, settled acts (00, 02, 03, 06) exhibit strong visual hierarchy and neat 2x2 dock alignment, and protagonist-to-protagonist hand-offs read clearly and causally with effective ~62% z-order/accent transfer. However, removing dock occlusion exposed recurring intra-dock card collisions, dock-plate overhang, and trailing dock arrivals in 6 of 12 frames (01, 04, 05, 08, 09, 11), most noticeably in late-transition frames (05, 08, 11) after the protagonist has already settled and in frame 09 where Cyan juts past the dock's left border over Telecaster while TL sub has already vanished. Fixing dock slot routing/arrival timing, slightly tightening departure stagger, and lightly boosting 350px contrast/WebP cleanliness will bring this to a clean ACCEPT.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "fa8c0eb7-ae97-4faa-9d01-18d7b552b9dd",
+		"durationSeconds": 147.077111,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 26419,
+			"output_tokens": 14774,
+			"thinking_tokens": 12009,
+			"cache_read_tokens": 11041,
+			"total_tokens": 41193
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/5086821d-26c4-4206-921f-e331adeffc78",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.82,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.89,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T17:38:59Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t82%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t89%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T17:38:59Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

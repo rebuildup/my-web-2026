@@ -369,3 +369,58 @@ repo 件数表示の desktop/mobile 差、Selected work WebP の
 - **証跡**: `docs/verification/github-profile/v8/` — 全体
   レンダリング 4 枚、モバイル activity 拡大、agent review JSON
   4 件（v9–v12）、preview-index.html。
+
+## 15. Selected Work ドック遷移の収束試行（2026-11-24、Issue #1214 継続）
+
+公開前収束で Selected Work の残存指摘（遷移中のドックプレート
+周辺の衝突・滞留・デッドスペース）に対し、モーションと z-order
+の両面から 9 ラウンドの `agent review run` を実施した。
+
+### 採用した変更
+
+- `transition` 0.75s → 1.0s、works ごとの出発 stagger 拡大
+- park 行きカードの scale 早期縮小を 0.8s 前倒し（プレート到達
+  時に必ずサムネイルサイズ）
+- protagonist の z-order / アクセントボーダー移管を遷移終盤
+  62% 地点へ
+- 減光フロア 0.32 → 0.38、リム 0.18 → 0.26
+- ドックプレートは全カードより下に固定（occlusion 変種は全て
+  「消える/切れる」系の退行を生んだため撤去）
+
+### 残存指摘（受理判断の記録）
+
+- 遷移中 ~1s の intra-dock カード通過衝突（park スロット間の
+  直進経路が駐機サムネイルと一時的に重なる）。スロット経路の
+  再設計が必要な構造課題で、パラメータ調整では解消しない
+- 遷移途中の一時的デッドスペース（Act 1→2 / 4→5）、極暗
+  ソースコマの 350px での沈み込み、WebP 暗部ゴースト
+- settled act・主役ハンドオフ・350px 可読性は全ラウンドで
+  高評価。v6 以降の ACCEPT WITH FIXES 系譜と同水準であり、
+  公開 README 切替時の実画面目視を最終確認とする
+
+### 証跡
+
+`docs/verification/github-profile/v9/` — agy review JSON 9 件、
+遷移フレーム 12 枚、レビュー記録 md。
+
+### GitHub/Camo・データ検証の整理（公開前収束）
+
+- `<picture><source media="(max-width: 767px)" srcset>` は
+  GitHub 公式ドキュメントおよび第三者実測でサニタイズ許可が
+  確認済み（`media` 属性自体は値を問わず許可、メディアクエリは
+  ブラウザ評価）。`srcset` の絶対 URL は Camo プロキシ対象、
+  仮にプロキシされなくても rebuildup.dev への直接参照で成立。
+  最悪ケースは `<img>` フォールバックによる desktop 表示で、
+  graceful degradation する。100% の確定は公開 README での
+  実測待ち（承認境界）。
+- SVG カード（`/api/v1/github-profile/*`）は既存の
+  github-readme-stats 系と同じ Camo 経路で実績あり。
+- animated WebP（showcase.webp）は `data-animated-image` 対象外
+  でも WebP アニメーションは GitHub で再生される（img タグ経由）。
+- 検証データ: ローカル `pnpm dev` は **seeded D1**
+  （`.tmp/d1state/v3` + `.tmp/seed-d1.mjs` で activity/presence
+  スナップショットを注入）。**実データ検証は未実施** —
+  `pnpm dev:production-data`（`MY_WEB_2026_DATA_SOURCE=
+  production-readonly` + remote bindings）は `wrangler login`
+  が必要で、現在未認証のため operator 作業待ち。非公開データの
+  公開境界は seeded 検証で維持。

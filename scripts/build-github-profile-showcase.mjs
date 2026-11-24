@@ -260,7 +260,7 @@ function buildMotion(showcase) {
 			// Per-work lead time staggers departure so several cards
 			// don't pile onto the dock plate in the same second; every
 			// glide still lands exactly on the act boundary.
-			const lead = (((works.indexOf(w) * 7 + k * 3) % 9) / 9) * 0.5;
+			const lead = (((works.indexOf(w) * 7 + k * 3) % 9) / 9) * 0.8;
 			const a = b - TRANS - lead;
 			const pa = slotParams(showcase, from);
 			const pb = slotParams(showcase, to);
@@ -270,6 +270,10 @@ function buildMotion(showcase) {
 			// boundary). Position glides keep the shared window so
 			// paths stay smooth; every channel still lands on b.
 			const grow = pb.s > pa.s;
+			// Park-bound cards must be thumbnail-sized BEFORE they reach
+			// the dock plate: shrink almost a full second early so they
+			// never slice across the plate's edge while still large.
+			const parkBound = /^park\d+$/.test(to);
 			for (const p of ['s', 'cx', 'cy']) {
 				let aa = a;
 				let dd = TRANS + lead;
@@ -278,8 +282,9 @@ function buildMotion(showcase) {
 						aa += 0.15;
 						dd -= 0.15;
 					} else {
-						aa -= 0.3;
-						dd += 0.3;
+						const early = parkBound ? 0.8 : 0.45;
+						aa -= early;
+						dd += early;
 					}
 				}
 				changes[p].push({ a: aa, d: dd, delta: pb[p] - pa[p] });
@@ -524,17 +529,17 @@ async function main() {
 	{
 		const parks = showcase.slots.parks ?? [];
 		if (parks.length > 0) {
-			const x0 = Math.min(...parks.map((r) => r.x)) - 10;
-			const y0 = Math.min(...parks.map((r) => r.y)) - 10;
-			const x1 = Math.max(...parks.map((r) => r.x + r.w)) + 10;
-			const y1 = Math.max(...parks.map((r) => r.y + r.h)) + 10;
+			const x0 = Math.min(...parks.map((r) => r.x)) - 14;
+			const y0 = Math.min(...parks.map((r) => r.y)) - 14;
+			const x1 = Math.max(...parks.map((r) => r.x + r.w)) + 14;
+			const y1 = Math.max(...parks.map((r) => r.y + r.h)) + 14;
 			const dockW = x1 - x0;
 			const dockH = y1 - y0;
 			const dockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${dockW}" height="${dockH}"><rect x="0.5" y="0.5" width="${dockW - 1}" height="${dockH - 1}" rx="14" fill="rgba(22,30,42,0.9)" stroke="rgba(255,255,255,0.10)"/></svg>`;
 			const dockPath = join(decorDir, 'dock.png');
 			await decorPng(dockPath, dockSvg);
 			dockLayer = await sharp(dockPath).png().toBuffer();
-			dockBounds = { left: x0, top: y0 };
+			dockBounds = { left: x0, top: y0, width: dockW, height: dockH };
 		}
 	}
 
@@ -561,17 +566,17 @@ async function main() {
 	// below main so bright footage can't out-shout a dark protagonist.
 	const dimAt = (sRole) => {
 		const v = Math.min(1, Math.max(0, (sRole - sPark) / (sMain - sPark)));
-		return 0.32 + 0.68 * v ** 1.4;
+		return 0.38 + 0.62 * v ** 1.4;
 	};
 
 	// Which act's arrangement is being approached at time t: inside a
 	// transition window the DESTINATION act wins, so the incoming
 	// protagonist gets z-top + the accent border early — a causal
 	// hand-off instead of two overlapping heroes.
-	// Protagonist hand-off is deferred to the LAST ~45% of the glide:
+	// Protagonist hand-off is deferred to the LAST ~62% of the glide:
 	// any earlier and the still-parked next hero pops to z-top/full
 	// brightness/accent border before it has visibly started moving.
-	const TRANS_W = showcase.transition * 0.45;
+	const TRANS_W = showcase.transition * 0.62;
 	function destActIndex(t) {
 		for (let k = 1; k < bounds.length; k += 1) {
 			const b = bounds[k - 1];
@@ -609,7 +614,7 @@ async function main() {
 			rimCache.set(
 				key,
 				Buffer.from(
-					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/></svg>`,
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}" fill="none" stroke="rgba(255,255,255,0.26)" stroke-width="1"/></svg>`,
 				),
 			);
 		}
@@ -712,33 +717,40 @@ async function main() {
 			// the near-black canvas at README scale.
 			if (p.dim < 0.999) ops.push({ input: rimStroke(p.w, p.h) });
 			img = img.composite(ops);
-			layers.push({ input: await img.png().toBuffer(), left: p.x, top: p.y });
+			layers.push({ input: await img.png().toBuffer(), left: p.x, top: p.y, _item: p });
 		}
 		// Protagonist accent frame tracks the work bound for the main
 		// slot of the approached act — it transfers to the incoming
 		// hero at the start of the hand-off window, PAD outside its
 		// rect — never a detached static wireframe.
 		const lead = items.find((p) => p.slug === leadSlug) ?? items[items.length - 1];
+		let frameLayer = null;
 		if (lead) {
 			const fw = lead.w + PAD * 2;
 			const fh = lead.h + PAD * 2;
-			layers.push({
+			frameLayer = {
 				input: await sharp(accentFrame(fw, fh)).png().toBuffer(),
 				left: lead.x - PAD,
 				top: lead.y - PAD,
-			});
+			};
 		}
 		// Bookend fades baked per frame (linear, to canvas bg) so the
 		// PNG sequence can go straight to img2webp without a lossy
 		// intermediate video encode.
 		const FADE = showcase.fade;
 		const p = Math.min(Math.min(1, t / FADE), Math.min(1, (D - t) / FADE));
-		// Paint order: dock plate first (under every card — transit
-		// cards stay above it, parked thumbs sit on it), then
-		// elements small→large, accent frame, bookend fade.
+		// Paint order: dock plate first (strictly under every card),
+		// then elements small→large, accent frame, bookend fade.
+		// v10: every occlusion variant tried (size gates, slot
+		// proximity, dock-bound routing, overlap demotion) produced
+		// disappearing/clipping artifacts in review; the 1.0s
+		// transitions + early park shrink keep the plate face clear
+		// enough that plain z-order reads cleanest.
+		const strip = ({ input, left, top }) => ({ input, left, top });
 		const topLayers = [];
 		if (dockLayer) topLayers.push({ input: dockLayer, ...dockBounds });
-		topLayers.push(...layers);
+		topLayers.push(...layers.map(strip));
+		if (frameLayer) topLayers.push(frameLayer);
 		if (p < 1) {
 			const fadeLayer = await sharp({
 				create: {

@@ -12,7 +12,7 @@
 	},
 	"duration": 28,
 	"elementSeconds": 28,
-	"transition": 0.75,
+	"transition": 1.0,
 	"fade": 0.35,
 	"element": {
 		"w": 640,

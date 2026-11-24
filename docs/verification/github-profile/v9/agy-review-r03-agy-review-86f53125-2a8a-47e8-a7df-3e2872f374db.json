@@ -1,0 +1,155 @@
+{
+	"version": "1.0.0",
+	"id": "86f53125-2a8a-47e8-a7df-3e2872f374db",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "da94927bfb2770df53e2bfef29fe37f449dba75cca0fcbeca9c26663a6c943ea",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Image 00 | t=4.250s | Settled Act 1 - ProtoType] Strong visual hierarchy and protagonist dominance with crisp blue accent border; all three corner subs (TL rhythm game, BL blue/white typography, TR sketched boys) sit cleanly behind the protagonist. The 2x2 dock is neatly aligned with all 4 slots occupied, though the top-left slot (FoldLayers) is near-black and top-right (AE plugin) is very dark, relying heavily on the lifted rim to stay legible at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "[Image 01 | t=5.500s | Mid-transition Act 1->2] Protagonist hand-off reads cleanly and causally: incoming rhythm game (\"80 Combo\") already carries the blue accent border on the left while outgoing ProtoType recedes to top-right with zero overlap. Moving sub cards (AE plugin, blue/white) stay cleanly separated below. However, framing is noticeably top-heavy with a large dark void in the lower-left quadrant, the dock is half-empty (only TR teal and BL pointing girl visible), and faint WebP inter-frame rectangular ghosting artifacts are visible on the dark backdrop and empty dock slots.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Image 02 | t=6.000s | Settled Act 2 - Rhythm game] Cleanly settled act with strong protagonist dominance, crisp blue border, high readability at 350px, tidy corner subs (TL FoldLayers, BL AE plugin, TR ProtoType), and a neat, fully populated 2x2 dock. Minor note: TL FoldLayers sub sits on a very dark frame (\"FOLD LAYERS\") that nearly vanishes into the dark background at 350px wide.",
+				"severity": "info"
+			},
+			{
+				"description": "[Image 03 | t=6.500s | Settled Act 2 continued] Smooth animation progression (\"83 Combo\", dancing character) with zero stretching or frozen frames. Protagonist border, corner subs, and 2x2 dock alignment remain completely stable and neat; same minor low-contrast note on the dark TL FoldLayers sub.",
+				"severity": "info"
+			},
+			{
+				"description": "[Image 04 | t=10.000s | Transition Act 2->3] Protagonist hand-off is causal and readable (outgoing rhythm game retains the blue border while incoming FoldLayers rises cleanly behind from top-left). However, two dock defects appear: (1) inside the dock's top row, the teal card shifts left and collides horizontally with the blue/white card while both composite above the plate (leaving TR and BL slots empty); (2) a sharply clipped sliver of the pointing-girl card protrudes from behind the left edge of the dock plate in the narrow gap next to the protagonist.",
+				"severity": "major"
+			},
+			{
+				"description": "[Image 05 | t=10.750s | Late transition Act 2->3] Protagonist z-order and blue accent border transfer cleanly to centered FoldLayers, with corner subs settling into place. Major dock pileup: inside the dock plate, the blue/white card composites above the plate while directly overlapping the sketched-boys thumbnail in the bottom row (with TR slot empty), and a thin dark sliver of another card peeks above the top-left border of the dock plate.",
+				"severity": "major"
+			},
+			{
+				"description": "[Image 06 | t=11.250s | Settled Act 3 - FoldLayers] Cleanly settled Act 3 with strong protagonist dominance, legible typography, accurate blue border tracking, and neat 4/4 dock alignment. Minor readability note: the top two dock slots (ProtoType and AE plugin) are very dark and close to blending into the plate at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "[Image 07 | t=15.750s | Transition Act 3->4] Causal protagonist hand-off reads well: outgoing FoldLayers retains the blue border while receding rightward as the pointing-girl MV expands cleanly behind from top-left, and bottom-traveling cards stay separated. Inside the dock plate there is no on-plate collision (top two slots parked, bottom two empty), though the shrinking yellow rhythm-game card dives behind the top edge of the dock plate with an abrupt hard clip along the plate's upper rim.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Image 08 | t=16.250s | Late transition Act 4 - Pointing girl] Pointing-girl protagonist is centered and dominant with crisp blue accent border. Two defects: (1) Dock overhang bug — the arriving teal-girl thumbnail pops above the dock plate before reaching its bottom-left slot, leaving ~10-15px of the card protruding outside the left border of the dock plate while BR slot stays empty; (2) the TL corner sub (sketched boys) sits on a flat uniform grey frame that reads like a blank/unloaded placeholder at 350px.",
+				"severity": "major"
+			},
+			{
+				"description": "[Image 09 | t=21.250s | Late Act 4 / start of transition 4->5] Protagonist (\"祈りの\") is crisp and dominant with blue border, and TR/BL subs read well. Two defects: (1) the TL sub card (sketched boys) is nearly pitch-black with almost no visible rim, making the top-left corner look missing a card; (2) a chopped vertical sliver of the teal-girl card sticks out from behind the left edge of the dock plate, wedged between the protagonist's bottom-right corner and the plate while the BR dock slot is empty.",
+				"severity": "major"
+			},
+			{
+				"description": "[Image 10 | t=21.750s | Mid-transition Act 4->5] Protagonist hand-off is causal and legible (outgoing pointing girl retains blue border while receding up-right as the bold blue/white grid card rises behind from bottom-left, with only a small teal corner briefly peeking below the outgoing protagonist). However, the entire upper-left quadrant (~25-30% of the frame) is an excessive empty dark void with faint WebP block ghosting (worsened by the missing/black TL sub from frame 09), and the dock is half-empty diagonally (only TR AE plugin and BL rhythm game shown).",
+				"severity": "minor"
+			},
+			{
+				"description": "[Image 11 | t=22.250s | Settled/settling Act 5 - Blue/white grid] Blue/white grid protagonist (\"夜 night\" / \"aaaa\") is vivid, centered, and highly readable at 350px with crisp blue border; arriving TL ProtoType is quite dark. Worst dock pileup in the sequence: the sketched-boys card composites above the dock plate directly stacked over ~60% of the yellow rhythm-game card in the bottom-left area (leaving TL and BR slots empty), while a clipped horizontal strip of FoldLayers peeks out from behind the top-left edge of the dock plate.",
+				"severity": "major"
+			},
+			{
+				"description": "[Overall - Readability, Motion & Compression] At ~350px wide, all five protagonists read strongly with clear silhouette, contrast, and accent border tracking, and no frames are frozen or aspect-stretched. However, dock pileups/overhangs (04, 05, 08, 11) visibly disrupt the 2x2 grid silhouette even at 350px; dark/blank source frames in sub slots (02-03 FoldLayers, 08-09 sketched boys, 11 ProtoType) make corner slots appear missing; and mild WebP inter-frame ghosting/banding appears in dark background voids during transitions (01, 10).",
+				"severity": "minor"
+			},
+			{
+				"description": "[Top Fix #1 (Highest Impact) - Tighten dock above-plate rule to assigned slot within <=2-3px] The ~14px proximity tolerance (especially if checked against any park slot or while departing/arriving) directly causes both on-plate thumbnail pileups (Frames 04, 05, 11) and edge overhangs (Frame 08, teal card hanging outside the plate's left border). Require a card to be within ~2-3px of its own assigned destination slot (and near thumbnail size) before compositing above the plate, and never let two cards occupy/overlap the same slot above the plate simultaneously.",
+				"severity": "major"
+			},
+			{
+				"description": "[Top Fix #2 - Fade/mask cards behind the dock plate so clipped slivers never peek past plate edges] Hard-clipped fragments protruding from the dock plate's left/top edges (Frames 04, 05, 07, 09, 11 — especially Frame 09's teal sliver wedged against the protagonist and Frame 11's FoldLayers strip above an empty slot) read as stray clipping glitches rather than intentional depth. Ramp opacity smoothly to 0 as cards enter/exit behind the dock plate silhouette (or fade in/out cleanly in-slot once settled) instead of showing full-opacity truncated edges behind an opaque plate.",
+				"severity": "major"
+			},
+			{
+				"description": "[Top Fix #3 - Eliminate blank/black sub frames and reduce upper-left transition dead space] Offset or trim the sketched-boys clip (and dark intro frames of FoldLayers/ProtoType) so corner sub cards never sit on flat-grey (Frame 08) or pitch-black/invisible frames (Frame 09), which also amplifies the empty upper-left quadrant void in Frame 10; slightly lift the card background floor and border rim on dimmed sub/dock cards so every occupied slot remains visibly anchored at 350px.",
+				"severity": "minor"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. Revision 4 achieves strong settled acts (00, 02, 03, 06, 11), reliable protagonist dominance and readability at ~350px, accurate blue accent border tracking, and clean causal protagonist hand-offs (~62% transfer reads well across 01, 04, 07, 10) with no frozen or stretched frames. However, the tightened ~14px dock above-plate rule still produces frequent, unmistakable dock defects around act boundaries: direct thumbnail pileups/collisions on top of the dock plate (Frames 04, 05, 11), an arriving card protruding outside the plate's left border (Frame 08), and hard-clipped slivers peeking behind the plate edges (Frames 04, 05, 07, 09, 11), alongside a blank/black top-left sub card in Act 4 (Frames 08-09) that worsens upper-left dead space in Frame 10 and mild WebP dark-backdrop ghosting (Frames 01, 10). Top 3 fixes by impact: (1) Restrict above-plate dock compositing to <=2-3px of each card's own assigned slot (never overlapping a neighboring slot or overhanging the plate); (2) Alpha-fade dock arrivals/departures as they pass behind the plate boundary to eliminate hard-clipped edge slivers; (3) Offset/trim blank/near-black sub clip timestamps (especially sketched boys in 08-09) and lift dimmed card fill/rim slightly so corner subs stay anchored and avoid upper-left dead space.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "3655d89e-d8d2-41ba-b885-b52caa8bfe5b",
+		"durationSeconds": 174.480781,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 17662,
+			"output_tokens": 15942,
+			"thinking_tokens": 12362,
+			"cache_read_tokens": 19976,
+			"total_tokens": 33604
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/86f53125-2a8a-47e8-a7df-3e2872f374db",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.84,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.96,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T16:55:46Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t96%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T16:55:46Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

@@ -1,129 +1,127 @@
 {
-  "version": "1.0.0",
-  "id": "555237b7-cf33-4c74-881f-8276783bdf21",
-  "model": null,
-  "resolvedModel": null,
-  "specSha256": "42a91259905b5c9f237b9c48066c07eea8ae5a042f2797b8aede505a21fa94d9",
-  "classification": "review-completed",
-  "verified": false,
-  "verdict": {
-    "findings": [
-      {
-        "description": "Previous fix #7 NOT fixed (all 4 images): GitHub activity RECENT ACTIVITY still shows identical duplicate PR rows without event verbs ('herdr-t3 · PR #157' twice at Nov 24, 16:37 JST; 'tastile-root · PR #159' twice at Nov 24, 16:36 JST; 'ty-plus · PR #572' also has no verb).",
-        "severity": "major"
-      },
-      {
-        "description": "Previous fix #6 NOT fixed (all 4 images): /now DISCORD panel still displays mid-word truncation 'presence data stale or unavail...' despite spare horizontal room inside the panel.",
-        "severity": "major"
-      },
-      {
-        "description": "Mobile /now legibility & scale mismatch (02-mob-light.png, 03-mob-dark.png): While GitHub activity now swaps cleanly to the 560px stacked mobile SVG, /now still renders the 800x512 desktop SVG at ~0.45x, leaving timestamps, presence detail, 'declared · rebuildup.dev', and stat-cell labels/units unreadably small (~5-6px) and visually mismatched against the larger GitHub activity card below it.",
-        "severity": "major"
-      },
-      {
-        "description": "Previous fix #3 partially fixed (00-desk-light.png, 01-desk-dark.png): The private-repo summary no longer crosses the inner panel border, but still mid-word truncates on desktop as '8 private repos · 1,490 commits · 548 PRs (aggre...' (fits completely on mobile as '(aggregated)').",
-        "severity": "minor"
-      },
-      {
-        "description": "Previous fix #8 partially fixed (00-desk-light.png, 01-desk-dark.png): Desktop RECENT ACTIVITY rows 4 and 7 still truncate right after a middot as 'tastile-root · Issue #158 ·...' instead of fitting 'closed' (fits completely on mobile).",
-        "severity": "minor"
-      },
-      {
-        "description": "Mobile stacked GitHub activity footer crowding (02-mob-light.png, 03-mob-dark.png): The footer 'observed Nov 24, 2026 · 16:41 JST · rebuildup.dev' sits almost flush against the bottom card border (~2px gap), breaking the card's outer padding rhythm.",
-        "severity": "minor"
-      },
-      {
-        "description": "Mobile stacked GitHub activity zero-event rows (02-mob-light.png, 03-mob-dark.png): EVENTS BY REPOSITORY lists 10 repos including 4 zero-event rows ('atcoder-kit', 'FlashBeat', 'key-map-kanata', 'pc-setup' at '0 ev' with empty bars), unnecessarily inflating mobile card height compared to desktop's 6 active repos.",
-        "severity": "minor"
-      },
-      {
-        "description": "Minor SVG consistency details (all 4 images): Card header style differs between 'NOW · @rebuildup' (all caps with handle) and 'GitHub activity' (sentence case, no handle, repeating the markdown heading above it); desktop EVENTS BY REPOSITORY bars start flush under the repo icon with tighter vertical pitch whereas mobile bars indent cleanly under the repo name with generous pitch.",
-        "severity": "info"
-      },
-      {
-        "description": "Verified fixed from previous review: #1 /now stat-cell labels fit cleanly inside borders; #2 DECLARED FOCUS header-to-bullet gap is clean; #4 /activity left inner panel aligns flush with header and footer; #5 repo-row bars no longer collide with next row's icon; #9 mobile GitHub activity renders the stacked single-column <picture> variant with legible text; #10 1px panelStroke borders cleanly define dark SVGs on dark mode. Known limitations observed (non-blocking): sharp corners on Selected work WebP, orphan p5* icon in mobile Stack Languages.",
-        "severity": "info"
-      }
-    ],
-    "summary": "Overall verdict: ACCEPT WITH FIXES. Strong visual progress across all 4 renders: 6 of 10 previous findings are cleanly resolved (stat-cell label fit, DECLARED FOCUS gap, /activity left-margin alignment, repo-row pitch, stacked mobile GitHub activity <picture> swap, and 1px panelStroke borders on dark mode). Requirements: Information hierarchy=MET, Status intuitiveness=MET, Consistency=PARTIAL, Mobile=PARTIAL, Light/dark=MET, Composition=PARTIAL. Top 3 fixes by impact: (1) Fix remaining SVG copy/feed regressions — add PR event verbs to eliminate duplicate RECENT ACTIVITY rows, remove mid-word truncations ('unavail...', '(aggre...'), and fix desktop 'Issue #158 ·...' truncation; (2) Add a stacked mobile <picture> variant for /now so secondary labels/timestamps match the legibility and scale of the mobile GitHub activity card; (3) Increase bottom padding under the mobile GitHub activity footer and suppress '0 ev' rows to tighten mobile height.",
-    "verdict": "request-changes"
-  },
-  "agy": {
-    "status": "SUCCESS",
-    "conversationId": "63898a07-008f-44f3-b3be-e43fa8a67eb5",
-    "durationSeconds": 118.590982,
-    "numTurns": 1,
-    "usage": {
-      "input_tokens": 8735,
-      "output_tokens": 12077,
-      "thinking_tokens": 10644,
-      "cache_read_tokens": 18220,
-      "total_tokens": 20812
-    },
-    "deniedActions": []
-  },
-  "readonly": {
-    "deniedActions": [],
-    "permissionErrors": 0,
-    "protectedPath": null,
-    "protectedCheck": "unavailable",
-    "protectedMutations": []
-  },
-  "isolation": {
-    "workdir": "/Users/rebui/.local/state/agent/agy-review/555237b7-cf33-4c74-881f-8276783bdf21",
-    "osSandbox": "seatbelt",
-    "permissionDeny": [
-      "write_file(*)",
-      "command(*)",
-      "read_url(*)",
-      "execute_url(*)",
-      "mcp(*)",
-      "unsandboxed(*)"
-    ]
-  },
-  "quota": {
-    "buckets": [
-      {
-        "group": "Gemini Models",
-        "label": "Weekly Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.84,
-        "resetTime": "2026-12-01T00:43:37Z"
-      },
-      {
-        "group": "Gemini Models",
-        "label": "Five Hour Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.82,
-        "resetTime": "2026-11-24T10:43:37Z"
-      },
-      {
-        "group": "Claude and GPT models",
-        "label": "Weekly Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.42,
-        "resetTime": "2026-11-30T03:53:15Z"
-      },
-      {
-        "group": "Claude and GPT models",
-        "label": "Five Hour Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 1,
-        "resetTime": "2026-11-24T15:25:23Z"
-      }
-    ],
-    "raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t82%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T15:25:23Z\n"
-  },
-  "executor": "local",
-  "reasons": [
-    "no protected path supplied; OS/permission layers only"
-  ]
+	"version": "1.0.0",
+	"id": "555237b7-cf33-4c74-881f-8276783bdf21",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "42a91259905b5c9f237b9c48066c07eea8ae5a042f2797b8aede505a21fa94d9",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "Previous fix #7 NOT fixed (all 4 images): GitHub activity RECENT ACTIVITY still shows identical duplicate PR rows without event verbs ('herdr-t3 · PR #157' twice at Nov 24, 16:37 JST; 'tastile-root · PR #159' twice at Nov 24, 16:36 JST; 'ty-plus · PR #572' also has no verb).",
+				"severity": "major"
+			},
+			{
+				"description": "Previous fix #6 NOT fixed (all 4 images): /now DISCORD panel still displays mid-word truncation 'presence data stale or unavail...' despite spare horizontal room inside the panel.",
+				"severity": "major"
+			},
+			{
+				"description": "Mobile /now legibility & scale mismatch (02-mob-light.png, 03-mob-dark.png): While GitHub activity now swaps cleanly to the 560px stacked mobile SVG, /now still renders the 800x512 desktop SVG at ~0.45x, leaving timestamps, presence detail, 'declared · rebuildup.dev', and stat-cell labels/units unreadably small (~5-6px) and visually mismatched against the larger GitHub activity card below it.",
+				"severity": "major"
+			},
+			{
+				"description": "Previous fix #3 partially fixed (00-desk-light.png, 01-desk-dark.png): The private-repo summary no longer crosses the inner panel border, but still mid-word truncates on desktop as '8 private repos · 1,490 commits · 548 PRs (aggre...' (fits completely on mobile as '(aggregated)').",
+				"severity": "minor"
+			},
+			{
+				"description": "Previous fix #8 partially fixed (00-desk-light.png, 01-desk-dark.png): Desktop RECENT ACTIVITY rows 4 and 7 still truncate right after a middot as 'tastile-root · Issue #158 ·...' instead of fitting 'closed' (fits completely on mobile).",
+				"severity": "minor"
+			},
+			{
+				"description": "Mobile stacked GitHub activity footer crowding (02-mob-light.png, 03-mob-dark.png): The footer 'observed Nov 24, 2026 · 16:41 JST · rebuildup.dev' sits almost flush against the bottom card border (~2px gap), breaking the card's outer padding rhythm.",
+				"severity": "minor"
+			},
+			{
+				"description": "Mobile stacked GitHub activity zero-event rows (02-mob-light.png, 03-mob-dark.png): EVENTS BY REPOSITORY lists 10 repos including 4 zero-event rows ('atcoder-kit', 'FlashBeat', 'key-map-kanata', 'pc-setup' at '0 ev' with empty bars), unnecessarily inflating mobile card height compared to desktop's 6 active repos.",
+				"severity": "minor"
+			},
+			{
+				"description": "Minor SVG consistency details (all 4 images): Card header style differs between 'NOW · @rebuildup' (all caps with handle) and 'GitHub activity' (sentence case, no handle, repeating the markdown heading above it); desktop EVENTS BY REPOSITORY bars start flush under the repo icon with tighter vertical pitch whereas mobile bars indent cleanly under the repo name with generous pitch.",
+				"severity": "info"
+			},
+			{
+				"description": "Verified fixed from previous review: #1 /now stat-cell labels fit cleanly inside borders; #2 DECLARED FOCUS header-to-bullet gap is clean; #4 /activity left inner panel aligns flush with header and footer; #5 repo-row bars no longer collide with next row's icon; #9 mobile GitHub activity renders the stacked single-column <picture> variant with legible text; #10 1px panelStroke borders cleanly define dark SVGs on dark mode. Known limitations observed (non-blocking): sharp corners on Selected work WebP, orphan p5* icon in mobile Stack Languages.",
+				"severity": "info"
+			}
+		],
+		"summary": "Overall verdict: ACCEPT WITH FIXES. Strong visual progress across all 4 renders: 6 of 10 previous findings are cleanly resolved (stat-cell label fit, DECLARED FOCUS gap, /activity left-margin alignment, repo-row pitch, stacked mobile GitHub activity <picture> swap, and 1px panelStroke borders on dark mode). Requirements: Information hierarchy=MET, Status intuitiveness=MET, Consistency=PARTIAL, Mobile=PARTIAL, Light/dark=MET, Composition=PARTIAL. Top 3 fixes by impact: (1) Fix remaining SVG copy/feed regressions — add PR event verbs to eliminate duplicate RECENT ACTIVITY rows, remove mid-word truncations ('unavail...', '(aggre...'), and fix desktop 'Issue #158 ·...' truncation; (2) Add a stacked mobile <picture> variant for /now so secondary labels/timestamps match the legibility and scale of the mobile GitHub activity card; (3) Increase bottom padding under the mobile GitHub activity footer and suppress '0 ev' rows to tighten mobile height.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "63898a07-008f-44f3-b3be-e43fa8a67eb5",
+		"durationSeconds": 118.590982,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 8735,
+			"output_tokens": 12077,
+			"thinking_tokens": 10644,
+			"cache_read_tokens": 18220,
+			"total_tokens": 20812
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/555237b7-cf33-4c74-881f-8276783bdf21",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.84,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.82,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T15:25:23Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t82%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T15:25:23Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
 }

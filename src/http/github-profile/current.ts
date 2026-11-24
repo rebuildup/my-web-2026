@@ -20,13 +20,13 @@ import { COLORS, FONT, escapeXml, truncate } from './card';
  */
 
 export const CURRENT_WIDTH = 840;
-export const CURRENT_HEIGHT = 320;
+export const CURRENT_HEIGHT = 340;
 export const CURRENT_MAX_ROWS = 5;
 
 const PAD = 28;
 const HEADER_Y = 52;
 const LIST_TOP = 78;
-const ROW_H = 40;
+const ROW_H = 44;
 const FOOTER_Y = CURRENT_HEIGHT - 14;
 
 const WEIGHT_LABEL: Record<string, { label: string; color: string }> = {

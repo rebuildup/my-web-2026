@@ -144,11 +144,11 @@ function aggregate(payload: unknown): {
 		.map((item) => {
 			const ref = item.ref;
 			const refLabel =
-				ref?.kind === 'pull'
+				(ref?.kind === 'pull'
 					? `PR #${ref.number}`
 					: ref?.kind === 'issue'
 						? `Issue #${ref.number}`
-						: '';
+						: '') + (ref?.state ? ` · ${ref.state}` : '');
 			const repoShort = item.repoId.split('/').pop() ?? item.repoId;
 			const shortType = item.type.replace(/Event$/, '');
 			// The ref label already names the kind ("PR #42", "Issue #5"),
@@ -258,7 +258,10 @@ export function renderActivitySvg(payload: unknown): string {
 				new Date(
 					Date.parse(`${data.generatedOn}T00:00:00Z`) - (data.windowDays - 1) * DAY_MS,
 				).toISOString(),
-				`${data.generatedOn}T23:59:59Z`,
+				// Noon UTC lands on the same JST calendar day as `generatedOn`,
+				// so the label names the snapshot day itself rather than the
+				// next morning its UTC end-of-day instant spills into.
+				`${data.generatedOn}T12:00:00Z`,
 			)
 		: `${data.windowDays}d window`;
 	parts.push(
@@ -289,7 +292,7 @@ export function renderActivitySvg(payload: unknown): string {
 		if (repo.events > 0) {
 			const barW = Math.max(4, Math.round((repo.events / maxEvents) * MAX_BAR));
 			parts.push(
-				`<rect x="${leftX + 24}" y="${y + 5}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
+				`<rect x="${leftX + 24}" y="${y + 7}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
 			);
 		}
 		y += 30;
@@ -310,7 +313,7 @@ export function renderActivitySvg(payload: unknown): string {
 	// Right column: recent public feed.
 	const rightX = leftX + leftW + 32;
 	const rightW = ACTIVITY_WIDTH - PAD - rightX;
-	parts.push(panelChrome(rightX, PANEL_Y, rightW, 'RECENT ACTIVITY', COLORS.ok, PANEL_H));
+	parts.push(panelChrome(rightX, PANEL_Y, rightW, 'RECENT ACTIVITY', COLORS.accent, PANEL_H));
 	let fy = PANEL_Y + 68;
 	if (data.feed.length === 0) {
 		parts.push(

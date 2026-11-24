@@ -54,23 +54,25 @@ export const PROJECT_ROSTER = [
 	{
 		id: 'my-web-2026',
 		name: 'my-web-2026',
-		statusJa: '個人 Web Platform の再構築。',
+		statusJa: '個人 Web Platform を再構築中。このプロフィール自体もここから配信している。',
+		handwritten: { recordedOn: '2026-11-24', weightLevel: 'primary' },
 	},
 	{
 		id: 'tastile',
 		name: 'Tastile',
-		statusJa:
-			'scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development。',
+		statusJa: 'scheduling を扱う product を Web / Android / desktop / backend の複数クライアントで開発中。',
+		handwritten: { recordedOn: '2026-11-24', weightLevel: 'side' },
 	},
 	{
 		id: 'after-effects',
 		name: 'After Effects',
-		statusJa: 'script / plugin / extension の継続開発。配布と運用まで含む product として扱う。',
+		statusJa: 'AE の script / plugin / extension を継続開発し、配布と運用まで行っている。',
+		handwritten: { recordedOn: '2026-11-24', weightLevel: 'side' },
 	},
 	{
 		id: 'ai-coding-agent',
 		name: 'AI coding agent',
-		statusJa:
-			'agent workflow の実運用と形式知化。project-init / design-skills として実験と文書を並行。',
+		statusJa: 'agent workflow の実運用と形式知化を project-init / design-skills として並行実験中。',
+		handwritten: { recordedOn: '2026-11-24', weightLevel: 'active' },
 	},
 ] as const satisfies readonly RosterEntry[];

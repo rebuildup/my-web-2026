@@ -64,7 +64,7 @@ export function formatJst(iso: string): string {
 	return `${month} ${parts.day}, ${parts.year} · ${pad2(parts.hour)}:${pad2(parts.minute)} JST`;
 }
 
-/** `Nov 24, 16:38 JST` — row-level stamp; the panel header carries the year. */
+/** `Nov 24 · 16:37 JST` — row-level stamp; the panel header carries the year. */
 function formatJstCompact(iso: string): string {
 	const parts = jstParts(iso);
 	if (!parts) return iso;
@@ -72,7 +72,7 @@ function formatJstCompact(iso: string): string {
 		month: 'short',
 		timeZone: 'UTC',
 	});
-	return `${month} ${parts.day}, ${pad2(parts.hour)}:${pad2(parts.minute)} JST`;
+	return `${month} ${parts.day} · ${pad2(parts.hour)}:${pad2(parts.minute)} JST`;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -97,6 +97,28 @@ interface FeedRow {
 	at: string;
 	label: string;
 	type: string;
+}
+
+/** `PullRequestEvent` → `pull request` — raw GitHub event names must
+ * not leak into a profile card, and sibling event types on the same
+ * PR/issue (opened vs reviewed) need a verb to stay distinguishable. */
+function friendlyEventType(type: string): string {
+	const map: Record<string, string> = {
+		PullRequestEvent: 'pull request',
+		PullRequestReviewEvent: 'PR review',
+		PullRequestReviewCommentEvent: 'PR review comment',
+		IssuesEvent: 'issue',
+		IssueCommentEvent: 'issue comment',
+		PushEvent: 'push',
+		CreateEvent: 'create',
+		DeleteEvent: 'delete',
+		WatchEvent: 'star',
+		ForkEvent: 'fork',
+		ReleaseEvent: 'release',
+		CommitCommentEvent: 'commit comment',
+		DiscussionEvent: 'discussion',
+	};
+	return map[type] ?? type.replace(/Event$/, '').toLowerCase();
 }
 
 function aggregate(payload: unknown): {
@@ -136,10 +158,21 @@ function aggregate(payload: unknown): {
 		}
 	}
 	repos.sort((a, b) => b.events - a.events || a.name.localeCompare(b.name));
+	// GitHub emits one event per state transition, so the same PR or
+	// issue can legitimately appear twice in a few seconds (opened +
+	// closed). On a profile card that reads as a duplicated row, so
+	// keep only the most recent event per repo+type+ref.
+	const seenFeedKeys = new Set<string>();
 	const feed = snapshot.feed
 		.filter((item) => item.kind === 'public')
 		.slice()
 		.sort((a, b) => (a.at < b.at ? 1 : -1))
+		.filter((item) => {
+			const key = `${item.repoId}|${item.type}|${item.ref?.kind ?? ''}:${item.ref?.number ?? ''}`;
+			if (seenFeedKeys.has(key)) return false;
+			seenFeedKeys.add(key);
+			return true;
+		})
 		.slice(0, MAX_FEED_ROWS)
 		.map((item) => {
 			const ref = item.ref;
@@ -150,11 +183,21 @@ function aggregate(payload: unknown): {
 						? `Issue #${ref.number}`
 						: '') + (ref?.state ? ` · ${ref.state}` : '');
 			const repoShort = item.repoId.split('/').pop() ?? item.repoId;
-			const shortType = item.type.replace(/Event$/, '');
 			// The ref label already names the kind ("PR #42", "Issue #5"),
-			// so the bare event type only appears when there is no ref —
-			// and the row glyph carries the type visually either way.
-			const label = [repoShort, refLabel || shortType].filter(Boolean).join(' · ');
+			// so the entity's own event type adds nothing — but sibling
+			// types on the same ref (review, comment) do, and bare events
+			// fall back to the humanised type name.
+			const redundant =
+				(ref?.kind === 'pull' && item.type === 'PullRequestEvent') ||
+				(ref?.kind === 'issue' && item.type === 'IssuesEvent');
+			const parts = [repoShort];
+			if (refLabel) {
+				if (!redundant) parts.push(friendlyEventType(item.type));
+				parts.push(refLabel);
+			} else {
+				parts.push(friendlyEventType(item.type));
+			}
+			const label = parts.join(' · ');
 			return { at: item.at, label, type: item.type };
 		});
 	const observed = [snapshot.sources.public.observedAt, snapshot.sources.private.observedAt].filter(
@@ -174,8 +217,26 @@ function aggregate(payload: unknown): {
 
 const PAD = 28;
 const INNER = PAD + 24;
+
+/** `Nov 20 – Nov 24, 2026 · JST`-style coverage label for the snapshot
+ * window. Noon UTC lands on the same JST calendar day as `generatedOn`,
+ * so the label names the snapshot day itself rather than the next
+ * morning its UTC end-of-day instant spills into. */
+function activityWindowLabel(data: {
+	readonly generatedOn: string | null;
+	readonly windowDays: number;
+}): string {
+	if (!data.generatedOn) return `${data.windowDays}d window`;
+	return jstRangeLabel(
+		new Date(
+			Date.parse(`${data.generatedOn}T00:00:00Z`) - (data.windowDays - 1) * DAY_MS,
+		).toISOString(),
+		`${data.generatedOn}T12:00:00Z`,
+	);
+}
 const MAX_REPO_ROWS = 6;
-const MAX_FEED_ROWS = 8;
+const MAX_FEED_ROWS = 7;
+const FEED_ROW_H = 44;
 const MAX_BAR = 200;
 // The two columns share one panel band: chrome, content and footer all
 // live inside it, so dense snapshots cannot spill past the panel edge.
@@ -226,7 +287,7 @@ export function renderActivitySvg(payload: unknown): string {
 	const parts: string[] = [];
 	parts.push(
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${ACTIVITY_WIDTH}" height="${ACTIVITY_HEIGHT}" viewBox="0 0 ${ACTIVITY_WIDTH} ${ACTIVITY_HEIGHT}" role="img" aria-label="GitHub activity">`,
-		`<rect width="${ACTIVITY_WIDTH}" height="${ACTIVITY_HEIGHT}" fill="${COLORS.bg}"/>`,
+		`<rect width="${ACTIVITY_WIDTH}" height="${ACTIVITY_HEIGHT}" rx="16" fill="${COLORS.bg}" stroke="${COLORS.panelStroke}" stroke-width="1"/>`,
 	);
 
 	if (!data) {
@@ -253,41 +314,33 @@ export function renderActivitySvg(payload: unknown): string {
 	}
 
 	// Header: window label + JST coverage note + observation stamp.
-	const windowLabel = data.generatedOn
-		? jstRangeLabel(
-				new Date(
-					Date.parse(`${data.generatedOn}T00:00:00Z`) - (data.windowDays - 1) * DAY_MS,
-				).toISOString(),
-				// Noon UTC lands on the same JST calendar day as `generatedOn`,
-				// so the label names the snapshot day itself rather than the
-				// next morning its UTC end-of-day instant spills into.
-				`${data.generatedOn}T12:00:00Z`,
-			)
-		: `${data.windowDays}d window`;
+	const windowLabel = activityWindowLabel(data);
 	parts.push(
 		`<text x="${PAD}" y="52" font-family="${FONT}" font-size="26" font-weight="800" fill="${COLORS.text}">GitHub activity</text>`,
-		`<text x="${ACTIVITY_WIDTH - PAD}" y="50" text-anchor="end" font-family="${FONT}" font-size="14" fill="${COLORS.faint}">${escapeXml(windowLabel)}</text>`,
+		`<text x="${ACTIVITY_WIDTH - PAD}" y="50" text-anchor="end" font-family="${FONT}" font-size="15" fill="${COLORS.faint}">${escapeXml(windowLabel)}</text>`,
 	);
 
-	// Left column: totals + per-repo bars.
-	const leftX = INNER;
-	const leftW = 360;
+	// Left column: totals + per-repo bars. The panel's left edge aligns
+	// with the page header/footer margin (PAD), matching the right
+	// column's right edge.
+	const leftX = PAD;
+	const leftW = 384;
 	const shownRepos = data.repos.slice(0, MAX_REPO_ROWS);
 	const maxEvents = Math.max(1, ...data.repos.map((r) => r.events));
 
 	parts.push(
 		panelChrome(leftX, PANEL_Y, leftW, 'EVENTS BY REPOSITORY', COLORS.ok, PANEL_H),
 		`<text x="${leftX + 24}" y="${PANEL_Y + 70}" font-family="${FONT}" font-size="28" font-weight="800" fill="${COLORS.text}">${data.totals.commits.toLocaleString('en-US')}</text>`,
-		`<text x="${leftX + 24}" y="${PANEL_Y + 90}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs.toLocaleString('en-US')} PRs · ${data.windowDays}d</text>`,
+		`<text x="${leftX + 24}" y="${PANEL_Y + 90}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs.toLocaleString('en-US')} PRs · ${data.windowDays}d</text>`,
 	);
 
 	let y = PANEL_Y + 110;
 	for (const repo of shownRepos) {
-		const name = truncate(repo.name, 170, 13);
+		const name = truncate(repo.name, 230, 14);
 		parts.push(
 			repoGlyph(leftX + 24, y - 10),
-			`<text x="${leftX + 40}" y="${y}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
-			`<text x="${leftX + leftW - 24}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${repo.events} ev</text>`,
+			`<text x="${leftX + 40}" y="${y}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
+			`<text x="${leftX + leftW - 24}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">${repo.events} ev</text>`,
 		);
 		if (repo.events > 0) {
 			const barW = Math.max(4, Math.round((repo.events / maxEvents) * MAX_BAR));
@@ -295,17 +348,18 @@ export function renderActivitySvg(payload: unknown): string {
 				`<rect x="${leftX + 24}" y="${y + 7}" width="${barW}" height="7" rx="3.5" fill="${COLORS.ok}" opacity="0.85"/>`,
 			);
 		}
-		y += 30;
+		y += 32;
 	}
 	if (data.repos.length > shownRepos.length) {
 		parts.push(
-			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">+${data.repos.length - shownRepos.length} more repositories</text>`,
+			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">+${data.repos.length - shownRepos.length} more repositories</text>`,
 		);
-		y += 30;
+		y += 32;
 	}
 	if (data.privateCount > 0) {
+		const privateLine = `${data.privateCount} private ${data.privateCount === 1 ? 'repo' : 'repos'} (aggregated): ${data.privateTotals.commits.toLocaleString('en-US')} commits · ${data.privateTotals.prs.toLocaleString('en-US')} PRs`;
 		parts.push(
-			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${data.privateCount} private ${data.privateCount === 1 ? 'repo' : 'repos'} · ${data.privateTotals.commits.toLocaleString('en-US')} commits · ${data.privateTotals.prs.toLocaleString('en-US')} PRs (aggregated)</text>`,
+			`<text x="${leftX + 24}" y="${y + 12}" font-family="${FONT}" font-size="11" fill="${COLORS.faint}">${escapeXml(truncate(privateLine, leftW - 52, 11))}</text>`,
 		);
 	}
 	parts.push(panelFooter(leftX, PANEL_Y, leftW, 'bars: public repos only', PANEL_H));
@@ -314,7 +368,7 @@ export function renderActivitySvg(payload: unknown): string {
 	const rightX = leftX + leftW + 32;
 	const rightW = ACTIVITY_WIDTH - PAD - rightX;
 	parts.push(panelChrome(rightX, PANEL_Y, rightW, 'RECENT ACTIVITY', COLORS.accent, PANEL_H));
-	let fy = PANEL_Y + 68;
+	let fy = PANEL_Y + 58;
 	if (data.feed.length === 0) {
 		parts.push(
 			`<text x="${rightX + 24}" y="${fy + 8}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">No public feed items in window.</text>`,
@@ -322,14 +376,17 @@ export function renderActivitySvg(payload: unknown): string {
 	} else {
 		for (const item of data.feed) {
 			const when = formatJstCompact(item.at);
-			const lines = wrapText(item.label, rightW - 170, 13, 1);
+			// The stamp drops to a second line so the label owns the full
+			// row width — PR/issue refs stop ellipsizing while space sat
+			// unused beside the timestamp.
+			const lines = wrapText(item.label, rightW - 60, 14, 1);
 			const glyph = feedGlyph(item.type);
 			parts.push(
 				feedGlyphSvg(glyph, rightX + 18, fy - 4),
-				`<text x="${rightX + 34}" y="${fy}" font-family="${FONT}" font-size="13" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
-				`<text x="${rightX + rightW - 20}" y="${fy}" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.muted}">${escapeXml(when)}</text>`,
+				`<text x="${rightX + 34}" y="${fy}" font-family="${FONT}" font-size="14" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
+				`<text x="${rightX + rightW - 20}" y="${fy + 17}" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.faint}">${escapeXml(when)}</text>`,
 			);
-			fy += 34;
+			fy += FEED_ROW_H;
 		}
 	}
 	parts.push(panelFooter(rightX, PANEL_Y, rightW, 'times in JST', PANEL_H));
@@ -341,9 +398,181 @@ export function renderActivitySvg(payload: unknown): string {
 	if (data.observedAt) footerBits.push(`observed ${formatJst(data.observedAt)}`);
 	footerBits.push('rebuildup.dev');
 	parts.push(
-		`<text x="${PAD}" y="${ACTIVITY_HEIGHT - 14}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${escapeXml(footerBits.join(' · '))}</text>`,
+		`<text x="${PAD}" y="${ACTIVITY_HEIGHT - 14}" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">${escapeXml(footerBits.join(' · '))}</text>`,
 	);
 
 	parts.push('</svg>');
+	return parts.join('');
+}
+
+// ---- mobile variant (`?layout=mobile`) ----
+// The 840px two-column card shrinks to ~0.43x on a 390px phone and its
+// body text drops below readable size. GitHub READMEs can swap assets
+// through <picture><source media>, so the route serves this stacked
+// single-column variant at a native 560px — ~0.64x on mobile, legible
+// without pinch-zoom, while desktop keeps the denser two-column card.
+
+export const ACTIVITY_MOBILE_WIDTH = 560;
+const MOBILE_PAD = 24;
+const MOBILE_PANEL_W = ACTIVITY_MOBILE_WIDTH - MOBILE_PAD * 2;
+const MOBILE_CONTENT_X = MOBILE_PAD + 28;
+const MOBILE_MAX_REPO_ROWS = 10;
+const MOBILE_MAX_FEED_ROWS = 10;
+const MOBILE_ROW_H = 34;
+const MOBILE_BAR_MAX = 220;
+
+type ActivityData = NonNullable<ReturnType<typeof aggregate>>;
+
+function renderRepoRowsMobile(
+	data: ActivityData,
+	panelX: number,
+	panelY: number,
+): { svg: string; bottom: number } {
+	const parts: string[] = [];
+	const contentX = panelX + 28;
+	const innerRight = panelX + MOBILE_PANEL_W - 28;
+	const maxEvents = Math.max(1, ...data.repos.map((r) => r.events));
+	// Zero-event repos carry no signal on a phone-sized card — they only
+	// inflate the height, so the mobile variant lists active repos only.
+	const activeRepos = data.repos.filter((r) => r.events > 0);
+	const shown = activeRepos.slice(0, MOBILE_MAX_REPO_ROWS);
+
+	parts.push(
+		`<text x="${contentX}" y="${panelY + 78}" font-family="${FONT}" font-size="30" font-weight="800" fill="${COLORS.text}">${data.totals.commits.toLocaleString('en-US')}</text>`,
+		`<text x="${contentX}" y="${panelY + 102}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs.toLocaleString('en-US')} PRs · ${data.windowDays}d</text>`,
+	);
+
+	if (shown.length === 0) {
+		parts.push(
+			`<text x="${contentX}" y="${panelY + 140}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">No repository activity in window.</text>`,
+		);
+		return { svg: parts.join(''), bottom: panelY + 158 };
+	}
+
+	let y = panelY + 136;
+	for (const repo of shown) {
+		const name = truncate(repo.name, innerRight - contentX - 90, 14);
+		parts.push(
+			repoGlyph(contentX, y - 10),
+			`<text x="${contentX + 24}" y="${y}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">${escapeXml(name)}</text>`,
+			`<text x="${innerRight}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">${repo.events} ev</text>`,
+		);
+		if (repo.events > 0) {
+			const barW = Math.max(4, Math.round((repo.events / maxEvents) * MOBILE_BAR_MAX));
+			parts.push(
+				`<rect x="${contentX + 24}" y="${y + 7}" width="${barW}" height="6" rx="3" fill="${COLORS.ok}" opacity="0.85"/>`,
+			);
+		}
+		y += MOBILE_ROW_H;
+	}
+	let bottom = y - MOBILE_ROW_H + 22;
+	if (activeRepos.length > shown.length) {
+		parts.push(
+			`<text x="${contentX}" y="${y + 2}" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">+${activeRepos.length - shown.length} more repositories</text>`,
+		);
+		bottom = y + 16;
+		y += 26;
+	}
+	if (data.privateCount > 0) {
+		const privateLine = `${data.privateCount} private ${data.privateCount === 1 ? 'repo' : 'repos'} (aggregated): ${data.privateTotals.commits.toLocaleString('en-US')} commits · ${data.privateTotals.prs.toLocaleString('en-US')} PRs`;
+		parts.push(
+			`<text x="${contentX}" y="${y + 2}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${escapeXml(truncate(privateLine, MOBILE_PANEL_W - 56, 12))}</text>`,
+		);
+		bottom = y + 16;
+	}
+	return { svg: parts.join(''), bottom };
+}
+
+function renderFeedRowsMobile(
+	data: ActivityData,
+	panelX: number,
+	panelY: number,
+): { svg: string; bottom: number } {
+	const parts: string[] = [];
+	const contentX = panelX + 28;
+	const innerRight = panelX + MOBILE_PANEL_W - 28;
+	const labelW = MOBILE_PANEL_W - 56 - 130;
+	let y = panelY + 62;
+	if (data.feed.length === 0) {
+		parts.push(
+			`<text x="${contentX}" y="${y + 8}" font-family="${FONT}" font-size="14" fill="${COLORS.muted}">No public feed items in window.</text>`,
+		);
+		return { svg: parts.join(''), bottom: y + 24 };
+	}
+	for (const item of data.feed.slice(0, MOBILE_MAX_FEED_ROWS)) {
+		const when = formatJstCompact(item.at);
+		const lines = wrapText(item.label, labelW, 14, 1);
+		const glyph = feedGlyph(item.type);
+		parts.push(
+			feedGlyphSvg(glyph, contentX + 2, y - 4),
+			`<text x="${contentX + 22}" y="${y}" font-family="${FONT}" font-size="14" font-weight="600" fill="${COLORS.text}">${escapeXml(lines[0])}</text>`,
+			`<text x="${innerRight}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="12" fill="${COLORS.muted}">${escapeXml(when)}</text>`,
+		);
+		y += MOBILE_ROW_H;
+	}
+	return { svg: parts.join(''), bottom: y - MOBILE_ROW_H + 22 };
+}
+
+/** Stacked single-column variant for narrow viewports (`?layout=mobile`). */
+export function renderActivityMobileSvg(payload: unknown): string {
+	const data = aggregate(payload);
+	const parts: string[] = [];
+
+	if (!data) {
+		const h = 240;
+		parts.push(
+			`<svg xmlns="http://www.w3.org/2000/svg" width="${ACTIVITY_MOBILE_WIDTH}" height="${h}" viewBox="0 0 ${ACTIVITY_MOBILE_WIDTH} ${h}" role="img" aria-label="GitHub activity">`,
+			`<rect width="${ACTIVITY_MOBILE_WIDTH}" height="${h}" rx="16" fill="${COLORS.bg}" stroke="${COLORS.panelStroke}" stroke-width="1"/>`,
+			panelChrome(MOBILE_PAD, 64, MOBILE_PANEL_W, 'GITHUB ACTIVITY', COLORS.offline, 120),
+			`<text x="${MOBILE_PAD + 28}" y="${64 + 72}" font-family="${FONT}" font-size="18" fill="${COLORS.muted}">GitHub activity snapshot unavailable.</text>`,
+			panelFooter(MOBILE_PAD, 64, MOBILE_PANEL_W, 'rebuildup.dev/github-profile', 120),
+			`<text x="${MOBILE_PAD}" y="${h - 16}" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">rebuildup.dev</text>`,
+			'</svg>',
+		);
+		return parts.join('');
+	}
+
+	const windowLabel = activityWindowLabel(data);
+	const repoPanelY = 64;
+	const repoRows = renderRepoRowsMobile(data, MOBILE_PAD, repoPanelY);
+	const repoPanelH = repoRows.bottom - repoPanelY + 30;
+	const feedPanelY = repoPanelY + repoPanelH + 16;
+	const feedRows = renderFeedRowsMobile(data, MOBILE_PAD, feedPanelY);
+	const feedPanelH = feedRows.bottom - feedPanelY + 30;
+	const height = feedPanelY + feedPanelH + 34;
+
+	parts.push(
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${ACTIVITY_MOBILE_WIDTH}" height="${height}" viewBox="0 0 ${ACTIVITY_MOBILE_WIDTH} ${height}" role="img" aria-label="GitHub activity">`,
+		`<rect width="${ACTIVITY_MOBILE_WIDTH}" height="${height}" rx="16" fill="${COLORS.bg}" stroke="${COLORS.panelStroke}" stroke-width="1"/>`,
+		`<text x="${MOBILE_PAD}" y="46" font-family="${FONT}" font-size="24" font-weight="800" fill="${COLORS.text}">GitHub activity</text>`,
+		`<text x="${ACTIVITY_MOBILE_WIDTH - MOBILE_PAD}" y="44" text-anchor="end" font-family="${FONT}" font-size="14" fill="${COLORS.faint}">${escapeXml(windowLabel)}</text>`,
+		panelChrome(
+			MOBILE_PAD,
+			repoPanelY,
+			MOBILE_PANEL_W,
+			'EVENTS BY REPOSITORY',
+			COLORS.ok,
+			repoPanelH,
+		),
+		repoRows.svg,
+		panelFooter(MOBILE_PAD, repoPanelY, MOBILE_PANEL_W, 'bars: public repos only', repoPanelH),
+		panelChrome(
+			MOBILE_PAD,
+			feedPanelY,
+			MOBILE_PANEL_W,
+			'RECENT ACTIVITY',
+			COLORS.accent,
+			feedPanelH,
+		),
+		feedRows.svg,
+		panelFooter(MOBILE_PAD, feedPanelY, MOBILE_PANEL_W, 'times in JST', feedPanelH),
+	);
+	const footerBits: string[] = [];
+	if (data.observedAt) footerBits.push(`observed ${formatJst(data.observedAt)}`);
+	footerBits.push('rebuildup.dev');
+	parts.push(
+		`<text x="${MOBILE_PAD}" y="${height - 14}" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">${escapeXml(footerBits.join(' · '))}</text>`,
+		'</svg>',
+	);
 	return parts.join('');
 }

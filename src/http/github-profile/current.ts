@@ -74,7 +74,7 @@ export function renderCurrentSvg(records: readonly CurrentProjectRecord[], asOf:
 	const parts: string[] = [];
 	parts.push(
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${CURRENT_WIDTH}" height="${CURRENT_HEIGHT}" viewBox="0 0 ${CURRENT_WIDTH} ${CURRENT_HEIGHT}" role="img" aria-label="Projects in progress">`,
-		`<rect width="${CURRENT_WIDTH}" height="${CURRENT_HEIGHT}" fill="${COLORS.bg}"/>`,
+		`<rect width="${CURRENT_WIDTH}" height="${CURRENT_HEIGHT}" rx="16" fill="${COLORS.bg}" stroke="${COLORS.panelStroke}" stroke-width="1"/>`,
 	);
 
 	parts.push(

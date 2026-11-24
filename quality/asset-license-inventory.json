@@ -827,8 +827,8 @@
 		{
 			"id": "github-profile-showcase",
 			"kind": "image",
-			"title": "GitHubプロフィール作品ショーケース（animated WebP 1点・シーン構成コラージュ）",
-			"summary": "scripts/build-github-profile-showcase.mjs が src/http/github-profile/showcase.json（schema v2: scenes/items/wipes/loopBack）の定義に従い、公開 portfolio スナップショットが published+public とする作品を正規化し、シーンごとに構図・サイズ・主役時間を変えた横長モーションコラージュとして animated WebP を生成する。シーン間は斜めワイプ（xfade）、hero は Ken Burns push-in、脇役は正弦ドリフト、ループ継ぎ目は背景色 bookend フェードでシームレス化する（rebuildup/rebuildup#8、my-web-2026#1214）。rebuildup/rebuildup のプロフィールREADMEが Selected Work として参照し、全作品はテキストリンク一覧から個別ページへ遷移する。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像・素材であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
+			"title": "GitHubプロフィール作品ショーケース（animated WebP 1点・main/sub/decor リレー）",
+			"summary": "scripts/build-github-profile-showcase.mjs が src/http/github-profile/showcase.json（schema v3: acts/slots/transition/fade/breathing/drift）の定義に従い、公開 portfolio スナップショットが published+public とする作品を正規化し、メイン/サブ/装飾の役割が時間とともに受け渡されるリレー型ショーケースとして animated WebP を生成する。act 境界では役割の変わる全要素が smoothstep でスロット間を移動し（次主役がプレビュー枠から拡大、退く主役がサブへ縮小）、緩やかな呼吸スケールと役割比例ドリフトが装飾モーションを担う。ループ継ぎ目は背景色 bookend フェードでシームレス化する（rebuildup/rebuildup#8、my-web-2026#1214）。rebuildup/rebuildup のプロフィールREADMEが Selected Work として参照し、全作品はテキストリンク一覧から個別ページへ遷移する。写っているのは全て rebuildup 自身の制作物の公開プロモーション映像・素材であり、この記録は権利・出所の記録であり、owner承認の記録ではない（ownerConfirmation: unconfirmed）。",
 			"covers": ["public/github-profile/showcase.webp"],
 			"publicPaths": ["/github-profile/showcase.webp"],
 			"origin": "repository-generated",
@@ -842,14 +842,14 @@
 				"conditions": [
 					"各作品の出典は src/portfolio/notion/generated/snapshot.json が published+public とするレコードの links[].kind==='video' の YouTube URL または isCover の image/gif メディアのみ（src/http/github-profile/clips.json が出典マニフェスト）。/media/<key> が 200 を返すキーだけが使える（公開境界は Worker 側が fail-closed で判定）。",
 					"作品が公開集合から外れた場合、スクリプトは fail-closed で失敗し showcase.webp を更新しない。",
-					"変換は scripts/build-github-profile-showcase.mjs（yt-dlp + ffmpeg + sharp animated WebP）で showcase.json の定義から再生成できる。",
+					"変換は scripts/build-github-profile-showcase.mjs（yt-dlp + ffmpeg で要素正規化、sharp でフレーム合成、img2webp で animated WebP 化）で showcase.json の定義から再生成できる。",
 					"全出力フレームのサンプルに対する輝度ゲートで暗転・ローディングフレームの混入をビルド時に拒否する。"
 				]
 			},
 			"verification": {
 				"method": "repository-evidence",
 				"checkedOn": "2026-11-24",
-				"note": "生成スクリプトと showcase.json（schema v2）/clips.json の slug・出典種別、snapshot.json の公開状態が出所を固定する。実ファイルはシーン構成コラージュ版で生成したものをコミット（docs/verification/github-profile/v5/）。owner 承認の記録ではない。"
+				"note": "生成スクリプトと showcase.json（schema v3）/clips.json の slug・出典種別、snapshot.json の公開状態が出所を固定する。実ファイルは main/sub/decor リレー版で生成したものをコミット。owner 承認の記録ではない。"
 			},
 			"evidence": [
 				{

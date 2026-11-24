@@ -1,4 +1,5 @@
-import { COLORS, FONT, escapeXml, formatObserved, truncate } from './card';
+import { formatJst } from './activity';
+import { COLORS, FONT, escapeXml, truncate } from './card';
 import type { ProfileCardModel } from './model';
 
 /**
@@ -36,11 +37,11 @@ export function renderPresenceSvg(model: ProfileCardModel): string {
 		dot = STATUS_COLORS[discord.statusLabel ?? ''] ?? COLORS.stale;
 		const detail = discord.detail ? ` — ${discord.detail}` : '';
 		text = `${discord.statusLabel ?? 'Unknown'}${detail}`;
-		stamp = discord.observedAt ? `observed ${formatObserved(discord.observedAt)}` : '';
+		stamp = discord.observedAt ? `observed ${formatJst(discord.observedAt)}` : '';
 	} else if (discord.state === 'stale') {
 		dot = COLORS.stale;
 		text = 'presence stale';
-		stamp = discord.observedAt ? ` · last seen ${formatObserved(discord.observedAt)}` : '';
+		stamp = discord.observedAt ? `last seen ${formatJst(discord.observedAt)}` : '';
 	}
 	const clipped = truncate(text, 240, 13);
 	return [

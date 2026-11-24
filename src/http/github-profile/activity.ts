@@ -1,14 +1,5 @@
 import { GitHubActivitySnapshotBody } from '../activity/schema';
-import {
-	COLORS,
-	FONT,
-	escapeXml,
-	formatObserved,
-	panelChrome,
-	panelFooter,
-	truncate,
-	wrapText,
-} from './card';
+import { COLORS, FONT, escapeXml, panelChrome, panelFooter, truncate, wrapText } from './card';
 
 /**
  * GitHub activity card — `GET /api/v1/github-profile/activity`
@@ -212,7 +203,7 @@ export function renderActivitySvg(payload: unknown): string {
 	const maxEvents = Math.max(1, ...data.repos.map((r) => r.events));
 
 	parts.push(
-		panelChrome(leftX, chartTop - 24, leftW, 'COMMITS BY REPOSITORY', COLORS.ok),
+		panelChrome(leftX, chartTop - 24, leftW, 'EVENTS BY REPOSITORY', COLORS.ok),
 		`<text x="${leftX}" y="${chartTop + 22}" font-family="${FONT}" font-size="30" font-weight="800" fill="${COLORS.text}">${data.totals.commits.toLocaleString('en-US')}</text>`,
 		`<text x="${leftX + 96}" y="${chartTop + 22}" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">commits · ${data.totals.events.toLocaleString('en-US')} events · ${data.totals.prs} PRs · ${data.windowDays}d</text>`,
 	);
@@ -264,9 +255,11 @@ export function renderActivitySvg(payload: unknown): string {
 	}
 	parts.push(panelFooter(rightX, feedTop, rightW, 'times in JST'));
 
-	// Footer: observation stamps keep cached copies honest.
+	// Footer: observation stamps keep cached copies honest. User-facing
+	// times are JST throughout; the snapshot's own UTC stamps stay inside
+	// the payload, not on the image.
 	const footerBits: string[] = [];
-	if (data.observedAt) footerBits.push(`observed ${formatObserved(data.observedAt)}`);
+	if (data.observedAt) footerBits.push(`observed ${formatJst(data.observedAt)}`);
 	footerBits.push('rebuildup.dev');
 	parts.push(
 		`<text x="${PAD}" y="${ACTIVITY_HEIGHT - 14}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">${escapeXml(footerBits.join(' · '))}</text>`,

@@ -1,0 +1,30 @@
+{
+	"schema": "github-profile-showcase.v1",
+	"issue": "rebuildup/rebuildup#8",
+	"adr": "docs/adr/ADR-0026-github-profile-redesign.md",
+	"output": "public/github-profile/showcase.webp",
+	"canvas": {
+		"width": 480,
+		"height": 680,
+		"background": "#0B0F14",
+		"tileWidth": 460,
+		"tileHeight": 258,
+		"cellHeight": 270,
+		"visibleCells": 2,
+		"segmentSeconds": 2,
+		"fps": 6,
+		"quality": 25
+	},
+	"order": [
+		"prototype",
+		"flashbeat",
+		"multislicer",
+		"aulymo-v02",
+		"foldlayers",
+		"ugoita",
+		"homura",
+		"kosen",
+		"tegaki"
+	],
+	"sources": "src/http/github-profile/clips.json"
+}

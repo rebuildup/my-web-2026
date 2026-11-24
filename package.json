@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.13.1",
+	"version": "0.14.0",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -158,7 +158,7 @@
 		"profile:works:build": "node scripts/build-github-profile-works.mjs",
 		"profile:works:check": "node scripts/build-github-profile-works.mjs --check",
 		"profile:reel:build": "node scripts/build-github-profile-reel.mjs",
-		"profile:clips:build": "node scripts/build-github-profile-clips.mjs",
+		"profile:showcase:build": "node scripts/build-github-profile-showcase.mjs",
 		"sitemap:ledger:check": "node --experimental-strip-types scripts/check-sitemap-ledger-agreement.mjs",
 		"content:links:check": "node --experimental-strip-types scripts/check-content-links.mjs",
 		"content:links:report": "node --experimental-strip-types scripts/content-link-report.mjs",

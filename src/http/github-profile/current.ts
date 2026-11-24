@@ -20,7 +20,7 @@ import { COLORS, FONT, escapeXml, truncate } from './card';
  */
 
 export const CURRENT_WIDTH = 840;
-export const CURRENT_HEIGHT = 320;
+export const CURRENT_HEIGHT = 340;
 export const CURRENT_MAX_ROWS = 5;
 
 const PAD = 28;
@@ -41,6 +41,35 @@ function weightOf(record: CurrentProjectRecord): { label: string; color: string 
 	return level ? (WEIGHT_LABEL[level] ?? null) : null;
 }
 
+/**
+ * Right-hand row metric. A published weight level wins; otherwise the
+ * measured GitHub activity window (commits / PRs over N days) fills the
+ * space with real numbers instead of leaving it blank; last updated day
+ * is the fallback. All three are facts the loader already validated —
+ * nothing is invented here.
+ */
+function metricOf(
+	record: CurrentProjectRecord,
+): { text: string; color: string; strong: boolean } | null {
+	const weight = weightOf(record);
+	if (weight) return { text: weight.label, color: weight.color, strong: true };
+	const activity = record.weight?.activity?.value;
+	if (activity) {
+		const prs =
+			activity.pullRequests !== undefined
+				? ` · ${activity.pullRequests.toLocaleString('en-US')} PRs`
+				: '';
+		return {
+			text: `${activity.commits.toLocaleString('en-US')} commits${prs} · ${activity.windowDays}d`,
+			color: COLORS.muted,
+			strong: false,
+		};
+	}
+	const updated = record.updatedOn?.value;
+	if (updated) return { text: `updated ${updated}`, color: COLORS.faint, strong: false };
+	return null;
+}
+
 export function renderCurrentSvg(records: readonly CurrentProjectRecord[], asOf: string): string {
 	const parts: string[] = [];
 	parts.push(
@@ -50,7 +79,7 @@ export function renderCurrentSvg(records: readonly CurrentProjectRecord[], asOf:
 
 	parts.push(
 		`<text x="${PAD}" y="${HEADER_Y}" font-family="${FONT}" font-size="26" font-weight="800" fill="${COLORS.text}">In progress</text>`,
-		`<text x="${CURRENT_WIDTH - PAD}" y="${HEADER_Y - 4}" text-anchor="end" font-family="${FONT}" font-size="13" fill="${COLORS.faint}">declared + measured · rebuildup.dev</text>`,
+		`<text x="${CURRENT_WIDTH - PAD}" y="${HEADER_Y - 4}" text-anchor="end" font-family="${FONT}" font-size="13" fill="${COLORS.muted}">declared + measured · rebuildup.dev</text>`,
 	);
 
 	const shown = records.slice(0, CURRENT_MAX_ROWS);
@@ -61,17 +90,18 @@ export function renderCurrentSvg(records: readonly CurrentProjectRecord[], asOf:
 	} else {
 		shown.forEach((record, i) => {
 			const y = LIST_TOP + i * ROW_H;
+			const metric = metricOf(record);
 			const weight = weightOf(record);
-			const nameMax = weight ? 560 : 700;
+			const nameMax = metric ? 540 : 700;
 			const name = truncate(record.name, nameMax, 15);
 			const status = truncate(record.statusJa, CURRENT_WIDTH - PAD * 2 - 8, 13);
 			parts.push(
-				`<circle cx="${PAD + 4}" cy="${y - 4}" r="4" fill="${COLORS.accent}"/>`,
+				`<circle cx="${PAD + 4}" cy="${y - 4}" r="4" fill="${weight?.color ?? COLORS.accent}"/>`,
 				`<text x="${PAD + 18}" y="${y}" font-family="${FONT}" font-size="15" font-weight="700" fill="${COLORS.text}">${escapeXml(name)}</text>`,
 			);
-			if (weight) {
+			if (metric) {
 				parts.push(
-					`<text x="${CURRENT_WIDTH - PAD}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="11" font-weight="700" letter-spacing="1.5" fill="${weight.color}">${escapeXml(weight.label)}</text>`,
+					`<text x="${CURRENT_WIDTH - PAD}" y="${y}" text-anchor="end" font-family="${FONT}" font-size="11" ${metric.strong ? 'font-weight="700" letter-spacing="1.5"' : ''} fill="${metric.color}">${escapeXml(metric.text)}</text>`,
 				);
 			}
 			parts.push(
@@ -81,13 +111,13 @@ export function renderCurrentSvg(records: readonly CurrentProjectRecord[], asOf:
 		if (records.length > shown.length) {
 			const y = LIST_TOP + shown.length * ROW_H;
 			parts.push(
-				`<text x="${PAD + 18}" y="${y}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">+${records.length - shown.length} more on rebuildup.dev</text>`,
+				`<text x="${PAD + 18}" y="${y}" font-family="${FONT}" font-size="12" fill="${COLORS.muted}">+${records.length - shown.length} more on rebuildup.dev</text>`,
 			);
 		}
 	}
 
 	parts.push(
-		`<text x="${PAD}" y="${FOOTER_Y}" font-family="${FONT}" font-size="12" fill="${COLORS.faint}">as of ${escapeXml(asOf)} · names and status lines are the owner's declarations</text>`,
+		`<text x="${PAD}" y="${FOOTER_Y}" font-family="${FONT}" font-size="12" fill="${COLORS.muted}">as of ${escapeXml(asOf)} · owner declarations + GitHub-measured activity</text>`,
 		'</svg>',
 	);
 	return parts.join('');

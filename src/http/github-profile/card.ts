@@ -194,16 +194,23 @@ export function panelChrome(
 	width: number,
 	label: string,
 	dotColor: string,
+	height: number = PANEL_HEIGHT,
 ): string {
 	const innerX = x + PANEL_PAD;
 	return `
-	<rect x="${x}" y="${y}" width="${width}" height="${PANEL_HEIGHT}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
+	<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="${COLORS.panel}" stroke="${COLORS.panelStroke}" stroke-width="1"/>
 	<circle cx="${innerX}" cy="${y + PANEL_LABEL_Y - 6}" r="6" fill="${dotColor}"/>
 	<text x="${innerX + 16}" y="${y + PANEL_LABEL_Y}" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="2" fill="${COLORS.faint}">${escapeXml(label)}</text>`;
 }
 
-export function panelFooter(x: number, y: number, width: number, text: string): string {
-	return `<text x="${x + width - PANEL_PAD}" y="${y + PANEL_HEIGHT - 14}" text-anchor="end" font-family="${FONT}" font-size="${PANEL_FOOTER_SIZE}" fill="${COLORS.faint}">${escapeXml(text)}</text>`;
+export function panelFooter(
+	x: number,
+	y: number,
+	width: number,
+	text: string,
+	height: number = PANEL_HEIGHT,
+): string {
+	return `<text x="${x + width - PANEL_PAD}" y="${y + height - 14}" text-anchor="end" font-family="${FONT}" font-size="${PANEL_FOOTER_SIZE}" fill="${COLORS.faint}">${escapeXml(text)}</text>`;
 }
 
 export function renderGitHubPanel(

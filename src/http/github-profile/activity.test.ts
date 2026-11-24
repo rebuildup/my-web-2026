@@ -83,8 +83,9 @@ describe('renderActivitySvg', () => {
 
 	it('renders feed timestamps in JST, never raw UTC', () => {
 		const svg = renderActivitySvg(SNAPSHOT);
-		// 04:00Z → 13:00 JST same day
-		expect(svg).toContain('Nov 22, 2026 · 13:00 JST');
+		// 04:00Z → 13:00 JST same day (compact row stamp; the panel
+		// header carries the year)
+		expect(svg).toContain('Nov 22, 13:00 JST');
 		expect(svg).not.toContain('04:00 UTC');
 	});
 

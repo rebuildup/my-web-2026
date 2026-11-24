@@ -56,7 +56,7 @@ export function renderPresenceSvg(model: ProfileCardModel): string {
 		`<g transform="translate(10,9) scale(0.667)"><path d="${DISCORD_LOGO}" fill="${DISCORD_BLURPLE}"/></g>`,
 		`<circle cx="33" cy="17" r="4.5" fill="${dot}"/>`,
 		`<text x="46" y="22" font-family="${FONT}" font-size="13" fill="${COLORS.text}">${escapeXml(clipped)}</text>`,
-		`<text x="${PRESENCE_WIDTH - 12}" y="22" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.faint}">${escapeXml(stamp)}</text>`,
+		`<text x="${PRESENCE_WIDTH - 12}" y="22" text-anchor="end" font-family="${FONT}" font-size="11" fill="${COLORS.muted}">${escapeXml(stamp)}</text>`,
 		'</svg>',
 	].join('');
 }

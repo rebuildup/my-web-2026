@@ -257,3 +257,52 @@ v3.3 の設計意図を実装に落とした。`showcase.json` を schema v3
   img2webp（q70・sharp_yuv）で直接 animated WebP 化
   （ffmpeg→GIF 経路の 256 色ポスタリズムを解消）。輝度ゲート通過、
   `agent review run` によるフレーム列レビュー実施。
+## 13. v4 リレー化とプロフィール全体収束（2026-11-24、Issue #1214 / #1216）
+
+シーンコラージュ（v3.2）もレビューで「均一タイルの反復」と指摘され、
+**メイン・サブ・装飾の3層リレー**へ再設計した（PR #1218）。
+個別パラメータの調整ではなく遷移構造自体を見直し、作品の魅力が
+伝わる構図（hero 大・脇役小・装飾は縁のアクセント）を優先した。
+
+- **README 全体の収束**: ドラフトを
+  `.tmp/rebuildup-profile/README.md` に確定。構成は
+  タグライン+リンク → Selected work（showcase リレー）→ Now
+  （`/current` 進行中カード + `/presence` Discord チップ）→
+  GitHub activity（`/activity` + stats/top-langs/streak）→ Stack
+  （48 技術のスキルアイコン、light/dark `<picture>` 対応）。
+- **ステータス視覚の修正**（PR #1219）: `agent review run` の
+  拡大カードレビューで検出した衝突・可読性問題を解消。
+  `/activity` はパネル帯の再配置（ヒーロー数値とセクションラベルの
+  衝突、行ピッチ、JST コンパクト表記、イベント種別グリフ、
+  public/private の表記分離）、`/current` は行メトリクスの
+  weight → 実測 → 更新日の優先順位と weight 色バレット、
+  `/presence` は last seen のコントラスト向上。
+- **github-readme-stats のアニメーション無効化**: stats /
+  top-langs / streak カードは CSS キーフレームで `opacity: 0`
+  開始するため、SVG を `<img>` として消費する環境（GitHub/camo
+  含む）で行が不可視になり得る。パーソナル固定配信
+  （Issue #1164）の方針に合わせ `disable_animations` を常時有効化し、
+  streak-card にも同等オプションを追加した。
+- **証跡**: `docs/verification/github-profile/v7/` — 全体
+  レンダリング（desk/mob × light/dark）、拡大カード、
+  showcase リレー動画（showcase-relay.mp4）、agent review JSON。
+
+### 残存指摘と判断
+
+- **モバイルでの SVG 縮小**: 840px カードが 390px viewport で
+  約45%に縮み文字が小さくなるのは GitHub README の `<img>` 制約で
+  あり、カード分割やフォント縮小では解決しない。現行の
+  「情報を落とさず縮小」に留め、モバイル専用レイアウトは
+  README 媒体制約上不可能として記録する。
+- **stats/top-langs/streak の白テーマ**: カードは light 固定で
+  カスタム暗色カードと色調が異なる。`<picture>` によるテーマ
+  出し分けは query param が personal-fixed で無視されるため
+  現状不可。暗色テーマ統一は別 Issue 候補。
+- **current カードの weight ラベル**: weight level は
+  `home/current/roster.ts` の手書き facts が公開された時のみ
+  表示される（現行 roster は未公開）。メトリクスは実測値で
+  代替表示しており、嘘をつかない設計を優先した。
+- **フィード行の同一 PR 複数イベント**: `ref.state`
+  （open/closed/merged）をラベルに含めて区別可能にしたが、
+  同一 state の連続イベント（例: commented 連発）は snapshot の
+  契約上これ以上区別できない。

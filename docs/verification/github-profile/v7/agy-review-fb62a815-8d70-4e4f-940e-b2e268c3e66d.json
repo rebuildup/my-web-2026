@@ -1,0 +1,135 @@
+{
+	"version": "1.0.0",
+	"id": "fb62a815-8d70-4e4f-940e-b2e268c3e66d",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "f1de8feab8ccf4ce7672e4ac7b8303b6b877f64654070aa78cca2a252986fdbb",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[00-zoom-activity.png | Defect] Left panel ('EVENTS BY REPOSITORY') hero metric row '4,364 commits · 20 events · 1409 PRs · 30d' crowds the right inner card border: '30d' has roughly half the horizontal padding of the left margin and protrudes past the right-aligned '12 ev' column below, risking clipping/overflow if commit or PR counts grow by 1-2 digits.",
+				"severity": "major"
+			},
+			{
+				"description": "[00-zoom-activity.png | Defect] Honest-state contradiction and tight vertical spacing at bottom of left panel: '8 private repos · 1490 commits · 548 PRs (aggregated)' sits directly above a slightly larger right-aligned label 'public activity only' with minimal vertical clearance. Showing private repo counts while labeling the panel 'public activity only' is contradictory unless scoped explicitly to the event bars/feed.",
+				"severity": "major"
+			},
+			{
+				"description": "[00-zoom-activity.png | Defect] Right panel ('RECENT ACTIVITY') shows visually identical consecutive duplicate entries: 'herdr-t3 · PR #157' appears twice at 'Nov 24, 16:37 JST' (rows 2-3) and 'tastile-root · PR #159' appears twice at 'Nov 24, 16:36 JST' (rows 5-6) because event action verbs (opened/commented/merged) are omitted and events are not deduplicated.",
+				"severity": "minor"
+			},
+			{
+				"description": "[00-zoom-activity.png | Defect] Header date window reads 'Oct 26 – Nov 25, 2026 · JST' while the bottom-left observation footer reads 'observed Nov 24, 2026 · 16:41 JST · rebuildup.dev', displaying a future end date ('Nov 25') relative to the observation timestamp (likely an exclusive end-date or timezone off-by-one bug).",
+				"severity": "minor"
+			},
+			{
+				"description": "[00-zoom-activity.png | Defect] Low contrast on smallest/secondary text: right-panel timestamps ('Nov 24, 16:38 JST' through '16:33 JST'), left-panel footnotes ('+24 more repositories', '8 private repos · 1490 commits · 548 PRs (aggregated)'), and bottom-left 'observed Nov 24, 2026 · 16:41 JST · rebuildup.dev' use very dim slate text on the dark background, reducing legibility when scaled down to README display width (~350-760px).",
+				"severity": "minor"
+			},
+			{
+				"description": "[00-zoom-activity.png | Opportunity] Top event bar ('rebuildup/herdr-t3', '12 ev') spans only ~60% of the inner panel width, leaving unused horizontal space; '1409 PRs' and '1490 commits' omit thousands commas unlike '4,364'; 'times in JST' at bottom-right of 'RECENT ACTIVITY' is redundant since every row already appends 'JST'; '+24 more repositories' is unexplained given the 6 displayed bars already sum to all '20 events'.",
+				"severity": "info"
+			},
+			{
+				"description": "[01-zoom-current.png | Defect] Missing weight labels required by specification ('current = in-progress projects with weight labels'): all 5 rows ('FlashBeat', 'pc-setup', 'ube-kosen-map', '非公開プロジェクト', 'design-skills') display identical plain blue dots and raw 'commits · PRs · 30d' metrics with no weight labels or tier indicators. Because items are not sorted by commits/PRs ('非公開プロジェクト' has 838 commits/334 PRs in 4th place below 45 commits/36 PRs), the ordering appears arbitrary without visible weights.",
+				"severity": "major"
+			},
+			{
+				"description": "[01-zoom-current.png | Defect] Low contrast on smallest text: '+11 more on rebuildup.dev' (below 'design-skills') and the bottom-left footer 'as of 2026-11-24 · owner declarations + GitHub-measured activity' are visibly dimmer than the subtitles and risk illegibility at narrower README widths (~350-500px).",
+				"severity": "minor"
+			},
+			{
+				"description": "[01-zoom-current.png | Defect] Repetitive boilerplate descriptions and provenance ambiguity: all 5 visible rows use generic Japanese fallback text ('GitHub 上で活動が観測された公開リポジトリ。' x4, '...非公開リポジトリ。' x1) mixed with an English UI, conveying nothing about what the projects are and failing to distinguish owner-declared vs auto-measured projects despite the 'declared + measured' header and footer.",
+				"severity": "minor"
+			},
+			{
+				"description": "[01-zoom-current.png | Opportunity] No text overlap or clipping detected. Consider adding observation time + timezone to 'as of 2026-11-24' for parity with the activity card, and bridging the wide blank horizontal void (~40% of card width) between left-aligned project titles and right-aligned metrics using subtle row dividers or inline weight badges.",
+				"severity": "info"
+			},
+			{
+				"description": "[Scope Note] Only 2 of the 6 cards listed in the specification were attached ('00-zoom-activity.png' and '01-zoom-current.png'); Discord presence chip, stats, top-langs, and streak cards were not provided in inputs and were not reviewed.",
+				"severity": "info"
+			}
+		],
+		"summary": "Reviewed 2 attached zoomed SVG card screenshots (only 2 of 6 spec cards provided). Neither image has hard text collisions or clipped glyphs, but both require targeted fixes before acceptance. 00-zoom-activity.png (verdict: ACCEPT WITH FIXES) — defects: cramped right margin on '30d' in hero metric line, contradictory 'public activity only' placed tightly beneath private-repo aggregated counts, duplicate-looking consecutive entries in 'RECENT ACTIVITY' (PR #157 x2, PR #159 x2), future window end date ('Nov 25' vs observed 'Nov 24'), and low contrast on timestamps/footnotes; opportunities: wider bar scaling, consistent thousands separators, drop redundant per-row/footer 'JST', clarify '+24 more repositories'. 01-zoom-current.png (verdict: ACCEPT WITH FIXES) — defects: missing required project weight labels (making non-monotonic metric order look unexplained), low contrast on '+11 more' and bottom footer, and repetitive Japanese fallback boilerplate undermining 'declared + measured' clarity; opportunities: add timestamp+timezone to 'as of' footer and reduce the wide blank gap between titles and right-aligned metrics.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "c250daec-ff39-4ac3-9e79-6a4de3e3b6f2",
+		"durationSeconds": 96.17182,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 12973,
+			"output_tokens": 10047,
+			"thinking_tokens": 8332,
+			"cache_read_tokens": 10064,
+			"total_tokens": 23020
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/fb62a815-8d70-4e4f-940e-b2e268c3e66d",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.87,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.92,
+				"resetTime": "2026-11-24T10:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T13:19:23Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t87%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t92%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T13:19:23Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { currentProjectsLoader } from '../../home/current/loader';
 import { PROJECT_ROSTER } from '../../home/current/roster';
 import { notionProjects } from '../../portfolio/notion/reader';
 import { microCache } from '../../vendor/github-readme-stats-fast/common/microCache.ts';
@@ -9,6 +10,7 @@ import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
 import { renderActivitySvg } from './activity';
 import { renderProfileCardSvg } from './card';
+import { renderCurrentSvg } from './current';
 import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
 import { type NowStats, renderProfileNowSvg } from './now';
@@ -72,6 +74,10 @@ const NOW_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 // never share a response, so one stale source cannot stall the other.
 const ACTIVITY_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 const PRESENCE_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
+// The in-progress card is composed entirely from committed data
+// (roster + git facts + committed activity projection), so it only
+// revalidates on the same cadence as the other profile surfaces.
+const CURRENT_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 const NOW_OWNER_LOGIN = 'rebuildup';
 
 interface ProfileSnapshotEnv {
@@ -251,8 +257,21 @@ githubProfileRouter.get('/presence', rateLimitRead, async (c) => {
 	});
 });
 
+githubProfileRouter.get('/current', rateLimitRead, async (c) => {
+	// Same `today` convention as the site route: the UTC calendar day
+	// the derived project facts are computed against.
+	const today = new Date().toISOString().slice(0, 10);
+	const records = await currentProjectsLoader.loadCurrentProjects(today);
+	const svg = renderCurrentSvg(records, today);
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': CURRENT_CACHE_CONTROL,
+	});
+});
+
 githubProfileRouter.all('/card', methodNotAllowed(['GET']));
 githubProfileRouter.all('/status', methodNotAllowed(['GET']));
 githubProfileRouter.all('/now', methodNotAllowed(['GET']));
 githubProfileRouter.all('/activity', methodNotAllowed(['GET']));
 githubProfileRouter.all('/presence', methodNotAllowed(['GET']));
+githubProfileRouter.all('/current', methodNotAllowed(['GET']));

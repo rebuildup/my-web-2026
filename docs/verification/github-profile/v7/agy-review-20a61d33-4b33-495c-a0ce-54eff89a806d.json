@@ -1,0 +1,125 @@
+{
+  "version": "1.0.0",
+  "id": "20a61d33-4b33-495c-a0ce-54eff89a806d",
+  "model": null,
+  "resolvedModel": null,
+  "specSha256": "f1de8feab8ccf4ce7672e4ac7b8303b6b877f64654070aa78cca2a252986fdbb",
+  "classification": "review-completed",
+  "verified": false,
+  "verdict": {
+    "findings": [
+      {
+        "description": "[00-zoom-activity.png] DEFECT (must fix) — Text collision/overlap at the bottom of the left panel ('EVENTS BY REPOSITORY'): the left-aligned summary '8 private repos · 1490 commits · 548 PRs (aggregated)' directly collides with the right-aligned label 'public activity only', rendering '548 PRs (aggregated)' and 'public activity only' overlapping and hard to read. This also creates a semantic contradiction between reporting private repository totals and claiming 'public activity only'.",
+        "severity": "major"
+      },
+      {
+        "description": "[00-zoom-activity.png] DEFECT (must fix) — Duplicate consecutive entries in the right panel ('RECENT ACTIVITY'): 'herdr-t3 · PR #157' appears twice in a row with the exact same timestamp ('Nov 24, 16:37 JST') and 'tastile-root · PR #159' appears twice in a row at 'Nov 24, 16:36 JST'. Because no event action (e.g., opened, commented, reviewed, merged) is shown, these rows appear as duplicated feed glitches.",
+        "severity": "minor"
+      },
+      {
+        "description": "[00-zoom-activity.png] OPPORTUNITY — Contrast and readability of smallest text: muted grey timestamps ('Nov 24, 16:38 JST'), '+24 more repositories', '8 private repos ...', 'times in JST', and the footer ('observed Nov 24, 2026 · 16:41 JST · rebuildup.dev') are low-contrast against the dark background and may lose legibility when scaled down to 350–500px README width.",
+        "severity": "minor"
+      },
+      {
+        "description": "[00-zoom-activity.png] OPPORTUNITY — Minor polish and clarity: (a) inconsistent thousands separators ('4,364 commits' vs '1409 PRs' and '1490 commits'); (b) the large hero stat '4,364 commits' visually overshadows '20 events' under the 'EVENTS BY REPOSITORY' header; (c) bottom-right 'times in JST' is redundant since every feed timestamp already includes 'JST'. Honest-state elements (date range 'Oct 26 – Nov 25, 2026 · JST' and 'observed Nov 24, 2026 · 16:41 JST') are present and clear. Per-image verdict: ACCEPT WITH FIXES.",
+        "severity": "info"
+      },
+      {
+        "description": "[01-zoom-current.png] DEFECT (must fix) — Missing weight labels: the specification requires 'in-progress projects with weight labels', but none of the 5 project rows display any weight, percentage, priority badge, or visual differentiation (all 5 bullets are identical blue dots). Over half the card width on the right side is empty dark space where weight labels or metrics should appear.",
+        "severity": "major"
+      },
+      {
+        "description": "[01-zoom-current.png] DEFECT (must fix) — Generic fallback status lines fail to communicate project meaning and contradict the honest-state footer: every item repeats identical auto-generated Japanese boilerplate ('GitHub 上で活動が観測された公開リポジトリ。' or '...非公開リポジトリ。'), yet the footer claims 'names and status lines are the owner's declarations' (and header says 'declared + measured'). The card does not communicate what is actually in progress.",
+        "severity": "major"
+      },
+      {
+        "description": "[01-zoom-current.png] OPPORTUNITY — Contrast, language consistency, and timestamp precision: no overlapping or clipped text occurs, but the smallest muted text ('+11 more on rebuildup.dev', 'as of 2026-11-24 · names and status lines are the owner's declarations', and 'declared + measured · rebuildup.dev') is dim at README display widths; mixing English card chrome with Japanese boilerplate descriptions feels inconsistent; and 'as of 2026-11-24' omits time/timezone unlike the activity card. Per-image verdict: REJECT.",
+        "severity": "minor"
+      },
+      {
+        "description": "Review scope note: only 2 of the 6 cards referenced in the specification were attached (00-zoom-activity.png and 01-zoom-current.png). Presence, stats, top-langs, and streak cards were not provided in this input set.",
+        "severity": "info"
+      }
+    ],
+    "summary": "Reviewed the 2 provided zoomed card screenshots against the README SVG specification (4 other cards listed in the spec were not attached). Per-image verdicts: (1) 00-zoom-activity.png — ACCEPT WITH FIXES: communicates per-repo event bars, recent activity feed, and honest-state observation timestamp well, but has a major text collision/semantic conflict at the bottom of the left panel ('548 PRs (aggregated)' overlapping 'public activity only') and duplicate-looking consecutive feed items without action labels. (2) 01-zoom-current.png — REJECT: clean spacing with no text overlap, but omits the required weight labels entirely (leaving the right half blank) and displays identical auto-generated Japanese boilerplate descriptions for all 5 projects that fail to convey project status and contradict the footer's 'owner's declarations' claim. Both cards would benefit from slightly higher contrast on their smallest muted metadata text for 350–500px README legibility.",
+    "verdict": "request-changes"
+  },
+  "agy": {
+    "status": "SUCCESS",
+    "conversationId": "dcd54f57-43a6-4526-b031-d9784b6f4585",
+    "durationSeconds": 61.418582,
+    "numTurns": 1,
+    "usage": {
+      "input_tokens": 13002,
+      "output_tokens": 6138,
+      "thinking_tokens": 4761,
+      "cache_read_tokens": 10063,
+      "total_tokens": 19140
+    },
+    "deniedActions": []
+  },
+  "readonly": {
+    "deniedActions": [],
+    "permissionErrors": 0,
+    "protectedPath": null,
+    "protectedCheck": "unavailable",
+    "protectedMutations": []
+  },
+  "isolation": {
+    "workdir": "/Users/rebui/.local/state/agent/agy-review/20a61d33-4b33-495c-a0ce-54eff89a806d",
+    "osSandbox": "seatbelt",
+    "permissionDeny": [
+      "write_file(*)",
+      "command(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)",
+      "unsandboxed(*)"
+    ]
+  },
+  "quota": {
+    "buckets": [
+      {
+        "group": "Gemini Models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.87,
+        "resetTime": "2026-12-01T00:43:37Z"
+      },
+      {
+        "group": "Gemini Models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.92,
+        "resetTime": "2026-11-24T10:43:37Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.42,
+        "resetTime": "2026-11-30T03:53:15Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 1,
+        "resetTime": "2026-11-24T13:13:44Z"
+      }
+    ],
+    "raw": "Gemini Models\tWeekly Limit Remaining\t87%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t92%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T13:13:44Z\n"
+  },
+  "executor": "local",
+  "reasons": [
+    "no protected path supplied; OS/permission layers only"
+  ]
+}

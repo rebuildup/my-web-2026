@@ -1,0 +1,137 @@
+{
+  "version": "1.0.0",
+  "id": "714fda73-857a-4184-b9e0-e698e23fc7ae",
+  "model": null,
+  "resolvedModel": null,
+  "specSha256": "f1de8feab8ccf4ce7672e4ac7b8303b6b877f64654070aa78cca2a252986fdbb",
+  "classification": "review-completed",
+  "verified": false,
+  "verdict": {
+    "findings": [
+      {
+        "description": "[00-zoom-activity-v2.png] [DEFECT] Severe text collisions in RECENT ACTIVITY panel (right column, rows 2–8): Left-aligned `repo · Issue/PR #NNN` labels overlap directly with `Nov 24, 2026 · 16:3x JST` timestamps — rows 2–3 (`herdr-t3 · PR #157`) collide with `Nov`, rows 4 & 7 (`tastile-root · Issue #158`) heavily overwrite `Nov 24,`, rows 5–6 (`tastile-root · PR #159`) overlap `Nov`, row 8 (`herdr-t3 · Issue #156`) overlaps `Nov`, and row 1 (`ty-plus · PR #572`) leaves almost zero horizontal gap. Compact the timestamp format (omit repeated date/year) or truncate long repo labels.",
+        "severity": "critical"
+      },
+      {
+        "description": "[00-zoom-activity-v2.png] [DEFECT] Outer footer collides with left inner panel border (bottom-left): `observed Nov 24, 2026 · 16:41 JST · rebuildup.dev` starts outside the left panel's left border, runs straight over the bottom border stroke, and crowds `public activity only` directly above `rebuildup.dev`. Increase SVG height or shorten the inner panels so the footer sits cleanly below them.",
+        "severity": "major"
+      },
+      {
+        "description": "[00-zoom-activity-v2.png] [DEFECT] Zero left padding inside EVENTS BY REPOSITORY panel (left column): `4,364`, all six repository icons and green bars (`rebuildup/herdr-t3` through `rebuildup/tiny-chess-01`), `+24 more repositories`, and `8 private repos · 1490 commits · 548 PRs (aggregated)` sit flush against the inner panel's left border stroke, misaligned with the indented `EVENTS BY REPOSITORY` header above them.",
+        "severity": "major"
+      },
+      {
+        "description": "[01-zoom-current.png] [DEFECT] Missing weight labels required by specification: The specification requires in-progress projects with weight labels, but all five rows show only identical blue dots with no weight labels, badges, or indicators, leaving the right half of the card completely blank.",
+        "severity": "major"
+      },
+      {
+        "description": "[00-zoom-activity-v2.png] [DEFECT] Contradictory honest-state scope labels (left panel bottom): `public activity only` appears directly beneath `8 private repos · 1490 commits · 548 PRs (aggregated)`, contradicting whether private activity is included. Clarify which counts are public-only vs. aggregated private totals.",
+        "severity": "minor"
+      },
+      {
+        "description": "[00-zoom-activity-v2.png] [DEFECT] Low contrast on muted secondary text at README display size (~350–760px): Timestamps (`Nov 24, 2026 · 16:3x JST`), `12 ev`–`1 ev` labels, `+24 more repositories`, `8 private repos...`, `observed Nov 24, 2026 · 16:41 JST · rebuildup.dev`, `public activity only`, and `times in JST` use dim gray on dark surfaces that will lose legibility when scaled down.",
+        "severity": "minor"
+      },
+      {
+        "description": "[01-zoom-current.png] [DEFECT] Honest-state mismatch with generic boilerplate status lines: The footer states `names and status lines are the owner's declarations` alongside `declared + measured`, yet all five descriptions are identical auto-generated fallbacks (`GitHub 上で活動が観測された公開/非公開リポジトリ。`) and row 4 is a generic placeholder (`非公開プロジェクト`), conveying no project-specific meaning and contradicting the declaration disclaimer.",
+        "severity": "minor"
+      },
+      {
+        "description": "[01-zoom-current.png] [DEFECT] Low contrast on muted footer and overflow count: `+11 more on rebuildup.dev`, `as of 2026-11-24 · names and status lines are the owner's declarations`, and `declared + measured · rebuildup.dev` are dim against the dark background and will be hard to read at ~350px README width.",
+        "severity": "minor"
+      },
+      {
+        "description": "[00-zoom-activity-v2.png] [OPPORTUNITY] Differentiate repeated feed entries and tighten visual hierarchy: `herdr-t3 · PR #157`, `tastile-root · PR #159`, and `tastile-root · Issue #158` each appear twice in RECENT ACTIVITY without action verbs (opened/merged/commented) or a legend for blue square vs. purple triangle markers. Also clarify how `20 events` (sum of the 6 listed bars) relates to `+24 more repositories` and `4,364 commits`, and add a few pixels of vertical spacing between `EVENTS BY REPOSITORY` and `4,364`.",
+        "severity": "info"
+      },
+      {
+        "description": "[01-zoom-current.png] [OPPORTUNITY] Improve visual balance, timestamp granularity, and language consistency: Placing the missing weight labels/bars on the right will balance the large empty right half of the card; adding time-of-day and timezone (e.g., JST) to `as of 2026-11-24` will match the activity card's honest-state precision; and aligning the Japanese fallback copy with the English UI chrome would improve consistency.",
+        "severity": "info"
+      },
+      {
+        "description": "[INPUTS] Incomplete image set vs. specification: Only 2 of the 6 cards listed in the specification (`00-zoom-activity-v2.png` activity card and `01-zoom-current.png` in-progress projects card) were attached; Discord presence chip, stats, top-langs, and streak cards were not present in the input directory.",
+        "severity": "info"
+      }
+    ],
+    "summary": "Per-image verdicts: (1) 00-zoom-activity-v2.png (Activity card): REJECT — critical overlapping text across 7 of 8 rows in RECENT ACTIVITY, zero left padding inside EVENTS BY REPOSITORY causing text/icons/bars to collide with the inner border, outer observation footer colliding with the left panel's bottom border, contradictory public-only vs. aggregated private repo labels, and low-contrast muted text. (2) 01-zoom-current.png (In-progress projects card): ACCEPT WITH FIXES — clean layout with no text collisions or clipping, but missing required weight labels, repetitive auto-generated Japanese fallback descriptions that contradict the \"owner's declarations\" footer, and low-contrast muted footer text. Note: Only 2 of the 6 cards referenced in the specification were attached.",
+    "verdict": "reject"
+  },
+  "agy": {
+    "status": "SUCCESS",
+    "conversationId": "fed55099-b554-4f09-8ad0-23ca21f2dc72",
+    "durationSeconds": 87.178999,
+    "numTurns": 1,
+    "usage": {
+      "input_tokens": 12763,
+      "output_tokens": 8113,
+      "thinking_tokens": 6396,
+      "cache_read_tokens": 10055,
+      "total_tokens": 20876
+    },
+    "deniedActions": []
+  },
+  "readonly": {
+    "deniedActions": [],
+    "permissionErrors": 0,
+    "protectedPath": null,
+    "protectedCheck": "unavailable",
+    "protectedMutations": []
+  },
+  "isolation": {
+    "workdir": "/Users/rebui/.local/state/agent/agy-review/714fda73-857a-4184-b9e0-e698e23fc7ae",
+    "osSandbox": "seatbelt",
+    "permissionDeny": [
+      "write_file(*)",
+      "command(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)",
+      "unsandboxed(*)"
+    ]
+  },
+  "quota": {
+    "buckets": [
+      {
+        "group": "Gemini Models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.88,
+        "resetTime": "2026-12-01T00:43:37Z"
+      },
+      {
+        "group": "Gemini Models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.93,
+        "resetTime": "2026-11-24T10:43:37Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.42,
+        "resetTime": "2026-11-30T03:53:15Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 1,
+        "resetTime": "2026-11-24T13:10:56Z"
+      }
+    ],
+    "raw": "Gemini Models\tWeekly Limit Remaining\t88%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t93%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T13:10:56Z\n"
+  },
+  "executor": "local",
+  "reasons": [
+    "no protected path supplied; OS/permission layers only"
+  ]
+}

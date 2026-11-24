@@ -1,0 +1,193 @@
+{
+  "version": "1.0.0",
+  "id": "c855c3a7-136b-4e2d-87bc-1cee66242da1",
+  "model": null,
+  "resolvedModel": null,
+  "specSha256": "f1de8feab8ccf4ce7672e4ac7b8303b6b877f64654070aa78cca2a252986fdbb",
+  "classification": "review-completed",
+  "verified": false,
+  "verdict": {
+    "findings": [
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Header overlap in left panel: The summary metric line (\"4,364 commits · 20 events · 1409 PRs · 30d\") renders directly on top of the inner panel header (\"● EVENTS BY REPOSITORY\"), colliding over the green status dot and title text.",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Bottom-left footer text collision: Two separate footer lines (\"observed Nov 24, 2026 · 16:41 JST · rebuildup.dev\" and \"8 private repos · 1490 commits · 548 PRs (aggregated)\") render at nearly the same y-coordinate, superimposing and rendering both the observation timestamp and private-repo aggregation note illegible.",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Right panel header and feed collisions: Row 1 (\"■ ty-plus · PR #572\" and \"Nov 24, 2026 · 16:38 JST\") collides directly on top of \"● RECENT ACTIVITY\". Across all 6 rows, repo/PR/issue labels horizontally overlap their timestamps (worst on row 4 where \"tastile-root · Issue #158\" heavily overlaps \"Nov 24,\"), and row 4's timestamp (\"16:36 JST\") directly collides with the panel's bottom-right \"times in JST\" label.",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Inner panel container overflow on both columns: The left rounded box terminates right through row 3 (\"rebuildup/design-skills\" / \"2 ev\", with \"public activity only\" crowding \"2 ev\"), leaving rows 4–7 and \"+23 more repositories\" spilling outside the box. The right rounded box ends at row 4, leaving rows 5–6 (\"tastile-root · PR #159\" x2) spilling outside the box.",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Ambiguous data presentation: \"rebuildup/atcoder-kit\" reports \"0 ev\" yet draws a green bar sliver; Recent Activity displays identical-looking consecutive rows (\"herdr-t3 · PR #157\" twice at 16:37 JST; \"tastile-root · PR #159\" twice at 16:36 JST) without action verbs (opened/merged/commented); and top-right window (\"Oct 26 – Nov 25, 2026 · JST\") ends one day ahead of the observed timestamp (\"Nov 24, 2026 · 16:41 JST\").",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Defect] Low contrast on smallest text: Muted slate text (event counts, timestamps, \"+23 more repositories\", and footer metadata) on the near-black background will be difficult to read at ~350–760px README width.",
+        "severity": "minor"
+      },
+      {
+        "description": "[Image 1: 00-zoom-activity.png | Verdict: REJECT | Opportunity] Honest-state metadata intent is solid (\"public activity only\", \"times in JST\", observation timestamp, private-repo aggregation note). Once box heights and text positions are fixed, add concise action verbs to feed items and suppress bars for 0-event rows.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 2: 01-zoom-presence.png | Verdict: ACCEPT | Opportunity] Premature mid-word truncation: \"Online — shipping the profile r...\" clips mid-word despite noticeable unused horizontal space before \"observed Nov 24, 2026 · 16:55 JST\". Increasing the text width budget or ellipsizing at a word boundary would communicate the status more cleanly.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 2: 01-zoom-presence.png | Verdict: ACCEPT | Opportunity] Card has zero overlaps, clearly communicates live Discord presence, and includes an explicit honest-state observation timestamp. Slightly brightening the muted slate timestamp (\"observed Nov 24, 2026 · 16:55 JST\") and adding a couple pixels between the Discord icon and green status dot would improve legibility at small README display sizes.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 3: 02-zoom-current.png | Verdict: REJECT | Defect] Bottom-left footer text collision: \"+11 more on rebuildup.dev\" overlaps vertically with the bottom line \"as of 2026-11-24 · names and status lines are the owner's declarations\", colliding across the top of \"as of 2026-11-24 · names\".",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 3: 02-zoom-current.png | Verdict: REJECT | Defect] Missing required weight labels: The specification requires in-progress projects with weight labels, but no weight badges, tags, or indicators appear anywhere on the card, leaving the right ~60% empty.",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 3: 02-zoom-current.png | Verdict: REJECT | Defect] Boilerplate subtitles contradict honest-state declaration: All four public items repeat the identical auto-generated Japanese text (\"GitHub 上で活動が観測された公開リポジトリ。\"), conveying no project-specific status and contradicting the footer statement that \"names and status lines are the owner's declarations\".",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 3: 02-zoom-current.png | Verdict: REJECT | Defect] Small-text contrast and bottom spacing: Muted gray subtitles and the cramped footer at the bottom edge have borderline contrast and tight padding that hurt legibility at ~350–760px README width.",
+        "severity": "minor"
+      },
+      {
+        "description": "[Image 3: 02-zoom-current.png | Verdict: REJECT | Opportunity] Unify card language (currently mixes English headers/footer with Japanese subtitles and \"非公開プロジェクト\") and include observation time + timezone (JST) alongside \"as of 2026-11-24\" for consistency with cards 1 and 2.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 4: 03-zoom-stats.png | Verdict: REJECT | Defect] Missing/invisible stat rows and critically low contrast: Only \"Total Stars Earned: 171\" is faintly visible in ultra-pale gray on white (~1.2:1 contrast), while all subsequent GitHub stat rows (commits, PRs, issues, contributions) are completely invisible, leaving the lower-left blank. The \"B+\" ring arc is also partially under-filled (~28%). This appears caused by staggered SVG fade-in animations captured mid-transition (or broken opacity/styling).",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 4: 03-zoom-stats.png | Verdict: REJECT | Defect] Missing honest-state elements: No observation timestamp, data time window, or stale/unavailable indicator is displayed.",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 4: 03-zoom-stats.png | Verdict: REJECT | Opportunity] Disable SVG animations (e.g., disable_animations=true) so all stat rows and the rank ring render immediately at full contrast, and align light/dark card theming with cards 1–3.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 5: 04-zoom-toplangs.png | Verdict: REJECT | Defect] Missing/invisible language rows and critically low contrast: Only two legend items (\"TypeScript 45.79%\" and \"HTML 2.54%\", summing to 48.33%) are faintly visible in ultra-pale gray/pastel on white (~1.2:1 contrast); all remaining languages—including the purple language shown in the stacked bar—are completely invisible, leaving the lower half blank (mid-animation capture or broken opacity).",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 5: 04-zoom-toplangs.png | Verdict: REJECT | Defect] Truncated/incomplete language bar: The horizontal stacked bar below \"Most Used Languages\" stops at ~55% of card width (only blue and purple segments rendered), failing to represent the full language breakdown.",
+        "severity": "critical"
+      },
+      {
+        "description": "[Image 5: 04-zoom-toplangs.png | Verdict: REJECT | Defect] Missing honest-state elements: No observation timestamp, repository scope note, or stale/unavailable indicator is shown.",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 5: 04-zoom-toplangs.png | Verdict: REJECT | Opportunity] Disable SVG animations so the complete stacked bar and all language labels render immediately at full opacity and high contrast, and align light/dark theming with cards 1–3.",
+        "severity": "info"
+      },
+      {
+        "description": "[Image 6: 05-zoom-streak.png | Verdict: ACCEPT WITH FIXES | Defect] Nearly invisible flame icon: The flame icon inside the top cutout of the orange streak ring is rendered in ultra-pale cream/off-white on white (~1.05:1 contrast), likely caught mid-fade-in animation or with near-zero opacity.",
+        "severity": "major"
+      },
+      {
+        "description": "[Image 6: 05-zoom-streak.png | Verdict: ACCEPT WITH FIXES | Defect] Weak contrast on orange accent label: \"Current Streak\" in bright orange on white has sub-AA contrast (~2.4:1) for normal-size text, hurting readability when scaled down to README width (~350–760px).",
+        "severity": "minor"
+      },
+      {
+        "description": "[Image 6: 05-zoom-streak.png | Verdict: ACCEPT WITH FIXES | Defect] Incomplete honest-state elements: Although date ranges (\"Jul 21, 2024 - Present\", \"May 5, 2026 - Nov 24\") imply recency, there is no explicit observation timestamp (time + timezone) or stale/unavailable indicator.",
+        "severity": "minor"
+      },
+      {
+        "description": "[Image 6: 05-zoom-streak.png | Verdict: ACCEPT WITH FIXES | Opportunity] Three-column layout, vertical dividers, and dark-slate numerals/dates are clean with zero overlaps. Disabling animation on the flame icon, darkening the orange accent slightly (and toning down the glow around \"204\"), and matching dark/light theme with cards 1–3 would further improve polish.",
+        "severity": "info"
+      }
+    ],
+    "summary": "Per-image verdicts — Image 1 (00-zoom-activity.png, activity card): REJECT; Image 2 (01-zoom-presence.png, Discord presence chip): ACCEPT; Image 3 (02-zoom-current.png, in-progress projects card): REJECT; Image 4 (03-zoom-stats.png, stats card): REJECT; Image 5 (04-zoom-toplangs.png, top-langs card): REJECT; Image 6 (05-zoom-streak.png, streak card): ACCEPT WITH FIXES. Four of six cards fail visual quality due to severe text/box overlaps (activity, current), missing required weight labels (current), or broken mid-animation/near-invisible renders (stats, top-langs). Presence is clean and shippable; streak is structurally solid but needs flame-icon visibility, orange-label contrast, and explicit observation-timestamp fixes.",
+    "verdict": "reject"
+  },
+  "agy": {
+    "status": "SUCCESS",
+    "conversationId": "42098a56-60cd-4ec7-870b-66b8f9018f40",
+    "durationSeconds": 151.418785,
+    "numTurns": 1,
+    "usage": {
+      "input_tokens": 18143,
+      "output_tokens": 15589,
+      "thinking_tokens": 12454,
+      "cache_read_tokens": 10304,
+      "total_tokens": 33732
+    },
+    "deniedActions": []
+  },
+  "readonly": {
+    "deniedActions": [],
+    "permissionErrors": 0,
+    "protectedPath": null,
+    "protectedCheck": "unavailable",
+    "protectedMutations": []
+  },
+  "isolation": {
+    "workdir": "/Users/rebui/.local/state/agent/agy-review/c855c3a7-136b-4e2d-87bc-1cee66242da1",
+    "osSandbox": "seatbelt",
+    "permissionDeny": [
+      "write_file(*)",
+      "command(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)",
+      "unsandboxed(*)"
+    ]
+  },
+  "quota": {
+    "buckets": [
+      {
+        "group": "Gemini Models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.87,
+        "resetTime": "2026-12-01T00:43:37Z"
+      },
+      {
+        "group": "Gemini Models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.93,
+        "resetTime": "2026-11-24T10:43:37Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.42,
+        "resetTime": "2026-11-30T03:53:15Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 1,
+        "resetTime": "2026-11-24T13:04:02Z"
+      }
+    ],
+    "raw": "Gemini Models\tWeekly Limit Remaining\t87%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t93%\t2026-11-24T10:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T13:04:02Z\n"
+  },
+  "executor": "local",
+  "reasons": [
+    "no protected path supplied; OS/permission layers only"
+  ]
+}

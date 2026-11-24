@@ -7,10 +7,12 @@ import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetcher
 import { getNextToken, stringEnv } from '../github-readme-stats/router';
 import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
+import { renderActivitySvg } from './activity';
 import { renderProfileCardSvg } from './card';
 import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
 import { type NowStats, renderProfileNowSvg } from './now';
+import { renderPresenceSvg } from './presence';
 import { renderProfileStatusSvg } from './status';
 
 /**
@@ -65,6 +67,11 @@ const STATUS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 // activity/presence snapshots: the GitHub half is cached upstream for
 // an hour, this response revalidates every 5 minutes like `/status`.
 const NOW_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
+// The redesign's split surfaces update on the same snapshot cadence
+// as `/status` but cache independently: activity data and presence
+// never share a response, so one stale source cannot stall the other.
+const ACTIVITY_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
+const PRESENCE_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 const NOW_OWNER_LOGIN = 'rebuildup';
 
 interface ProfileSnapshotEnv {
@@ -217,6 +224,35 @@ githubProfileRouter.get('/status', rateLimitRead, async (c) => {
 	});
 });
 
+githubProfileRouter.get('/activity', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const activityPayload = await readActivityPayload(env.DB);
+	const svg = renderActivitySvg(activityPayload);
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': ACTIVITY_CACHE_CONTROL,
+	});
+});
+
+githubProfileRouter.get('/presence', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const presencePayload = await readPresencePayload(env.DB);
+	const model = composeProfileCardModel({
+		activityPayload: null,
+		presencePayload,
+		expectedPresenceUserId: env.DISCORD_PRESENCE_USER_ID,
+		now: Date.now(),
+		projects: [],
+	});
+	const svg = renderPresenceSvg(model);
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': PRESENCE_CACHE_CONTROL,
+	});
+});
+
 githubProfileRouter.all('/card', methodNotAllowed(['GET']));
 githubProfileRouter.all('/status', methodNotAllowed(['GET']));
 githubProfileRouter.all('/now', methodNotAllowed(['GET']));
+githubProfileRouter.all('/activity', methodNotAllowed(['GET']));
+githubProfileRouter.all('/presence', methodNotAllowed(['GET']));

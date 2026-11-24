@@ -126,3 +126,40 @@ rebuildup/rebuildup#8 のレビューで**単一リール構成をベースに�
 - **統合 now**: `/api/v1/github-profile/now` が contributions /
   streak / top language / activity / Discord を1枚の SVG に統合。
   カード4枚の横並びは不採用。`/status` は互換のため残す。
+
+## 8. v3 全面再設計（rebuildup/rebuildup#8、ADR-0026）
+
+v2（リール + 8 アイコン + 統合 `/now`）は不採用。旧 STATUS のグラフ・動き・
+独立更新を回復しつつ、ゼロから再設計した。
+
+- **作品**: 単一リールを廃止し、`clips/<slug>.webp` の animated WebP
+  タイル 9 点を 3 列グリッドで同時視認。Web アプリ・AE ツール・
+  ツール・映像・UI の領域を混在させた。全フレーム輝度ゲート付き。
+- **活動**: `/api/v1/github-profile/activity` がリポジトリ別活動バー +
+  公開 feed を 1 枚の SVG で返す。時刻は Asia/Tokyo、観測スタンプは UTC。
+- **Presence**: `/api/v1/github-profile/presence` が独立チップを返す。
+  activity と別レスポンス・別キャッシュ。
+- **スタック**: 旧 48 技術ツリーを起点に 48 技術の light/dark アイコン。
+- **比較**: A=3×3 グリッド + 活動カード案を採用（B=スポットライト案は
+  1 作品への偏りで不採用）。デスクトップ/モバイル・ライト/ダークの
+  実レンダリング比較は `.tmp/profile-design/` のモックと
+  `shots/` スクリーンショット、および本節のプロトタイプ評価を参照。
+
+## 9. v3.1 修正（2026-11-24、レビュー指摘対応）
+
+- **Selected Work**: 3×3 クリップグリッドは「動く一覧」であり要求の
+  スライドショーではないとして不採用。`showcase.webp`（480×680 縦
+  マーキー、6fps・18秒ループ・約2.9MB）に変更 — 作品タイルが
+  セル状に常時上スクロールし、複数作品が常に同時視認・静止
+  フレームなし・シームレスループ。個別リンクは README の
+  テキスト一覧が担う。
+- **Activity**: バーが events・見出しが commits だった意味論不一致を
+  `EVENTS BY REPOSITORY` に修正。観測スタンプも JST に統一
+  （presence チップ同様）。
+- **スキル照合**: 旧 48 技術（my-web-2025 `skillRows`）と掲載アイコンを
+  全件照合した結果、48 技術すべてが対応アイコンとして存在する
+  （`C#`→`csharp`、`C++`→`cpp`、`Go`→`golang`、`tailwind css`→`tailwind`、
+  `Adobe XD`→`xd` 等の命名差のみで欠落なし）。使用実績は my-web-2026 の
+  依存関係と portfolio `technologies` メタデータと照合済み。
+- **証跡**: レンダリング結果とレビュー用フレームを
+  `docs/verification/github-profile/v4/` にコミットし PR から参照可能にする。

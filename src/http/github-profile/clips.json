@@ -1,0 +1,73 @@
+{
+	"schema": "github-profile-clips.v1",
+	"issue": "rebuildup/rebuildup#8",
+	"outputDir": "public/github-profile/clips",
+	"canvas": { "width": 480, "height": 360, "fps": 8 },
+	"clips": [
+		{
+			"slug": "prototype",
+			"portfolioSlug": "prototype",
+			"kind": "video",
+			"at": 0.3,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "flashbeat",
+			"portfolioSlug": "flashbeat",
+			"kind": "video",
+			"at": 0.45,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "ugoita",
+			"portfolioSlug": "ugoita",
+			"kind": "video",
+			"at": 0.3,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "foldlayers",
+			"portfolioSlug": "foldlayers",
+			"kind": "video",
+			"at": 0.4,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "homura",
+			"portfolioSlug": "homura",
+			"kind": "video",
+			"at": 0.35,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "multislicer",
+			"portfolioSlug": "multislicer",
+			"kind": "video",
+			"at": 0.3,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "aulymo-v02",
+			"portfolioSlug": "aulymo-v02",
+			"kind": "video",
+			"at": 0.4,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{
+			"slug": "kosen",
+			"portfolioSlug": "kosen-procon-pv",
+			"kind": "video",
+			"at": 0.5,
+			"duration": 4,
+			"fit": "crop"
+		},
+		{ "slug": "tegaki", "portfolioSlug": "tegaki-anime", "kind": "gif", "square": true }
+	]
+}

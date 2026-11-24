@@ -1,0 +1,139 @@
+{
+	"version": "1.0.0",
+	"id": "e34433ce-df89-4662-9073-cda8aa35d04a",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "60d9745c3d3eb342f239ced778a4197d30a23d3ade2286b27a7e1927d1c3574b",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[00] t=4.25s (Settled Act 1 - ProtoType): Strong protagonist dominance and clean blue accent border; three dimmed corner sub cards (rhythm game top-left, blue grid typography bottom-left, grey/blue anime top-right) frame the center neatly. Dock 2x2 grid is aligned, but the top-left slot (FoldLayers dark frame) is nearly pure black and barely distinguishable from an empty slot at ~350px wide; dark purple radial background of ProtoType shows mild lossy WebP block quantization.",
+				"severity": "minor"
+			},
+			{
+				"description": "[01] t=5.50s (Mid-transition Act 1->2): Causal hand-off reads cleanly—incoming yellow rhythm game rises on the left with the transferred blue accent border while outgoing ProtoType recedes to top-right with clear separation. Blue typography thumbnail has shrunk early well outside the dock plate with no dock collision. However, the bottom-left quadrant is a large empty void with faint WebP inter-frame rectangular ghosting where prior sub cards sat, and the tiny blue thumbnail floats isolated in wide empty space.",
+				"severity": "minor"
+			},
+			{
+				"description": "[02] t=6.00s (Settled Act 2 - Rhythm game): Clean, vibrant settled act with high contrast and crisp blue accent border. All three sub cards (FoldLayers top-left, dark macOS app bottom-left, ProtoType top-right) and all four dock slots are neatly settled and legible, holding up well at ~350px wide.",
+				"severity": "info"
+			},
+			{
+				"description": "[03] t=6.50s (Settled Act 2 - Rhythm game): Smooth active playback (Combo 81->83, Score advancing, live dock updates), consistent aspect ratios, crisp border tracking, and neat full 2x2 dock with no compression blemishes on bright content.",
+				"severity": "info"
+			},
+			{
+				"description": "[04] t=10.00s (Early/mid-transition Act 2->3): Causal hand-off reads well—outgoing rhythm game retains the blue border while incoming FoldLayers grows underneath from top-left. ProtoType shrinks above the dock cleanly, and dark macOS app slides under bottom-left. Minor: a tiny sliver of the undocking cat-ear MV peeks in the tight gap between the rhythm game's bottom-right and the dock plate, and faint dark WebP ghosting appears in the empty bottom-left void.",
+				"severity": "minor"
+			},
+			{
+				"description": "[05] t=10.75s (Late transition Act 2->3): FoldLayers has cleanly taken center and the blue accent border while rhythm game recedes to top-right and sub cards slide into place. MAJOR DOCK OCCLUSION ISSUE: both right-hand dock slots are completely blank, and both cards bound for them—especially the blue typography card re-slotting within the dock from top-left to bottom-right, plus the dark macOS app—have vanished behind the opaque dock plate before popping back in by t=11.25s, breaking object permanence.",
+				"severity": "major"
+			},
+			{
+				"description": "[06] t=11.25s (Settled Act 3 - FoldLayers): Strong settled hierarchy, crisp blue border, clean corner subs, and fully populated 2x2 dock. Minor readability note: both top dock slots (ProtoType and dark macOS app) are very dark against the dark navy dock plate and lose definition when scaled to ~350px wide.",
+				"severity": "minor"
+			},
+			{
+				"description": "[07] t=15.75s (Mid-transition Act 3->4): Main hand-off is causal (FoldLayers holds blue border while cat-ear MV rises behind left). MAJOR DOCK SLICING BUG: the yellow rhythm game card travelling from top-right sub to dock bottom-left is still slightly wider than a thumbnail slot and renders BEHIND the dock plate, visibly sliced across its bottom-right by the plate's top edge—directly violating the rev-8 goal of riding above the plate without slicing. Also visible faint WebP dark ghosting on the outer canvas.",
+				"severity": "major"
+			},
+			{
+				"description": "[08] t=16.25s (Late transition Act 3->4): Cat-ear MV cleanly dominates center with transferred blue accent border; yellow rhythm game is parked cleanly in dock bottom-left. However, the bottom-right dock slot is empty because the incoming teal anime card (visible at bottom-center in frame 07) has disappeared behind the dock plate/main card on final approach. Additionally, the top-left sub (grey/blue anime) lands on a nearly blank flat-grey video frame, and outgoing FoldLayers top-right is mostly black, slightly weakening corner balance.",
+				"severity": "major"
+			},
+			{
+				"description": "[09] t=21.25s (Early transition Act 4->5): Cat-ear MV retains center and blue border while incoming blue typography begins expanding bottom-left. Two layout blemishes: (1) top-left sub slot is already completely empty dark void because the grey/blue anime card departed early and disappeared behind the main card; (2) the departing teal anime card is sandwiched as a narrow double-clipped sliver between the main card's right edge and the dock plate's left edge rather than undocking cleanly.",
+				"severity": "minor"
+			},
+			{
+				"description": "[10] t=21.75s (Mid-transition Act 4->5): Causal main hand-off reads well (Cat-ear MV holds blue border on top while blue typography rises underneath from bottom-left), and FoldLayers shrinks cleanly above the dock plate without colliding or slicing. However, excessive dead space sits across the entire top-left quadrant (with faint WebP ghost rectangles), dock left-top and bottom-right slots are empty, and the grey/blue anime card remains completely invisible. Note: Cat-ear MV holds on the same lyric frame across frames 09–11 (likely a natural MV hold).",
+				"severity": "minor"
+			},
+			{
+				"description": "[11] t=22.25s (Post-boundary Act 5 - Blue typography): Blue grid typography is crisp, dominant, and high-contrast at ~350px wide with clean blue border, and all three sub cards plus FoldLayers (dock top-left) have settled neatly. MAJOR DOCK COMPLETION / DISAPPEARANCE BUG: even at t=22.25s (0.25s past the 22.0s act boundary), the dock's bottom-right slot is STILL completely empty—the grey/blue anime card has been invisible across three consecutive sampled frames (09, 10, 11) and has not surfaced in its slot, reading as a broken/missing card rather than depth.",
+				"severity": "major"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES (request-changes). Overall choreography is strong: settled acts (00, 02, 03, 06) have clear protagonist dominance, crisp ~62% accent-border hand-off, consistent aspect ratios, and solid readability at ~350px wide, and the main protagonist transitions read causally without mid-screen pileups. The rev-8 early shrink works cleanly in frames 01 and 10, but dock-layering still breaks object permanence in three places: (1) incoming yellow rhythm game is sliced behind the dock plate's top edge in frame 07; (2) cards re-slotting within or arriving at the dock vanish behind the opaque dock plate in frames 05, 08, and remain missing even past the 22.0s boundary in frame 11; and (3) early top-left departure creates mid-transition dead space (frames 09–10) while dark thumbnails and lossy WebP canvas ghosting reduce polish at 350px. Top 3 fixes by impact: 1) Fix dock z-order and arrival timing so park-bound and in-dock re-slotting cards NEVER vanish behind the dock plate and always settle by the act boundary (fixes empty slots in frames 05, 08, 11 and ensures frame 07's incoming card shrinks earlier / rides above the plate instead of getting sliced). 2) Tighten sub-card departure/arrival pacing to eliminate early-vacancy voids (frames 09–10 top-left, frame 01 bottom-left) and avoid double-clipping undocking cards in the narrow main-to-dock gap (frame 09). 3) Lift dark-thumbnail rim/backdrop contrast inside the dock (for dark frames like FoldLayers/ProtoType/dark app) and tune WebP encoder settings (e.g., cleaner dark-canvas keyframe/quantization) to remove faint dark-void ghosting artifacts visible in frames 01, 04, 07, 10.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "385051fc-ee66-422d-99d3-dbd9f27ca556",
+		"durationSeconds": 170.05508,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 26551,
+			"output_tokens": 16117,
+			"thinking_tokens": 13129,
+			"cache_read_tokens": 11043,
+			"total_tokens": 42668
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/e34433ce-df89-4662-9073-cda8aa35d04a",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.82,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.91,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T17:23:51Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t82%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t91%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T17:23:51Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

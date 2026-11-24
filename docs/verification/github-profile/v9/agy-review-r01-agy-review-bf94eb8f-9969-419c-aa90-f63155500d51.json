@@ -1,0 +1,151 @@
+{
+	"version": "1.0.0",
+	"id": "bf94eb8f-9969-419c-aa90-f63155500d51",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "d63a2774f60dc101289a6edd4bde55bd906cee01822b1a8b995ca8be963a72d8",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[Major — Dock Pileups & Broken Occlusion across Images 01, 04, 05, 08, 09, 11] Although dock-plate occlusion works nicely on the descending yellow card at Image 07 (t=15.8s), cards entering/exiting slots still pile on top of the dock face and overflow the plate boundaries in 6 of 12 frames: Image 05 (t=10.75s) and Image 11 (t=22.25s) show ProtoType and FoldLayers protruding above the dock plate's top rounded border while colliding with neighboring cards on the dock face (in Image 11, the grey two-boys card overlaps ~75% of the yellow Telecaster card even 0.25s past the 22.0s act boundary); Image 08 (t=16.25s) and Image 09 (t=21.3s) show the cyan card dragging in front of the yellow card and protruding past the dock's left border; Image 01 (t=5.5s) and Image 04 (t=10.0s) show top-row dock cards colliding/merging horizontally while opposite slots sit empty.",
+				"severity": "major"
+			},
+			{
+				"description": "[Major — Late Z-Order/Accent Handoff & Top-Left Dead Space in Transition Act 4->5 (Image 10, t=21.8s)] At t=21.8s (only 0.2s before the 22.0s act boundary), the outgoing anime MV card still sits in front of the incoming blue/white grid card and retains the blue accent border, whereas at t=10.75s (0.25s before 11.0s) the incoming FoldLayers card had already claimed center, z-top, and the blue border. Because Act 5 enters from bottom-left and the next top-left sub (ProtoType) has not arrived yet, the entire top-left quadrant (~30% of the frame) becomes bare dead space, and dock arrivals lag past t=22.25s (Image 11).",
+				"severity": "major"
+			},
+			{
+				"description": "[Minor — Dark/Blank Sub & Dock Cards Disappearing into Background (Images 00, 02, 03, 06, 08, 09, 11)] Several dark-frame thumbnails lose all silhouette against the dark navy canvas/dock plate: Image 09 (t=21.3s) has a pitch-black top-left sub slot that reads as a missing/blank card (following a washed-out flat grey frame in Image 08 at t=16.25s); Image 00 (t=4.2s) top-left dock slot is nearly solid black; the dark macOS editor UI in the dock (Images 00, 06, 07, 08, 09, 10, 11) and FoldLayers dark intro in top-left sub (Images 02, 03) nearly vanish at ~350px viewing width.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Minor — Lossy WebP Dark-Area Banding & Rectangular Ghosting (Images 00, 01, 02, 04, 07, 10)] Subtle rectangular macroblock halos and dark-navy banding appear on the background around card trajectories/edges, alongside mild checkerboarding inside ProtoType's dark radial gradient (Image 00). Mild at ~350px README width, visible at native 800x360.",
+				"severity": "minor"
+			},
+			{
+				"description": "[Info — Image 00 (t=4.2s, Settled Act 1: ProtoType)] Strong protagonist dominance and clear thin blue accent border. Sub cards (TL Telecaster, BL blue/white '夜', TR two-boys sketch) tuck neatly behind protagonist corners. Dock 2x2 is cleanly aligned, though TL slot is near-black and TR slot is very dim. ProtoType keyboard and header stay readable at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 01 (t=5.5s, Mid-transition Act 1->2)] Cleanest protagonist hand-off in the sequence: incoming Telecaster (left) expands while outgoing ProtoType (top-right, still carrying blue border) shrinks without overlapping. Moderate empty dead space in bottom-left; inside the dock, an oversized grey card sits in top-right with a cyan card sliver colliding behind its right edge while TL and BR slots are empty.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 02 (t=6.0s) & Image 03 (t=6.5s, Settled Act 2: Telecaster B-Boy)] Crisp, high-contrast settled act; blue accent border tracks protagonist accurately; 2x2 dock is completely neat and balanced; video motion advances smoothly (Combo 81->83, character pose changes) with no frozen or stretched frames. TL sub (FoldLayers) is dim against the dark backdrop.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 04 (t=10.0s, Early/Mid-transition Act 2->3)] Outgoing Telecaster shrinks right-of-center (still z-top with blue border) as incoming FoldLayers grows behind it from TL. Top row of dock has blue and cyan cards colliding/merging horizontally, BL slot is empty, and a clipped sliver of the exiting anime MV card peeks between Telecaster's right edge and the dock plate.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 05 (t=10.75s, Late transition Act 2->3)] Main hand-off finishes cleanly: incoming FoldLayers holds center, z-top, and blue accent border while Telecaster settles at TR and anime MV / cyan girl arrive at TL/BL. However, dock suffers severe pileup: ProtoType pokes above the dock's top edge, dark macOS UI overlaps its lower half, and bottom-row grey/blue cards overlap each other.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 06 (t=11.25s, Settled Act 3: FoldLayers)] Well-balanced settled composition; strong protagonist dominance and crisp blue border; all three corner subs (anime MV, cyan girl, Telecaster) have good contrast; 2x2 dock is neatly gridded (TR dark macOS UI slot is very dark). Bold white headline ('But now') reads clearly at 350px.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 07 (t=15.8s, Mid-transition Act 3->4)] Outgoing FoldLayers (z-top, blue border) still covers the right third of incoming anime MV expanding behind it from TL; cyan and blue cards pass beneath FoldLayers' bottom edge. Positive: descending yellow Telecaster card is cleanly occluded behind the dock plate's top-left corner, reading as intentional depth, though the dock's bottom half sits completely empty.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 08 (t=16.25s, Late transition Act 3->4)] Incoming anime MV cleanly claims center, z-top, and blue border; FoldLayers settles at TR and blue card arrives at BL. TL sub is a flat washed-out grey frame. At the dock, the cyan card drags in front of the yellow card and protrudes outside the dock's left border (breaking dock occlusion).",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 09 (t=21.3s, Late Act 4 / Pre-transition Act 4->5)] Protagonist anime MV is bold, dominant, and highly legible at 350px with crisp blue border. However, TL sub slot is completely pitch black (reads as blank/missing), and the undocking cyan card again overlaps the yellow card on the dock face and protrudes past the dock's left edge while BR slot is empty.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 10 (t=21.8s, Mid-transition Act 4->5)] Outgoing anime MV still holds z-top and blue border over the expanding BL incoming card just 0.2s before boundary; huge empty dark void spans the top-left quadrant; FoldLayers hovers above the dock plate while TL and BR dock slots are empty.",
+				"severity": "info"
+			},
+			{
+				"description": "[Info — Image 11 (t=22.25s, Settled Act 5: Blue/White '夜 / Params')] Protagonist graphic is super crisp, dominant, and legible at 350px with accurate blue accent border and clean corner subs (ProtoType TL, cyan girl BL, anime MV TR). However, 0.25s past the 22.0s act boundary, the dock still exhibits a severe pileup: FoldLayers protrudes above the dock's top border and the grey two-boys card overlaps ~75% of the yellow Telecaster card.",
+				"severity": "info"
+			}
+		],
+		"summary": "Verdict: ACCEPT WITH FIXES. Settled acts (Images 00, 02-03, 06, 09, 11) establish strong protagonist dominance, reliable blue accent border tracking, smooth playback with no stretched/frozen frames, and solid ~350px readability across all 5 protagonists; Image 01 (t=5.5s) shows a clean causal main-card hand-off, and Image 07 (t=15.8s) proves the dock-plate occlusion concept works when cards approach behind the plate. However, revision 2 fails its dock-occlusion goal in 6 of 12 frames (Images 01, 04, 05, 08, 09, 11): cards entering/exiting dock slots pop in front of the dock plate too early, protruding past the dock's top and left borders, colliding on top of occupied thumbnails, and continuing to pile up after the act boundary (t=22.25s). Act 4->5 (t=21.8s) also exhibits a late z-order/accent hand-off and large top-left dead space, while dark/black sub and dock cards disappear into the background. Top 3 fixes by impact: (1) Enforce true dock-plate clipping/masking and behind-plate transit until cards reach their exact slot coordinates (fixing border overhangs and slot-to-slot pileups in Images 01, 04, 05, 08, 09, 11); (2) Tighten dock arrival stagger so docking finishes by the act boundary (not t+0.25s as in Image 11) and standardize protagonist z-order/accent-border hand-off by ~60-65% of each transition while bringing in the next TL sub earlier during Act 4->5 to eliminate Image 10's top-left void; (3) Add a subtle 1px hairline border/surface lift to sub/dock thumbnails and adjust video start offsets so dark/black frames (Image 09 TL sub, Image 00 TL dock, dark macOS UI) never read as empty holes at 350px wide.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "f518f3dd-75af-4c36-886f-5aaf143b6348",
+		"durationSeconds": 158.586516,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 17664,
+			"output_tokens": 14483,
+			"thinking_tokens": 10951,
+			"cache_read_tokens": 19715,
+			"total_tokens": 32147
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/bf94eb8f-9969-419c-aa90-f63155500d51",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.84,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.98,
+				"resetTime": "2026-11-24T15:43:37Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-24T16:40:01Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t84%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t98%\t2026-11-24T15:43:37Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-24T16:40:01Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

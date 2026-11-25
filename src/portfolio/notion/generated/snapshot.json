@@ -6,14 +6,830 @@
 		"capabilities": [
 			"read_content"
 		],
-		"fetchedAt": "2026-11-06T05:10:57.389Z",
+		"fetchedAt": "2026-11-25T15:48:01.787Z",
 		"sourceUrl": null
 	},
 	"availability": "public",
 	"unavailableReason": null,
-	"observedAt": "2026-11-06T05:10:57.389Z",
-	"contentDigest": "sha256:62d9423a90ee74adc6a903641a1d34dbe6d0a42638b515b331144416da25d11f",
+	"observedAt": "2026-11-25T15:48:01.787Z",
+	"contentDigest": "sha256:7a871b757ff036f6cb8c4754d20b06cbc619375fe8bae7fefbb4f503277f9807",
 	"records": [
+		{
+			"pageId": "423d54e3-32c3-817f-bc73-feab36936e70",
+			"slug": "ido-bata-server-bot",
+			"title": "ido-bata-server-bot",
+			"summary": "リアクションによるロール管理や音声チャンネルでのタイムキーパーを備えたDiscordサーバー運営Bot。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "コミュニティ運営で繰り返されるロール管理や時間管理を自動化するために開発した。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "Discordのリアクションに連動したロール付与・解除、音声チャンネルでの進行時間の通知を実装。Node.jsで実行し、Bunで開発時の依存管理・コマンド実行を行う。Docker Composeによる再現可能な実行環境とヘルスチェックを備える。公開リポジトリから導入できるが、一般向けのホスト済みBotとしての提供はここでは主張しない。\n\n### 技術構成\n\nTypeScript / Node.js / Bun / Zod / Discord API / Docker Compose",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ido-bata-server-bot)\n\n### 関連資料・参照ソース\n\n- [README：機能・起動方法](https://github.com/ido-bata/ido-bata-server-bot/blob/main/README.md)\n- [リアクションロールの仕様・設定](https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/reaction-roles/config.ts)\n- [タイムキーパーの仕様・設定](https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/timekeeper/config.ts)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ido-bata-server-bot",
+					"displayOrder": 0
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-25T08:23:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-8102-957e-c56e95cab57b",
+			"slug": "my-web-2026",
+			"title": "my-web-2026",
+			"summary": "制作物・Webツール・個人活動を統合する、Cloudflare Workers上の個人Webプラットフォーム。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "個人サイトを単なる作品一覧ではなく、制作活動と公開ツールを継続的に管理・発信できる基盤にするため、2025年版から刷新した。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "TanStack StartがUIと内部処理を、Honoが外部HTTP境界を担当するモジュラーモノリスを構築。Notion CMSを利用したポートフォリオ公開、Webツール、外部サービスとの連携を一つのWebプラットフォームに統合する。\n\n### 技術構成\n\nTypeScript / React / TanStack Start / Hono / Panda CSS / Cloudflare Workers",
+				"evidence": "- [GitHub](https://github.com/rebuildup/my-web-2026)\n- [Website](https://rebuildup.dev/)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/my-web-2026/blob/main/README.md)\n- [作品一覧](https://rebuildup.dev/portfolio)\n- [アーキテクチャ](https://github.com/rebuildup/my-web-2026/blob/main/docs/architecture.md)\n- [設計判断の記録](https://github.com/rebuildup/my-web-2026/tree/main/docs/adr)\n- [リリース履歴](https://github.com/rebuildup/my-web-2026/releases)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/my-web-2026",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "Website",
+					"url": "https://rebuildup.dev/",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/d7c8151474afb4b7b15c96b0a37602db22cb88b521452765e5ea4f366b03f96d.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "my-web-2026 公開版トップページ（rebuildup.dev）",
+					"caption": "my-web-2026 公開版トップページ（rebuildup.dev）",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/bc7bffb48d60a028c73acad4826f25baff862c43ab853c01f819d41df58f199e.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev）",
+					"caption": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev）",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-813d-8767-c359d8da531c",
+			"slug": "herdr-t3",
+			"title": "herdr-t3",
+			"summary": "herdrのターミナル・AIエージェントセッションをT3 Code由来のUIで操作するGUIクライアント。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "複数のAIコーディングエージェントを利用する際に、ターミナルのセッション管理と視覚的な操作を両立させる。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "herdrをPTY・スクロールバック・エージェント状態の正本として利用し、ブリッジとGUIを分離して構築。T3 Codeのデザインシステムを移植し、macOSとWindows 11を対象とする。T3 CodeおよびOvisの知見・実装を活用した独立プロジェクト。\n\n### 技術構成\n\nTypeScript / React / Electron / Bun / herdr",
+				"evidence": "- [GitHub](https://github.com/rebuildup/herdr-t3)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/herdr-t3/blob/main/README.md)\n- [上流UI：T3 Code](https://github.com/pingdotgg/t3code)\n- [ブリッジの参考実装：Ovis](https://github.com/devswha/ovis)\n- [herdr本体](https://github.com/herdrdev/herdr)\n- [関連プラグイン群](https://github.com/rebuildup/herdr-plugins)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/herdr-t3",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/b321f77bd1686f8310112ed1b45ace91b2348292b29e15fdc9ba9a183f53c0d3.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "herdr-t3 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
+					"caption": "herdr-t3 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/bace0c1bba258ce089c658d3d477e5aa3d839ed6d40ffa6ac93229a4e7eb50ba.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "エージェントの詳細をホバーで即座に確認できる herdr-t3",
+					"caption": "エージェントの詳細をホバーで即座に確認できる herdr-t3",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-814f-86bd-f04133ed7dd6",
+			"slug": "ae-test",
+			"title": "ae-test",
+			"summary": "実際のAfter Effectsを駆動してプラグインやスクリプトを検証する、Playwrightライクなテストフレームワーク。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "After Effects向けソフトウェアの動作確認を手作業だけに依存せず、再現可能なテストとして実行する。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "ae-a8nを利用してテストごとにAfter Effectsセッションを用意し、フィクスチャの操作、値やエラーの検証、レンダリング画像のスナップショット比較を行う。トレースと画像を検証成果物として残す。\n\n### 技術構成\n\nNode.js / Adobe After Effects / ae-a8n",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ae-test)\n- [npm](https://www.npmjs.com/package/@ido-bata/ae-test)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/ido-bata/ae-test/blob/main/README.md)\n- [APIリファレンス](https://github.com/ido-bata/ae-test/blob/main/docs/api.md)\n- [利用例](https://github.com/ido-bata/ae-test/blob/main/examples/consumer/README.md)\n- [実機検証記録](https://github.com/ido-bata/ae-test/blob/main/docs/verification.md)\n- [ae-a8nとの依存関係](https://github.com/ido-bata/ae-test/blob/main/docs/dependency-on-ae-a8n.md)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ae-test",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "npm",
+					"url": "https://www.npmjs.com/package/@ido-bata/ae-test",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/9c46e80c73976cf043c109e55cd25f15ab25b4bf1c54b5701111f927ace2fac0.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-test v1.2.1 の証拠ボード。spec 実行結果・op trace・fake-host render と real-host conformance baseline をまとめて表示。",
+					"caption": "ae-test v1.2.1 の証拠ボード。spec 実行結果・op trace・fake-host render と real-host conformance baseline をまとめて表示。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/a849b965b23d7bba63ef3bf2eaf918064a626fa239fa0f3110f4f06cb99f9f8f.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-test の real-host conformance スナップショット（実 After Effects 26.5.3 の Gaussian Blur レンダリング、64×64）。",
+					"caption": "ae-test の real-host conformance スナップショット（実 After Effects 26.5.3 の Gaussian Blur レンダリング、64×64）。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-814f-86c1-cd2be5fad961",
+			"slug": "ty-plus",
+			"title": "ty-plus",
+			"summary": "After Effects上でプリセットやツールを整理し、作業環境を自分に合わせて構成できるローカルファーストのCEP拡張。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "映像制作で繰り返し使う操作やプリセットに素早くアクセスできるようにし、制作環境を用途に合わせて組み替えられるようにした。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "After Effectsのパネル内でタイルやウィジェットを配置し、プリセットとツールを管理できる。主要機能はオフラインで利用可能。Windows・macOS向けにZXPを配布し、Stable・Beta・Insiderのリリースチャネルを設けている。\n\n### 技術構成\n\nAdobe After Effects / CEP",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ty-plus)\n- [Download](https://github.com/ido-bata/ty-plus/releases/latest)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/ido-bata/ty-plus/blob/main/README.md)\n- [日本語README](https://github.com/ido-bata/ty-plus/blob/main/README.ja.md)\n- [利用ガイド](https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/index.md)\n- [インストール手順](https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/installation/index.md)\n- [実機での公開版検証記録](https://github.com/ido-bata/ty-plus/issues/10)\n- [リリース履歴](https://github.com/ido-bata/ty-plus/releases)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ty-plus",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "Download",
+					"url": "https://github.com/ido-bata/ty-plus/releases/latest",
+					"displayOrder": 1
+				}
+			],
+			"media": [],
+			"editedAt": "2026-11-25T08:23:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-815a-8c74-f7c9c4c4f1b8",
+			"slug": "looker",
+			"title": "Looker",
+			"summary": "スクリーンショット・録画・録音を命名規則と日時に基づいて自動整理するRust製CLI。",
+			"role": "Development",
+			"periodStart": 2025,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "日常的に蓄積される制作記録を手作業で分類・改名する負担を減らすために開発した。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "記録フォルダを解析して日時別のディレクトリ作成、ファイル移動、命名規則の統一、記録種別の再分類を計画・実行する。実行前の計画確認と非対話モードを備え、自動整理タスクにも組み込める。\n\n### 技術構成\n\nRust / CLI",
+				"evidence": "- [GitHub](https://github.com/rebuildup/Looker)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/Looker/blob/master/README.md)\n- [機能一覧](https://github.com/rebuildup/Looker/blob/master/README.md#%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8)\n- [セットアップ](https://github.com/rebuildup/Looker/blob/master/README.md#%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/Looker",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/f875702cfe5dd110c4f8053d888838544994b1085adf9f039069b03c21fc5b20.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "Looker による Record フォルダ整理の適用実行（合成デモデータ）",
+					"caption": "Looker による Record フォルダ整理の適用実行（合成デモデータ）",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/bb39746692f331351900537f91a3916487a02e0ef8a959c797e4e24938e202c5.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "Looker のドライラン（適用前プレビュー）",
+					"caption": "Looker のドライラン（適用前プレビュー）",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-8168-86fc-f520ebb246c3",
+			"slug": "ae-a8n",
+			"title": "ae-a8n",
+			"summary": "Node.jsから実際のAfter Effectsを操作し、プロジェクト編集やフレームレンダリングを自動化するライブラリ。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "After Effects上でしか実行できない処理をプログラムから再現可能にし、プラグイン開発や検証の自動化を支える。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "プロジェクトの読み込み、コンポジション・レイヤー・エフェクトの操作、パラメーター設定、PNGレンダリングをAPIとして扱う。型付きエラーと実行トレースによって処理結果を検証できる。\n\n### 技術構成\n\nNode.js / TypeScript / Adobe After Effects",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ae-a8n)\n- [npm](https://www.npmjs.com/package/@ido-bata/ae-a8n)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/ido-bata/ae-a8n/blob/main/README.md)\n- [Quickstart](https://github.com/ido-bata/ae-a8n/blob/main/docs/quickstart.md)\n- [セッション管理](https://github.com/ido-bata/ae-a8n/blob/main/docs/sessions.md)\n- [実機検証記録](https://github.com/ido-bata/ae-a8n/blob/main/docs/verification.md)\n- [レンダリング比較の実装例](https://github.com/ido-bata/ae-a8n/blob/main/examples/render-compare.ts)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ae-a8n",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "npm",
+					"url": "https://www.npmjs.com/package/@ido-bata/ae-a8n",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/1dc734dfc20c55bf722656438ed3697b115d4cc440b359395e856c4b4a0136cb.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-a8n — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 実機で効果を確認。",
+					"caption": "ae-a8n — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 実機で効果を確認。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/97a389ca5002539dc27fed309180ab320195c7e7c5f3acdc93c992536f7a852c.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-a8n の実機レンダー出力（renderFrame(0)、640×360 PNG）。",
+					"caption": "ae-a8n の実機レンダー出力（renderFrame(0)、640×360 PNG）。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-8168-a9c7-c794e5e5b736",
+			"slug": "herdr-plugins",
+			"title": "herdr-plugins",
+			"summary": "AIコーディングエージェント向けターミナルワークスペース管理ツールherdrの拡張プラグイン群。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "herdr本体にない機能を独立したプラグインとして追加し、人間とエージェントの双方から利用できるようにする。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "公式プラグインインストーラーによる個別導入に対応。作業中のエージェントを整理するinboxなど、TUI・CLI・外部クライアントから利用できる機能をバージョン管理された契約で提供する。\n\n### 技術構成\n\nherdr / CLI / Bun",
+				"evidence": "- [GitHub](https://github.com/rebuildup/herdr-plugins)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/herdr-plugins/blob/main/README.md)\n- [herdr本体](https://github.com/herdrdev/herdr)\n- [inboxプラグイン](https://github.com/rebuildup/herdr-plugins/tree/main/plugins/inbox)\n- [関連GUIクライアント](https://github.com/rebuildup/herdr-t3)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/herdr-plugins",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/5ea6bf6dce15d5f20f8f3277eac3526fb500736a797fec32e86b1d818425ed5d.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "rebuildup.inbox — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
+					"caption": "rebuildup.inbox — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/b72f53e1bd089e3e6e0f8fca02f9c757416c1fcf94999506d96d7d29b966c23f.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "herdr TUI のサイドバー。agent 一覧に settled / snoozed バッジが表示されている。",
+					"caption": "herdr TUI のサイドバー。agent 一覧に settled / snoozed バッジが表示されている。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-8184-a178-c75c1f105fb4",
+			"slug": "ube-kosen-map",
+			"title": "宇部高専キャンパスマップ",
+			"summary": "宇部高専の構内を2D地図と3Dモデルで探索できるインタラクティブなキャンパスマップ。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "校内の建物やフロア、設備の位置関係を直感的に把握できるようにする。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "2D構内図とThree.jsによる3Dキャンパスモデルを切り替えられる。図面座標から建物・部屋ポリゴン・地形を生成し、建物選択、フロア分離、部屋選択、推定面積の表示を実装。公開制限のある内部情報は表示しない。\n\n### 技術構成\n\nReact / TypeScript / Vite / Tailwind CSS / Three.js",
+				"evidence": "- [GitHub](https://github.com/rebuildup/ube-kosen-map)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/ube-kosen-map/blob/main/README.md)\n- [地図データの由来・公開範囲](https://github.com/rebuildup/ube-kosen-map/blob/main/docs/data-provenance.md)\n- [3Dキャンパスの表示例](https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-01-campus.png)\n- [フロア分離の表示例](https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-03-floor.png)\n- [実機操作デモ](https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/campus3d-demo.gif)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/ube-kosen-map",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/0b8ca6a5e6cebf79c5f57e05ed65cccbfe29c8e2aafe9faa5aaaaf3d318c3992.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "3Dビューでキャンパス全体を俯瞰。地形・建物・線画が立体表示される",
+					"caption": "3Dビューでキャンパス全体を俯瞰。地形・建物・線画が立体表示される",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/07234c1e9060e361f38ccbfaf434e6693f88d1a8884c29f6c3c5d8799d2357d4.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "フロアチップで1階だけを取り出すと、平面図由来の部屋ポリゴンと廊下の配置が見える",
+					"caption": "フロアチップで1階だけを取り出すと、平面図由来の部屋ポリゴンと廊下の配置が見える",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/708ad2d4c39f7d566b61bdc45fcc6879374926122059402702e2e42e39e0c7a0.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "構内図をそのまま表示する軽量な2Dモード",
+					"caption": "構内図をそのまま表示する軽量な2Dモード",
+					"isCover": false,
+					"displayOrder": 2,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-819c-a06d-d520ea4547fa",
+			"slug": "ido-bata-website",
+			"title": "ido-bata Website",
+			"summary": "ido-bataのソフトウェアや活動を紹介する公式Webサイト。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "After Effects向けの公開ソフトウェアや開発活動にアクセスできる公式の入口を用意する。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "Next.js App RouterとPanda CSSでサイトを構築。静的エクスポートした成果物をGitHub Pagesに配信し、GitHub Actionsで型検査・ビルド・デプロイを自動化する。\n\n### 技術構成\n\nNext.js / React / TypeScript / Panda CSS / Bun / GitHub Pages",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ido-bata.github.io)\n- [Website](https://ido-bata.github.io/)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/ido-bata/ido-bata.github.io/blob/main/README.md)\n- [ido-bataの公開リポジトリ](https://github.com/ido-bata)\n- [アーキテクチャ](https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/architecture.md)\n- [デザイン基盤：Panda CSS](https://panda-css.com/)\n- [開発・配信手順](https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/development.md)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ido-bata.github.io",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "Website",
+					"url": "https://ido-bata.github.io/",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/93757a59d3a272fab5060fab666fac3f96a053b8e998d54330717831ffa23715.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ido-bata 公式サイト（https://ido-bata.github.io/）のトップページ",
+					"caption": "ido-bata 公式サイト（https://ido-bata.github.io/）のトップページ",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-81b5-a763-e69aa205ec36",
+			"slug": "ac-test",
+			"title": "ac-test",
+			"summary": "AtCoderのサンプル取得と追加テストケース生成をcargo-competeのテスト形式に統合する補助ツール。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "競技プログラミングにおいてサンプルだけでなく境界値やストレス入力を手軽に検証できるようにする。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "問題ページからサンプル入出力を取得し、境界値・ストレス入力と合わせてtestcasesのYAMLに保存する。cargo compete testでまとめて実行できる形に整える。\n\n### 技術構成\n\nAtCoder / cargo-compete / YAML / CLI",
+				"evidence": "- [GitHub](https://github.com/rebuildup/ac-test)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/ac-test/blob/master/README.md)\n- [配置・利用方法](https://github.com/rebuildup/ac-test/blob/master/README.md#%E9%85%8D%E7%BD%AE)\n- [AtCoder](https://atcoder.jp/)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/ac-test",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/68e61e9cf17c3fcb8ff07619dd26f95fcd11001f81186ad78b298b50637c9c31.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "AtCoder の問題ページからサンプルを自動取得し、cargo-compete の testcases/a.yml に保存。cargo compete test で全ケース Accepted を確認。",
+					"caption": "AtCoder の問題ページからサンプルを自動取得し、cargo-compete の testcases/a.yml に保存。cargo compete test で全ケース Accepted を確認。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/ca20751a8a539950cb234adab00960c2e0bc056f5d46e6287e72e2e7a40ff22b.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "問題ページ右下に表示される ac-test バッジの実スクリーンショット（abc460_a）。",
+					"caption": "問題ページ右下に表示される ac-test バッジの実スクリーンショット（abc460_a）。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-81ca-bb41-f76de79fc285",
+			"slug": "ae-devtools",
+			"title": "ae-devtools",
+			"summary": "After Effectsのスクリプト・拡張開発をIDEとAIコーディングエージェントから扱うための開発基盤。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "After Effects固有APIの型情報、実行時状態の取得、実機での実行と結果確認など、通常のWeb開発と比較して摩擦の大きい開発工程を改善する。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "VS CodeとAIコーディングエージェントを対象に、After Effectsの開発・実行・診断を扱う基盤を構築。実行中のプロジェクトやレイヤーの状態を開発側で扱い、コードの作成から検証までのフィードバックループ短縮を目指す。\n\n### 技術構成\n\nAdobe After Effects / ExtendScript / VS Code / MCP",
+				"evidence": "- [GitHub](https://github.com/ido-bata/ae-devtools)\n- [npm](https://www.npmjs.com/package/@ido-bata/ae-devtools-cli)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/ido-bata/ae-devtools/blob/main/README.md)\n- [開発基盤の設計方針](https://github.com/ido-bata/ae-devtools/blob/main/docs/vision.md)\n- [CLIの利用方法](https://github.com/ido-bata/ae-devtools/blob/main/packages/ae-devtools-cli/README.md)\n- [関連ライブラリ ae-a8n](https://github.com/ido-bata/ae-a8n)\n- [関連テスト基盤 ae-test](https://github.com/ido-bata/ae-test)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/ido-bata/ae-devtools",
+					"displayOrder": 0
+				},
+				{
+					"kind": "other",
+					"label": "npm",
+					"url": "https://www.npmjs.com/package/@ido-bata/ae-devtools-cli",
+					"displayOrder": 1
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/e81fac0f45167a8eae1bd6ef4b411e437a8659099df47a4b14beb6794cecaeeb.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-devtools — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
+					"caption": "ae-devtools — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/17a537a9f3c15e0e87d71953e41e2d04e7f13881583787e73b7dad25b85911aa.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "ae-devtools の実機レンダー出力（saveFrameToPng、640×360 PNG）。",
+					"caption": "ae-devtools の実機レンダー出力（saveFrameToPng、640×360 PNG）。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-81ce-8d5b-c1394c338833",
+			"slug": "flashbeat-v02",
+			"title": "FlashBeat v0.2",
+			"summary": "YouTube楽曲に合わせて8レーンのキーボード入力を判定する、Unity製リズムゲームの2026年版。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "初期版FlashBeatの制作経験をもとに、音楽ゲームとしての体験と展示運用のための機能を発展させる。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "Unity 6とC#によるゲーム本体に加え、フェスティバル向けWebスタジオを構築。楽曲・譜面を扱うWebとゲーム本体の連携をOpenAPI・JSON Schemaの契約で管理し、Windows・macOSを対象とする。\n\n### 技術構成\n\nUnity 6 / C# / React / Cloudflare Workers / OpenAPI / JSON Schema",
+				"evidence": "- [GitHub](https://github.com/rebuildup/FlashBeat)\n- 初期版: FlashBeat\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/FlashBeat/blob/main/README.md)\n- [ゲームランタイムと譜面データの設計](https://github.com/rebuildup/FlashBeat/blob/main/docs/architecture/game-runtime.md)\n- [展示・運用資料](https://github.com/rebuildup/FlashBeat/blob/main/docs/operations/README.md)\n- [リポジトリ構成](https://github.com/rebuildup/FlashBeat/blob/main/README.md#%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E6%A7%8B%E6%88%90)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/FlashBeat",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/61836368d33dc5629189078464fbd133e5160ad6136d55b2e300bec975ba1638.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "FlashBeat — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
+					"caption": "FlashBeat — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/fd65f9eb0802e8557337a48d53ee98175334df75da7496a795d76477206c6267.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "FlashBeat の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
+					"caption": "FlashBeat の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T15:46:00.000Z"
+		},
+		{
+			"pageId": "423d54e3-32c3-81d0-a70b-fb0d30ff306a",
+			"slug": "react-compiler-marker-cli",
+			"title": "React Compiler Marker CLI",
+			"summary": "React Compilerによるコンポーネント・関数の最適化状況を確認するCLI。",
+			"role": "Development",
+			"periodStart": 2026,
+			"periodEnd": null,
+			"periodLabel": null,
+			"facets": [
+				"develop"
+			],
+			"technologies": [],
+			"status": "published",
+			"visibility": "public",
+			"pinned": false,
+			"displayOrder": 0,
+			"sections": {
+				"motivation": "React Compilerの最適化がどの箇所で成功し、どこで失敗したかを開発時に可視化する。",
+				"architecture": null,
+				"constraints": null,
+				"implementation": "ソースファイルを対象にメモ化の成功・失敗を表示するCLIを実装。ローカルでビルドしてrcmコマンドとして利用できる。\n\n### 技術構成\n\nReact Compiler / CLI / Node.js",
+				"evidence": "- [GitHub](https://github.com/rebuildup/react-compiler-marker-cli)\n\n### 関連資料・参照ソース\n\n- [README：機能・利用方法](https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md)\n- [CLIの導入方法](https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md#installation)",
+				"retrospective": null
+			},
+			"links": [
+				{
+					"kind": "repo",
+					"label": "GitHub",
+					"url": "https://github.com/rebuildup/react-compiler-marker-cli",
+					"displayOrder": 0
+				}
+			],
+			"media": [
+				{
+					"r2Key": "portfolio/notion/19fcea0e907f897cf8573dba06142bfa76a3a52224e55ce44ae69e934b12831b.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "rcm check でコンポーネントごとの React Compiler 最適化判定（✓/✗ + 理由）を一覧表示。--fail で CI 利用も可能。",
+					"caption": "rcm check でコンポーネントごとの React Compiler 最適化判定（✓/✗ + 理由）を一覧表示。--fail で CI 利用も可能。",
+					"isCover": true,
+					"displayOrder": 0,
+					"rights": "unrecorded"
+				},
+				{
+					"r2Key": "portfolio/notion/c88d170b1fb6e8b622044c07e58927b88295169e0af7e244606dd893c55eab48.png",
+					"contentType": "image/png",
+					"width": null,
+					"height": null,
+					"alt": "--compact は LLM/エージェント消費向けの1行サマリ形式。",
+					"caption": "--compact は LLM/エージェント消費向けの1行サマリ形式。",
+					"isCover": false,
+					"displayOrder": 1,
+					"rights": "unrecorded"
+				}
+			],
+			"editedAt": "2026-11-25T13:45:00.000Z"
+		},
 		{
 			"pageId": "40ed54e3-32c3-81ec-bfc2-db919a5664f7",
 			"slug": "flashbeat-bgm",
@@ -78,7 +894,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_design/status/1895423219542466819",
+					"url": "https://x.com/361do_design/status/1895423219542466819",
 					"displayOrder": 1
 				},
 				{
@@ -126,7 +942,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1790691816637157444",
+					"url": "https://x.com/361do_sleep/status/1790691816637157444",
 					"displayOrder": 1
 				},
 				{
@@ -239,7 +1055,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_design/status/1905491397169611125",
+					"url": "https://x.com/361do_design/status/1905491397169611125",
 					"displayOrder": 0
 				}
 			],
@@ -298,13 +1114,13 @@
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://youtu.be/-/_uzbG410Cg",
+					"url": "https://youtu.be/-_uzbG410Cg",
 					"displayOrder": 0
 				},
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1877667236900479412",
+					"url": "https://x.com/361do_sleep/status/1877667236900479412",
 					"displayOrder": 1
 				},
 				{
@@ -352,7 +1168,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1901612081641910556",
+					"url": "https://x.com/361do_sleep/status/1901612081641910556",
 					"displayOrder": 1
 				}
 			],
@@ -395,13 +1211,13 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1844685698991067303",
+					"url": "https://x.com/361do_sleep/status/1844685698991067303",
 					"displayOrder": 1
 				},
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://www.youtube.com/watch?v=O\\_VRIuKM9gw",
+					"url": "https://www.youtube.com/watch?v=O_VRIuKM9gw",
 					"displayOrder": 2
 				}
 			],
@@ -443,7 +1259,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1882412041526477277",
+					"url": "https://x.com/361do_sleep/status/1882412041526477277",
 					"displayOrder": 1
 				}
 			],
@@ -559,7 +1375,7 @@
 				{
 					"kind": "repo",
 					"label": "github",
-					"url": "https://github.com/rebuildup/Ae/_RGBDelay",
+					"url": "https://github.com/rebuildup/Ae_RGBDelay",
 					"displayOrder": 1
 				}
 			],
@@ -1050,7 +1866,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1878220390595453260",
+					"url": "https://x.com/361do_sleep/status/1878220390595453260",
 					"displayOrder": 1
 				}
 			],
@@ -1397,7 +2213,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1840369939967840508",
+					"url": "https://x.com/361do_sleep/status/1840369939967840508",
 					"displayOrder": 1
 				},
 				{
@@ -1598,13 +2414,13 @@
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://youtube.com/shorts/o9GxF/_FLSQA",
+					"url": "https://youtube.com/shorts/o9GxF_FLSQA",
 					"displayOrder": 0
 				},
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1832734742124609779",
+					"url": "https://x.com/361do_sleep/status/1832734742124609779",
 					"displayOrder": 1
 				}
 			],
@@ -1646,7 +2462,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1837100915419140131",
+					"url": "https://x.com/361do_sleep/status/1837100915419140131",
 					"displayOrder": 1
 				},
 				{
@@ -1694,7 +2510,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1850405797592973597",
+					"url": "https://x.com/361do_sleep/status/1850405797592973597",
 					"displayOrder": 1
 				},
 				{
@@ -1742,7 +2558,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1852638050976751749",
+					"url": "https://x.com/361do_sleep/status/1852638050976751749",
 					"displayOrder": 1
 				},
 				{
@@ -1784,7 +2600,7 @@
 				{
 					"kind": "repo",
 					"label": "github",
-					"url": "https://github.com/rebuildup/M5/_Clock",
+					"url": "https://github.com/rebuildup/M5_Clock",
 					"displayOrder": 0
 				}
 			],
@@ -1888,7 +2704,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1924057386731655327",
+					"url": "https://x.com/361do_sleep/status/1924057386731655327",
 					"displayOrder": 2
 				}
 			],
@@ -1942,7 +2758,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1873992217502900284",
+					"url": "https://x.com/361do_sleep/status/1873992217502900284",
 					"displayOrder": 1
 				},
 				{
@@ -1990,7 +2806,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1845653703463989526",
+					"url": "https://x.com/361do_sleep/status/1845653703463989526",
 					"displayOrder": 1
 				},
 				{
@@ -2525,13 +3341,13 @@
 				{
 					"kind": "other",
 					"label": "X投稿",
-					"url": "https://x.com/361do/_design/status/1984262322828067072",
+					"url": "https://x.com/361do_design/status/1984262322828067072",
 					"displayOrder": 1
 				},
 				{
 					"kind": "other",
 					"label": "蝶羽ヘレナ 様",
-					"url": "https://x.com/morpho/_88",
+					"url": "https://x.com/morpho_88",
 					"displayOrder": 2
 				}
 			],
@@ -2651,7 +3467,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_design/status/1893620585491792320",
+					"url": "https://x.com/361do_design/status/1893620585491792320",
 					"displayOrder": 1
 				},
 				{
@@ -2693,7 +3509,7 @@
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://youtu.be/szUAV/_gMLQY",
+					"url": "https://youtu.be/szUAV_gMLQY",
 					"displayOrder": 0
 				},
 				{
@@ -2857,13 +3673,13 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1838567775390044294",
+					"url": "https://x.com/361do_sleep/status/1838567775390044294",
 					"displayOrder": 1
 				},
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://www.youtube.com/watch?v=llftGyEqH\\_4",
+					"url": "https://www.youtube.com/watch?v=llftGyEqH_4",
 					"displayOrder": 2
 				}
 			],
@@ -2905,7 +3721,7 @@
 				{
 					"kind": "other",
 					"label": "X投稿",
-					"url": "https://x.com/361do/_design/status/1974102198364876878",
+					"url": "https://x.com/361do_design/status/1974102198364876878",
 					"displayOrder": 1
 				},
 				{
@@ -3055,13 +3871,13 @@
 				{
 					"kind": "repo",
 					"label": "github",
-					"url": "https://github.com/rebuildup/Ae/_FoldLayers",
+					"url": "https://github.com/rebuildup/Ae_FoldLayers",
 					"displayOrder": 1
 				},
 				{
 					"kind": "video",
 					"label": "youtube",
-					"url": "https://www.youtube.com/watch?v=7Qo75j\\_1X6Y",
+					"url": "https://www.youtube.com/watch?v=7Qo75j_1X6Y",
 					"displayOrder": 2
 				}
 			],
@@ -3204,7 +4020,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1815006753144381874",
+					"url": "https://x.com/361do_sleep/status/1815006753144381874",
 					"displayOrder": 1
 				}
 			],
@@ -3240,7 +4056,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_design/status/1911047618324795838",
+					"url": "https://x.com/361do_design/status/1911047618324795838",
 					"displayOrder": 0
 				}
 			],
@@ -3295,13 +4111,13 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_design/status/1904339929557266477",
+					"url": "https://x.com/361do_design/status/1904339929557266477",
 					"displayOrder": 1
 				},
 				{
 					"kind": "repo",
 					"label": null,
-					"url": "https://github.com/rebuildup/CodeType/_p5",
+					"url": "https://github.com/rebuildup/CodeType_p5",
 					"displayOrder": 2
 				}
 			],
@@ -3433,7 +4249,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/ube/_k/_cclub",
+					"url": "https://x.com/ube_k_cclub",
 					"displayOrder": 0
 				}
 			],
@@ -3481,7 +4297,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/ube/_k/_cclub",
+					"url": "https://x.com/ube_k_cclub",
 					"displayOrder": 0
 				}
 			],
@@ -3535,7 +4351,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1923332601713918423",
+					"url": "https://x.com/361do_sleep/status/1923332601713918423",
 					"displayOrder": 1
 				}
 			],
@@ -3672,7 +4488,7 @@
 				{
 					"kind": "video",
 					"label": null,
-					"url": "https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL",
+					"url": "https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL",
 					"displayOrder": 0
 				}
 			],
@@ -3781,7 +4597,7 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1837100915419140131",
+					"url": "https://x.com/361do_sleep/status/1837100915419140131",
 					"displayOrder": 1
 				},
 				{
@@ -3837,13 +4653,13 @@
 				{
 					"kind": "other",
 					"label": null,
-					"url": "https://x.com/361do/_sleep/status/1918615732939575763",
+					"url": "https://x.com/361do_sleep/status/1918615732939575763",
 					"displayOrder": 2
 				}
 			],
 			"media": [
 				{
-					"r2Key": "portfolio/multislicer/MultiSlicer/media_1762437621694_rw8hkaw04-20250503_multi.jpg",
+					"r2Key": "portfolio/multislicer/20250503_multi.jpg",
 					"contentType": "image/jpeg",
 					"width": null,
 					"height": null,
@@ -3928,7 +4744,7 @@
 				{
 					"kind": "other",
 					"label": "X",
-					"url": "https://x.com/361do/_sleep/status/1955248758243070349",
+					"url": "https://x.com/361do_sleep/status/1955248758243070349",
 					"displayOrder": 0
 				}
 			],

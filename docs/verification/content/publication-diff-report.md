@@ -11,12 +11,12 @@
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 24 |
 | Publicly reachable surfaces | 17 |
-| Sitemap target URLs | 66 |
-| Publicly reachable URLs (surface + Static Assets) | 91 |
-| External hosts | 62 |
+| Sitemap target URLs | 80 |
+| Publicly reachable URLs (surface + Static Assets) | 105 |
+| External hosts | 65 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -25,6 +25,10 @@
 - `/contact`
 - `/design-system`
 - `/portfolio`
+- `/portfolio/ac-test`
+- `/portfolio/ae-a8n`
+- `/portfolio/ae-devtools`
+- `/portfolio/ae-test`
 - `/portfolio/alice`
 - `/portfolio/aulymo-v01`
 - `/portfolio/aulymo-v02`
@@ -42,10 +46,15 @@
 - `/portfolio/flashbeat`
 - `/portfolio/flashbeat-bgm`
 - `/portfolio/flashbeat-op`
+- `/portfolio/flashbeat-v02`
 - `/portfolio/foldlayers`
+- `/portfolio/herdr-plugins`
+- `/portfolio/herdr-t3`
 - `/portfolio/homura`
 - `/portfolio/hurahu`
 - `/portfolio/icon-tegaki-anime`
+- `/portfolio/ido-bata-server-bot`
+- `/portfolio/ido-bata-website`
 - `/portfolio/isogasii-demo`
 - `/portfolio/isogasii-editor`
 - `/portfolio/kaben`
@@ -55,6 +64,7 @@
 - `/portfolio/kosen-procon-pv`
 - `/portfolio/lhaplus`
 - `/portfolio/liteglow`
+- `/portfolio/looker`
 - `/portfolio/m5-clock`
 - `/portfolio/mawaru`
 - `/portfolio/meikai`
@@ -63,6 +73,7 @@
 - `/portfolio/my-first-blender`
 - `/portfolio/my-sns-icon`
 - `/portfolio/my-web-2025`
+- `/portfolio/my-web-2026`
 - `/portfolio/netu`
 - `/portfolio/nulloto`
 - `/portfolio/oneself`
@@ -71,6 +82,7 @@
 - `/portfolio/propose`
 - `/portfolio/prototype`
 - `/portfolio/prototype-brochure`
+- `/portfolio/react-compiler-marker-cli`
 - `/portfolio/red-black-design`
 - `/portfolio/reel-2024`
 - `/portfolio/reel-2025`
@@ -82,6 +94,8 @@
 - `/portfolio/stretch-v02`
 - `/portfolio/tegaki-anime`
 - `/portfolio/tokimeki`
+- `/portfolio/ty-plus`
+- `/portfolio/ube-kosen-map`
 - `/portfolio/ugoita`
 - `/portfolio/usoto`
 - `/portfolio/yukikate`
@@ -105,6 +119,10 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/links`
 - `/now`
 - `/portfolio`
+- `/portfolio/ac-test`
+- `/portfolio/ae-a8n`
+- `/portfolio/ae-devtools`
+- `/portfolio/ae-test`
 - `/portfolio/alice`
 - `/portfolio/aulymo-v01`
 - `/portfolio/aulymo-v02`
@@ -122,10 +140,15 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/flashbeat`
 - `/portfolio/flashbeat-bgm`
 - `/portfolio/flashbeat-op`
+- `/portfolio/flashbeat-v02`
 - `/portfolio/foldlayers`
+- `/portfolio/herdr-plugins`
+- `/portfolio/herdr-t3`
 - `/portfolio/homura`
 - `/portfolio/hurahu`
 - `/portfolio/icon-tegaki-anime`
+- `/portfolio/ido-bata-server-bot`
+- `/portfolio/ido-bata-website`
 - `/portfolio/isogasii-demo`
 - `/portfolio/isogasii-editor`
 - `/portfolio/kaben`
@@ -135,6 +158,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/kosen-procon-pv`
 - `/portfolio/lhaplus`
 - `/portfolio/liteglow`
+- `/portfolio/looker`
 - `/portfolio/m5-clock`
 - `/portfolio/mawaru`
 - `/portfolio/meikai`
@@ -143,6 +167,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/my-first-blender`
 - `/portfolio/my-sns-icon`
 - `/portfolio/my-web-2025`
+- `/portfolio/my-web-2026`
 - `/portfolio/netu`
 - `/portfolio/nulloto`
 - `/portfolio/oneself`
@@ -151,6 +176,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/propose`
 - `/portfolio/prototype`
 - `/portfolio/prototype-brochure`
+- `/portfolio/react-compiler-marker-cli`
 - `/portfolio/red-black-design`
 - `/portfolio/reel-2024`
 - `/portfolio/reel-2025`
@@ -162,6 +188,8 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/stretch-v02`
 - `/portfolio/tegaki-anime`
 - `/portfolio/tokimeki`
+- `/portfolio/ty-plus`
+- `/portfolio/ube-kosen-map`
 - `/portfolio/ugoita`
 - `/portfolio/usoto`
 - `/portfolio/yukikate`
@@ -271,6 +299,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://api.github.com/graphql` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://api.github.com/search/commits?q=author` | `api.github.com` | external | `src/vendor/github-readme-stats-fast/fetchers/stats.ts` |
+| `https://atcoder.jp` | `atcoder.jp` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://atcoder.jp/users/rebuildup` | `atcoder.jp` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://bsky.app/profile/361do.bsky.social` | `bsky.app` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://cdn.jsdelivr.net` | `cdn.jsdelivr.net` | external | `src/tools/manifest.json` |
@@ -522,22 +551,65 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com` | `github.com` | external | `src/home/activity/snapshot.ts`, `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
 | `https://github.com/Pranesh-2005/github-readme-stats-fast.git` | `github.com` | external | `src/vendor/github-readme-stats-fast/PROVENANCE.md` |
+| `https://github.com/devswha/ovis` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/googlefonts/zen-kakugothic` | `github.com` | external | `public/fonts/zen-kaku-gothic-new-LICENSE.txt` |
+| `https://github.com/herdrdev/herdr` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n/blob/main/docs/quickstart.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n/blob/main/docs/sessions.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n/blob/main/docs/verification.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-a8n/blob/main/examples/render-compare.ts` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-devtools` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-devtools/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-devtools/blob/main/docs/vision.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-devtools/blob/main/packages/ae-devtools-cli/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test/blob/main/docs/api.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test/blob/main/docs/dependency-on-ae-a8n.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test/blob/main/docs/verification.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ae-test/blob/main/examples/consumer/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata-server-bot` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata-server-bot/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/reaction-roles/config.ts` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/timekeeper/config.ts` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata.github.io` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata.github.io/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/architecture.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/development.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/blob/main/README.ja.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/index.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/installation/index.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/issues/10` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/releases` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/ido-bata/ty-plus/releases/latest` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/pingdotgg/t3code` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/about/links.ts`, `src/contact/channels.json`, `src/home/guide/ledger.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
-| `https://github.com/rebuildup/Ae/_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/Ae/_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_FoldLayers` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_MultiSlicer` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_RGBDelay` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/Ae_sep_color` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/CodeType/_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/CodeType_p5` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/FlashBeat` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat/blob/main/README.md#%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E6%A7%8B%E6%88%90` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat/blob/main/docs/architecture/game-runtime.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/FlashBeat/blob/main/docs/operations/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/LiteGlow` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/M5/_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Looker` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Looker/blob/master/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Looker/blob/master/README.md#%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/Looker/blob/master/README.md#%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/M5_Clock` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://github.com/rebuildup/ac-test` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ac-test/blob/master/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ac-test/blob/master/README.md#%E9%85%8D%E7%BD%AE` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/atcoder-kit` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
@@ -556,19 +628,31 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/example-repo` | `github.com` | external | `src/home/composer.stories.tsx` |
+| `https://github.com/rebuildup/herdr-plugins` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/herdr-plugins/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/herdr-plugins/tree/main/plugins/inbox` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/herdr-t3` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/herdr-t3/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/key-map-kanata` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/kosen-fes-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/kosen-fes-2025/blob/main/README.txt` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2025` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/activity/fixtures.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/about/career.ts`, `src/about/skills.ts`, `src/activity/fixtures.ts`, `src/contact/channels.json`, `src/home/activity/github-activity.json`, `src/home/composer.stories.tsx`, `src/home/footer.tsx`, `src/personal/engagement/Engagement.preview.ts`, `src/personal/manifesto/Manifesto.preview.ts`, `src/portfolio/notion/generated/snapshot.json`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main` | `github.com` | external | `src/routes/stack/stack.ts` |
+| `https://github.com/rebuildup/my-web-2026/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/my-web-2026/blob/main/docs/architecture.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/issues` | `github.com` | external | `src/home/status/incidents.ts`, `src/home/status/tiles.stories.tsx` |
+| `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/my-web-2026/tree/main` | `github.com` | external | `src/routes/stack/stack.ts` |
+| `https://github.com/rebuildup/my-web-2026/tree/main/docs/adr` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/home/activity/github-activity.json`, `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/procon-2026` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/home/activity/github-activity.json`, `src/personal/engagement/Engagement.preview.ts`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/react-compiler-marker-cli` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md#installation` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/readmark` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/rebuildup` | `github.com` | external | `src/home/activity/github-activity.json` |
@@ -598,13 +682,20 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-svg2tsx.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-text-counter` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
-| `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json` |
+| `https://github.com/rebuildup/ube-kosen-map` | `github.com` | external | `src/home/activity/github-activity.json`, `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ube-kosen-map/blob/main/README.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ube-kosen-map/blob/main/docs/data-provenance.md` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/campus3d-demo.gif` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-01-campus.png` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-03-floor.png` | `github.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://github.com/rebuildup/writing-skills` | `github.com` | external | `src/home/activity/github-activity.json` |
 | `https://github.com/tastile/tastile-android` | `github.com` | external | `src/activity/fixtures.ts` |
 | `https://gitty-code.com/user/rebuildup` | `gitty-code.com` | external | `src/about/links.ts` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
+| `https://ido-bata.github.io` | `ido-bata.github.io` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://note.com/alert_toad4443` | `note.com` | external | `src/about/links.ts` |
 | `https://osu.ppy.sh/users/36986836` | `osu.ppy.sh` | external | `src/about/links.ts` |
+| `https://panda-css.com` | `panda-css.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://pomodoro.yusuke-kim.com` | `pomodoro.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://prototype.yusuke-kim.com` | `prototype.yusuke-kim.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://qiita.com/samuido` | `qiita.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
@@ -641,6 +732,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf` | `www.mlit.go.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.naprock.jp/intprocon` | `www.naprock.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.nicovideo.jp/watch/sm44678796` | `www.nicovideo.jp` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.npmjs.com/package/@ido-bata/ae-a8n` | `www.npmjs.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.npmjs.com/package/@ido-bata/ae-devtools-cli` | `www.npmjs.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://www.npmjs.com/package/@ido-bata/ae-test` | `www.npmjs.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html`, `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.reactbits.dev/components/dock` | `www.reactbits.dev` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
@@ -660,7 +754,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.youtube.com/watch?v=-_PKhPMXMDY` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=6xtoFf0h8x4` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=73KhhTBE3Mk` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://www.youtube.com/watch?v=7Qo75j` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=7Qo75j_1X6Y` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=8erghVxQKgg` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=9pNjS_Ahfjc` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -676,7 +769,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.youtube.com/watch?v=LW1KBCgvEPQ` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=MDcfP97NVpY` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=NjRVa41kHBs` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://www.youtube.com/watch?v=O` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=O_VRIuKM9gw` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=R1nFXZB9lG8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=RGKhatEchrI` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -693,7 +785,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.youtube.com/watch?v=c02NG9I1iO8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=easT0DZDAs8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=j-Ja7kV_S-I` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://www.youtube.com/watch?v=llftGyEqH` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=llftGyEqH_4` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=o4yKnfV2YVs` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www.youtube.com/watch?v=oqfjwzVYDc8` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -706,38 +797,14 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.youtube.com/watch?v=yr2bwYk0wAk` | `www.youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://www2.ube-k.ac.jp/fes2025` | `www2.ube-k.ac.jp` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1974102198364876878` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_design/status/1984262322828067072` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1815006753144381874` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1832734742124609779` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1837100915419140131` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1838567775390044294` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1840369939967840508` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1844685698991067303` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1845653703463989526` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1850405797592973597` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1852638050976751749` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1873992217502900284` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1877667236900479412` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1878220390595453260` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1882412041526477277` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1901612081641910556` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1918615732939575763` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/361do/_sleep/status/1955248758243070349` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design` | `x.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://x.com/361do_design/status/1893620585491792320` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1895423219542466819` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1904339929557266477` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1905491397169611125` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/1911047618324795838` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1974102198364876878` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_design/status/1984262322828067072` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_design/status/2079195581831156023?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep` | `x.com` | external | `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
 | `https://x.com/361do_sleep/status/1790691816637157444` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -758,6 +825,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/361do_sleep/status/1918615732939575763` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1923332601713918423` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1924057386731655327` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
+| `https://x.com/361do_sleep/status/1955248758243070349` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/1995074984331645045/video/1` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/2000158683737768405?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/361do_sleep/status/2017669205781581891?s=20` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -767,7 +835,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/complexivetunes/status/1842760522137297009` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/darupoi_` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/markkuwu` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/morpho/_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/morpho_88` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/piyopiyo2424V` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts`, `src/about/links.ts`, `src/personal/handle-map/HandleMap.preview.ts` |
@@ -775,11 +842,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://x.com/snzkuo` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/susuyo_soot` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/takeshi__310` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://x.com/ube/_k/_cclub` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/ube_k_cclub` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://x.com/watasuke1024` | `x.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/-` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://youtu.be/-/_uzbG410Cg` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/-_uzbG410Cg` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/6vkz64v4IRc?si=xe-e1ajaHeYMn35l` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/6xtoFf0h8x4` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
@@ -802,17 +867,14 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://youtu.be/aSjeoaoBKPc` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/ay5stCLI9v4` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/c02NG9I1iO8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/o4yKnfV2YVs` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/oqfjwzVYDc8` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/qwlAC0qPMXI` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/syScwjPw57U` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://youtu.be/szUAV/_gMLQY` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/szUAV_gMLQY` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/vcUXmDwI7PQ` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtu.be/yr2bwYk0wAk` | `youtu.be` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://youtube.com/shorts/o9GxF/_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtube.com/shorts/o9GxF_FLSQA` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://youtube.com/shorts/rq2WlOQa9zE` | `youtube.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json`, `src/personal/handle-map/HandleMap.preview.ts` |
@@ -821,5 +883,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

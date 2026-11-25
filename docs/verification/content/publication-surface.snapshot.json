@@ -286,6 +286,10 @@
 					"src/routes/portfolio/$slug.tsx"
 				],
 				"urls": [
+					"/portfolio/ac-test",
+					"/portfolio/ae-a8n",
+					"/portfolio/ae-devtools",
+					"/portfolio/ae-test",
 					"/portfolio/alice",
 					"/portfolio/aulymo-v01",
 					"/portfolio/aulymo-v02",
@@ -303,10 +307,15 @@
 					"/portfolio/flashbeat",
 					"/portfolio/flashbeat-bgm",
 					"/portfolio/flashbeat-op",
+					"/portfolio/flashbeat-v02",
 					"/portfolio/foldlayers",
+					"/portfolio/herdr-plugins",
+					"/portfolio/herdr-t3",
 					"/portfolio/homura",
 					"/portfolio/hurahu",
 					"/portfolio/icon-tegaki-anime",
+					"/portfolio/ido-bata-server-bot",
+					"/portfolio/ido-bata-website",
 					"/portfolio/isogasii-demo",
 					"/portfolio/isogasii-editor",
 					"/portfolio/kaben",
@@ -316,6 +325,7 @@
 					"/portfolio/kosen-procon-pv",
 					"/portfolio/lhaplus",
 					"/portfolio/liteglow",
+					"/portfolio/looker",
 					"/portfolio/m5-clock",
 					"/portfolio/mawaru",
 					"/portfolio/meikai",
@@ -324,6 +334,7 @@
 					"/portfolio/my-first-blender",
 					"/portfolio/my-sns-icon",
 					"/portfolio/my-web-2025",
+					"/portfolio/my-web-2026",
 					"/portfolio/netu",
 					"/portfolio/nulloto",
 					"/portfolio/oneself",
@@ -332,6 +343,7 @@
 					"/portfolio/propose",
 					"/portfolio/prototype",
 					"/portfolio/prototype-brochure",
+					"/portfolio/react-compiler-marker-cli",
 					"/portfolio/red-black-design",
 					"/portfolio/reel-2024",
 					"/portfolio/reel-2025",
@@ -343,6 +355,8 @@
 					"/portfolio/stretch-v02",
 					"/portfolio/tegaki-anime",
 					"/portfolio/tokimeki",
+					"/portfolio/ty-plus",
+					"/portfolio/ube-kosen-map",
 					"/portfolio/ugoita",
 					"/portfolio/usoto",
 					"/portfolio/yukikate"
@@ -426,6 +440,10 @@
 			"/contact",
 			"/design-system",
 			"/portfolio",
+			"/portfolio/ac-test",
+			"/portfolio/ae-a8n",
+			"/portfolio/ae-devtools",
+			"/portfolio/ae-test",
 			"/portfolio/alice",
 			"/portfolio/aulymo-v01",
 			"/portfolio/aulymo-v02",
@@ -443,10 +461,15 @@
 			"/portfolio/flashbeat",
 			"/portfolio/flashbeat-bgm",
 			"/portfolio/flashbeat-op",
+			"/portfolio/flashbeat-v02",
 			"/portfolio/foldlayers",
+			"/portfolio/herdr-plugins",
+			"/portfolio/herdr-t3",
 			"/portfolio/homura",
 			"/portfolio/hurahu",
 			"/portfolio/icon-tegaki-anime",
+			"/portfolio/ido-bata-server-bot",
+			"/portfolio/ido-bata-website",
 			"/portfolio/isogasii-demo",
 			"/portfolio/isogasii-editor",
 			"/portfolio/kaben",
@@ -456,6 +479,7 @@
 			"/portfolio/kosen-procon-pv",
 			"/portfolio/lhaplus",
 			"/portfolio/liteglow",
+			"/portfolio/looker",
 			"/portfolio/m5-clock",
 			"/portfolio/mawaru",
 			"/portfolio/meikai",
@@ -464,6 +488,7 @@
 			"/portfolio/my-first-blender",
 			"/portfolio/my-sns-icon",
 			"/portfolio/my-web-2025",
+			"/portfolio/my-web-2026",
 			"/portfolio/netu",
 			"/portfolio/nulloto",
 			"/portfolio/oneself",
@@ -472,6 +497,7 @@
 			"/portfolio/propose",
 			"/portfolio/prototype",
 			"/portfolio/prototype-brochure",
+			"/portfolio/react-compiler-marker-cli",
 			"/portfolio/red-black-design",
 			"/portfolio/reel-2024",
 			"/portfolio/reel-2025",
@@ -483,6 +509,8 @@
 			"/portfolio/stretch-v02",
 			"/portfolio/tegaki-anime",
 			"/portfolio/tokimeki",
+			"/portfolio/ty-plus",
+			"/portfolio/ube-kosen-map",
 			"/portfolio/ugoita",
 			"/portfolio/usoto",
 			"/portfolio/yukikate",
@@ -501,6 +529,10 @@
 			"/links",
 			"/now",
 			"/portfolio",
+			"/portfolio/ac-test",
+			"/portfolio/ae-a8n",
+			"/portfolio/ae-devtools",
+			"/portfolio/ae-test",
 			"/portfolio/alice",
 			"/portfolio/aulymo-v01",
 			"/portfolio/aulymo-v02",
@@ -518,10 +550,15 @@
 			"/portfolio/flashbeat",
 			"/portfolio/flashbeat-bgm",
 			"/portfolio/flashbeat-op",
+			"/portfolio/flashbeat-v02",
 			"/portfolio/foldlayers",
+			"/portfolio/herdr-plugins",
+			"/portfolio/herdr-t3",
 			"/portfolio/homura",
 			"/portfolio/hurahu",
 			"/portfolio/icon-tegaki-anime",
+			"/portfolio/ido-bata-server-bot",
+			"/portfolio/ido-bata-website",
 			"/portfolio/isogasii-demo",
 			"/portfolio/isogasii-editor",
 			"/portfolio/kaben",
@@ -531,6 +568,7 @@
 			"/portfolio/kosen-procon-pv",
 			"/portfolio/lhaplus",
 			"/portfolio/liteglow",
+			"/portfolio/looker",
 			"/portfolio/m5-clock",
 			"/portfolio/mawaru",
 			"/portfolio/meikai",
@@ -539,6 +577,7 @@
 			"/portfolio/my-first-blender",
 			"/portfolio/my-sns-icon",
 			"/portfolio/my-web-2025",
+			"/portfolio/my-web-2026",
 			"/portfolio/netu",
 			"/portfolio/nulloto",
 			"/portfolio/oneself",
@@ -547,6 +586,7 @@
 			"/portfolio/propose",
 			"/portfolio/prototype",
 			"/portfolio/prototype-brochure",
+			"/portfolio/react-compiler-marker-cli",
 			"/portfolio/red-black-design",
 			"/portfolio/reel-2024",
 			"/portfolio/reel-2025",
@@ -558,6 +598,8 @@
 			"/portfolio/stretch-v02",
 			"/portfolio/tegaki-anime",
 			"/portfolio/tokimeki",
+			"/portfolio/ty-plus",
+			"/portfolio/ube-kosen-map",
 			"/portfolio/ugoita",
 			"/portfolio/usoto",
 			"/portfolio/yukikate",
@@ -601,9 +643,11 @@
 			"github.com",
 			"gitty-code.com",
 			"host.invalid",
+			"ido-bata.github.io",
 			"json-schema.org",
 			"note.com",
 			"osu.ppy.sh",
+			"panda-css.com",
 			"pomodoro.yusuke-kim.com",
 			"prototype.yusuke-kim.com",
 			"qiita.com",
@@ -629,6 +673,7 @@
 			"www.mlit.go.jp",
 			"www.naprock.jp",
 			"www.nicovideo.jp",
+			"www.npmjs.com",
 			"www.procon.gr.jp",
 			"www.reactbits.dev",
 			"www.sitemaps.org",
@@ -957,6 +1002,15 @@
 				"identifier": false,
 				"files": [
 					"src/vendor/github-readme-stats-fast/fetchers/stats.ts"
+				]
+			},
+			{
+				"url": "https://atcoder.jp",
+				"host": "atcoder.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3224,12 +3278,336 @@
 				]
 			},
 			{
+				"url": "https://github.com/devswha/ovis",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://github.com/googlefonts/zen-kakugothic",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"public/fonts/zen-kaku-gothic-new-LICENSE.txt"
+				]
+			},
+			{
+				"url": "https://github.com/herdrdev/herdr",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n/blob/main/docs/quickstart.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n/blob/main/docs/sessions.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n/blob/main/docs/verification.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-a8n/blob/main/examples/render-compare.ts",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-devtools",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-devtools/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-devtools/blob/main/docs/vision.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-devtools/blob/main/packages/ae-devtools-cli/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test/blob/main/docs/api.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test/blob/main/docs/dependency-on-ae-a8n.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test/blob/main/docs/verification.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ae-test/blob/main/examples/consumer/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata-server-bot",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata-server-bot/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/reaction-roles/config.ts",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/timekeeper/config.ts",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata.github.io",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata.github.io/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/architecture.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/development.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/blob/main/README.ja.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/index.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/installation/index.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/issues/10",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/releases",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/ido-bata/ty-plus/releases/latest",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/pingdotgg/t3code",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3243,24 +3621,6 @@
 					"src/contact/channels.json",
 					"src/home/guide/ledger.ts",
 					"src/personal/handle-map/HandleMap.preview.ts"
-				]
-			},
-			{
-				"url": "https://github.com/rebuildup/Ae/_FoldLayers",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://github.com/rebuildup/Ae/_RGBDelay",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3300,15 +3660,6 @@
 				]
 			},
 			{
-				"url": "https://github.com/rebuildup/CodeType/_p5",
-				"host": "github.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://github.com/rebuildup/CodeType_p5",
 				"host": "github.com",
 				"kind": "external",
@@ -3328,6 +3679,42 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/FlashBeat/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/FlashBeat/blob/main/README.md#%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E6%A7%8B%E6%88%90",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/FlashBeat/blob/main/docs/architecture/game-runtime.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/FlashBeat/blob/main/docs/operations/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/LiteGlow",
 				"host": "github.com",
 				"kind": "external",
@@ -3337,7 +3724,34 @@
 				]
 			},
 			{
-				"url": "https://github.com/rebuildup/M5/_Clock",
+				"url": "https://github.com/rebuildup/Looker",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Looker/blob/master/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Looker/blob/master/README.md#%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/Looker/blob/master/README.md#%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
@@ -3371,6 +3785,33 @@
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ac-test",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ac-test/blob/master/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ac-test/blob/master/README.md#%E9%85%8D%E7%BD%AE",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3540,6 +3981,51 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/herdr-plugins",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/herdr-plugins/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/herdr-plugins/tree/main/plugins/inbox",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/herdr-t3",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/herdr-t3/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/key-map-kanata",
 				"host": "github.com",
 				"kind": "external",
@@ -3590,6 +4076,7 @@
 					"src/home/footer.tsx",
 					"src/personal/engagement/Engagement.preview.ts",
 					"src/personal/manifesto/Manifesto.preview.ts",
+					"src/portfolio/notion/generated/snapshot.json",
 					"src/portfolio/seed.ts"
 				]
 			},
@@ -3600,6 +4087,24 @@
 				"identifier": false,
 				"files": [
 					"src/routes/stack/stack.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main/docs/architecture.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3632,12 +4137,30 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/releases",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/tree/main",
 				"host": "github.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
 					"src/routes/stack/stack.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/tree/main/docs/adr",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3669,6 +4192,33 @@
 					"src/home/activity/github-activity.json",
 					"src/personal/engagement/Engagement.preview.ts",
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/react-compiler-marker-cli",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md#installation",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3938,7 +4488,53 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"src/home/activity/github-activity.json"
+					"src/home/activity/github-activity.json",
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map/blob/main/README.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map/blob/main/docs/data-provenance.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/campus3d-demo.gif",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-01-campus.png",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-03-floor.png",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -3978,6 +4574,15 @@
 				]
 			},
 			{
+				"url": "https://ido-bata.github.io",
+				"host": "ido-bata.github.io",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://note.com/alert_toad4443",
 				"host": "note.com",
 				"kind": "external",
@@ -3993,6 +4598,15 @@
 				"identifier": false,
 				"files": [
 					"src/about/links.ts"
+				]
+			},
+			{
+				"url": "https://panda-css.com",
+				"host": "panda-css.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
 				]
 			},
 			{
@@ -4088,6 +4702,7 @@
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/portfolio/components/Markdown.tsx",
 					"src/portfolio/markdown.notion.ts",
+					"src/portfolio/notion/generated/snapshot.json",
 					"src/routes/index.tsx",
 					"src/vendor/github-readme-stats-fast/common/utils.ts"
 				]
@@ -4173,6 +4788,7 @@
 					"src/personal/engagement/Engagement.preview.ts",
 					"src/personal/flat-vs-depth/FlatVsDepth.preview.ts",
 					"src/personal/manifesto/Manifesto.preview.ts",
+					"src/portfolio/notion/generated/snapshot.json",
 					"src/routes/portfolio/$slug.tsx",
 					"src/routes/portfolio/index.tsx"
 				]
@@ -4490,6 +5106,33 @@
 				]
 			},
 			{
+				"url": "https://www.npmjs.com/package/@ido-bata/ae-a8n",
+				"host": "www.npmjs.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.npmjs.com/package/@ido-bata/ae-devtools-cli",
+				"host": "www.npmjs.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://www.npmjs.com/package/@ido-bata/ae-test",
+				"host": "www.npmjs.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://www.procon.gr.jp",
 				"host": "www.procon.gr.jp",
 				"kind": "external",
@@ -4663,15 +5306,6 @@
 				]
 			},
 			{
-				"url": "https://www.youtube.com/watch?v=7Qo75j",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://www.youtube.com/watch?v=7Qo75j_1X6Y",
 				"host": "www.youtube.com",
 				"kind": "external",
@@ -4799,15 +5433,6 @@
 			},
 			{
 				"url": "https://www.youtube.com/watch?v=NjRVa41kHBs",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://www.youtube.com/watch?v=O",
 				"host": "www.youtube.com",
 				"kind": "external",
 				"identifier": false,
@@ -4960,15 +5585,6 @@
 				]
 			},
 			{
-				"url": "https://www.youtube.com/watch?v=llftGyEqH",
-				"host": "www.youtube.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://www.youtube.com/watch?v=llftGyEqH_4",
 				"host": "www.youtube.com",
 				"kind": "external",
@@ -5077,240 +5693,6 @@
 				]
 			},
 			{
-				"url": "https://x.com/361do/_design/status/1893620585491792320",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1895423219542466819",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1904339929557266477",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1905491397169611125",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1911047618324795838",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1974102198364876878",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_design/status/1984262322828067072",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1790691816637157444",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1815006753144381874",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1832734742124609779",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1837100915419140131",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1838567775390044294",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1840369939967840508",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1844685698991067303",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1845653703463989526",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1850405797592973597",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1852638050976751749",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1873992217502900284",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1877667236900479412",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1878220390595453260",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1882412041526477277",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1901612081641910556",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1918615732939575763",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1923332601713918423",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1924057386731655327",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://x.com/361do/_sleep/status/1955248758243070349",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://x.com/361do_design",
 				"host": "x.com",
 				"kind": "external",
@@ -5358,6 +5740,24 @@
 			},
 			{
 				"url": "https://x.com/361do_design/status/1911047618324795838",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1974102198364876878",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
+				"url": "https://x.com/361do_design/status/1984262322828067072",
 				"host": "x.com",
 				"kind": "external",
 				"identifier": false,
@@ -5547,6 +5947,15 @@
 				]
 			},
 			{
+				"url": "https://x.com/361do_sleep/status/1955248758243070349",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/notion/generated/snapshot.json"
+				]
+			},
+			{
 				"url": "https://x.com/361do_sleep/status/1995074984331645045/video/1",
 				"host": "x.com",
 				"kind": "external",
@@ -5628,15 +6037,6 @@
 				]
 			},
 			{
-				"url": "https://x.com/morpho/_88",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://x.com/morpho_88",
 				"host": "x.com",
 				"kind": "external",
@@ -5702,15 +6102,6 @@
 				]
 			},
 			{
-				"url": "https://x.com/ube/_k/_cclub",
-				"host": "x.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://x.com/ube_k_cclub",
 				"host": "x.com",
 				"kind": "external",
@@ -5730,15 +6121,6 @@
 			},
 			{
 				"url": "https://youtu.be/-",
-				"host": "youtu.be",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://youtu.be/-/_uzbG410Cg",
 				"host": "youtu.be",
 				"kind": "external",
 				"identifier": false,
@@ -5945,15 +6327,6 @@
 				]
 			},
 			{
-				"url": "https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL",
-				"host": "youtu.be",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://youtu.be/j-Ja7kV_S-I?si=GrrAnm7DefKbFrWL",
 				"host": "youtu.be",
 				"kind": "external",
@@ -5999,15 +6372,6 @@
 				]
 			},
 			{
-				"url": "https://youtu.be/szUAV/_gMLQY",
-				"host": "youtu.be",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
 				"url": "https://youtu.be/szUAV_gMLQY",
 				"host": "youtu.be",
 				"kind": "external",
@@ -6028,15 +6392,6 @@
 			{
 				"url": "https://youtu.be/yr2bwYk0wAk",
 				"host": "youtu.be",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/notion/generated/snapshot.json"
-				]
-			},
-			{
-				"url": "https://youtube.com/shorts/o9GxF/_FLSQA",
-				"host": "youtube.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
@@ -6096,13 +6451,27 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"http://www.w3.org/1999/xlink",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: http://www.w3.org/1999/xlink"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+			}
+		]
 	}
 }

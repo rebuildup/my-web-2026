@@ -37,14 +37,12 @@
 | Slug | Display name | Purpose | Created by | Status |
 | --- | --- | --- | --- | --- |
 | `dev` | `Development` | Local / agent development. Random seed via `scripts/infisical-seed.mjs --env=dev`. | `scripts/infisical-bootstrap-api.mjs` (Issue #67, Phase 1) | **Active** |
+| `staging` | `Staging` | 将来の共有検証用に予約。 | Infisical | 未使用。secret は 0 件。 |
 | `prod` | `Production` | Source of truth for runtime secret VALUES that the production Worker binds. Seeding path is operator-only — `infisical-seed.mjs --env=prod` is **hard-rejected** (ADR-0015 §11.7 zero-prod-seeds rationale). | `scripts/infisical-bootstrap-api.mjs` (Issue #67, Phase 1) | **Active**, intentionally under-populated |
 
 ### 1.3 Staging
 
-**There is no `staging` environment in the workspace at this time.**
-ADR-0015 §3 leaves `INFISICAL_API_URL` overridable for a future
-staging / dev override, but no staging environment has been
-provisioned. If a future release requires a staging environment:
+Infisical には空の `staging` 環境がある。現行の取得・配備は `dev` と `prod` を使用する。将来 `staging` で共有検証を実行する場合は、以下の条件を満たす。
 
 1. Provisioning goes through `scripts/infisical-bootstrap-api.mjs`
    (idempotent environment create path).

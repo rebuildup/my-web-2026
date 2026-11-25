@@ -3,12 +3,20 @@ import { currentProjectsLoader } from '../../home/current/loader';
 import { PROJECT_ROSTER } from '../../home/current/roster';
 import { notionProjects } from '../../portfolio/notion/reader';
 import { microCache } from '../../vendor/github-readme-stats-fast/common/microCache.ts';
+import { fetchStats } from '../../vendor/github-readme-stats-fast/fetchers/stats.ts';
 import { fetchStreak } from '../../vendor/github-readme-stats-fast/fetchers/streak-fetcher.ts';
 import { fetchTopLanguages } from '../../vendor/github-readme-stats-fast/fetchers/top-languages.ts';
 import { getNextToken, stringEnv } from '../github-readme-stats/router';
 import { rateLimitRead } from '../middleware/rate-limit';
 import { methodNotAllowed } from '../validation';
 import { renderActivityMobileSvg, renderActivitySvg } from './activity';
+import {
+	type BandStats,
+	composeBand1Model,
+	composeBand2Model,
+	renderBand1Svg,
+	renderBand2Svg,
+} from './bands';
 import { renderProfileCardSvg } from './card';
 import { renderCurrentSvg } from './current';
 import { embedWorkMedia } from './media-embed';
@@ -146,26 +154,32 @@ githubProfileRouter.get('/card', rateLimitRead, async (c) => {
 	});
 });
 
-async function fetchNowStats(env: Env): Promise<NowStats> {
+async function fetchStreakCached(env: Env) {
 	const stringEnvView = stringEnv(env);
-	const [streak, topLangs] = await Promise.all([
-		microCache(`now-streak:${NOW_OWNER_LOGIN}`, async () => {
-			const token = getNextToken(stringEnvView);
-			if (!token) return null;
-			try {
-				return await fetchStreak(NOW_OWNER_LOGIN, token, stringEnvView);
-			} catch {
-				return null;
-			}
-		}),
-		microCache(`now-toplangs:${NOW_OWNER_LOGIN}`, async () => {
-			try {
-				return await fetchTopLanguages(NOW_OWNER_LOGIN, [], 1, 0, stringEnvView);
-			} catch {
-				return null;
-			}
-		}),
-	]);
+	return microCache(`now-streak:${NOW_OWNER_LOGIN}`, async () => {
+		const token = getNextToken(stringEnvView);
+		if (!token) return null;
+		try {
+			return await fetchStreak(NOW_OWNER_LOGIN, token, stringEnvView);
+		} catch {
+			return null;
+		}
+	});
+}
+
+async function fetchTopLangsCached(env: Env) {
+	const stringEnvView = stringEnv(env);
+	return microCache(`now-toplangs:${NOW_OWNER_LOGIN}`, async () => {
+		try {
+			return await fetchTopLanguages(NOW_OWNER_LOGIN, [], 1, 0, stringEnvView);
+		} catch {
+			return null;
+		}
+	});
+}
+
+async function fetchNowStats(env: Env): Promise<NowStats> {
+	const [streak, topLangs] = await Promise.all([fetchStreakCached(env), fetchTopLangsCached(env)]);
 
 	let topLanguage: NowStats['topLanguage'] = null;
 	if (topLangs) {
@@ -184,6 +198,96 @@ async function fetchNowStats(env: Env): Promise<NowStats> {
 		topLanguage,
 	};
 }
+
+/**
+ * Band 1 vitals data (Issue #1216): streak + contributed-to + rank
+ * from the vendored readme-stats fetchers, full language breakdown
+ * for the ratio bar. Shares the `now-*` micro-cache keys with
+ * `/now` so both surfaces hit GitHub once per window; a failed
+ * upstream yields `null` fields that render the honest `—` variant.
+ */
+async function fetchBandStats(env: Env): Promise<BandStats> {
+	const stringEnvView = stringEnv(env);
+	const [streak, stats, topLangs] = await Promise.all([
+		fetchStreakCached(env),
+		microCache(`band-stats:${NOW_OWNER_LOGIN}`, async () => {
+			try {
+				return await fetchStats(NOW_OWNER_LOGIN, false, [], false, false, false, stringEnvView);
+			} catch {
+				return null;
+			}
+		}),
+		fetchTopLangsCached(env),
+	]);
+
+	let langs: BandStats['topLangs'] = null;
+	if (topLangs) {
+		const entries = Object.values(topLangs);
+		const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+		if (total > 0) {
+			langs = entries
+				.map((entry) => ({
+					name: entry.name,
+					pct: Math.round((entry.size / total) * 1000) / 10,
+					color: entry.color ?? '#8b949e',
+				}))
+				.sort((a, b) => b.pct - a.pct)
+				.slice(0, 10);
+		}
+	}
+
+	return {
+		currentStreak: streak?.currentStreak ?? null,
+		contributedTo: stats?.contributedTo ?? null,
+		rankLevel: stats?.rank.level ?? null,
+		rankPercentile: stats?.rank.percentile ?? null,
+		topLangs: langs,
+	};
+}
+
+// The band surfaces are the README's primary visual assets: same
+// freshness contract as `/now`, theme/layout selected by query.
+const BANDS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
+
+githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv & Env;
+	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
+	const now = Date.now();
+	const [model, stats] = await Promise.all([
+		Promise.resolve(
+			composeProfileCardModel({
+				activityPayload,
+				presencePayload,
+				expectedPresenceUserId: env.DISCORD_PRESENCE_USER_ID,
+				now,
+				projects: [],
+			}),
+		),
+		fetchBandStats(env),
+	]);
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const svg = renderBand1Svg(
+		composeBand1Model({ theme, mobile, model, stats, roster: PROJECT_ROSTER, now }),
+	);
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
+
+githubProfileRouter.get('/activity-map', rateLimitRead, async (c) => {
+	const env = c.env as unknown as ProfileSnapshotEnv;
+	const activityPayload = await readActivityPayload(env.DB);
+	const now = Date.now();
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const svg = renderBand2Svg(composeBand2Model({ theme, mobile, activityPayload, now }));
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
 
 githubProfileRouter.get('/now', rateLimitRead, async (c) => {
 	const env = c.env as unknown as ProfileSnapshotEnv & Env;
@@ -283,3 +387,5 @@ githubProfileRouter.all('/now', methodNotAllowed(['GET']));
 githubProfileRouter.all('/activity', methodNotAllowed(['GET']));
 githubProfileRouter.all('/presence', methodNotAllowed(['GET']));
 githubProfileRouter.all('/current', methodNotAllowed(['GET']));
+githubProfileRouter.all('/identity', methodNotAllowed(['GET']));
+githubProfileRouter.all('/activity-map', methodNotAllowed(['GET']));

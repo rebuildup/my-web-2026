@@ -45,7 +45,7 @@ interface Theme {
 	readonly bg: string;
 	readonly panel: string;
 	readonly panel2: string;
-	readonly stroke: string;
+	readonly line: string;
 	readonly fg: string;
 	readonly muted: string;
 	readonly faint: string;
@@ -56,7 +56,7 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 		bg: '#0d1117',
 		panel: '#161b22',
 		panel2: '#232b38',
-		stroke: '#2d333f',
+		line: '#2d333f',
 		fg: '#e6edf3',
 		muted: '#bcc6d4',
 		faint: '#9aa7b8',
@@ -65,7 +65,7 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 		bg: '#ffffff',
 		panel: '#f6f8fa',
 		panel2: '#eaeef2',
-		stroke: '#d1d9e0',
+		line: '#d1d9e0',
 		fg: '#1f2328',
 		muted: '#59636e',
 		faint: '#818b98',
@@ -267,7 +267,7 @@ export function buildFocusNodes(roster: readonly RosterEntry[]): BandFocusNode[]
 
 interface LangSegment {
 	readonly pct: number;
-	readonly color: string;
+	readonly swatch: string;
 	readonly other: boolean;
 }
 
@@ -277,8 +277,8 @@ function langSegments(langs: readonly BandLang[]): readonly LangSegment[] {
 	const shown = langs.slice(0, 5);
 	const shownPct = shown.reduce((a, l) => a + l.pct, 0);
 	const otherPct = Math.max(0, 100 - shownPct);
-	const segs: LangSegment[] = shown.map((l) => ({ pct: l.pct, color: l.color, other: false }));
-	if (otherPct > 0.3) segs.push({ pct: otherPct, color: '#8b949e', other: true });
+	const segs: LangSegment[] = shown.map((l) => ({ pct: l.pct, swatch: l.color, other: false }));
+	if (otherPct > 0.3) segs.push({ pct: otherPct, swatch: '#8b949e', other: true });
 	return segs;
 }
 
@@ -301,14 +301,14 @@ function renderBand1Desktop(model: Band1Model): string {
 	s += `<circle cx="102" cy="88" r="4.5" fill="${sem(pColor)}"/>`;
 	s += `<text x="113" y="92" font-size="10.5" fill="${T.muted}">${esc(model.presenceOk ? `${model.presenceLabel} on Discord` : `Discord ${model.presenceLabel}`)}</text>`;
 	s += `<text x="${W - 24}" y="38" text-anchor="end" font-size="10" fill="${T.faint}">observed ${esc(observedJst(model.observedAt ?? model.presenceObservedAt))}</text>`;
-	s += `<line x1="24" y1="100" x2="${W - 24}" y2="100" stroke="${T.stroke}"/>`;
+	s += `<line x1="24" y1="100" x2="${W - 24}" y2="100" stroke="${T.line}"/>`;
 
 	// vitals: 4 cells
 	const vy = 112;
 	const vh = 82;
 	const cw = (W - 48 - 36) / 4;
 	for (let i = 0; i < 4; i++)
-		s += `<rect x="${24 + i * (cw + 12)}" y="${vy}" width="${cw}" height="${vh}" rx="9" fill="${T.panel}" stroke="${T.stroke}"/>`;
+		s += `<rect x="${24 + i * (cw + 12)}" y="${vy}" width="${cw}" height="${vh}" rx="9" fill="${T.panel}" stroke="${T.line}"/>`;
 
 	// 1 streak
 	{
@@ -337,7 +337,7 @@ function renderBand1Desktop(model: Band1Model): string {
 			const bw = cw - 28;
 			for (const seg of langSegments(langs)) {
 				const w = (bw * seg.pct) / 100;
-				s += `<rect x="${x + 14 + acc}" y="${vy + 30}" width="${w}" height="12" fill="${seg.color}"/>`;
+				s += `<rect x="${x + 14 + acc}" y="${vy + 30}" width="${w}" height="12" fill="${seg.swatch}"/>`;
 				acc += w;
 			}
 			const top = langs[0];
@@ -369,7 +369,7 @@ function renderBand1Desktop(model: Band1Model): string {
 				const dx = x + 16 + (i % 7) * 15;
 				const dy = vy + 34 + Math.floor(i / 7) * 11.5;
 				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="${sem('accent')}" opacity="${i < 24 ? 0.85 : 0.3}"/>`;
-				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="none" stroke="${T.stroke}"/>`;
+				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="none" stroke="${T.line}"/>`;
 			}
 			if (count > 28) {
 				s += `<text x="${x + cw - 14}" y="${vy + 76}" font-size="9" fill="${T.faint}" text-anchor="end">+${count - 28} more</text>`;
@@ -429,7 +429,7 @@ function renderBand1Desktop(model: Band1Model): string {
 		const bwid = 48;
 		const sx = n.x - bwid / 2;
 		for (let i = 0; i < 3; i++) {
-			s += `<rect x="${sx + i * (bwid / 3 + 2)}" y="344" width="${bwid / 3 - 2}" height="4" rx="2" fill="${i < segs ? colr : T.stroke}"/>`;
+			s += `<rect x="${sx + i * (bwid / 3 + 2)}" y="344" width="${bwid / 3 - 2}" height="4" rx="2" fill="${i < segs ? colr : T.line}"/>`;
 		}
 	}
 	s += '</svg>';
@@ -450,7 +450,7 @@ function renderBand1Mobile(model: Band1Model): string {
 	s += `<circle cx="84" cy="76" r="4" fill="${sem(model.presenceOk ? 'green' : 'orange')}"/>`;
 	s += `<text x="94" y="80" font-size="9.5" fill="${T.muted}">${esc(model.presenceOk ? `${model.presenceLabel} · Discord` : `Discord ${model.presenceLabel}`)}</text>`;
 	s += `<text x="${W - 16}" y="34" text-anchor="end" font-size="9" fill="${T.faint}">${esc(observedJst(model.observedAt ?? model.presenceObservedAt))}</text>`;
-	s += `<line x1="20" y1="88" x2="${W - 20}" y2="88" stroke="${T.stroke}"/>`;
+	s += `<line x1="20" y1="88" x2="${W - 20}" y2="88" stroke="${T.line}"/>`;
 
 	// vitals 2x2
 	const cw = (W - 40 - 10) / 2;
@@ -463,7 +463,7 @@ function renderBand1Mobile(model: Band1Model): string {
 		{ x: 20 + cw + 10, y: vy + ch + 10 },
 	];
 	for (const c of cells)
-		s += `<rect x="${c.x}" y="${c.y}" width="${cw}" height="${ch}" rx="8" fill="${T.panel}" stroke="${T.stroke}"/>`;
+		s += `<rect x="${c.x}" y="${c.y}" width="${cw}" height="${ch}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
 
 	// streak
 	{
@@ -489,7 +489,7 @@ function renderBand1Mobile(model: Band1Model): string {
 			const bw = cw - 24;
 			for (const seg of langSegments(langs)) {
 				const w = (bw * seg.pct) / 100;
-				s += `<rect x="${cells[1].x + 12 + acc}" y="${cells[1].y + 30}" width="${w}" height="10" fill="${seg.color}"/>`;
+				s += `<rect x="${cells[1].x + 12 + acc}" y="${cells[1].y + 30}" width="${w}" height="10" fill="${seg.swatch}"/>`;
 				acc += w;
 			}
 			const top = langs[0];
@@ -558,7 +558,7 @@ function renderBand1Mobile(model: Band1Model): string {
 		s += `<text x="${20 + r * 2 + 14}" y="${y + r + 18}" font-size="9.5" fill="${T.muted}">${esc(truncate(n.note, W - 60 - (20 + r * 2 + 14), 9.5))}</text>`;
 		const segs = LEVEL_SEGMENTS[n.level] ?? 1;
 		for (let g = 0; g < 3; g++) {
-			s += `<rect x="${20 + r * 2 + 14 + g * 16}" y="${y + r * 2 + 8}" width="13" height="5" rx="2.5" fill="${g < segs ? colr : T.stroke}"/>`;
+			s += `<rect x="${20 + r * 2 + 14 + g * 16}" y="${y + r * 2 + 8}" width="13" height="5" rx="2.5" fill="${g < segs ? colr : T.line}"/>`;
 		}
 	});
 	const legendY = fy + model.focus.length * 52 + 30;
@@ -644,7 +644,7 @@ function renderBand2Desktop(model: Band2Model): string {
 		s += `<text x="${countsX}" y="${y + 12}" text-anchor="end" font-size="9.5" font-family="${MONO}" fill="${T.faint}" opacity="${op}">${countLabel(r.commits)}c ${r.prs}p</text>`;
 	});
 	const leftBottom = ly + model.rows.length * rowH + 8;
-	s += `<line x1="${lx}" y1="${leftBottom}" x2="${countsX}" y2="${leftBottom}" stroke="${T.stroke}"/>`;
+	s += `<line x1="${lx}" y1="${leftBottom}" x2="${countsX}" y2="${leftBottom}" stroke="${T.line}"/>`;
 
 	// RIGHT: 72h pulse
 	s += `<text x="${rx}" y="54" font-size="10" font-weight="700" fill="${T.muted}" letter-spacing="1.2">LAST 72 HOURS</text>`;
@@ -652,9 +652,9 @@ function renderBand2Desktop(model: Band2Model): string {
 	const ph = 118;
 	const t2x = (t: string) =>
 		rx + 10 + (1 - (model.nowMs - Date.parse(t)) / (72 * 3600e3)) * (rw - 20);
-	s += `<rect x="${rx}" y="${py}" width="${rw}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.stroke}"/>`;
+	s += `<rect x="${rx}" y="${py}" width="${rw}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
 	const baseY = py + ph - 30;
-	s += `<line x1="${rx + 10}" y1="${baseY}" x2="${rx + rw - 10}" y2="${baseY}" stroke="${T.stroke}"/>`;
+	s += `<line x1="${rx + 10}" y1="${baseY}" x2="${rx + rw - 10}" y2="${baseY}" stroke="${T.line}"/>`;
 	for (let h = 72; h >= 0; h -= 24) {
 		const x = rx + 10 + (1 - h / 72) * (rw - 20);
 		s += `<line x1="${x}" y1="${baseY - 5}" x2="${x}" y2="${baseY + 5}" stroke="${T.faint}"/>`;
@@ -719,7 +719,7 @@ function renderBand2Mobile(model: Band2Model): string {
 		s += `<text x="${W - 16}" y="${y + 22}" text-anchor="end" font-size="8.5" font-family="${MONO}" fill="${T.muted}" opacity="${op}">${countLabel(r.commits)}c ${r.prs}p</text>`;
 	});
 	const lb = ly + model.rows.length * rowH + 6;
-	s += `<line x1="20" y1="${lb}" x2="${W - 20}" y2="${lb}" stroke="${T.stroke}"/>`;
+	s += `<line x1="20" y1="${lb}" x2="${W - 20}" y2="${lb}" stroke="${T.line}"/>`;
 
 	// 72h pulse full width
 	const py = lb + 16;
@@ -727,8 +727,8 @@ function renderBand2Mobile(model: Band2Model): string {
 	const ph = 120;
 	const baseY = py + ph - 26;
 	const t2x = (t: string) => 30 + (1 - (model.nowMs - Date.parse(t)) / (72 * 3600e3)) * (W - 60);
-	s += `<rect x="20" y="${py + 12}" width="${W - 40}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.stroke}"/>`;
-	s += `<line x1="30" y1="${baseY}" x2="${W - 30}" y2="${baseY}" stroke="${T.stroke}"/>`;
+	s += `<rect x="20" y="${py + 12}" width="${W - 40}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
+	s += `<line x1="30" y1="${baseY}" x2="${W - 30}" y2="${baseY}" stroke="${T.line}"/>`;
 	let mlx = 34;
 	for (const [t, label] of LEGEND_TYPES) {
 		const yy = py + 24;

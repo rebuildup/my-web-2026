@@ -238,6 +238,8 @@ async function fetchBandStats(env: Env): Promise<BandStats> {
 
 	return {
 		currentStreak: streak?.currentStreak ?? null,
+		longestStreak: streak?.longestStreak ?? null,
+		totalContributions: streak?.totalContributions ?? null,
 		contributedTo: stats?.contributedTo ?? null,
 		rankLevel: stats?.rank.level ?? null,
 		rankPercentile: stats?.rank.percentile ?? null,

@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "id": "16abf1dd-8003-40ad-bd77-3dbc22a4da5e",
+  "model": null,
+  "resolvedModel": null,
+  "specSha256": "d6e58b4d73a81fc69a34a64ce37f1ea01836244fdd1f185d8fe8a06f5a755c59",
+  "classification": "review-completed",
+  "verified": false,
+  "verdict": {
+    "findings": [
+      {
+        "description": "Images 6 and 8 (activity-map-dark-mob.svg.png, activity-map-light-mob.svg.png): In the LAST 72 HOURS panel, the '-72h' axis label sits very close (~1-2px) to the inner left border curve of the rounded container; it does not clip or collide and remains legible, so this is non-blocking.",
+        "severity": "info"
+      },
+      {
+        "description": "Images 2, 4, 6, and 8 (activity-map desktop and mobile): All three recent events in the live snapshot are push events, so only the blue circle bullet is displayed in the list; it matches the chart push shape and color cleanly.",
+        "severity": "info"
+      }
+    ],
+    "summary": "All Round 3 fixes and Round 4 deltas are verified across all 8 images (dark/light, desktop/mobile), and mandatory criteria M1-M7 pass with zero blockers. Uniform-opacity CONTRIBUTED TO dot grids (28 dots desktop; 27 dots + '+1 over' mobile), collision-free mobile TOP LANG sub-legend, fixed-column PR squares right of the commit-track guide (cap 12 at ≈50 PRs desktop; cap 4 at ≈150 PRs mobile), per-type event bullets matching the chart, increased mobile REPO OUTPUT to LAST 72 HOURS spacing, event shapes clamped cleanly above the time-axis baseline, and the desktop focus rail terminating at the last node all render cleanly in both dark and light themes.",
+    "verdict": "approve"
+  },
+  "agy": {
+    "status": "SUCCESS",
+    "conversationId": "9bd8df8e-b08b-4383-bca1-1fe7efd37ada",
+    "durationSeconds": 91.63787,
+    "numTurns": 1,
+    "usage": {
+      "input_tokens": 12456,
+      "output_tokens": 9775,
+      "thinking_tokens": 8806,
+      "cache_read_tokens": 20008,
+      "total_tokens": 22231
+    },
+    "deniedActions": []
+  },
+  "readonly": {
+    "deniedActions": [],
+    "permissionErrors": 0,
+    "protectedPath": null,
+    "protectedCheck": "unavailable",
+    "protectedMutations": []
+  },
+  "isolation": {
+    "workdir": "/Users/rebui/.local/state/agent/agy-review/16abf1dd-8003-40ad-bd77-3dbc22a4da5e",
+    "osSandbox": "seatbelt",
+    "permissionDeny": [
+      "write_file(*)",
+      "command(*)",
+      "read_url(*)",
+      "execute_url(*)",
+      "mcp(*)",
+      "unsandboxed(*)"
+    ]
+  },
+  "quota": {
+    "buckets": [
+      {
+        "group": "Gemini Models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.71,
+        "resetTime": "2026-12-01T00:43:37Z"
+      },
+      {
+        "group": "Gemini Models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.97,
+        "resetTime": "2026-11-25T20:31:41Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Weekly Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 0.42,
+        "resetTime": "2026-11-30T03:53:15Z"
+      },
+      {
+        "group": "Claude and GPT models",
+        "label": "Five Hour Limit Remaining",
+        "id": null,
+        "name": null,
+        "window": null,
+        "remainingFraction": 1,
+        "resetTime": "2026-11-25T22:27:53Z"
+      }
+    ],
+    "raw": "Gemini Models\tWeekly Limit Remaining\t71%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t97%\t2026-11-25T20:31:41Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T22:27:53Z\n"
+  },
+  "executor": "local",
+  "reasons": [
+    "no protected path supplied; OS/permission layers only"
+  ]
+}

@@ -4,15 +4,17 @@
  *
  * Two unboxed SVG bands replace the card stack:
  *
- *   Band 1 `identity`  (800×360 / mobile 560): avatar + handle +
+ *   Band 1 `identity`  (800×360 / mobile 400×580): avatar + handle +
  *     descriptor, Discord presence dot, then four vitals cells
- *     (streak flame, language-ratio bar, contributed-repo dot grid,
- *     rank ring) and the DECLARED FOCUS node map (roster glyphs,
- *     weight segments).
- *   Band 2 `repo-map`  (800×340 / mobile 560): REPO OUTPUT 30d
- *     (commit dots / PR squares, scaled with exact counts) beside
- *     LAST 72 HOURS (event-type shapes on a now=right time axis,
- *     JST feed rows).
+ *     (streak flame + longest-streak benchmark, language-ratio bar,
+ *     contributed-repo dot grid, rank ring + all-time total) and the
+ *     DECLARED FOCUS rail (owner hub + roster glyph nodes, weight
+ *     segments).
+ *   Band 2 `activity-map` (800×340 / mobile 400×660): REPO OUTPUT 30d
+ *     (proportional commit bars / adaptive-unit PR squares, scaled
+ *     with exact counts) beside LAST 72 HOURS (event-type shapes on a
+ *     now=right time axis anchored to the snapshot observation
+ *     instant, JST feed rows).
  *
  * Geometry is the approved prototype spec
  * (`docs/verification/github-profile/v11/proto-gen6-approved.mjs`,
@@ -34,9 +36,9 @@ import type { ProfileCardModel } from './model';
 export const BAND_WIDTH = 800;
 export const BAND1_HEIGHT = 360;
 export const BAND2_HEIGHT = 340;
-export const BAND_MOBILE_WIDTH = 560;
-export const BAND1_MOBILE_HEIGHT = 520;
-export const BAND2_MOBILE_HEIGHT = 560;
+export const BAND_MOBILE_WIDTH = 400;
+export const BAND1_MOBILE_HEIGHT = 580;
+export const BAND2_MOBILE_HEIGHT = 660;
 
 const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,'SF Mono',Menlo,monospace";
@@ -67,8 +69,8 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 		panel2: '#eaeef2',
 		line: '#d1d9e0',
 		fg: '#1f2328',
-		muted: '#59636e',
-		faint: '#818b98',
+		muted: '#525c68',
+		faint: '#68717d',
 	},
 };
 
@@ -138,6 +140,24 @@ function observedJst(iso: string | null | undefined): string {
 	return `${get('month')} ${get('day')} · ${get('hour')}:${get('minute')} JST`;
 }
 
+/**
+ * Resolved per-render palette: the single place that knows how a
+ * theme name becomes concrete colors. Renderers receive a `skin`
+ * instead of re-deriving `THEMES`/`SEM` lookups four times.
+ */
+interface Skin {
+	readonly T: Theme;
+	readonly sem: (k: string) => string;
+	readonly typeColor: (t: string) => string;
+}
+
+function skinFor(theme: 'dark' | 'light'): Skin {
+	const T = THEMES[theme];
+	const isDark = theme === 'dark';
+	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
+	return { T, sem, typeColor: (t) => sem(TYPE_COLOR[t] ?? 'accent') };
+}
+
 const esc = escapeXml;
 
 function flame(cx: number, cy: number, s: number, color: string, inner: string): string {
@@ -173,6 +193,8 @@ export interface BandLang {
 
 export interface BandStats {
 	readonly currentStreak: number | null;
+	readonly longestStreak: number | null;
+	readonly totalContributions: number | null;
 	readonly contributedTo: number | null;
 	readonly rankLevel: string | null;
 	/** "top X%" — lower is better (vendor calculateRank contract). */
@@ -220,6 +242,9 @@ export interface Band2Model {
 	readonly theme: 'dark' | 'light';
 	readonly mobile: boolean;
 	readonly windowDays: number;
+	readonly totalCommits: number;
+	readonly totalPrs: number;
+	readonly repoCount: number;
 	readonly rows: readonly BandRepoRow[];
 	readonly feed72: readonly BandEvent[];
 	readonly observedAt: string | null;
@@ -285,9 +310,7 @@ function langSegments(langs: readonly BandLang[]): readonly LangSegment[] {
 // ---- Band 1 ----
 
 function renderBand1Desktop(model: Band1Model): string {
-	const T = THEMES[model.theme];
-	const isDark = model.theme === 'dark';
-	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
+	const { T, sem } = skinFor(model.theme);
 	const W = BAND_WIDTH;
 	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND1_HEIGHT}" viewBox="0 0 ${W} ${BAND1_HEIGHT}" font-family="${FONT}">`;
 	s += `<rect width="${W}" height="${BAND1_HEIGHT}" fill="${T.bg}"/>`;
@@ -317,7 +340,9 @@ function renderBand1Desktop(model: Band1Model): string {
 		if (streak !== null) {
 			s += flame(x + 30, vy + 40, 13, sem('orange'), '#ffd77a');
 			s += `<text x="${x + 52}" y="${vy + 50}" font-size="27" font-weight="800" fill="${T.fg}">${streak.toLocaleString('en-US')}</text>`;
-			s += `<text x="${x + cw / 2}" y="${vy + 72}" font-size="10" fill="${T.muted}" text-anchor="middle">day streak</text>`;
+			const best =
+				model.stats.longestStreak !== null ? ` · best ${model.stats.longestStreak}d` : '';
+			s += `<text x="${x + cw / 2}" y="${vy + 72}" font-size="10" fill="${T.muted}" text-anchor="middle">day streak${esc(best)}</text>`;
 		} else {
 			s += `<text x="${x + 14}" y="${vy + 50}" font-size="24" font-weight="800" fill="${T.faint}">—</text>`;
 			s += `<text x="${x + cw / 2}" y="${vy + 72}" font-size="10" fill="${T.muted}" text-anchor="middle">streak unavailable</text>`;
@@ -368,7 +393,7 @@ function renderBand1Desktop(model: Band1Model): string {
 			for (let i = 0; i < shown; i++) {
 				const dx = x + 16 + (i % 7) * 15;
 				const dy = vy + 34 + Math.floor(i / 7) * 11.5;
-				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="${sem('accent')}" opacity="${i < 24 ? 0.85 : 0.3}"/>`;
+				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="${sem('accent')}" opacity="0.85"/>`;
 				s += `<circle cx="${dx}" cy="${dy}" r="4.2" fill="none" stroke="${T.line}"/>`;
 			}
 			if (count > 28) {
@@ -399,6 +424,9 @@ function renderBand1Desktop(model: Band1Model): string {
 			s += `<text x="${cx}" y="${cy + 4.5}" font-size="13" font-weight="800" fill="${T.fg}" text-anchor="middle">${esc(level)}</text>`;
 			s += `<text x="${cx + 26}" y="${cy - 2}" font-size="10" fill="${T.muted}">top ${pct.toFixed(1)}%</text>`;
 			s += `<text x="${cx + 26}" y="${cy + 12}" font-size="9" fill="${T.faint}">rank</text>`;
+			if (model.stats.totalContributions !== null) {
+				s += `<text x="${cx + 26}" y="${cy + 23}" font-size="8.5" fill="${T.faint}">${model.stats.totalContributions.toLocaleString('en-US')} all-time</text>`;
+			}
 		} else {
 			s += `<text x="${cx}" y="${cy + 5}" font-size="13" font-weight="800" fill="${T.faint}" text-anchor="middle">—</text>`;
 			s += `<text x="${cx + 26}" y="${cy + 4}" font-size="9" fill="${T.faint}">unavailable</text>`;
@@ -410,6 +438,18 @@ function renderBand1Desktop(model: Band1Model): string {
 	s += `<text x="24" y="${fy - 6}" font-size="10" font-weight="700" fill="${T.muted}" letter-spacing="1.4">IN PROGRESS · DECLARED FOCUS</text>`;
 	s += `<text x="${W - 24}" y="${fy - 6}" text-anchor="end" font-size="9" fill="${T.faint}">▮▮▮ primary · ▮▮ active · ▮ side</text>`;
 	const cy = 262;
+	// Focus rail: the owner's declared set reads as stations on one
+	// rail anchored at the owner node — the only relationship the
+	// roster actually declares (hub-and-spoke to SELF, never
+	// invented project-to-project links).
+	const hubX = 60;
+	const lastNode = model.focus[model.focus.length - 1];
+	if (lastNode) {
+		s += `<line x1="${hubX + 15}" y1="${cy}" x2="${lastNode.x}" y2="${cy}" stroke="${T.line}" stroke-width="2"/>`;
+		s += `<circle cx="${hubX}" cy="${cy}" r="15" fill="${T.panel2}" stroke="${sem('accent')}" stroke-width="2.2"/>`;
+		s += `<text x="${hubX}" y="${cy + 4.5}" font-size="12" font-weight="800" fill="${sem('accent')}" text-anchor="middle">r</text>`;
+		s += `<text x="${hubX}" y="${cy + 30}" font-size="8.5" fill="${T.faint}" text-anchor="middle">you</text>`;
+	}
 	for (const n of model.focus) {
 		const colr = sem(n.colorKey);
 		s += `<circle cx="${n.x}" cy="${cy}" r="${n.r}" fill="${T.panel2}" stroke="${colr}" stroke-width="${n.level === 'primary' ? 3 : 1.8}"/>`;
@@ -437,30 +477,28 @@ function renderBand1Desktop(model: Band1Model): string {
 }
 
 function renderBand1Mobile(model: Band1Model): string {
-	const T = THEMES[model.theme];
-	const isDark = model.theme === 'dark';
-	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
+	const { T, sem } = skinFor(model.theme);
 	const W = BAND_MOBILE_WIDTH;
 	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND1_MOBILE_HEIGHT}" viewBox="0 0 ${W} ${BAND1_MOBILE_HEIGHT}" font-family="${FONT}">`;
 	s += `<rect width="${W}" height="${BAND1_MOBILE_HEIGHT}" fill="${T.bg}"/>`;
-	s += `<rect x="20" y="18" width="52" height="52" rx="11" fill="${T.panel2}" stroke="${sem('accent')}" stroke-width="2"/>`;
-	s += `<text x="46" y="58" font-size="24" font-weight="800" fill="${sem('accent')}" text-anchor="middle">r</text>`;
-	s += `<text x="84" y="42" font-size="18" font-weight="800" fill="${T.fg}">rebuildup</text>`;
-	s += `<text x="84" y="62" font-size="10.5" fill="${T.muted}">design × code × motion</text>`;
-	s += `<circle cx="84" cy="76" r="4" fill="${sem(model.presenceOk ? 'green' : 'orange')}"/>`;
-	s += `<text x="94" y="80" font-size="9.5" fill="${T.muted}">${esc(model.presenceOk ? `${model.presenceLabel} · Discord` : `Discord ${model.presenceLabel}`)}</text>`;
-	s += `<text x="${W - 16}" y="34" text-anchor="end" font-size="9" fill="${T.faint}">${esc(observedJst(model.observedAt ?? model.presenceObservedAt))}</text>`;
-	s += `<line x1="20" y1="88" x2="${W - 20}" y2="88" stroke="${T.line}"/>`;
+	s += `<rect x="16" y="14" width="46" height="46" rx="10" fill="${T.panel2}" stroke="${sem('accent')}" stroke-width="2"/>`;
+	s += `<text x="39" y="48" font-size="22" font-weight="800" fill="${sem('accent')}" text-anchor="middle">r</text>`;
+	s += `<text x="74" y="40" font-size="17" font-weight="800" fill="${T.fg}">rebuildup</text>`;
+	s += `<text x="74" y="60" font-size="11" fill="${T.muted}">design × code × motion</text>`;
+	s += `<circle cx="74" cy="74" r="4" fill="${sem(model.presenceOk ? 'green' : 'orange')}"/>`;
+	s += `<text x="84" y="78" font-size="10" fill="${T.muted}">${esc(model.presenceOk ? `${model.presenceLabel} · Discord` : `Discord ${model.presenceLabel}`)}</text>`;
+	s += `<text x="${W - 14}" y="32" text-anchor="end" font-size="9.5" fill="${T.faint}">${esc(observedJst(model.observedAt ?? model.presenceObservedAt))}</text>`;
+	s += `<line x1="16" y1="88" x2="${W - 16}" y2="88" stroke="${T.line}"/>`;
 
 	// vitals 2x2
-	const cw = (W - 40 - 10) / 2;
-	const ch = 74;
+	const cw = (W - 32 - 10) / 2;
+	const ch = 82;
 	const vy = 100;
 	const cells = [
-		{ x: 20, y: vy },
-		{ x: 20 + cw + 10, y: vy },
-		{ x: 20, y: vy + ch + 10 },
-		{ x: 20 + cw + 10, y: vy + ch + 10 },
+		{ x: 16, y: vy },
+		{ x: 16 + cw + 10, y: vy },
+		{ x: 16, y: vy + ch + 10 },
+		{ x: 16 + cw + 10, y: vy + ch + 10 },
 	];
 	for (const c of cells)
 		s += `<rect x="${c.x}" y="${c.y}" width="${cw}" height="${ch}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
@@ -469,100 +507,106 @@ function renderBand1Mobile(model: Band1Model): string {
 	{
 		const streak = model.stats.currentStreak;
 		if (streak !== null) {
-			s += flame(cells[0].x + 24, cells[0].y + 34, 11, sem('orange'), '#ffd77a');
-			s += `<text x="${cells[0].x + 42}" y="${cells[0].y + 42}" font-size="22" font-weight="800" fill="${T.fg}">${streak.toLocaleString('en-US')}</text>`;
-			s += `<text x="${cells[0].x + cw / 2}" y="${cells[0].y + 62}" font-size="9.5" fill="${T.muted}" text-anchor="middle">day streak</text>`;
+			s += flame(cells[0].x + 24, cells[0].y + 36, 12, sem('orange'), '#ffd77a');
+			s += `<text x="${cells[0].x + 42}" y="${cells[0].y + 44}" font-size="23" font-weight="800" fill="${T.fg}">${streak.toLocaleString('en-US')}</text>`;
+			const bestM =
+				model.stats.longestStreak !== null ? ` · best ${model.stats.longestStreak}d` : '';
+			s += `<text x="${cells[0].x + cw / 2}" y="${cells[0].y + 68}" font-size="10" fill="${T.muted}" text-anchor="middle">day streak${esc(bestM)}</text>`;
 		} else {
-			s += `<text x="${cells[0].x + 12}" y="${cells[0].y + 42}" font-size="20" font-weight="800" fill="${T.faint}">—</text>`;
-			s += `<text x="${cells[0].x + cw / 2}" y="${cells[0].y + 62}" font-size="9.5" fill="${T.muted}" text-anchor="middle">streak unavailable</text>`;
+			s += `<text x="${cells[0].x + 12}" y="${cells[0].y + 44}" font-size="20" font-weight="800" fill="${T.faint}">—</text>`;
+			s += `<text x="${cells[0].x + cw / 2}" y="${cells[0].y + 68}" font-size="10" fill="${T.muted}" text-anchor="middle">streak unavailable</text>`;
 		}
 	}
 	// langs
 	{
 		const langs = model.stats.topLangs;
-		s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 20}" font-size="9" fill="${T.muted}">TOP LANG</text>`;
+		s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 20}" font-size="10" fill="${T.muted}">TOP LANG</text>`;
 		if (!langs || langs.length === 0) {
-			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 48}" font-size="12" font-weight="700" fill="${T.faint}">—</text>`;
-			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 62}" font-size="8.5" fill="${T.muted}">unavailable</text>`;
+			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 50}" font-size="12" font-weight="700" fill="${T.faint}">—</text>`;
+			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 66}" font-size="9" fill="${T.muted}">unavailable</text>`;
 		} else {
 			let acc = 0;
 			const bw = cw - 24;
 			for (const seg of langSegments(langs)) {
 				const w = (bw * seg.pct) / 100;
-				s += `<rect x="${cells[1].x + 12 + acc}" y="${cells[1].y + 30}" width="${w}" height="10" fill="${seg.swatch}"/>`;
+				s += `<rect x="${cells[1].x + 12 + acc}" y="${cells[1].y + 32}" width="${w}" height="11" fill="${seg.swatch}"/>`;
 				acc += w;
 			}
 			const top = langs[0];
-			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 56}" font-size="11" font-weight="700" fill="${T.fg}">${esc(truncate(top.name, cw - 80, 11))}</text>`;
-			s += `<text x="${cells[1].x + cw - 12}" y="${cells[1].y + 56}" font-size="9.5" fill="${T.muted}" text-anchor="end">${top.pct.toFixed(1)}%</text>`;
+			s += `<text x="${cells[1].x + 12}" y="${cells[1].y + 60}" font-size="12" font-weight="700" fill="${T.fg}">${esc(truncate(top.name, cw - 80, 12))}</text>`;
+			s += `<text x="${cells[1].x + cw - 12}" y="${cells[1].y + 60}" font-size="10" fill="${T.muted}" text-anchor="end">${top.pct.toFixed(1)}%</text>`;
 			let mswx = cells[1].x + 12;
-			const mswy = cells[1].y + 69;
+			const mswy = cells[1].y + 73;
 			for (const l of langs.slice(1, 3)) {
-				s += `<rect x="${mswx}" y="${mswy - 6}" width="5" height="5" fill="${l.color}"/>`;
-				s += `<text x="${mswx + 8}" y="${mswy}" font-size="8" fill="${T.faint}">${esc(l.name)} ${l.pct.toFixed(1)}</text>`;
-				mswx += 8 + textWidth(l.name, 8) + 22;
+				s += `<rect x="${mswx}" y="${mswy - 6}" width="5.5" height="5.5" fill="${l.color}"/>`;
+				const lbl = `${l.name} ${l.pct.toFixed(1)}`;
+				s += `<text x="${mswx + 9}" y="${mswy}" font-size="9" fill="${T.faint}">${esc(lbl)}</text>`;
+				mswx += 9 + textWidth(lbl, 9) + 22;
 			}
 			if (langs.length > 3) {
-				s += `<text x="${mswx + 2}" y="${mswy}" font-size="8" fill="${T.faint}">+${langs.length - 3}</text>`;
+				s += `<text x="${mswx + 2}" y="${mswy}" font-size="9" fill="${T.faint}">+${langs.length - 3}</text>`;
 			}
 		}
 	}
 	// contributed dots 9x3
 	{
 		const count = model.stats.contributedTo;
-		s += `<text x="${cells[2].x + 12}" y="${cells[2].y + 20}" font-size="9" fill="${T.muted}">CONTRIBUTED TO${count === null ? '' : ` · ${count}`}</text>`;
+		s += `<text x="${cells[2].x + 12}" y="${cells[2].y + 20}" font-size="10" fill="${T.muted}">CONTRIBUTED TO${count === null ? '' : ` · ${count}`}</text>`;
 		if (count === null) {
-			s += `<text x="${cells[2].x + 12}" y="${cells[2].y + 50}" font-size="10" fill="${T.faint}">—</text>`;
+			s += `<text x="${cells[2].x + 12}" y="${cells[2].y + 52}" font-size="10.5" fill="${T.faint}">—</text>`;
 		} else {
 			const shown = Math.min(count, 27);
 			for (let i = 0; i < shown; i++) {
 				const dx = cells[2].x + 12 + (i % 9) * 12;
-				const dy = cells[2].y + 36 + Math.floor(i / 9) * 11;
-				s += `<circle cx="${dx}" cy="${dy}" r="3.6" fill="${sem('accent')}" opacity="${i < 24 ? 0.85 : 0.3}"/>`;
+				const dy = cells[2].y + 38 + Math.floor(i / 9) * 12;
+				s += `<circle cx="${dx}" cy="${dy}" r="3.8" fill="${sem('accent')}" opacity="0.85"/>`;
 			}
-			s += `<text x="${cells[2].x + cw - 12}" y="${cells[2].y + 66}" font-size="9" fill="${T.faint}" text-anchor="end">${count > 27 ? `+${count - 27} over` : 'all time'}</text>`;
+			s += `<text x="${cells[2].x + cw - 12}" y="${cells[2].y + 68}" font-size="9.5" fill="${T.faint}" text-anchor="end">${count > 27 ? `+${count - 27} over` : 'all time'}</text>`;
 		}
 	}
 	// rank ring
 	{
 		const level = model.stats.rankLevel;
 		const pct = model.stats.rankPercentile;
-		s += `<text x="${cells[3].x + 12}" y="${cells[3].y + 20}" font-size="9" fill="${T.muted}">RANK</text>`;
+		s += `<text x="${cells[3].x + 12}" y="${cells[3].y + 20}" font-size="10" fill="${T.muted}">RANK</text>`;
 		const rcx = cells[3].x + 30;
-		const rcy = cells[3].y + 44;
-		const rr = 16;
-		s += `<circle cx="${rcx}" cy="${rcy}" r="${rr}" fill="none" stroke="${T.panel2}" stroke-width="6"/>`;
+		const rcy = cells[3].y + 46;
+		const rr = 17;
+		s += `<circle cx="${rcx}" cy="${rcy}" r="${rr}" fill="none" stroke="${T.panel2}" stroke-width="6.5"/>`;
 		if (level !== null && pct !== null) {
 			const frac = Math.min(1, Math.max(0.04, 1 - pct / 100));
 			const a0 = -Math.PI / 2;
 			const a1 = a0 + Math.PI * 2 * frac;
-			s += `<path d="M ${rcx + rr * Math.cos(a0)} ${rcy + rr * Math.sin(a0)} A ${rr} ${rr} 0 1 1 ${rcx + rr * Math.cos(a1)} ${rcy + rr * Math.sin(a1)}" fill="none" stroke="${sem('accent')}" stroke-width="6" stroke-linecap="round"/>`;
-			s += `<text x="${rcx}" y="${rcy + 4}" font-size="11" font-weight="800" fill="${T.fg}" text-anchor="middle">${esc(level)}</text>`;
-			s += `<text x="${cells[3].x + 52}" y="${rcy + 3.5}" font-size="8.5" fill="${T.faint}">top ${pct.toFixed(1)}%</text>`;
+			s += `<path d="M ${rcx + rr * Math.cos(a0)} ${rcy + rr * Math.sin(a0)} A ${rr} ${rr} 0 1 1 ${rcx + rr * Math.cos(a1)} ${rcy + rr * Math.sin(a1)}" fill="none" stroke="${sem('accent')}" stroke-width="6.5" stroke-linecap="round"/>`;
+			s += `<text x="${rcx}" y="${rcy + 4.5}" font-size="12" font-weight="800" fill="${T.fg}" text-anchor="middle">${esc(level)}</text>`;
+			s += `<text x="${cells[3].x + 54}" y="${rcy + 2}" font-size="9.5" fill="${T.faint}">top ${pct.toFixed(1)}%</text>`;
+			if (model.stats.totalContributions !== null) {
+				s += `<text x="${cells[3].x + 54}" y="${rcy + 15}" font-size="9" fill="${T.faint}">${model.stats.totalContributions.toLocaleString('en-US')} all-time</text>`;
+			}
 		} else {
-			s += `<text x="${rcx}" y="${rcy + 4}" font-size="11" font-weight="800" fill="${T.faint}" text-anchor="middle">—</text>`;
-			s += `<text x="${cells[3].x + 52}" y="${rcy + 3.5}" font-size="8.5" fill="${T.faint}">unavailable</text>`;
+			s += `<text x="${rcx}" y="${rcy + 4}" font-size="12" font-weight="800" fill="${T.faint}" text-anchor="middle">—</text>`;
+			s += `<text x="${cells[3].x + 54}" y="${rcy + 2}" font-size="9.5" fill="${T.faint}">unavailable</text>`;
 		}
 	}
 	// focus rows
-	const fy = 272;
-	s += `<text x="20" y="${fy - 8}" font-size="10" font-weight="700" fill="${T.muted}" letter-spacing="1.2">IN PROGRESS</text>`;
+	const fy = 292;
+	s += `<text x="16" y="${fy - 8}" font-size="11" font-weight="700" fill="${T.muted}" letter-spacing="1.2">IN PROGRESS</text>`;
 	model.focus.forEach((n, i) => {
-		const y = fy + i * 52;
+		const y = fy + i * 56;
 		const colr = sem(n.colorKey);
-		const r = n.level === 'primary' ? 20 : n.level === 'active' ? 17 : 14;
-		s += `<circle cx="${20 + r}" cy="${y + r}" r="${r}" fill="${T.panel2}" stroke="${colr}" stroke-width="${n.level === 'primary' ? 2.6 : 1.6}"/>`;
+		const r = n.level === 'primary' ? 21 : n.level === 'active' ? 18 : 15;
+		s += `<circle cx="${16 + r}" cy="${y + r}" r="${r}" fill="${T.panel2}" stroke="${colr}" stroke-width="${n.level === 'primary' ? 2.6 : 1.6}"/>`;
 		const gs = r * 1.1;
-		s += `<svg x="${20 + r - gs / 2}" y="${y + r - gs / 2}" width="${gs}" height="${gs}" viewBox="0 0 24 24" color="${colr}">${GLYPHS[n.glyph] ?? GLYPHS.dot}</svg>`;
-		s += `<text x="${20 + r * 2 + 14}" y="${y + r + 2}" font-size="12" font-weight="700" fill="${T.fg}">${esc(n.name)}</text>`;
-		s += `<text x="${20 + r * 2 + 14}" y="${y + r + 18}" font-size="9.5" fill="${T.muted}">${esc(truncate(n.note, W - 60 - (20 + r * 2 + 14), 9.5))}</text>`;
+		s += `<svg x="${16 + r - gs / 2}" y="${y + r - gs / 2}" width="${gs}" height="${gs}" viewBox="0 0 24 24" color="${colr}">${GLYPHS[n.glyph] ?? GLYPHS.dot}</svg>`;
+		s += `<text x="${16 + r * 2 + 14}" y="${y + r + 2}" font-size="13" font-weight="700" fill="${T.fg}">${esc(n.name)}</text>`;
+		s += `<text x="${16 + r * 2 + 14}" y="${y + r + 19}" font-size="10.5" fill="${T.muted}">${esc(truncate(n.note, W - 30 - (16 + r * 2 + 14), 10.5))}</text>`;
 		const segs = LEVEL_SEGMENTS[n.level] ?? 1;
 		for (let g = 0; g < 3; g++) {
-			s += `<rect x="${20 + r * 2 + 14 + g * 16}" y="${y + r * 2 + 8}" width="13" height="5" rx="2.5" fill="${g < segs ? colr : T.line}"/>`;
+			s += `<rect x="${16 + r * 2 + 14 + g * 18}" y="${y + r * 2 + 9}" width="14" height="5.5" rx="2.75" fill="${g < segs ? colr : T.line}"/>`;
 		}
 	});
-	const legendY = fy + model.focus.length * 52 + 30;
-	s += `<text x="${W - 16}" y="${legendY}" text-anchor="end" font-size="8.5" fill="${T.faint}">▮▮▮ primary · ▮▮ active · ▮ side</text>`;
+	const legendY = fy + model.focus.length * 56 + 26;
+	s += `<text x="${W - 14}" y="${legendY}" text-anchor="end" font-size="9.5" fill="${T.faint}">▮▮▮ primary · ▮▮ active · ▮ side</text>`;
 	s += '</svg>';
 	return s;
 }
@@ -595,56 +639,77 @@ const LEGEND_TYPES: readonly [string, string][] = [
 	['DeleteEvent', 'del'],
 ];
 
-const COMMIT_UNIT = 50;
-const PR_UNIT = 100;
-const MAX_DOTS = 18;
-const MAX_SQUARES = 4;
+const PR_UNIT = 50;
+
+/**
+ * Pick the PR-square unit so the busiest row fills (but never exceeds)
+ * the square track. Fixed units silently lie once real data outgrows
+ * the cap; the legend prints the unit actually used.
+ */
+function prUnitFor(maxPrs: number, maxSquares: number, base: number): number {
+	if (maxPrs <= 0) return base;
+	return Math.max(base, Math.ceil(maxPrs / maxSquares / base) * base);
+}
 
 function countLabel(c: number): string {
 	return c >= 1000 ? `${(c / 1000).toFixed(1)}k` : String(c);
 }
 
 function renderBand2Desktop(model: Band2Model): string {
-	const T = THEMES[model.theme];
-	const isDark = model.theme === 'dark';
-	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
-	const typeColor = (t: string) => sem(TYPE_COLOR[t] ?? 'accent');
+	const { T, sem, typeColor } = skinFor(model.theme);
 	const W = BAND_WIDTH;
 	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND2_HEIGHT}" viewBox="0 0 ${W} ${BAND2_HEIGHT}" font-family="${FONT}">`;
 	s += `<rect width="${W}" height="${BAND2_HEIGHT}" fill="${T.bg}"/>`;
 	s += `<text x="24" y="30" font-size="13" font-weight="700" fill="${T.fg}">GitHub activity</text>`;
 	s += `<text x="${W - 24}" y="30" text-anchor="end" font-size="10" fill="${T.faint}">${model.windowDays}-day window · observed ${esc(observedJst(model.observedAt))}</text>`;
 
-	// LEFT: repo output
+	// LEFT: repo output — commit bars are proportional to the busiest
+	// row (aggregates included, so hidden volume stays visible); PR
+	// squares follow each bar's end with an adaptive, legend-declared
+	// unit so no fixed cap can silently truncate real counts.
 	const lx = 24;
-	const nameW = 140;
-	const dotX = lx + nameW + 10;
-	const dotStep = 8.5;
-	const countsX = 464;
+	const nameW = 120;
+	const barX = lx + nameW + 8;
+	const barMaxW = 140;
+	const countsX = 452;
 	const rx = 476;
 	const rw = W - 24 - rx;
+	const maxCommits = Math.max(1, ...model.rows.map((r) => r.commits));
+	const maxPrs = Math.max(0, ...model.rows.map((r) => r.prs));
+	const prUnit = prUnitFor(maxPrs, 12, PR_UNIT);
 	s += `<text x="${lx}" y="54" font-size="10" font-weight="700" fill="${T.muted}" letter-spacing="1.2">REPO OUTPUT · ${model.windowDays}D</text>`;
-	s += `<text x="${countsX - 6}" y="54" text-anchor="end" font-size="9" fill="${T.faint}">● commits · ■ ≈100 PRs · scaled</text>`;
+	s += `<text x="${countsX - 6}" y="54" text-anchor="end" font-size="9" fill="${T.faint}">bar = commits (full = ${countLabel(maxCommits)}) · ■ ≈${countLabel(prUnit)} PRs</text>`;
 	const ly = 66;
 	const rowH = 23;
+	const guideBottom = ly + model.rows.length * rowH - 6;
+	s += `<line x1="${barX - 8}" y1="${ly - 6}" x2="${barX - 8}" y2="${guideBottom}" stroke="${T.line}" stroke-width="1" opacity="0.6"/>`;
+	const sqX = barX + barMaxW + 12;
+	s += `<line x1="${barX + barMaxW + 8}" y1="${ly - 6}" x2="${barX + barMaxW + 8}" y2="${guideBottom}" stroke="${T.line}" stroke-width="1" opacity="0.6"/>`;
 	model.rows.forEach((r, i) => {
 		const y = ly + i * rowH;
 		const op = r.dim ? 0.72 : 1;
 		s += `<text x="${lx}" y="${y + 12}" font-size="10" fill="${r.dim ? T.muted : T.fg}" font-family="${MONO}" opacity="${op}">${esc(truncate(r.name, nameW - 8, 10))}</text>`;
-		const nd = Math.min(MAX_DOTS, Math.floor(r.commits / COMMIT_UNIT));
-		for (let d = 0; d < nd; d++) {
-			const frac = (d + 1) / nd;
-			s += `<circle cx="${dotX + d * dotStep}" cy="${y + 4}" r="3.2" fill="${sem('accent')}" opacity="${(0.45 + 0.55 * frac) * op}"/>`;
-		}
-		const prX = dotX + MAX_DOTS * dotStep + 10;
-		const np = Math.min(MAX_SQUARES, Math.ceil(r.prs / PR_UNIT));
+		const bw = barMaxW * (r.commits / maxCommits);
+		s += `<rect x="${barX}" y="${y + 1}" width="${barMaxW}" height="7" rx="3.5" fill="${T.panel2}"/>`;
+		if (bw > 0)
+			s += `<rect x="${barX}" y="${y + 1}" width="${Math.max(2, bw)}" height="7" rx="3.5" fill="${sem('accent')}" opacity="${0.9 * op}"/>`;
+		const np = Math.min(12, Math.ceil(r.prs / prUnit));
 		for (let p = 0; p < np; p++) {
-			s += `<rect x="${prX + p * 9}" y="${y}" width="6" height="6" fill="${sem('purple')}" opacity="${0.85 * op}"/>`;
+			s += `<rect x="${sqX + p * 6.5}" y="${y + 1.5}" width="5.5" height="5.5" fill="${sem('purple')}" opacity="${0.85 * op}"/>`;
 		}
-		s += `<text x="${countsX}" y="${y + 12}" text-anchor="end" font-size="9.5" font-family="${MONO}" fill="${T.faint}" opacity="${op}">${countLabel(r.commits)}c ${r.prs}p</text>`;
+		s += `<text x="${countsX}" y="${y + 12}" text-anchor="end" font-size="9.5" font-family="${MONO}" fill="${T.faint}" opacity="${op}">${countLabel(r.commits)}c ${countLabel(r.prs)}p</text>`;
 	});
 	const leftBottom = ly + model.rows.length * rowH + 8;
 	s += `<line x1="${lx}" y1="${leftBottom}" x2="${countsX}" y2="${leftBottom}" stroke="${T.line}"/>`;
+	if (model.repoCount > 0) {
+		const tc =
+			model.totalCommits >= 1000
+				? `${(model.totalCommits / 1000).toFixed(1)}k`
+				: `${model.totalCommits}`;
+		const tp =
+			model.totalPrs >= 1000 ? `${(model.totalPrs / 1000).toFixed(1)}k` : `${model.totalPrs}`;
+		s += `<text x="${lx}" y="${leftBottom + 16}" font-size="9.5" fill="${T.faint}">${model.windowDays}d total · ${tc} commits · ${tp} PRs · ${model.repoCount} repos</text>`;
+	}
 
 	// RIGHT: 72h pulse
 	s += `<text x="${rx}" y="54" font-size="10" font-weight="700" fill="${T.muted}" letter-spacing="1.2">LAST 72 HOURS</text>`;
@@ -672,14 +737,14 @@ function renderBand2Desktop(model: Band2Model): string {
 	} else {
 		model.feed72.forEach((e, i) => {
 			const x = t2x(e.at);
-			const yy = py + 32 + ((i * 17) % (ph - 62));
+			const yy = Math.min(py + 32 + ((i * 17) % (ph - 62)), baseY - 8);
 			s += shapeFor(e.type)(x, yy, typeColor(e.type));
 		});
 	}
 	// recent events
 	model.feed72.slice(0, 3).forEach((e, i) => {
 		const y = py + ph + 22 + i * 20;
-		s += `<rect x="${rx + 4}" y="${y - 6}" width="7" height="7" rx="1.5" fill="${typeColor(e.type)}" transform="rotate(45 ${rx + 7.5} ${y - 2.5})"/>`;
+		s += shapeFor(e.type)(rx + 8, y - 2, typeColor(e.type));
 		const repo = e.repoId.split('/').pop() ?? e.repoId;
 		s += `<text x="${rx + 18}" y="${y}" font-size="10.5" fill="${T.fg}"><tspan font-weight="600" font-family="${MONO}">${esc(repo)}</tspan> <tspan fill="${T.muted}">${esc(TYPE_LABEL[e.type] ?? e.type.toLowerCase())} · ${esc(jstStamp(e.at))} JST</tspan></text>`;
 	});
@@ -689,75 +754,85 @@ function renderBand2Desktop(model: Band2Model): string {
 }
 
 function renderBand2Mobile(model: Band2Model): string {
-	const T = THEMES[model.theme];
-	const isDark = model.theme === 'dark';
-	const sem = (k: string) => SEM[k][isDark ? 'dark' : 'light'];
-	const typeColor = (t: string) => sem(TYPE_COLOR[t] ?? 'accent');
+	const { T, sem, typeColor } = skinFor(model.theme);
 	const W = BAND_MOBILE_WIDTH;
 	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${BAND2_MOBILE_HEIGHT}" viewBox="0 0 ${W} ${BAND2_MOBILE_HEIGHT}" font-family="${FONT}">`;
 	s += `<rect width="${W}" height="${BAND2_MOBILE_HEIGHT}" fill="${T.bg}"/>`;
-	s += `<text x="20" y="28" font-size="12.5" font-weight="700" fill="${T.fg}">GitHub activity</text>`;
-	s += `<text x="${W - 16}" y="28" text-anchor="end" font-size="8.5" fill="${T.faint}">${model.windowDays}d · ${esc(observedJst(model.observedAt).replace(' · ', ' '))}</text>`;
+	s += `<text x="16" y="30" font-size="15" font-weight="700" fill="${T.fg}">GitHub activity</text>`;
+	s += `<text x="${W - 14}" y="30" text-anchor="end" font-size="10" fill="${T.faint}">${model.windowDays}d · ${esc(observedJst(model.observedAt).replace(' · ', ' '))}</text>`;
 
-	// repo output: proportional bars
-	s += `<text x="20" y="50" font-size="9.5" font-weight="700" fill="${T.muted}" letter-spacing="1">REPO OUTPUT · ${model.windowDays}D</text>`;
-	s += `<text x="${W - 16}" y="50" text-anchor="end" font-size="8.5" fill="${T.faint}">bar = commits · ■ ≈100 PRs (scaled)</text>`;
-	const maxC = Math.max(1, ...model.rows.filter((r) => !r.dim).map((r) => r.commits));
-	const ly = 60;
-	const rowH = 30;
-	const barMax = 300;
+	// repo output: proportional bars sized for the 400px canvas
+	s += `<text x="16" y="54" font-size="11.5" font-weight="700" fill="${T.muted}" letter-spacing="1">REPO OUTPUT · ${model.windowDays}D</text>`;
+	const maxC = Math.max(1, ...model.rows.map((r) => r.commits));
+	const maxP = Math.max(0, ...model.rows.map((r) => r.prs));
+	const prUnit = prUnitFor(maxP, 4, PR_UNIT);
+	s += `<text x="${W - 14}" y="54" text-anchor="end" font-size="9.5" fill="${T.faint}">bar = commits (max ${countLabel(maxC)}) · ■ ≈${countLabel(prUnit)} PRs</text>`;
+	const ly = 64;
+	const rowH = 36;
+	const barMax = 190;
+	const sqX = 16 + barMax + 10;
 	model.rows.forEach((r, i) => {
 		const y = ly + i * rowH;
-		const op = r.dim ? 0.72 : 1;
-		s += `<text x="20" y="${y + 11}" font-size="9.5" font-family="${MONO}" fill="${r.dim ? T.muted : T.fg}" opacity="${op}">${esc(truncate(r.name, 160, 9.5))}</text>`;
+		const op = r.dim ? 0.8 : 1;
+		s += `<text x="16" y="${y + 13}" font-size="11" font-family="${MONO}" fill="${r.dim ? T.muted : T.fg}" opacity="${op}">${esc(truncate(r.name, 150, 11))}</text>`;
 		const w = barMax * (r.commits / maxC);
-		s += `<rect x="20" y="${y + 17}" width="${Math.max(3, w)}" height="7" rx="3.5" fill="${sem('accent')}" opacity="${0.85 * op}"/>`;
-		const np = Math.min(MAX_SQUARES, Math.ceil(r.prs / PR_UNIT));
+		s += `<rect x="16" y="${y + 22}" width="${barMax}" height="8" rx="4" fill="${T.panel2}"/>`;
+		s += `<rect x="16" y="${y + 22}" width="${Math.max(3, w)}" height="8" rx="4" fill="${sem('accent')}" opacity="${0.85 * op}"/>`;
+		const np = Math.min(4, Math.ceil(r.prs / prUnit));
 		for (let p = 0; p < np; p++) {
-			s += `<rect x="${20 + Math.max(3, w) + 8 + p * 9}" y="${y + 18}" width="6" height="6" fill="${sem('purple')}" opacity="${0.85 * op}"/>`;
+			s += `<rect x="${sqX + p * 7}" y="${y + 23}" width="5.5" height="5.5" fill="${sem('purple')}" opacity="${0.85 * op}"/>`;
 		}
-		s += `<text x="${W - 16}" y="${y + 22}" text-anchor="end" font-size="8.5" font-family="${MONO}" fill="${T.muted}" opacity="${op}">${countLabel(r.commits)}c ${r.prs}p</text>`;
+		s += `<text x="${W - 14}" y="${y + 18}" text-anchor="end" font-size="10" font-family="${MONO}" fill="${T.muted}" opacity="${op}">${countLabel(r.commits)}c ${countLabel(r.prs)}p</text>`;
 	});
-	const lb = ly + model.rows.length * rowH + 6;
-	s += `<line x1="20" y1="${lb}" x2="${W - 20}" y2="${lb}" stroke="${T.line}"/>`;
+	const lb = ly + model.rows.length * rowH + 8;
+	s += `<line x1="16" y1="${lb}" x2="${W - 16}" y2="${lb}" stroke="${T.line}"/>`;
+	if (model.repoCount > 0) {
+		const tc =
+			model.totalCommits >= 1000
+				? `${(model.totalCommits / 1000).toFixed(1)}k`
+				: `${model.totalCommits}`;
+		const tp =
+			model.totalPrs >= 1000 ? `${(model.totalPrs / 1000).toFixed(1)}k` : `${model.totalPrs}`;
+		s += `<text x="16" y="${lb + 18}" font-size="10" fill="${T.faint}">${model.windowDays}d total · ${tc} commits · ${tp} PRs · ${model.repoCount} repos</text>`;
+	}
 
 	// 72h pulse full width
-	const py = lb + 16;
-	s += `<text x="20" y="${py}" font-size="9.5" font-weight="700" fill="${T.muted}" letter-spacing="1">LAST 72 HOURS</text>`;
-	const ph = 120;
-	const baseY = py + ph - 26;
-	const t2x = (t: string) => 30 + (1 - (model.nowMs - Date.parse(t)) / (72 * 3600e3)) * (W - 60);
-	s += `<rect x="20" y="${py + 12}" width="${W - 40}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
-	s += `<line x1="30" y1="${baseY}" x2="${W - 30}" y2="${baseY}" stroke="${T.line}"/>`;
-	let mlx = 34;
+	const py = lb + 46;
+	s += `<text x="16" y="${py}" font-size="11.5" font-weight="700" fill="${T.muted}" letter-spacing="1">LAST 72 HOURS</text>`;
+	const ph = 130;
+	const baseY = py + ph - 30;
+	const t2x = (t: string) => 26 + (1 - (model.nowMs - Date.parse(t)) / (72 * 3600e3)) * (W - 52);
+	s += `<rect x="16" y="${py + 12}" width="${W - 32}" height="${ph}" rx="8" fill="${T.panel}" stroke="${T.line}"/>`;
+	s += `<line x1="26" y1="${baseY}" x2="${W - 26}" y2="${baseY}" stroke="${T.line}"/>`;
+	let mlx = 30;
 	for (const [t, label] of LEGEND_TYPES) {
-		const yy = py + 24;
+		const yy = py + 26;
 		s += shapeFor(t)(mlx + 4, yy, typeColor(t));
-		s += `<text x="${mlx + 13}" y="${yy + 3}" font-size="8" fill="${T.muted}">${label}</text>`;
-		mlx += 13 + label.length * 5 + 10;
+		s += `<text x="${mlx + 14}" y="${yy + 3.5}" font-size="9.5" fill="${T.muted}">${label}</text>`;
+		mlx += 14 + label.length * 5.5 + 10;
 	}
 	for (let h = 72; h >= 0; h -= 24) {
-		const x = 30 + (1 - h / 72) * (W - 60);
-		s += `<text x="${x}" y="${py + 12 + ph - 8}" font-size="8" fill="${T.faint}" text-anchor="middle">${h === 0 ? 'now' : `-${h}h`}</text>`;
+		const x = 26 + (1 - h / 72) * (W - 52);
+		s += `<text x="${x}" y="${py + 12 + ph - 8}" font-size="9.5" fill="${T.faint}" text-anchor="middle">${h === 0 ? 'now' : `-${h}h`}</text>`;
 	}
 	if (model.feed72.length === 0) {
-		s += `<text x="${W / 2}" y="${py + 12 + ph / 2 + 4}" font-size="9.5" fill="${T.faint}" text-anchor="middle">no public events in 72h</text>`;
+		s += `<text x="${W / 2}" y="${py + 12 + ph / 2 + 4}" font-size="10.5" fill="${T.faint}" text-anchor="middle">no public events in 72h</text>`;
 	} else {
 		model.feed72.forEach((e, i) => {
 			const x = t2x(e.at);
-			const yy = py + 44 + ((i * 15) % (ph - 68));
+			const yy = Math.min(py + 48 + ((i * 17) % (ph - 74)), baseY - 8);
 			s += shapeFor(e.type)(x, yy, typeColor(e.type));
 		});
 	}
 	// recent 3
-	const ry = py + 12 + ph + 14;
+	const ry = py + 12 + ph + 16;
 	model.feed72.slice(0, 3).forEach((e, i) => {
-		const y = ry + i * 22;
-		s += `<rect x="24" y="${y - 5}" width="6" height="6" rx="1.3" fill="${typeColor(e.type)}" transform="rotate(45 27 ${y - 2})"/>`;
+		const y = ry + i * 26;
+		s += shapeFor(e.type)(24, y - 2, typeColor(e.type));
 		const repo = e.repoId.split('/').pop() ?? e.repoId;
-		s += `<text x="36" y="${y}" font-size="10" fill="${T.fg}"><tspan font-weight="600" font-family="${MONO}">${esc(repo)}</tspan> <tspan fill="${T.muted}">${esc(TYPE_LABEL[e.type] ?? e.type.toLowerCase())} · ${esc(jstStamp(e.at))} JST</tspan></text>`;
+		s += `<text x="34" y="${y}" font-size="11.5" fill="${T.fg}"><tspan font-weight="600" font-family="${MONO}">${esc(repo)}</tspan> <tspan fill="${T.muted}">${esc(TYPE_LABEL[e.type] ?? e.type.toLowerCase())} · ${esc(jstStamp(e.at))} JST</tspan></text>`;
 	});
-	s += `<text x="${W - 16}" y="${ry + 2 * 22 + 16}" text-anchor="end" font-size="8.5" fill="${T.faint}">${model.feed72.length} public events · times JST</text>`;
+	s += `<text x="${W - 14}" y="${ry + 2 * 26 + 18}" text-anchor="end" font-size="9.5" fill="${T.faint}">${model.feed72.length} public events · times JST</text>`;
 	s += '</svg>';
 	return s;
 }
@@ -826,6 +901,9 @@ export function composeBand2Model(input: {
 
 	let rows: BandRepoRow[] = [];
 	let feed72: BandEvent[] = [];
+	let totalCommits = 0;
+	let totalPrs = 0;
+	let repoCount = 0;
 	if (snapshot) {
 		const pubAll = snapshot.repos
 			.filter((r) => r.kind === 'public')
@@ -858,6 +936,9 @@ export function composeBand2Model(input: {
 				? [{ name: 'private repos · sum', commits: privCommits, prs: privPrs, dim: true }]
 				: []),
 		];
+		totalCommits = rows.reduce((a, r) => a + r.commits, 0);
+		totalPrs = rows.reduce((a, r) => a + r.prs, 0);
+		repoCount = pubAll.length + priv.length;
 		feed72 = snapshot.feed
 			.filter((e) => e.kind === 'public')
 			.filter((e) => axisNow - Date.parse(e.at) < 72 * 3600e3)
@@ -868,6 +949,9 @@ export function composeBand2Model(input: {
 		theme: input.theme,
 		mobile: input.mobile,
 		windowDays,
+		totalCommits,
+		totalPrs,
+		repoCount,
 		rows,
 		feed72,
 		observedAt,

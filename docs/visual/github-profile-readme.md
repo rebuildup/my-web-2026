@@ -692,3 +692,41 @@ desktop/mobile の全組合せで M1–M7 MET、ブロッカー 0。
   `.tmp/profile-proto/review-impl2/`、agy-review
   `dc6c72ec`）: **APPROVE、ブロッカー 0**。全 8 領域
   （desk/mob × dark/light）で M1–M7 MET。
+
+### 全体レビュー指摘への対応（2026-11-26、round 3–4）
+
+マージ後の全体レビュー（pre-refresh / 前候補 5132ce10 /
+現行 3c8f95ce の同条件比較）で REQUEST CHANGES となった
+指摘を、bands.ts の round 3–4 で解消した。
+
+- **mobile 可読性**: モバイル canvas を 560→**400px** に変更し、
+  全タイポグラフィ・シェイプ・余白を 390px viewport 前提で
+  再設計（band1 580h / band2 660h、vitals 2×2 カード化、
+  streak 23px / repo名 13px）。
+- **REPO OUTPUT エンコーディング**: commit dots を**比例バー**
+  （トラック+塗り、凡例に最大値明示）へ置換。PR square は
+  バー終端/トラック直後の固定カラムに移し、単位を適応化
+  （`prUnitFor`: 最大行がトラックを埋める単位を算出、凡例に
+  '■ ≈N PRs' を明記）。集約行（'+N more public'、
+  'private repos · sum'）も同一バーで dim 描画し、
+  非表示だった ~40% の 30d 出力を可視化。
+- **focus マップ**: デスクトップは左端 'you' ハブ＋水平レール上の
+  ノード配置（roster が宣言する関係＝SELF への spoke のみ。
+  project 間の関係は捏造しない）。レールは最終ノードで終端。
+- **不足メトリクス**: streak セルに '· best NNNd'（longest
+  streak）、rank セルに 'NN,NNN all-time'（total contributions）
+  を追加。mobile も同様。
+- **CONTRIBUTED TO**: ドットの不透明度二重基準（24個明るい/
+  残り dim）を廃止し全ドット均一化。'+N over' のみが
+  オーバーフローを伝える。
+- **72h パルス**: recent events の bullet をチャートと同一の
+  per-type シェイプに統一。イベントシェイプを軸基線の上に
+  クランプ。mobile のセクション間余白を拡大。
+- **構造リファクタ**: 4 レンダラに重複していた
+  theme→palette 解決を `skinFor()` に集約（責務境界:
+  palette解決 / モデル合成 / SVG描画）。機械的分割は行わず、
+  単一 obligation（github-profile bands）内の責務整理に留めた。
+
+レビュー証跡: impl v3（REQUEST CHANGES、major 3 → 全修正）、
+impl v4（**APPROVE、ブロッカー 0**、info 2件のみ）。
+`docs/verification/github-profile/v11/` に spec・agy JSON を保存。

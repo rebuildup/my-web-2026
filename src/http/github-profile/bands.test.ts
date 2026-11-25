@@ -45,6 +45,8 @@ const BASE_MODEL: ProfileCardModel = {
 
 const FULL_STATS: BandStats = {
 	currentStreak: 204,
+	longestStreak: 206,
+	totalContributions: 35239,
 	contributedTo: 27,
 	rankLevel: 'B+',
 	rankPercentile: 45.2,
@@ -58,6 +60,8 @@ const FULL_STATS: BandStats = {
 
 const EMPTY_STATS: BandStats = {
 	currentStreak: null,
+	longestStreak: null,
+	totalContributions: null,
 	contributedTo: null,
 	rankLevel: null,
 	rankPercentile: null,

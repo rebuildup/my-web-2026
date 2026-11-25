@@ -1,0 +1,81 @@
+{
+	"version": "1.0.0",
+	"id": "e1f60a6b-636d-4cf9-8152-4866edd9efc0",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "edc55c81d5293a80e1b12c7fc849024e046bc18df198277ec8cfee13789070ca",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "WebP dissolve dark-region residuals (transient, flushed by kmax12): Mid-transition frames 16 (t5.50) and 11 (t21.75) show faint dark-on-dark VP8 inter-frame ghosting/macroblocking where outgoing cards dissolved. In 16 (t5.50): blocky grey-blue residual patch in bottom-right corner, horizontal banded ghost under receding ProtoType at bottom-left, and faint box outline behind top-right of incoming yellow card. In 11 (t21.75): faint horizontal dotted dark-green lines above the overlapping hero cards (Act 4 border residual), vertical faint green streaks along the right edge of incoming Act 5, and blocky dark-grey ghosting in empty top-right. However, kmax12 flushes these cleanly: residuals are ~95% cleared within 0.5s (17-t6.00, 12-t22.25) and 100% gone by 1.0s (18-t6.50, 13-t22.75), and are subtle at 350px README scale.",
+				"severity": "minor"
+			},
+			{
+				"description": "Occluded sub-card text (persists from approved v26 layout): Centered hero card slices text mid-word on peeking corner sub-cards — specifically 19 (t8.50) TL ('No new workf'), 04–06 (t16.25–17.25) BL ('Stop scroll' / 'Stop scrolling. Star'), 07–10 (t18.50–21.25) BL ('FoldLayers. Free on B'), 09 (t20.75) BR ('oad for Free'), and 15 (t4.25) TR ('Perfect' partially clipped).",
+				"severity": "minor"
+			},
+			{
+				"description": "Bright-card accent border & right-column visual weight at ~350px: On Act 5's bright off-white grid hero (12–14, t22.25–25.00), the thin blue accent border (~3px at 800px, ~1.3px at 350px) softens slightly along the light inner edge (outer contrast against dark canvas remains clear), and tiny stray blue edge specks appear near top border in 12 (t22.25, ~x=62%) and 14 (t25.00, ~x=80%). In Act 2 (17–19, t6.00–8.50), the near-black BR sub paired with empty TR makes the right side feel visually sparse relative to the left.",
+				"severity": "minor"
+			},
+			{
+				"description": "Act 4 hero footage verified live (prior 5s freeze RESOLVED): Across 04 (t16.25) -> 05 (t16.75) -> 06 (t17.25) -> 07 (t18.50) -> 08 (t20.00) -> 09 (t20.75) -> 10 (t21.25) -> 11 (t21.75), hero visibly advances through lyric/graphic beats ('捧げる' at t16.25 -> alternate large brush kanji with subtle zoom across t16.75–17.25 -> horizontal white censor bar + radial shards at t18.50 -> '捧げる' return with slight scale shift across t20.00–20.75 -> alternate kanji switch at t21.25–21.75). Note that the underlying anime character stays in a held pointing pose (kinetic-typography PV style) and adjacent pairs t16.75/t17.25 and t20.00/t20.75 differ only by subtle zoom/stroke shifts, but the clip is clearly animated and no longer frozen.",
+				"severity": "info"
+			},
+			{
+				"description": "Layout integrity, z-order handoff & dead-space rotation verified clean: Zero canvas-edge card slicing, zero raw unrounded cutouts, zero cross-canvas travel of unroled cards. Empty corner now rotates across acts (Act 1 TL -> Act 2 TR -> Act 3 BR -> Act 4 TL -> Act 5 TR), resolving the prior persistent BR dead space. Mid-overlap z-order handoff in 11 (t21.75) and 16 (t5.50) cleanly places the incoming protagonist on top with the blue accent border transferred while the outgoing protagonist recedes underneath.",
+				"severity": "info"
+			},
+			{
+				"description": "Per-image observations (indices 00–09): 00 (t10.75): Settled Act 3 ('Just your timeline.'), crisp blue border, TL/TR/BL subs active, BR empty and clean dark. 01 (t11.25): Act 3 advances ('But now' rotating kinetic type), TL kanji/TR red katakana/BL portrait active, BR clean. 02 (t11.75): Act 3 advances ('But now it stays'), mild q80 chroma ringing on bright white text over blue comp, BR clean. 03 (t13.50): Act 3 advances ('Stop scrolling.'), all 3 subs live, BR clean. 04 (t16.25): Settled Act 4 ('捧げる' pointing character), TL empty/clean, TR dim anime boys, BL FoldLayers clipped at 'Stop scroll', BR blue graphic. 05 (t16.75): Act 4 kanji switches to alternate bold brush kanji, BL advances ('Stop scrolling. Star' clipped), TR/BR advance, TL clean. 06 (t17.25): Act 4 subtle zoom progression on brush kanji, BR advances to '夜' diamond, BL still clipped, TL clean. 07 (t18.50): Act 4 shifts to white horizontal bar + radial shards, BL advances ('FoldLayers. Free on' clipped), TL clean. 08 (t20.00): Act 4 returns to '捧げる' (tighter framing than t16.25), BR advances ('for'), BL clipped ('Free on B'), TL clean. 09 (t20.75): Act 4 subtle scale shift on '捧げる', BR advances ('oad for Free' occluded on left), BL clipped, TL clean.",
+				"severity": "info"
+			},
+			{
+				"description": "Per-image observations (indices 10–19): 10 (t21.25): Act 4 switches again to alternate brush kanji, BR advances (blue/grey 'aa' stripes), TR very dark/dim, BL clipped ('Free on Bo'), TL clean. 11 (t21.75): Act 4->5 transition; incoming Act 5 cleanly on top with blue border over receding Act 4; visible dark-region WebP artifacts (greenish dotted top border residual, vertical green streaks at right edge, blocky TR dark ghost). 12 (t22.25): Settled Act 5 (bright white grid + blue '夜 night' / 'aaaaa'); t21.75 ghosting ~95% cleared in empty TR; minor dark speck on top blue border (~x=62%); TL ProtoType very dark, BL/BR clear. 13 (t22.75): Act 5 diagonal bands & '夜' rotate smoothly; empty TR 100% clean (kmax12 flush confirmed); all 3 subs live. 14 (t25.00): Act 5 blue field opens cleanly, BL advances to bold '捧', empty TR 100% clean, tiny blue speck above top border (~x=80%). 15 (t4.25): Settled Act 1 (ProtoType circular typing UI), crisp blue border & hierarchy, TL empty/clean, TR 'Perfect' slightly clipped, mild q80 softening on micro-text/radial lines. 16 (t5.50): Act 1->2 transition; outgoing ProtoType at BL with grey border, incoming yellow Act 2 at TR with blue border (clean non-overlapping handoff); visible dark-region WebP ghosting/macroblocking in BR corner and under BL ProtoType plus faint outline behind TR. 17 (t6.00): Settled Act 2 ('81 Combo'), bold 350px legibility, t5.50 ghosting nearly cleared in empty TR, BR sub near-black leaving right column visually hollow. 18 (t6.50): Act 2 advances ('83 Combo'), empty TR 100% clean (kmax12 flush confirmed), BR sub still very dark. 19 (t8.50): Act 2 advances ('89 Combo'), TL sub text clipped ('No new workf'), empty TR 100% clean, strong hero dominance at 350px.",
+				"severity": "info"
+			}
+		],
+		"summary": "Verdict: ACCEPT (final encoded showcase.webp v27 q80 m6 kmin8/kmax12 is ship-ready). All major prior findings are resolved: Act 4 hero footage visibly advances across t16.25–21.75 (no longer frozen), kmax12 flushes WebP transition residuals cleanly within 0.5–1.0s so all settled acts (18/20 frames) have uniform dark backgrounds, persistent bottom-right dead space is eliminated via rotating empty corners (TL->TR->BR->TL->TR), mid-overlap z-order handoffs place incoming protagonists cleanly on top with blue accent borders, no cards are sliced by canvas edges or unrounded, and hero legibility at ~350px README width is strong. Remaining items are minor/non-blocking — Top 3 optional fixes by impact: (1) Clamp near-zero alpha (<0.04) to 0 during dissolves and/or align keyframes right after act transitions (or raise q80->q85) to eliminate transient dark-region WebP macroblocking/green streaking seen briefly at t5.50 and t21.75; (2) Bias corner sub-card crop/time offsets away from centered text frames (e.g., FoldLayers 'Stop scrolling'/'Free on' and 'No new workf') and avoid pairing near-black BR footage with an empty TR slot in Act 2; (3) Slightly boost blue accent border thickness/contrast (+0.5–1px or subtle outer glow) on bright Act 5 white-grid frames for crisper separation at 350px width.",
+		"verdict": "approve"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "c897c738-7e13-48de-ae69-0ad7a8a4021e",
+		"durationSeconds": 169.302458,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 37820,
+			"output_tokens": 17969,
+			"thinking_tokens": 14008,
+			"cache_read_tokens": 37085,
+			"total_tokens": 55789
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/e1f60a6b-636d-4cf9-8152-4866edd9efc0",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"error": "quota probe timed out"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

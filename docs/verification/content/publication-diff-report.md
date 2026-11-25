@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 105 |
 | External hosts | 65 |
 | First-party hosts | 0 |
-| Approved transition | 131 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -244,32 +244,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (14)
+### Added public URLs (0)
 
-- `/portfolio/ac-test`
-- `/portfolio/ae-a8n`
-- `/portfolio/ae-devtools`
-- `/portfolio/ae-test`
-- `/portfolio/flashbeat-v02`
-- `/portfolio/herdr-plugins`
-- `/portfolio/herdr-t3`
-- `/portfolio/ido-bata-server-bot`
-- `/portfolio/ido-bata-website`
-- `/portfolio/looker`
-- `/portfolio/my-web-2026`
-- `/portfolio/react-compiler-marker-cli`
-- `/portfolio/ty-plus`
-- `/portfolio/ube-kosen-map`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (3)
+### Added external hosts (0)
 
-- `ido-bata.github.io`
-- `panda-css.com`
-- `www.npmjs.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -296,7 +281,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `public/github-profile/skills/aftereffects.svg`, `public/github-profile/skills/androidstudio-dark.svg`, `public/github-profile/skills/androidstudio-light.svg`, `public/github-profile/skills/bash-dark.svg`, `public/github-profile/skills/bash-light.svg`, `public/github-profile/skills/blender-dark.svg`, `public/github-profile/skills/blender-light.svg`, `public/github-profile/skills/bun-dark.svg`, `public/github-profile/skills/bun-light.svg`, `public/github-profile/skills/c.svg`, `public/github-profile/skills/cloudflare-dark.svg`, `public/github-profile/skills/cloudflare-light.svg`, `public/github-profile/skills/cpp.svg`, `public/github-profile/skills/csharp.svg`, `public/github-profile/skills/css.svg`, `public/github-profile/skills/debian-dark.svg`, `public/github-profile/skills/debian-light.svg`, `public/github-profile/skills/dotnet.svg`, `public/github-profile/skills/figma-dark.svg`, `public/github-profile/skills/figma-light.svg`, `public/github-profile/skills/gcp-dark.svg`, `public/github-profile/skills/gcp-light.svg`, `public/github-profile/skills/git.svg`, `public/github-profile/skills/github-dark.svg`, `public/github-profile/skills/github-light.svg`, `public/github-profile/skills/golang.svg`, `public/github-profile/skills/gradle-dark.svg`, `public/github-profile/skills/gradle-light.svg`, `public/github-profile/skills/html.svg`, `public/github-profile/skills/illustrator.svg`, `public/github-profile/skills/javascript.svg`, `public/github-profile/skills/linux-dark.svg`, `public/github-profile/skills/linux-light.svg`, `public/github-profile/skills/markdown-dark.svg`, `public/github-profile/skills/markdown-light.svg`, `public/github-profile/skills/nextjs-dark.svg`, `public/github-profile/skills/nextjs-light.svg`, `public/github-profile/skills/nodejs-dark.svg`, `public/github-profile/skills/nodejs-light.svg`, `public/github-profile/skills/notion-dark.svg`, `public/github-profile/skills/notion-light.svg`, `public/github-profile/skills/npm-dark.svg`, `public/github-profile/skills/npm-light.svg`, `public/github-profile/skills/p5js.svg`, `public/github-profile/skills/photoshop.svg`, `public/github-profile/skills/pnpm-dark.svg`, `public/github-profile/skills/pnpm-light.svg`, `public/github-profile/skills/powershell-dark.svg`, `public/github-profile/skills/powershell-light.svg`, `public/github-profile/skills/premiere.svg`, `public/github-profile/skills/python-dark.svg`, `public/github-profile/skills/python-light.svg`, `public/github-profile/skills/react-dark.svg`, `public/github-profile/skills/react-light.svg`, `public/github-profile/skills/rust.svg`, `public/github-profile/skills/sass.svg`, `public/github-profile/skills/sqlite.svg`, `public/github-profile/skills/supabase-dark.svg`, `public/github-profile/skills/supabase-light.svg`, `public/github-profile/skills/swift.svg`, `public/github-profile/skills/tailwind-dark.svg`, `public/github-profile/skills/tailwind-light.svg`, `public/github-profile/skills/typescript.svg`, `public/github-profile/skills/ubuntu-dark.svg`, `public/github-profile/skills/ubuntu-light.svg`, `public/github-profile/skills/unity-dark.svg`, `public/github-profile/skills/unity-light.svg`, `public/github-profile/skills/vercel-dark.svg`, `public/github-profile/skills/vercel-light.svg`, `public/github-profile/skills/visualstudio-dark.svg`, `public/github-profile/skills/visualstudio-light.svg`, `public/github-profile/skills/vite-dark.svg`, `public/github-profile/skills/vite-light.svg`, `public/github-profile/skills/vscode-dark.svg`, `public/github-profile/skills/vscode-light.svg`, `public/github-profile/skills/xd.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/http/github-profile/activity.ts`, `src/http/github-profile/bands.ts`, `src/http/github-profile/card.ts`, `src/http/github-profile/current.ts`, `src/http/github-profile/now.ts`, `src/http/github-profile/presence.ts`, `src/http/github-profile/status.ts`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/cards/streak-card.ts`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts` |
+| `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `public/github-profile/skills/aftereffects.svg`, `public/github-profile/skills/androidstudio-dark.svg`, `public/github-profile/skills/androidstudio-light.svg`, `public/github-profile/skills/bash-dark.svg`, `public/github-profile/skills/bash-light.svg`, `public/github-profile/skills/blender-dark.svg`, `public/github-profile/skills/blender-light.svg`, `public/github-profile/skills/bun-dark.svg`, `public/github-profile/skills/bun-light.svg`, `public/github-profile/skills/c.svg`, `public/github-profile/skills/cloudflare-dark.svg`, `public/github-profile/skills/cloudflare-light.svg`, `public/github-profile/skills/cpp.svg`, `public/github-profile/skills/csharp.svg`, `public/github-profile/skills/css.svg`, `public/github-profile/skills/debian-dark.svg`, `public/github-profile/skills/debian-light.svg`, `public/github-profile/skills/dotnet.svg`, `public/github-profile/skills/figma-dark.svg`, `public/github-profile/skills/figma-light.svg`, `public/github-profile/skills/gcp-dark.svg`, `public/github-profile/skills/gcp-light.svg`, `public/github-profile/skills/git.svg`, `public/github-profile/skills/github-dark.svg`, `public/github-profile/skills/github-light.svg`, `public/github-profile/skills/golang.svg`, `public/github-profile/skills/gradle-dark.svg`, `public/github-profile/skills/gradle-light.svg`, `public/github-profile/skills/html.svg`, `public/github-profile/skills/illustrator.svg`, `public/github-profile/skills/javascript.svg`, `public/github-profile/skills/linux-dark.svg`, `public/github-profile/skills/linux-light.svg`, `public/github-profile/skills/markdown-dark.svg`, `public/github-profile/skills/markdown-light.svg`, `public/github-profile/skills/nextjs-dark.svg`, `public/github-profile/skills/nextjs-light.svg`, `public/github-profile/skills/nodejs-dark.svg`, `public/github-profile/skills/nodejs-light.svg`, `public/github-profile/skills/notion-dark.svg`, `public/github-profile/skills/notion-light.svg`, `public/github-profile/skills/npm-dark.svg`, `public/github-profile/skills/npm-light.svg`, `public/github-profile/skills/p5js.svg`, `public/github-profile/skills/photoshop.svg`, `public/github-profile/skills/pnpm-dark.svg`, `public/github-profile/skills/pnpm-light.svg`, `public/github-profile/skills/powershell-dark.svg`, `public/github-profile/skills/powershell-light.svg`, `public/github-profile/skills/premiere.svg`, `public/github-profile/skills/python-dark.svg`, `public/github-profile/skills/python-light.svg`, `public/github-profile/skills/react-dark.svg`, `public/github-profile/skills/react-light.svg`, `public/github-profile/skills/rust.svg`, `public/github-profile/skills/sass.svg`, `public/github-profile/skills/sqlite.svg`, `public/github-profile/skills/supabase-dark.svg`, `public/github-profile/skills/supabase-light.svg`, `public/github-profile/skills/swift.svg`, `public/github-profile/skills/tailwind-dark.svg`, `public/github-profile/skills/tailwind-light.svg`, `public/github-profile/skills/typescript.svg`, `public/github-profile/skills/ubuntu-dark.svg`, `public/github-profile/skills/ubuntu-light.svg`, `public/github-profile/skills/unity-dark.svg`, `public/github-profile/skills/unity-light.svg`, `public/github-profile/skills/vercel-dark.svg`, `public/github-profile/skills/vercel-light.svg`, `public/github-profile/skills/visualstudio-dark.svg`, `public/github-profile/skills/visualstudio-light.svg`, `public/github-profile/skills/vite-dark.svg`, `public/github-profile/skills/vite-light.svg`, `public/github-profile/skills/vscode-dark.svg`, `public/github-profile/skills/vscode-light.svg`, `public/github-profile/skills/xd.svg`, `src/editorial/primitives/MaterialSymbol.tsx`, `src/home/mark.tsx`, `src/http/github-profile/activity.ts`, `src/http/github-profile/bands.ts`, `src/http/github-profile/card.ts`, `src/http/github-profile/current.ts`, `src/http/github-profile/now.ts`, `src/http/github-profile/presence.ts`, `src/http/github-profile/status.ts`, `src/tools/manifest.json`, `src/vendor/github-readme-stats-fast/cards/streak-card.ts`, `src/vendor/github-readme-stats-fast/common/Card.ts`, `src/vendor/github-readme-stats-fast/common/utils.ts` |
 | `https://*.analytics.google.com` | `*.analytics.google.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.google-analytics.com` | `*.google-analytics.com` | external | `src/http/content-security-policy.ts` |
 | `https://*.googletagmanager.com` | `*.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
@@ -328,8 +314,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/image.svg` | `example.com` | external | `src/tools/manifest.json` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `src/tools/manifest.json` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `src/tools/manifest.json` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
+| `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=algolia` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=ambient_gradient` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
 | `https://github-readme-stats-fast.vercel.app/api/pin/?username=pranesh-2005&repo=github-readme-stats-fast&theme=apprentice` | `github-readme-stats-fast.vercel.app` | external | `src/vendor/github-readme-stats-fast/themes/README.md` |
@@ -732,7 +719,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://twitter.com/361do_sleep/status/1935259157881569753` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/complexivetunes/status/1842760522137297009` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
 | `https://twitter.com/snzkuo/status/1962833748761976865` | `twitter.com` | external | `src/portfolio/notion/generated/snapshot.json` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `src/tools/manifest.json` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/manifest.json` |
 | `https://via.placeholder.com` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://via.placeholder.com/300?text=Image+Error` | `via.placeholder.com` | external | `src/tools/manifest.json` |
 | `https://www.duolingo.com/profile/samuido` | `www.duolingo.com` | external | `src/about/links.ts` |
@@ -896,135 +883,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host ido-bata.github.io appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host panda-css.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host www.npmjs.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://atcoder.jp
-- **WARN** `W002 external-url-added` External URL added: https://github.com/devswha/ovis
-- **WARN** `W002 external-url-added` External URL added: https://github.com/herdrdev/herdr
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n/blob/main/docs/quickstart.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n/blob/main/docs/sessions.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n/blob/main/docs/verification.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-a8n/blob/main/examples/render-compare.ts
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-devtools
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-devtools/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-devtools/blob/main/docs/vision.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-devtools/blob/main/packages/ae-devtools-cli/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test/blob/main/docs/api.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test/blob/main/docs/dependency-on-ae-a8n.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test/blob/main/docs/verification.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ae-test/blob/main/examples/consumer/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata-server-bot
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata-server-bot/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/reaction-roles/config.ts
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata-server-bot/blob/main/src/features/timekeeper/config.ts
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata.github.io
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata.github.io/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/architecture.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ido-bata.github.io/blob/main/docs/development.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/blob/main/README.ja.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/index.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/blob/main/docs/user-guide/installation/index.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/issues/10
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/releases
-- **WARN** `W002 external-url-added` External URL added: https://github.com/ido-bata/ty-plus/releases/latest
-- **WARN** `W002 external-url-added` External URL added: https://github.com/pingdotgg/t3code
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/FlashBeat/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/FlashBeat/blob/main/README.md#%E3%83%AA%E3%83%9D%E3%82%B8%E3%83%88%E3%83%AA%E6%A7%8B%E6%88%90
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/FlashBeat/blob/main/docs/architecture/game-runtime.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/FlashBeat/blob/main/docs/operations/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Looker
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Looker/blob/master/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Looker/blob/master/README.md#%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/Looker/blob/master/README.md#%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ac-test
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ac-test/blob/master/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ac-test/blob/master/README.md#%E9%85%8D%E7%BD%AE
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/herdr-plugins
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/herdr-plugins/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/herdr-plugins/tree/main/plugins/inbox
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/herdr-t3
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/herdr-t3/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/architecture.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/releases
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/tree/main/docs/adr
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/react-compiler-marker-cli
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/react-compiler-marker-cli/blob/main/README.md#installation
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map/blob/main/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map/blob/main/docs/data-provenance.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/campus3d-demo.gif
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-01-campus.png
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/ube-kosen-map/blob/main/docs/evidence/readme/readme-03-floor.png
-- **WARN** `W002 external-url-added` External URL added: https://ido-bata.github.io
-- **WARN** `W002 external-url-added` External URL added: https://panda-css.com
-- **WARN** `W002 external-url-added` External URL added: https://www.npmjs.com/package/@ido-bata/ae-a8n
-- **WARN** `W002 external-url-added` External URL added: https://www.npmjs.com/package/@ido-bata/ae-devtools-cli
-- **WARN** `W002 external-url-added` External URL added: https://www.npmjs.com/package/@ido-bata/ae-test
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1974102198364876878
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_design/status/1984262322828067072
-- **WARN** `W002 external-url-added` External URL added: https://x.com/361do_sleep/status/1955248758243070349
-- **WARN** `W003 external-url-removed` External URL removed: http://www.w3.org/1999/xlink
-- **WARN** `W003 external-url-removed` External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/Ae/_FoldLayers
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/Ae/_RGBDelay
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/CodeType/_p5
-- **WARN** `W003 external-url-removed` External URL removed: https://github.com/rebuildup/M5/_Clock
-- **WARN** `W003 external-url-removed` External URL removed: https://www.youtube.com/watch?v=7Qo75j
-- **WARN** `W003 external-url-removed` External URL removed: https://www.youtube.com/watch?v=O
-- **WARN** `W003 external-url-removed` External URL removed: https://www.youtube.com/watch?v=llftGyEqH
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1893620585491792320
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1895423219542466819
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1904339929557266477
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1905491397169611125
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1911047618324795838
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1974102198364876878
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_design/status/1984262322828067072
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1790691816637157444
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1815006753144381874
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1832734742124609779
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1837100915419140131
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1838567775390044294
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1840369939967840508
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1844685698991067303
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1845653703463989526
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1850405797592973597
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1852638050976751749
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1873992217502900284
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1877667236900479412
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1878220390595453260
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1882412041526477277
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1901612081641910556
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1918615732939575763
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1923332601713918423
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1924057386731655327
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/361do/_sleep/status/1955248758243070349
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/morpho/_88
-- **WARN** `W003 external-url-removed` External URL removed: https://x.com/ube/_k/_cclub
-- **WARN** `W003 external-url-removed` External URL removed: https://youtu.be/-/_uzbG410Cg
-- **WARN** `W003 external-url-removed` External URL removed: https://youtu.be/j-Ja7kV/_S-I?si=GrrAnm7DefKbFrWL
-- **WARN** `W003 external-url-removed` External URL removed: https://youtu.be/szUAV/_gMLQY
-- **WARN** `W003 external-url-removed` External URL removed: https://youtube.com/shorts/o9GxF/_FLSQA
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ac-test
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ae-a8n
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ae-devtools
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ae-test
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/flashbeat-v02
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/herdr-plugins
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/herdr-t3
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ido-bata-server-bot
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ido-bata-website
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/looker
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/my-web-2026
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/react-compiler-marker-cli
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ty-plus
-- **WARN** `W004 public-url-added` Public URL added: /portfolio/ube-kosen-map
+- **WARN** `W002 external-url-added` External URL added: http://www.w3.org/1999/xlink
+- **WARN** `W002 external-url-added` External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
 

@@ -487,3 +487,72 @@ v9 までのドック・スロット・主役リレー方式は、遷移中の�
   README ドラフトと同一の `<picture>/<source media>` 構文を
   配置。github.com の blob ビューでサニタイズ後の実レンダリング
   を確認するためのプローブ（公開プロフィールは不変）。
+
+## 17. Selected Work 仕上げ反復（2026-11-25、第3次収束）
+
+v19 以降の残存指摘（z-order ハンドオフ・デッドスペース・
+WebP ghosting・白背景でのボーダー視認性・サブカードの
+テキスト欠け）に対し、agy レビュー v20〜v26 の 7 ラウンドで
+収束させた。
+
+### 採用した変更
+
+- **主役ハンドオフを時間基準へ**: `progActIndex()` を新設し、
+  各 act 境界の **0.8 秒前**に incoming hero へ z-top +
+  アクセントボーダーを移管（境界またぎのカード経路交差
+  より前）。ボーダーの alpha はカードに追従するため、
+  早期フリップでも半透明カードに枠だけ浮かない。
+- **空きコーナーの全面ローテーション**: `VACANT_ORDER`
+  [TL,TR,BR,TL,TR] で 4 スロット全てを巡回。BL は全 act で
+  常に充填され、Act4 の空きが BR×暗い TR と重なる不均衡も
+  解消（v23 指摘）。
+- **サブカードの内側シーム vignette**: 主役カードに隠れる
+  内側エッジへ向かう暗いグラデーション（帯域 w*0.55 /
+  h*0.5、プラトー型 opacity 0.88）。hero の縁で切れる
+  テキストが「断ち切り」に見えず奥行きとして読める。
+  **罠**: sharp の `composite()` は先行 composite を置き換える
+  ため、vignette は mask/rim と同一 ops 配列の先頭に置く
+  必要がある（v21〜v24 は別呼び出しで毎回消えていた）。
+  さらにハンドオフ中は slotOf 上まだ sub の incoming hero
+  にも vignette が掛かるため `p.slug !== protagonistSlug`
+  で除外（v25 の major regression を修正）。
+- **アクセントボーダー強化**: 3px ストローク
+  `rgba(140,188,246,0.78)` + 5px 暗色キーラインで、
+  Act5 の白系グリッドや Act2 の黄カードでも 350px で視認。
+- **WebP 圧縮**: quality 80、`-m 6`、`-kmin 8 -kmax 12`
+  （全 act 遷移内にキーフレームが落ちる頻度）、サブの
+  alpha 描画フロア 0.08。`-near_lossless` は高負荷下で
+  エンコードが現実的時間に収まらず断念（検証済み: フラグ
+  自体は受理される）。
+- **aulymo-v02 grade 1.6→1.8**: Act2 BR の暗い UI クリップの
+  潰れ込みを軽減。
+
+### レビュー結果（agy、v20〜v26）
+
+- v20: request-changes — サブテキスト欠け・Act4→5 z-order
+  逆転（サイズ基準ハンドオフが outgoing 優位を継続）
+- v21: request-changes — vignette 追加も効かず（後に
+  composite 置換バグと判明）、z-order/border は改善
+- v22: request-changes — 全 major 解消、残り minor のみ
+  （vignette のシーム側・帯域・WebP ghosting・Act4 右側の
+  不均衡）
+- v23: request-changes — vignette の上下辺を修正するも
+  帯域が min(w,h) 基準でシームに届かず、Act4→5 で
+  vignette が incoming hero を半分黒くする regression
+- v24: request-changes — 帯域を w/h 基準に修正・空き
+  コーナー再編・alpha フロア 0.08。vignette は依然
+  別 composite で消失（実効ゼロ）
+- v25: request-changes — vignette を ops 内へ移し実効化。
+  ただし incoming hero への誤適用が major regression
+  として顕在化
+- v26（PNG フレーム、圧縮前）: **APPROVE (ACCEPT)** —
+  全 major 解消。残存は minor polish のみ:
+  - サブ役のテキスト入りクリップ区間（FoldLayers 等）を
+    sub 配置時に選ぶと mid-word 欠けが更に減る（コンテンツ
+    改善、構造問題ではない）
+  - Act2 BR・Act5 TL の暗いサブの視認性（クリップ輝度
+    選定または dim floor 調整）
+  - t≈21.75 の遷移中に全コーナーが一瞬空く beats
+    （Act1→2 より sub materialize を ~0.25s 早めると揃う）
+  - WebP 圧縮アーティファクトはエンコード後の最終
+    showcase.webp で別途確認

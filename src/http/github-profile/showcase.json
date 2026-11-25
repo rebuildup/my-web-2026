@@ -8,7 +8,7 @@
 		"height": 360,
 		"background": "#0B0F14",
 		"fps": 8,
-		"quality": 70
+		"quality": 80
 	},
 	"duration": 28,
 	"elementSeconds": 28,
@@ -42,6 +42,12 @@
 				"w": 190,
 				"h": 107,
 				"x": 16,
+				"y": 237
+			},
+			{
+				"w": 190,
+				"h": 107,
+				"x": 594,
 				"y": 237
 			}
 		],

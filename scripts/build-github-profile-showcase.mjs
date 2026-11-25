@@ -215,13 +215,21 @@ function buildMotion(showcase) {
 	// does not reshuffle every act; collisions within one act scan
 	// forward for the next free slot.
 	const parkPref = new Map(works.map((w, i) => [w, i % Math.max(1, parkCount)]));
-	const slotOf = acts.map((act) => {
-		const map = {
-			[act.main]: 'main',
-			[act.preview]: 'sub0',
-			[act.prev]: 'sub1',
-			[act.context]: 'sub2',
-		};
+	const SUB_SLOTS = ['sub0', 'sub1', 'sub2', 'sub3'];
+	// Vacancy sequence: BL stays filled every act (bottom row never
+	// reads top-heavy), and Act 4's empty corner moves off BR where
+	// it paired with a near-black TR sub (v23 imbalance note).
+	const VACANT_ORDER = [0, 1, 3, 0, 1];
+	const slotOf = acts.map((act, actIdx) => {
+		// The vacant corner rotates across the loop instead of leaving
+		// one quadrant permanently dead.
+		const vacant = SUB_SLOTS[VACANT_ORDER[actIdx % VACANT_ORDER.length]];
+		const filled = SUB_SLOTS.filter((s) => s !== vacant);
+		const roles = [...new Set([act.preview, act.prev, act.context])];
+		const map = { [act.main]: 'main' };
+		roles.forEach((w, i) => {
+			map[w] = filled[i] ?? 'off';
+		});
 		const used = new Set(Object.values(map));
 		const unassigned = works.filter((w) => !(w in map)).sort();
 		for (const w of unassigned) {
@@ -527,8 +535,8 @@ async function main() {
 	// the main card breathes and travels between slots, so a static
 	// wireframe would detach from it. renderFrame draws the frame
 	// around whichever element is currently largest instead.
-	const FRAME_STROKE = 'rgba(150,185,235,0.5)';
-	const FRAME_WIDTH = 2;
+	const FRAME_STROKE = 'rgba(140,188,246,0.78)';
+	const FRAME_WIDTH = 3;
 
 	// ---- decor: bake background + sub panels + main frame into one
 	// static base plate. Elements are composited per frame on top. ----
@@ -619,6 +627,41 @@ async function main() {
 		}
 		return acts.length - 1;
 	}
+	// Protagonist hand-off leads the slot/dim flip: the incoming hero
+	// takes z-top + the accent border ~0.8s before the boundary —
+	// before the two heroes' paths cross mid-glide — so the outgoing
+	// card never reads as "still on top" while the newcomer expands
+	// beneath it. The frame alpha-fades with the card, so an early
+	// flip on a still-dim incoming hero stays invisible.
+	const PROG_W = 0.8;
+	function progActIndex(t) {
+		for (let k = 1; k < bounds.length; k += 1) {
+			const b = bounds[k - 1];
+			if (t >= b - PROG_W && t < b) return k;
+		}
+		if (t >= D - (showcase.fade ?? 0) - PROG_W) return 0;
+		let acc = 0;
+		for (let i = 0; i < acts.length; i += 1) {
+			acc += acts[i].duration;
+			if (t < acc) return i;
+		}
+		return acts.length - 1;
+	}
+
+	// Which card edges face the canvas centre per sub slot — drives
+	// the inner-edge vignette that keeps hero overlap reading as
+	// depth rather than a sliced headline.
+	// Seams where the protagonist's edge crosses each sub: top-row
+	// subs are cut by the hero's TOP edge (seam near their top),
+	// bottom-row subs by its BOTTOM edge — plus the side facing
+	// canvas centre. Vignetting the wrong edge leaves clipped text
+	// bright at the seam (v21/v22 review).
+	const SUB_SIDES = {
+		sub0: ['right', 'top'],
+		sub1: ['left', 'top'],
+		sub2: ['right', 'bottom'],
+		sub3: ['left', 'bottom'],
+	};
 
 	const maskCache = new Map();
 	function roundedMask(w, h) {
@@ -670,14 +713,63 @@ async function main() {
 		const key = `${w}x${h}`;
 		if (!frameCache.has(key)) {
 			const r = Math.min(12, Math.round(h * 0.08));
+			// Dark keyline under the accent stroke: the light-blue
+			// border alone washes out against bright protagonists
+			// (e.g. Act 5's off-white grid) at README scale.
 			frameCache.set(
 				key,
 				Buffer.from(
-					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="${FRAME_STROKE}" stroke-width="${FRAME_WIDTH}"/></svg>`,
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="rgba(5,10,18,0.6)" stroke-width="${FRAME_WIDTH + 5}"/><rect x="${FRAME_WIDTH / 2}" y="${FRAME_WIDTH / 2}" width="${w - FRAME_WIDTH}" height="${h - FRAME_WIDTH}" rx="${r}" fill="none" stroke="${FRAME_STROKE}" stroke-width="${FRAME_WIDTH}"/></svg>`,
 				),
 			);
 		}
 		return frameCache.get(key);
+	}
+
+	// Sub cards sit partially behind the protagonist, so their inner
+	// edges are hard-clipped mid-content (reviewer: "sliced
+	// headlines"). A dark gradient on the canvas-facing edges makes
+	// the overlap read as depth instead of a cut. `sideH`/`sideV`
+	// name which edges face the canvas centre.
+	const vignetteCache = new Map();
+	function subVignette(w, h, sideH, sideV) {
+		const key = `${w}x${h}:${sideH}${sideV}`;
+		if (!vignetteCache.has(key)) {
+			// Band sized from the card's own width/height, NOT min():
+			// the hero seam sits ~35-40% in from the inner edge, so a
+			// min()-based band stopped just short of it (v23 miss).
+			const bandX = Math.round(w * 0.55);
+			const bandY = Math.round(h * 0.5);
+			const rects = [];
+			// Plateau profile: transparent at the band's outer limit,
+			// then ~full strength well before the card edge so the
+			// hero-overlap seam sits inside the dark zone rather than
+			// on its decay tail (the v21 failure mode).
+			const grad = (id, x1, y1, x2, y2) =>
+				`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="#0B0F14" stop-opacity="0"/><stop offset="0.45" stop-color="#0B0F14" stop-opacity="0.88"/><stop offset="1" stop-color="#0B0F14" stop-opacity="0.88"/></linearGradient>`;
+			const defs = [];
+			if (sideH === 'right') {
+				defs.push(grad('gh', w - bandX, 0, w, 0));
+				rects.push(`<rect x="${w - bandX}" y="0" width="${bandX}" height="${h}" fill="url(#gh)"/>`);
+			} else {
+				defs.push(grad('gh', bandX, 0, 0, 0));
+				rects.push(`<rect x="0" y="0" width="${bandX}" height="${h}" fill="url(#gh)"/>`);
+			}
+			if (sideV === 'bottom') {
+				defs.push(grad('gv', 0, h - bandY, 0, h));
+				rects.push(`<rect x="0" y="${h - bandY}" width="${w}" height="${bandY}" fill="url(#gv)"/>`);
+			} else {
+				defs.push(grad('gv', 0, bandY, 0, 0));
+				rects.push(`<rect x="0" y="0" width="${w}" height="${bandY}" fill="url(#gv)"/>`);
+			}
+			vignetteCache.set(
+				key,
+				Buffer.from(
+					`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs>${defs.join('')}</defs>${rects.join('')}</svg>`,
+				),
+			);
+		}
+		return vignetteCache.get(key);
 	}
 
 	function runAsync(cmd, args) {
@@ -697,14 +789,15 @@ async function main() {
 		const t = n / fps;
 		const items = [];
 		const destIdx = destActIndex(t);
-		const leadSlug = acts[destIdx].main;
+		const progIdx = progActIndex(t);
+		const protagonistSlug = acts[progIdx].main;
 		works.forEach((w, i) => {
 			const st = elementState(showcase, motions, works, i, t);
 			const wpx = Math.max(2, Math.round(st.w) - (Math.round(st.w) % 2));
 			const hpx = Math.max(2, Math.round(st.h) - (Math.round(st.h) % 2));
 			const x = Math.round(st.x);
 			const y = Math.round(st.y);
-			if (wpx >= 4 && st.alpha > 0.02 && x + wpx > 0 && y + hpx > 0 && x < W && y < H) {
+			if (wpx >= 4 && st.alpha > 0.08 && x + wpx > 0 && y + hpx > 0 && x < W && y < H) {
 				items.push({
 					file: elemFiles.get(w),
 					slug: w,
@@ -714,14 +807,15 @@ async function main() {
 					h: hpx,
 					dim: slotOf[destIdx]?.[w] === 'main' ? 1 : dimAt(st.sRole),
 					alpha: st.alpha,
-					mainBound: slotOf[destIdx]?.[w] === 'main',
+					mainBound: false,
 					area: wpx * hpx,
 				});
 			}
 		});
-		// The work bound for the main slot composites last (z-top)
-		// even mid-growth, so the incoming protagonist rises over the
-		// outgoing one instead of overlapping it.
+		for (const p of items) p.mainBound = p.slug === protagonistSlug;
+		// The protagonist composites last (z-top) even mid-growth, so
+		// the incoming hero rises over the outgoing one through the
+		// hand-off window.
 		items.sort((a, b) => Number(a.mainBound) - Number(b.mainBound) || a.area - b.area);
 
 		const out = join(FRAMES_DIR, `f${String(n).padStart(4, '0')}.png`);
@@ -757,9 +851,26 @@ async function main() {
 				});
 			else if (grade !== 1) img = img.modulate({ brightness: grade });
 			// sharp's composite() REPLACES earlier composites — the mask,
-			// rim and accent layers must ride in ONE call or the rounded
-			// mask silently drops (sharp-cornered subs).
-			const ops = [{ input: roundedMask(p.w, p.h), blend: 'dest-in' }];
+			// rim, vignette and accent layers must ride in ONE call or
+			// earlier layers silently drop (the v21-v24 vignette was
+			// being wiped by exactly this).
+			const ops = [];
+			// Edge vignette on subs facing the protagonist: first op so
+			// the rounded/alpha masks below cut it along with the card —
+			// a dissolving sub never leaves a dark gradient behind.
+			const subSlot = slotOf[destIdx]?.[p.slug];
+			const subSides = SUB_SIDES[subSlot];
+			// Never vignette the protagonist: during a hand-off the
+			// incoming hero is still slot-mapped as a sub until the
+			// boundary, and the dark gradient would black out half of
+			// the card that already wears the accent border (v25).
+			if (p.dim < 0.999 && subSides && p.slug !== protagonistSlug) {
+				ops.push({
+					input: subVignette(p.w, p.h, subSides[0], subSides[1]),
+					blend: 'over',
+				});
+			}
+			ops.push({ input: roundedMask(p.w, p.h), blend: 'dest-in' });
 			// modulate() has no alpha channel — dissolve/materialize is
 			// applied as a second dest-in pass with a uniform-alpha mask.
 			if (p.alpha < 0.999) ops.push({ input: alphaMask(p.w, p.h, p.alpha), blend: 'dest-in' });
@@ -769,11 +880,10 @@ async function main() {
 			img = img.composite(ops);
 			layers.push({ input: await img.png().toBuffer(), left: p.x, top: p.y, _item: p });
 		}
-		// Protagonist accent frame tracks the work bound for the main
-		// slot of the approached act — it transfers to the incoming
-		// hero at the start of the hand-off window, PAD outside its
-		// rect — never a detached static wireframe.
-		const lead = items.find((p) => p.slug === leadSlug) ?? items[items.length - 1];
+		// Protagonist accent frame tracks progActIndex's hero (see
+		// protagonistSlug above), PAD outside its rect — never a
+		// detached static wireframe.
+		const lead = items.find((p) => p.slug === protagonistSlug) ?? items[items.length - 1];
 		let frameLayer = null;
 		if (lead) {
 			const fw = lead.w + PAD * 2;
@@ -854,7 +964,16 @@ async function main() {
 		'-q',
 		String(quality),
 		'-m',
-		'4',
+		'6',
+		// Cap the inter-frame delta chain: without a periodic
+		// keyframe, lossy deltas accumulate into the blocky ghost
+		// trails reviewers kept flagging in dark dissolve regions.
+		// kmax 12 (~1.5s) lands a keyframe inside every 1s act
+		// transition so dissolve residuals flush quickly.
+		'-kmin',
+		'8',
+		'-kmax',
+		'12',
 		p,
 	]);
 	run('img2webp', ['-loop', '0', '-sharp_yuv', ...frameArgs, '-o', OUT_PATH]);

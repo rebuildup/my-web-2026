@@ -20,6 +20,7 @@
 	],
 	"ignoreExportsUsedInFile": true,
 	"ignoreIssues": {
+		"docs/verification/github-profile/v11/proto-gen6-approved.mjs": ["files"],
 		"src/vendor/**": [
 			"files",
 			"exports",

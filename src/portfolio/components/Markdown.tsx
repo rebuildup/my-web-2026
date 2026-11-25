@@ -157,7 +157,7 @@ function renderInlineNode(node: MarkdownInline, ctx: MarkdownLinkContext, key: s
 					key={key}
 					href={verdict.href}
 					target={verdict.target}
-					rel={verdict.rel}
+					rel={verdict.rel === '' ? undefined : verdict.rel}
 					className={LINK_CLASS_NAME}
 				>
 					{renderInline(node.children, ctx, key)}

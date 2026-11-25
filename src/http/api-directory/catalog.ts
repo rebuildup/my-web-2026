@@ -288,6 +288,36 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'In-progress projects card for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): the same currentProjectsLoader composition the site renders — roster declarations plus measured git/GitHub facts — so "what is being worked on" survives the /now retirement. Committed data only; no request-time fetch. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/identity',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the band always answers 200 — missing / stale upstreams render honest unavailable states inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Identity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): avatar, vitals (streak / languages / contributed repos / rank), declared-focus map and Discord presence in one glanceable SVG. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
+	{
+		path: '/api/v1/github-profile/activity-map',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the band always answers 200 — a missing activity snapshot renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Activity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): 30-day per-repository commit/PR output plus a 72-hour public-event pulse anchored to the snapshot observation time; private repositories aggregate anonymously. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

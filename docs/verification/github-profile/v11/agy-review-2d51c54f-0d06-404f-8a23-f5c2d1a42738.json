@@ -1,0 +1,119 @@
+{
+	"version": "1.0.0",
+	"id": "2d51c54f-0d06-404f-8a23-f5c2d1a42738",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "d6fcd6b0e86badf9286a0e8e11cb3fdab1f6b650f6e4a228fe03ddf8b5972214",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "BLOCKER — Desktop Band 2 (dark & light, 00-v5-desk.png & 01-v5-mob.png): Inside the LAST 72 HOURS chart box (right panel), the inline legend ('● push  ◆ PR  ▲ new  ✕ del') shares the same top y-band as the plotted event stacks. The -48h event cluster directly overlaps '▲ new' and the ~-38h stack collides over '✕ del' in both dark and light modes, and dense -24h stacks partially overplot. Fix: move the legend above the chart border (e.g. right-aligned on the 'LAST 72 HOURS' header row) or reserve ~22px of top padding below the legend before starting event y-positions.",
+				"severity": "critical"
+			},
+			{
+				"description": "POLISH — Dark-mode contrast on Band 2 muted text (00-v5-desk.png & 01-v5-mob.png): While Desktop Band 1, Mobile Band 1, and Desktop Band 2 counts improved markedly, Mobile Band 2 dark still renders right-column counts ('2.1kc 572p'..'1.5kc 548p'), aggregate labels ('+24 more public', 'private · sum'), and '-72h / -48h / -24h / now' axis ticks noticeably dimmer than Desktop Band 2 dark. Desktop Band 2 dark axis ticks are also slightly faint. Lift muted dark-mode text/ticks to at least ~#8b949e–#9ca3af for >=4.5:1 legibility.",
+				"severity": "minor"
+			},
+			{
+				"description": "POLISH — Desktop Band 2 commit-dot silent capping & heavy PR capping (00-v5-desk.png): The legend states '● = 50 commits  ■ = 25 PRs (capped)', which implies 42 dots for FlashBeat (2.1kc), 36 for my-web-2026 (1.8kc), and 30 for private repos · sum (1.5kc), yet those three rows silently cap/compress around ~20–24 dots with no '(capped)' or '+' indicator on commits. Meanwhile PR squares cap at 4 (100p), making dotfiles (96p), +22 more public (101p), my-web-2026 (352p), private repos (548p), and FlashBeat (572p) all look identical (4 squares) on both desktop and mobile. Consider marking commit cap explicitly (or switching desktop commits to a proportional bar like mobile) and increasing PR step size or adding a '+' overflow indicator.",
+				"severity": "minor"
+			},
+			{
+				"description": "POLISH — Desktop Band 1 missing weight-segment legend (00-v5-desk.png): Removing the bottom-right legend resolved the v15 collision over 'After Effects' bars, but left desktop's 3-segment weight bars unexplained while Mobile Band 1 includes '■■■ primary  ■■ active  ■ side'. Place that legend right-aligned on the 'IN PROGRESS · DECLARED FOCUS' header row on desktop so grammar stays explicit with zero collision risk.",
+				"severity": "minor"
+			},
+			{
+				"description": "POLISH — Band 1 minor layout & swatch details (00-v5-desk.png & 01-v5-mob.png): (1) TOP LANGUAGE secondary labels ('C# 40.9 · C++ 7.9 · +3' / '+3 more') still lack inline color swatches tying them to bar segments. (2) On Mobile Band 1 (dark & light), 'day streak' floats far right of '204' inside the Streak box instead of aligning under '204'. (3) Vitals boxes remain slightly heavier visually than the unboxed IN PROGRESS section (especially on mobile). (4) Desktop Band 1 says 'CONTRIBUTED TO · 27 REPOS' without '1y' whereas mobile says 'CONTRIBUTED · 1Y' + '27'.",
+				"severity": "minor"
+			},
+			{
+				"description": "VERIFICATION SUMMARY — Regions & Blockers: [Desktop Band 1 dark/light] Header, 4 vitals boxes, and all 4 focus projects ('my-web-2026', 'AI coding agent', 'Tastile', 'After Effects') render cleanly with zero clipping or collisions. [Desktop Band 2 dark/light] Left 10-row repo table has clean separation between commit dots, PR squares, and right-aligned counts; 'private repos · sum' untruncated; aggregate rule clean; feed rows & '29 public events · times JST' clean; ONLY defect is the 72h chart legend/data collision on '▲ new  ✕ del' and faint dark axis ticks. [Mobile Band 1 dark/light] 2x2 vitals restore '45.8%', 'C# 40.9 · C++ 7.9 · +3 more', 'of A+ tier', and 27-dot 1y grid; all 4 projects + weight bars + bottom-right legend render cleanly. [Mobile Band 2 dark/light] Proportional commit bars + consistently 4-capped PR squares resolve magnitude inversion ('+24 more public' 374c 211p now shows 4 squares, matching 572p/352p/548p); 72h chart renders differentiated shapes with NO legend collision on mobile; all 3 feed rows show JST and '29 public events · times JST' footer is restored. BLOCKER STATUS — v16: #0 FIXED, #1 PARTIAL (rendered on desktop+mobile, but desktop shapes collide over '▲ new  ✕ del'), #2 PARTIAL (legend icons & shapes added, desktop legend/data collision), #3 FIXED, #4 PARTIAL (Mobile Band 2 dark counts/aggregates/ticks & Desktop Band 2 dark ticks still slightly dim), #5 FIXED. v15: #0 FIXED, #1 FIXED (v15 edge-clip/row3/overflow resolved; new desktop legend-data overlap), #2 FIXED, #3 FIXED, #4 PARTIAL, #5 PARTIAL (readable mobile; desktop overlaps legend/stacks). v14: #1 FIXED, #2 FIXED, #3 FIXED, #4 FIXED, #5 PARTIAL, #6 FIXED. v14 polish: vitals-vs-focus hierarchy PARTIAL, weight-segment grammar PARTIAL (mobile yes, desktop legend removed), secondary lang swatches NOT FIXED, Band2 rule FIXED, JST feed labels FIXED, 'times JST' footer honesty FIXED.",
+				"severity": "info"
+			},
+			{
+				"description": "M1–M7 RUBRIC RATINGS (Dark / Light) — Band 1 (Desktop & Mobile): M1 text-dependence MET/MET, M2 visual-semantics PARTIAL/PARTIAL (no desktop weight legend, no secondary-lang swatches), M3 glance MET/MET, M4 hierarchy PARTIAL/PARTIAL (boxed vitals vs unboxed focus; mobile 'day streak' alignment), M5 honesty/legibility MET/MET, M6 GitHub-fitness MET/MET, M7 improvement-vs-current MET/MET. Band 2 (Desktop & Mobile): M1 text-dependence MET/MET, M2 visual-semantics PARTIAL/PARTIAL (desktop 72h legend/shape collision; PR 4-cap flattens 96p–572p), M3 glance PARTIAL/PARTIAL (desktop 72h collision), M4 hierarchy MET/MET, M5 honesty/legibility PARTIAL/PARTIAL (desktop 72h collision; silent desktop commit-dot cap; dim dark-mode Mobile Band 2 counts/ticks), M6 GitHub-fitness MET/MET, M7 improvement-vs-current MET/MET.",
+				"severity": "info"
+			}
+		],
+		"summary": "REQUEST CHANGES (1 BLOCKER, 4 POLISH). Almost all v14–v16 blockers are resolved across both desktop and mobile (including Band 1 layout, Desktop Band 2 PR/count separation, Mobile Band 2 PR magnitude-inversion fix, 72h chart rendering with differentiated shapes, and mobile metric/label restoration), with Mobile Band 1 and Mobile Band 2 visually clean. However, Desktop Band 2 (both dark and light) has one remaining critical visual blocker: plotted event shapes at -48h and ~-38h inside the LAST 72 HOURS chart collide directly over the inline legend labels '▲ new  ✕ del'. Fixing that headroom/legend placement resolves the only blocker; remaining items (dark-mode contrast lift on Mobile Band 2 counts/aggregates/ticks and Desktop Band 2 ticks, explicit commit/PR capping honesty on Desktop Band 2, restoring the weight-bar legend to Desktop Band 1's section header, and secondary-language swatches / mobile 'day streak' alignment) are polish.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "cd78bace-1dde-448f-97d2-6459a6da8745",
+		"durationSeconds": 201.586196,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 5178,
+			"output_tokens": 21872,
+			"thinking_tokens": 19728,
+			"cache_read_tokens": 19741,
+			"total_tokens": 27050
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/2d51c54f-0d06-404f-8a23-f5c2d1a42738",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.73,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.94,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T14:57:27Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t73%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t94%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T14:57:27Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

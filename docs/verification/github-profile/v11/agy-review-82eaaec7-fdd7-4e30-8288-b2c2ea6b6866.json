@@ -1,0 +1,135 @@
+{
+	"version": "1.0.0",
+	"id": "82eaaec7-fdd7-4e30-8288-b2c2ea6b6866",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "ce3daaa5748eb7a5fcf4c7e8a8b4afdecef460d3d09ba64736e3fd9ce3b3b052",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "[BLOCKER | Band 1 desktop dark & light — CONTRIBUTED TO card (upper-middle-right)] Blocker #3 PARTIAL: '27 repos · 1y' text still collides directly across the 3rd (bottom) row of the 9×3 blue dot matrix in both dark and light modes. (Flame spacing from '204' and 'of A+ / tier' placement beside the B+ arc are FIXED.)",
+				"severity": "critical"
+			},
+			{
+				"description": "[BLOCKER | Band 1 desktop dark & light — IN PROGRESS section (bottom-left and bottom-right)] Blocker #1 PARTIAL: While 'After Effects' is now visible, rings no longer overlap, labels sit below glyphs, and bottom clipping is gone, two severe collisions remain: (a) under 'my-web-2026' (left), the 3 blue weight-bar segments cut directly through the middle of the subtitle 'personal web platform'; (b) at bottom-right, the legend '■■■ primary  ■■ active  ■ side · declared focus' sits on the same baseline as the weight bars, colliding directly over 'After Effects''s amber/gray weight segments and crowding 'Tastile''s segments.",
+				"severity": "critical"
+			},
+			{
+				"description": "[BLOCKER | Band 2 desktop dark & light — LAST 72 HOURS panel (right column)] Blocker #2 PARTIAL: Left panel is FIXED (commit circles, PR squares, and counts are cleanly separated with no bleed into 72h; 'private repos · sum' is untruncated; hollow dots replaced with explained solid circles/squares). However, the right 72h panel has three severe layout breaks: (a) all 3 recent-event lines clip at the right SVG edge ('restro-pv push · 11/24' loses its time; 'my-web-2026 push · 11' loses date and time); (b) row 3 ('my-web-2026 push · 11') collides directly on top of the '3 recent events · times JST' footer; (c) the chart's 'new' legend label overflows past the right border of the 72h chart box.",
+				"severity": "critical"
+			},
+			{
+				"description": "[BLOCKER | Band 2 mobile dark & light (560w) — LAST 72 HOURS panel (lower half)] Blocker #4 PARTIAL & Blocker #6 NOT FIXED: The large 'LAST 72 HOURS' chart box renders completely blank (no plotted event markers, no timeline axis, no event-type legend—only '-72h', '-48h', '-24h', 'now' ticks along the bottom edge) despite 3 push events from 11/24 01:59–02:46 listed immediately below it.",
+				"severity": "critical"
+			},
+			{
+				"description": "[BLOCKER | Band 2 mobile dark & desktop dark — muted labels and counts] Blocker #5 NOT FIXED: Dark-mode contrast on secondary labels remains severely low. In Band 2 mobile dark, right-aligned counts ('2.1kc' down to '374c', '1.5kc'), '+24 more public', 'private · sum', and '-72h / -48h / -24h / now' are barely legible against the dark card background. In Band 2 desktop dark, '+22 more public', 'private repos · sum', '352c 185p', '1.5kc 548p', and axis ticks are similarly dim. In Band 1 dark, 'C# 40.9 · C++ 7.9 · +3', 'of A+ tier', and project subtitles also remain low-contrast.",
+				"severity": "major"
+			},
+			{
+				"description": "[BLOCKER | Band 2 desktop & mobile — 72h pulse event-type encoding] Blocker #6 NOT FIXED: Desktop 72h adds tiny 'push / PR / new' legend items at the top of the chart, but 'new' overflows outside the chart border and the glyphs (~3–4px) are too small to distinguish shapes reliably at a glance (with only push events plotted). Mobile 72h omits both legend and plotted points entirely.",
+				"severity": "major"
+			},
+			{
+				"description": "[BLOCKER | Band 1 & Band 2 mobile (560w) — Root requirement: no information deletion] Blocker #4 PARTIAL: Dedicated 560w mobile variants fix the ~4–5px illegible text and replace 42-dot rows with horizontal bars that survive 350px. However, mobile deletes core data present on desktop: Band 1 mobile omits '45.8%', 'C# 40.9 · C++ 7.9 · +3' (leaving 3 bar colors unexplained), and 'of A+ tier'; Band 2 mobile deletes all PR counts and PR encodings entirely (showing only commits).",
+				"severity": "major"
+			},
+			{
+				"description": "[POLISH | Band 1 desktop dark & light — TOP LANGUAGE card] v14 polish NOT FIXED: Secondary language breakdown ('C# 40.9 · C++ 7.9 · +3') remains monochrome text with no color swatches linking green, amber, and pink bar segments to their labels.",
+				"severity": "minor"
+			},
+			{
+				"description": "[POLISH | Band 1 desktop & mobile — vitals boxing vs IN PROGRESS hierarchy & spacing] v14 polish PARTIAL: The 4 heavily boxed vitals cards still visually compete with the unboxed 'IN PROGRESS' focus map, and the 'IN PROGRESS' heading sits cramped within a few pixels of the card borders above it. On Band 1 mobile, there is ~80–100px of empty dead space between 'After Effects' and the tiny bottom-right legend, and 'day streak' is awkwardly offset right of '204'.",
+				"severity": "minor"
+			},
+			{
+				"description": "[POLISH | Band 2 mobile — JST footer & small sub-labels] v14 polish PARTIAL: Mobile Band 2 removes UTC 'Z' mismatches (showing '11/24 02:46', etc. matching '30d · Nov 24 JST' header) but omits the 'times JST' footer note; tiny sub-labels (Band 1 mobile bottom legend 'primary/active/side' and Band 2 mobile axis labels) remain borderline small when scaled down to 350px. (Band 2 desktop leftBottom divider rule above '+22 more public' is cleanly positioned — FIXED.)",
+				"severity": "minor"
+			},
+			{
+				"description": "[SCORECARD | Per-region summary & M1–M7 matrix] Regions inspected in 00-v3-desk.png and 01-v3-mob.png: Band 1 desktop (800×360 dark/light), Band 2 desktop (800×340 dark/light), Band 1 mobile (560w dark/light), Band 2 mobile (560w dark/light). Band 1 Dark: M1(text-dep)=MET, M2(visual-sem)=PARTIAL, M3(glance)=PARTIAL, M4(hierarchy)=PARTIAL, M5(honesty/legibility)=MISSING, M6(GitHub-fit)=PARTIAL, M7(vs-current)=MET. Band 1 Light: M1=MET, M2=PARTIAL, M3=PARTIAL, M4=PARTIAL, M5=MISSING, M6=PARTIAL, M7=MET. Band 2 Dark: M1=MET, M2=PARTIAL, M3=PARTIAL, M4=MET, M5=MISSING, M6=PARTIAL, M7=PARTIAL. Band 2 Light: M1=MET, M2=PARTIAL, M3=PARTIAL, M4=MET, M5=MISSING, M6=PARTIAL, M7=PARTIAL.",
+				"severity": "info"
+			}
+		],
+		"summary": "REQUEST CHANGES. Round v3 resolves several v14 issues (Band 1 4th project visible, non-overlapping rings, labels below glyphs, flame/'204' spacing, B+ arc clearance; Band 2 left-panel dot/PR/count separation, untruncated 'private repos · sum', solid legend-backed glyphs, leftBottom rule; mobile 560w readable sizing and horizontal bar pivot), but 7 BLOCKER defects remain across both bands and viewports: (1) Band 1 desktop '27 repos · 1y' still collides over the 3rd row of dots; (2) Band 1 desktop 'my-web-2026' weight bars collide over 'personal web platform' and the bottom-right legend collides over 'After Effects' weight bars; (3) Band 2 desktop 72h event timestamps clip at the right edge, row 3 collides with '3 recent events · times JST', and 'new' overflows the chart box; (4) Band 2 mobile 'LAST 72 HOURS' chart renders completely empty; (5) dark-mode muted text/counts remain severely low-contrast (especially Band 2 mobile dark); (6) 72h event-type shape encoding is unreadable/overflowing on desktop and absent on mobile; (7) mobile variants delete PR metrics, language percentages/breakdown, and rank tier context. Blocker scorecard: #1 PARTIAL, #2 PARTIAL, #3 PARTIAL, #4 PARTIAL, #5 NOT FIXED, #6 NOT FIXED.",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "0fe6862f-5898-40b4-99ec-5dec0ba1a364",
+		"durationSeconds": 143.277506,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 13452,
+			"output_tokens": 17161,
+			"thinking_tokens": 14891,
+			"cache_read_tokens": 10495,
+			"total_tokens": 30613
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/82eaaec7-fdd7-4e30-8288-b2c2ea6b6866",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.74,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.96,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T14:02:53Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t74%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t96%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T14:02:53Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
+}

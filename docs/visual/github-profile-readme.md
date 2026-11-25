@@ -556,3 +556,139 @@ WebP ghosting・白背景でのボーダー視認性・サブカードの
     （Act1→2 より sub materialize を ~0.25s 早めると揃う）
   - WebP 圧縮アーティファクトはエンコード後の最終
     showcase.webp で別途確認
+
+## 18. 視覚主導への設計転換（2026-11-25、ユーザー受入不合格を受けた再設計）
+
+候補 `5132ce10` はユーザーの視覚的受入で**不合格**。根本原因は
+実装の巧拙ではなく、レビュー基準と情報設計の双方が
+「テキストをSVGに埋め込むこと・カード化・bento配置」を
+視覚化と誤認していたことにある。
+
+### 根本要求（再確認・正本化）
+
+- 文字を順番に読まなくても、情報の概要・関係性・重要度が
+  伝わる構成であること。
+- ステータス・活動の種類は視覚的に識別できること。
+- 進行中プロジェクトの関係性・活動の変化は文字列列挙ではなく
+  視覚表現で伝えること。
+- GitHub 活動・ストリーク・指標はデータの意味に適した表現を持つ。
+- アイコン・形状・色・配置・動きには情報伝達上の役割がある。
+- テキストは固有名詞・数値・補足に限定する。
+- 情報量を減らして見かけを取り繕わない。既存機能は維持する。
+
+### レビュー基準の改訂
+
+従来 spec（可読性・余白・整列・コントラスト中心）は
+「情報がテキスト主体でないか」「視覚要素が情報の意味を担うか」
+「一見で概要と重要度が把握できるか」を評価項目に含んでいなかった。
+`.tmp/review-specs/profile-v13-proto.md` で M1–M7 の必須評価
+（text-dependence / visual semantics / glance test / hierarchy /
+honesty+legibility / GitHub fitness / improvement vs current）を
+定義し、以後の全レビューで必須化する。
+
+### プロトタイプ比較と採用判断（agy review v13）
+
+実データ（D1 snapshot・presence・stats・streak・top-langs・roster）
+を使い 3 案を生成・比較レビュー。結果 **A+B ハイブリッド採用**:
+
+- **Band 1（Identity + Vitals + Focus）**: プロトタイプ A の
+  vitals エンコーディング（streak 炎・言語比率バー・貢献 repo
+  ドット・rank リング）+ C の editorial な identity ヘッダ。
+  Focus は monogram/空リング/偽リンクを廃し、ドメイン意味を持つ
+  グリフと weight/状態の正直な符号化による視覚マップへ。
+- **Band 2（Repo Activity + 72h Pulse）**: プロトタイプ B の
+  活動分解（30日 repo output + 72時間イベントパルス）。
+  isotype は固定単位 + 凡例、パルスは now=右の一貫軸・
+  イベント種別ダイヤモンド凡例・private 集約行を必須化。
+- 単一 800×400 への詰め込み（A単体）・機能欠落（B単体）・
+  情報削除による「すっきり」（C）はいずれも棄却。
+
+証跡: `.tmp/profile-proto/`（gen.mjs・SVG×3・スクリーンショット）、
+`agent review` JSON（conversationId 44538df8、verdict:
+request-changes → ADVANCE A+B hybrid 指示）。
+
+### 実装方針
+
+- 2つのモジュラー SVG アセット（unboxed band）+ light/dark
+  `<picture>` ペア + mobile 積み上げ variant。
+- 全エンコーディングは線形・正直（比率・個数・時間軸方向）。
+- Selected Work の showcase.webp は別系統として維持
+  （main/sub/decor 要求は変更なし）。
+
+### プロトタイプ反復と最終判定（2026-11-25）
+
+採用方向を 2-band 構成（Band1: Identity+Vitals+Focus /
+Band2: RepoActivity+72hPulse、各 800w desktop + 560w mobile、
+dark/light）で精緻化し、agy レビューを v14→v19 まで反復。
+主な収束内容:
+
+- v14: 4件目 focus project 欠落・下端クリップ・列衝突・
+  ラベル truncate・JST/UTC 不整合・mobile 42-dot 行を修正
+- v15→v16: contributed ラベル/weight バー/凡例の衝突、
+  72h チャートの右端クリップと mobile 空チャート
+  （**根本原因: shape 生成関数の戻り値を `s` に append
+  していない実装バグ**）、イベント種別 shape 凡例欠落、
+  mobile の PR 指標・言語%・rank tier 削除、dark コントラスト
+- v17→v18: desktop PR square/count 衝突（列再配分）、
+  mobile PR square の大小逆転（cap 統一 + 'scaled' 正直表記）、
+  72h 凡例とプロット領域の分離、weight 凡例復活
+  （ヘッダ行右端）、言語 swatch 復活
+
+**最終判定: agy review v19 = APPROVE**（conversationId
+481030a2、verdict approve）。Band1/Band2 × dark/light ×
+desktop/mobile の全組合せで M1–M7 MET、ブロッカー 0。
+残存は ultra-minor 2件のみ（mobile 'day streak' の
+字下げ、desktop 'of A+ tier' の折返し）— 非ブロッキング。
+
+証跡: `docs/verification/github-profile/v11/`
+（spec v13–v19、agy review JSON×7、承認済み生成器
+`proto-gen6-approved.mjs`、v6b desk/mob webp）。
+プロトタイプ SVG 実体は `.tmp/profile-proto/`。
+
+### 実装への引き継ぎ
+
+- レイアウト・座標・エンコーディングは
+  `proto-gen6-approved.mjs` が正本。実装時はデータ源を
+  ハードコードから実バインディング（github-readme-stats
+  系・activity feed・presence・roster）へ差し替える。
+- 既存 `/now` `/activity` `/current` 等のカード群は
+  本バンド資産に置き換えるか併存させるかを Issue #1216
+  で確定する（README 構成とあわせて判断）。
+
+### 実装結果（2026-11-25）
+
+- `src/http/github-profile/bands.ts` を新設。承認済み
+  `proto-gen6-approved.mjs` のレイアウト・座標・エンコーディングを
+  実データへ移植: `composeProfileCardModel` + `NowStats`
+  （streak/top-langs/stats）+ `PROJECT_ROSTER` +
+  `GitHubActivitySnapshotBody`（repos/feed/sources）を入力とする
+  純粋モデル `buildBandsModel`/`composeBand1Model`/`composeBand2Model`
+  と SVG レンダラ `renderBand1Svg`/`renderBand2Svg`。
+- エンドポイント: `/api/v1/github-profile/identity`（Band1、
+  800×360 / mobile 560）と `/api/v1/github-profile/activity-map`
+  （Band2、800×340 / mobile 560）。`?theme=dark|light`、
+  `?layout=mobile`。
+- 72h パルスの x 軸 'now' は**観測時刻（snapshot observedAt）に
+  アンカー**する。描画時刻ではなく観測時刻を右端に置くことで、
+  未観測の空白期間を活動ゼロと偽らない（impl review v1 で検出・修正）。
+- PR square は `ceil(prs/100)` cap 4・凡例 '■ ≈100 PRs' で
+  単調性を保証（集約行が上位 repo を視覚的に追い越す逆転を解消）。
+- presence が stale/unavailable の場合は橙ドット +
+  'Discord stale' 等の正直な状態表示（'on Discord' と偽らない）。
+- commit ドットの不透明度下限を引き上げ、集約行でも判読可能に。
+- mobile の IN PROGRESS 行に tier pip（13×5）を復活、
+  CONTRIBUTED TO はヘッダに総数・右下に '+N over'/'all time'。
+- 既存 `/now` `/activity` `/current` `/presence` `/status` `/card`
+  は残置（段階移行）。README ドラフトは `/identity` +
+  `/activity-map` へ差し替え済み（`.tmp/rebuildup-profile/README.md`、
+  `<picture>` は `max-width` × `prefers-color-scheme` の
+  compound media で 4 象限を切替、light desktop を img fallback）。
+
+### 実装レビュー（agy、M1–M7）
+
+- impl v1（`.tmp/review-specs/bands-impl-v1.md`）: major 3・minor 2
+  → 上記の通り全て修正。
+- impl v2（`.tmp/review-specs/bands-impl-v2.md`、証跡
+  `.tmp/profile-proto/review-impl2/`、agy-review
+  `dc6c72ec`）: **APPROVE、ブロッカー 0**。全 8 領域
+  （desk/mob × dark/light）で M1–M7 MET。

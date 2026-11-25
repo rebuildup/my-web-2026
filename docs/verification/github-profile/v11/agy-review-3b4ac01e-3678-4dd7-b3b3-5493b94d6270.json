@@ -1,185 +1,183 @@
 {
-  "version": "1.0.0",
-  "id": "3b4ac01e-3678-4dd7-b3b3-5493b94d6270",
-  "model": null,
-  "resolvedModel": null,
-  "specSha256": "73a3c3ccb045b91e7579551902f57bf1c6be638a08e2c34c705ff221847a91a3",
-  "classification": "review-completed",
-  "verified": false,
-  "verdict": {
-    "findings": [
-      {
-        "description": "PROTO A — M1 Text-dependence [PARTIAL]: Top vitals row reduces text well (flame + 204, stacked TS/C#/C++ bar, dot cluster, B+ ring), relying mostly on numbers and proper nouns. However, the middle 'DECLARED FOCUS' section is ~70% text-dependent: nodes only show single initials ('M', 'A', 'T', 'A' — with duplicate 'A's), so without reading 'my-web-2026 / Web Platform', 'AI coding agent / agent workflow', 'Tastile / scheduling product', and 'After Effects / AE tools', the viewer has no idea what domains or projects they represent. The legend ('••• primary · •• active · • side') and bottom legends also require reading.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO A — M2 Visual semantics [PARTIAL]: Presence orb, streak flame, stacked language bar, and 72h diamond bursts encode real data. However, four encodings are ornamental or misleading: (1) dashed hub-and-spoke links radiating from 'my-web-2026' to 'AI coding agent', 'Tastile', and 'After Effects' imply dependencies among unrelated projects; (2) monogram initials ('M', 'A', 'T', 'A') do no domain-semantic work and collide on 'A'; (3) the 'CONTRIBUTED TO' 6x4 dot grid (24 dots) does not match the '27 repos · 1y' count overlaid on it; (4) the 'GITHUB RANK' blue arc spans only ~90 degrees (9-to-12 o'clock, ~25% fill) for a 'B+' rank, reading visually like a low score.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO A — M3 Glance test [PARTIAL]: In the first 2 seconds without reading, a viewer grasps 'dark dashboard widget, online green dot, 204 streak, blue/green language bar, B+, big blue M linked to three smaller circles, and a tangled colorful mess along the bottom.' It conveys 'online + active', but fails 'who this is' (reads as generic SaaS telemetry rather than a design x code x motion maker) and fails 'what they are doing' (initials M/A/T/A convey nothing visually, and collisions break glance comprehension).",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO A — M4 Hierarchy [MISSING]: Visual hierarchy collapses under competing boxed vitals and severe multi-band collisions. The 4 heavy bordered top tiles compete equally with the middle 'DECLARED FOCUS' field, while 'DECLARED FOCUS' itself is displaced upward onto 'day streak', the purple 'A' node invades 'CONTRIBUTED TO', orange 'A' sits directly over 'Tastile', and 'my-web-2026 / Web Platform' collides with 'ACTIVITY · LAST 72H · 29 EVENTS'. Current work does not cleanly dominate.",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO A — M5 Honesty/legibility [MISSING]: Catastrophic SVG layout collisions across all three vertical bands: (1) orange flame overlaps the '2' in '204' and 'DECLARED FOCUS' overwrites 'day streak' (top-left); (2) '27 repos · 1y' overlaps the dot cluster and purple 'A' clips the box bottom (top-mid-right); (3) orange 'A' covers 'Tastile / scheduling product' ('sch...duct' peeks behind) and collides with the 'primary · active · side' legend (mid-right); (4) 'Web Platform' collides with '29 EVENTS' (lower-left); (5) the entire 30d repo-output isotype ('FlashBeat'..'dotfiles', blue dots, purple squares, 'commit block = 40 · PR block = 15') is drawn directly on top of the 72h pulse timeline ('now', '-24h', diamonds). At ~350px mobile (02-shot-mob-light.png), the bottom third is completely illegible (~3-4px text).",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO A — M6 GitHub fitness [PARTIAL]: Static SVG structure suits Camo <img> embedding, but fails GitHub README expectations in three ways: (1) cramming 4 distinct functional modules into a single 800x400 canvas breaks mobile scaling without splitting into stacked assets; (2) reads like a generic stats dashboard template rather than a designed profile object with personality (Root Req #5); (3) light-mode support is absent/broken (00-shot-desk-light.png and 02-shot-mob-light.png both render dark mode).",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO A — M7 Improvement vs current [PARTIAL]: Genuinely less text-dominant than text-panel SVG cards in the vitals row (flame, proportion bar, dot matrix, ring) and pulse timeline, proving the visual-vitals concept works — but the focus circles and collided bottom strip still fall back on text labels and unreadable density.",
-        "severity": "info"
-      },
-      {
-        "description": "PROTO B — M1 Text-dependence [PARTIAL]: The 30d repo-output dot/square rows (left) and 72h event pulse diamond stacks (top-right) are genuinely visual encodings where text serves mainly for repo proper nouns and numeric supplements. However, the bottom-right 3 recent events ('◆ restro-pv push · 17:46 UTC', '◆ restro-pv push · 17:22 UTC', '◆ my-web-2026 push · 16:59 UTC') are pure sequential text rows with a tiny diamond bullet, 4 of 9 left rows repeat the generic text string '非公開プロジェクト', and both the dot scale and diamond colors lack visual legends.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO B — M2 Visual semantics [PARTIAL]: Commendably free of pure decoration — every dot, square, and diamond maps to real activity data. However, three semantic breakdowns undermine it: (1) non-linear/unscaled isotype units violate discrete-unit honesty (see M5); (2) the 72h diamond colors (blue, orange, red) have no legend explaining event types; (3) the 72h axis places '0h' on the left and '-72h' on the right while placing 'now' at top-right directly above '-72h', inverting time semantics.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO B — M3 Glance test [PARTIAL]: Within 2 seconds without reading, a viewer immediately grasps 'dense, sustained coding output across many repos plus distinct bursts of recent activity over the last 72 hours.' However, because Proto B is solely an activity chart, it communicates nothing about 'who this is', online presence, streak, stack, or declared focus projects, and the dot-row overflow colliding into the right card creates immediate visual friction.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO B — M4 Hierarchy [MISSING]: Left-hand repo dot/square rows overflow horizontally across ~80% of the 800px canvas, plowing straight through the 'LAST 72 HOURS' title, the rounded 72h timeline card, the numeric totals ('2079c 372p', '269c 96p', '179c 42p', '149c 40p', '138c 72p'), and the 3 recent-event text lines. The sprawling blue dot field visually drowns out the fresher 72h activity panel.",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO B — M5 Honesty/legibility [MISSING]: Severe encoding dishonesty and layout failure: (1) Isotype counts are mathematically untruthful — 'FlashBeat' ('2079c 372p') renders ~42 blue dots + 7 purple squares, whereas 'dotfiles' ('269c 96p') renders ~35 blue dots + 8 purple squares and the bottom row ('138c 72p') renders ~26 blue dots + 6 purple squares. An ~8x commit difference looks nearly identical in length, and 372 PRs shows fewer squares than 96 PRs, with no unit legend; (2) '0h..-72h' runs left-to-right while 'now' sits on the right over '-72h'; (3) massive horizontal collision between left dot rows and right 72h panel/event log; (4) illegible at ~350px mobile (02-shot-mob-light.png).",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO B — M6 GitHub fitness [PARTIAL]: Strong conceptual fit as a dedicated GitHub README activity asset (echoes familiar GitHub activity conventions in a bespoke visual form), but fails on dark-only rendering (light shots are dark), 4 repetitive '非公開プロジェクト' rows leaking raw private-repo placeholders instead of a clean aggregated band, inability to stand alone as a full profile (omits vitals/presence/focus), and poor ~350px scaling without a stacked mobile variant.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO B — M7 Improvement vs current [PARTIAL]: The 30d repo isotype and 72h pulse timeline represent a real shift away from text-row activity panels once fixed for linear scaling and column bounds, though the 3 recent-event text lines on the lower-right remain restyled text.",
-        "severity": "info"
-      },
-      {
-        "description": "PROTO C — M1 Text-dependence [MISSING]: The most text-dependent of all three prototypes (~75-80%). Stats, rank, and repo count are flattened into a single grey text string ('16.3k commits · 5.1k PRs · rank B+ · 27 repos'); identity relies on a full text tagline ('design × code × motion — AE tools, web apps, video'); 'IN PROGRESS' renders 4 empty hollow circles that convey zero project/domain meaning unless you read every label below them; 'SELECTED WORK' consists of 4 empty boxes plus text ('8 works · animated relay above ↓').",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO C — M2 Visual semantics [MISSING]: Aside from the presence dot, streak flame, clipped top-language bar, and tiny 72h diamonds, the main visual forms do almost no information work. The 4 large hollow circles in 'IN PROGRESS' are purely ornamental oversized bullet points (empty interiors, no domain icons, no activity/progress encoding, no relationship links, minimal size contrast among the smaller three), and the 4 empty 'SELECTED WORK' wireframes are dead placeholders duplicating the separately approved showcase asset.",
-        "severity": "critical"
-      },
-      {
-        "description": "PROTO C — M3 Glance test [PARTIAL]: Visually the calmest and cleanest first impression (strong 'r' monogram + 'rebuildup' identity anchor, '204' flame, 4 crisp colored rings, generous whitespace), avoiding the visual chaos of A and B. However, without reading text, a viewer learns almost nothing about what projects are in progress, how active the owner is across repos, or their tech stack proportions — winning on graphic restraint while failing non-text information transfer.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO C — M4 Hierarchy [PARTIAL]: Best macro layout and breathing room of the three (identity top-left, 204 streak top-right, 'IN PROGRESS' centered, thin 72h pulse below). Weakened by the 4 oversized empty 'SELECTED WORK' boxes consuming ~30% of the height at the bottom and visually competing with 'IN PROGRESS' (while overlapping the scope of the separate approved showcase asset).",
-        "severity": "minor"
-      },
-      {
-        "description": "PROTO C — M5 Honesty/legibility [PARTIAL]: Best overall legibility and the only prototype without major text collisions, surviving ~350px mobile scaling (02-shot-mob-light.png) much better than A or B. However: (1) top-right 'TOP LANG' stacked bar overflows and is clipped at the card's right edge, cutting off percentages and C#/C++; (2) 'ACTIVITY · 72H' lacks time ticks and a diamond color legend, with 'now' cramped beside 'AE tools'; (3) '8 works · animated relay above ↓' pairs 'above' with a downward arrow; (4) secondary text ('16.3k commits...', project subtitles) still shrinks to ~5px on mobile.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO C — M6 GitHub fitness [PARTIAL]: Clearly the strongest personality and visual restraint ('designed object, not a dashboard template', Root Req #5). However, it violates Root Req #3 (deletes 30-day repo-by-repo activity, deletes the recent event feed, clips language proportions, and demotes stats/rank/repos to tiny inline text), violates Root Req #4's separation of concerns by reserving 30% of the card for 'SELECTED WORK' frames, and lacks a working light theme in the light captures.",
-        "severity": "major"
-      },
-      {
-        "description": "PROTO C — M7 Improvement vs current [MISSING]: Not genuinely less text-dominant — it achieves visual calm mainly by deleting data visualizations (30d repo activity, rank ring, repo matrix, event feed) and turning stats back into a text line while styling a 4-item project list as empty colored hoops.",
-        "severity": "critical"
-      },
-      {
-        "description": "CROSS-CUTTING DEFECT — Missing light-theme rendering: Both 00-shot-desk-light.png and 02-shot-mob-light.png render in dark mode (00-shot-desk-light.png is pixel-identical to 01-shot-desk-dark.png). GitHub profile SVGs must ship paired light/dark assets via <picture> media queries and be visually verified in actual GitHub light mode.",
-        "severity": "critical"
-      },
-      {
-        "description": "COMPARISON VERDICT — ADVANCE A+B hybrid (reject A alone, B alone, and C): Only A+B preserves all required features (Root Req #3) while genuinely encoding metrics and activity visually rather than through text lines (Root Req #1). Proto A alone fails by cramming 4 modules into one 800x400 card (causing catastrophic collisions and mobile collapse); Proto B alone covers only activity and breaks honesty/bounds; Proto C is rejected as an information design because it achieves polish by deleting 30d repo activity/feed and reverting stats and focus projects to text + ornamental hollow circles (only C's unboxed editorial identity header and breathing room should be borrowed). Single most important structural change needed regardless of winner: split into two unboxed modular SVG bands (Band 1: Identity/Presence + visual Vitals + Focus map; Band 2: 30d Repo Activity + 72h Event Pulse) and redesign the Focus section from meaningless monogram/empty circles with fake hub-and-spoke dashes into a domain-semantic visual map (distinct domain/category glyphs, honest weight/status encoding, links only where real relationships exist), while enforcing strictly linear unit scaling on the repo activity chart, truthful ring/dot counts, consistent time-axis direction, aggregated private-repo representation, and genuine light+mobile variants.",
-        "severity": "major"
-      }
-    ],
-    "summary": "FINAL VERDICT: ADVANCE A+B hybrid (with mandatory structural and rendering changes before implementation; finish verdict = request-changes).\n\nM1–M7 Scorecard:\n- PROTO A (\"Vitals board\"): M1 PARTIAL | M2 PARTIAL | M3 PARTIAL | M4 MISSING | M5 MISSING | M6 PARTIAL | M7 PARTIAL\n- PROTO B (\"Landscape\"): M1 PARTIAL | M2 PARTIAL | M3 PARTIAL | M4 MISSING | M5 MISSING | M6 PARTIAL | M7 PARTIAL\n- PROTO C (\"Poster\"): M1 MISSING | M2 MISSING | M3 PARTIAL | M4 PARTIAL | M5 PARTIAL | M6 PARTIAL | M7 MISSING\n\nWhy ADVANCE A+B hybrid:\nAcross the three candidates, ONLY Proto A's vitals encodings (streak flame, language proportion bar, repo dot cluster, rank ring) and Proto B's dedicated activity decomposition (30d repo output + 72h pulse timeline) genuinely move away from text-dominant cards while preserving 100% of required profile features (Root Reqs #1 and #3) and keeping Selected Work decoupled for its already-approved animated showcase (Root Req #4). Separating Proto A's overcrowded 800x400 card into Band 1 (Identity/Vitals/Focus, stripping A's bottom activity strip) and Band 2 (Activity from B) directly resolves the density collapse while preserving meaning.\n\nWhy the others are rejected:\n- Reject A standalone: trying to cram vitals, focus map, 72h pulse, and 30d repo isotype into one 800x400 canvas causes catastrophic multi-band collisions, microscopic ~350px mobile output, and a cramped dashboard-template aesthetic.\n- Reject B standalone: omits identity, presence, streak, languages, rank, and focus projects (violating Root Req #3), and currently fails on horizontal dot overflow, non-linear/dishonest isotype unit counts, inverted 'now'/'-72h' axis, and a text-list event feed.\n- Reject C: although it has the cleanest macro hierarchy, mobile legibility, and editorial personality, it achieves calm by violating Root Reqs #1 and #3 — deleting 30d repo activity and the event feed, flattening stats/rank/repos into a grey text line, clipping the language bar, reducing 'IN PROGRESS' to 4 ornamental hollow rings carrying zero non-text meaning, and wasting 30% of vertical space on 4 empty 'SELECTED WORK' wireframes. Borrow ONLY C's unboxed editorial typography, 'r' monogram identity anchor, and breathing room into the A+B hybrid.\n\nSingle most important structural change needed regardless of winner:\nDe-densify into two modular, unboxed SVG assets (Asset 1: Identity + Visual Vitals + Focus; Asset 2: 30d Repo Activity + 72h Event Pulse — with stacked mobile and verified light-theme variants) and rebuild the Focus/In-Progress visualization so it stops being text-dependent monogram/hollow circles with fabricated hub-and-spoke links and instead uses domain-recognizable visual glyphs and truthful priority/grouping geometry, alongside strictly linear/truthful data encodings (proportional commit/PR bars or fixed-unit isotype with legend, accurate B+ rank arc, exact repo dot count, consistent 'now = 0h' timeline axis, diamond event legend, and aggregated private-repo row).",
-    "verdict": "request-changes"
-  },
-  "agy": {
-    "status": "SUCCESS",
-    "conversationId": "44538df8-87a0-4df4-bafb-8f0418a2d242",
-    "durationSeconds": 233.667115,
-    "numTurns": 1,
-    "usage": {
-      "input_tokens": 15229,
-      "output_tokens": 22545,
-      "thinking_tokens": 18155,
-      "cache_read_tokens": 11146,
-      "total_tokens": 37774
-    },
-    "deniedActions": []
-  },
-  "readonly": {
-    "deniedActions": [],
-    "permissionErrors": 0,
-    "protectedPath": null,
-    "protectedCheck": "unavailable",
-    "protectedMutations": []
-  },
-  "isolation": {
-    "workdir": "/Users/rebui/.local/state/agent/agy-review/3b4ac01e-3678-4dd7-b3b3-5493b94d6270",
-    "osSandbox": "seatbelt",
-    "permissionDeny": [
-      "write_file(*)",
-      "command(*)",
-      "read_url(*)",
-      "execute_url(*)",
-      "mcp(*)",
-      "unsandboxed(*)"
-    ]
-  },
-  "quota": {
-    "buckets": [
-      {
-        "group": "Gemini Models",
-        "label": "Weekly Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.74,
-        "resetTime": "2026-12-01T00:43:37Z"
-      },
-      {
-        "group": "Gemini Models",
-        "label": "Five Hour Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.98,
-        "resetTime": "2026-11-25T13:24:34Z"
-      },
-      {
-        "group": "Claude and GPT models",
-        "label": "Weekly Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 0.42,
-        "resetTime": "2026-11-30T03:53:15Z"
-      },
-      {
-        "group": "Claude and GPT models",
-        "label": "Five Hour Limit Remaining",
-        "id": null,
-        "name": null,
-        "window": null,
-        "remainingFraction": 1,
-        "resetTime": "2026-11-25T13:28:49Z"
-      }
-    ],
-    "raw": "Gemini Models\tWeekly Limit Remaining\t74%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t98%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T13:28:49Z\n"
-  },
-  "executor": "local",
-  "reasons": [
-    "no protected path supplied; OS/permission layers only"
-  ]
+	"version": "1.0.0",
+	"id": "3b4ac01e-3678-4dd7-b3b3-5493b94d6270",
+	"model": null,
+	"resolvedModel": null,
+	"specSha256": "73a3c3ccb045b91e7579551902f57bf1c6be638a08e2c34c705ff221847a91a3",
+	"classification": "review-completed",
+	"verified": false,
+	"verdict": {
+		"findings": [
+			{
+				"description": "PROTO A — M1 Text-dependence [PARTIAL]: Top vitals row reduces text well (flame + 204, stacked TS/C#/C++ bar, dot cluster, B+ ring), relying mostly on numbers and proper nouns. However, the middle 'DECLARED FOCUS' section is ~70% text-dependent: nodes only show single initials ('M', 'A', 'T', 'A' — with duplicate 'A's), so without reading 'my-web-2026 / Web Platform', 'AI coding agent / agent workflow', 'Tastile / scheduling product', and 'After Effects / AE tools', the viewer has no idea what domains or projects they represent. The legend ('••• primary · •• active · • side') and bottom legends also require reading.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO A — M2 Visual semantics [PARTIAL]: Presence orb, streak flame, stacked language bar, and 72h diamond bursts encode real data. However, four encodings are ornamental or misleading: (1) dashed hub-and-spoke links radiating from 'my-web-2026' to 'AI coding agent', 'Tastile', and 'After Effects' imply dependencies among unrelated projects; (2) monogram initials ('M', 'A', 'T', 'A') do no domain-semantic work and collide on 'A'; (3) the 'CONTRIBUTED TO' 6x4 dot grid (24 dots) does not match the '27 repos · 1y' count overlaid on it; (4) the 'GITHUB RANK' blue arc spans only ~90 degrees (9-to-12 o'clock, ~25% fill) for a 'B+' rank, reading visually like a low score.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO A — M3 Glance test [PARTIAL]: In the first 2 seconds without reading, a viewer grasps 'dark dashboard widget, online green dot, 204 streak, blue/green language bar, B+, big blue M linked to three smaller circles, and a tangled colorful mess along the bottom.' It conveys 'online + active', but fails 'who this is' (reads as generic SaaS telemetry rather than a design x code x motion maker) and fails 'what they are doing' (initials M/A/T/A convey nothing visually, and collisions break glance comprehension).",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO A — M4 Hierarchy [MISSING]: Visual hierarchy collapses under competing boxed vitals and severe multi-band collisions. The 4 heavy bordered top tiles compete equally with the middle 'DECLARED FOCUS' field, while 'DECLARED FOCUS' itself is displaced upward onto 'day streak', the purple 'A' node invades 'CONTRIBUTED TO', orange 'A' sits directly over 'Tastile', and 'my-web-2026 / Web Platform' collides with 'ACTIVITY · LAST 72H · 29 EVENTS'. Current work does not cleanly dominate.",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO A — M5 Honesty/legibility [MISSING]: Catastrophic SVG layout collisions across all three vertical bands: (1) orange flame overlaps the '2' in '204' and 'DECLARED FOCUS' overwrites 'day streak' (top-left); (2) '27 repos · 1y' overlaps the dot cluster and purple 'A' clips the box bottom (top-mid-right); (3) orange 'A' covers 'Tastile / scheduling product' ('sch...duct' peeks behind) and collides with the 'primary · active · side' legend (mid-right); (4) 'Web Platform' collides with '29 EVENTS' (lower-left); (5) the entire 30d repo-output isotype ('FlashBeat'..'dotfiles', blue dots, purple squares, 'commit block = 40 · PR block = 15') is drawn directly on top of the 72h pulse timeline ('now', '-24h', diamonds). At ~350px mobile (02-shot-mob-light.png), the bottom third is completely illegible (~3-4px text).",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO A — M6 GitHub fitness [PARTIAL]: Static SVG structure suits Camo <img> embedding, but fails GitHub README expectations in three ways: (1) cramming 4 distinct functional modules into a single 800x400 canvas breaks mobile scaling without splitting into stacked assets; (2) reads like a generic stats dashboard template rather than a designed profile object with personality (Root Req #5); (3) light-mode support is absent/broken (00-shot-desk-light.png and 02-shot-mob-light.png both render dark mode).",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO A — M7 Improvement vs current [PARTIAL]: Genuinely less text-dominant than text-panel SVG cards in the vitals row (flame, proportion bar, dot matrix, ring) and pulse timeline, proving the visual-vitals concept works — but the focus circles and collided bottom strip still fall back on text labels and unreadable density.",
+				"severity": "info"
+			},
+			{
+				"description": "PROTO B — M1 Text-dependence [PARTIAL]: The 30d repo-output dot/square rows (left) and 72h event pulse diamond stacks (top-right) are genuinely visual encodings where text serves mainly for repo proper nouns and numeric supplements. However, the bottom-right 3 recent events ('◆ restro-pv push · 17:46 UTC', '◆ restro-pv push · 17:22 UTC', '◆ my-web-2026 push · 16:59 UTC') are pure sequential text rows with a tiny diamond bullet, 4 of 9 left rows repeat the generic text string '非公開プロジェクト', and both the dot scale and diamond colors lack visual legends.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO B — M2 Visual semantics [PARTIAL]: Commendably free of pure decoration — every dot, square, and diamond maps to real activity data. However, three semantic breakdowns undermine it: (1) non-linear/unscaled isotype units violate discrete-unit honesty (see M5); (2) the 72h diamond colors (blue, orange, red) have no legend explaining event types; (3) the 72h axis places '0h' on the left and '-72h' on the right while placing 'now' at top-right directly above '-72h', inverting time semantics.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO B — M3 Glance test [PARTIAL]: Within 2 seconds without reading, a viewer immediately grasps 'dense, sustained coding output across many repos plus distinct bursts of recent activity over the last 72 hours.' However, because Proto B is solely an activity chart, it communicates nothing about 'who this is', online presence, streak, stack, or declared focus projects, and the dot-row overflow colliding into the right card creates immediate visual friction.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO B — M4 Hierarchy [MISSING]: Left-hand repo dot/square rows overflow horizontally across ~80% of the 800px canvas, plowing straight through the 'LAST 72 HOURS' title, the rounded 72h timeline card, the numeric totals ('2079c 372p', '269c 96p', '179c 42p', '149c 40p', '138c 72p'), and the 3 recent-event text lines. The sprawling blue dot field visually drowns out the fresher 72h activity panel.",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO B — M5 Honesty/legibility [MISSING]: Severe encoding dishonesty and layout failure: (1) Isotype counts are mathematically untruthful — 'FlashBeat' ('2079c 372p') renders ~42 blue dots + 7 purple squares, whereas 'dotfiles' ('269c 96p') renders ~35 blue dots + 8 purple squares and the bottom row ('138c 72p') renders ~26 blue dots + 6 purple squares. An ~8x commit difference looks nearly identical in length, and 372 PRs shows fewer squares than 96 PRs, with no unit legend; (2) '0h..-72h' runs left-to-right while 'now' sits on the right over '-72h'; (3) massive horizontal collision between left dot rows and right 72h panel/event log; (4) illegible at ~350px mobile (02-shot-mob-light.png).",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO B — M6 GitHub fitness [PARTIAL]: Strong conceptual fit as a dedicated GitHub README activity asset (echoes familiar GitHub activity conventions in a bespoke visual form), but fails on dark-only rendering (light shots are dark), 4 repetitive '非公開プロジェクト' rows leaking raw private-repo placeholders instead of a clean aggregated band, inability to stand alone as a full profile (omits vitals/presence/focus), and poor ~350px scaling without a stacked mobile variant.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO B — M7 Improvement vs current [PARTIAL]: The 30d repo isotype and 72h pulse timeline represent a real shift away from text-row activity panels once fixed for linear scaling and column bounds, though the 3 recent-event text lines on the lower-right remain restyled text.",
+				"severity": "info"
+			},
+			{
+				"description": "PROTO C — M1 Text-dependence [MISSING]: The most text-dependent of all three prototypes (~75-80%). Stats, rank, and repo count are flattened into a single grey text string ('16.3k commits · 5.1k PRs · rank B+ · 27 repos'); identity relies on a full text tagline ('design × code × motion — AE tools, web apps, video'); 'IN PROGRESS' renders 4 empty hollow circles that convey zero project/domain meaning unless you read every label below them; 'SELECTED WORK' consists of 4 empty boxes plus text ('8 works · animated relay above ↓').",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO C — M2 Visual semantics [MISSING]: Aside from the presence dot, streak flame, clipped top-language bar, and tiny 72h diamonds, the main visual forms do almost no information work. The 4 large hollow circles in 'IN PROGRESS' are purely ornamental oversized bullet points (empty interiors, no domain icons, no activity/progress encoding, no relationship links, minimal size contrast among the smaller three), and the 4 empty 'SELECTED WORK' wireframes are dead placeholders duplicating the separately approved showcase asset.",
+				"severity": "critical"
+			},
+			{
+				"description": "PROTO C — M3 Glance test [PARTIAL]: Visually the calmest and cleanest first impression (strong 'r' monogram + 'rebuildup' identity anchor, '204' flame, 4 crisp colored rings, generous whitespace), avoiding the visual chaos of A and B. However, without reading text, a viewer learns almost nothing about what projects are in progress, how active the owner is across repos, or their tech stack proportions — winning on graphic restraint while failing non-text information transfer.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO C — M4 Hierarchy [PARTIAL]: Best macro layout and breathing room of the three (identity top-left, 204 streak top-right, 'IN PROGRESS' centered, thin 72h pulse below). Weakened by the 4 oversized empty 'SELECTED WORK' boxes consuming ~30% of the height at the bottom and visually competing with 'IN PROGRESS' (while overlapping the scope of the separate approved showcase asset).",
+				"severity": "minor"
+			},
+			{
+				"description": "PROTO C — M5 Honesty/legibility [PARTIAL]: Best overall legibility and the only prototype without major text collisions, surviving ~350px mobile scaling (02-shot-mob-light.png) much better than A or B. However: (1) top-right 'TOP LANG' stacked bar overflows and is clipped at the card's right edge, cutting off percentages and C#/C++; (2) 'ACTIVITY · 72H' lacks time ticks and a diamond color legend, with 'now' cramped beside 'AE tools'; (3) '8 works · animated relay above ↓' pairs 'above' with a downward arrow; (4) secondary text ('16.3k commits...', project subtitles) still shrinks to ~5px on mobile.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO C — M6 GitHub fitness [PARTIAL]: Clearly the strongest personality and visual restraint ('designed object, not a dashboard template', Root Req #5). However, it violates Root Req #3 (deletes 30-day repo-by-repo activity, deletes the recent event feed, clips language proportions, and demotes stats/rank/repos to tiny inline text), violates Root Req #4's separation of concerns by reserving 30% of the card for 'SELECTED WORK' frames, and lacks a working light theme in the light captures.",
+				"severity": "major"
+			},
+			{
+				"description": "PROTO C — M7 Improvement vs current [MISSING]: Not genuinely less text-dominant — it achieves visual calm mainly by deleting data visualizations (30d repo activity, rank ring, repo matrix, event feed) and turning stats back into a text line while styling a 4-item project list as empty colored hoops.",
+				"severity": "critical"
+			},
+			{
+				"description": "CROSS-CUTTING DEFECT — Missing light-theme rendering: Both 00-shot-desk-light.png and 02-shot-mob-light.png render in dark mode (00-shot-desk-light.png is pixel-identical to 01-shot-desk-dark.png). GitHub profile SVGs must ship paired light/dark assets via <picture> media queries and be visually verified in actual GitHub light mode.",
+				"severity": "critical"
+			},
+			{
+				"description": "COMPARISON VERDICT — ADVANCE A+B hybrid (reject A alone, B alone, and C): Only A+B preserves all required features (Root Req #3) while genuinely encoding metrics and activity visually rather than through text lines (Root Req #1). Proto A alone fails by cramming 4 modules into one 800x400 card (causing catastrophic collisions and mobile collapse); Proto B alone covers only activity and breaks honesty/bounds; Proto C is rejected as an information design because it achieves polish by deleting 30d repo activity/feed and reverting stats and focus projects to text + ornamental hollow circles (only C's unboxed editorial identity header and breathing room should be borrowed). Single most important structural change needed regardless of winner: split into two unboxed modular SVG bands (Band 1: Identity/Presence + visual Vitals + Focus map; Band 2: 30d Repo Activity + 72h Event Pulse) and redesign the Focus section from meaningless monogram/empty circles with fake hub-and-spoke dashes into a domain-semantic visual map (distinct domain/category glyphs, honest weight/status encoding, links only where real relationships exist), while enforcing strictly linear unit scaling on the repo activity chart, truthful ring/dot counts, consistent time-axis direction, aggregated private-repo representation, and genuine light+mobile variants.",
+				"severity": "major"
+			}
+		],
+		"summary": "FINAL VERDICT: ADVANCE A+B hybrid (with mandatory structural and rendering changes before implementation; finish verdict = request-changes).\n\nM1–M7 Scorecard:\n- PROTO A (\"Vitals board\"): M1 PARTIAL | M2 PARTIAL | M3 PARTIAL | M4 MISSING | M5 MISSING | M6 PARTIAL | M7 PARTIAL\n- PROTO B (\"Landscape\"): M1 PARTIAL | M2 PARTIAL | M3 PARTIAL | M4 MISSING | M5 MISSING | M6 PARTIAL | M7 PARTIAL\n- PROTO C (\"Poster\"): M1 MISSING | M2 MISSING | M3 PARTIAL | M4 PARTIAL | M5 PARTIAL | M6 PARTIAL | M7 MISSING\n\nWhy ADVANCE A+B hybrid:\nAcross the three candidates, ONLY Proto A's vitals encodings (streak flame, language proportion bar, repo dot cluster, rank ring) and Proto B's dedicated activity decomposition (30d repo output + 72h pulse timeline) genuinely move away from text-dominant cards while preserving 100% of required profile features (Root Reqs #1 and #3) and keeping Selected Work decoupled for its already-approved animated showcase (Root Req #4). Separating Proto A's overcrowded 800x400 card into Band 1 (Identity/Vitals/Focus, stripping A's bottom activity strip) and Band 2 (Activity from B) directly resolves the density collapse while preserving meaning.\n\nWhy the others are rejected:\n- Reject A standalone: trying to cram vitals, focus map, 72h pulse, and 30d repo isotype into one 800x400 canvas causes catastrophic multi-band collisions, microscopic ~350px mobile output, and a cramped dashboard-template aesthetic.\n- Reject B standalone: omits identity, presence, streak, languages, rank, and focus projects (violating Root Req #3), and currently fails on horizontal dot overflow, non-linear/dishonest isotype unit counts, inverted 'now'/'-72h' axis, and a text-list event feed.\n- Reject C: although it has the cleanest macro hierarchy, mobile legibility, and editorial personality, it achieves calm by violating Root Reqs #1 and #3 — deleting 30d repo activity and the event feed, flattening stats/rank/repos into a grey text line, clipping the language bar, reducing 'IN PROGRESS' to 4 ornamental hollow rings carrying zero non-text meaning, and wasting 30% of vertical space on 4 empty 'SELECTED WORK' wireframes. Borrow ONLY C's unboxed editorial typography, 'r' monogram identity anchor, and breathing room into the A+B hybrid.\n\nSingle most important structural change needed regardless of winner:\nDe-densify into two modular, unboxed SVG assets (Asset 1: Identity + Visual Vitals + Focus; Asset 2: 30d Repo Activity + 72h Event Pulse — with stacked mobile and verified light-theme variants) and rebuild the Focus/In-Progress visualization so it stops being text-dependent monogram/hollow circles with fabricated hub-and-spoke links and instead uses domain-recognizable visual glyphs and truthful priority/grouping geometry, alongside strictly linear/truthful data encodings (proportional commit/PR bars or fixed-unit isotype with legend, accurate B+ rank arc, exact repo dot count, consistent 'now = 0h' timeline axis, diamond event legend, and aggregated private-repo row).",
+		"verdict": "request-changes"
+	},
+	"agy": {
+		"status": "SUCCESS",
+		"conversationId": "44538df8-87a0-4df4-bafb-8f0418a2d242",
+		"durationSeconds": 233.667115,
+		"numTurns": 1,
+		"usage": {
+			"input_tokens": 15229,
+			"output_tokens": 22545,
+			"thinking_tokens": 18155,
+			"cache_read_tokens": 11146,
+			"total_tokens": 37774
+		},
+		"deniedActions": []
+	},
+	"readonly": {
+		"deniedActions": [],
+		"permissionErrors": 0,
+		"protectedPath": null,
+		"protectedCheck": "unavailable",
+		"protectedMutations": []
+	},
+	"isolation": {
+		"workdir": "/Users/rebui/.local/state/agent/agy-review/3b4ac01e-3678-4dd7-b3b3-5493b94d6270",
+		"osSandbox": "seatbelt",
+		"permissionDeny": [
+			"write_file(*)",
+			"command(*)",
+			"read_url(*)",
+			"execute_url(*)",
+			"mcp(*)",
+			"unsandboxed(*)"
+		]
+	},
+	"quota": {
+		"buckets": [
+			{
+				"group": "Gemini Models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.74,
+				"resetTime": "2026-12-01T00:43:37Z"
+			},
+			{
+				"group": "Gemini Models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.98,
+				"resetTime": "2026-11-25T13:24:34Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Weekly Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 0.42,
+				"resetTime": "2026-11-30T03:53:15Z"
+			},
+			{
+				"group": "Claude and GPT models",
+				"label": "Five Hour Limit Remaining",
+				"id": null,
+				"name": null,
+				"window": null,
+				"remainingFraction": 1,
+				"resetTime": "2026-11-25T13:28:49Z"
+			}
+		],
+		"raw": "Gemini Models\tWeekly Limit Remaining\t74%\t2026-12-01T00:43:37Z\nGemini Models\tFive Hour Limit Remaining\t98%\t2026-11-25T13:24:34Z\nClaude and GPT models\tWeekly Limit Remaining\t42%\t2026-11-30T03:53:15Z\nClaude and GPT models\tFive Hour Limit Remaining\t100%\t2026-11-25T13:28:49Z\n"
+	},
+	"executor": "local",
+	"reasons": ["no protected path supplied; OS/permission layers only"]
 }

@@ -6,13 +6,13 @@
 		"capabilities": [
 			"read_content"
 		],
-		"fetchedAt": "2026-11-25T15:14:38.767Z",
+		"fetchedAt": "2026-11-25T15:48:01.787Z",
 		"sourceUrl": null
 	},
 	"availability": "public",
 	"unavailableReason": null,
-	"observedAt": "2026-11-25T15:14:38.767Z",
-	"contentDigest": "sha256:cc01ad46a45fd79d5618a642bb4007af4792ce5fdc3986740537e91d01c6408d",
+	"observedAt": "2026-11-25T15:48:01.787Z",
+	"contentDigest": "sha256:7a871b757ff036f6cb8c4754d20b06cbc619375fe8bae7fefbb4f503277f9807",
 	"records": [
 		{
 			"pageId": "423d54e3-32c3-817f-bc73-feab36936e70",
@@ -95,8 +95,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "my-web-2026 公開版トップページ（rebuildup.dev、v0.13.1）",
-					"caption": "my-web-2026 公開版トップページ（rebuildup.dev、v0.13.1）",
+					"alt": "my-web-2026 公開版トップページ（rebuildup.dev）",
+					"caption": "my-web-2026 公開版トップページ（rebuildup.dev）",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -106,14 +106,14 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev、v0.13.1）",
-					"caption": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev、v0.13.1）",
+					"alt": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev）",
+					"caption": "my-web-2026 公開版ポートフォリオ一覧（rebuildup.dev）",
 					"isCover": false,
 					"displayOrder": 1,
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T13:45:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-813d-8767-c359d8da531c",
@@ -154,8 +154,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "herdr-t3 v0.5.0 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
-					"caption": "herdr-t3 v0.5.0 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
+					"alt": "herdr-t3 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
+					"caption": "herdr-t3 — 複数ワークスペースとエージェントの状態を一元管理するデスクトップ GUI",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -165,14 +165,14 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "エージェントの詳細をホバーで即座に確認できる herdr-t3 v0.5.0",
-					"caption": "エージェントの詳細をホバーで即座に確認できる herdr-t3 v0.5.0",
+					"alt": "エージェントの詳細をホバーで即座に確認できる herdr-t3",
+					"caption": "エージェントの詳細をホバーで即座に確認できる herdr-t3",
 					"isCover": false,
 					"displayOrder": 1,
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T13:45:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-814f-86bd-f04133ed7dd6",
@@ -385,8 +385,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "@ido-bata/ae-a8n@0.6.0 — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 26.5 実機で効果を確認。",
-					"caption": "@ido-bata/ae-a8n@0.6.0 — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 26.5 実機で効果を確認。",
+					"alt": "ae-a8n — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 実機で効果を確認。",
+					"caption": "ae-a8n — createComp / addTextLayer / effects.apply / parameter.set / renderFrame を1回の owned セッションで実行し、AE 実機で効果を確認。",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -403,7 +403,7 @@
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T14:40:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-8168-a9c7-c794e5e5b736",
@@ -444,8 +444,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "rebuildup.inbox v0.1.0 — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
-					"caption": "rebuildup.inbox v0.1.0 — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
+					"alt": "rebuildup.inbox — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
+					"caption": "rebuildup.inbox — herdr の agent pane を settle / snooze / restore で整理するプラグイン。",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -462,7 +462,7 @@
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T13:45:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-8184-a178-c75c1f105fb4",
@@ -692,8 +692,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "@ido-bata/ae-devtools-cli@0.8.0 — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
-					"caption": "@ido-bata/ae-devtools-cli@0.8.0 — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
+					"alt": "ae-devtools — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
+					"caption": "ae-devtools — TS→ES3 JSX ビルドから trusted eval ディスパッチ、エラー→TS ソース行へのソースマップ復元までの開発ループを実機 AE で実証。",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -710,7 +710,7 @@
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T14:40:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-81ce-8d5b-c1394c338833",
@@ -751,8 +751,8 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "FlashBeat v0.2.8 — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
-					"caption": "FlashBeat v0.2.8 — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
+					"alt": "FlashBeat — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
+					"caption": "FlashBeat — YouTube 動画を再生しながら 8 レーンのノーツをキーボードで判定する自作リズムゲーム。公開版 macOS ビルドの実プレイ画面（2560×1664）。",
 					"isCover": true,
 					"displayOrder": 0,
 					"rights": "unrecorded"
@@ -762,14 +762,14 @@
 					"contentType": "image/png",
 					"width": null,
 					"height": null,
-					"alt": "FlashBeat v0.2.8 の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
-					"caption": "FlashBeat v0.2.8 の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
+					"alt": "FlashBeat の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
+					"caption": "FlashBeat の選曲画面 — クラウドカタログ経由で配信される楽曲一覧。",
 					"isCover": false,
 					"displayOrder": 1,
 					"rights": "unrecorded"
 				}
 			],
-			"editedAt": "2026-11-25T13:45:00.000Z"
+			"editedAt": "2026-11-25T15:46:00.000Z"
 		},
 		{
 			"pageId": "423d54e3-32c3-81d0-a70b-fb0d30ff306a",

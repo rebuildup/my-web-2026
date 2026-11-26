@@ -437,7 +437,7 @@ function metricStrip(
 	// cell anatomy: stat baseline → label ~6px below the numeral's
 	// foot, then a full s4 air gap before the next row's stat — the
 	// pair must read as one unit, not label-to-next-value
-	const rowH = TT.stat.lh + TT.label.lh + SPACE.s4;
+	const rowH = TT.stat.lh + TT.label.lh + (spec.mobile ? SPACE.s2 : SPACE.s4);
 	const span = colCount / rowPlan[0].length;
 	let s = '';
 	let cy = y;
@@ -749,14 +749,17 @@ function drawIdentityMobile(model: Band1Model, y0: number): { svg: string; botto
 	const strip = metricStrip(spec, y, 0, spec.columns, model.stats, T, sem);
 	s += strip.svg;
 
-	const ly = snap(spec, strip.bottom + SPACE.s4);
+	// the vitals→bar air is tighter than desktop's s4+s10: the removed
+	// module heads left a ghost gap here, and the bar+legend pair
+	// still needs its own breathing room before the section break
+	const ly = snap(spec, strip.bottom + SPACE.s1);
 	const langs = model.stats.topLangs;
 	let bottom: number;
 	if (!langs || langs.length === 0) {
 		s += bandText(spec, 'body', m, snap(spec, ly + 20), T.faint, 'language data unavailable');
 		bottom = snap(spec, ly + 36);
 	} else {
-		const barTop = ly + 10;
+		const barTop = ly + 6;
 		const bar = langBar(spec, m, barTop, contentWidth(spec), langs, T);
 		s += bar.svg;
 		bottom = bar.bottom;
@@ -858,7 +861,9 @@ function renderRecentActivity(
 			runs.push({ repo, type: e.type, at: e.at, count: 1 });
 		}
 	}
-	const maxRows = compact ? 4 : 6;
+	// mobile shows one fewer ledger row — the pulse above already
+	// carries the window's shape, and '+N more' keeps the count honest
+	const maxRows = compact ? (spec.mobile ? 3 : 4) : 6;
 	const rowH = 22;
 	const shown = runs.slice(0, maxRows);
 	const firstBaseline = snap(spec, y + 24);
@@ -930,7 +935,9 @@ function renderPulse72(
 	T: Theme,
 	sem: (k: string) => string,
 ): { svg: string; bottom: number; peak: number } {
-	const stripH = 56;
+	// mobile re-grid runs the strip 8px shorter — the 72h window is
+	// already narrow on 400px and the saved row feeds the events list
+	const stripH = spec.mobile ? 48 : 56;
 	const stripTop = snap(spec, y + 22);
 	const baselineY = stripTop + stripH;
 	const counts = new Array<number>(72).fill(0);
@@ -1112,12 +1119,13 @@ function renderRepoTable(
 			s += prCount(spec, prsRight, ry, r.prs, TT, T);
 			if (r.commits !== null) {
 				// meter zone runs name-edge -> commits column edge with a
-				// whisper track so the bar reads as a meter, not a divider
-				const zoneW = commitsRight - x - 6;
-				s += `<rect x="${x}" y="${ry + 6}" width="${zoneW}" height="5" rx="2.5" fill="${T.line}" opacity="0.4"/>`;
+				// whisper track so the bar reads as a meter, not a divider;
+				// it ends flush on the commits column it encodes
+				const zoneW = commitsRight - x;
+				s += `<rect x="${x}" y="${ry + 8}" width="${zoneW}" height="5" rx="2.5" fill="${T.line}" opacity="0.4"/>`;
 				if ((r.commits ?? 0) > 0) {
 					const bw = zoneW * ((r.commits ?? 0) / maxC);
-					s += `<rect x="${x}" y="${ry + 6}" width="${Math.max(3, bw)}" height="5" rx="2.5" fill="${sem('accent')}" opacity="0.9"/>`;
+					s += `<rect x="${x}" y="${ry + 8}" width="${Math.max(3, bw)}" height="5" rx="2.5" fill="${sem('accent')}" opacity="0.9"/>`;
 				}
 			}
 			ry += rowH;
@@ -1137,19 +1145,18 @@ function renderRepoTable(
 	}
 
 	// aggregate buckets on the same columns and the SAME bar scale —
-	// muted, so a rollup never competes with a named repo
+	// muted, so a rollup never competes with a named repo. On the
+	// mobile re-grid each bucket collapses to ONE caption line (no
+	// bar): the named rows already carry the meter metaphor, and two
+	// stacked rollup rows pushed RECENT EVENTS a full screen down.
 	let ay = ry + (compact ? 8 : 8);
 	for (const d of dimRows(model.rows)) {
-		if (d.commits !== null) {
-			const zoneW = compact ? commitsRight - x - 6 : barZoneW;
-			const bx = compact ? x : barX;
-			const by = compact ? ay + 6 : ay - 8;
-			const bh = compact ? 5 : 6;
-			if (compact) {
-				s += `<rect x="${bx}" y="${by}" width="${zoneW}" height="${bh}" rx="${bh / 2}" fill="${T.line}" opacity="0.3"/>`;
-			} else {
-				s += `<rect x="${bx}" y="${by}" width="${zoneW}" height="${bh}" rx="${bh / 2}" fill="${T.line}" opacity="0.25"/>`;
-			}
+		if (!compact && d.commits !== null) {
+			const zoneW = barZoneW;
+			const bx = barX;
+			const by = ay - 8;
+			const bh = 6;
+			s += `<rect x="${bx}" y="${by}" width="${zoneW}" height="${bh}" rx="${bh / 2}" fill="${T.line}" opacity="0.25"/>`;
 			if ((d.commits ?? 0) > 0) {
 				s += `<rect x="${bx}" y="${by}" width="${Math.max(3, zoneW * ((d.commits ?? 0) / maxC))}" height="${bh}" rx="${bh / 2}" fill="${sem('accent')}" opacity="0.45"/>`;
 			}
@@ -1157,14 +1164,14 @@ function renderRepoTable(
 		s += bandText(spec, 'caption', x, ay, T.faint, truncate(d.name, nameW, TT.caption.size));
 		s += commitCount(spec, commitsRight, ay, d.commits, TT, T, true);
 		s += prCount(spec, prsRight, ay, d.prs, TT, T, true);
-		ay += compact ? 30 : 20;
+		ay += compact ? 18 : 20;
 	}
 
 	let bottom = ay;
 	if (model.repoCount > 0) {
-		// clear the last aggregate bar (mobile bars reach ay+11) before
-		// the total line's baseline
-		bottom = snap(spec, ay + (compact ? 22 : 14));
+		// clear the last aggregate row before the total line's baseline —
+		// mobile keeps a tighter step than desktop's module air
+		bottom = snap(spec, ay + (compact ? 16 : 14));
 		s += bandText(
 			spec,
 			'strong',
@@ -1180,10 +1187,12 @@ function renderRepoTable(
 		}
 		bottom += TT.strong.lh;
 		if (hasCommits && compact) {
-			// mobile: the legend gets its own line — sharing the Total
-			// baseline collided the two strings into double-exposed text
-			s += bandText(spec, 'caption', x, bottom + SPACE.s1, T.faint, legendTxt);
-			bottom += SPACE.s1 + TT.caption.lh;
+			// mobile has no room beside the long Total string — the bar
+			// key drops to its own caption line, funded by the tighter
+			// vitals→bar and aggregate→total air reclaimed in r2
+			const lg = snap(spec, bottom + SPACE.s1);
+			s += bandText(spec, 'caption', x, lg, T.faint, legendTxt);
+			bottom = lg + TT.caption.lh;
 		}
 	}
 	return { svg: s, bottom: snap(spec, bottom + SPACE.s2) };
@@ -1331,21 +1340,18 @@ function drawActivityMobile(
 	const py = snap(spec, table.bottom + SPACE.s4);
 	const peak = pulsePeak(model);
 	const pulseCaption = `${model.feed72.length} events${peak > 0 ? ` · peak ${peak}/hr` : ''}`;
+	// ONE module head for the whole 72h read-out: the pulse is the
+	// shape, the event rows beneath it are the same window's ledger —
+	// a second 'RECENT EVENTS' head spent a full module row restating
+	// what the glyphs and verbs already say.
 	s += moduleHead(spec, m, py, 'LAST 72 HOURS', pulseCaption, T);
-	const pulse = renderPulse72(spec, m, snap(spec, py + 14), contentWidth(spec), model, T, sem);
+	const pulse = renderPulse72(spec, m, snap(spec, py + 12), contentWidth(spec), model, T, sem);
 	s += pulse.svg;
 
+	// the event ledger gets a wider break than the head→chart gap so
+	// the two sub-blocks under the shared head don't read as equals
 	const ey = snap(spec, pulse.bottom + SPACE.s4);
-	s += moduleHead(spec, m, ey, 'RECENT EVENTS', null, T);
-	const events = renderRecentActivity(
-		spec,
-		m,
-		snap(spec, ey + 12),
-		contentWidth(spec),
-		model,
-		T,
-		true,
-	);
+	const events = renderRecentActivity(spec, m, ey, contentWidth(spec), model, T, true);
 	s += events.svg;
 
 	return { svg: s, bottom: events.bottom };
@@ -1496,7 +1502,10 @@ export function composeBand2Model(input: {
 	const privCommits = sumOrNull(priv.map((r) => r.activity?.commits ?? null));
 	const privPrs = sumOrNull(priv.map((r) => r.activity?.prs ?? null));
 	const privEvents = priv.reduce((a, r) => a + (r.activity?.events ?? 0), 0);
-	const topN = input.mobile ? 4 : 5;
+	// mobile names three repos and lets the rollup bucket carry the
+	// rest — a fourth named row cost a full meter row the 400px
+	// canvas could not afford; desktop keeps five
+	const topN = input.mobile ? 3 : 5;
 	const rest = pubAll.slice(topN);
 	const rows: BandRepoRow[] = [
 		...pubAll.slice(0, topN),

@@ -45,6 +45,13 @@ export interface ActivityRepoFacts {
 	readonly repoFullName?: string;
 	/** `https://github.com/owner/name` — public kind only. */
 	readonly htmlUrl?: string;
+	/**
+	 * Attribution scope (data contract §2.1, Issue #1245) — public
+	 * kind only. `owned` / `org-member` / `collaborator` /
+	 * `external-public`; absent on legacy snapshots and private
+	 * entries.
+	 */
+	readonly scope?: 'owned' | 'org-member' | 'collaborator' | 'external-public';
 	/** ISO instant of the most recent observed activity. */
 	readonly lastActiveAt?: string;
 	/** Activity inside the counting window (see `windowDays`). */

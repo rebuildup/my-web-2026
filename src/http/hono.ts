@@ -19,6 +19,7 @@ import { presenceRouter } from './presence/router';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 import { securityTxtRouter } from './security-txt/router';
 import { seoRouter } from './seo/router';
+import { statsRouter } from './stats/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -189,6 +190,7 @@ externalBoundary.route('/api/v1/github-readme-stats', githubReadmeStatsRouter);
 externalBoundary.route('/api/v1/github-profile', githubProfileRouter);
 externalBoundary.route('/api/v1/presence', presenceRouter);
 externalBoundary.route('/api/v1/activity', activityRouter);
+externalBoundary.route('/api/v1/stats', statsRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

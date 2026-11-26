@@ -139,6 +139,15 @@ export const CORS_ROUTES: readonly CorsRoute[] = Object.freeze([
 		methods: Object.freeze(['PUT', 'OPTIONS']),
 	},
 	{
+		path: '/api/v1/stats',
+		klass: 'credentialed',
+		// `PUT /github` — operator-side ingest of the GitHub stats
+		// snapshot (Issues #1244 / #1245). API-key credentialed like
+		// the other write surfaces; same-origin `Origin` evidence is
+		// already required by the CSRF guard.
+		methods: Object.freeze(['PUT', 'OPTIONS']),
+	},
+	{
 		path: '/api/v1/reaction-images',
 		klass: 'public-read',
 		// `GET /:id`, public by design (see `reactionsRouter`).

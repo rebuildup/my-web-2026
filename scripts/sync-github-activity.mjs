@@ -10,8 +10,23 @@
  * Reads (public, unauthenticated unless GITHUB_TOKEN is set):
  *   - GET /users/<owner>/events/public        (recent public activity)
  *   - GET /users/<owner>/repos?per_page=100   (public repos + pushed_at)
- *   - with GITHUB_TOKEN: GET /user/repos?visibility=private&affiliation=owner
+ *   - with GITHUB_TOKEN: GET /user/repos?visibility=private&
+ *     affiliation=owner,collaborator,organization_member
  *     (private repos too — anonymised before anything is written)
+ *   - with GITHUB_TOKEN: GET /user/repos?visibility=public&
+ *     affiliation=owner,collaborator,organization_member — the
+ *     affiliation-scoped public directory (owned + org-member +
+ *     collaborator repos, data contract §2.1). Each repo carries a
+ *     `scope` tag: owned / org-member / collaborator. Org
+ *     MEMBERSHIP only enumerates candidates — a repo enters the
+ *     snapshot solely through the same observed-signal rule as
+ *     before (feed event or measured authored contribution), so
+ *     belonging to an org never implies activity there.
+ *   - GET /search/commits?q=author:<owner> is:public — discovers
+ *     `external-public` repos OUTSIDE every affiliation (contract
+ *     §2.1): unique repository full_names are collected, repo
+ *     metadata fetched per repo, and the same observed-signal +
+ *     per-repo search measurement applies. Bounded to 50 repos.
  *   - GET /search/commits + /search/issues    (per-repo contribution
  *     counts: authored commits / authored PRs inside the window —
  *     Issue #967. Search `total_count` is exact and needs no paging;
@@ -84,6 +99,11 @@ export function repoFacts(repo, kind, salt) {
 		kind,
 		name: kind === 'public' ? repo.name : '非公開プロジェクト',
 		...(kind === 'public' ? { repoFullName: repo.full_name, htmlUrl: repo.html_url } : {}),
+		// Attribution scope (data contract §2.1): how the repo entered
+		// the directory — owned / org-member / collaborator /
+		// external-public. Absent on hand-built fixtures and private
+		// entries (private scope never publishes an org relation).
+		...(kind === 'public' && typeof repo.scope === 'string' ? { scope: repo.scope } : {}),
 		...(pushed ? { lastActiveAt: pushed } : {}),
 	};
 }
@@ -333,6 +353,70 @@ async function fetchContributions(repos, sinceDate, token) {
 	return out;
 }
 
+const AFFILIATIONS = 'owner,collaborator,organization_member';
+const EXTERNAL_DISCOVERY_LIMIT = 50;
+
+/**
+ * Attribution scope for a `/user/repos?affiliation=…` result
+ * (data contract §2.1). The affiliation parameter enumerates
+ * candidates; it does not say WHICH affiliation matched, so scope
+ * is derived from repo shape: owner login → owned, Organization
+ * owner → org-member, otherwise a user-owned repo the owner merely
+ * collaborates on → collaborator.
+ */
+function scopeForAffiliationRepo(repo) {
+	if (repo?.owner?.login === OWNER) return 'owned';
+	if (repo?.owner?.type === 'Organization') return 'org-member';
+	return 'collaborator';
+}
+
+/**
+ * `external-public` discovery (data contract §2.1): public repos
+ * OUTSIDE every affiliation where the owner has authored commits.
+ * One page of `search/commits` yields up to 100 items; unique repo
+ * full_names are collected (capped), then each repo's metadata is
+ * fetched so `pushed_at`/`html_url` behave like affiliation repos.
+ * Failure degrades to an empty list — external discovery must never
+ * fail the whole sync.
+ */
+async function discoverExternalPublicRepos(gh, token) {
+	try {
+		const res = await fetch(
+			`${API}/search/commits?q=${encodeURIComponent(`author:${OWNER} is:public`)}&per_page=100`,
+			{
+				headers: {
+					accept: 'application/vnd.github+json',
+					'user-agent': UA,
+					...(token ? { authorization: `Bearer ${token}` } : {}),
+				},
+				signal: AbortSignal.timeout(15_000),
+			},
+		);
+		if (!res.ok) return [];
+		const body = await res.json();
+		const names = [
+			...new Set(
+				(body.items ?? [])
+					.map((item) => item?.repository?.full_name)
+					.filter((n) => typeof n === 'string' && n.length > 0),
+			),
+		].slice(0, EXTERNAL_DISCOVERY_LIMIT);
+		const repos = [];
+		for (const fullName of names) {
+			try {
+				const repo = await gh(`/repos/${fullName}`);
+				repo.scope = 'external-public';
+				repos.push(repo);
+			} catch {
+				// A deleted/inaccessible repo simply drops out.
+			}
+		}
+		return repos;
+	} catch {
+		return [];
+	}
+}
+
 async function push(snapshot) {
 	const apiKey = process.env.MY_WEB_2026_API_KEY;
 	if (!apiKey) {
@@ -387,18 +471,56 @@ async function main() {
 		return res.json();
 	}
 
-	const [events, publicRepos, privateRepos] = await Promise.all([
-		gh(`/users/${OWNER}/events/public?per_page=100`),
-		gh(`/users/${OWNER}/repos?per_page=100&sort=pushed`),
-		token
-			? gh('/user/repos?visibility=private&affiliation=owner&per_page=100')
-			: Promise.resolve(null),
-	]);
+	const [events, legacyPublicRepos, affiliationRepos, privateRepos, externalRepos] =
+		await Promise.all([
+			gh(`/users/${OWNER}/events/public?per_page=100`),
+			gh(`/users/${OWNER}/repos?per_page=100&sort=pushed`),
+			token
+				? gh(`/user/repos?visibility=public&affiliation=${AFFILIATIONS}&per_page=100`).catch(
+						(err) => {
+							console.error(
+								`sync-github-activity: affiliation public fetch failed (${err.message}) — falling back to owned repos`,
+							);
+							return null;
+						},
+					)
+				: Promise.resolve(null),
+			token
+				? gh(`/user/repos?visibility=private&affiliation=${AFFILIATIONS}&per_page=100`).catch(
+						(err) => {
+							console.error(
+								`sync-github-activity: affiliation private fetch failed (${err.message}) — private repos skipped`,
+							);
+							return null;
+						},
+					)
+				: Promise.resolve(null),
+			discoverExternalPublicRepos(gh, token),
+		]);
+
+	// Public directory: affiliation-scoped when a token is present
+	// (owned + org-member + collaborator), else the legacy owned-only
+	// listing. Deduped by full_name with affiliation winning over
+	// external-public discovery (contract §2.1).
+	const publicByName = new Map();
+	const affiliationPublic = affiliationRepos ?? legacyPublicRepos ?? [];
+	for (const repo of affiliationPublic) {
+		if (typeof repo?.full_name !== 'string') continue;
+		repo.scope = affiliationRepos ? scopeForAffiliationRepo(repo) : 'owned';
+		publicByName.set(repo.full_name.toLowerCase(), repo);
+	}
+	for (const repo of externalRepos ?? []) {
+		if (typeof repo?.full_name !== 'string') continue;
+		if (!publicByName.has(repo.full_name.toLowerCase())) {
+			publicByName.set(repo.full_name.toLowerCase(), repo);
+		}
+	}
+	const publicRepos = [...publicByName.values()];
 
 	const now = new Date();
 	const sinceDate = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
 	const contributions = await fetchContributions(
-		[...(publicRepos ?? []), ...(privateRepos ?? [])],
+		[...publicRepos, ...(privateRepos ?? [])],
 		sinceDate,
 		token,
 	);

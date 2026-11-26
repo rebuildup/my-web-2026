@@ -66,24 +66,44 @@ windowDays=30）。
 |---|---|---|---|---|
 | streak.current / longest | user（全 attribution） | allTime | GraphQL contributionCalendar（年別） | 既存 fetchStreak と同等・変更なし |
 | contributions.total | user | y1 | GraphQL totalCommitContributions 等 | 表示名に期間を明示 |
-| commits.authored | user | allTime | `search/commits?q=author:<login>` total_count | org/external を含む真の全期間 |
+| commits.authored | user | allTime | `search/commits?q=author:<login>` total_count | org/external を含む。**公開 search 面のため private repo の commit は含まない** — 「公開面で検証可能な全期間の authored commit 数」として扱う |
 | commits.windowed | repo 別 | w30 | per-repo `search/commits` | REPO OUTPUT 用・既存踏襲 |
-| prs.authored / issues.authored | user | allTime | `search/issues?q=author:<login> type:pr|issue` | |
+| prs.authored / issues.authored | user | allTime | `search/issues?q=author:<login> type:pr|issue` | 同上・公開面 |
+| prs.opened / issues.opened | user | allTime | GraphQL `pullRequests`/`issues` totalCount | token 可視の全 repo（private 含む）を数える GitHub 側の値 — search 系とは母集団が異なるため併記し混同しない |
 | reviews.count | user | y1 | GraphQL totalPullRequestReviewContributions | 1 年窓であることを明示 |
-| stars.owned / stars.participated | repo 別合計 | allTime | repo stargazerCount（所有/参加で分離集計） | participated は公開 repo のみ・private は anon |
-| languages.ownedBytes | owned repo | — | repo languages byte 合計 | 「所有 repo の言語構成」 |
-| languages.authoredBytes | 本人変更量 | — | 取得困難なら**採用しない** — repo 属性と作者属性を混同しない。代替: participated repo の言語構成を別指標として出す場合は `languages.participatedBytes` と命名 |
-| repos.ownedCount / repos.participatedCount / repos.contributedToCount | — | allTime | discovery + 実績 | contributedTo は既存 GraphQL 値と整合確認 |
+| stars.owned | owned repo | allTime | repo stargazerCount 合計 | private repo は実質 0（他者は star 不可） |
+| stars.participated | participated repo | allTime | 同上・非 owned の**公開** repo のみ | private 参加 repo は集計に入れない |
+| languages.ownedBytes | owned **公開** repo | — | repo languages byte 合計（fork 除外） | v0.14.0 までは private owned repo も含んでいた — 公開境界（§4）に合わせ公開のみに統一 |
+| languages.participatedBytes | participated **公開** repo | — | 同上・非 owned + external-public | 「参加 repo の言語構成」 |
+| repos.ownedCount / repos.participatedCount / repos.contributedToCount | — | allTime | discovery + 実績 | contributedTo は既存 GraphQL 値と整合確認。participatedCount は directory ページング上限時に下限値になり得る — snapshot の `repos.complete` で明示 |
 | followers | user | allTime | GraphQL | 変更なし |
 | rank | 合成 | — | §3.1 | 入力指標を明示 |
 
 ### 3.1 Rank
 
-- 入力は宣言済み指標のみ。`repos`/`stars` は owned と participated
-  を分離した値を使うか、意味を明記した単一値にする — 実装時に
-  ADR-0027 §2.2 の「実態に合った集計」で決定し本書へ追記する。
-- 旧方式（vendored 以前）と現行方式を同一入力で比較した記録を
-  検証証跡として残す。恣意的な引き上げ禁止。
+**決定（2026-11-27 実装時）**: rank 入力は以下で固定する。
+
+- `commits` = `commits.authored`（search/commits allTime・公開面）、
+  `all_commits=true`（weight 10 経路 — 真の全期間なので upstream の
+  all-commits 重みを使う）
+- `prs` / `issues` = `prs.authored` / `issues.authored`
+  （search/issues allTime・公開面）
+- `reviews` = `reviews.count`（y1 窓のまま — 窓は入力宣言に明記）
+- `repos` = `repos.ownedCount`、`stars` = `stars.owned` —
+  **owned スコープを維持**（v1）。participated の repo/star は別指標
+  として公開し、rank に混ぜない — vendored 式が tuning された母集団
+  （owned repo）との整合を保ち、恣意的な上方修正を避ける。
+- `followers` = GraphQL allTime
+
+snapshot は同一入力で `rank.current`（vendored calculateRank）と
+`rank.legacy`（旧 anuraghazra/github-readme-stats 式 —
+`repos` 未使用・median/weight が異なる）の両方を保持し、旧新比較を
+データとして残す。いずれかの入力が未計測（null）の場合 rank 全体を
+`null` とし、欠損を 0 として計算しない。
+
+- 検証証跡: `scripts/sync-github-stats.test.mjs` が同一入力での
+  両式出力と null 伝播を固定。実データでの新旧差分は初回 sync 後の
+  snapshot 値で確認する（`docs/verification/` に記録予定）。
 
 ## 4. 公開範囲
 

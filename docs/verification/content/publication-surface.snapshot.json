@@ -3258,7 +3258,6 @@
 				"identifier": false,
 				"files": [
 					"src/home/activity/snapshot.ts",
-					"src/http/github-profile/router.ts",
 					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},

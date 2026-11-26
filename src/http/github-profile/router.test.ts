@@ -27,7 +27,9 @@ function fakeDb(payloads: Record<string, unknown>): D1Database {
 						? 'github_activity_snapshot'
 						: sql.includes('discord_presence_snapshot')
 							? 'discord_presence_snapshot'
-							: null;
+							: sql.includes('github_stats_snapshot')
+								? 'github_stats_snapshot'
+								: null;
 					const payload = table ? payloads[table] : undefined;
 					return payload === undefined ? null : { payload: JSON.stringify(payload) };
 				},
@@ -54,6 +56,64 @@ const PRESENCE = {
 	status: 'online',
 	activities: [],
 	isLive: true,
+};
+
+const STATS = {
+	schemaVersion: 1,
+	generatedOn: '2026-11-25',
+	observedAt: '2026-11-25T00:00:00Z',
+	owner: 'rebuildup',
+	sources: {
+		graphql: { status: 'ok', observedAt: '2026-11-25T00:00:00Z' },
+		streak: { status: 'ok' },
+		search: { status: 'ok' },
+		avatar: { status: 'ok' },
+	},
+	streak: {
+		currentStreak: 12,
+		longestStreak: 30,
+		totalContributions: 4211,
+		firstContribution: '2024-01-01',
+		currentStreakStart: '2026-11-14',
+		currentStreakEnd: '2026-11-25',
+		longestStreakStart: '2026-10-01',
+		longestStreakEnd: '2026-10-30',
+	},
+	metrics: {
+		contributionsY1: 800,
+		reviewsY1: 5,
+		commitsAuthoredAllTime: 900,
+		prsAuthoredAllTime: 100,
+		issuesAuthoredAllTime: 40,
+		prsOpenedAllTime: 90,
+		issuesOpenedAllTime: 35,
+		contributedTo: 7,
+		followers: 10,
+	},
+	repos: { owned: 20, contributedTo: 7, participated: 12, complete: true },
+	stars: { owned: 55, participated: 60 },
+	languages: {
+		owned: [
+			{ name: 'TypeScript', color: '#3178c6', size: 700, count: 10 },
+			{ name: 'Rust', color: '#dea584', size: 300, count: 4 },
+		],
+		participated: [],
+	},
+	rank: {
+		inputs: {
+			all_commits: true,
+			commits: 900,
+			prs: 100,
+			issues: 40,
+			reviews: 5,
+			repos: 20,
+			stars: 55,
+			followers: 10,
+		},
+		current: { level: 'A', percentile: 5 },
+		legacy: { level: 'A+', percentile: 2 },
+	},
+	avatarDataUri: 'data:image/png;base64,iVBORw0KGgo=',
 };
 
 describe('GET /card', () => {
@@ -172,5 +232,88 @@ describe('GET /now', () => {
 			...ENV_BASE,
 		} as never);
 		expect(res.status).toBe(405);
+	});
+});
+
+describe('GET /vitals', () => {
+	it('answers 200 SVG with honest unavailable stats when no snapshot exists', async () => {
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('image/svg+xml');
+		expect(res.headers.get('cache-control')).toBe('public, max-age=300, s-maxage=300');
+		const body = await res.text();
+		expect(body).toContain('<svg');
+		expect(body).toContain('streak');
+	});
+
+	it('renders snapshot figures when the stats row exists', async () => {
+		const res = await githubProfileRouter.request('/vitals', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: STATS }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('4,211');
+		expect(body).toContain('900');
+		expect(body).toContain('55');
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/vitals', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
+	});
+});
+
+describe('GET /top-languages', () => {
+	it('answers 200 SVG with an honest unavailable state when no snapshot exists', async () => {
+		const res = await githubProfileRouter.request('/top-languages', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({}),
+		} as never);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toContain('image/svg+xml');
+		const body = await res.text();
+		expect(body).toContain('language data unavailable');
+	});
+
+	it('renders the owned-scope language bar when the stats row exists', async () => {
+		const res = await githubProfileRouter.request('/top-languages', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({ github_stats_snapshot: STATS }),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('TypeScript');
+		expect(body).toContain('70.0%');
+	});
+
+	it('rejects non-GET methods', async () => {
+		const res = await githubProfileRouter.request('/top-languages', { method: 'POST' }, {
+			...ENV_BASE,
+		} as never);
+		expect(res.status).toBe(405);
+	});
+});
+
+describe('GET /profile stats wiring', () => {
+	it('feeds vitals and the avatar from the stats snapshot, not upstream', async () => {
+		const res = await githubProfileRouter.request('/profile', { method: 'GET' }, {
+			...ENV_BASE,
+			DB: fakeDb({
+				github_activity_snapshot: ACTIVITY,
+				discord_presence_snapshot: PRESENCE,
+				github_stats_snapshot: STATS,
+			}),
+		} as never);
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('data:image/png;base64');
+		expect(body).toContain('4,211');
+		expect(body).toContain('TypeScript');
 	});
 });

@@ -785,6 +785,67 @@ export function renderBand1Svg(model: Band1Model, opts: { grid?: boolean } = {})
 	return svg;
 }
 
+// ---- Standalone data-source surfaces (Issue #1244) ----
+//
+// The contract's per-domain surfaces: each renders ONE snapshot's
+// worth of data on its own canvas so cache freshness, failure
+// isolation and payload size follow the data boundary — a stale
+// streak never stalls the language bar, and the README (or any
+// consumer) can compose them independently. `/profile` stays the
+// compat composition of the same models.
+
+export interface StatsSurfaceModel {
+	readonly theme: 'dark' | 'light';
+	readonly mobile: boolean;
+	readonly stats: BandStats;
+}
+
+function statsSurfaceShell(
+	model: StatsSurfaceModel,
+	body: string,
+	bottom: number,
+	opts: { grid?: boolean },
+): string {
+	const spec = canvasSpec(model.mobile);
+	const { T } = skinFor(model.theme);
+	const H = snap(spec, bottom + SPACE.s4) + (opts.grid && model.mobile ? 28 : 0);
+	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${H}" viewBox="0 0 ${spec.width} ${H}" font-family="${FONT}">`;
+	svg += `<rect width="${spec.width}" height="${H}" fill="${T.bg}"/>`;
+	svg += body;
+	if (opts.grid) svg += gridOverlay(spec, H);
+	svg += '</svg>';
+	return svg;
+}
+
+/** VITALS — the account-figures strip alone (github_stats_snapshot). */
+export function renderVitalsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
+	const spec = canvasSpec(model.mobile);
+	const { T, sem } = skinFor(model.theme);
+	const strip = metricStrip(spec, SPACE.s6, 0, spec.columns, model.stats, T, sem);
+	return statsSurfaceShell(model, strip.svg, strip.bottom, opts);
+}
+
+/** TOP LANGUAGES — the owned-scope share bar + legend alone
+ * (github_stats_snapshot). */
+export function renderTopLangsSvg(model: StatsSurfaceModel, opts: { grid?: boolean } = {}): string {
+	const spec = canvasSpec(model.mobile);
+	const { T } = skinFor(model.theme);
+	const m = spec.margin;
+	const y = SPACE.s6;
+	const langs = model.stats.topLangs;
+	let s = '';
+	let bottom: number;
+	if (!langs || langs.length === 0) {
+		s += bandText(spec, 'body', m, snap(spec, y + 20), T.faint, 'language data unavailable');
+		bottom = snap(spec, y + 36);
+	} else {
+		const bar = langBar(spec, m, y + 10, contentWidth(spec), langs, T);
+		s += bar.svg;
+		bottom = bar.bottom;
+	}
+	return statsSurfaceShell(model, s, bottom, opts);
+}
+
 // ---- Band 2 ----
 
 /** Feed verb → past-tense display word. */

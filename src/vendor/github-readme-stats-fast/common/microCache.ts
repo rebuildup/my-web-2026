@@ -5,7 +5,9 @@
  * https://github.com/Pranesh-2005/github-readme-stats-fast/blob/main/src/common/microCache.js
  * Commit: 8e2c76e59a9e2407f2c80f4e23704a04e8db21ad
  *
- * In-memory cache per isolate. TTL: 5 seconds.
+ * In-memory cache per isolate. TTL: 500 seconds (500_000 ms).
+ * (Issue #1244: the header comment previously claimed 5 seconds —
+ * the constant was always 500_000 ms; the comment was the bug.)
  */
 
 interface CacheEntry<T> {

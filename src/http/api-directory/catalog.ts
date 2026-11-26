@@ -332,6 +332,21 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 		purpose:
 			'Activity band for the rebuildup/rebuildup profile README (ADR-0026, Issue #1216): 30-day per-repository commit/PR output plus a 72-hour public-event pulse anchored to the snapshot observation time; private repositories aggregate anonymously. Query params: theme=dark|light, layout=mobile. Anonymous access. Returns SVG.',
 	},
+	{
+		path: '/api/v1/github-profile/profile',
+		method: 'GET',
+		authentication: 'anonymous',
+		authForm: 'none',
+		rateLimitBinding: 'RATE_LIMIT_READ',
+		errorForm:
+			'405 method_not_allowed; the composition always answers 200 — a missing activity snapshot renders an honest unavailable state inside the SVG',
+		responseExample: {
+			contentType: 'image/svg+xml',
+			cacheControl: 'public, max-age=300, s-maxage=300',
+		},
+		purpose:
+			'Composed profile for the rebuildup/rebuildup profile README (Issue #1235): identity, GitHub activity and technology stack as ONE SVG canvas on the shared layout contract — section heads, common spine, module hierarchy. Query params: theme=dark|light, layout=mobile, grid=1 (review overlay). Anonymous access. Returns SVG.',
+	},
 ];
 
 /**

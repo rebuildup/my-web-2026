@@ -1249,12 +1249,6 @@ export function activityHeadMeta(model: Band2Model, mobile: boolean): string {
 		: `last ${model.windowDays} days · observed ${observedJst(model.observedAt)}${sourceWarn(model)}`;
 }
 
-/** The degraded-source warning as a standalone caption — used by
- * mobile compositions whose head meta has no room for it. */
-export function activitySourceWarn(model: Band2Model): string {
-	return sourceWarn(model).trim();
-}
-
 /**
  * Activity section as a reusable fragment — repo output table, then
  * the 72-hour pulse beside the recent-events list (side-by-side on

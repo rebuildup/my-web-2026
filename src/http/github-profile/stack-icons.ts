@@ -734,7 +734,7 @@ export interface StackIconGroup {
 export const STACK_GROUPS: readonly StackIconGroup[] = [
 	{
 		// Creative-tool lane — the design/media half of the toolkit.
-		// v0.15.0 contract §22: lane names must describe their actual
+		// Contract §22: lane names must describe their actual
 		// contents ('Design & web' wrongly held nodejs/dotnet/vercel;
 		// 'Languages & infra' wrongly held vscode/markdown/notion).
 		label: 'Design & media',

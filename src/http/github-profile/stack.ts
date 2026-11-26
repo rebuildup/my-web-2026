@@ -168,12 +168,12 @@ function layout(mobile: boolean, startY: number): StackGeom {
 				chip,
 				pitch,
 			};
-			// mobile lanes need real air between icon row and the next
-			// label — 4px read as one continuous strip
-			y += laneH + (i < groups.length - 1 ? SPACE.s4 : 0);
+			// mobile lanes keep s2 air between icon row and the next
+			// label — s4 read as dead canvas on the narrow grid
+			y += laneH + (i < groups.length - 1 ? SPACE.s2 : 0);
 			return lane;
 		});
-		return { lanes, height: snap(spec, y + SPACE.s4) };
+		return { lanes, height: snap(spec, y + SPACE.s2) };
 	}
 
 	// desktop — label rail on grid columns 0–2, scroll field from

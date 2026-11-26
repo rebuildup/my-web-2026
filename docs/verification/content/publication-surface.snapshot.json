@@ -852,6 +852,7 @@
 					"src/http/github-profile/current.ts",
 					"src/http/github-profile/now.ts",
 					"src/http/github-profile/presence.ts",
+					"src/http/github-profile/profile.ts",
 					"src/http/github-profile/stack.ts",
 					"src/http/github-profile/status.ts",
 					"src/tools/manifest.json",
@@ -6453,27 +6454,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: http://www.w3.org/1999/xlink"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-			}
-		]
+		"findings": []
 	}
 }

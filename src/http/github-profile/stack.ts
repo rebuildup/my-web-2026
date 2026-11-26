@@ -1,35 +1,38 @@
 /**
- * GitHub profile "stack" band — technology lanes (Issue #1216
- * follow-up, visual doc §18).
+ * GitHub profile "stack" band — the technology catalogue as four
+ * category lanes on SMIL marquees (Issue #1216 follow-up, #1235,
+ * visual doc §20).
  *
- * The committed skill-icons set (`public/github-profile/skills/*.svg`,
- * tandpfun/skill-icons MIT) inlined by
- * `scripts/build-github-profile-stack-icons.mjs` into `stack-icons.ts`,
- * laid out as labelled lanes grouped by activity area. Group order is
- * the owner's story: Design & motion leads (the distinctive craft),
- * then Languages, Frameworks & runtimes, and the Infra & dev tools
- * substrate.
+ * Layout contract: every position, size and rhythm value comes from
+ * `design.ts` — canvas spec, 12/6-column grid, 4px baseline, the
+ * TYPE/SPACE/ICON scales and the MOTION marquee rules. This module
+ * owns only WHAT scrolls (the committed 48-icon set grouped by
+ * activity area) and WHERE each lane sits on the grid.
  *
- * Desktop is a balanced 2×2: three craft lanes across the top two
- * rows' left cells and the substrate lane completing the grid — no
- * empty quadrant, no filler caption, right edge flush with Bands 1–2.
- * Hierarchy is real, not cosmetic: craft lanes render 40px chips,
- * the substrate lane 28px (≥1.4× ratio), and within-lane "also-used"
- * tools (SECONDARY_IDS) render at reduced opacity — all centered on
- * the same pitch grid so nothing breaks alignment. Mobile stacks the
- * same four lanes with smaller chips; category label above each row.
+ * Why a marquee: the README constraint is HEIGHT, not width —
+ * 48 legible icons cannot sit still in one row, and stacking them
+ * statically is exactly the vertical bloat the owner rejected.
+ * Each lane is a clipped viewport over a duplicated icon track
+ * translated by SMIL `<animateTransform>` (the only animation that
+ * runs inside an `<img>`-embedded SVG — CSS animations and scripts
+ * are disabled in image context). Constant velocity, one-period
+ * translate → seamless loop by construction.
  *
- * Honesty contract: the icon set and grouping are the committed,
- * reviewed list — nothing is invented per request. `?theme=` picks
- * the `-dark` / `-light` chip variants exactly like the old
- * `<picture>` pairs.
+ * Desktop recomposes as a label rail + scroll field per lane
+ * (categories read as a legend on the left); mobile stacks the
+ * label above each lane so the scroll field keeps the full content
+ * width. Chip size and lane height are independent axes: horizontal
+ * pitch (`chip + gap`) is chosen per lane density, vertical leading
+ * is one shared lane height.
+ *
+ * Honesty contract: all 48 committed skill icons (ADR-0026 §2.4
+ * baseline) render — coverage is never traded for compactness.
+ * `?theme=` picks the `-dark` / `-light` chip variants.
  */
 
 import { escapeXml } from './card';
+import { SPACE, canvasSpec, gridOverlay, gridX, marqueePeriod, snap, typeTable } from './design';
 import { STACK_GROUPS, STACK_ICONS, type StackIcon } from './stack-icons';
-
-export const STACK_WIDTH = 800;
-export const STACK_MOBILE_WIDTH = 400;
 
 const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const esc = escapeXml;
@@ -65,28 +68,6 @@ const THEMES: Record<'dark' | 'light', Theme> = {
 
 const ICON_BY_ID = new Map(STACK_ICONS.map((icon) => [icon.id, icon]));
 
-/** Craft lanes render larger chips — the tools that define the
- * work — while the supporting substrate stays visibly secondary. */
-const PRIMARY_LANES = new Set(['Design & motion', 'Languages', 'Frameworks & runtimes']);
-
-interface LaneLayout {
-	readonly label: string;
-	readonly icons: readonly StackIcon[];
-	readonly chip: number;
-	readonly pitch: number;
-	readonly perRow: number;
-	readonly x: number;
-	readonly labelY: number;
-	readonly iconsY: number;
-	readonly cellH: number;
-}
-
-interface StackLayout {
-	readonly lanes: readonly LaneLayout[];
-	readonly height: number;
-	readonly padX: number;
-}
-
 interface GroupIcons {
 	readonly label: string;
 	readonly icons: readonly StackIcon[];
@@ -101,145 +82,229 @@ function resolveGroups(): GroupIcons[] {
 	}));
 }
 
-function layout(mobile: boolean): StackLayout {
-	const W = mobile ? STACK_MOBILE_WIDTH : STACK_WIDTH;
-	const padX = mobile ? 14 : 20;
+// Lane metrics — horizontal pitch and vertical leading are designed
+// independently (user requirement): pitch packs icons tightly so the
+// track overflows the viewport and the marquee has somewhere to go;
+// lane height is one shared rhythm for every lane.
+const LANE = {
+	/** chip edge length, px — small enough that four lanes read as a
+	 * compressed catalogue, large enough that brand marks stay legible */
+	chip: 40,
+	/** gap between consecutive chips inside a track, px — pitch
+	 * (chip + gap) must exceed the viewport or a lane's shortest
+	 * period could render the same icon twice in-frame */
+	gap: 24,
+	/** vertical padding above/below the chip row inside a lane, px */
+	padY: 8,
+	/** gap between lanes, px */
+	gapY: 4,
+} as const;
+
+const CHIP_MOBILE = 32;
+const GAP_MOBILE = 14;
+
+interface LaneGeom {
+	readonly label: string;
+	readonly icons: readonly StackIcon[];
+	/** lane block top y (label row included on mobile) */
+	readonly top: number;
+	/** icon row top y */
+	readonly iconsY: number;
+	/** label baseline y */
+	readonly labelY: number;
+	/** scroll viewport left edge */
+	readonly vpX: number;
+	/** scroll viewport width */
+	readonly vpW: number;
+	readonly laneH: number;
+	readonly chip: number;
+	readonly pitch: number;
+}
+
+interface StackGeom {
+	readonly lanes: readonly LaneGeom[];
+	readonly height: number;
+}
+
+function layout(mobile: boolean): StackGeom {
+	const spec = canvasSpec(mobile);
 	const groups = resolveGroups();
+	const chip = mobile ? CHIP_MOBILE : LANE.chip;
+	const gap = mobile ? GAP_MOBILE : LANE.gap;
+	const pitch = chip + gap;
+
+	// no header strip — the README's H2 owns the section name, so
+	// the first lane starts at the top margin like every peer band
+	const TT = typeTable(spec);
 
 	if (mobile) {
-		// one column, category label stacked above each icon row —
-		// a narrow left column cannot hold 'Design & motion' without
-		// colliding with the first icon tile. Chips are sized to the
-		// 400px canvas, not shrunk to fit — every curated lane lands
-		// on a single row whose pitch stretches edge to edge.
-		const chipFor = (label: string) => (PRIMARY_LANES.has(label) ? 42 : 30);
-		// taller header block: the title gets Band-2-like top air and a
-		// real gap before the first lane label instead of stacking tight
-		const headerH = 42;
-		const laneGap = 12;
-		const labelH = 17;
-		const iconsW = W - padX * 2;
-		let y = headerH;
-		const lanes = groups.map((g) => {
-			const chip = chipFor(g.label);
-			const minPitch = chip + 6;
-			const perRow = Math.max(1, Math.floor((iconsW + 6) / minPitch));
-			const rows = Math.max(1, Math.ceil(g.icons.length / perRow));
-			// single-row lanes stretch their pitch so icons span the
-			// full width — no dead margin down the right side.
-			// pitch is the left-edge delta between consecutive chips
-			const pitch =
-				rows === 1 && g.icons.length > 1 ? (iconsW - chip) / (g.icons.length - 1) : chip + 6;
-			const iconsY = y + labelH;
-			const cellH = labelH + rows * pitch - 8 + 8;
+		// label ABOVE each lane — the rail can't hold 'Design & motion'
+		// beside a 30px icon row on a 368px canvas
+		const labelRowH = TT.title.lh + SPACE.s1;
+		const laneH = labelRowH + LANE.padY + chip + LANE.padY;
+		let y = SPACE.s4;
+		const lanes = groups.map((g, i) => {
+			const labelY = snap(spec, y + TT.title.lh - 4);
+			const iconsY = snap(spec, y + labelRowH + LANE.padY);
 			const lane = {
 				label: g.label,
 				icons: g.icons,
+				top: y,
+				iconsY,
+				labelY,
+				vpX: spec.margin,
+				vpW: spec.width - spec.margin * 2,
+				laneH,
 				chip,
 				pitch,
-				perRow,
-				x: padX,
-				labelY: y + 12,
-				iconsY,
-				cellH,
 			};
-			y += cellH + laneGap;
+			// mobile lanes need real air between icon row and the next
+			// label — 4px read as one continuous strip
+			y += laneH + (i < groups.length - 1 ? SPACE.s4 : 0);
 			return lane;
 		});
-		return { lanes, height: y + 4, padX };
+		return { lanes, height: snap(spec, y + SPACE.s4) };
 	}
 
-	// desktop — 2-column grid, four lanes fill a balanced 2×2.
-	// Craft lanes get 40px chips, the substrate lane 28px: a real
-	// ≥1.4× tier ratio. Each lane's icon row is vertically centered
-	// inside its cell so mixed-height rows still align.
-	const cols = 2;
-	const colGap = 28;
-	const cellW = (W - padX * 2 - colGap * (cols - 1)) / cols;
-	const innerPad = 6;
-	const iconsW = cellW - innerPad * 2;
-	const headerH = 40;
-	const labelH = 20;
-	const rowGap = 22;
-	const cellX = (i: number) => padX + (i % cols) * (cellW + colGap);
-
-	const sized = groups.map((g) => {
-		const primary = PRIMARY_LANES.has(g.label);
-		const chip = primary ? 40 : 28;
-		const minPitch = chip + 6;
-		const perRow = Math.max(1, Math.floor((iconsW + 6) / minPitch));
-		const rows = Math.max(1, Math.ceil(g.icons.length / perRow));
-		// single-row lanes stretch pitch edge to edge so every lane's
-		// right edge lands on the same column — no ragged finish.
-		// pitch is the left-edge delta between consecutive chips
-		const pitch =
-			rows === 1 && g.icons.length > 1 ? (iconsW - chip) / (g.icons.length - 1) : chip + 6;
-		const cellH = labelH + rows * pitch - 6 + 14;
-		return { ...g, chip, pitch, perRow, rows, cellH };
-	});
-
-	const rowsCount = Math.ceil(sized.length / cols);
-	const rowHeights: number[] = [];
-	for (let r = 0; r < rowsCount; r++) {
-		rowHeights.push(Math.max(...sized.slice(r * cols, r * cols + cols).map((l) => l.cellH)));
-	}
-	const rowTop = (row: number) =>
-		headerH + rowHeights.slice(0, row).reduce((a, b) => a + b + rowGap, 0);
-
-	const lanes: LaneLayout[] = sized.map((g, i) => {
-		const row = Math.floor(i / cols);
-		const top = rowTop(row);
-		const rowH = rowHeights[row];
-		// top-align every lane's icon row at the same label offset —
-		// the smaller substrate chips bind to their label exactly
-		// like the craft lanes instead of floating mid-cell
-		const iconsY = top + labelH + 2;
-		return {
+	// desktop — label rail on grid columns 0–2, scroll field from
+	// column 3 to the right margin (560px) — the same col-3 spine
+	// bands 1–2 build their left content edge on. Pitch is 64px so
+	// the shortest lane period (9 chips = 576px) always exceeds the
+	// viewport — one full period fills the window and no icon ever
+	// renders twice in-frame. One shared lane height; the rail
+	// label is optically centred on the icon row.
+	const vpX = gridX(spec, 3);
+	const vpW = spec.width - spec.margin - vpX;
+	const laneH = chip + LANE.padY * 2;
+	let y = SPACE.s4;
+	const lanes = groups.map((g, i) => {
+		const iconsY = snap(spec, y + LANE.padY);
+		// rail label centred on the chip row: baseline sits at the
+		// optical middle of the icons, not the lane block
+		const labelY = snap(spec, iconsY + chip / 2 + TT.title.size * 0.34);
+		const lane = {
 			label: g.label,
 			icons: g.icons,
-			chip: g.chip,
-			pitch: g.pitch,
-			perRow: g.perRow,
-			x: cellX(i) + innerPad,
-			labelY: top + 14,
+			top: y,
 			iconsY,
-			cellH: rowH,
+			labelY,
+			vpX,
+			vpW,
+			laneH,
+			chip,
+			pitch,
 		};
+		y += laneH + (i < groups.length - 1 ? LANE.gapY : 0);
+		return lane;
 	});
+	return { lanes, height: snap(spec, y + SPACE.s4) };
+}
 
-	const height = headerH + rowHeights.reduce((a, b) => a + b, 0) + rowGap * (rowsCount - 1) + 12;
-	return { lanes, height, padX };
+/** fade zone width per canvas — mobile burns less of its narrow
+ * viewport on edge dissolution */
+function fadeWidth(mobile: boolean, vpW: number): number {
+	return mobile ? Math.min(32, vpW / 9) : Math.min(48, vpW / 9);
+}
+
+/**
+ * Icon definitions — each committed chip is emitted ONCE as a
+ * `<symbol>` and instanced with `<use>`; without this a marquee
+ * track would inline the same path data dozens of times per lane.
+ */
+function iconSymbols(theme: 'dark' | 'light'): string {
+	return STACK_ICONS.map((icon) => {
+		const inner = theme === 'dark' ? icon.dark : icon.light;
+		return `<symbol id="stk-${icon.id}" viewBox="0 0 256 256">${inner}</symbol>`;
+	}).join('');
+}
+
+/** One chip instance inside a track: hairline + symbol use. */
+function chipUse(icon: StackIcon, x: number, y: number, size: number, T: Theme): string {
+	return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${Math.round(size * 0.24)}" fill="none" stroke="${T.chipStroke}" stroke-width="1"/><use href="#stk-${icon.id}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
+}
+
+/**
+ * One marquee lane: a clipped viewport over `copies` repetitions of
+ * the icon sequence, translated by exactly one period (`seqW =
+ * n * pitch`). The content is periodic, so the loop is seamless by
+ * construction; `copies` is the smallest count that keeps the
+ * viewport covered through the whole translation.
+ */
+function marqueeLane(lane: LaneGeom, index: number, T: Theme): string {
+	const seqW = lane.icons.length * lane.pitch;
+	const copies = Math.ceil(lane.vpW / seqW) + 1;
+	const dur = marqueePeriod(seqW);
+	const clipId = `stkclip${index}`;
+
+	let track = '';
+	for (let c = 0; c < copies; c++) {
+		for (const [j, icon] of lane.icons.entries()) {
+			track += chipUse(icon, c * seqW + j * lane.pitch, 0, lane.chip, T);
+		}
+	}
+
+	return `<clipPath id="${clipId}"><rect x="${lane.vpX}" y="${lane.iconsY}" width="${lane.vpW}" height="${lane.chip}"/></clipPath><g clip-path="url(#${clipId})"><g mask="url(#stkm)"><g transform="translate(${lane.vpX} ${lane.iconsY})"><g><animateTransform attributeName="transform" type="translate" from="0 0" to="${-seqW} 0" dur="${dur.toFixed(2)}s" repeatCount="indefinite"/>${track}</g></g></g></g>`;
 }
 
 export function renderStackSvg(input: {
 	readonly theme: 'dark' | 'light';
 	readonly mobile: boolean;
+	readonly grid?: boolean;
 }): string {
 	const T = THEMES[input.theme];
-	const W = input.mobile ? STACK_MOBILE_WIDTH : STACK_WIDTH;
-	const L = layout(input.mobile);
-	const H = Math.ceil(L.height);
+	const spec = canvasSpec(input.mobile);
+	const W = spec.width;
+	const G = layout(input.mobile);
+	// the footer meta line sits below the last lane — the canvas
+	// height is derived after layout so the strip is real space,
+	// and grid=1's bottom legend keeps its own reserve on mobile
+	const contentBottom = G.height - SPACE.s4;
+	const footerY = snap(spec, contentBottom + SPACE.s4);
+	const H = snap(spec, footerY + SPACE.s4) + (input.grid && input.mobile ? 28 : 0);
 	const mobile = input.mobile;
+	const groups = resolveGroups();
+	const totalIcons = groups.reduce((a, g) => a + g.icons.length, 0);
 
 	let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`;
-	s += `<title>Technology stack — ${STACK_ICONS.length} tools in ${STACK_GROUPS.length} activity areas</title>`;
+	s += `<title>Technology stack — ${totalIcons} tools in ${groups.length} activity areas</title>`;
 	s += `<rect width="${W}" height="${H}" fill="${T.bg}"/>`;
-	s += `<text x="${L.padX}" y="${mobile ? 24 : 24}" font-size="${mobile ? 12 : 13}" font-weight="800" fill="${T.fg}" letter-spacing="2">TECHNOLOGY STACK</text>`;
 
-	for (const lane of L.lanes) {
-		// uppercase tracked category label above the icon row — same
-		// voice as the band titles and every lane on both breakpoints
-		s += `<text x="${lane.x}" y="${lane.labelY}" font-size="9.5" font-weight="700" fill="${T.muted}" letter-spacing="1">${esc(lane.label.toUpperCase())}</text>`;
-		lane.icons.forEach((icon, i) => {
-			const row = Math.floor(i / lane.perRow);
-			const col = i % lane.perRow;
-			const ix = lane.x + col * lane.pitch;
-			const iy = lane.iconsY + row * lane.pitch;
-			const inner = input.theme === 'dark' ? icon.dark : icon.light;
-			// a hairline keeps dark-on-dark tiles (Adobe, .NET) readable
-			s += `<rect x="${ix}" y="${iy}" width="${lane.chip}" height="${lane.chip}" rx="${lane.chip * 0.24}" fill="none" stroke="${T.chipStroke}" stroke-width="1"/><svg x="${ix}" y="${iy}" width="${lane.chip}" height="${lane.chip}" viewBox="0 0 256 256">${inner}</svg>`;
-		});
+	const TT = typeTable(spec);
+	const firstLane = G.lanes[0];
+	const lastLane = G.lanes[G.lanes.length - 1];
+	const vpRight = firstLane.vpX + firstLane.vpW;
+	const fadeW = fadeWidth(mobile, firstLane.vpW);
+	const maskY = firstLane.iconsY - 4;
+	const maskH = lastLane.iconsY + lastLane.chip + 4 - maskY;
+
+	// Edge dissolution as an SVG mask on the scrolling group — the
+	// clip bounds the viewport AND the mask is pure black at both
+	// boundaries, so a partially-clipped icon can never leave a
+	// 1px sliver the way a painted fade overlay could. One mask
+	// serves every lane: the gradients are horizontal-only and the
+	// mask region spans all icon rows.
+	s += `<defs>${iconSymbols(input.theme)}`;
+	s += `<linearGradient id="stkgL" gradientUnits="userSpaceOnUse" x1="${firstLane.vpX}" y1="0" x2="${firstLane.vpX + fadeW}" y2="0"><stop offset="0" stop-color="#000"/><stop offset="0.2" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>`;
+	s += `<linearGradient id="stkgR" gradientUnits="userSpaceOnUse" x1="${vpRight - fadeW}" y1="0" x2="${vpRight}" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="0.2" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>`;
+	s += `<mask id="stkm" maskUnits="userSpaceOnUse" x="${firstLane.vpX - 2}" y="${maskY}" width="${firstLane.vpW + 4}" height="${maskH}"><rect x="${firstLane.vpX - 2}" y="${maskY}" width="${firstLane.vpW + 4}" height="${maskH}" fill="#fff"/><rect x="${firstLane.vpX - 2}" y="${maskY}" width="${fadeW + 2}" height="${maskH}" fill="url(#stkgL)"/><rect x="${vpRight - fadeW}" y="${maskY}" width="${fadeW + 2}" height="${maskH}" fill="url(#stkgR)"/></mask>`;
+	s += '</defs>';
+
+	G.lanes.forEach((lane, i) => {
+		// lane label — title role, uppercase, tracked; the category
+		// name is the lane's permanent label, not a caption
+		s += `<text x="${spec.margin}" y="${lane.labelY}" font-size="${TT.title.size}" font-weight="${TT.title.weight}" fill="${T.muted}" letter-spacing="${TT.title.track}">${esc(lane.label.toUpperCase())}</text>`;
+		s += marqueeLane(lane, i, T);
+	});
+
+	// footer meta — bottom-right, matching the band grammar of a
+	// single observation line per module
+	const caption = `${totalIcons} technologies · ${groups.length} categories`;
+	s += `<text x="${W - spec.margin}" y="${footerY}" text-anchor="end" font-size="${TT.caption.size}" fill="${T.faint}">${esc(caption)}</text>`;
+
+	if (input.grid) {
+		s += gridOverlay(spec, H);
 	}
+
 	s += '</svg>';
 	return s;
 }

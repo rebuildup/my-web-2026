@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-	BAND1_HEIGHT,
-	BAND1_MOBILE_HEIGHT,
-	BAND2_HEIGHT,
-	BAND2_MOBILE_HEIGHT,
 	BAND_MOBILE_WIDTH,
 	BAND_WIDTH,
 	type BandStats,
@@ -185,13 +181,16 @@ describe('composeBand1Model', () => {
 describe('renderBand1Svg', () => {
 	it('renders the profile head with the GitHub stat strip', () => {
 		const svg = renderBand1Svg(band1());
-		expect(svg).toContain(`width="${BAND_WIDTH}" height="${BAND1_HEIGHT}"`);
+		expect(svg).toContain(`width="${BAND_WIDTH}"`);
 		expect(svg).toContain('rebuildup');
 		expect(svg).toContain('DAY STREAK');
 		expect(svg).toContain('CONTRIBUTIONS');
-		expect(svg).toContain('128 stars');
-		expect(svg).toContain('4,211 commits');
-		expect(svg).toContain('87 issues');
+		expect(svg).toContain('128');
+		expect(svg).toContain('stars');
+		expect(svg).toContain('4,211');
+		expect(svg).toContain('commits');
+		expect(svg).toContain('87');
+		expect(svg).toContain('issues');
 		expect(svg).toContain('204');
 		expect(svg).toContain('35,239');
 		expect(svg).toContain('45.8%');
@@ -210,7 +209,7 @@ describe('renderBand1Svg', () => {
 		const light = renderBand1Svg(band1({ theme: 'light' }));
 		expect(light).toContain('fill="#ffffff"');
 		const mob = renderBand1Svg(band1({ mobile: true }));
-		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}" height="${BAND1_MOBILE_HEIGHT}"`);
+		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}"`);
 		expect(mob).toContain('DAY STREAK');
 	});
 
@@ -252,28 +251,29 @@ describe('composeBand2Model', () => {
 describe('renderBand2Svg', () => {
 	it('renders repo rows, the event strip and the observation stamp', () => {
 		const svg = renderBand2Svg(band2());
-		expect(svg).toContain(`width="${BAND_WIDTH}" height="${BAND2_HEIGHT}"`);
+		expect(svg).toContain(`width="${BAND_WIDTH}"`);
 		expect(svg).toContain('REPO OUTPUT');
-		expect(svg).toContain('RECENT PUBLIC EVENTS');
-		expect(svg).toContain('in 72h');
-		// same-day events collapse to HH:MM — the header already
-		// declares the observed JST day once
-		expect(svg).toContain('pushed · 19:00');
-		expect(svg).toContain('commits');
-		expect(svg).toContain('PRs');
+		expect(svg).toContain('LAST 72 HOURS');
+		expect(svg).toContain('RECENT EVENTS');
+		// same-day events collapse to HH:MM in their own right-aligned
+		// stamp column — the footer already declares the observed day
+		expect(svg).toContain('· pushed');
+		expect(svg).toContain('>19:00<');
+		expect(svg).toContain('COMMITS');
+		expect(svg).toContain('PRS');
 		expect(svg).toContain('my-web-2026');
 	});
 
 	it('says the snapshot is unavailable instead of drawing zeros', () => {
 		const svg = renderBand2Svg(band2({ activityPayload: null }));
-		expect(svg).toContain('unavailable');
 		expect(svg).toContain('no activity snapshot');
+		expect(svg).not.toContain('REPO OUTPUT');
 	});
 
 	it('supports light theme and mobile variant', () => {
 		expect(renderBand2Svg(band2({ theme: 'light' }))).toContain('fill="#ffffff"');
 		const mob = renderBand2Svg(band2({ mobile: true }));
-		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}" height="${BAND2_MOBILE_HEIGHT}"`);
+		expect(mob).toContain(`width="${BAND_MOBILE_WIDTH}"`);
 		expect(mob).toContain('REPO OUTPUT');
 	});
 });

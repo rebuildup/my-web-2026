@@ -160,6 +160,7 @@
 		"profile:reel:build": "node scripts/build-github-profile-reel.mjs",
 		"profile:showcase:build": "node scripts/build-github-profile-showcase.mjs",
 		"profile:showcase:proto": "node scripts/build-github-profile-collage-proto.mjs",
+		"profile:stack-icons:build": "node scripts/build-github-profile-stack-icons.mjs",
 		"sitemap:ledger:check": "node --experimental-strip-types scripts/check-sitemap-ledger-agreement.mjs",
 		"content:links:check": "node --experimental-strip-types scripts/check-content-links.mjs",
 		"content:links:report": "node --experimental-strip-types scripts/content-link-report.mjs",

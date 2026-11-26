@@ -852,6 +852,7 @@
 					"src/http/github-profile/current.ts",
 					"src/http/github-profile/now.ts",
 					"src/http/github-profile/presence.ts",
+					"src/http/github-profile/stack.ts",
 					"src/http/github-profile/status.ts",
 					"src/tools/manifest.json",
 					"src/vendor/github-readme-stats-fast/cards/streak-card.ts",
@@ -3256,6 +3257,7 @@
 				"identifier": false,
 				"files": [
 					"src/home/activity/snapshot.ts",
+					"src/http/github-profile/router.ts",
 					"src/keyboard/components/KeyboardPage.tsx"
 				]
 			},

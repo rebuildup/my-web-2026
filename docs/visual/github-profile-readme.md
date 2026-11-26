@@ -730,3 +730,54 @@ desktop/mobile の全組合せで M1–M7 MET、ブロッカー 0。
 レビュー証跡: impl v3（REQUEST CHANGES、major 3 → 全修正）、
 impl v4（**APPROVE、ブロッカー 0**、info 2件のみ）。
 `docs/verification/github-profile/v11/` に spec・agy JSON を保存。
+
+## 19. 第3フェーズ: アイコン実素材化とレーン型スタック（2026-11-26）
+
+PR #1231 マージ後のユーザー却下（テキスト依存・嘘データ・汎用
+ダッシュボード化・mobile 縦長）を受け、第3の再設計を実施した。
+agy 独立デザインレビュー（design-review-v9〜v13、証跡
+`docs/verification/github-profile/v12/`）で **v13 APPROVE** に到達。
+
+### ユーザー指摘と対応
+
+- **アイコンの文字代用・自作パス禁止**: 自作炎・`r` イニシャル・
+  `ROSTER_GLYPH` を全廃。全アイコンは `public/github-profile/skills/`
+  の Simple Icons / skill-icons 系 SVG（正規化 256 viewBox）を
+  `scripts/build-github-profile-stack-icons.mjs` でキュレート・
+  インライン化（`stack-icons.ts`、31 アイコン）。炎は Lucide `flame`。
+- **Discord ステータスの模式的再現**: 「Discord」文字+色丸を廃止し、
+  アバター右下のリング付きステータスドット（Discord UI 準拠:
+  online=緑 filled / idle=黄 / dnd=赤 / offline=灰 hollow ring）+
+  Discord ロゴ + ステータス語の1行プレゼンスに再構成。データ取得
+  成功とオンライン状態を分離し、stale 時は 'Discord stale' と正直表示。
+- **In Progress 虚偽表示の廃止**: 固定 roster / ハードコード文言を
+  削除。実データ（GitHub 最新イベント・repo 出力・observed 時刻）に
+  紐づく表現のみ残し、測れないものは描かない。
+- **スタック縦幅圧縮**: 中央揃え多段羅列を廃止し、カテゴリレーン
+  （Design & motion / Languages / Frameworks & runtimes /
+  Infra & dev tools）+ デスクトップ 2×2 グリッド + mobile 縦積み。
+  chip サイズで階層を表現（craft 40px / substrate 28px、
+  mobile 42/30px）。
+
+### agy レビュー推移（design review、実装適合とは別工程）
+
+| round | verdict | 主な指摘→対応 |
+|---|---|---|
+| v9 | REQUEST CHANGES | Discord status 分断・meta 伸縮・rank% 自虐 stat・Band2 トラック誤読 |
+| v10 | REQUEST CHANGES | アイコン位置の font-metric 推定誤差（gulf が左に移動）・metaGrid 右揃え段差 |
+| v11 | REQUEST CHANGES | metaGrid 列位置・Discord 右端短fall・Band2 余白・モバイルリズム |
+| v12 | REQUEST CHANGES | React アイコン黒 fill（stroke path に fill 未指定→SVG 既定黒）・行トラッキング gulf・dim 行の列揃え |
+| v13 | **APPROVE** | minor polish のみ（Total 行の右列化・Band3 ヘッダ罫線・Discord ~15px・middot 間隔） |
+
+設計上の学び: SVG テキストの前方要素配置は **textWidth 推定に依存
+しない左アンカー構成**（アイコンは常にテキスト開始の固定オフセット）
+が衝突を構造的に排除する。幅推定は「クラスタ全体の開始位置」決定に
+のみ使い、要素間の相対位置には使わない。
+
+### 残る minor polish（APPROVE 後の任意改善、次候補で検討）
+
+- Band2 Total 行を commits|PRs 右列に揃える
+- Band3 ヘッダ下の罫線（Band2 との構造対称）
+- Discord クラスタ右端 ~14-18px の微調整
+- Band2 event 行の repo 名↔middot 間隔の微差
+- Band1 'BEST 206D' → 'PERSONAL BEST' 等の自然文言

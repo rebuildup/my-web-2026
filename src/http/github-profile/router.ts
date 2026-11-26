@@ -23,6 +23,7 @@ import { embedWorkMedia } from './media-embed';
 import { composeProfileCardModel } from './model';
 import { type NowStats, renderProfileNowMobileSvg, renderProfileNowSvg } from './now';
 import { renderPresenceSvg } from './presence';
+import { renderStackSvg } from './stack';
 import { renderProfileStatusSvg } from './status';
 
 /**
@@ -244,6 +245,10 @@ async function fetchBandStats(env: Env): Promise<BandStats> {
 		rankLevel: stats?.rank.level ?? null,
 		rankPercentile: stats?.rank.percentile ?? null,
 		topLangs: langs,
+		totalStars: stats?.totalStars ?? null,
+		totalCommits: stats?.totalCommits ?? null,
+		totalPRs: stats?.totalPRs ?? null,
+		totalIssues: stats?.totalIssues ?? null,
 	};
 }
 
@@ -251,11 +256,40 @@ async function fetchBandStats(env: Env): Promise<BandStats> {
 // freshness contract as `/now`, theme/layout selected by query.
 const BANDS_CACHE_CONTROL = 'public, max-age=300, s-maxage=300';
 
+/**
+ * The owner's GitHub avatar, inlined as a `data:` URI for the Band 1
+ * identity header and presence card. `github.com/<login>.png`
+ * resolves to the current avatar (redirect to avatars.githubusercontent);
+ * any failure yields `null` and the band renders without a portrait —
+ * never a placeholder glyph.
+ */
+async function fetchAvatarDataUri(env: Env): Promise<string | null> {
+	return microCache(`band-avatar:${NOW_OWNER_LOGIN}`, async () => {
+		try {
+			const res = await fetch(`https://github.com/${NOW_OWNER_LOGIN}.png`, {
+				signal: AbortSignal.timeout(5000),
+			});
+			const type = res.headers.get('content-type') ?? '';
+			if (!res.ok || !type.startsWith('image/')) return null;
+			const buf = await res.arrayBuffer();
+			if (buf.byteLength === 0 || buf.byteLength > 512 * 1024) return null;
+			const bytes = new Uint8Array(buf);
+			let bin = '';
+			for (let i = 0; i < bytes.length; i += 0x8000) {
+				bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+			}
+			return `data:${type.split(';')[0]};base64,${btoa(bin)}`;
+		} catch {
+			return null;
+		}
+	});
+}
+
 githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 	const env = c.env as unknown as ProfileSnapshotEnv & Env;
 	const { activityPayload, presencePayload } = await readProfileSnapshots(env);
 	const now = Date.now();
-	const [model, stats] = await Promise.all([
+	const [model, stats, avatarDataUri] = await Promise.all([
 		Promise.resolve(
 			composeProfileCardModel({
 				activityPayload,
@@ -266,11 +300,19 @@ githubProfileRouter.get('/identity', rateLimitRead, async (c) => {
 			}),
 		),
 		fetchBandStats(env),
+		fetchAvatarDataUri(env),
 	]);
 	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
 	const mobile = c.req.query('layout') === 'mobile';
 	const svg = renderBand1Svg(
-		composeBand1Model({ theme, mobile, model, stats, roster: PROJECT_ROSTER, now }),
+		composeBand1Model({
+			theme,
+			mobile,
+			model,
+			stats,
+			avatarDataUri,
+			now,
+		}),
 	);
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
@@ -288,6 +330,17 @@ githubProfileRouter.get('/activity-map', rateLimitRead, async (c) => {
 	return c.body(svg, 200, {
 		'Content-Type': 'image/svg+xml; charset=utf-8',
 		'Cache-Control': BANDS_CACHE_CONTROL,
+	});
+});
+
+githubProfileRouter.get('/stack', rateLimitRead, async (c) => {
+	const theme = c.req.query('theme') === 'light' ? 'light' : 'dark';
+	const mobile = c.req.query('layout') === 'mobile';
+	const svg = renderStackSvg({ theme, mobile });
+	return c.body(svg, 200, {
+		'Content-Type': 'image/svg+xml; charset=utf-8',
+		// Static committed icon set — cache longer than the data bands.
+		'Cache-Control': 'public, max-age=3600, s-maxage=3600',
 	});
 });
 
@@ -391,3 +444,4 @@ githubProfileRouter.all('/presence', methodNotAllowed(['GET']));
 githubProfileRouter.all('/current', methodNotAllowed(['GET']));
 githubProfileRouter.all('/identity', methodNotAllowed(['GET']));
 githubProfileRouter.all('/activity-map', methodNotAllowed(['GET']));
+githubProfileRouter.all('/stack', methodNotAllowed(['GET']));
